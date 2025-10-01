@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  body {
+    @apply text-gray-900;
+    background: linear-gradient(135deg, #f6f8fa 0%, #ffffff 50%, #f0f3f7 100%);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+    }
+
+    body {
+      @apply text-gray-100;
+      background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #1c2128 100%);
+    }
+  }
+}
+
+/* macOS/visionOS Glass morphism utilities */
+@layer utilities {
+  .glass {
+    @apply bg-white/75 dark:bg-gray-900/80 backdrop-blur-2xl border border-white/30 dark:border-gray-700/40 shadow-lg;
+  }
+
+  .glass-panel {
+    @apply bg-white/85 dark:bg-[#161b22]/90 backdrop-blur-3xl shadow-xl border border-white/20 dark:border-gray-700/30;
+  }
+}
+
+/* Custom scrollbar */
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    @apply bg-gray-100 dark:bg-gray-800;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-gray-400 dark:bg-gray-600 rounded-full;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-500 dark:bg-gray-500;
+  }
+}
+
+/* Button group animation */
+@keyframes slideIn {
+  from {
+    width: 0;
+    opacity: 0;
+  }
+  to {
+    width: auto;
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slideIn 0.2s ease-out;
+}

@@ -1,0 +1,63 @@
+# transform_config.yaml
+# Configuration for transform.py - shared term lists now in shared_config.yaml
+
+# Logging settings
+LOG_FILE: transform.log
+RETRY_COUNT: 3
+BACKOFF_FACTOR: 1.0
+
+# Column type coercion settings
+COLUMN_TYPES:
+  variable_weight: numeric
+  maximum_order_amount: numeric
+  minimum_order_amount: numeric
+  order_increment: numeric
+  average_size_per_merchant_uom: numeric
+  max_order_quantity: numeric
+  min_order_amount: numeric
+  barcode: string  # Always handle as string to preserve leading zeros
+
+# Schema validation rules (for pandera if available)
+SCHEMA_DEFINITIONS:
+  variable_weight:
+    dtype: int
+    nullable: false
+    min: 0
+    max: 1
+  
+  min_order_amount:
+    dtype: float
+    nullable: true
+    min: 0
+    max: 100
+  
+  max_order_quantity:
+    dtype: float
+    nullable: true
+    min: 0
+    max: 100
+  
+  order_increment:
+    dtype: float
+    nullable: true
+    min: 0
+    max: 10
+
+# Position-based template mapping rules
+TEMPLATE_MAPPING:
+  # Columns that should be blank for non-variable weight items
+  variable_weight_only_columns:
+    - pricing_strategy
+    - order_increment
+    - min_order_amount
+    - max_order_quantity
+    - average_size_per_merchant_uom
+  
+  # Default group identification keywords
+  variable_weight_group_keywords:
+    - variable
+    - pricing_strategy
+    - order_increment
+    - minimum_order
+    - maximum_order
+    - average_size

@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# Neutron Star - Simple run command
+# Just type './run' to start everything!
+
+echo "🌟 Neutron Star"
+echo "━━━━━━━━━━━━━━━"
+echo ""
+
+# Always run web version
+./start_web.sh
