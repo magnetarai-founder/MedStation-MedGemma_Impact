@@ -1,8 +1,8 @@
-import { Database, FileJson, MessageSquare, Zap, SlidersHorizontal } from 'lucide-react'
+import { Code, MessageSquare, FolderOpen, SlidersHorizontal } from 'lucide-react'
 
 interface NavigationRailProps {
-  activeTab: 'chat' | 'sql' | 'json'
-  onTabChange: (tab: 'chat' | 'sql' | 'json') => void
+  activeTab: 'chat' | 'editor' | 'queries'
+  onTabChange: (tab: 'chat' | 'editor' | 'queries') => void
 }
 
 export function NavigationRail({ activeTab, onTabChange }: NavigationRailProps) {
@@ -54,27 +54,27 @@ export function NavigationRail({ activeTab, onTabChange }: NavigationRailProps) 
       </button>
 
       <button
-        onClick={() => onTabChange('sql')}
+        onClick={() => onTabChange('editor')}
         className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${
-          activeTab === 'sql'
+          activeTab === 'editor'
             ? 'bg-primary-600/90 text-white shadow-xl backdrop-blur-xl'
             : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 hover:bg-white/60 dark:hover:bg-gray-700/60 hover:shadow-lg'
         }`}
-        title="SQL Editor"
+        title="Code Editor (SQL/JSON)"
       >
-        <Database size={22} />
+        <Code size={22} />
       </button>
 
       <button
-        onClick={() => onTabChange('json')}
+        onClick={() => onTabChange('queries')}
         className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${
-          activeTab === 'json'
+          activeTab === 'queries'
             ? 'bg-primary-600/90 text-white shadow-xl backdrop-blur-xl'
             : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 hover:bg-white/60 dark:hover:bg-gray-700/60 hover:shadow-lg'
         }`}
-        title="JSON Editor"
+        title="History & Library"
       >
-        <FileJson size={22} />
+        <FolderOpen size={22} />
       </button>
       </div>
 

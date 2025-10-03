@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { GripVertical } from 'lucide-react'
-import { SQLEditor } from './SQLEditor'
+import { CodeEditor } from './CodeEditor'
 import { ResultsTable } from './ResultsTable'
 
 export function ResizablePanels() {
@@ -50,27 +50,27 @@ export function ResizablePanels() {
 
   return (
     <div ref={containerRef} className="flex-1 min-h-0 flex flex-col relative">
-      {/* SQL Editor */}
+      {/* Code Editor */}
       <div style={{ height: `${topHeight}%` }} className="min-h-[150px]">
-        <SQLEditor />
+        <CodeEditor />
       </div>
       
       {/* Resizable Handle */}
       <div
         className={`
           relative h-1 cursor-ns-resize group
-          ${isResizing ? 'bg-primary-500' : 'bg-gray-300/30 dark:bg-gray-700/30 hover:bg-gray-300/50 dark:hover:bg-gray-600/50'}
+          ${isResizing ? 'bg-primary-500' : 'bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700'}
           transition-colors
         `}
         onMouseDown={handleMouseDown}
       >
         <div className="absolute inset-x-0 -top-2 -bottom-2 flex items-center justify-center">
           <div className={`
-            px-2 py-0.5 rounded-full glass-panel
+            px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 
             ${isResizing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}
             transition-opacity
           `}>
-            <GripVertical className="w-3 h-3 text-gray-600 dark:text-gray-300" />
+            <GripVertical className="w-3 h-3 text-gray-500 dark:text-gray-400" />
           </div>
         </div>
       </div>

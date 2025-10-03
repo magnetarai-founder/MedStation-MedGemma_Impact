@@ -633,7 +633,8 @@ class NeutronEngine:
             translated_query = self._translate_query(query, dialect)
 
             if limit:
-                translated_query = f"SELECT * FROM ({translated_query}) sq LIMIT {limit}"
+                # Use TABLESAMPLE for random sampling when limit is applied
+                translated_query = f"SELECT * FROM ({translated_query}) sq USING SAMPLE {limit} ROWS"
 
             # Execute query
             result = self.conn.execute(translated_query)
@@ -651,7 +652,26 @@ class NeutronEngine:
 
         except Exception as e:
             execution_time = (pd.Timestamp.now() - start_time).total_seconds() * 1000
-            return QueryResult(data=None, row_count=0, column_names=[], execution_time_ms=execution_time, error=str(e))
+            # Enhanced error message with context
+            error_msg = str(e)
+
+            # Add helpful context based on error type
+            if "Binder Error" in error_msg:
+                if "Referenced column" in error_msg or "not found" in error_msg:
+                    error_msg = f"Column Error: {error_msg}\n\nTip: Check column names in the Columns panel. Use double quotes for names with spaces."
+                elif "table" in error_msg.lower() and "not found" in error_msg.lower():
+                    error_msg = f"Table Error: {error_msg}\n\nTip: Make sure you've uploaded a file first. The table name is 'excel_file'."
+            elif "Conversion Error" in error_msg or "Could not convert" in error_msg:
+                error_msg = f"Type Mismatch: {error_msg}\n\nTip: Use CAST() to convert between types, e.g., CAST(column AS VARCHAR)"
+            elif "unit" in error_msg.lower() and "count" in error_msg.lower():
+                error_msg = f"Column Count Mismatch: {error_msg}\n\nTip: Check that all SELECT statements in UNION have the same number of columns."
+            elif "division by zero" in error_msg.lower():
+                error_msg = f"Division by Zero: {error_msg}\n\nTip: Use NULLIF to prevent division by zero: column / NULLIF(divisor, 0)"
+            elif "Parser Error" in error_msg:
+                error_msg = f"Syntax Error: {error_msg}\n\nTip: Check for missing commas, parentheses, or typos in SQL keywords."
+
+            logger.error(f"Query execution failed: {error_msg}")
+            return QueryResult(data=None, row_count=0, column_names=[], execution_time_ms=execution_time, error=error_msg)
 
     def _translate_query(self, query: str, dialect: SQLDialect) -> str:
         """

@@ -84,6 +84,11 @@ class Config:
         "enrichment_network_enabled": False,
         "enrichment_timeout_seconds": 5,
         "enrichment_retry_count": 1,
+        # Session management
+        "session_timeout_hours": 24,  # Auto-delete idle sessions after this many hours (0 = never)
+        # UI/History limits
+        "max_history_items": 100,  # Max query history items to keep
+        "max_saved_queries": 100,  # Max saved queries to keep
     }
 
     def __init__(self, config_file: Optional[str] = None):

@@ -1,17 +1,14 @@
 import { Database, PlusCircle } from 'lucide-react'
 import { useState } from 'react'
 import { useSessionStore } from '@/stores/sessionStore'
-import { useJsonStore } from '@/stores/jsonStore'
-import { useNavigationStore } from '@/stores/navigationStore'
+import { useEditorStore } from '@/stores/editorStore'
 
 export function ColumnInspector() {
   const { currentFile } = useSessionStore()
-  const { jsonFileData } = useJsonStore()
-  const { activeTab } = useNavigationStore()
+  const { contentType } = useEditorStore()
   const [lastInserted, setLastInserted] = useState<string | null>(null)
 
-  // Use SQL file data or JSON file data based on active tab
-  const fileData = activeTab === 'sql' ? currentFile : jsonFileData
+  const fileData = currentFile
   
   if (!fileData) {
     return (
@@ -23,8 +20,8 @@ export function ColumnInspector() {
   }
 
   const insertToEditor = (columnName: string) => {
-    if (activeTab === 'sql') {
-      // Insert as a quoted identifier for SQL
+    // Only allow insertion for SQL content
+    if (contentType === 'sql') {
       const quoted = '"' + String(columnName).replace(/"/g, '""') + '"'
       try {
         window.dispatchEvent(new CustomEvent('insert-sql', { detail: quoted }))
@@ -33,42 +30,28 @@ export function ColumnInspector() {
       } catch {
         // no-op
       }
-    } else {
-      // For JSON, insert the column path
-      try {
-        window.dispatchEvent(new CustomEvent('insert-json-path', { detail: columnName }))
-        setLastInserted(columnName)
-        setTimeout(() => setLastInserted(null), 1200)
-      } catch {
-        // no-op
-      }
     }
   }
 
-  // Get columns based on the active tab
-  const columns = activeTab === 'sql' 
-    ? (currentFile?.columns || [])
-    : (jsonFileData?.columns || [])
-  
-  const columnCount = activeTab === 'sql'
-    ? currentFile?.column_count
-    : jsonFileData?.columns?.length || 0
+  const columns = currentFile?.columns || []
+  const columnCount = currentFile?.column_count || 0
+
+  const isClickable = contentType === 'sql'
 
   return (
     <div className="h-full flex flex-col">
       <div className="px-4 pt-4 pb-2">
         <h3 className="text-sm font-semibold">
-          {activeTab === 'sql' ? 'Columns' : 'Column Preview'} ({columnCount})
+          Columns ({columnCount})
         </h3>
       </div>
       <div className="flex-1 overflow-auto px-2 pb-4">
         <ul className="text-sm divide-y divide-gray-200 dark:divide-gray-800 rounded-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
           {columns.map((col: any) => {
-            // Handle both SQL columns (objects) and JSON columns (strings)
-            const columnName = typeof col === 'string' ? col : col.original_name
-            
-            if (activeTab === 'json') {
-              // For JSON tab - just show as preview, not clickable
+            const columnName = col.original_name
+
+            if (!isClickable) {
+              // For JSON mode - just show as preview, not clickable
               return (
                 <li
                   key={columnName}
@@ -79,8 +62,8 @@ export function ColumnInspector() {
                 </li>
               )
             }
-            
-            // For SQL tab - keep the original clickable behavior
+
+            // For SQL mode - clickable
             return (
               <li
                 key={columnName}
@@ -102,7 +85,7 @@ export function ColumnInspector() {
         </ul>
       </div>
       <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-800 text-xs text-gray-500">
-        {activeTab === 'sql' ? 'Showing Excel headers exactly as loaded' : 'Preview of flattened JSON paths'}
+        {isClickable ? 'Click to insert into editor' : 'Preview only (JSON mode)'}
       </div>
     </div>
   )

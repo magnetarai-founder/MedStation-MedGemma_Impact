@@ -1,18 +1,18 @@
 import { useState, useEffect } from 'react'
 import { FileUpload } from './components/FileUpload'
-import { JsonFileUpload } from './components/JsonFileUpload'
 import { SidebarTabs } from './components/SidebarTabs'
 import { Header } from './components/Header'
 import { ResizablePanels } from './components/ResizablePanels'
-import { JsonResizablePanels } from './components/JsonResizablePanels'
 import { ResizableSidebar } from './components/ResizableSidebar'
 import { NavigationRail } from './components/NavigationRail'
 import { ChatSidebar } from './components/ChatSidebar'
 import { ChatWindow } from './components/ChatWindow'
+import { QueryHistoryPanel } from './components/QueryHistoryPanel'
 import { useSessionStore } from './stores/sessionStore'
 import { useNavigationStore } from './stores/navigationStore'
 import { api } from './lib/api'
 import { SettingsModal } from './components/SettingsModal'
+import { ClearWorkspaceDialog } from './components/ClearWorkspaceDialog'
 
 export default function App() {
   const { sessionId, setSessionId, clearSession } = useSessionStore()
@@ -72,25 +72,31 @@ export default function App() {
             left={<ChatSidebar />}
             right={<ChatWindow />}
           />
+        ) : activeTab === 'queries' ? (
+          <div className="flex-1 overflow-hidden">
+            <QueryHistoryPanel />
+          </div>
         ) : (
           <ResizableSidebar
             initialWidth={320}
             minWidth={320}
+            storageKey="ns.editorSidebarWidth"
             left={
               <div className="h-full flex flex-col">
                 <div className="p-4 border-b border-gray-200 dark:border-gray-800">
-                  {activeTab === 'sql' ? <FileUpload /> : <JsonFileUpload />}
+                  <FileUpload />
                 </div>
                 <div className="flex-1 overflow-hidden">
                   <SidebarTabs />
                 </div>
               </div>
             }
-            right={activeTab === 'sql' ? <ResizablePanels /> : <JsonResizablePanels />}
+            right={<ResizablePanels />}
           />
         )}
       </div>
       <SettingsModal />
+      <ClearWorkspaceDialog />
     </div>
   )
 }
