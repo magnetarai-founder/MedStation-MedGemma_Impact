@@ -10,6 +10,10 @@ const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
       retry: 1,
     },
+    mutations: {
+      // Don't cancel mutations when components unmount (e.g., downloads)
+      gcTime: Infinity,
+    },
   },
 })
 

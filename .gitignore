@@ -24,6 +24,8 @@ frontend/.vite/
 
 # Data and cache
 api/.neutron_data/
+api/temp_uploads/
+api/temp_exports/
 *.db
 *.db-shm
 *.db-wal

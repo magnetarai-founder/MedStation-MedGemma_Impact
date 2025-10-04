@@ -1,11 +1,12 @@
 import { useState, useCallback, useRef } from 'react'
 import Editor from '@monaco-editor/react'
-import { Play, Square, Zap, Loader2, Download, Trash2 } from 'lucide-react'
+import { Play, Square, Zap, Loader2, Download, Trash2, Upload } from 'lucide-react'
 import { useMutation } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { useSessionStore } from '@/stores/sessionStore'
 import { useJsonStore } from '@/stores/jsonStore'
 import { useSettingsStore } from '@/stores/settingsStore'
+import { JsonFileUpload } from './JsonFileUpload'
 
 // Helper to get the correct modifier key based on platform
 const getModifierKey = () => {
@@ -23,18 +24,21 @@ export function JsonEditor() {
   const { setConversionResult, setIsConverting, isConverting, abortController, setAbortController, jsonContent, setJsonContent, actualJsonContent, setActualJsonContent } = useJsonStore()
   const editorRef = useRef<any>(null)
   const monacoRef = useRef<any>(null)
+  const [showUpload, setShowUpload] = useState(false)
 
   const convertMutation = useMutation({
     mutationFn: async (isPreview: boolean = false) => {
+      console.log('🚀 Mutation called with isPreview:', isPreview)
       if (!sessionId) throw new Error('No session')
-      
+
       // Create new abort controller for this conversion
       const controller = new AbortController()
       setAbortController(controller)
       setIsConverting(true)
-      
+
       // Use actualJsonContent for conversion (full content), not the preview
       let contentToConvert = actualJsonContent || jsonContent
+      console.log('📝 Content length:', contentToConvert.length, 'characters')
       
       // Validate JSON
       let parsedJson
@@ -43,10 +47,15 @@ export function JsonEditor() {
       } catch (e) {
         throw new Error('Invalid JSON format')
       }
-      
+
+      // Track original total for preview mode
+      let originalTotal = 0
+
       // For preview, randomly sample rows
       if (isPreview && Array.isArray(parsedJson)) {
         const totalRows = parsedJson.length
+        originalTotal = totalRows
+        console.log('🔍 Preview mode: Original total rows:', totalRows, 'Preview limit:', previewRowCount)
         if (totalRows > previewRowCount) {
           // Create random indices
           const indices = new Set<number>()
@@ -56,16 +65,29 @@ export function JsonEditor() {
           // Sample the data
           const sampledData = Array.from(indices).sort((a, b) => a - b).map(i => parsedJson[i])
           contentToConvert = JSON.stringify(sampledData)
+          console.log('✂️ Sampled data to', sampledData.length, 'rows')
+        } else {
+          console.log('⚠️ Total rows less than preview limit, using all rows')
         }
       }
-      
+
       // Pass abort signal to API call
-      return api.convertJson(sessionId, contentToConvert, {
+      const result = await api.convertJson(sessionId, contentToConvert, {
         expand_arrays: false,  // Don't expand arrays for large files
         max_depth: 2,  // Even lower depth for faster processing
         auto_safe: true,
         include_summary: false,  // Skip summary for faster processing
+        preview_only: isPreview,  // Tell backend to use fast preview mode
+        limit: isPreview ? previewRowCount : undefined,
       }, controller.signal)
+
+      // Mark preview conversions as not downloadable and include original total
+      console.log('📊 Backend returned:', result.total_rows, 'rows. Preview?', isPreview, 'Original total:', originalTotal)
+      return {
+        ...result,
+        is_preview_only: isPreview,
+        original_total_rows: originalTotal > 0 ? originalTotal : result.total_rows
+      }
     },
     onSuccess: (data) => {
       setConversionResult(data)
@@ -95,6 +117,7 @@ export function JsonEditor() {
       console.warn('Conversion already in progress, please wait...')
       return
     }
+    console.log('🎯 Preview button clicked - calling mutation with isPreview=true')
     convertMutation.mutate(true)
   }, [convertMutation, isConverting])
 
@@ -131,6 +154,19 @@ export function JsonEditor() {
           <span> Editor</span>
         </h2>
         <div className="flex items-center space-x-2">
+          {/* Upload File button */}
+          <button
+            onClick={() => setShowUpload(!showUpload)}
+            className={`p-1.5 rounded-xl transition-colors ${
+              showUpload
+                ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400'
+                : 'hover:bg-white/50 dark:hover:bg-gray-700/50'
+            }`}
+            title="Upload JSON file"
+          >
+            <Upload className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+          </button>
+
           {/* Clear editor */}
           <button
             onClick={() => {
@@ -222,13 +258,23 @@ export function JsonEditor() {
           </div>
         </div>
       </div>
-      
+
+      {/* Upload panel */}
+      {showUpload && (
+        <div className="px-4 py-3 border-b border-white/10 dark:border-gray-700/30">
+          <JsonFileUpload />
+        </div>
+      )}
+
       <div className="flex-1" style={{ minHeight: 0 }}>
         <Editor
           height="100%"
           language="json"
           value={jsonContent}
-          onChange={(value) => setJsonContent(value || '')}
+          onChange={(value) => {
+            setJsonContent(value || '')
+            setActualJsonContent(value || '')
+          }}
           theme="vs-dark"
           loading={<div className="flex items-center justify-center h-full text-gray-500">Loading editor...</div>}
           options={{
@@ -250,7 +296,7 @@ export function JsonEditor() {
             editor.updateOptions({ readOnly: false })
             editorRef.current = editor
             monacoRef.current = monaco
-            
+
             // Configure JSON language settings
             monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
               validate: true,
@@ -258,10 +304,10 @@ export function JsonEditor() {
               allowComments: false,
               trailingCommas: false,
             })
-            
+
             // Add keyboard shortcut
             editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => handleConvert())
-            
+
             // Focus the editor
             setTimeout(() => {
               editor.focus()

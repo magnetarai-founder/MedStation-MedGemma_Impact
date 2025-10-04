@@ -16,19 +16,27 @@ interface JsonFileInfo {
 }
 
 export function JsonFileUpload() {
+  console.log('JsonFileUpload: Component mounted/rendered')
   const { sessionId } = useSessionStore()
   const { setJsonFileData, setJsonContent, setActualJsonContent } = useJsonStore()
   const [currentFile, setCurrentFile] = useState<JsonFileInfo | null>(null)
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
 
+  console.log('JsonFileUpload: Current state', { sessionId, currentFile, uploadedFile })
+
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
-      if (!sessionId) throw new Error('No session')
-      
+      console.log('JsonFileUpload: Starting upload', { file: file.name, sessionId })
+
+      if (!sessionId) {
+        console.error('JsonFileUpload: No session ID available')
+        throw new Error('No session - please refresh the page')
+      }
+
       // For large files, don't load entire content into editor
       const MAX_EDITOR_SIZE = 1 * 1024 * 1024 // 1MB
       let fileContent = ''
-      
+
       if (file.size <= MAX_EDITOR_SIZE) {
         // Small file - load entire content
         fileContent = await file.text()
@@ -36,17 +44,21 @@ export function JsonFileUpload() {
         // Large file - load preview only
         const slice = file.slice(0, MAX_EDITOR_SIZE)
         const preview = await slice.text()
-        
+
         // Try to find a good cut-off point
         const lastNewline = preview.lastIndexOf('\n')
         const truncated = lastNewline > 0 ? preview.substring(0, lastNewline) : preview
-        
+
         fileContent = truncated + '\n\n// ... File truncated for preview (too large for editor) ...'
       }
-      
+
+      console.log('JsonFileUpload: Uploading to API', { sessionId, filename: file.name })
+
       // Upload to API
       const response = await api.uploadJson(sessionId, file)
-      
+
+      console.log('JsonFileUpload: Upload successful', response)
+
       return { response, fileContent }
     },
     onSuccess: async ({ response, fileContent }) => {
@@ -70,13 +82,19 @@ export function JsonFileUpload() {
     },
     onError: (error: any) => {
       const errorMsg = error.message || 'Upload failed'
-      console.error('Upload error:', errorMsg, error)
+      console.error('JsonFileUpload: Upload error:', errorMsg, error)
+      alert(`Upload failed: ${errorMsg}`)
     },
   })
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
+    console.log('JsonFileUpload: onDrop called', { acceptedFiles })
     const file = acceptedFiles[0]
-    if (!file) return
+    if (!file) {
+      console.warn('JsonFileUpload: No file in acceptedFiles')
+      return
+    }
+    console.log('JsonFileUpload: File accepted, starting upload mutation', { filename: file.name, size: file.size })
     setUploadedFile(file)  // Store the file reference
     uploadMutation.mutate(file)
   }, [uploadMutation])

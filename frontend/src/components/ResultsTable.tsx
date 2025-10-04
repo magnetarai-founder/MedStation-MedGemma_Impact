@@ -11,10 +11,11 @@ export function ResultsTable() {
   const { contentType, hasExecuted } = useEditorStore()
 
   const exportMutation = useMutation({
+    mutationKey: ['export-results', sessionId, currentQuery?.query_id],
     mutationFn: async (format: 'excel' | 'csv' | 'parquet' | 'json') => {
       if (!sessionId || !currentQuery) throw new Error('No data to export')
       const blob = await api.exportResults(sessionId, currentQuery.query_id, format)
-      
+
       // Download the file
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -24,7 +25,7 @@ export function ResultsTable() {
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
-      
+
       // Remember the format after successful download (it's already saved via setExportFormat onChange)
     },
     onSuccess: () => {
@@ -66,9 +67,6 @@ export function ResultsTable() {
           <h3 className="text-sm font-medium">
             Results {currentQuery ? `(${(currentQuery.row_count ?? rows.length).toLocaleString()} rows)` : ''}
           </h3>
-          <span className="text-xs text-gray-500">
-            {currentQuery ? `Query completed in ${currentQuery.execution_time_ms.toFixed(0)}ms` : 'No preview yet'}
-          </span>
         </div>
 
         <div className="flex items-center space-x-2">

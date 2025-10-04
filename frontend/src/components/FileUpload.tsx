@@ -12,17 +12,24 @@ export function FileUpload() {
 
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
-      if (!sessionId) throw new Error('No session')
+      console.log('🔵 FileUpload mutation started:', file.name, 'SessionID:', sessionId)
+      if (!sessionId) {
+        console.error('❌ No session ID!')
+        throw new Error('No session')
+      }
       setIsUploading(true)
 
       // Route to appropriate upload endpoint based on file type
       if (file.name.endsWith('.json')) {
+        console.log('📤 Uploading as JSON to:', `/sessions/${sessionId}/json/upload`)
         return api.uploadJson(sessionId, file)
       } else {
+        console.log('📤 Uploading as Excel/CSV to:', `/sessions/${sessionId}/upload`)
         return api.uploadFile(sessionId, file)
       }
     },
     onSuccess: async (data, file) => {
+      console.log('✅ Upload successful!', data)
       // Transform JSON upload response to match FileUploadResponse format
       if (file.name.endsWith('.json')) {
         const jsonData = data as any
@@ -73,14 +80,25 @@ export function FileUpload() {
     onError: (error: any) => {
       setIsUploading(false)
       const errorMsg = error.response?.data?.detail || error.message || 'Upload failed'
-      console.error('Upload error:', errorMsg, error)
+      console.error('❌ Upload error:', errorMsg, error)
+      alert(`Upload failed: ${errorMsg}`)
     },
   })
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
+    console.log('📥 File dropped:', acceptedFiles.length, 'files')
     const file = acceptedFiles[0]
-    if (!file) return
+    if (!file) {
+      console.warn('⚠️ No file in acceptedFiles')
+      return
+    }
 
+    console.log('📁 File details:', {
+      name: file.name,
+      size: `${(file.size / 1024).toFixed(2)} KB`,
+      type: file.type
+    })
+    console.log('🚀 Starting upload mutation...')
     // Upload all file types through mutation (handles both JSON and Excel/CSV)
     uploadMutation.mutate(file)
   }, [uploadMutation])
@@ -108,17 +126,10 @@ export function FileUpload() {
           </div>
           <button
             onClick={() => {
-              if (window.confirm('Clear the loaded file and results?')) {
-                setCurrentFile(null)
-                setCurrentQuery(null)
-                setContentType(null)
-                setHasExecuted(false)
-                // Clear the code editor
-                try { window.dispatchEvent(new CustomEvent('clear-code-editor')) } catch {}
-              }
+              window.dispatchEvent(new Event('open-clear-workspace'))
             }}
             className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded flex-shrink-0"
-            title="Clear file"
+            title="Clear workspace"
           >
             <X className="w-4 h-4 text-gray-400" />
           </button>

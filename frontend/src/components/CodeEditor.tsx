@@ -55,12 +55,52 @@ export function CodeEditor() {
   }, [currentFile])
 
   const queryMutation = useMutation({
+    mutationKey: ['execute-query', sessionId, contentType, code.substring(0, 100)],
     mutationFn: async (isPreview: boolean = false) => {
+      console.log('🔧 queryMutation.mutationFn called with isPreview:', isPreview, 'contentType:', contentType)
       if (!sessionId) throw new Error('No session')
 
       // Route to correct endpoint based on content type
       if (contentType === 'json') {
-        const result = await api.convertJson(sessionId, code, {
+        let jsonToConvert = code
+        let originalTotal = 0
+
+        console.log('📦 JSON mode, code length:', code.length, 'isPreview:', isPreview)
+
+        // For preview, sample the JSON data
+        if (isPreview) {
+          console.log('🔍 Entering preview sampling block...')
+          console.log('⏱️ Starting JSON.parse on', code.length, 'characters...')
+          try {
+            const parsedJson = JSON.parse(code)
+            console.log('✅ JSON parsed successfully. Type:', typeof parsedJson, 'isArray:', Array.isArray(parsedJson))
+            if (Array.isArray(parsedJson)) {
+              const totalRows = parsedJson.length
+              originalTotal = totalRows
+              console.log('🔍 JSON Preview: Original rows:', totalRows, 'Limit:', PREVIEW_ROW_LIMIT)
+
+              if (totalRows > PREVIEW_ROW_LIMIT) {
+                // Random sample
+                console.log('🎲 Creating random sample...')
+                const indices = new Set<number>()
+                while (indices.size < PREVIEW_ROW_LIMIT) {
+                  indices.add(Math.floor(Math.random() * totalRows))
+                }
+                const sampledData = Array.from(indices).sort((a, b) => a - b).map(i => parsedJson[i])
+                jsonToConvert = JSON.stringify(sampledData)
+                console.log('✂️ Sampled to', sampledData.length, 'rows')
+              } else {
+                console.log('⚠️ Total rows', totalRows, '<= limit', PREVIEW_ROW_LIMIT, '- using all data')
+              }
+            } else {
+              console.log('⚠️ JSON is not an array, skipping sampling')
+            }
+          } catch (e) {
+            console.error('❌ Failed to parse JSON for sampling:', e)
+          }
+        }
+
+        const result = await api.convertJson(sessionId, jsonToConvert, {
           expand_arrays: true,
           include_summary: false,  // Disable summary to get actual data in preview
           preview_only: isPreview,  // Only analyze structure for preview, don't do full conversion
@@ -73,13 +113,14 @@ export function CodeEditor() {
         // Transform JSON conversion result to match QueryResponse format
         return {
           query_id: `json_${Date.now()}`,
-          row_count: result.total_rows,
+          row_count: originalTotal > 0 ? originalTotal : result.total_rows,
           column_count: result.columns?.length || 0,
           columns: result.columns || [],
           execution_time_ms: 0,
           preview: result.preview || [],
           has_more: result.total_rows > (result.preview?.length || 0),
           is_preview_only: isPreview,  // Flag to indicate if this is preview-only (not downloadable)
+          original_total_rows: originalTotal > 0 ? originalTotal : result.total_rows,
         }
       } else {
         const limit = isPreview ? PREVIEW_ROW_LIMIT : null
@@ -135,14 +176,16 @@ export function CodeEditor() {
   })
 
   const handleExecute = useCallback((isPreview: boolean = false) => {
+    console.log('🎯 handleExecute called with isPreview:', isPreview, 'contentType:', contentType, 'isPending:', queryMutation.isPending)
     if (contentType === 'sql' && !currentFile) {
       console.error('Please load a file first')
       return
     }
     if (queryMutation.isPending) {
-      console.warn('Already executing, please wait...')
+      console.warn('⚠️ Already executing, IGNORING this call')
       return
     }
+    console.log('✅ Calling queryMutation.mutate...')
     setCurrentQuery(null)
     queryMutation.mutate(isPreview)
   }, [contentType, currentFile, queryMutation, setCurrentQuery])

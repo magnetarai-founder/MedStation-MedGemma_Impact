@@ -27,7 +27,9 @@ export function SQLEditor() {
     mutationFn: async (isPreview: boolean = false) => {
       if (!sessionId) throw new Error('No session')
       const limit = isPreview ? previewRowCount : null
-      return api.executeQuery(sessionId, sql, { limit })
+      const result = await api.executeQuery(sessionId, sql, { limit })
+      // Mark preview queries as not downloadable
+      return { ...result, is_preview_only: isPreview }
     },
     onMutate: () => {
       // Set executing state when mutation starts

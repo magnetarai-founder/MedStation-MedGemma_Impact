@@ -13,10 +13,11 @@ export function JsonResultsTable() {
   const [exportFormat, setExportFormat] = useState<'excel' | 'csv' | 'tsv' | 'parquet'>('excel')
 
   const exportMutation = useMutation({
+    mutationKey: ['export-json-results', sessionId],
     mutationFn: async (format: 'excel' | 'csv' | 'tsv' | 'parquet') => {
       if (!sessionId || !conversionResult) throw new Error('No data to export')
       const blob = await api.downloadJsonResult(sessionId, format)
-      
+
       // Download the file
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -26,12 +27,14 @@ export function JsonResultsTable() {
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
-    }
+    },
   })
 
   // Defensive: coerce columns/rows for rendering to avoid runtime errors
   const columns = Array.isArray(conversionResult?.columns) ? conversionResult!.columns : []
-  const rows = Array.isArray(conversionResult?.preview) ? conversionResult!.preview : []
+  const allRows = Array.isArray(conversionResult?.preview) ? conversionResult!.preview : []
+  // Limit preview rows based on settings
+  const rows = allRows.slice(0, previewRowCount)
 
   return (
     <div className="h-full flex flex-col glass-panel">
@@ -40,9 +43,6 @@ export function JsonResultsTable() {
           <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
             Results {conversionResult ? `(${(conversionResult.total_rows ?? rows.length).toLocaleString()} rows)` : ''}
           </h3>
-          <span className="text-xs text-gray-500">
-            {conversionResult ? `Query completed in ${100}ms` : 'No preview yet'}
-          </span>
         </div>
         
         <div className="flex items-center space-x-2">
@@ -61,9 +61,9 @@ export function JsonResultsTable() {
           {/* Download button */}
           <button
             onClick={() => exportMutation.mutate(exportFormat)}
-            disabled={exportMutation.isPending || !conversionResult}
+            disabled={exportMutation.isPending || !conversionResult || conversionResult.is_preview_only}
             className="flex items-center space-x-1 px-2 py-1 text-xs rounded bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed dark:bg-blue-600 dark:hover:bg-blue-700 dark:disabled:bg-gray-700"
-            title="Download results"
+            title={conversionResult?.is_preview_only ? "Run full conversion to download" : "Download results"}
           >
             <Download className="w-3 h-3" />
             <span>Download</span>

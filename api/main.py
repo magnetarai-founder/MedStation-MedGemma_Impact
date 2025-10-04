@@ -348,10 +348,17 @@ async def execute_query(session_id: str, request: QueryRequest):
         "executed_at": datetime.now(),
         "row_count": result.row_count
     }
-    
-    # Return preview (first 100 rows) — JSON-safe
-    preview_data = _df_to_jsonsafe_records(result.data.head(100))
-    
+
+    # Return preview (random sample of 100 rows if dataset is large) — JSON-safe
+    preview_limit = 100
+    if result.row_count > preview_limit:
+        # Random sample for better data representation
+        preview_df = result.data.sample(n=preview_limit, random_state=None)
+    else:
+        preview_df = result.data
+
+    preview_data = _df_to_jsonsafe_records(preview_df)
+
     return QueryResponse(
         query_id=query_id,
         row_count=result.row_count,
@@ -359,7 +366,7 @@ async def execute_query(session_id: str, request: QueryRequest):
         columns=result.column_names,
         execution_time_ms=result.execution_time_ms,
         preview=preview_data,
-        has_more=result.row_count > 100
+        has_more=result.row_count > preview_limit
     )
 
 @app.post("/sessions/{session_id}/export")
@@ -626,39 +633,75 @@ async def convert_json(session_id: str, request: JsonConvertRequest):
     """Convert JSON data to Excel format"""
     if session_id not in sessions:
         raise HTTPException(status_code=404, detail="Session not found")
-    
+
     api_dir = Path(__file__).parent
     temp_dir = api_dir / "temp_uploads"
     temp_dir.mkdir(exist_ok=True)
-    
+
     # Create temporary files
     temp_json = temp_dir / f"{uuid.uuid4()}_input.json"
     temp_excel = temp_dir / f"{uuid.uuid4()}_output.xlsx"
-    
+
     try:
         # Write JSON data to temp file
         async with aiofiles.open(temp_json, 'w') as f:
             await f.write(request.json_data)
-        
+
         # Reuse engine from session if available, otherwise create new
         if 'json_file' in sessions[session_id] and 'engine' in sessions[session_id]['json_file']:
             engine = sessions[session_id]['json_file']['engine']
         else:
             engine = JsonToExcelEngine()
-        
-        # Convert using Pulsar engine
-        logger.info(f"Starting JSON to Excel conversion for session {session_id}")
-        
-        result = engine.convert(
-            str(temp_json),
-            str(temp_excel),
-            expand_arrays=request.options.get('expand_arrays', True),
-            max_depth=request.options.get('max_depth', 5),
-            auto_safe=request.options.get('auto_safe', True),
-            include_summary=request.options.get('include_summary', True)
-        )
-        
-        logger.info(f"Conversion completed with result: {result.get('success', False)}")
+
+        # Check if preview_only mode
+        preview_only = request.options.get('preview_only', False)
+
+        if preview_only:
+            # Only analyze structure, don't do full conversion
+            preview_limit = request.options.get('limit', 100)
+            logger.info(f"Analyzing JSON structure for preview (session {session_id}, limit {preview_limit})")
+
+            load_result = engine.load_json(str(temp_json))
+            if not load_result['success']:
+                raise HTTPException(status_code=400, detail=load_result.get('error', 'Failed to analyze JSON'))
+
+            # Return lightweight preview data with configurable limit
+            preview_data = []
+            if 'preview' in load_result:
+                preview_raw = load_result['preview']
+                if hasattr(preview_raw, 'to_dict'):
+                    preview_data = _df_to_jsonsafe_records(preview_raw)[:preview_limit]
+                elif isinstance(preview_raw, list):
+                    preview_data = preview_raw[:preview_limit]
+            elif 'data' in load_result and isinstance(load_result['data'], list):
+                preview_data = load_result['data'][:preview_limit]
+
+            # Get total rows from metadata or fallback
+            total_rows = load_result.get('metadata', {}).get('total_records', len(load_result.get('data', [])))
+
+            result = {
+                'success': True,
+                'preview_data': preview_data,
+                'column_names': load_result.get('columns', []),
+                'rows': total_rows,
+                'sheet_names': ['Preview'],
+                'sheets': 1
+            }
+            logger.info(f"Preview analysis completed: {result.get('rows', 0)} total rows, {len(preview_data)} in preview")
+        else:
+            # Full conversion
+            logger.info(f"Starting JSON to Excel conversion for session {session_id}")
+
+            result = engine.convert(
+                str(temp_json),
+                str(temp_excel),
+                expand_arrays=request.options.get('expand_arrays', True),
+                max_depth=request.options.get('max_depth', 5),
+                auto_safe=request.options.get('auto_safe', True),
+                include_summary=request.options.get('include_summary', True)
+            )
+
+            logger.info(f"Conversion completed with result: {result.get('success', False)}")
         
         if not result['success']:
             raise HTTPException(status_code=400, detail=result.get('error', 'Conversion failed'))
@@ -670,12 +713,24 @@ async def convert_json(session_id: str, request: JsonConvertRequest):
         }
         
         # Use preview from result if available, otherwise fallback to reading Excel
+        # Random sample for better data representation
+        preview_limit = 100
         preview = []
         if 'preview_data' in result and result['preview_data']:
-            preview = result['preview_data'][:100]
+            preview_data = result['preview_data']
+            if len(preview_data) > preview_limit:
+                # Random sample
+                import random
+                preview = random.sample(preview_data, preview_limit)
+            else:
+                preview = preview_data
         elif temp_excel.exists():
             try:
-                preview_df = pd.read_excel(temp_excel, nrows=100)
+                full_df = pd.read_excel(temp_excel)
+                if len(full_df) > preview_limit:
+                    preview_df = full_df.sample(n=preview_limit, random_state=None)
+                else:
+                    preview_df = full_df
                 preview = _df_to_jsonsafe_records(preview_df)
             except Exception as e:
                 logger.warning(f"Could not read Excel file for preview: {e}")
@@ -700,11 +755,17 @@ async def convert_json(session_id: str, request: JsonConvertRequest):
                 sheet_names = [f"Sheet{i+1}" for i in range(sheet_count)]
             else:
                 sheet_names = ['Sheet1']
-        
+
+        # Get actual row count from the converted data
+        actual_rows = result.get('rows', 0)
+        if actual_rows == 0 and len(preview) > 0:
+            # Fallback to preview length if engine didn't report row count
+            actual_rows = len(preview)
+
         return JsonConvertResponse(
             success=True,
             output_file=temp_excel.name,
-            total_rows=result.get('rows', 0),
+            total_rows=actual_rows,
             sheets=sheet_names,
             columns=column_list,
             preview=preview
