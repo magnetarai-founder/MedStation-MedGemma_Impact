@@ -64,36 +64,58 @@ export default function App() {
       <div className="flex-1 flex overflow-hidden min-h-0">
         <NavigationRail activeTab={activeTab} onTabChange={setActiveTab} />
 
-        {activeTab === 'chat' ? (
-          <ResizableSidebar
-            initialWidth={320}
-            minWidth={280}
-            storageKey="ns.chatSidebarWidth"
-            left={<ChatSidebar />}
-            right={<ChatWindow />}
-          />
-        ) : activeTab === 'queries' ? (
-          <div className="flex-1 overflow-hidden">
+        <div className="flex-1 flex flex-col min-h-0 min-w-0 relative">
+          {/* Chat Tab */}
+          <div
+            className="absolute inset-0 flex"
+            style={{
+              display: activeTab === 'chat' ? 'flex' : 'none'
+            }}
+          >
+            <ResizableSidebar
+              initialWidth={320}
+              minWidth={280}
+              storageKey="ns.chatSidebarWidth"
+              left={<ChatSidebar />}
+              right={<ChatWindow />}
+            />
+          </div>
+
+          {/* Queries Tab */}
+          <div
+            className="absolute inset-0"
+            style={{
+              display: activeTab === 'queries' ? 'block' : 'none'
+            }}
+          >
             <QueryHistoryPanel />
           </div>
-        ) : (
-          <ResizableSidebar
-            initialWidth={320}
-            minWidth={320}
-            storageKey="ns.editorSidebarWidth"
-            left={
-              <div className="h-full flex flex-col">
-                <div className="p-4 border-b border-gray-200 dark:border-gray-800">
-                  <FileUpload />
+
+          {/* Editor Tab */}
+          <div
+            className="absolute inset-0 flex"
+            style={{
+              display: activeTab === 'editor' ? 'flex' : 'none'
+            }}
+          >
+            <ResizableSidebar
+              initialWidth={320}
+              minWidth={320}
+              storageKey="ns.editorSidebarWidth"
+              left={
+                <div className="h-full flex flex-col">
+                  <div className="p-4 border-b border-gray-200 dark:border-gray-800">
+                    <FileUpload />
+                  </div>
+                  <div className="flex-1 overflow-hidden">
+                    <SidebarTabs />
+                  </div>
                 </div>
-                <div className="flex-1 overflow-hidden">
-                  <SidebarTabs />
-                </div>
-              </div>
-            }
-            right={<ResizablePanels />}
-          />
-        )}
+              }
+              right={<ResizablePanels />}
+            />
+          </div>
+        </div>
       </div>
       <SettingsModal />
       <ClearWorkspaceDialog />

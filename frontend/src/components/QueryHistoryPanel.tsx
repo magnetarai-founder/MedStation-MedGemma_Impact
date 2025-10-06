@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { SavedQueriesTree } from './SavedQueriesTree'
-import { QueryHistoryList } from './QueryHistoryList'
+import { QueryHistoryListNew } from './QueryHistoryListNew'
 
 export function QueryHistoryPanel() {
   const [leftWidth, setLeftWidth] = useState(50) // percentage
@@ -54,7 +54,7 @@ export function QueryHistoryPanel() {
         style={{ width: `${100 - leftWidth}%` }}
         className="min-w-[200px]"
       >
-        <QueryHistoryList />
+        <QueryHistoryListNew />
       </div>
     </div>
   )

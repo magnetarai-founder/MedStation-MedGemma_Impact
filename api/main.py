@@ -37,10 +37,18 @@ from neutron_utils.sql_utils import SQLProcessor
 from neutron_utils.config import config
 from neutron_utils.json_utils import df_to_jsonsafe_records as _df_to_jsonsafe_records
 from pulsar_core import JsonToExcelEngine
+from omnistudio_memory import OmniStudioMemory
+from data_engine import get_data_engine
 
 # Session storage
 sessions: Dict[str, dict] = {}
 query_results: Dict[str, pd.DataFrame] = {}
+
+# Initialize OmniStudio Memory System
+omnistudio_memory = OmniStudioMemory()
+
+# Initialize Data Engine
+data_engine = get_data_engine()
 
 
 
@@ -831,6 +839,291 @@ async def download_json_result(session_id: str, format: str = Query("excel", reg
             )
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"{format.upper()} conversion failed: {str(e)}")
+
+# ============================================================================
+# OmniStudio Memory API Endpoints
+# ============================================================================
+
+class QueryHistoryRequest(BaseModel):
+    query: str
+    query_type: str  # 'sql' or 'json'
+    execution_time: Optional[float] = None
+    row_count: Optional[int] = None
+    success: bool = True
+    error_message: Optional[str] = None
+    file_context: Optional[str] = None
+
+@app.post("/api/history")
+async def add_to_history(request: QueryHistoryRequest):
+    """Add a query to history"""
+    try:
+        history_id = omnistudio_memory.add_query_history(
+            query=request.query,
+            query_type=request.query_type,
+            execution_time=request.execution_time,
+            row_count=request.row_count,
+            success=request.success,
+            error_message=request.error_message,
+            file_context=request.file_context
+        )
+        return {"id": history_id, "success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/history")
+async def get_history(
+    query_type: Optional[str] = Query(None),
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    date_filter: Optional[str] = Query(None)
+):
+    """Get query history with pagination and filters"""
+    try:
+        items = omnistudio_memory.get_history(
+            query_type=query_type,
+            limit=limit,
+            offset=offset,
+            date_filter=date_filter
+        )
+        count = omnistudio_memory.get_history_count(
+            query_type=query_type,
+            date_filter=date_filter
+        )
+        return {
+            "items": items,
+            "total": count,
+            "limit": limit,
+            "offset": offset
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/history/{history_id}")
+async def delete_history_item(history_id: int):
+    """Delete a specific history item"""
+    try:
+        success = omnistudio_memory.delete_history_item(history_id)
+        return {"success": success}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/history")
+async def clear_history(
+    query_type: Optional[str] = Query(None),
+    before_date: Optional[str] = Query(None)
+):
+    """Clear history with optional filters"""
+    try:
+        deleted_count = omnistudio_memory.clear_history(
+            query_type=query_type,
+            before_date=before_date
+        )
+        return {"deleted_count": deleted_count, "success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/history/search")
+async def search_similar_queries(
+    query: str = Query(...),
+    query_type: Optional[str] = Query(None),
+    limit: int = Query(5, ge=1, le=20)
+):
+    """Search for similar queries using semantic search"""
+    try:
+        similar = omnistudio_memory.search_similar_queries(
+            query_text=query,
+            query_type=query_type,
+            limit=limit
+        )
+        return {"results": similar}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+class SavedQueryRequest(BaseModel):
+    name: str
+    query: str
+    query_type: str
+    folder: Optional[str] = None
+    description: Optional[str] = None
+    tags: Optional[List[str]] = None
+
+@app.post("/api/saved-queries")
+async def save_query(request: SavedQueryRequest):
+    """Save a query for later use"""
+    try:
+        query_id = omnistudio_memory.save_query(
+            name=request.name,
+            query=request.query,
+            query_type=request.query_type,
+            folder=request.folder,
+            description=request.description,
+            tags=request.tags
+        )
+        return {"id": query_id, "success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/saved-queries")
+async def get_saved_queries(
+    folder: Optional[str] = Query(None),
+    query_type: Optional[str] = Query(None)
+):
+    """Get all saved queries"""
+    try:
+        queries = omnistudio_memory.get_saved_queries(
+            folder=folder,
+            query_type=query_type
+        )
+        return {"queries": queries}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# DATA ENGINE API ENDPOINTS
+# ============================================================================
+
+@app.post("/api/data/upload")
+async def upload_dataset(
+    file: UploadFile = File(...),
+    session_id: Optional[str] = Form(None)
+):
+    """
+    Upload and load Excel/JSON/CSV into SQLite
+    Returns dataset metadata and query suggestions
+    """
+    try:
+        # Save uploaded file temporarily
+        temp_dir = Path("/tmp/omnistudio_uploads")
+        temp_dir.mkdir(exist_ok=True)
+
+        file_path = temp_dir / file.filename
+
+        async with aiofiles.open(file_path, 'wb') as f:
+            content = await file.read()
+            await f.write(content)
+
+        # Load into data engine
+        result = await asyncio.to_thread(
+            data_engine.upload_and_load,
+            file_path,
+            file.filename,
+            session_id
+        )
+
+        # Clean up temp file
+        file_path.unlink()
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Data upload failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/data/datasets")
+async def list_datasets(session_id: Optional[str] = None):
+    """List all datasets, optionally filtered by session"""
+    try:
+        datasets = await asyncio.to_thread(
+            data_engine.list_datasets,
+            session_id
+        )
+        return {"datasets": datasets}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/data/datasets/{dataset_id}")
+async def get_dataset(dataset_id: str):
+    """Get dataset metadata"""
+    try:
+        metadata = await asyncio.to_thread(
+            data_engine.get_dataset_metadata,
+            dataset_id
+        )
+
+        if not metadata:
+            raise HTTPException(status_code=404, detail="Dataset not found")
+
+        return metadata
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/data/datasets/{dataset_id}")
+async def delete_dataset(dataset_id: str):
+    """Delete a dataset"""
+    try:
+        deleted = await asyncio.to_thread(
+            data_engine.delete_dataset,
+            dataset_id
+        )
+
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Dataset not found")
+
+        return {"status": "deleted", "dataset_id": dataset_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class QueryRequest(BaseModel):
+    query: str
+
+
+@app.post("/api/data/query")
+async def execute_data_query(request: QueryRequest):
+    """Execute SQL query on loaded datasets"""
+    try:
+        result = await asyncio.to_thread(
+            data_engine.execute_sql,
+            request.query
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Query execution failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/data/discover/{dataset_id}")
+async def rediscover_queries(dataset_id: str):
+    """Re-run brute-force discovery on a dataset"""
+    try:
+        metadata = await asyncio.to_thread(
+            data_engine.get_dataset_metadata,
+            dataset_id
+        )
+
+        if not metadata:
+            raise HTTPException(status_code=404, detail="Dataset not found")
+
+        table_name = metadata['table_name']
+
+        # Get dataframe from table
+        cursor = data_engine.conn.execute(f"SELECT * FROM {table_name} LIMIT 1000")
+        columns = [desc[0] for desc in cursor.description]
+        rows = cursor.fetchall()
+        df = pd.DataFrame([dict(row) for row in rows], columns=columns)
+
+        # Re-run discovery
+        suggestions = await asyncio.to_thread(
+            data_engine._brute_force_discover,
+            table_name,
+            df
+        )
+
+        return {"query_suggestions": suggestions}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 if __name__ == "__main__":
     import uvicorn
