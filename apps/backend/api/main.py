@@ -123,6 +123,14 @@ try:
 except Exception as e:
     logger.warning(f"P2P Team Chat service not available: {e}")
 
+# Import and include code editor router
+try:
+    from code_editor_service import router as code_editor_router
+    app.include_router(code_editor_router)
+    logger.info("✓ Code Editor service loaded")
+except Exception as e:
+    logger.warning(f"Code Editor service not available: {e}")
+
 # Models
 class SessionResponse(BaseModel):
     session_id: str

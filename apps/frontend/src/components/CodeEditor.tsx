@@ -45,25 +45,12 @@ export function CodeEditor() {
 
   // Check for exact match when code changes or queries load
   const checkExactMatch = useCallback(() => {
-    console.log('🔍 Checking exact match...', {
-      hasCode: !!code.trim(),
-      queriesCount: savedQueries?.length || 0
-    })
-
     if (!code.trim() || !savedQueries) {
-      console.log('❌ No match: Empty code or no saved queries')
       setMatchedQuery(null)
       return
     }
 
     const match = findExactMatch(code, savedQueries)
-
-    if (match) {
-      console.log('✅ EXACT MATCH FOUND:', match.name)
-    } else {
-      console.log('❌ No exact match found')
-    }
-
     setMatchedQuery(match)
   }, [code, savedQueries])
 

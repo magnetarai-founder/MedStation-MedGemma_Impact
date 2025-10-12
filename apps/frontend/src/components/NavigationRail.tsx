@@ -1,9 +1,6 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { Database, SlidersHorizontal, MessageSquare, Users2, Code2 } from 'lucide-react'
 import { useNavigationStore, type NavTab } from '../stores/navigationStore'
-import { useOllamaStore } from '../stores/ollamaStore'
-import { ShutdownModal, RestartModal } from './OllamaServerModals'
-import { api } from '../lib/api'
 
 interface NavigationRailProps {
   activeTab: NavTab
@@ -21,23 +18,12 @@ const NAV_ITEMS = {
 
 export function NavigationRail({ activeTab, onTabChange, onOpenSettings }: NavigationRailProps) {
   const { navOrder, setNavOrder } = useNavigationStore()
-  const { serverStatus, fetchServerStatus } = useOllamaStore()
   const [isDragging, setIsDragging] = useState(false)
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null)
   const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null)
   const [cmdPressed, setCmdPressed] = useState(false)
-  const [showShutdownModal, setShowShutdownModal] = useState(false)
-  const [showRestartModal, setShowRestartModal] = useState(false)
-  const [previousModels, setPreviousModels] = useState<string[]>([])
   const dragStartY = useRef<number>(0)
   const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map())
-
-  // Fetch server status on mount and periodically
-  useEffect(() => {
-    fetchServerStatus()
-    const interval = setInterval(fetchServerStatus, 10000) // Every 10 seconds
-    return () => clearInterval(interval)
-  }, [])
 
   // Track Cmd key state
   const handleKeyDown = (e: KeyboardEvent) => {
@@ -118,69 +104,6 @@ export function NavigationRail({ activeTab, onTabChange, onOpenSettings }: Navig
     }
   }
 
-  const handleLogoClick = () => {
-    if (serverStatus.running) {
-      // Server is running - show shutdown modal
-      setShowRestartModal(false) // Ensure restart modal is closed
-      setShowShutdownModal(true)
-    } else {
-      // Server is off - show restart modal
-      setShowShutdownModal(false) // Ensure shutdown modal is closed
-      setPreviousModels(serverStatus.loadedModels) // Use last known loaded models
-      setShowRestartModal(true)
-    }
-  }
-
-  const handleShutdownConfirm = async () => {
-    try {
-      const response = await fetch(`/api/v1/chat/ollama/server/shutdown`, {
-        method: 'POST'
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        // Save models that were loaded before shutdown
-        setPreviousModels(data.previously_loaded_models || [])
-        // Close modal
-        setShowShutdownModal(false)
-        // Update server status
-        await fetchServerStatus()
-      } else {
-        alert('Failed to shutdown Ollama server')
-      }
-    } catch (error) {
-      console.error('Failed to shutdown Ollama:', error)
-      alert('Failed to shutdown Ollama server')
-    }
-  }
-
-  const handleRestartConfirm = async (reloadModels: boolean, modelsToLoad: string[]) => {
-    try {
-      const response = await fetch(
-        `/api/v1/chat/ollama/server/restart?reload_models=${reloadModels}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ models_to_load: modelsToLoad })
-        }
-      )
-
-      if (response.ok) {
-        // Close modal
-        setShowRestartModal(false)
-        // Wait a moment for startup
-        setTimeout(async () => {
-          await fetchServerStatus()
-        }, 3000)
-      } else {
-        alert('Failed to restart Ollama server')
-      }
-    } catch (error) {
-      console.error('Failed to restart Ollama:', error)
-      alert('Failed to restart Ollama server')
-    }
-  }
-
   const getButtonClasses = (itemId: string) => {
     const item = NAV_ITEMS[itemId as keyof typeof NAV_ITEMS]
     const isActive = item.isTab && activeTab === itemId
@@ -210,63 +133,8 @@ export function NavigationRail({ activeTab, onTabChange, onOpenSettings }: Navig
 
   return (
     <div className="w-18 glass flex flex-col items-center">
-      {/* Top section with logo */}
-      <div className="flex flex-col items-center gap-3">
-        {/* Logo at top - Clickable to control Ollama server */}
-        <div className="py-5 flex items-center justify-center">
-          <button
-            onClick={handleLogoClick}
-            className="relative w-10 h-10 cursor-pointer group transition-transform hover:scale-110 active:scale-95"
-            title={serverStatus.running ? `Ollama Server Running (${serverStatus.modelCount} models loaded) - Click to shutdown` : 'Ollama Server Stopped - Click to start'}
-          >
-            {/* Outer glow/radiation - shows server status */}
-            <div className={`absolute -inset-1 rounded-full blur-sm transition-colors ${
-              serverStatus.running
-                ? 'bg-green-400/40'
-                : 'bg-red-400/30'
-            }`}></div>
-
-            {/* Main star body - green when running, red when stopped */}
-            <div className={`absolute inset-0 rounded-full shadow-lg transition-colors ${
-              serverStatus.running
-                ? 'bg-gradient-radial from-green-200 via-green-500 to-green-800 group-hover:from-green-300 group-hover:via-green-600 group-hover:to-green-900'
-                : 'bg-gradient-radial from-gray-300 via-gray-500 to-gray-700 group-hover:from-green-200 group-hover:via-green-500 group-hover:to-green-800'
-            }`}></div>
-
-            {/* Surface detail - darker spots */}
-            <div className={`absolute inset-2 rounded-full transition-colors ${
-              serverStatus.running
-                ? 'bg-green-700/40'
-                : 'bg-gray-600/40 group-hover:bg-green-700/40'
-            }`}></div>
-
-            {/* Bright core */}
-            <div className={`absolute inset-3 rounded-full transition-colors ${
-              serverStatus.running
-                ? 'bg-gradient-to-br from-white via-green-100 to-green-300'
-                : 'bg-gradient-to-br from-gray-200 via-gray-300 to-gray-400 group-hover:from-white group-hover:via-green-100 group-hover:to-green-300'
-            }`}></div>
-
-            {/* Polar emission beams - only show when running */}
-            {serverStatus.running && (
-              <>
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0.5 h-2 bg-gradient-to-t from-green-300 to-transparent"></div>
-                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0.5 h-2 bg-gradient-to-b from-green-300 to-transparent"></div>
-              </>
-            )}
-
-            {/* Rotating effect with magnetic field indicators */}
-            <div className={`absolute inset-0 rounded-full border transition-colors ${
-              serverStatus.running
-                ? 'border-green-400/50'
-                : 'border-gray-400/50 group-hover:border-green-400/50'
-            }`}></div>
-          </button>
-        </div>
-
-        {/* Divider */}
-        <div className="w-12 h-px bg-gray-300/30 dark:bg-gray-600/30"></div>
-
+      {/* Top section with navigation items */}
+      <div className="flex flex-col items-center gap-3 pt-5">
         {/* Draggable navigation items */}
         {navOrder.map((itemId, index) => {
           const item = NAV_ITEMS[itemId as keyof typeof NAV_ITEMS]
@@ -315,21 +183,6 @@ export function NavigationRail({ activeTab, onTabChange, onOpenSettings }: Navig
           Drag to reorder
         </div>
       )}
-
-      {/* Ollama Server Control Modals */}
-      <ShutdownModal
-        isOpen={showShutdownModal}
-        onClose={() => setShowShutdownModal(false)}
-        onConfirm={handleShutdownConfirm}
-        loadedModels={serverStatus.loadedModels}
-      />
-
-      <RestartModal
-        isOpen={showRestartModal}
-        onClose={() => setShowRestartModal(false)}
-        onConfirm={handleRestartConfirm}
-        previousModels={previousModels}
-      />
     </div>
   )
 }

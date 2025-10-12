@@ -20,15 +20,15 @@ interface NavigationStore {
 
 // Default navigation order
 const defaultNavOrder: Array<NavItem['id']> = [
-  'team',
-  'chat',
-  'editor',
-  'database'
+  'chat',      // AI Chat first
+  'database',  // Database second
+  'editor',    // Code Editor third
+  'team'       // Team Chat last
 ]
 
 export const useNavigationStore = create<NavigationStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       activeTab: 'database',
       setActiveTab: (tab) => set({ activeTab: tab }),
 
@@ -37,6 +37,20 @@ export const useNavigationStore = create<NavigationStore>()(
     }),
     {
       name: 'ns.navigation',
+      // Migration to ensure all tabs are present
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          // Check if navOrder has all required tabs
+          const requiredTabs: NavTab[] = ['team', 'chat', 'editor', 'database']
+          const missingTabs = requiredTabs.filter(tab => !state.navOrder.includes(tab))
+
+          if (missingTabs.length > 0) {
+            // Reset to default order if any tabs are missing
+            console.log('Resetting navigation order - missing tabs:', missingTabs)
+            state.navOrder = defaultNavOrder
+          }
+        }
+      },
     }
   )
 )

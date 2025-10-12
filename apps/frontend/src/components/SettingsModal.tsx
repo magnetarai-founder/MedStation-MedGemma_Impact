@@ -4,11 +4,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as settingsApi from '@/lib/settingsApi'
 import { type NavTab } from '@/stores/navigationStore'
 
+
 interface SettingsModalProps {
   isOpen: boolean
   onClose: () => void
   activeNavTab: NavTab
 }
+
 
 export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<'settings' | 'power' | 'danger'>('settings')
@@ -577,7 +579,7 @@ function SettingsTab({ activeNavTab }: { activeNavTab: NavTab }) {
         <div className="text-green-600 text-sm text-center">Settings saved successfully!</div>
       )}
       </>
-      )}
+    )}
     </div>
   )
 }
