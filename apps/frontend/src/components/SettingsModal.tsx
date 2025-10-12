@@ -1,15 +1,35 @@
 import { useState, useEffect } from 'react'
-import { X, Settings as SettingsIcon, Zap, AlertTriangle, Save } from 'lucide-react'
+import { X, Settings as SettingsIcon, Zap, AlertTriangle, Save, MessageSquare, Users2, Code2, Database } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as settingsApi from '@/lib/settingsApi'
+import { type NavTab } from '@/stores/navigationStore'
 
 interface SettingsModalProps {
   isOpen: boolean
   onClose: () => void
+  activeNavTab: NavTab
 }
 
-export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
+export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<'settings' | 'power' | 'danger'>('settings')
+
+  // Get tab-specific title and icon
+  const getTabInfo = () => {
+    switch (activeNavTab) {
+      case 'team':
+        return { icon: Users2, title: 'Team Chat Settings' }
+      case 'chat':
+        return { icon: MessageSquare, title: 'AI Chat Settings' }
+      case 'editor':
+        return { icon: Code2, title: 'Code Editor Settings' }
+      case 'database':
+        return { icon: Database, title: 'Database Settings' }
+      default:
+        return { icon: SettingsIcon, title: 'Settings' }
+    }
+  }
+
+  const tabInfo = getTabInfo()
 
   // Handle ESC key to close modal
   useEffect(() => {
@@ -35,9 +55,12 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       <div className="relative w-full max-w-4xl max-h-[85vh] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-            Settings
-          </h2>
+          <div className="flex items-center gap-3">
+            <tabInfo.icon className="w-6 h-6 text-primary-600 dark:text-primary-400" />
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+              {tabInfo.title}
+            </h2>
+          </div>
           <button
             onClick={onClose}
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -91,7 +114,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
         {/* Content */}
         <div className="flex-1 overflow-auto p-6">
-          {activeTab === 'settings' && <SettingsTab />}
+          {activeTab === 'settings' && <SettingsTab activeNavTab={activeNavTab} />}
           {activeTab === 'power' && <PowerUserTab />}
           {activeTab === 'danger' && <DangerZoneTab />}
         </div>
@@ -100,7 +123,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   )
 }
 
-function SettingsTab() {
+function SettingsTab({ activeNavTab }: { activeNavTab: NavTab }) {
   const queryClient = useQueryClient()
   const [localSettings, setLocalSettings] = useState<settingsApi.AppSettings | null>(null)
   const [customizePerFormat, setCustomizePerFormat] = useState(false)
@@ -181,13 +204,87 @@ function SettingsTab() {
     }
   }
 
+  // Render tab-specific settings sections
+  const renderTabSettings = () => {
+    switch (activeNavTab) {
+      case 'team':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                Team Chat Configuration
+              </h3>
+              <div className="text-sm text-gray-600 dark:text-gray-400 space-y-3">
+                <p>Configure P2P team chat settings, encryption, and network preferences.</p>
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <p className="text-sm text-blue-900 dark:text-blue-100">
+                    Team chat settings are coming soon. Stay tuned for peer-to-peer messaging, file sharing, and collaboration features.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+
+      case 'chat':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                AI Chat Parameters
+              </h3>
+              <div className="text-sm text-gray-600 dark:text-gray-400 space-y-3">
+                <p>Configure AI model parameters, temperature, context windows, and response behavior.</p>
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <p className="text-sm text-blue-900 dark:text-blue-100">
+                    AI chat settings are coming soon. You'll be able to adjust temperature, top-k, top-p, context length, and system prompts.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+
+      case 'editor':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                Code Editor Preferences
+              </h3>
+              <div className="text-sm text-gray-600 dark:text-gray-400 space-y-3">
+                <p>Customize your code editor experience with themes, keybindings, and formatting options.</p>
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <p className="text-sm text-blue-900 dark:text-blue-100">
+                    Editor settings are coming soon. Configure themes, font size, tab width, auto-formatting, and more.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+
+      case 'database':
+      default:
+        // Database tab shows the full settings (existing content)
+        return null
+    }
+  }
+
+  const tabSpecificContent = renderTabSettings()
+
   return (
     <div className="space-y-8">
-      {/* Performance & Memory */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          Performance & Memory
-        </h3>
+      {/* Show tab-specific content if available */}
+      {tabSpecificContent ? (
+        tabSpecificContent
+      ) : (
+        <>
+          {/* Performance & Memory */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              Performance & Memory
+            </h3>
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -478,6 +575,8 @@ function SettingsTab() {
 
       {saveMutation.isSuccess && (
         <div className="text-green-600 text-sm text-center">Settings saved successfully!</div>
+      )}
+      </>
       )}
     </div>
   )
