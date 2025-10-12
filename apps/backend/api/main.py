@@ -55,7 +55,7 @@ data_engine = get_data_engine()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    print("Starting Neutron Star API...")
+    print("Starting OmniStudio API...")
     # Create necessary directories
     api_dir = Path(__file__).parent
     (api_dir / "temp_uploads").mkdir(exist_ok=True)
@@ -92,7 +92,7 @@ async def lifespan(app: FastAPI):
             session['engine'].close()
 
 app = FastAPI(
-    title="Neutron Star API",
+    title="OmniStudio API",
     description="SQL query engine for Excel files",
     version="1.0.0",
     lifespan=lifespan
@@ -213,7 +213,7 @@ def get_column_info(df: pd.DataFrame) -> List[ColumnInfo]:
 # Endpoints
 @app.get("/")
 async def root():
-    return {"message": "Neutron Star API", "version": "1.0.0"}
+    return {"message": "OmniStudio API", "version": "1.0.0"}
 
 @app.post("/api/sessions/create", response_model=SessionResponse)
 async def create_session():
