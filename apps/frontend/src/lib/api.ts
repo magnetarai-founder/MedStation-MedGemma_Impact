@@ -318,6 +318,25 @@ class NeutronAPI {
     )
     return data
   }
+
+  // Query History endpoints
+  async getQueryHistory(sessionId: string): Promise<{
+    history: Array<{
+      id: string
+      query: string
+      timestamp: string
+      executionTime?: number
+      rowCount?: number
+      status: 'success' | 'error'
+    }>
+  }> {
+    const { data } = await this.client.get(`/sessions/${sessionId}/query-history`)
+    return data
+  }
+
+  async deleteQueryFromHistory(sessionId: string, queryId: string): Promise<void> {
+    await this.client.delete(`/sessions/${sessionId}/query-history/${queryId}`)
+  }
 }
 
 export const api = new NeutronAPI()

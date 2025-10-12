@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Database, SlidersHorizontal, FolderOpen, FileJson, MessageSquare, Users2, History } from 'lucide-react'
+import { Database, SlidersHorizontal, MessageSquare, Users2, Code2 } from 'lucide-react'
 import { useNavigationStore, type NavTab } from '../stores/navigationStore'
 import { useOllamaStore } from '../stores/ollamaStore'
 import { ShutdownModal, RestartModal } from './OllamaServerModals'
@@ -8,22 +8,18 @@ import { api } from '../lib/api'
 interface NavigationRailProps {
   activeTab: NavTab
   onTabChange: (tab: NavTab) => void
-  onOpenLibrary: () => void
   onOpenSettings: () => void
-  onOpenJsonConverter: () => void
 }
 
 // Navigation item configuration
 const NAV_ITEMS = {
   team: { icon: Users2, label: 'Team Chat', isTab: true },
   chat: { icon: MessageSquare, label: 'AI Chat', isTab: true },
+  editor: { icon: Code2, label: 'Code Editor', isTab: true },
   database: { icon: Database, label: 'Database', isTab: true },
-  queries: { icon: History, label: 'History', isTab: true },
-  json: { icon: FileJson, label: 'JSON Converter', isTab: false },
-  library: { icon: FolderOpen, label: 'Library', isTab: false },
 } as const
 
-export function NavigationRail({ activeTab, onTabChange, onOpenLibrary, onOpenSettings, onOpenJsonConverter }: NavigationRailProps) {
+export function NavigationRail({ activeTab, onTabChange, onOpenSettings }: NavigationRailProps) {
   const { navOrder, setNavOrder } = useNavigationStore()
   const { serverStatus, fetchServerStatus } = useOllamaStore()
   const [isDragging, setIsDragging] = useState(false)
@@ -119,10 +115,6 @@ export function NavigationRail({ activeTab, onTabChange, onOpenLibrary, onOpenSe
 
     if (item.isTab) {
       onTabChange(itemId as NavTab)
-    } else {
-      // Handle modal triggers
-      if (itemId === 'json') onOpenJsonConverter()
-      if (itemId === 'library') onOpenLibrary()
     }
   }
 

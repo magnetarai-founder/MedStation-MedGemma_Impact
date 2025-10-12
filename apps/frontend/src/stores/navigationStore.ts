@@ -1,13 +1,12 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-export type NavTab = 'team' | 'chat' | 'database' | 'queries'
+export type NavTab = 'team' | 'chat' | 'editor' | 'database'
 
 export interface NavItem {
-  id: NavTab | 'json' | 'library'
+  id: NavTab
   label: string
   locked?: boolean // Settings is always locked
-  isModal?: boolean // JSON and Library are modals, not tabs
 }
 
 interface NavigationStore {
@@ -23,10 +22,8 @@ interface NavigationStore {
 const defaultNavOrder: Array<NavItem['id']> = [
   'team',
   'chat',
-  'database',
-  'queries',
-  'json',
-  'library'
+  'editor',
+  'database'
 ]
 
 export const useNavigationStore = create<NavigationStore>()(
