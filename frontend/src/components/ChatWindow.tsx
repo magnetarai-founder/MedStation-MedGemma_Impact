@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Settings } from 'lucide-react'
+import { Settings, AlertTriangle } from 'lucide-react'
 import { ChatMessage } from './ChatMessage'
 import { ChatInput } from './ChatInput'
 import { ModelSelector } from './ModelSelector'
@@ -21,6 +21,7 @@ export function ChatWindow() {
   } = useChatStore()
 
   const [selectedModel, setSelectedModel] = useState<string>('')
+  const [ollamaHealth, setOllamaHealth] = useState<{status: string, message: string} | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const eventSourceRef = useRef<EventSource | null>(null)
 
@@ -32,6 +33,26 @@ export function ChatWindow() {
       setSelectedModel(activeSession.model)
     }
   }, [activeSession])
+
+  // Check Ollama health on mount and periodically
+  useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        const response = await api.get('/api/v1/chat/health')
+        setOllamaHealth(response.data)
+      } catch (error) {
+        setOllamaHealth({
+          status: 'unhealthy',
+          message: 'Failed to check Ollama status'
+        })
+      }
+    }
+
+    checkHealth()
+    const interval = setInterval(checkHealth, 30000) // Check every 30s
+
+    return () => clearInterval(interval)
+  }, [])
 
   // Auto-scroll to bottom when messages update (instant, no animation)
   useEffect(() => {
@@ -176,6 +197,23 @@ export function ChatWindow() {
 
   return (
     <div className="h-full flex flex-col glass-panel">
+      {/* Ollama Warning Banner */}
+      {ollamaHealth?.status === 'unhealthy' && (
+        <div className="flex-shrink-0 px-4 py-3 bg-orange-100 dark:bg-orange-900/30 border-b border-orange-200 dark:border-orange-800">
+          <div className="flex items-center gap-3">
+            <AlertTriangle size={20} className="text-orange-600 dark:text-orange-400 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-orange-900 dark:text-orange-100">
+                {ollamaHealth.message}
+              </p>
+              <p className="text-xs text-orange-700 dark:text-orange-300 mt-1">
+                Start Ollama with: <code className="px-1 py-0.5 bg-orange-200 dark:bg-orange-800 rounded">ollama serve</code>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex-shrink-0 px-6 py-4 border-b border-white/10 dark:border-gray-700/30 flex items-center justify-between">
         <div>

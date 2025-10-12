@@ -1,5 +1,7 @@
-import { useState, useRef, KeyboardEvent } from 'react'
+import { useState, useRef, KeyboardEvent, useEffect } from 'react'
 import { Send, Paperclip, X } from 'lucide-react'
+import { api } from '@/lib/api'
+import { useChatStore } from '@/stores/chatStore'
 
 interface ChatInputProps {
   onSend: (content: string, files?: File[]) => void
@@ -10,8 +12,10 @@ interface ChatInputProps {
 export function ChatInput({ onSend, disabled = false, placeholder = 'Type a message...' }: ChatInputProps) {
   const [input, setInput] = useState('')
   const [attachedFiles, setAttachedFiles] = useState<File[]>([])
+  const [tokenCount, setTokenCount] = useState({ total: 0, max: 200000, percentage: 0 })
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const { activeSessionId } = useChatStore()
 
   const handleSend = () => {
     if (!input.trim() && attachedFiles.length === 0) return
@@ -60,6 +64,26 @@ export function ChatInput({ onSend, disabled = false, placeholder = 'Type a mess
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
   }
+
+  // Fetch token count when active session changes
+  useEffect(() => {
+    if (!activeSessionId) return
+
+    const fetchTokenCount = async () => {
+      try {
+        const response = await api.post(`/api/v1/chat/sessions/${activeSessionId}/token-count`)
+        setTokenCount({
+          total: response.data.total_tokens,
+          max: response.data.max_tokens,
+          percentage: response.data.percentage
+        })
+      } catch (error) {
+        console.error('Failed to fetch token count:', error)
+      }
+    }
+
+    fetchTokenCount()
+  }, [activeSessionId])
 
   return (
     <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
@@ -134,9 +158,14 @@ export function ChatInput({ onSend, disabled = false, placeholder = 'Type a mess
         </button>
       </div>
 
-      {/* Helper Text */}
-      <div className="px-4 pb-3 text-xs text-gray-500 dark:text-gray-400">
-        Press Enter to send, Shift+Enter for new line
+      {/* Helper Text + Token Counter */}
+      <div className="px-4 pb-3 flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
+        <span>Press Enter to send, Shift+Enter for new line</span>
+        {activeSessionId && (
+          <span className={`font-mono ${tokenCount.percentage > 90 ? 'text-orange-600 dark:text-orange-400' : tokenCount.percentage > 95 ? 'text-red-600 dark:text-red-400' : ''}`}>
+            {tokenCount.total.toLocaleString()} / {tokenCount.max.toLocaleString()} tokens
+          </span>
+        )}
       </div>
     </div>
   )

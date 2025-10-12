@@ -79,11 +79,11 @@ class FileTextExtractor:
     def extract_from_pdf(file_path: Path) -> str:
         """Extract text from PDF file"""
         try:
-            import pypdf
+            import PyPDF2
             text_parts = []
 
             with open(file_path, 'rb') as f:
-                pdf_reader = pypdf.PdfReader(f)
+                pdf_reader = PyPDF2.PdfReader(f)
                 for page in pdf_reader.pages:
                     text = page.extract_text()
                     if text:
@@ -92,8 +92,8 @@ class FileTextExtractor:
             return "\n\n".join(text_parts)
 
         except ImportError:
-            logger.warning("pypdf not installed - PDF extraction disabled")
-            return "[PDF extraction requires pypdf: pip install pypdf]"
+            logger.warning("PyPDF2 not installed - PDF extraction disabled")
+            return "[PDF extraction requires PyPDF2: pip install pypdf2]"
         except Exception as e:
             logger.error(f"PDF extraction failed: {e}")
             return f"[PDF extraction error: {str(e)}]"

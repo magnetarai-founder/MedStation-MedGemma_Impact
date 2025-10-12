@@ -9,6 +9,11 @@ python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 httpx>=0.25.0
 
+# Chat features
+tiktoken>=0.5.0
+pypdf2>=3.0.0
+python-docx>=1.0.0
+
 # Pulsar (JSON to Excel) dependencies
 xlsxwriter>=3.0.0
 ijson>=3.2.0

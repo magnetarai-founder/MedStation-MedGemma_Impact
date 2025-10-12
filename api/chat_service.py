@@ -27,6 +27,8 @@ from api.chat_enhancements import (
     DocumentChunker
 )
 from api.ane_context_engine import get_ane_engine
+from api.token_counter import get_token_counter
+from api.error_handler import ErrorHandler, OllamaError
 
 logger = logging.getLogger(__name__)
 
@@ -36,9 +38,10 @@ CHAT_UPLOADS_DIR = Path(".neutron_data/uploads")
 # Ensure directories exist
 CHAT_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
-# Get memory and ANE engine instances
+# Get memory, ANE engine, and token counter instances
 memory = get_memory()
 ane_engine = get_ane_engine()
+token_counter = get_token_counter()
 
 logger.info("🚀 Chat service initialized with ANE context engine")
 
@@ -318,8 +321,8 @@ async def send_message(chat_id: str, request: SendMessageRequest):
     )
     await ChatStorage.append_message(chat_id, user_message)
 
-    # Get conversation history (last 50 messages for context)
-    history = await ChatStorage.get_messages(chat_id, limit=50)
+    # Get full conversation history (200k token context window)
+    history = await ChatStorage.get_messages(chat_id, limit=None)
 
     # Check if there are uploaded documents to use for RAG
     query_embedding = await asyncio.to_thread(SimpleEmbedding.create_embedding, request.content)
@@ -474,19 +477,25 @@ async def upload_file_to_chat(
 @router.get("/models", response_model=List[OllamaModel])
 async def list_ollama_models():
     """List available Ollama models"""
-    models = await ollama_client.list_models()
+    try:
+        models = await ollama_client.list_models()
 
-    if not models:
-        # Return some default models if Ollama is not running
-        return [
-            OllamaModel(
-                name="qwen2.5-coder:7b-instruct",
-                size="4.7GB",
-                modified_at=datetime.utcnow().isoformat()
-            )
-        ]
+        if not models:
+            # Check if Ollama is actually down
+            health = await ErrorHandler.check_ollama_health()
+            if health["status"] == "unhealthy":
+                raise OllamaError(
+                    message=health["message"],
+                    details={"help": health.get("help")}
+                )
 
-    return models
+        return models
+
+    except OllamaError:
+        raise
+    except Exception as e:
+        ollama_error = ErrorHandler.handle_ollama_error(e)
+        raise ErrorHandler.to_http_exception(ollama_error)
 
 
 @router.get("/search")
@@ -587,6 +596,48 @@ async def get_embedding_info():
             "error": str(e),
             "backend": "unknown"
         }
+
+
+@router.post("/sessions/{chat_id}/token-count")
+async def get_token_count(chat_id: str):
+    """Get current token count for a chat session"""
+    try:
+        # Get all messages
+        messages = await ChatStorage.get_messages(chat_id, limit=None)
+
+        # Format for token counting
+        message_list = [
+            {"role": msg.role, "content": msg.content}
+            for msg in messages
+        ]
+
+        # Count tokens
+        total_tokens = await asyncio.to_thread(
+            token_counter.count_message_tokens,
+            message_list
+        )
+
+        return {
+            "chat_id": chat_id,
+            "total_tokens": total_tokens,
+            "max_tokens": 200000,
+            "percentage": round((total_tokens / 200000) * 100, 2)
+        }
+    except Exception as e:
+        logger.error(f"Token counting error: {e}")
+        return {
+            "chat_id": chat_id,
+            "total_tokens": 0,
+            "max_tokens": 200000,
+            "percentage": 0.0,
+            "error": str(e)
+        }
+
+
+@router.get("/health")
+async def check_health():
+    """Check Ollama health status"""
+    return await ErrorHandler.check_ollama_health()
 
 
 # Export router

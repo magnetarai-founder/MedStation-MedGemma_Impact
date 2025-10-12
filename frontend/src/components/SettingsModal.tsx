@@ -168,18 +168,9 @@ export function SettingsModal() {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">Context window size</label>
-                <input
-                  type="number"
-                  min={10}
-                  max={200}
-                  step={10}
-                  value={localSettings.chatContextWindow}
-                  onChange={(e) => setLocalSettings({ ...localSettings, chatContextWindow: Number(e.target.value) })}
-                  className="w-40 px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Number of recent messages sent to model (10-200)</p>
+              <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                <p className="text-sm text-gray-900 dark:text-gray-100 font-medium">Context Window: 200k tokens</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Full conversation history sent to model for optimal context preservation</p>
               </div>
             </div>
           )}
