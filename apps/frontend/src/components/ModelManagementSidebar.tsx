@@ -218,10 +218,9 @@ export function ModelManagementSidebar({ isOpen, onClose }: ModelManagementSideb
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop - no click to close, prevents accidental closing */}
       <div
         className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40"
-        onClick={onClose}
       />
 
       {/* Sidebar */}

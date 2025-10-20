@@ -1,0 +1,67 @@
+/**
+ * Team Workspace - Container for Chat and Docs & Sheets
+ *
+ * Provides sub-navigation between:
+ * - Team Chat (P2P collaboration)
+ * - Docs & Sheets (Documents, Spreadsheets, Insights Lab)
+ */
+
+import { useState } from 'react'
+import { useDocsStore } from '@/stores/docsStore'
+import { TeamChat } from './TeamChat'
+import { DocsWorkspace } from './DocsWorkspace'
+import { NetworkSelector } from './NetworkSelector'
+import { MessageSquare, FileText } from 'lucide-react'
+
+type NetworkMode = 'solo' | 'lan' | 'p2p'
+
+export function TeamWorkspace() {
+  const { workspaceView, setWorkspaceView } = useDocsStore()
+  const [networkMode, setNetworkMode] = useState<NetworkMode>('solo')
+
+  return (
+    <div className="h-full w-full flex flex-col">
+      {/* Sub-navigation bar */}
+      <div className="flex items-center gap-3 px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30">
+        {/* Network Selector - Globe Icon */}
+        <NetworkSelector mode={networkMode} onModeChange={setNetworkMode} />
+
+        {/* Vertical Divider */}
+        <div className="h-6 w-px bg-gray-300 dark:bg-gray-600"></div>
+
+        {/* View Tabs */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setWorkspaceView('chat')}
+            className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-md transition-all ${
+              workspaceView === 'chat'
+                ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 font-medium'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+            }`}
+          >
+            <MessageSquare className="w-4 h-4" />
+            <span>Team Chat</span>
+          </button>
+
+          <button
+            onClick={() => setWorkspaceView('docs')}
+            className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-md transition-all ${
+              workspaceView === 'docs'
+                ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 font-medium'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            <span>Docs & Sheets</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Content area */}
+      <div className="flex-1 min-h-0">
+        {workspaceView === 'chat' && <TeamChat mode={networkMode} />}
+        {workspaceView === 'docs' && <DocsWorkspace />}
+      </div>
+    </div>
+  )
+}

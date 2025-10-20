@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef } from 'react'
-import { Hash, Lock, Plus, ChevronDown, Wifi, WifiOff, User } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Hash, Lock, Plus } from 'lucide-react'
 import { useTeamChatStore } from '../stores/teamChatStore'
 
 interface TeamChatSidebarProps {
@@ -17,22 +17,6 @@ export function TeamChatSidebar({ mode, onModeChange }: TeamChatSidebarProps) {
 
   const [showNewChannelDialog, setShowNewChannelDialog] = useState(false)
   const [newChannelName, setNewChannelName] = useState('')
-  const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(false)
-  const workspaceMenuRef = useRef<HTMLDivElement>(null)
-
-  // Close workspace menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (workspaceMenuRef.current && !workspaceMenuRef.current.contains(event.target as Node)) {
-        setShowWorkspaceMenu(false)
-      }
-    }
-
-    if (showWorkspaceMenu) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [showWorkspaceMenu])
 
   // Load channels in solo mode from localStorage
   useEffect(() => {
@@ -102,91 +86,8 @@ export function TeamChatSidebar({ mode, onModeChange }: TeamChatSidebarProps) {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Workspace Header - Slack-style dropdown */}
-      <div className="p-4 border-b border-white/10 dark:border-gray-700/30 relative" ref={workspaceMenuRef}>
-        <button
-          onClick={() => setShowWorkspaceMenu(!showWorkspaceMenu)}
-          className="w-full flex items-center justify-between px-3 py-2 hover:bg-white/60 dark:hover:bg-gray-700/60 rounded-2xl transition-all"
-        >
-          <div className="flex-1 text-left">
-            <h2 className="font-bold text-base text-gray-900 dark:text-gray-100">
-              {mode === 'solo' ? 'My Workspace' : 'Team Network'}
-            </h2>
-            <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-              <div className={`w-2 h-2 rounded-full ${mode === 'solo' ? 'bg-green-500' : 'bg-blue-500'}`}></div>
-              <span>{mode === 'solo' ? 'Solo Mode' : 'P2P Mode'}</span>
-            </div>
-          </div>
-          <ChevronDown size={16} className={`text-gray-400 transition-transform ${showWorkspaceMenu ? 'rotate-180' : ''}`} />
-        </button>
-
-        {/* Workspace Dropdown */}
-        {showWorkspaceMenu && (
-          <div className="absolute top-full left-4 right-4 mt-2 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
-            <div className="p-2">
-              <div className={`px-3 py-2.5 rounded-xl ${mode === 'solo' ? 'bg-primary-50 dark:bg-primary-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'} transition-colors`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <User size={16} className="text-gray-600 dark:text-gray-400" />
-                    <div>
-                      <div className="font-semibold text-sm text-gray-900 dark:text-gray-100">My Workspace</div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
-                        Solo Mode
-                      </div>
-                    </div>
-                  </div>
-                  {mode === 'solo' && (
-                    <svg className="w-4 h-4 text-primary-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
-                    </svg>
-                  )}
-                </div>
-              </div>
-
-              <div className={`px-3 py-2.5 rounded-xl mt-1 ${mode === 'p2p' ? 'bg-primary-50 dark:bg-primary-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'} transition-colors`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <Wifi size={16} className="text-gray-600 dark:text-gray-400" />
-                    <div>
-                      <div className="font-semibold text-sm text-gray-900 dark:text-gray-100">Team Network</div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                        <WifiOff size={12} />
-                        Not connected
-                      </div>
-                    </div>
-                  </div>
-                  {mode === 'p2p' && (
-                    <svg className="w-4 h-4 text-primary-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
-                    </svg>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t border-gray-200 dark:border-gray-700 p-2">
-              <button
-                onClick={() => {
-                  onModeChange(mode === 'solo' ? 'p2p' : 'solo')
-                  setShowWorkspaceMenu(false)
-                }}
-                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-xl transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
-                  </svg>
-                  Switch to {mode === 'solo' ? 'Team Network' : 'My Workspace'}
-                </div>
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Channels */}
-      <div className="flex-1 overflow-y-auto p-2">
+      {/* Channels - Network mode is now controlled by Globe icon in TeamWorkspace */}
+      <div className="flex-1 overflow-y-auto p-2 pt-4">
         <div className="mb-3">
           <div className="flex items-center justify-between px-2 py-1 mb-1">
             <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">CHANNELS</span>

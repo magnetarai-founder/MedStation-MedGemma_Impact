@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
-import { MessageSquare, ChevronDown, Send, Share2, Zap, X } from 'lucide-react'
+import { Cloud, Send, Share2, Zap, X, ChevronDown } from 'lucide-react'
 import { useSessionStore } from '@/stores/sessionStore'
+import { useOllamaStore } from '@/stores/ollamaStore'
 
 interface Message {
   id: string
@@ -9,21 +10,21 @@ interface Message {
   timestamp: number
 }
 
-type AssistantMode = 'general' | 'data-analyst' | 'pair-programmer' | 'code-reviewer'
-
-const ASSISTANT_MODES: Record<AssistantMode, { label: string; model: string; icon: string }> = {
-  'general': { label: 'General Chat', model: 'qwen2.5-coder:7b-instruct', icon: '💬' },
-  'data-analyst': { label: 'Data Analyst', model: 'qwen2.5-coder:7b-instruct', icon: '📊' },
-  'pair-programmer': { label: 'Pair Programmer', model: 'qwen2.5-coder:14b-instruct', icon: '👨‍💻' },
-  'code-reviewer': { label: 'Code Reviewer', model: 'deepseek-coder:6.7b', icon: '🔍' }
+interface QuickChatDropdownProps {
+  isOpen?: boolean
+  onToggle?: () => void
 }
 
-export function QuickChatDropdown() {
-  const [isOpen, setIsOpen] = useState(false)
-  const [mode, setMode] = useState<AssistantMode>('general')
+const DEFAULT_MODEL = 'qwen2.5-coder:7b-instruct'
+
+export function QuickChatDropdown({ isOpen: controlledIsOpen, onToggle }: QuickChatDropdownProps = {}) {
+  const [internalIsOpen, setInternalIsOpen] = useState(false)
+  const isOpen = controlledIsOpen !== undefined ? controlledIsOpen : internalIsOpen
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL)
+  const [showModelSelect, setShowModelSelect] = useState(false)
 
   const dropdownRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -31,6 +32,7 @@ export function QuickChatDropdown() {
   const isMountedRef = useRef(true)
 
   const { currentFile, currentQuery } = useSessionStore()
+  const { serverStatus } = useOllamaStore()
 
   // Cleanup on unmount
   useEffect(() => {
@@ -41,18 +43,31 @@ export function QuickChatDropdown() {
     }
   }, [])
 
-  // Close dropdown with ESC key or X button only (not clicking outside)
+  const handleToggle = () => {
+    if (onToggle) {
+      onToggle()
+    } else {
+      setInternalIsOpen(!internalIsOpen)
+    }
+  }
+
+  const handleClose = () => {
+    if (onToggle) {
+      onToggle()
+    } else {
+      setInternalIsOpen(false)
+    }
+  }
+
+  // Close dropdown with ESC key
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsOpen(false)
+      if (event.key === 'Escape' && isOpen) {
+        handleClose()
       }
     }
 
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscape)
-    }
-
+    document.addEventListener('keydown', handleEscape)
     return () => {
       document.removeEventListener('keydown', handleEscape)
     }
@@ -92,27 +107,6 @@ export function QuickChatDropdown() {
     abortControllerRef.current = new AbortController()
 
     try {
-      // Build context from current dataset and query results
-      let contextPrompt = userContent
-      if (mode === 'data-analyst') {
-        const contextParts: string[] = []
-
-        if (currentFile) {
-          contextParts.push(`[Current dataset: ${currentFile.original_name || 'uploaded file'}]`)
-        }
-
-        if (currentQuery) {
-          contextParts.push(`[Active query results: ${currentQuery.row_count || currentQuery.preview?.length || 0} rows, ${currentQuery.columns?.length || 0} columns]`)
-          if (currentQuery.sql_query) {
-            contextParts.push(`[Last SQL: ${currentQuery.sql_query}]`)
-          }
-        }
-
-        if (contextParts.length > 0) {
-          contextPrompt = `${contextParts.join('\n')}\n\n${userContent}`
-        }
-      }
-
       // Prepare messages for Ollama
       const chatHistory = messages.filter(msg => msg.content).map(msg => ({
         role: msg.role,
@@ -120,7 +114,7 @@ export function QuickChatDropdown() {
       }))
       chatHistory.push({
         role: 'user',
-        content: contextPrompt
+        content: userContent
       })
 
       // Stream response from Ollama (direct call for performance - intentional)
@@ -128,7 +122,7 @@ export function QuickChatDropdown() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: ASSISTANT_MODES[mode].model,
+          model: selectedModel,
           messages: chatHistory,
           stream: true
         }),
@@ -228,38 +222,31 @@ export function QuickChatDropdown() {
   }
 
   return (
-    <>
+    <div className="relative">
       {/* Trigger Button */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium
-          bg-white/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700
-          hover:bg-white dark:hover:bg-gray-800 transition-all"
+        onClick={handleToggle}
+        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400"
+        title="AI Chat"
       >
-        <MessageSquare className="w-4 h-4" />
-        <span className="hidden sm:inline">
-          {ASSISTANT_MODES[mode].icon} {ASSISTANT_MODES[mode].label}
-        </span>
+        <Cloud size={20} />
       </button>
 
-      {/* Full-Screen Overlay Modal */}
+      {/* Dropdown */}
       {isOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-          onClick={() => setIsOpen(false)}
+        <div
+          className="absolute top-full right-0 mt-2 w-96 h-[500px] bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg shadow-xl flex flex-col z-50"
+          ref={dropdownRef}
         >
-          <div className="w-full max-w-4xl h-[80vh] bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl
-            border border-gray-300 dark:border-gray-600 rounded-2xl shadow-2xl flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-            ref={dropdownRef}
-          >
 
-          {/* Mode Selector */}
-          <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-            <div className="flex-1 px-3 py-1.5 text-sm font-medium text-gray-900 dark:text-gray-100">
-              {ASSISTANT_MODES[mode].icon} {ASSISTANT_MODES[mode].label}
-            </div>
+          {/* Header */}
+          <div className="p-3 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                AI Chat
+              </div>
 
-            <div className="flex items-center gap-1">
+              {/* Clear chat button (only show when there are messages) */}
               {messages.length > 0 && (
                 <button
                   onClick={handleClear}
@@ -269,27 +256,55 @@ export function QuickChatDropdown() {
                   <X className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                 </button>
               )}
+            </div>
+
+            {/* Model Selector */}
+            <div className="relative">
               <button
-                onClick={() => setIsOpen(false)}
-                className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
-                title="Close (ESC)"
+                onClick={() => setShowModelSelect(!showModelSelect)}
+                className="w-full px-3 py-1.5 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-left text-xs text-gray-700 dark:text-gray-300 flex items-center justify-between transition-colors"
               >
-                <X className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                <span className="truncate">{selectedModel}</span>
+                <ChevronDown className="w-3 h-3 ml-2 flex-shrink-0" />
               </button>
+
+              {/* Model Dropdown */}
+              {showModelSelect && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-lg max-h-60 overflow-y-auto z-10">
+                  {serverStatus.loadedModels.length > 0 ? (
+                    serverStatus.loadedModels.map((model) => (
+                      <button
+                        key={model}
+                        onClick={() => {
+                          setSelectedModel(model)
+                          setShowModelSelect(false)
+                        }}
+                        className={`w-full px-3 py-2 text-left text-xs hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+                          selectedModel === model
+                            ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400'
+                            : 'text-gray-700 dark:text-gray-300'
+                        }`}
+                      >
+                        {model}
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">
+                      No models loaded
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {messages.length === 0 ? (
-              <div className="text-center text-sm text-gray-500 dark:text-gray-400 py-8">
-                <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p>Start a conversation with {ASSISTANT_MODES[mode].label}</p>
-                {currentFile && (
-                  <p className="mt-2 text-xs">
-                    Current file: <span className="font-medium">{currentFile.filename || currentFile.original_name || 'Uploaded file'}</span>
-                  </p>
-                )}
+              <div className="h-full flex flex-col items-center justify-center text-center px-4">
+                <Cloud className="w-12 h-12 mb-3 text-gray-300 dark:text-gray-600" />
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Start a conversation</p>
+                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">Ask anything, get instant answers</p>
               </div>
             ) : (
               messages.map((msg) => (
@@ -298,24 +313,24 @@ export function QuickChatDropdown() {
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[80%] px-3 py-2 rounded-lg text-sm ${
+                    className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
                       msg.role === 'user'
-                        ? 'bg-primary-500 text-white'
-                        : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100'
+                        ? 'bg-primary-500 text-white shadow-sm'
+                        : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700'
                     }`}
                   >
-                    {msg.content}
+                    <div className="whitespace-pre-wrap break-words">{msg.content}</div>
                   </div>
                 </div>
               ))
             )}
             {isLoading && (
               <div className="flex justify-start">
-                <div className="bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-lg text-sm">
-                  <div className="flex space-x-1">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                <div className="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-4 py-3 rounded-2xl">
+                  <div className="flex space-x-1.5">
+                    <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                   </div>
                 </div>
               </div>
@@ -324,8 +339,8 @@ export function QuickChatDropdown() {
           </div>
 
           {/* Input Area */}
-          <div className="p-3 border-t border-gray-200 dark:border-gray-800">
-            <div className="flex space-x-2">
+          <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+            <div className="flex gap-2 mb-2">
               <input
                 type="text"
                 value={input}
@@ -336,53 +351,59 @@ export function QuickChatDropdown() {
                     handleSubmit()
                   }
                 }}
-                placeholder={`Ask ${ASSISTANT_MODES[mode].label}...`}
-                className="flex-1 px-3 py-2 rounded border border-gray-200 dark:border-gray-700
-                  bg-white dark:bg-gray-800 text-sm
-                  focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="Type a message..."
+                className="flex-1 px-3.5 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700
+                  bg-white dark:bg-gray-900 text-sm
+                  placeholder:text-gray-400 dark:placeholder:text-gray-500
+                  focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent
+                  transition-all"
                 disabled={isLoading}
               />
               <button
                 onClick={handleSubmit}
                 disabled={!input.trim() || isLoading}
-                className="px-3 py-2 bg-primary-500 text-white rounded
-                  hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed
-                  transition-colors"
+                className="px-4 py-2.5 bg-primary-500 text-white rounded-lg
+                  hover:bg-primary-600 active:bg-primary-700
+                  disabled:opacity-40 disabled:cursor-not-allowed
+                  transition-all duration-150 shadow-sm hover:shadow flex items-center justify-center"
               >
                 <Send className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex items-center justify-between mt-2 text-xs">
-              <button
-                onClick={handlePortToMainChat}
-                disabled={messages.length === 0}
-                className="flex items-center space-x-1 px-2 py-1 rounded
-                  hover:bg-gray-100 dark:hover:bg-gray-800
-                  disabled:opacity-50 disabled:cursor-not-allowed
-                  text-gray-600 dark:text-gray-400"
-              >
-                <Share2 className="w-3 h-3" />
-                <span>Port to Main Chat</span>
-              </button>
+            {/* Action Buttons - Only show if relevant */}
+            {(messages.length > 0 || currentFile) && (
+              <div className="flex items-center gap-2 text-xs">
+                {messages.length > 0 && (
+                  <button
+                    onClick={handlePortToMainChat}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md
+                      hover:bg-gray-200 dark:hover:bg-gray-700
+                      text-gray-600 dark:text-gray-400
+                      transition-colors"
+                  >
+                    <Share2 className="w-3 h-3" />
+                    <span>Port to Chat</span>
+                  </button>
+                )}
 
-              {mode === 'data-analyst' && currentFile && (
-                <button
-                  onClick={handleGenerateSQL}
-                  className="flex items-center space-x-1 px-2 py-1 rounded
-                    hover:bg-gray-100 dark:hover:bg-gray-800
-                    text-gray-600 dark:text-gray-400"
-                >
-                  <Zap className="w-3 h-3" />
-                  <span>Generate SQL</span>
-                </button>
-              )}
-            </div>
-          </div>
+                {currentFile && (
+                  <button
+                    onClick={handleGenerateSQL}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md
+                      hover:bg-gray-200 dark:hover:bg-gray-700
+                      text-gray-600 dark:text-gray-400
+                      transition-colors"
+                  >
+                    <Zap className="w-3 h-3" />
+                    <span>SQL</span>
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
-    </>
+    </div>
   )
 }

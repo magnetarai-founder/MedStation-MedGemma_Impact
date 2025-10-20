@@ -47,6 +47,9 @@ else
     echo "✓ Ollama already running"
 fi
 
+# Validate Metal 4 before starting
+python apps/backend/validate_metal4.py
+
 # Start backend in background
 echo "Starting backend API server..."
 cd apps/backend/api

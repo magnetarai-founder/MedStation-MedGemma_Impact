@@ -5,6 +5,7 @@ interface SessionState {
   sessionId: string | null
   currentFile: FileUploadResponse | null
   currentQuery: QueryResponse | null
+  currentSql: string | null
   isExecuting: boolean
   isUploading: boolean
   exportFormat: 'excel' | 'csv' | 'json' | 'parquet'
@@ -12,6 +13,7 @@ interface SessionState {
   setSessionId: (id: string) => void
   setCurrentFile: (file: FileUploadResponse | null) => void
   setCurrentQuery: (query: QueryResponse | null) => void
+  setCurrentSql: (sql: string | null) => void
   setIsExecuting: (executing: boolean) => void
   setIsUploading: (uploading: boolean) => void
   setExportFormat: (format: 'excel' | 'csv' | 'json' | 'parquet') => void
@@ -22,6 +24,7 @@ export const useSessionStore = create<SessionState>((set) => ({
   sessionId: null,
   currentFile: null,
   currentQuery: null,
+  currentSql: null,
   isExecuting: false,
   isUploading: false,
   exportFormat: 'excel',
@@ -29,6 +32,7 @@ export const useSessionStore = create<SessionState>((set) => ({
   setSessionId: (id) => set({ sessionId: id }),
   setCurrentFile: (file) => set({ currentFile: file }),
   setCurrentQuery: (query) => set({ currentQuery: query }),
+  setCurrentSql: (sql) => set({ currentSql: sql }),
   setIsExecuting: (executing) => set({ isExecuting: executing }),
   setIsUploading: (uploading) => set({ isUploading: uploading }),
   setExportFormat: (format) => set({ exportFormat: format }),
@@ -36,6 +40,7 @@ export const useSessionStore = create<SessionState>((set) => ({
     sessionId: null,
     currentFile: null,
     currentQuery: null,
+    currentSql: null,
     isExecuting: false,
     isUploading: false,
     exportFormat: 'excel',

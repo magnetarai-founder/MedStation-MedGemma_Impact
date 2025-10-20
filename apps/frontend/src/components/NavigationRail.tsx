@@ -1,22 +1,23 @@
 import { useState, useRef } from 'react'
-import { Database, SlidersHorizontal, MessageSquare, Users2, Code2 } from 'lucide-react'
+import { Database, SlidersHorizontal, MessageSquare, Briefcase, GitBranch, Power } from 'lucide-react'
 import { useNavigationStore, type NavTab } from '../stores/navigationStore'
 
 interface NavigationRailProps {
   activeTab: NavTab
   onTabChange: (tab: NavTab) => void
   onOpenSettings: () => void
+  onOpenServerControls: () => void
 }
 
 // Navigation item configuration
 const NAV_ITEMS = {
-  team: { icon: Users2, label: 'Team Chat', isTab: true },
+  team: { icon: Briefcase, label: 'Workspace', isTab: true },
   chat: { icon: MessageSquare, label: 'AI Chat', isTab: true },
-  editor: { icon: Code2, label: 'Code Editor', isTab: true },
+  editor: { icon: GitBranch, label: 'Automation', isTab: true },
   database: { icon: Database, label: 'Database', isTab: true },
 } as const
 
-export function NavigationRail({ activeTab, onTabChange, onOpenSettings }: NavigationRailProps) {
+export function NavigationRail({ activeTab, onTabChange, onOpenSettings, onOpenServerControls }: NavigationRailProps) {
   const { navOrder, setNavOrder } = useNavigationStore()
   const [isDragging, setIsDragging] = useState(false)
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null)
@@ -166,14 +167,21 @@ export function NavigationRail({ activeTab, onTabChange, onOpenSettings }: Navig
       {/* Spacer */}
       <div className="flex-1"></div>
 
-      {/* Bottom section - Settings (always locked) */}
-      <div className="pb-4">
+      {/* Bottom section - Settings & Server Controls (always locked) */}
+      <div className="pb-4 flex flex-col gap-3">
         <button
           onClick={onOpenSettings}
           className="w-14 h-14 rounded-2xl flex items-center justify-center transition-all text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 hover:bg-white/60 dark:hover:bg-gray-700/60 hover:shadow-lg"
           title="Settings"
         >
           <SlidersHorizontal size={22} />
+        </button>
+        <button
+          onClick={onOpenServerControls}
+          className="w-14 h-14 rounded-2xl flex items-center justify-center transition-all text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 hover:bg-white/60 dark:hover:bg-gray-700/60 hover:shadow-lg"
+          title="Ollama Server Controls"
+        >
+          <Power size={22} />
         </button>
       </div>
 

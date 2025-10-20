@@ -23,6 +23,23 @@ from contextlib import asynccontextmanager
 import math
 import datetime as _dt
 
+# Suppress DEBUG logs from httpcore and httpx to reduce terminal noise
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+
+# Suppress verbose INFO logs from various services for cleaner startup
+logging.getLogger("metal4_engine").setLevel(logging.WARNING)
+logging.getLogger("metal4_diagnostics").setLevel(logging.WARNING)
+logging.getLogger("metal4_resources").setLevel(logging.WARNING)
+logging.getLogger("data_engine").setLevel(logging.WARNING)
+logging.getLogger("code_editor_service").setLevel(logging.WARNING)
+logging.getLogger("docs_service").setLevel(logging.WARNING)
+logging.getLogger("mlx_embedder").setLevel(logging.WARNING)
+logging.getLogger("unified_embedder").setLevel(logging.WARNING)
+logging.getLogger("token_counter").setLevel(logging.WARNING)
+logging.getLogger("chat_service").setLevel(logging.WARNING)
+logging.getLogger("neutron_core.engine").setLevel(logging.WARNING)
+
 logger = logging.getLogger(__name__)
 
 # Import existing backend modules
@@ -107,29 +124,85 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Import and include chat router
+# Import and include service routers
+services_loaded = []
+services_failed = []
+
 try:
     from chat_service import router as chat_router
     app.include_router(chat_router)
-    logger.info("✓ Chat service loaded")
+    services_loaded.append("Chat")
 except Exception as e:
+    services_failed.append("Chat")
     logger.warning(f"Chat service not available: {e}")
 
-# Import and include P2P team chat router
 try:
     from p2p_chat_router import router as p2p_chat_router
     app.include_router(p2p_chat_router)
-    logger.info("✓ P2P Team Chat service loaded")
+    services_loaded.append("P2P")
 except Exception as e:
-    logger.warning(f"P2P Team Chat service not available: {e}")
+    services_failed.append("P2P")
+    logger.debug(f"P2P Team Chat not available: {e}")
 
-# Import and include code editor router
+try:
+    from api.lan_service import router as lan_router
+    app.include_router(lan_router)
+    services_loaded.append("LAN")
+except Exception as e:
+    services_failed.append("LAN")
+    logger.debug(f"LAN Discovery not available: {e}")
+
+try:
+    from api.p2p_mesh_service import router as p2p_mesh_router
+    app.include_router(p2p_mesh_router)
+    services_loaded.append("P2P Mesh")
+except Exception as e:
+    services_failed.append("P2P Mesh")
+    logger.debug(f"P2P Mesh not available: {e}")
+
 try:
     from code_editor_service import router as code_editor_router
     app.include_router(code_editor_router)
-    logger.info("✓ Code Editor service loaded")
+    services_loaded.append("Code")
 except Exception as e:
-    logger.warning(f"Code Editor service not available: {e}")
+    services_failed.append("Code")
+    logger.debug(f"Code Editor not available: {e}")
+
+try:
+    from docs_service import router as docs_router
+    app.include_router(docs_router)
+    services_loaded.append("Docs")
+except Exception as e:
+    services_failed.append("Docs")
+    logger.debug(f"Docs service not available: {e}")
+
+try:
+    from insights_service import router as insights_router
+    app.include_router(insights_router)
+    services_loaded.append("Insights")
+except Exception as e:
+    services_failed.append("Insights")
+    logger.debug(f"Insights Lab not available: {e}")
+
+try:
+    from offline_mesh_router import router as mesh_router
+    app.include_router(mesh_router)
+    services_loaded.append("Mesh")
+except Exception as e:
+    services_failed.append("Mesh")
+    logger.debug(f"Offline Mesh not available: {e}")
+
+# Log summary of loaded services
+if services_loaded:
+    logger.info(f"✓ Services: {', '.join(services_loaded)}")
+
+# Initialize Metal 4 engine (silent - already shown in banner)
+try:
+    from metal4_engine import get_metal4_engine, validate_metal4_setup
+    metal4_engine = get_metal4_engine()
+except Exception as e:
+    logger.warning(f"Metal 4 not available: {e}")
+    metal4_engine = None
 
 # Models
 class SessionResponse(BaseModel):
@@ -856,7 +929,7 @@ async def convert_json(session_id: str, request: JsonConvertRequest):
             temp_json.unlink()
 
 @app.get("/api/sessions/{session_id}/json/download")
-async def download_json_result(session_id: str, format: str = Query("excel", regex="^(excel|csv|tsv|parquet)$")):
+async def download_json_result(session_id: str, format: str = Query("excel", pattern="^(excel|csv|tsv|parquet)$")):
     """Download converted JSON as Excel or CSV"""
     if session_id not in sessions:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -864,10 +937,42 @@ async def download_json_result(session_id: str, format: str = Query("excel", reg
     if 'json_result' not in sessions[session_id]:
         raise HTTPException(status_code=404, detail="No conversion result found")
 
-    excel_path = Path(sessions[session_id]['json_result']['excel_path'])
+    json_result = sessions[session_id]['json_result']
+    excel_path_str = json_result.get('excel_path')
 
+    if not excel_path_str:
+        # Clean up stale session data
+        del sessions[session_id]['json_result']
+        raise HTTPException(status_code=404, detail="Result file path not found. Please convert again.")
+
+    excel_path = Path(excel_path_str)
+
+    # Validate file still exists
     if not excel_path.exists():
-        raise HTTPException(status_code=404, detail="Result file not found")
+        # Clean up stale session data
+        del sessions[session_id]['json_result']
+        raise HTTPException(
+            status_code=410,
+            detail="Result file expired or was cleaned up. Please run the conversion again."
+        )
+
+    # Check file age (auto-cleanup after 24 hours)
+    try:
+        file_age_seconds = datetime.now().timestamp() - excel_path.stat().st_mtime
+        if file_age_seconds > 86400:  # 24 hours
+            excel_path.unlink(missing_ok=True)
+            del sessions[session_id]['json_result']
+            raise HTTPException(
+                status_code=410,
+                detail="Result file expired (24-hour limit). Please run the conversion again."
+            )
+    except OSError:
+        # File stat failed, file probably doesn't exist
+        del sessions[session_id]['json_result']
+        raise HTTPException(
+            status_code=404,
+            detail="Result file not accessible. Please run the conversion again."
+        )
     
     if format == "excel":
         return FileResponse(
@@ -1161,6 +1266,234 @@ async def uninstall_app():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Uninstall failed: {str(e)}")
 
+# New Danger Zone Endpoints
+
+@app.post("/api/admin/clear-chats")
+async def clear_chats():
+    """Clear all AI chat history"""
+    try:
+        import shutil
+        api_dir = Path(__file__).parent
+        chats_dir = api_dir / ".neutron_data" / "chats"
+
+        if chats_dir.exists():
+            shutil.rmtree(chats_dir)
+            chats_dir.mkdir(parents=True)
+            (chats_dir / "sessions.json").write_text("[]")
+
+        return {"success": True, "message": "AI chat history cleared"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Clear chats failed: {str(e)}")
+
+@app.post("/api/admin/clear-team-messages")
+async def clear_team_messages():
+    """Clear P2P team chat history"""
+    try:
+        import shutil
+        api_dir = Path(__file__).parent
+        p2p_dir = api_dir / ".neutron_data" / "p2p"
+
+        if p2p_dir.exists():
+            shutil.rmtree(p2p_dir)
+            p2p_dir.mkdir(parents=True)
+
+        return {"success": True, "message": "Team messages cleared"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Clear team messages failed: {str(e)}")
+
+@app.post("/api/admin/clear-query-library")
+async def clear_query_library():
+    """Clear all saved SQL queries"""
+    try:
+        omnistudio_memory.memory.conn.execute("DELETE FROM saved_queries")
+        omnistudio_memory.memory.conn.commit()
+
+        return {"success": True, "message": "Query library cleared"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Clear library failed: {str(e)}")
+
+@app.post("/api/admin/clear-query-history")
+async def clear_query_history():
+    """Clear SQL execution history"""
+    try:
+        omnistudio_memory.memory.conn.execute("DELETE FROM query_history")
+        omnistudio_memory.memory.conn.commit()
+
+        return {"success": True, "message": "Query history cleared"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Clear history failed: {str(e)}")
+
+@app.post("/api/admin/clear-temp-files")
+async def clear_temp_files():
+    """Clear uploaded files and exports"""
+    try:
+        import shutil
+        api_dir = Path(__file__).parent
+
+        for temp_dir_name in ["temp_uploads", "temp_exports"]:
+            temp_dir = api_dir / temp_dir_name
+            if temp_dir.exists():
+                shutil.rmtree(temp_dir)
+                temp_dir.mkdir()
+
+        return {"success": True, "message": "Temp files cleared"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Clear temp failed: {str(e)}")
+
+@app.post("/api/admin/clear-code-files")
+async def clear_code_files():
+    """Clear saved code editor files"""
+    try:
+        import shutil
+        api_dir = Path(__file__).parent
+        code_dir = api_dir / ".neutron_data" / "code"
+
+        if code_dir.exists():
+            shutil.rmtree(code_dir)
+            code_dir.mkdir(parents=True)
+
+        return {"success": True, "message": "Code files cleared"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Clear code failed: {str(e)}")
+
+@app.post("/api/admin/reset-settings")
+async def reset_settings():
+    """Reset all settings to defaults"""
+    try:
+        omnistudio_memory.memory.conn.execute("DELETE FROM app_settings")
+        omnistudio_memory.memory.conn.commit()
+
+        global app_settings
+        app_settings = AppSettings()
+
+        return {"success": True, "message": "Settings reset to defaults"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Reset settings failed: {str(e)}")
+
+@app.post("/api/admin/reset-data")
+async def reset_data():
+    """Delete all data but keep settings"""
+    try:
+        import shutil
+
+        # Clear database tables except settings
+        omnistudio_memory.memory.conn.execute("DELETE FROM query_history")
+        omnistudio_memory.memory.conn.execute("DELETE FROM saved_queries")
+        omnistudio_memory.memory.conn.commit()
+
+        # Clear chat data
+        api_dir = Path(__file__).parent
+        neutron_data = api_dir / ".neutron_data"
+
+        for subdir in ["chats", "p2p", "code", "uploads"]:
+            target = neutron_data / subdir
+            if target.exists():
+                shutil.rmtree(target)
+                target.mkdir(parents=True)
+
+        # Clear temp files
+        for temp_dir_name in ["temp_uploads", "temp_exports"]:
+            temp_dir = api_dir / temp_dir_name
+            if temp_dir.exists():
+                shutil.rmtree(temp_dir)
+                temp_dir.mkdir()
+
+        sessions.clear()
+        query_results.clear()
+
+        return {"success": True, "message": "All data deleted, settings preserved"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Reset data failed: {str(e)}")
+
+@app.post("/api/admin/export-all")
+async def export_all():
+    """Export complete backup as ZIP"""
+    try:
+        import shutil
+        import zipfile
+
+        api_dir = Path(__file__).parent
+        temp_dir = api_dir / "temp_exports"
+        temp_dir.mkdir(exist_ok=True)
+
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        zip_path = temp_dir / f"omnistudio_backup_{timestamp}.zip"
+
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            # Add chat data
+            chats_dir = api_dir / ".neutron_data" / "chats"
+            if chats_dir.exists():
+                for file in chats_dir.rglob('*'):
+                    if file.is_file():
+                        zipf.write(file, f"chats/{file.relative_to(chats_dir)}")
+
+            # Add database
+            db_file = Path.home() / ".omnistudio" / "omnistudio.db"
+            if db_file.exists():
+                zipf.write(db_file, "database/omnistudio.db")
+
+        return FileResponse(
+            path=zip_path,
+            filename=zip_path.name,
+            media_type="application/zip",
+            background=BackgroundTask(lambda: zip_path.unlink(missing_ok=True))
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
+
+@app.post("/api/admin/export-chats")
+async def export_chats():
+    """Export AI chat history as JSON"""
+    try:
+        import json
+
+        api_dir = Path(__file__).parent
+        chats_dir = api_dir / ".neutron_data" / "chats"
+
+        all_chats = []
+        if chats_dir.exists():
+            sessions_file = chats_dir / "sessions.json"
+            if sessions_file.exists():
+                all_chats = json.loads(sessions_file.read_text())
+
+        temp_dir = api_dir / "temp_exports"
+        temp_dir.mkdir(exist_ok=True)
+
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        export_path = temp_dir / f"chats_export_{timestamp}.json"
+        export_path.write_text(json.dumps(all_chats, indent=2))
+
+        return FileResponse(
+            path=export_path,
+            filename=export_path.name,
+            media_type="application/json",
+            background=BackgroundTask(lambda: export_path.unlink(missing_ok=True))
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Export chats failed: {str(e)}")
+
+@app.post("/api/admin/export-queries")
+async def export_queries():
+    """Export query library as JSON"""
+    try:
+        queries = omnistudio_memory.get_saved_queries()
+
+        temp_dir = Path(__file__).parent / "temp_exports"
+        temp_dir.mkdir(exist_ok=True)
+
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        export_path = temp_dir / f"queries_export_{timestamp}.json"
+        export_path.write_text(json.dumps(queries, indent=2))
+
+        return FileResponse(
+            path=export_path,
+            filename=export_path.name,
+            media_type="application/json",
+            background=BackgroundTask(lambda: export_path.unlink(missing_ok=True))
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Export queries failed: {str(e)}")
+
 
 # ============================================================================
 # DATA ENGINE API ENDPOINTS
@@ -1306,6 +1639,104 @@ async def rediscover_queries(dataset_id: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# METAL 4 GPU DIAGNOSTIC ENDPOINTS
+# ============================================================================
+
+@app.get("/api/v1/metal/capabilities")
+async def get_metal_capabilities():
+    """
+    Get Metal 4 capabilities and system information
+
+    Returns:
+        Metal version, device name, feature support flags
+    """
+    if metal4_engine is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Metal 4 engine not available on this system"
+        )
+
+    return metal4_engine.get_capabilities_dict()
+
+
+@app.get("/api/v1/metal/stats")
+async def get_metal_stats():
+    """
+    Get real-time Metal 4 statistics and performance metrics
+
+    Returns:
+        GPU utilization, memory usage, operation counts
+    """
+    if metal4_engine is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Metal 4 engine not available on this system"
+        )
+
+    return metal4_engine.get_stats()
+
+
+@app.get("/api/v1/metal/validate")
+async def validate_metal_setup():
+    """
+    Validate Metal 4 setup and get recommendations
+
+    Returns:
+        Status, capabilities, and optimization recommendations
+    """
+    if metal4_engine is None:
+        return {
+            'status': 'unavailable',
+            'capabilities': {
+                'available': False,
+                'version': 0,
+                'device_name': 'N/A',
+                'is_apple_silicon': False,
+                'features': {
+                    'unified_memory': False,
+                    'mps': False,
+                    'ane': False,
+                    'sparse_resources': False,
+                    'ml_command_encoder': False
+                }
+            },
+            'recommendations': [
+                'Metal 4 requires macOS Sequoia 15.0+ on Apple Silicon',
+                'Install PyTorch with MPS support for GPU acceleration'
+            ]
+        }
+
+    return validate_metal4_setup()
+
+
+@app.get("/api/v1/metal/optimize/{operation_type}")
+async def get_optimization_settings(operation_type: str):
+    """
+    Get optimization settings for a specific operation type
+
+    Args:
+        operation_type: 'embedding', 'inference', 'sql', or 'render'
+
+    Returns:
+        Optimized settings dict for the operation
+    """
+    if metal4_engine is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Metal 4 engine not available on this system"
+        )
+
+    valid_types = ['embedding', 'inference', 'sql', 'render']
+    if operation_type not in valid_types:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid operation_type. Must be one of: {', '.join(valid_types)}"
+        )
+
+    return metal4_engine.optimize_for_operation(operation_type)
 
 
 if __name__ == "__main__":

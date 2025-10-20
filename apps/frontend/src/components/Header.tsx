@@ -1,35 +1,35 @@
 import { useState, useEffect } from 'react'
-import { Cpu } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
 import { QuickChatDropdown } from './QuickChatDropdown'
+import { PerformanceMonitorDropdown } from './PerformanceMonitorDropdown'
 import { ModelManagementSidebar } from './ModelManagementSidebar'
 import { useOllamaStore } from '../stores/ollamaStore'
 import { ShutdownModal, RestartModal } from './OllamaServerModals'
+import { PanicModeModal } from './PanicModeModal'
 
-export function Header() {
+interface HeaderProps {
+  onOpenServerControls: () => void
+}
+
+export function Header({ onOpenServerControls }: HeaderProps) {
   const [showModelSidebar, setShowModelSidebar] = useState(false)
   const { serverStatus, fetchServerStatus } = useOllamaStore()
   const [showShutdownModal, setShowShutdownModal] = useState(false)
   const [showRestartModal, setShowRestartModal] = useState(false)
   const [previousModels, setPreviousModels] = useState<string[]>([])
+  const [showPanicConfirm, setShowPanicConfirm] = useState(false)
+  const [activeDropdown, setActiveDropdown] = useState<'chat' | 'performance' | null>(null)
 
   // Fetch server status on mount and periodically
   useEffect(() => {
     fetchServerStatus()
-    const interval = setInterval(fetchServerStatus, 10000) // Every 10 seconds
+    const interval = setInterval(fetchServerStatus, 60000) // Every 60 seconds (reduced from 10s to minimize noise)
     return () => clearInterval(interval)
   }, [])
 
   const handleLogoClick = () => {
-    if (serverStatus.running) {
-      // Server is running - show shutdown modal
-      setShowRestartModal(false) // Ensure restart modal is closed
-      setShowShutdownModal(true)
-    } else {
-      // Server is off - show restart modal
-      setShowShutdownModal(false) // Ensure shutdown modal is closed
-      setPreviousModels(serverStatus.loadedModels) // Use last known loaded models
-      setShowRestartModal(true)
-    }
+    // Toggle Model Management sidebar
+    setShowModelSidebar(!showModelSidebar)
   }
 
   const handleShutdownConfirm = async () => {
@@ -84,14 +84,14 @@ export function Header() {
 
   return (
     <>
-      <header className="glass border-b border-white/30 dark:border-gray-700/40">
+      <header className="glass border-b border-white/30 dark:border-gray-700/40 relative z-50">
         <div className="flex items-center justify-between py-3.5 px-6">
           {/* Left: Neutron Star Logo */}
           <div className="flex items-center gap-2">
             <button
               onClick={handleLogoClick}
               className="relative w-10 h-10 cursor-pointer group transition-transform hover:scale-110 active:scale-95"
-              title={serverStatus.running ? `Ollama Server Running (${serverStatus.modelCount} models loaded) - Click to shutdown` : 'Ollama Server Stopped - Click to start'}
+              title="Model Management"
             >
               {/* Outer glow/radiation - shows server status */}
               <div className={`absolute -inset-1 rounded-full blur-sm transition-colors ${
@@ -145,17 +145,26 @@ export function Header() {
 
           {/* Right: Controls */}
           <div className="flex items-center gap-3">
-            {/* Model Management Button */}
-            <button
-              onClick={() => setShowModelSidebar(true)}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400"
-              title="Model Management (⌘M)"
-            >
-              <Cpu size={20} />
-            </button>
-
             {/* Quick Chat */}
-            <QuickChatDropdown />
+            <QuickChatDropdown
+              isOpen={activeDropdown === 'chat'}
+              onToggle={() => setActiveDropdown(activeDropdown === 'chat' ? null : 'chat')}
+            />
+
+            {/* Performance Monitor */}
+            <PerformanceMonitorDropdown
+              isOpen={activeDropdown === 'performance'}
+              onToggle={() => setActiveDropdown(activeDropdown === 'performance' ? null : 'performance')}
+            />
+
+            {/* PANIC BUTTON (Emergency Data Wipe) */}
+            <button
+              onClick={() => setShowPanicConfirm(true)}
+              className="p-2 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-lg transition-colors text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+              title="🚨 PANIC MODE (Emergency Data Wipe)"
+            >
+              <AlertTriangle size={20} />
+            </button>
           </div>
         </div>
       </header>
@@ -179,6 +188,12 @@ export function Header() {
         onClose={() => setShowRestartModal(false)}
         onConfirm={handleRestartConfirm}
         previousModels={previousModels}
+      />
+
+      {/* Panic Mode Modal */}
+      <PanicModeModal
+        isOpen={showPanicConfirm}
+        onClose={() => setShowPanicConfirm(false)}
       />
     </>
   )

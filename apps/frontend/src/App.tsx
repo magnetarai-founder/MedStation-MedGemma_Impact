@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Toaster } from 'react-hot-toast'
 import { FileUpload } from './components/FileUpload'
 import { SidebarTabs } from './components/SidebarTabs'
 import { Header } from './components/Header'
@@ -11,8 +12,9 @@ import { SettingsModal } from './components/SettingsModal'
 import { LibraryModal } from './components/LibraryModal'
 import { JsonConverterModal } from './components/JsonConverterModal'
 import { QueryHistoryModal } from './components/QueryHistoryModal'
-import { CodeEditorTab } from './components/CodeEditorTab'
-import { TeamChat } from './components/TeamChat'
+import { ServerControlModal } from './components/ServerControlModal'
+import { AutomationTab } from './components/AutomationTab'
+import { TeamWorkspace } from './components/TeamWorkspace'
 import { useSessionStore } from './stores/sessionStore'
 import { useNavigationStore } from './stores/navigationStore'
 import { useEditorStore } from './stores/editorStore'
@@ -32,6 +34,7 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isJsonConverterOpen, setIsJsonConverterOpen] = useState(false)
   const [isQueryHistoryOpen, setIsQueryHistoryOpen] = useState(false)
+  const [isServerControlsOpen, setIsServerControlsOpen] = useState(false)
   const [libraryInitialCode, setLibraryInitialCode] = useState<{ name: string; content: string } | null>(null)
 
   // Handle loading query from library into editor
@@ -110,7 +113,7 @@ export default function App() {
             <div className="absolute inset-2 bg-gradient-to-br from-blue-300 to-primary-400 rounded-full"></div>
           </div>
           <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">OmniStudio</p>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Initializing platform...</p>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Equipping the global Church...</p>
         </div>
       </div>
     )
@@ -118,24 +121,25 @@ export default function App() {
 
   return (
     <div className="h-screen flex flex-col">
-      <Header />
+      <Header onOpenServerControls={() => setIsServerControlsOpen(true)} />
 
       <div className="flex-1 flex overflow-hidden min-h-0">
         <NavigationRail
           activeTab={activeTab}
           onTabChange={setActiveTab}
           onOpenSettings={() => setIsSettingsOpen(true)}
+          onOpenServerControls={() => setIsServerControlsOpen(true)}
         />
 
         <div className="flex-1 flex flex-col min-h-0 min-w-0 relative">
-          {/* Team Chat Tab */}
+          {/* Team Workspace Tab */}
           <div
             className="absolute inset-0 flex"
             style={{
               display: activeTab === 'team' ? 'flex' : 'none'
             }}
           >
-            <TeamChat />
+            <TeamWorkspace />
           </div>
 
           {/* AI Chat Tab */}
@@ -154,14 +158,14 @@ export default function App() {
             />
           </div>
 
-          {/* Code Editor Tab */}
+          {/* Automation Tab */}
           <div
             className="absolute inset-0 flex"
             style={{
               display: activeTab === 'editor' ? 'flex' : 'none'
             }}
           >
-            <CodeEditorTab />
+            <AutomationTab />
           </div>
 
           {/* Database Tab */}
@@ -237,7 +241,32 @@ export default function App() {
       />
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} activeNavTab={activeTab} />
       <JsonConverterModal isOpen={isJsonConverterOpen} onClose={() => setIsJsonConverterOpen(false)} />
+      <ServerControlModal isOpen={isServerControlsOpen} onClose={() => setIsServerControlsOpen(false)} />
       <ClearWorkspaceDialog />
+      <Toaster
+        position="bottom-right"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+          },
+          success: {
+            duration: 3000,
+            iconTheme: {
+              primary: '#10b981',
+              secondary: '#fff',
+            },
+          },
+          error: {
+            duration: 4000,
+            iconTheme: {
+              primary: '#ef4444',
+              secondary: '#fff',
+            },
+          },
+        }}
+      />
     </div>
   )
 }

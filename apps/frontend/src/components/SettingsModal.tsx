@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
-import { X, Settings as SettingsIcon, Zap, AlertTriangle, Save, MessageSquare, Users2, Code2, Database } from 'lucide-react'
+import { X, Settings as SettingsIcon, Zap, AlertTriangle, Save, MessageSquare, Users2, Code2, Database, Download, Star, Loader2, CheckCircle2, Circle, Cpu } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as settingsApi from '@/lib/settingsApi'
 import { type NavTab } from '@/stores/navigationStore'
+import { useChatStore } from '@/stores/chatStore'
 
 
 interface SettingsModalProps {
@@ -13,7 +14,7 @@ interface SettingsModalProps {
 
 
 export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<'settings' | 'power' | 'danger'>('settings')
+  const [activeTab, setActiveTab] = useState<'settings' | 'power' | 'models' | 'danger'>('settings')
 
   // Get tab-specific title and icon
   const getTabInfo = () => {
@@ -86,18 +87,33 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
             <SettingsIcon className="w-4 h-4" />
             <span className="font-medium">Settings</span>
           </button>
+          {activeNavTab === 'database' && (
+            <button
+              onClick={() => setActiveTab('power')}
+              className={`
+                flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors
+                ${activeTab === 'power'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                }
+              `}
+            >
+              <Zap className="w-4 h-4" />
+              <span className="font-medium">Power User</span>
+            </button>
+          )}
           <button
-            onClick={() => setActiveTab('power')}
+            onClick={() => setActiveTab('models')}
             className={`
               flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors
-              ${activeTab === 'power'
+              ${activeTab === 'models'
                 ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                 : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
               }
             `}
           >
-            <Zap className="w-4 h-4" />
-            <span className="font-medium">Power User</span>
+            <Cpu className="w-4 h-4" />
+            <span className="font-medium">Model Management</span>
           </button>
           <button
             onClick={() => setActiveTab('danger')}
@@ -118,6 +134,7 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
         <div className="flex-1 overflow-auto p-6">
           {activeTab === 'settings' && <SettingsTab activeNavTab={activeNavTab} />}
           {activeTab === 'power' && <PowerUserTab />}
+          {activeTab === 'models' && <ModelManagementTab />}
           {activeTab === 'danger' && <DangerZoneTab />}
         </div>
       </div>
@@ -229,23 +246,7 @@ function SettingsTab({ activeNavTab }: { activeNavTab: NavTab }) {
         )
 
       case 'chat':
-        return (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                AI Chat Parameters
-              </h3>
-              <div className="text-sm text-gray-600 dark:text-gray-400 space-y-3">
-                <p>Configure AI model parameters, temperature, context windows, and response behavior.</p>
-                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                  <p className="text-sm text-blue-900 dark:text-blue-100">
-                    AI chat settings are coming soon. You'll be able to adjust temperature, top-k, top-p, context length, and system prompts.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )
+        return <ChatSettingsContent />
 
       case 'editor':
         return (
@@ -825,116 +826,693 @@ function PowerUserTab() {
   )
 }
 
-function DangerZoneTab() {
-  const [resetConfirm, setResetConfirm] = useState('')
-  const [uninstallConfirm, setUninstallConfirm] = useState('')
-  const [isResetting, setIsResetting] = useState(false)
-  const [isUninstalling, setIsUninstalling] = useState(false)
+function ChatSettingsContent() {
+  const {
+    settings,
+    availableModels,
+    setAvailableModels,
+    updateSettings
+  } = useChatStore()
 
-  const handleReset = async () => {
-    if (resetConfirm !== 'DELETE') return
-
-    setIsResetting(true)
-    try {
-      const response = await fetch('/api/admin/reset-all', {
-        method: 'POST',
-      })
-      if (!response.ok) throw new Error('Reset failed')
-
-      alert('All data has been reset. Please refresh the page.')
-      window.location.reload()
-    } catch (error) {
-      console.error('Reset failed:', error)
-      alert('Failed to reset data')
-      setIsResetting(false)
-    }
+  // Ensure settings have all required fields with defaults
+  const safeSettings = {
+    tone: settings.tone || 'balanced',
+    temperature: settings.temperature ?? 0.7,
+    topP: settings.topP ?? 0.9,
+    topK: settings.topK ?? 40,
+    repeatPenalty: settings.repeatPenalty ?? 1.1,
+    systemPrompt: settings.systemPrompt || '',
+    ...settings
   }
 
-  const handleUninstall = async () => {
-    if (uninstallConfirm !== 'DELETE') return
-
-    if (!confirm('Are you ABSOLUTELY sure? This will delete all app data permanently.')) {
-      return
+  // Load models on mount
+  useEffect(() => {
+    const loadModels = async () => {
+      try {
+        const response = await fetch(`/api/v1/chat/models`)
+        if (response.ok) {
+          const models = await response.json()
+          setAvailableModels(models)
+        }
+      } catch (error) {
+        console.error('Failed to load models:', error)
+      }
     }
-
-    setIsUninstalling(true)
-    try {
-      const response = await fetch('/api/admin/uninstall', {
-        method: 'POST',
-      })
-      if (!response.ok) throw new Error('Uninstall failed')
-
-      alert('App data has been uninstalled. You can now close this window.')
-    } catch (error) {
-      console.error('Uninstall failed:', error)
-      alert('Failed to uninstall app')
-      setIsUninstalling(false)
-    }
-  }
+    loadModels()
+  }, [setAvailableModels])
 
   return (
-    <div className="space-y-8">
-      <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-red-900 dark:text-red-100 mb-2 flex items-center space-x-2">
-          <AlertTriangle className="w-5 h-5" />
-          <span>Reset All Data</span>
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+          AI Chat Parameters
         </h3>
-        <p className="text-sm text-red-700 dark:text-red-300 mb-4">
-          Clears all saved queries, resets settings to defaults. This action cannot be undone.
-          You will start fresh as if using the app for the first time.
-        </p>
-        <div className="space-y-3">
+
+        <div className="space-y-4">
+          {/* Model Selection */}
           <div>
-            <label className="block text-sm font-medium text-red-900 dark:text-red-100 mb-2">
-              Type <strong>DELETE</strong> to confirm:
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Default Model
             </label>
+            <select
+              value={settings.defaultModel}
+              onChange={(e) => updateSettings({ defaultModel: e.target.value })}
+              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+            >
+              {availableModels.length === 0 ? (
+                <option value="">Loading models...</option>
+              ) : (
+                availableModels.map((model) => (
+                  <option key={model.name} value={model.name}>
+                    {model.name} ({model.size})
+                  </option>
+                ))
+              )}
+            </select>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Pre-loaded on app start</p>
+          </div>
+
+          {/* Tone Presets */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Tone Preset
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {(['creative', 'balanced', 'precise', 'custom'] as const).map((tone) => (
+                <button
+                  key={tone}
+                  onClick={() => updateSettings({ tone })}
+                  className={`px-3 py-2 text-xs font-medium rounded-lg border transition-all ${
+                    safeSettings.tone === tone
+                      ? 'bg-primary-100 dark:bg-primary-900/30 border-primary-500 text-primary-700 dark:text-primary-300'
+                      : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-primary-300'
+                  }`}
+                >
+                  {tone.charAt(0).toUpperCase() + tone.slice(1)}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              {safeSettings.tone === 'creative' && 'Higher temp, more creative & varied'}
+              {safeSettings.tone === 'balanced' && 'Balanced creativity & accuracy'}
+              {safeSettings.tone === 'precise' && 'Lower temp, more focused & deterministic'}
+              {safeSettings.tone === 'custom' && 'Use custom parameters below'}
+            </p>
+          </div>
+
+          {/* Temperature */}
+          <div>
+            <div className="flex justify-between items-center mb-1">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Temperature
+              </label>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {safeSettings.temperature.toFixed(2)}
+              </span>
+            </div>
             <input
-              type="text"
-              value={resetConfirm}
-              onChange={(e) => setResetConfirm(e.target.value)}
-              placeholder="DELETE"
-              className="w-full px-3 py-2 border-2 border-red-300 dark:border-red-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+              type="range"
+              min="0"
+              max="2"
+              step="0.05"
+              value={safeSettings.temperature}
+              onChange={(e) => updateSettings({ temperature: parseFloat(e.target.value), tone: 'custom' })}
+              className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary-600"
+              disabled={safeSettings.tone !== 'custom'}
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Controls randomness (0 = deterministic, 2 = very creative)</p>
+          </div>
+
+          {/* Top P */}
+          <div>
+            <div className="flex justify-between items-center mb-1">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Top P (Nucleus Sampling)
+              </label>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {safeSettings.topP.toFixed(2)}
+              </span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={safeSettings.topP}
+              onChange={(e) => updateSettings({ topP: parseFloat(e.target.value), tone: 'custom' })}
+              className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary-600"
+              disabled={safeSettings.tone !== 'custom'}
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Cumulative probability cutoff for token selection</p>
+          </div>
+
+          {/* Top K */}
+          <div>
+            <div className="flex justify-between items-center mb-1">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Top K
+              </label>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {safeSettings.topK}
+              </span>
+            </div>
+            <input
+              type="range"
+              min="1"
+              max="100"
+              step="1"
+              value={safeSettings.topK}
+              onChange={(e) => updateSettings({ topK: parseInt(e.target.value), tone: 'custom' })}
+              className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary-600"
+              disabled={safeSettings.tone !== 'custom'}
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Limits sampling to top K most likely tokens</p>
+          </div>
+
+          {/* Repeat Penalty */}
+          <div>
+            <div className="flex justify-between items-center mb-1">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Repeat Penalty
+              </label>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {safeSettings.repeatPenalty.toFixed(2)}
+              </span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="2"
+              step="0.05"
+              value={safeSettings.repeatPenalty}
+              onChange={(e) => updateSettings({ repeatPenalty: parseFloat(e.target.value), tone: 'custom' })}
+              className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary-600"
+              disabled={safeSettings.tone !== 'custom'}
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Penalizes repetition (1.0 = no penalty, higher = less repetition)</p>
+          </div>
+
+          {/* System Prompt */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              System Prompt
+            </label>
+            <textarea
+              value={safeSettings.systemPrompt}
+              onChange={(e) => updateSettings({ systemPrompt: e.target.value })}
+              placeholder="You are a helpful AI assistant..."
+              rows={3}
+              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 resize-none"
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Instructions sent with every message</p>
+          </div>
+
+          {/* Auto-generate titles */}
+          <div className="flex items-center justify-between">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Auto-generate titles</label>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Name chats from first message</p>
+            </div>
+            <input
+              type="checkbox"
+              checked={settings.autoGenerateTitles}
+              onChange={(e) => updateSettings({ autoGenerateTitles: e.target.checked })}
+              className="w-4 h-4 rounded text-primary-600"
             />
           </div>
-          <button
-            onClick={handleReset}
-            disabled={resetConfirm !== 'DELETE' || isResetting}
-            className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isResetting ? 'Resetting...' : 'Reset Everything'}
-          </button>
+
+          {/* Context Window (locked) */}
+          <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Context Window: 200k tokens</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Full conversation history sent to model for optimal context preservation</p>
+          </div>
         </div>
       </div>
 
-      <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-red-900 dark:text-red-100 mb-2 flex items-center space-x-2">
-          <AlertTriangle className="w-5 h-5" />
-          <span>Uninstall Application</span>
-        </h3>
-        <p className="text-sm text-red-700 dark:text-red-300 mb-4">
-          Removes all app data and moves everything to Trash (macOS) or Recycle Bin (Windows).
-          This action cannot be undone.
-        </p>
-        <div className="space-y-3">
-          <div>
-            <label className="block text-sm font-medium text-red-900 dark:text-red-100 mb-2">
-              Type <strong>DELETE</strong> to confirm:
-            </label>
-            <input
-              type="text"
-              value={uninstallConfirm}
-              onChange={(e) => setUninstallConfirm(e.target.value)}
-              placeholder="DELETE"
-              className="w-full px-3 py-2 border-2 border-red-300 dark:border-red-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
-            />
+      {/* Model Manager Section */}
+      <ModelManagerSection />
+    </div>
+  )
+}
+
+function ModelManagerSection() {
+  const [favorites, setFavorites] = useState<string[]>([])
+
+  // Query for model status
+  const { data: modelStatus, isLoading, refetch } = useQuery({
+    queryKey: ['model-status'],
+    queryFn: async () => {
+      const response = await fetch('/api/v1/chat/models/status')
+      if (!response.ok) throw new Error('Failed to load model status')
+      return await response.json()
+    },
+    refetchInterval: 5000 // Refresh every 5 seconds
+  })
+
+  // Load favorites
+  useEffect(() => {
+    const loadFavorites = async () => {
+      try {
+        const response = await fetch('/api/v1/chat/models/favorites')
+        if (response.ok) {
+          const data = await response.json()
+          setFavorites(data.favorites || [])
+        }
+      } catch (error) {
+        console.error('Failed to load favorites:', error)
+      }
+    }
+    loadFavorites()
+  }, [])
+
+  const toggleFavorite = async (modelName: string) => {
+    const isFavorite = favorites.includes(modelName)
+    try {
+      const method = isFavorite ? 'DELETE' : 'POST'
+      const response = await fetch(`/api/v1/chat/models/favorites/${encodeURIComponent(modelName)}`, { method })
+
+      if (response.ok) {
+        const data = await response.json()
+        setFavorites(data.favorites || [])
+      }
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error)
+    }
+  }
+
+  const preloadModel = async (modelName: string) => {
+    try {
+      await fetch(`/api/v1/chat/models/preload?model=${encodeURIComponent(modelName)}&keep_alive=1h`, { method: 'POST' })
+      await refetch()
+    } catch (error) {
+      console.error('Failed to preload model:', error)
+    }
+  }
+
+  const unloadModel = async (modelName: string) => {
+    try {
+      await fetch(`/api/v1/chat/models/unload/${encodeURIComponent(modelName)}`, { method: 'POST' })
+      await refetch()
+    } catch (error) {
+      console.error('Failed to unload model:', error)
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+            Model Manager
+          </h3>
+          <div className="text-center py-8 text-gray-500">
+            <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+            <p>Loading models...</p>
           </div>
+        </div>
+      </div>
+    )
+  }
+
+  const models = modelStatus?.models || []
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+          Model Manager
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          Manage installed Ollama models. Favorites are auto-loaded on startup for instant responses.
+        </p>
+
+        {models.length === 0 ? (
+          <div className="p-6 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-center">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+              No models installed yet
+            </p>
+            <a
+              href="https://ollama.com/library"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm"
+            >
+              <Download className="w-4 h-4" />
+              <span>Browse Ollama Library</span>
+            </a>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {models.map((model: any) => {
+              const isFavorite = favorites.includes(model.name)
+              const isLoaded = model.loaded || false
+
+              return (
+                <div
+                  key={model.name}
+                  className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-primary-300 dark:hover:border-primary-700 transition-all"
+                >
+                  <div className="flex items-center gap-3 flex-1">
+                    {/* Favorite star */}
+                    <button
+                      onClick={() => toggleFavorite(model.name)}
+                      className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                      title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                    >
+                      <Star
+                        className={`w-4 h-4 ${
+                          isFavorite
+                            ? 'fill-yellow-400 text-yellow-400'
+                            : 'text-gray-400 dark:text-gray-500'
+                        }`}
+                      />
+                    </button>
+
+                    {/* Model info */}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {model.name}
+                        </span>
+                        {isFavorite && (
+                          <span className="px-2 py-0.5 text-xs rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200">
+                            Favorite
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 mt-0.5">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {model.size || 'Size unknown'}
+                        </span>
+                        {isLoaded && (
+                          <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                            <CheckCircle2 className="w-3 h-3" />
+                            Loaded
+                          </span>
+                        )}
+                        {!isLoaded && (
+                          <span className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
+                            <Circle className="w-3 h-3" />
+                            Not loaded
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Load/Unload button */}
+                    <button
+                      onClick={() => isLoaded ? unloadModel(model.name) : preloadModel(model.name)}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                        isLoaded
+                          ? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                          : 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 hover:bg-primary-200 dark:hover:bg-primary-900/50'
+                      }`}
+                    >
+                      {isLoaded ? 'Unload' : 'Load'}
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Download link */}
+        {models.length > 0 && (
+          <div className="mt-4 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+            <p className="text-sm text-blue-900 dark:text-blue-100">
+              Want more models?{' '}
+              <a
+                href="https://ollama.com/library"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium underline hover:no-underline"
+              >
+                Browse Ollama Library
+              </a>
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function DangerZoneTab() {
+  const [confirmInputs, setConfirmInputs] = useState<Record<string, string>>({})
+  const [loading, setLoading] = useState<Record<string, boolean>>({})
+
+  const handleAction = async (action: string, endpoint: string, confirmText: string, successMsg: string) => {
+    if (confirmInputs[action] !== confirmText) return
+
+    setLoading({ ...loading, [action]: true })
+    try {
+      const response = await fetch(endpoint, { method: 'POST' })
+      if (!response.ok) throw new Error(`${action} failed`)
+
+      alert(successMsg)
+      if (action === 'uninstall' || action === 'factory-reset') {
+        window.location.reload()
+      }
+    } catch (error) {
+      console.error(`${action} failed:`, error)
+      alert(`Failed to ${action}`)
+    } finally {
+      setLoading({ ...loading, [action]: false })
+      setConfirmInputs({ ...confirmInputs, [action]: '' })
+    }
+  }
+
+  const DangerButton = ({
+    action,
+    endpoint,
+    title,
+    description,
+    details,
+    confirmText = 'CONFIRM',
+    severity = 'medium'
+  }: {
+    action: string
+    endpoint: string
+    title: string
+    description: string
+    details?: string
+    confirmText?: string
+    severity?: 'safe' | 'medium' | 'high' | 'nuclear'
+  }) => {
+    const colors = {
+      safe: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-100',
+      medium: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 text-orange-900 dark:text-orange-100',
+      high: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-900 dark:text-red-100',
+      nuclear: 'bg-red-100 dark:bg-red-950/40 border-red-300 dark:border-red-900 text-red-950 dark:text-red-50'
+    }
+
+    const buttonColors = {
+      safe: 'bg-blue-600 hover:bg-blue-700',
+      medium: 'bg-orange-600 hover:bg-orange-700',
+      high: 'bg-red-600 hover:bg-red-700',
+      nuclear: 'bg-red-700 hover:bg-red-800'
+    }
+
+    return (
+      <div className={`border-2 rounded-lg p-4 ${colors[severity]}`}>
+        <h4 className="font-semibold mb-1 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4" />
+          {title}
+        </h4>
+        <p className="text-sm mb-2">{description}</p>
+        {details && <p className="text-xs opacity-80 mb-3">{details}</p>}
+
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={confirmInputs[action] || ''}
+            onChange={(e) => setConfirmInputs({ ...confirmInputs, [action]: e.target.value })}
+            placeholder={confirmText}
+            className="flex-1 px-3 py-1.5 text-sm border-2 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
+          />
           <button
-            onClick={handleUninstall}
-            disabled={uninstallConfirm !== 'DELETE' || isUninstalling}
-            className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            onClick={() => handleAction(action, endpoint, confirmText, `${title} completed successfully`)}
+            disabled={confirmInputs[action] !== confirmText || loading[action]}
+            className={`px-4 py-1.5 text-sm text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${buttonColors[severity]}`}
           >
-            {isUninstalling ? 'Uninstalling...' : 'Uninstall App'}
+            {loading[action] ? 'Processing...' : 'Execute'}
           </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Export & Backup - Safe */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+          Export & Backup
+        </h3>
+        <div className="space-y-3">
+          <DangerButton
+            action="export-all"
+            endpoint="/api/admin/export-all"
+            title="Export All Data"
+            description="Download complete backup as ZIP"
+            details="Includes: AI chats, team messages, query library, settings, and uploaded files"
+            severity="safe"
+          />
+          <DangerButton
+            action="export-chats"
+            endpoint="/api/admin/export-chats"
+            title="Export AI Chat History"
+            description="Download all AI conversations as JSON"
+            details="Preserves: messages, timestamps, models used, and file attachments"
+            severity="safe"
+          />
+          <DangerButton
+            action="export-queries"
+            endpoint="/api/admin/export-queries"
+            title="Export Query Library"
+            description="Download saved SQL queries as JSON"
+            details="Preserves: query names, folders, tags, and descriptions"
+            severity="safe"
+          />
+        </div>
+      </div>
+
+      {/* Data Management - Medium Risk */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-orange-500"></span>
+          Data Management
+        </h3>
+        <div className="space-y-3">
+          <DangerButton
+            action="clear-chats"
+            endpoint="/api/admin/clear-chats"
+            title="Clear AI Chat History"
+            description="Delete all AI conversations"
+            details="Preserves: settings and query library"
+            severity="medium"
+          />
+          <DangerButton
+            action="clear-team"
+            endpoint="/api/admin/clear-team-messages"
+            title="Clear Team Messages"
+            description="Delete P2P chat history"
+            details="Preserves: AI chats and query library"
+            severity="medium"
+          />
+          <DangerButton
+            action="clear-library"
+            endpoint="/api/admin/clear-query-library"
+            title="Clear Query Library"
+            description="Delete all saved SQL queries"
+            details="Preserves: query execution history"
+            severity="medium"
+          />
+          <DangerButton
+            action="clear-history"
+            endpoint="/api/admin/clear-query-history"
+            title="Clear Query History"
+            description="Delete SQL execution history"
+            details="Preserves: saved queries in library"
+            severity="medium"
+          />
+          <DangerButton
+            action="clear-temp"
+            endpoint="/api/admin/clear-temp-files"
+            title="Clear Temp Files"
+            description="Delete uploaded files and exports"
+            details="Frees up disk space without affecting data"
+            severity="medium"
+          />
+          <DangerButton
+            action="clear-code"
+            endpoint="/api/admin/clear-code-files"
+            title="Clear Code Editor Files"
+            description="Delete saved code snippets"
+            details="Preserves: all other data"
+            severity="medium"
+          />
+        </div>
+      </div>
+
+      {/* Reset Options - High Risk */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-red-500"></span>
+          Reset Options
+        </h3>
+        <div className="space-y-3">
+          <DangerButton
+            action="reset-settings"
+            endpoint="/api/admin/reset-settings"
+            title="Reset All Settings"
+            description="Restore default settings"
+            details="Preserves: all data (chats, queries, files)"
+            confirmText="RESET"
+            severity="high"
+          />
+          <DangerButton
+            action="reset-data"
+            endpoint="/api/admin/reset-data"
+            title="Reset All Data"
+            description="Delete all data, keep settings"
+            details="Deletes: chats, queries, history, temp files"
+            confirmText="DELETE"
+            severity="high"
+          />
+          <DangerButton
+            action="factory-reset"
+            endpoint="/api/admin/reset-all"
+            title="Factory Reset"
+            description="Complete wipe - like first install"
+            details="Deletes: everything (data + settings)"
+            confirmText="DELETE"
+            severity="high"
+          />
+        </div>
+      </div>
+
+      {/* Nuclear Options - Destructive */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-red-700"></span>
+          Nuclear Options
+        </h3>
+        <div className="space-y-3">
+          <DangerButton
+            action="uninstall"
+            endpoint="/api/admin/uninstall"
+            title="Uninstall Application"
+            description="Remove all app data permanently"
+            details="Moves data to Trash/Recycle Bin. Cannot be undone."
+            confirmText="DELETE"
+            severity="nuclear"
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ModelManagementTab() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+          Model Management Settings
+        </h3>
+        <div className="text-sm text-gray-600 dark:text-gray-400 space-y-3">
+          <p>Configure global model behavior, default parameters, and auto-loading preferences.</p>
+          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <p className="text-sm text-blue-900 dark:text-blue-100 mb-2 font-medium">
+              Model management settings are coming soon
+            </p>
+            <p className="text-xs text-blue-700 dark:text-blue-300">
+              Configure default model parameters, auto-load preferences, memory limits, and context window settings.
+            </p>
+          </div>
         </div>
       </div>
     </div>

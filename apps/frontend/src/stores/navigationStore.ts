@@ -20,10 +20,10 @@ interface NavigationStore {
 
 // Default navigation order
 const defaultNavOrder: Array<NavItem['id']> = [
-  'chat',      // AI Chat first
-  'database',  // Database second
-  'editor',    // Code Editor third
-  'team'       // Team Chat last
+  'team',      // Workspace first
+  'chat',      // AI Chat second
+  'editor',    // Automation third
+  'database'   // Database last
 ]
 
 export const useNavigationStore = create<NavigationStore>()(
@@ -37,7 +37,19 @@ export const useNavigationStore = create<NavigationStore>()(
     }),
     {
       name: 'ns.navigation',
-      // Migration to ensure all tabs are present
+      version: 2, // Increment version to force migration
+      // Migration to ensure all tabs are present and in new default order
+      migrate: (persistedState: any, version: number) => {
+        // Force update to new default order for everyone
+        if (version < 2) {
+          console.log('Migrating navigation order to v2 - new default order')
+          return {
+            ...persistedState,
+            navOrder: defaultNavOrder
+          }
+        }
+        return persistedState
+      },
       onRehydrateStorage: () => (state) => {
         if (state) {
           // Check if navOrder has all required tabs
