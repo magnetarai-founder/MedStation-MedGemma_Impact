@@ -27,6 +27,9 @@ Welcome to the **ElohimOS** documentation. This directory contains comprehensive
 
 ### Technical Documentation
 
+#### Architecture & Design
+- **[Architecture Philosophy](../ARCHITECTURE_PHILOSOPHY.md)** — Why ElohimOS is a domain-specific operating system
+
 #### Core Features
 - **[Chat API](markdowns/CHAT_API.md)** — AI chat integration and endpoints
 - **[Chat UI Implementation](markdowns/CHAT_UI_COMPLETE.md)** — Frontend chat interface
