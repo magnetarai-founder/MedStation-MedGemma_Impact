@@ -1,11 +1,13 @@
-# Neutron Star — Data Tool
+# ElohimOS — AI-Powered Data Platform
 
-Local, offline‑first Excel → SQL → Results. DuckDB + Pandas under the hood, React web UI on top. Redshift‑compat shims make real‑world SQL less painful (LIKE/ILIKE autocast, recursive CTE fix, null::type handling, identifier cleaning).
+**Copyright (c) 2025 MagnetarAI, LLC**
+
+Local, offline‑first Excel → SQL → Results with AI assistance. DuckDB + Pandas under the hood, React web UI on top. Redshift‑compat shims make real‑world SQL less painful (LIKE/ILIKE autocast, recursive CTE fix, null::type handling, identifier cleaning).
 
 ## Quickstart
 
 Web UI
-- Run `neutron` (after running `./setup_alias.sh`) or `./run`
+- Run `./elohim` to start the application
 - This creates a venv, installs web-only deps, and starts backend + frontend
 - Frontend: http://localhost:5173 (proxied to backend at http://localhost:8000)
 

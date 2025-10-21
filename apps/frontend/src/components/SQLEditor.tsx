@@ -16,7 +16,7 @@ const getModifierKey = () => {
 }
 
 export function SQLEditor() {
-  const { sessionId, currentFile, setCurrentQuery, isExecuting, setIsExecuting } = useSessionStore()
+  const { sessionId, currentFile, setCurrentQuery, setCurrentSql, isExecuting, setIsExecuting } = useSessionStore()
   const previewRowCount = 100 // Hardcoded preview limit
   const [sql, setSql] = useState('SELECT * FROM excel_file LIMIT 100')
   const editorRef = useRef<any>(null)
@@ -42,6 +42,7 @@ export function SQLEditor() {
     },
     onSuccess: (data) => {
       setCurrentQuery(data)
+      setCurrentSql(sql)
       abortControllerRef.current = null
     },
     onError: (error: any) => {

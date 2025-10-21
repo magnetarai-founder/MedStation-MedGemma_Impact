@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Start script for OmniStudio
+# Start script for ElohimOS
 
-echo "🚀 Starting OmniStudio..."
+echo "🚀 Starting ElohimOS..."
 
 # Find a compatible Python version (3.12 or 3.11)
 PYTHON_CMD=""
@@ -29,31 +29,40 @@ fi
 source venv/bin/activate
 
 # Install Python dependencies only if needed
-if ! python -c "import fastapi, uvicorn, duckdb, pandas" 2>/dev/null; then
+if ! venv/bin/python3 -c "import fastapi, uvicorn, duckdb, pandas, httpx" 2>/dev/null; then
     echo "Installing Python dependencies..."
-    pip install -q -r apps/backend/backend_requirements.txt
+    venv/bin/python3 -m pip install -q -r apps/backend/backend_requirements.txt
 else
     echo "✓ Python dependencies already installed"
 fi
 
 # Start Ollama if not already running
 if ! pgrep -x "ollama" > /dev/null; then
-    echo "Starting Ollama..."
-    ollama serve > /dev/null 2>&1 &
-    OLLAMA_PID=$!
-    sleep 2
-    echo "✓ Ollama started"
+    if command -v ollama &> /dev/null; then
+        echo "Starting Ollama..."
+        nohup ollama serve > /tmp/ollama.log 2>&1 &
+        OLLAMA_PID=$!
+        sleep 3
+        # Verify Ollama is actually running
+        if pgrep -x "ollama" > /dev/null; then
+            echo "✓ Ollama started (PID: $OLLAMA_PID)"
+        else
+            echo "⚠️  Warning: Ollama failed to start (check /tmp/ollama.log)"
+        fi
+    else
+        echo "⚠️  Warning: Ollama not installed - AI features will be unavailable"
+    fi
 else
     echo "✓ Ollama already running"
 fi
 
 # Validate Metal 4 before starting
-python apps/backend/validate_metal4.py
+venv/bin/python3 apps/backend/validate_metal4.py
 
 # Start backend in background
 echo "Starting backend API server..."
 cd apps/backend/api
-uvicorn main:app --reload --host 0.0.0.0 --port 8000 --log-level warning &
+../../../venv/bin/uvicorn main:app --reload --host 0.0.0.0 --port 8000 --log-level warning &
 BACKEND_PID=$!
 cd ../../..
 
@@ -81,7 +90,7 @@ fi
 # Start frontend
 echo "Starting frontend development server..."
 echo ""
-echo "🌟 OmniStudio is starting up..."
+echo "🌟 ElohimOS is starting up..."
 echo "📡 Backend API: http://127.0.0.1:8000"
 echo "🖥️  Frontend UI: http://127.0.0.1:4200"
 echo ""

@@ -1,22 +1,19 @@
-# Backend requirements for web API
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-python-multipart==0.0.6
-websockets==12.0
-aiofiles==23.2.1
-pydantic==2.5.0
-python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
-httpx>=0.25.0
-
-# Chat features
-tiktoken>=0.5.0
-pypdf2>=3.0.0
-python-docx>=1.0.0
-
-# P2P Team Chat
-libp2p>=0.3.0
-
-# Pulsar (JSON to Excel) dependencies
-xlsxwriter>=3.0.0
-ijson>=3.2.0
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+python-multipart==0.0.12
+aiofiles==24.1.0
+httpx>=0.25.2
+duckdb==1.1.3
+pandas==2.2.3
+pyarrow>=18.0.0
+openpyxl==3.1.5
+PyYAML==6.0.2
+sqlparse==0.5.3
+openai-whisper==20231117
+ffmpeg-python==0.2.0
+pyobjc-framework-Metal>=10.0
+pyobjc-framework-MetalPerformanceShaders>=10.0
+pyobjc-framework-MetalPerformanceShadersGraph>=10.0
+psutil>=5.9.0
+libp2p>=0.1.0
+zeroconf>=0.132.0

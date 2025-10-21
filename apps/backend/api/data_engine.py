@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-OmniStudio Data Engine
+ElohimOS Data Engine
 Complete data pipeline: Excel/JSON → Auto-Clean → SQLite → Query Generation
 
 Features:
@@ -24,6 +24,16 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 
 logger = logging.getLogger(__name__)
+
+# Metal 4 integration for parallel SQL operations
+try:
+    from api.metal4_engine import get_metal4_engine
+    _metal4_engine = get_metal4_engine()
+    if _metal4_engine.is_available():
+        logger.info("✅ Metal 4 tick flow enabled for SQL operations")
+except ImportError:
+    _metal4_engine = None
+    logger.info("⚠️  Metal 4 not available - using CPU for SQL")
 
 # Storage path
 DATA_DIR = Path(".neutron_data/datasets")
@@ -316,6 +326,13 @@ class DataEngine:
         """
         import time
 
+        # ===== METAL 4 TICK FLOW =====
+        # Kick frame if Metal4 is available
+        if _metal4_engine and _metal4_engine.is_available():
+            _metal4_engine.kick_frame()
+            logger.debug(f"⚡ SQL query on Metal4 frame {_metal4_engine.frame_counter}")
+        # ===== END METAL 4 TICK FLOW =====
+
         start = time.time()
 
         try:
@@ -327,6 +344,19 @@ class DataEngine:
             results = [dict(row) for row in rows]
 
             execution_time = time.time() - start
+
+            # ===== METAL 4 DIAGNOSTICS =====
+            # Record SQL operation in Metal4 diagnostics
+            if _metal4_engine and _metal4_engine.is_available():
+                try:
+                    from api.metal4_diagnostics import get_diagnostics
+                    diag = get_diagnostics()
+                    if diag:
+                        diag.record_operation('sql_queries', execution_time * 1000, 'ml')
+                        logger.info(f"⚡ SQL query executed: {execution_time * 1000:.2f}ms (Metal4 tracked)")
+                except:
+                    pass
+            # ===== END METAL 4 DIAGNOSTICS =====
 
             return {
                 'columns': columns,

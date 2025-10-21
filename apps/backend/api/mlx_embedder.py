@@ -30,7 +30,7 @@ class MLXEmbedder:
         self.embed_dim = 384  # Default for all-MiniLM-L6-v2
 
     def initialize(self) -> bool:
-        """Initialize the MLX model and tokenizer"""
+        """Initialize the MLX model and tokenizer with Metal 4 optimizations"""
         if self._initialized:
             return True
 
@@ -39,9 +39,18 @@ class MLXEmbedder:
             import mlx.core as mx
             import mlx.nn as nn
             from transformers import AutoTokenizer, AutoConfig
+            from metal4_engine import get_metal4_engine
+
+            # Get Metal 4 engine for optimization settings
+            metal4_engine = get_metal4_engine()
+            optimization_settings = metal4_engine.optimize_for_operation('embedding')
 
             logger.info(f"Initializing MLX embedder with model: {self.model_name}")
-            logger.info("MLX will use Metal Performance Shaders + Apple Neural Engine")
+            logger.info(f"   Metal version: {metal4_engine.capabilities.version.value}")
+            logger.info(f"   Device: {metal4_engine.capabilities.device_name}")
+            logger.info(f"   Unified Memory: {optimization_settings['use_unified_memory']}")
+            logger.info(f"   MPS Graph: {optimization_settings.get('use_mps_graph', False)}")
+            logger.info(f"   Batch size: {optimization_settings['batch_size']}")
 
             # Initialize tokenizer
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
@@ -53,20 +62,26 @@ class MLXEmbedder:
             return True
 
         except ImportError as e:
-            logger.warning(f"MLX not available: {e}")
-            logger.info("Install MLX: pip install mlx")
+            # Silently fail - MLX is optional
             return False
         except Exception as e:
             logger.error(f"Failed to initialize MLX embedder: {e}")
             return False
 
-    def encode(self, texts: List[str], batch_size: int = 32) -> np.ndarray:
+    def encode(self, texts: List[str], batch_size: int = None) -> np.ndarray:
         """
-        Encode texts to embeddings using MLX
+        Encode texts to embeddings using MLX with Metal 4 optimizations
         Automatically uses Metal and ANE when available
         """
         if not self._initialized and not self.initialize():
             return np.array([])
+
+        # Use Metal 4 optimized batch size if not specified
+        if batch_size is None:
+            from metal4_engine import get_metal4_engine
+            metal4_engine = get_metal4_engine()
+            optimization_settings = metal4_engine.optimize_for_operation('embedding')
+            batch_size = optimization_settings['batch_size']
 
         try:
             # Try PyTorch model first (fallback for compatibility)

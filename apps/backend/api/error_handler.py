@@ -1,5 +1,5 @@
 """
-Unified Error Handler for Omni-Studio
+Unified Error Handler for ElohimOS
 Provides consistent error handling across all services
 """
 
@@ -23,8 +23,8 @@ class ErrorType(Enum):
     INTERNAL_ERROR = "internal_error"
 
 
-class OmniStudioError(Exception):
-    """Base exception for OmniStudio"""
+class ElohimOSError(Exception):
+    """Base exception for ElohimOS"""
 
     def __init__(
         self,
@@ -40,7 +40,7 @@ class OmniStudioError(Exception):
         super().__init__(self.message)
 
 
-class OllamaError(OmniStudioError):
+class OllamaError(ElohimOSError):
     """Ollama-specific errors"""
 
     def __init__(
@@ -106,8 +106,8 @@ class ErrorHandler:
         )
 
     @staticmethod
-    def to_http_exception(error: OmniStudioError) -> HTTPException:
-        """Convert OmniStudioError to FastAPI HTTPException"""
+    def to_http_exception(error: ElohimOSError) -> HTTPException:
+        """Convert ElohimOSError to FastAPI HTTPException"""
         return HTTPException(
             status_code=error.status_code,
             detail={

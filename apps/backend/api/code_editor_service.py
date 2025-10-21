@@ -14,14 +14,14 @@ import json
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 
-from omnistudio_memory import OmniStudioMemory
+from elohimos_memory import ElohimOSMemory
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/code-editor", tags=["code-editor"])
 
 # Initialize memory system
-memory = OmniStudioMemory()
+memory = ElohimOSMemory()
 
 # Ensure code editor tables exist
 def init_code_editor_db():

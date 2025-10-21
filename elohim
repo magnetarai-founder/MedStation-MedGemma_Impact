@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+# 🚀 ElohimOS - Just start everything
+# Copyright (c) 2025 MagnetarAI, LLC
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+# Update PYTHONPATH to include packages
+export PYTHONPATH="$SCRIPT_DIR/packages:$PYTHONPATH"
+
+# Start using the existing script
+./tools/scripts/start_web.sh

@@ -102,7 +102,7 @@ export function NetworkSelector({ mode, onModeChange }: NetworkSelectorProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          display_name: 'OmniStudio User',
+          display_name: 'ElohimOS User',
           device_name: window.location.hostname || 'My Device'
         })
       })
@@ -163,7 +163,7 @@ export function NetworkSelector({ mode, onModeChange }: NetworkSelectorProps) {
     console.log('Hosting LAN network as hub')
 
     try {
-      const hostname = window.location.hostname || 'OmniStudio'
+      const hostname = window.location.hostname || 'ElohimOS'
 
       const response = await fetch('/api/v1/lan/hub/start', {
         method: 'POST',

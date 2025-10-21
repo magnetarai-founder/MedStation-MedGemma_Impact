@@ -16,8 +16,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
-    title="OmniStudio Network API",
-    description="LAN Discovery and P2P Mesh networking for OmniStudio",
+    title="ElohimOS Network API",
+    description="LAN Discovery and P2P Mesh networking for ElohimOS",
     version="1.0.0"
 )
 
@@ -50,7 +50,7 @@ except Exception as e:
 @app.get("/")
 async def root():
     return {
-        "service": "OmniStudio Network API",
+        "service": "ElohimOS Network API",
         "status": "running",
         "endpoints": {
             "lan": "/api/v1/lan",

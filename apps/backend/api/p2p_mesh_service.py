@@ -55,7 +55,7 @@ def generate_connection_code() -> str:
 
 
 @router.post("/start")
-async def start_p2p_mesh(display_name: str = "OmniStudio User", device_name: str = "My Device"):
+async def start_p2p_mesh(display_name: str = "ElohimOS User", device_name: str = "My Device"):
     """
     Start P2P mesh networking
     Initializes libp2p and begins peer discovery

@@ -172,7 +172,7 @@ export const useDocsStore = create<DocsStore>()(
       updateActivity: () => set({ lastActivity: Date.now() }),
     }),
     {
-      name: 'omnistudio.docs',
+      name: 'elohimos.docs',
       // Don't persist locked state or last activity
       partialize: (state) => ({
         workspaceView: state.workspaceView,

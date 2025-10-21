@@ -30,7 +30,7 @@ class JoinDeviceRequest(BaseModel):
 @router.post("/discovery/start")
 async def start_discovery():
     """
-    Start discovering OmniStudio instances on the local network
+    Start discovering ElohimOS instances on the local network
 
     Returns:
         Status of discovery service
@@ -69,7 +69,7 @@ async def stop_discovery():
 @router.get("/devices")
 async def get_discovered_devices():
     """
-    Get list of discovered OmniStudio instances on the network
+    Get list of discovered ElohimOS instances on the network
 
     Returns:
         List of discovered devices

@@ -18,18 +18,44 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 import aiofiles
 
-from api.chat_memory import get_memory, ConversationEvent
-from api.chat_enhancements import (
-    ChatTitleGenerator,
-    FileTextExtractor,
-    SimpleEmbedding,
-    ConversationAnalytics,
-    DocumentChunker
-)
-from api.ane_context_engine import get_ane_engine
-from api.token_counter import TokenCounter
-from api.error_handler import ErrorHandler
-from api.model_manager import get_model_manager
+# Try both import styles for flexibility
+try:
+    from api.chat_memory import get_memory, ConversationEvent
+    from api.chat_enhancements import (
+        ChatTitleGenerator,
+        FileTextExtractor,
+        SimpleEmbedding,
+        ConversationAnalytics,
+        DocumentChunker
+    )
+    from api.ane_context_engine import get_ane_engine
+    from api.token_counter import TokenCounter
+    from api.error_handler import ErrorHandler
+    from api.model_manager import get_model_manager
+    from api.metal4_engine import get_metal4_engine
+    from api.adaptive_router import AdaptiveRouter
+    from api.jarvis_memory import JarvisMemory
+    from api.learning_system import LearningSystem
+    from api.ane_router import get_ane_router, ANERouter
+except ImportError:
+    # Fallback for standalone execution
+    from chat_memory import get_memory, ConversationEvent
+    from chat_enhancements import (
+        ChatTitleGenerator,
+        FileTextExtractor,
+        SimpleEmbedding,
+        ConversationAnalytics,
+        DocumentChunker
+    )
+    from ane_context_engine import get_ane_engine
+    from token_counter import TokenCounter
+    from error_handler import ErrorHandler
+    from model_manager import get_model_manager
+    from metal4_engine import get_metal4_engine
+    from adaptive_router import AdaptiveRouter
+    from jarvis_memory import JarvisMemory
+    from learning_system import LearningSystem
+    from ane_router import get_ane_router, ANERouter
 
 logger = logging.getLogger(__name__)
 
@@ -44,8 +70,52 @@ memory = get_memory()
 ane_engine = get_ane_engine()
 token_counter = TokenCounter()
 model_manager = get_model_manager()
+metal4_engine = get_metal4_engine()
+
+# Initialize adaptive router with learning
+jarvis_memory = JarvisMemory()
+learning_system = LearningSystem(memory=jarvis_memory)
+adaptive_router = AdaptiveRouter(memory=jarvis_memory, learning=learning_system)
+
+# Initialize ANE router (ultra-low power mode for field work)
+ane_router = get_ane_router()
+
+# Router mode: 'adaptive' (GPU, learns) or 'ane' (ultra-low power)
+current_router_mode = 'ane'  # Default to ANE for battery life
+
+# Initialize recursive prompt library
+try:
+    from api.recursive_prompt_library import get_recursive_library
+except ImportError:
+    from recursive_prompt_library import get_recursive_library
+recursive_library = get_recursive_library()
+
+# Initialize Ollama config manager
+try:
+    from api.ollama_config import get_ollama_config
+except ImportError:
+    from ollama_config import get_ollama_config
+ollama_config = get_ollama_config()
+
+# Initialize performance monitor
+try:
+    from api.performance_monitor import get_performance_monitor
+except ImportError:
+    from performance_monitor import get_performance_monitor
+performance_monitor = get_performance_monitor()
+
+# Initialize panic mode (missionary safety)
+try:
+    from api.panic_mode import get_panic_mode
+except ImportError:
+    from panic_mode import get_panic_mode
+panic_mode = get_panic_mode()
 
 logger.info("🚀 Chat service initialized with ANE context engine")
+if metal4_engine.is_available():
+    logger.info("✅ Metal 4 tick flow enabled for parallel ML operations")
+logger.info("🧠 Adaptive router initialized with learning system")
+logger.info("🔄 Recursive prompt library ready for complex queries")
 
 
 # ===== Models =====
@@ -83,6 +153,9 @@ class SendMessageRequest(BaseModel):
     top_k: Optional[int] = 40
     repeat_penalty: Optional[float] = 1.1
     system_prompt: Optional[str] = None
+
+    # Recursive Prompting
+    use_recursive: Optional[bool] = True  # Enable by default for complex queries
 
 
 class OllamaModel(BaseModel):
@@ -374,12 +447,126 @@ async def send_message(chat_id: str, request: SendMessageRequest):
     )
     await ChatStorage.append_message(chat_id, user_message)
 
+    # ===== ADAPTIVE ROUTING WITH LEARNING =====
+    # Use adaptive router (GPU, learns) or ANE router (ultra-low power)
+    routing_start = asyncio.get_event_loop().time()
+
+    if current_router_mode == 'ane':
+        # ANE routing (ultra-low power, <0.1W)
+        ane_result = await asyncio.to_thread(
+            ane_router.route,
+            request.content
+        )
+        routing_time = (asyncio.get_event_loop().time() - routing_start) * 1000
+
+        logger.info(f"🧠 ANE routing: {ane_result.target.value} ({ane_result.confidence:.0%}) - {routing_time:.1f}ms [<0.1W]")
+        logger.debug(f"   Reasoning: {ane_result.reasoning}")
+
+        # Convert ANE result to adaptive router format
+        from api.adaptive_router import ToolType, TaskType, AdaptiveRouteResult
+
+        # Map ANE targets to tool types
+        ane_to_tool = {
+            'ollama_chat': ToolType.OLLAMA,
+            'p2p_message': ToolType.P2P,
+            'data_query': ToolType.DATA,
+            'system_cmd': ToolType.SYSTEM,
+        }
+
+        route_result = AdaptiveRouteResult(
+            task_type=TaskType.CHAT,  # Default
+            tool_type=ane_to_tool.get(ane_result.target.value, ToolType.OLLAMA),
+            confidence=ane_result.confidence,
+            matched_patterns=[],
+            reasoning=ane_result.reasoning,
+            fallback_options=[],
+            recommendations=[],
+            adjusted_confidence=ane_result.confidence,
+            learning_insights={},
+            context=ane_result.metadata
+        )
+    else:
+        # Adaptive routing (GPU, learns from history)
+        route_result = await asyncio.to_thread(
+            adaptive_router.route_task,
+            request.content
+        )
+        routing_time = (asyncio.get_event_loop().time() - routing_start) * 1000
+
+        logger.info(f"🧠 Adaptive routing: {route_result.tool_type.value} ({route_result.confidence:.0%}) - {routing_time:.1f}ms")
+        if route_result.reasoning:
+            logger.debug(f"   Reasoning: {route_result.reasoning}")
+    if route_result.recommendations:
+        logger.debug(f"   Recommendations: {len(route_result.recommendations)}")
+
+    # Use routing suggestion if confidence is high enough
+    if route_result.confidence > 0.6 and route_result.model_name:
+        model = route_result.model_name
+        logger.info(f"   Using routed model: {model}")
+
+    # ===== RECURSIVE PROMPT PROCESSING =====
+    # Determine if query is complex enough for recursive decomposition
+    use_recursive = request.use_recursive and len(request.content.split()) > 10
+
+    if use_recursive:
+        logger.info("🔄 Using recursive prompt decomposition for complex query")
+
     # Get conversation history (full 200k token context)
     history = await ChatStorage.get_messages(chat_id, limit=None)
 
-    # Check if there are uploaded documents to use for RAG
-    query_embedding = await asyncio.to_thread(SimpleEmbedding.create_embedding, request.content)
-    relevant_chunks = await asyncio.to_thread(memory.search_document_chunks, chat_id, query_embedding, top_k=3)
+    # ===== METAL 4 TICK FLOW (OPTIMIZED) =====
+    # Only use Metal4 RAG if there are documents in this session
+    # This avoids unnecessary overhead for simple chats
+    relevant_chunks = None
+    has_documents = await asyncio.to_thread(memory.has_documents, chat_id)
+
+    if has_documents:
+        # Documents exist - use Metal4 for parallel embedding + RAG
+        metal4_engine.kick_frame()
+
+        # Try to use Metal GPU embedder (Week 2 optimization)
+        try:
+            from metal_embedder import get_metal_embedder
+            metal_embedder = get_metal_embedder()
+
+            if metal_embedder.is_available():
+                # Use GPU-accelerated embeddings
+                def embedder(text: str):
+                    """Metal GPU embedding"""
+                    return metal_embedder.embed(text)
+                logger.debug("✓ Using Metal GPU embedder")
+            else:
+                # Fall back to CPU
+                def embedder(text: str):
+                    """CPU fallback embedding"""
+                    return SimpleEmbedding.create_embedding(text)
+                logger.debug("✓ Using CPU embedder (Metal GPU not available)")
+        except ImportError:
+            # Metal embedder not available - use SimpleEmbedding
+            def embedder(text: str):
+                """CPU fallback embedding"""
+                return SimpleEmbedding.create_embedding(text)
+            logger.debug("✓ Using CPU embedder (metal_embedder not installed)")
+
+        def rag_retriever(embedding):
+            """Wrapper for RAG retrieval"""
+            return memory.search_document_chunks(chat_id, embedding, top_k=3)
+
+        # Process on Metal4 Q_ml queue (runs in parallel with potential UI updates)
+        metal_result = await asyncio.to_thread(
+            metal4_engine.process_chat_message,
+            request.content,
+            embedder=embedder,
+            rag_retriever=rag_retriever
+        )
+
+        # Extract results
+        relevant_chunks = metal_result.get('context') if metal_result else None
+
+        # Log Metal4 performance
+        if metal_result and 'elapsed_ms' in metal_result:
+            logger.debug(f"⚡ Metal4 embedding+RAG: {metal_result['elapsed_ms']:.2f}ms")
+    # ===== END METAL 4 TICK FLOW =====
 
     # Add relevant document context to the prompt if found
     rag_context = ""
@@ -540,7 +727,7 @@ async def upload_file_to_chat(
 
 @router.get("/models", response_model=List[OllamaModel])
 async def list_ollama_models():
-    """List available Ollama models"""
+    """List available Ollama models (excludes embedding and non-chat models)"""
     models = await ollama_client.list_models()
 
     if not models:
@@ -553,7 +740,24 @@ async def list_ollama_models():
             )
         ]
 
-    return models
+    # Filter out non-chat models (embeddings, foundation models, etc.)
+    # Exclude models with these patterns in their name
+    excluded_patterns = [
+        'embed',      # nomic-embed, all-minilm, etc.
+        'embedding',  # any model with 'embedding' in name
+        '-vision',    # vision models (not pure chat)
+    ]
+
+    chat_models = []
+    for model in models:
+        model_name_lower = model.name.lower()
+        # Skip if model matches any excluded pattern
+        if any(pattern in model_name_lower for pattern in excluded_patterns):
+            logger.debug(f"Filtering out non-chat model: {model.name}")
+            continue
+        chat_models.append(model)
+
+    return chat_models
 
 
 @router.post("/models/preload")
@@ -789,64 +993,131 @@ class ExportToChatRequest(BaseModel):
 async def export_data_to_chat(request: ExportToChatRequest):
     """
     Export query results from Data tab to AI Chat
-    Creates a new chat session with JSON results pre-attached
+    Creates a new chat session with CSV + JSON results pre-attached
     """
     try:
-        # Create JSON export data
-        export_data = {
-            "export_type": "query_results",
-            "query": request.query,
-            "results": request.results,
-            "metadata": {
-                "source_session": request.session_id,
-                "query_id": request.query_id,
-                "row_count": len(request.results),
-                "exported_at": datetime.utcnow().isoformat()
-            }
-        }
+        import pandas as pd
+        import io
+
+        # Create DataFrame from results
+        df = pd.DataFrame(request.results)
 
         # Create new chat session
         chat_session = await ChatStorage.create_session(
-            title="Data Analysis Export",
+            title="Query Analysis",
             model="qwen2.5-coder:7b-instruct"
         )
 
-        # Save JSON file to uploads
-        file_id = uuid.uuid4().hex[:12]
-        filename = f"query_results_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.json"
-        stored_filename = f"{chat_session.id}_{file_id}.json"
-        file_path = CHAT_UPLOADS_DIR / stored_filename
+        # Save CSV file to uploads (primary data format for AI analysis)
+        csv_file_id = uuid.uuid4().hex[:12]
+        csv_filename = f"query_results_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.csv"
+        csv_stored_filename = f"{chat_session.id}_{csv_file_id}.csv"
+        csv_file_path = CHAT_UPLOADS_DIR / csv_stored_filename
 
-        # Write JSON file
-        async with aiofiles.open(file_path, 'w') as f:
-            await f.write(json.dumps(export_data, indent=2))
+        # Write CSV file
+        async with aiofiles.open(csv_file_path, 'w') as f:
+            csv_buffer = io.StringIO()
+            df.to_csv(csv_buffer, index=False)
+            await f.write(csv_buffer.getvalue())
 
-        # Create file info and attach to chat
-        file_info = {
-            "id": file_id,
-            "original_name": filename,
-            "stored_name": stored_filename,
-            "size": file_path.stat().st_size,
-            "type": "application/json",
-            "uploaded_at": datetime.utcnow().isoformat(),
-            "text_preview": f"Query results: {len(request.results)} rows",
-            "text_extracted": True,
-            "export_metadata": export_data["metadata"]
-        }
+        # Create CSV preview for RAG (first 1000 chars)
+        csv_preview = csv_buffer.getvalue()[:1000]
 
-        # Add system message about the attached file
+        # Extract CSV text for RAG chunking
+        extracted_text = f"""Query Results Dataset
+
+SQL Query:
+{request.query}
+
+Dataset Information:
+- Rows: {len(request.results)}
+- Columns: {', '.join(df.columns.tolist())}
+
+Data Preview (CSV format):
+{csv_preview}
+
+Column Statistics:
+{df.describe(include='all').to_string() if len(df) > 0 else 'No data'}
+"""
+
+        # Create chunks and embeddings for RAG
+        chunks = await asyncio.to_thread(
+            DocumentChunker.create_chunks_with_metadata,
+            extracted_text,
+            {
+                "original_name": csv_filename,
+                "type": "text/csv",
+                "query": request.query,
+                "row_count": len(request.results)
+            }
+        )
+
+        # Store chunks in memory for semantic search
+        await asyncio.to_thread(memory.store_document_chunks, chat_session.id, chunks)
+
+        # Add system message with data summary and analysis prompt
         system_message = ChatMessage(
             role="assistant",
-            content=f"📊 Data exported from query:\n\n```sql\n{request.query}\n```\n\n**Results**: {len(request.results)} rows\n**File**: {filename}\n\nWhat would you like to know about this data?",
-            timestamp=datetime.utcnow().isoformat()
+            content=f"""📊 **Query Results Loaded**
+
+I've analyzed your SQL query results. Here's what I found:
+
+**Query:**
+```sql
+{request.query}
+```
+
+**Dataset Summary:**
+- Total Rows: {len(request.results):,}
+- Columns: {len(df.columns)}
+- Data File: `{csv_filename}`
+
+**Available Columns:**
+{', '.join(f'`{col}`' for col in df.columns.tolist())}
+
+**Sample Data:**
+```
+{df.head(5).to_string(index=False) if len(df) > 0 else 'No data'}
+```
+
+---
+
+I can help you:
+- 🔍 Analyze patterns and trends
+- 📈 Generate insights and summaries
+- ⚠️ Identify anomalies or outliers
+- 💡 Suggest follow-up queries
+- 📊 Explain what the data means
+
+What would you like to know about this data?""",
+            timestamp=datetime.utcnow().isoformat(),
+            files=[{
+                "id": csv_file_id,
+                "original_name": csv_filename,
+                "stored_name": csv_stored_filename,
+                "size": csv_file_path.stat().st_size,
+                "type": "text/csv",
+                "uploaded_at": datetime.utcnow().isoformat(),
+                "text_preview": csv_preview,
+                "text_extracted": True,
+                "chunks_created": len(chunks)
+            }]
         )
         await ChatStorage.append_message(chat_session.id, system_message)
 
-        logger.info(f"Exported {len(request.results)} rows to chat session {chat_session.id}")
+        logger.info(f"Exported {len(request.results)} rows to chat session {chat_session.id} with {len(chunks)} RAG chunks")
 
         return {
             "chat_id": chat_session.id,
-            "file_info": file_info,
+            "file_info": {
+                "id": csv_file_id,
+                "original_name": csv_filename,
+                "stored_name": csv_stored_filename,
+                "size": csv_file_path.stat().st_size,
+                "type": "text/csv",
+                "row_count": len(request.results),
+                "chunks_created": len(chunks)
+            },
             "status": "success"
         }
 
@@ -1130,6 +1401,396 @@ async def unload_model(model_name: str):
             status_code=500,
             detail=f"Failed to unload model: {str(e)}"
         )
+
+
+# ===== ADAPTIVE ROUTER ENDPOINTS =====
+
+class RouterFeedback(BaseModel):
+    """Feedback for adaptive router learning"""
+    command: str
+    tool_used: str
+    success: bool
+    execution_time: float
+    user_satisfaction: Optional[int] = Field(None, ge=1, le=5, description="1-5 rating")
+
+
+@router.post("/adaptive-router/feedback")
+async def submit_router_feedback(feedback: RouterFeedback):
+    """Submit feedback for adaptive router to learn from"""
+    try:
+        # Record execution result
+        await asyncio.to_thread(
+            adaptive_router.record_execution_result,
+            feedback.command,
+            feedback.tool_used,
+            feedback.success,
+            feedback.execution_time
+        )
+
+        # Optionally record user satisfaction in learning system
+        if feedback.user_satisfaction is not None:
+            # TODO: Add user satisfaction tracking to learning system
+            pass
+
+        logger.info(f"📊 Router feedback: {feedback.command[:50]}... → {feedback.tool_used} ({'✓' if feedback.success else '✗'})")
+
+        return {
+            "status": "recorded",
+            "message": "Feedback recorded successfully"
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to record router feedback: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/adaptive-router/stats")
+async def get_router_stats():
+    """Get adaptive router statistics and learning progress"""
+    try:
+        # Get routing stats
+        routing_stats = adaptive_router.get_routing_stats() if hasattr(adaptive_router, 'get_routing_stats') else {}
+
+        # Get learning stats
+        learning_stats = await asyncio.to_thread(learning_system.get_statistics)
+
+        # Get memory stats
+        memory_stats = await asyncio.to_thread(jarvis_memory.get_statistics)
+
+        # Get top learned patterns
+        learned_patterns = await asyncio.to_thread(learning_system.get_learned_patterns) if hasattr(learning_system, 'get_learned_patterns') else []
+
+        # Get user preferences
+        preferences = await asyncio.to_thread(learning_system.get_preferences)
+
+        return {
+            "routing": routing_stats,
+            "learning": learning_stats,
+            "memory": memory_stats,
+            "top_patterns": learned_patterns[:10],
+            "preferences": [
+                {
+                    "category": p.category,
+                    "preference": p.preference,
+                    "confidence": p.confidence,
+                    "evidence_count": p.evidence_count
+                }
+                for p in preferences[:10]
+            ]
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to get router stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/adaptive-router/explain")
+async def explain_routing(command: str):
+    """Explain how a command would be routed"""
+    try:
+        explanation = await asyncio.to_thread(
+            adaptive_router.explain_routing if hasattr(adaptive_router, 'explain_routing') else adaptive_router.route_task,
+            command
+        )
+
+        if isinstance(explanation, str):
+            return {"explanation": explanation}
+        else:
+            # If explain_routing doesn't exist, use route_task result
+            return {
+                "task_type": explanation.task_type.value,
+                "tool_type": explanation.tool_type.value,
+                "confidence": explanation.confidence,
+                "reasoning": explanation.reasoning,
+                "learning_insights": explanation.learning_insights if hasattr(explanation, 'learning_insights') else {}
+            }
+
+    except Exception as e:
+        logger.error(f"Failed to explain routing: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== ANE ROUTER ENDPOINTS (Ultra-Low Power Mode) =====
+
+@router.get("/router/mode")
+async def get_router_mode():
+    """Get current router mode (adaptive or ane)"""
+    global current_router_mode
+    return {
+        "mode": current_router_mode,
+        "description": "adaptive (GPU, learns)" if current_router_mode == 'adaptive' else "ane (ultra-low power <0.1W)",
+        "power_estimate": "5-10W" if current_router_mode == 'adaptive' else "<0.1W"
+    }
+
+
+@router.post("/router/mode")
+async def set_router_mode(mode: str):
+    """
+    Set router mode for battery optimization
+
+    Modes:
+    - 'adaptive': GPU-based routing with learning (5-10W)
+    - 'ane': Apple Neural Engine routing (<0.1W) - best for field work
+    """
+    global current_router_mode
+
+    if mode not in ['adaptive', 'ane']:
+        raise HTTPException(status_code=400, detail="Mode must be 'adaptive' or 'ane'")
+
+    current_router_mode = mode
+    logger.info(f"🔄 Router mode changed to: {mode}")
+
+    return {
+        "mode": mode,
+        "description": "adaptive (GPU, learns)" if mode == 'adaptive' else "ane (ultra-low power <0.1W)",
+        "power_estimate": "5-10W" if mode == 'adaptive' else "<0.1W",
+        "message": f"Router mode set to {mode}"
+    }
+
+
+@router.get("/router/stats")
+async def get_router_stats():
+    """Get combined stats from both routers"""
+    try:
+        adaptive_stats = adaptive_router.get_routing_stats() if hasattr(adaptive_router, 'get_routing_stats') else {}
+        ane_stats = ane_router.get_stats()
+
+        return {
+            "current_mode": current_router_mode,
+            "adaptive_router": adaptive_stats,
+            "ane_router": ane_stats
+        }
+    except Exception as e:
+        logger.error(f"Failed to get router stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== RECURSIVE PROMPT ENDPOINTS =====
+
+class RecursiveQueryRequest(BaseModel):
+    """Request for recursive prompt processing"""
+    query: str
+    model: Optional[str] = "qwen2.5-coder:7b-instruct"
+
+
+@router.post("/recursive-prompt/execute")
+async def execute_recursive_prompt(request: RecursiveQueryRequest):
+    """Execute a query using recursive prompt decomposition"""
+    try:
+        import ollama
+        ollama_client = ollama.AsyncClient()
+
+        result = await recursive_library.process_query(
+            request.query,
+            ollama_client
+        )
+
+        return {
+            "final_answer": result['final_answer'],
+            "steps_executed": result['steps_executed'],
+            "total_time_ms": result['total_time_ms'],
+            "time_saved_ms": result['time_saved_ms'],
+            "cache_hits": result['cache_hits'],
+            "plan": {
+                "steps": [
+                    {
+                        "step_number": step.step_number,
+                        "description": step.description,
+                        "complexity": step.complexity.value,
+                        "backend": step.backend.value
+                    }
+                    for step in result['plan'].steps
+                ],
+                "estimated_time_ms": result['plan'].total_estimated_time_ms,
+                "estimated_power_w": result['plan'].estimated_power_usage_w
+            },
+            "step_results": [
+                {
+                    "step_number": r.step_number,
+                    "execution_time_ms": r.execution_time_ms,
+                    "backend_used": r.backend_used.value,
+                    "cached": r.cached,
+                    "output": r.output[:200] + "..." if len(r.output) > 200 else r.output
+                }
+                for r in result['results']
+            ]
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to execute recursive prompt: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/recursive-prompt/stats")
+async def get_recursive_stats():
+    """Get recursive prompt library statistics"""
+    try:
+        stats = recursive_library.get_stats()
+        return stats
+    except Exception as e:
+        logger.error(f"Failed to get recursive stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== OLLAMA CONFIG ENDPOINTS =====
+
+class SetModeRequest(BaseModel):
+    """Request to set performance mode"""
+    mode: str  # performance, balanced, silent
+
+
+@router.get("/ollama/config")
+async def get_ollama_configuration():
+    """Get current Ollama configuration"""
+    try:
+        summary = ollama_config.get_config_summary()
+        return summary
+    except Exception as e:
+        logger.error(f"Failed to get Ollama config: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/ollama/config/mode")
+async def set_ollama_mode(request: SetModeRequest):
+    """Set Ollama performance mode"""
+    try:
+        ollama_config.set_mode(request.mode)
+        return {
+            "status": "success",
+            "mode": request.mode,
+            "config": ollama_config.get_config_summary()
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to set Ollama mode: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/ollama/config/auto-detect")
+async def auto_detect_ollama_config():
+    """Auto-detect optimal Ollama settings for current hardware"""
+    try:
+        optimal_config = ollama_config.detect_optimal_settings()
+        ollama_config.config = optimal_config
+        ollama_config.save_config()
+
+        return {
+            "status": "success",
+            "message": "Auto-detected optimal settings",
+            "config": ollama_config.get_config_summary()
+        }
+    except Exception as e:
+        logger.error(f"Failed to auto-detect config: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== PERFORMANCE MONITORING ENDPOINTS =====
+
+@router.get("/performance/current")
+async def get_current_performance():
+    """Get current performance metrics"""
+    try:
+        metrics = performance_monitor.get_current_metrics()
+        return metrics
+    except Exception as e:
+        logger.error(f"Failed to get performance metrics: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/performance/stats")
+async def get_performance_statistics():
+    """Get performance statistics over time"""
+    try:
+        stats = performance_monitor.get_statistics()
+        return stats
+    except Exception as e:
+        logger.error(f"Failed to get performance stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/performance/history")
+async def get_performance_history(last_n: int = 20):
+    """Get recent performance history"""
+    try:
+        history = performance_monitor.get_history(last_n)
+        return {"history": history}
+    except Exception as e:
+        logger.error(f"Failed to get performance history: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/performance/thermal")
+async def check_thermal_throttling():
+    """Check for thermal throttling"""
+    try:
+        thermal_check = performance_monitor.check_thermal_throttling()
+        return thermal_check
+    except Exception as e:
+        logger.error(f"Failed to check thermal status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/performance/reset")
+async def reset_performance_metrics():
+    """Reset performance metrics"""
+    try:
+        performance_monitor.reset()
+        return {"status": "success", "message": "Performance metrics reset"}
+    except Exception as e:
+        logger.error(f"Failed to reset performance metrics: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== PANIC MODE ENDPOINTS (MISSIONARY SAFETY) =====
+
+class PanicTriggerRequest(BaseModel):
+    """Request to trigger panic mode"""
+    reason: Optional[str] = "Manual activation"
+    confirmation: str  # Must be "CONFIRM" to prevent accidental triggers
+
+
+@router.post("/panic/trigger")
+async def trigger_panic_mode(request: PanicTriggerRequest):
+    """
+    🚨 EMERGENCY: Trigger panic mode
+    Wipes sensitive data, closes connections, secures databases
+    THIS IS IRREVERSIBLE!
+    """
+    if request.confirmation != "CONFIRM":
+        raise HTTPException(
+            status_code=400,
+            detail="Panic mode requires confirmation='CONFIRM'"
+        )
+
+    try:
+        result = await panic_mode.trigger_panic(request.reason)
+        return result
+    except Exception as e:
+        logger.critical(f"Panic mode execution failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/panic/status")
+async def get_panic_status():
+    """Get current panic mode status"""
+    try:
+        status = panic_mode.get_panic_status()
+        return status
+    except Exception as e:
+        logger.error(f"Failed to get panic status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/panic/reset")
+async def reset_panic_mode():
+    """Reset panic mode (admin only)"""
+    try:
+        panic_mode.reset_panic()
+        return {"status": "success", "message": "Panic mode reset"}
+    except Exception as e:
+        logger.error(f"Failed to reset panic mode: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # Export router

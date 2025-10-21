@@ -54,15 +54,15 @@ from neutron_utils.sql_utils import SQLProcessor
 from neutron_utils.config import config
 from neutron_utils.json_utils import df_to_jsonsafe_records as _df_to_jsonsafe_records
 from pulsar_core import JsonToExcelEngine
-from omnistudio_memory import OmniStudioMemory
+from elohimos_memory import ElohimOSMemory
 from data_engine import get_data_engine
 
 # Session storage
 sessions: Dict[str, dict] = {}
 query_results: Dict[str, pd.DataFrame] = {}
 
-# Initialize OmniStudio Memory System
-omnistudio_memory = OmniStudioMemory()
+# Initialize ElohimOS Memory System
+elohimos_memory = ElohimOSMemory()
 
 # Initialize Data Engine
 data_engine = get_data_engine()
@@ -72,7 +72,7 @@ data_engine = get_data_engine()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    print("Starting OmniStudio API...")
+    print("Starting ElohimOS API...")
     # Create necessary directories
     api_dir = Path(__file__).parent
     (api_dir / "temp_uploads").mkdir(exist_ok=True)
@@ -109,7 +109,7 @@ async def lifespan(app: FastAPI):
             session['engine'].close()
 
 app = FastAPI(
-    title="OmniStudio API",
+    title="ElohimOS API",
     description="SQL query engine for Excel files",
     version="1.0.0",
     lifespan=lifespan
@@ -294,7 +294,7 @@ def get_column_info(df: pd.DataFrame) -> List[ColumnInfo]:
 # Endpoints
 @app.get("/")
 async def root():
-    return {"message": "OmniStudio API", "version": "1.0.0"}
+    return {"message": "ElohimOS API", "version": "1.0.0"}
 
 @app.post("/api/sessions/create", response_model=SessionResponse)
 async def create_session():
@@ -1034,7 +1034,7 @@ class SavedQueryUpdateRequest(BaseModel):
 async def save_query(request: SavedQueryRequest):
     """Save a query for later use"""
     try:
-        query_id = omnistudio_memory.save_query(
+        query_id = elohimos_memory.save_query(
             name=request.name,
             query=request.query,
             query_type=request.query_type,
@@ -1053,7 +1053,7 @@ async def get_saved_queries(
 ):
     """Get all saved queries"""
     try:
-        queries = omnistudio_memory.get_saved_queries(
+        queries = elohimos_memory.get_saved_queries(
             folder=folder,
             query_type=query_type
         )
@@ -1066,14 +1066,14 @@ async def update_saved_query(query_id: int, request: SavedQueryUpdateRequest):
     """Update a saved query (partial updates supported)"""
     try:
         # Get existing query
-        all_queries = omnistudio_memory.get_saved_queries()
+        all_queries = elohimos_memory.get_saved_queries()
         existing = next((q for q in all_queries if q['id'] == query_id), None)
 
         if not existing:
             raise HTTPException(status_code=404, detail="Query not found")
 
         # Merge updates with existing data
-        omnistudio_memory.update_saved_query(
+        elohimos_memory.update_saved_query(
             query_id=query_id,
             name=request.name if request.name is not None else existing['name'],
             query=request.query if request.query is not None else existing['query'],
@@ -1092,7 +1092,7 @@ async def update_saved_query(query_id: int, request: SavedQueryUpdateRequest):
 async def delete_saved_query(query_id: int):
     """Delete a saved query"""
     try:
-        omnistudio_memory.delete_saved_query(query_id)
+        elohimos_memory.delete_saved_query(query_id)
         return {"success": True}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -1142,7 +1142,7 @@ class AppSettings(BaseModel):
 # Load settings from database or use defaults
 def load_app_settings() -> AppSettings:
     """Load settings from database"""
-    stored = omnistudio_memory.get_all_settings()
+    stored = elohimos_memory.get_all_settings()
     if stored:
         # Merge stored settings with defaults
         defaults = AppSettings().dict()
@@ -1152,7 +1152,7 @@ def load_app_settings() -> AppSettings:
 
 def save_app_settings(settings: AppSettings) -> None:
     """Save settings to database"""
-    omnistudio_memory.set_all_settings(settings.dict())
+    elohimos_memory.set_all_settings(settings.dict())
 
 app_settings = load_app_settings()
 
@@ -1210,10 +1210,10 @@ async def reset_all_data():
         import shutil
 
         # Clear all saved queries and history
-        omnistudio_memory.memory.conn.execute("DELETE FROM query_history")
-        omnistudio_memory.memory.conn.execute("DELETE FROM saved_queries")
-        omnistudio_memory.memory.conn.execute("DELETE FROM app_settings")
-        omnistudio_memory.memory.conn.commit()
+        elohimos_memory.memory.conn.execute("DELETE FROM query_history")
+        elohimos_memory.memory.conn.execute("DELETE FROM saved_queries")
+        elohimos_memory.memory.conn.execute("DELETE FROM app_settings")
+        elohimos_memory.memory.conn.commit()
 
         # Reset settings to defaults
         global app_settings
@@ -1248,7 +1248,7 @@ async def uninstall_app():
         from pathlib import Path
 
         # Close database connection
-        omnistudio_memory.close()
+        elohimos_memory.close()
 
         # Get data directories
         api_dir = Path(__file__).parent
@@ -1305,8 +1305,8 @@ async def clear_team_messages():
 async def clear_query_library():
     """Clear all saved SQL queries"""
     try:
-        omnistudio_memory.memory.conn.execute("DELETE FROM saved_queries")
-        omnistudio_memory.memory.conn.commit()
+        elohimos_memory.memory.conn.execute("DELETE FROM saved_queries")
+        elohimos_memory.memory.conn.commit()
 
         return {"success": True, "message": "Query library cleared"}
     except Exception as e:
@@ -1316,8 +1316,8 @@ async def clear_query_library():
 async def clear_query_history():
     """Clear SQL execution history"""
     try:
-        omnistudio_memory.memory.conn.execute("DELETE FROM query_history")
-        omnistudio_memory.memory.conn.commit()
+        elohimos_memory.memory.conn.execute("DELETE FROM query_history")
+        elohimos_memory.memory.conn.commit()
 
         return {"success": True, "message": "Query history cleared"}
     except Exception as e:
@@ -1360,8 +1360,8 @@ async def clear_code_files():
 async def reset_settings():
     """Reset all settings to defaults"""
     try:
-        omnistudio_memory.memory.conn.execute("DELETE FROM app_settings")
-        omnistudio_memory.memory.conn.commit()
+        elohimos_memory.memory.conn.execute("DELETE FROM app_settings")
+        elohimos_memory.memory.conn.commit()
 
         global app_settings
         app_settings = AppSettings()
@@ -1377,9 +1377,9 @@ async def reset_data():
         import shutil
 
         # Clear database tables except settings
-        omnistudio_memory.memory.conn.execute("DELETE FROM query_history")
-        omnistudio_memory.memory.conn.execute("DELETE FROM saved_queries")
-        omnistudio_memory.memory.conn.commit()
+        elohimos_memory.memory.conn.execute("DELETE FROM query_history")
+        elohimos_memory.memory.conn.execute("DELETE FROM saved_queries")
+        elohimos_memory.memory.conn.commit()
 
         # Clear chat data
         api_dir = Path(__file__).parent
@@ -1476,7 +1476,7 @@ async def export_chats():
 async def export_queries():
     """Export query library as JSON"""
     try:
-        queries = omnistudio_memory.get_saved_queries()
+        queries = elohimos_memory.get_saved_queries()
 
         temp_dir = Path(__file__).parent / "temp_exports"
         temp_dir.mkdir(exist_ok=True)

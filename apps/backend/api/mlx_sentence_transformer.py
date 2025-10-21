@@ -45,7 +45,7 @@ class MLXSentenceTransformer:
             return True
             
         except Exception as e:
-            logger.error(f"Failed to initialize: {e}")
+            # Silently fail - MLX is optional
             return False
     
     def encode(self, texts: List[str], batch_size: int = 32) -> np.ndarray:

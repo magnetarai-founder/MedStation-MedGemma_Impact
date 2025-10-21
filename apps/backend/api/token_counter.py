@@ -52,6 +52,10 @@ class TokenCounter:
         try:
             tokens = 0
 
+            # Return 0 for empty message lists
+            if not messages:
+                return 0
+
             for message in messages:
                 # Message overhead: 4 tokens per message
                 tokens += 4
@@ -62,7 +66,7 @@ class TokenCounter:
                 # Count content tokens
                 tokens += len(self.encoding.encode(message.get("content", "")))
 
-            # Add 2 tokens for priming
+            # Add 2 tokens for priming (only if there are messages)
             tokens += 2
 
             return tokens

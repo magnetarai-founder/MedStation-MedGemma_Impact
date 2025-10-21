@@ -1,7 +1,7 @@
 """
 LAN Discovery Service
 
-Enables local network discovery of OmniStudio instances using mDNS/Bonjour.
+Enables local network discovery of ElohimOS instances using mDNS/Bonjour.
 Central Hub Model: One laptop acts as hub, others connect to it.
 
 Built for the persecuted Church - no cloud, no central servers.
@@ -24,7 +24,7 @@ SERVICE_TYPE = "_omnistudio._tcp.local."
 
 @dataclass
 class LANDevice:
-    """Represents a discovered OmniStudio instance on the network"""
+    """Represents a discovered ElohimOS instance on the network"""
     id: str
     name: str
     ip: str
@@ -106,7 +106,7 @@ class LANDiscoveryService:
     - All communication is local network only
     """
 
-    def __init__(self, device_name: str = "OmniStudio", version: str = "1.0.0"):
+    def __init__(self, device_name: str = "ElohimOS", version: str = "1.0.0"):
         self.device_name = device_name
         self.version = version
         self.device_id = self._generate_device_id()
@@ -143,7 +143,7 @@ class LANDiscoveryService:
             return "127.0.0.1"
 
     async def start_discovery(self) -> None:
-        """Start discovering other OmniStudio instances on the network"""
+        """Start discovering other ElohimOS instances on the network"""
         logger.info("Starting LAN discovery...")
 
         self.zeroconf = AsyncZeroconf()

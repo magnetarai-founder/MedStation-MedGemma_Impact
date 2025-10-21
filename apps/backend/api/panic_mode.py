@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Panic Mode for OmniStudio
+Panic Mode for ElohimOS
 Emergency security system for missionaries in hostile situations
 Rapidly wipes sensitive data, closes connections, encrypts databases
 """
@@ -150,8 +150,8 @@ class PanicMode:
         """Ensure databases are encrypted"""
         db_paths = [
             Path(".neutron_data/neutron_chat.db"),
-            Path.home() / ".omnistudio" / "omnistudio_memory.db",
-            Path.home() / ".omnistudio" / "learning.db",
+            Path.home() / ".elohimos" / "elohimos_memory.db",
+            Path.home() / ".elohimos" / "learning.db",
         ]
 
         for db_path in db_paths:

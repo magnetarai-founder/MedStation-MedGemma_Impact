@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Performance Monitoring for OmniStudio
+Performance Monitoring for ElohimOS
 Real-time tracking of tokens/s, GPU %, temperature, memory
 Critical for missionary field deployments
 """

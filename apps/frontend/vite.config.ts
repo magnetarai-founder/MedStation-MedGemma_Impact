@@ -23,6 +23,14 @@ export default defineConfig({
       'Cache-Control': 'no-store',
     },
     proxy: {
+      '/api/v1/lan': {
+        target: 'http://localhost:8001',
+        changeOrigin: true,
+      },
+      '/api/v1/p2p': {
+        target: 'http://localhost:8001',
+        changeOrigin: true,
+      },
       '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,

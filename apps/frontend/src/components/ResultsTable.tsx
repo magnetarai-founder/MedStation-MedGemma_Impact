@@ -2,14 +2,17 @@ import { useSessionStore } from '@/stores/sessionStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useEditorStore } from '@/stores/editorStore'
 import { useNavigationStore } from '@/stores/navigationStore'
-import { Download, Table, Trash2, MessageSquare } from 'lucide-react'
+import { useChatStore } from '@/stores/chatStore'
+import { Download, Table, Trash2, MessageSquare, Loader2 } from 'lucide-react'
 import { useMutation } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import toast from 'react-hot-toast'
 
 export function ResultsTable() {
-  const { sessionId, currentQuery, isExecuting, setCurrentQuery, exportFormat, setExportFormat } = useSessionStore()
+  const { sessionId, currentQuery, currentSql, isExecuting, setCurrentQuery, exportFormat, setExportFormat } = useSessionStore()
   const { contentType, hasExecuted } = useEditorStore()
   const { setActiveTab } = useNavigationStore()
+  const { setActiveChat } = useChatStore()
 
   const exportMutation = useMutation({
     mutationKey: ['export-results', sessionId, currentQuery?.query_id],
@@ -29,11 +32,12 @@ export function ResultsTable() {
 
       // Remember the format after successful download (it's already saved via setExportFormat onChange)
     },
-    onSuccess: () => {
-      // Export completed successfully
+    onSuccess: (_, format) => {
+      toast.success(`Successfully exported to ${format.toUpperCase()}`)
     },
     onError: (error) => {
       console.error('Export failed:', error)
+      toast.error('Failed to export results')
     },
   })
 
@@ -48,7 +52,7 @@ export function ResultsTable() {
         body: JSON.stringify({
           session_id: sessionId,
           query_id: currentQuery.query_id,
-          query: currentQuery.sql_query || '',
+          query: currentSql || 'SELECT * FROM excel_file',
           results: currentQuery.preview || []
         })
       })
@@ -57,12 +61,16 @@ export function ResultsTable() {
       return await response.json()
     },
     onSuccess: (data) => {
-      // Navigate to chat tab
+      // Navigate to chat tab and activate the new session
+      setActiveChat(data.chat_id)
       setActiveTab('chat')
+      const rowCount = currentQuery?.row_count || currentQuery?.preview?.length || 0
+      toast.success(`${rowCount.toLocaleString()} rows exported for AI analysis!`)
       console.log('Exported to chat session:', data.chat_id)
     },
     onError: (error) => {
       console.error('Export to AI chat failed:', error)
+      toast.error('Failed to export to AI Chat')
     },
   })
 
@@ -122,7 +130,11 @@ export function ResultsTable() {
               }`}
               title={currentQuery?.is_preview_only ? "Run full conversion to download" : "Download results"}
             >
-              <Download className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+              {exportMutation.isPending ? (
+                <Loader2 className="w-4 h-4 text-gray-700 dark:text-gray-300 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+              )}
             </button>
           </div>
 
@@ -136,10 +148,14 @@ export function ResultsTable() {
                   ? 'opacity-50 cursor-not-allowed'
                   : 'hover:bg-primary-100 dark:hover:bg-primary-900/30 text-primary-700 dark:text-primary-400'
               }`}
-              title="Export to AI Chat"
+              title="Analyze query results with AI"
             >
-              <MessageSquare className="w-3.5 h-3.5" />
-              <span>AI Chat</span>
+              {exportToAIChatMutation.isPending ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <MessageSquare className="w-3.5 h-3.5" />
+              )}
+              <span>{exportToAIChatMutation.isPending ? 'Exporting...' : 'Analyze with AI'}</span>
             </button>
           </div>
 

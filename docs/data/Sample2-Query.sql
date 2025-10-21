@@ -1,0 +1,20 @@
+SELECT
+    'Cub'::text as merchant_name,
+    Merchant_SKU::text as sku,
+    Type_of_Barcode::text as type_of_barcode,
+    Merchant_SKU::text as barcode,
+    Product_Name::text as product_name,
+    Brand_Name::text as brand_name,
+    Product_Description::text as description,
+    Unit_Count::text as unit_size,
+    Unit_of_Measure::text as unit_of_measure,
+    Item_Pack_Quantity::int as item_pack_quantity,
+    Total_Eaches::int as total_eaches,
+    Main_Image_URL::text as main_image_url,
+    Other_Image_URL1::text as other_image_url_1,
+    Other_Image_URL2::text as other_image_url_2,
+    Other_Image_URL3::text as other_image_url_3,
+    Other_Image_URL4::text as other_image_url_4,
+    Other_Image_URL5::text as other_image_url_5,
+    Private_label_flag::text as private_label_flag
+FROM excel_file

@@ -1,8 +1,10 @@
 {
-  "name": "neutron-star-frontend",
+  "name": "elohimos-frontend",
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "author": "MagnetarAI, LLC",
+  "organization": "MagnetarAI, LLC",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

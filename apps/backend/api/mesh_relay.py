@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Mesh Relay Routing for OmniStudio
+Mesh Relay Routing for ElohimOS
 Multi-hop message routing when peers can't connect directly
 Perfect for missionaries spread across buildings/areas
 """

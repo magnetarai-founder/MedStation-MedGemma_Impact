@@ -49,7 +49,7 @@ class UnifiedEmbedder:
         if self._initialized:
             return True
             
-        logger.info(f"Initializing {self.backend} embedding backend")
+        # Silently try backends (only log success)
         
         if self.backend == 'mlx':
             try:
@@ -61,9 +61,9 @@ class UnifiedEmbedder:
                     self.mlx_available = True
                     logger.info("MLX sentence transformer initialized")
                     return True
-            except Exception as e:
-                logger.warning(f"MLX sentence transformer failed: {e}")
-                
+            except Exception:
+                pass  # Silently fail
+
             try:
                 # Fall back to MLX embedder
                 from mlx_embedder import MLXEmbedder
@@ -73,8 +73,8 @@ class UnifiedEmbedder:
                     self.mlx_available = True
                     logger.info("MLX embedder initialized")
                     return True
-            except Exception as e:
-                logger.warning(f"MLX embedder failed: {e}")
+            except Exception:
+                pass  # Silently fail
                 
         elif self.backend == 'sentence-transformers':
             try:

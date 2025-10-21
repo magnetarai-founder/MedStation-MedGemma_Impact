@@ -7,7 +7,7 @@ interface SettingsState {
   // Display settings
   logoAnimation: LogoAnimation
 
-  // Chat settings (Omni-Studio)
+  // Chat settings (ElohimOS)
   chatAutoTitle: boolean
   chatContextWindow: number
 
@@ -90,7 +90,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   // Display
   logoAnimation: getItem(KEYS.logoAnimation, 'pulsing'),
 
-  // Chat (Omni-Studio)
+  // Chat (ElohimOS)
   chatAutoTitle: getItem(KEYS.chatAutoTitle, true),
   chatContextWindow: getItem(KEYS.chatContextWindow, 50),
 

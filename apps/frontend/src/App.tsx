@@ -112,7 +112,7 @@ export default function App() {
             <div className="absolute inset-0 bg-gradient-to-br from-primary-500 to-primary-700 rounded-full animate-pulse"></div>
             <div className="absolute inset-2 bg-gradient-to-br from-blue-300 to-primary-400 rounded-full"></div>
           </div>
-          <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">OmniStudio</p>
+          <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">ElohimOS</p>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Equipping the global Church...</p>
         </div>
       </div>

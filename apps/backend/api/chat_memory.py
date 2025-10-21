@@ -454,6 +454,18 @@ class NeutronChatMemory:
 
             self.conn.commit()
 
+    def has_documents(self, session_id: str) -> bool:
+        """Check if a session has any uploaded documents"""
+        cur = self.conn.execute("""
+            SELECT COUNT(*) as count
+            FROM document_chunks
+            WHERE session_id = ?
+            LIMIT 1
+        """, (session_id,))
+
+        row = cur.fetchone()
+        return row["count"] > 0 if row else False
+
     def search_document_chunks(self, session_id: str, query_embedding: List[float], top_k: int = 3) -> List[Dict[str, Any]]:
         """Search for relevant document chunks using semantic similarity"""
         cur = self.conn.execute("""
