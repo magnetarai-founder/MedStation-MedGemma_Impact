@@ -39,7 +39,7 @@ export function SpreadsheetEditor({ data, onChange, onSave }: SpreadsheetEditorP
 
   // Initialize with default grid if empty
   useEffect(() => {
-    if (data.rows.length === 0) {
+    if (!data.rows || !data.columns || data.rows.length === 0) {
       const defaultData: SpreadsheetData = {
         columns: generateColumnHeaders(10),
         rows: Array(20).fill(null).map(() =>
@@ -323,102 +323,9 @@ export function SpreadsheetEditor({ data, onChange, onSave }: SpreadsheetEditorP
 
   return (
     <div className="h-full flex flex-col bg-white dark:bg-gray-900">
-      {/* Toolbar */}
-      <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-        <button
-          onClick={addRow}
-          className="flex items-center gap-1 px-2 py-1 text-xs bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded transition-all"
-          title="Add Row"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Row</span>
-        </button>
-
-        <button
-          onClick={addColumn}
-          className="flex items-center gap-1 px-2 py-1 text-xs bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded transition-all"
-          title="Add Column"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Column</span>
-        </button>
-
-        <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
-
-        {selectedCell && (
-          <>
-            <button
-              onClick={toggleBold}
-              className={`p-1.5 text-xs rounded transition-all ${
-                data.rows[selectedCell.row]?.[selectedCell.col]?.bold
-                  ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
-                  : 'bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600'
-              }`}
-              title="Bold"
-            >
-              <Bold className="w-3.5 h-3.5" />
-            </button>
-
-            <button
-              onClick={() => toggleFormat('number')}
-              className={`p-1.5 text-xs rounded transition-all ${
-                data.rows[selectedCell.row]?.[selectedCell.col]?.format === 'number'
-                  ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
-                  : 'bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600'
-              }`}
-              title="Number"
-            >
-              <Hash className="w-3.5 h-3.5" />
-            </button>
-
-            <button
-              onClick={() => toggleFormat('currency')}
-              className={`p-1.5 text-xs rounded transition-all ${
-                data.rows[selectedCell.row]?.[selectedCell.col]?.format === 'currency'
-                  ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
-                  : 'bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600'
-              }`}
-              title="Currency"
-            >
-              <DollarSign className="w-3.5 h-3.5" />
-            </button>
-
-            <button
-              onClick={() => toggleFormat('percent')}
-              className={`p-1.5 text-xs rounded transition-all ${
-                data.rows[selectedCell.row]?.[selectedCell.col]?.format === 'percent'
-                  ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
-                  : 'bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600'
-              }`}
-              title="Percent"
-            >
-              <Percent className="w-3.5 h-3.5" />
-            </button>
-
-            <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
-
-            <button
-              onClick={() => deleteRow(selectedCell.row)}
-              className="flex items-center gap-1 px-2 py-1 text-xs bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded transition-all"
-              title="Delete Row"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Delete Row</span>
-            </button>
-
-            <button
-              onClick={() => deleteColumn(selectedCell.col)}
-              className="flex items-center gap-1 px-2 py-1 text-xs bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded transition-all"
-              title="Delete Column"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Delete Col</span>
-            </button>
-          </>
-        )}
-
-        <div className="flex-1"></div>
-
+      {/* Main Toolbar - Import/Export/Row/Column */}
+      <div className="flex items-center gap-1 p-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+        {/* Import/Export */}
         <input
           ref={fileInputRef}
           type="file"
@@ -428,20 +335,117 @@ export function SpreadsheetEditor({ data, onChange, onSave }: SpreadsheetEditorP
         />
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="flex items-center gap-1 px-2 py-1 text-xs bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded transition-all"
+          className="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
           title="Import CSV/Excel"
         >
-          <Upload className="w-3.5 h-3.5" />
-          <span>Import</span>
+          <Upload className="w-4 h-4" />
         </button>
 
         <button
           onClick={exportToCSV}
-          className="flex items-center gap-1 px-2 py-1 text-xs bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded transition-all"
+          className="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
           title="Export to CSV"
         >
-          <Download className="w-3.5 h-3.5" />
-          <span>Export</span>
+          <Download className="w-4 h-4" />
+        </button>
+
+        {/* Vertical Spacer */}
+        <div className="w-px h-5 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+
+        {/* Row/Column */}
+        <button
+          onClick={addRow}
+          className="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+          title="Add Row"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+
+        <button
+          onClick={addColumn}
+          className="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+          title="Add Column"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+
+        {/* Delete buttons (when cell selected) */}
+        {selectedCell && (
+          <>
+            <div className="w-px h-5 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+            <button
+              onClick={() => deleteRow(selectedCell.row)}
+              className="p-2 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 transition-colors"
+              title="Delete Row"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => deleteColumn(selectedCell.col)}
+              className="p-2 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 transition-colors"
+              title="Delete Column"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Formatting Toolbar - Bold/Number/Currency/Percent */}
+      <div className="flex items-center gap-1 p-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+        <button
+          onClick={toggleBold}
+          disabled={!selectedCell}
+          className={`p-2 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+            selectedCell && data.rows[selectedCell.row]?.[selectedCell.col]?.bold
+              ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
+              : 'hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+          }`}
+          title="Bold"
+        >
+          <Bold className="w-4 h-4" />
+        </button>
+
+        <div className="w-px h-5 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+
+        <button
+          onClick={() => toggleFormat('number')}
+          disabled={!selectedCell}
+          className={`p-2 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+            selectedCell && data.rows[selectedCell.row]?.[selectedCell.col]?.format === 'number'
+              ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
+              : 'hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+          }`}
+          title="Number Format"
+        >
+          <Hash className="w-4 h-4" />
+        </button>
+
+        <button
+          onClick={() => toggleFormat('currency')}
+          disabled={!selectedCell}
+          className={`p-2 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+            selectedCell && data.rows[selectedCell.row]?.[selectedCell.col]?.format === 'currency'
+              ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
+              : 'hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+          }`}
+          title="Currency Format"
+        >
+          <DollarSign className="w-4 h-4" />
+        </button>
+
+        <button
+          onClick={() => toggleFormat('percent')}
+          disabled={!selectedCell}
+          className={`p-2 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+            selectedCell && data.rows[selectedCell.row]?.[selectedCell.col]?.format === 'percent'
+              ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
+              : 'hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+          }`}
+          title="Percent Format"
+        >
+          <Percent className="w-4 h-4" />
         </button>
       </div>
 
@@ -474,14 +478,14 @@ export function SpreadsheetEditor({ data, onChange, onSave }: SpreadsheetEditorP
         <table className="border-collapse w-full table-fixed">
           <colgroup>
             <col style={{ width: '48px' }} />
-            {data.columns.map((_, i) => (
+            {data.columns?.map((_, i) => (
               <col key={i} style={{ width: `${100 / data.columns.length}%` }} />
             ))}
           </colgroup>
           <thead className="sticky top-0 z-10">
             <tr>
               <th className="w-12 h-8 border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-xs font-semibold text-gray-600 dark:text-gray-400 sticky left-0 z-20"></th>
-              {data.columns.map((col, i) => (
+              {data.columns?.map((col, i) => (
                 <th
                   key={i}
                   className="h-8 border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-xs font-semibold text-gray-600 dark:text-gray-400"
@@ -492,7 +496,7 @@ export function SpreadsheetEditor({ data, onChange, onSave }: SpreadsheetEditorP
             </tr>
           </thead>
           <tbody>
-            {data.rows.map((row, rowIndex) => (
+            {data.rows?.map((row, rowIndex) => (
               <tr key={rowIndex}>
                 <td className="w-12 h-9 border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-center text-xs font-semibold text-gray-600 dark:text-gray-400 sticky left-0 z-10">
                   {rowIndex + 1}

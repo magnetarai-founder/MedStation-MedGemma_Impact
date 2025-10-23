@@ -59,18 +59,40 @@ fi
 # Validate Metal 4 before starting
 venv/bin/python3 apps/backend/validate_metal4.py
 
+# Check if backend port 8000 is in use
+BACKEND_PORT=8000
+if lsof -Pi :$BACKEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
+    echo "⚠️  Port $BACKEND_PORT is already in use"
+    echo "Attempting to free port $BACKEND_PORT..."
+
+    if lsof -ti:$BACKEND_PORT | xargs kill -9 2>/dev/null; then
+        echo "✓ Port $BACKEND_PORT freed successfully"
+        sleep 1
+    else
+        echo "⚠️  Could not free port $BACKEND_PORT"
+        # Try fallback ports
+        for port in 8001 8002 8003 8004 8005; do
+            if ! lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
+                BACKEND_PORT=$port
+                echo "ℹ️  Using fallback port $BACKEND_PORT for backend"
+                break
+            fi
+        done
+    fi
+fi
+
 # Start backend in background
-echo "Starting backend API server..."
+echo "Starting backend API server on port $BACKEND_PORT..."
 cd apps/backend/api
-../../../venv/bin/uvicorn main:app --reload --host 0.0.0.0 --port 8000 --log-level warning &
+../../../venv/bin/uvicorn main:app --reload --host 0.0.0.0 --port $BACKEND_PORT --log-level warning &
 BACKEND_PID=$!
 cd ../../..
 
 # Wait for backend to start
 echo "Waiting for backend to initialize..."
 for i in {1..30}; do
-    if curl -s http://localhost:8000/ > /dev/null; then
-        echo "Backend is ready!"
+    if curl -s http://localhost:$BACKEND_PORT/ > /dev/null; then
+        echo "✓ Backend is ready on port $BACKEND_PORT!"
         break
     fi
     echo -n "."
@@ -87,33 +109,74 @@ else
     echo "✓ Frontend dependencies already installed"
 fi
 
+# Check if port 4200 is in use and attempt cleanup
+FRONTEND_PORT=4200
+if lsof -Pi :$FRONTEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
+    echo "⚠️  Port $FRONTEND_PORT is already in use"
+    echo "Attempting to free port $FRONTEND_PORT..."
+
+    # Try to kill the process using the port
+    if lsof -ti:$FRONTEND_PORT | xargs kill -9 2>/dev/null; then
+        echo "✓ Port $FRONTEND_PORT freed successfully"
+        sleep 1
+    else
+        echo "ℹ️  Could not free port $FRONTEND_PORT - Vite will use next available port"
+        FRONTEND_PORT="auto"
+    fi
+fi
+
 # Start frontend
 echo "Starting frontend development server..."
 echo ""
 echo "🌟 ElohimOS is starting up..."
-echo "📡 Backend API: http://127.0.0.1:8000"
-echo "🖥️  Frontend UI: http://127.0.0.1:4200"
+echo "📡 Backend API: http://127.0.0.1:$BACKEND_PORT"
+if [ "$FRONTEND_PORT" = "auto" ]; then
+    echo "🖥️  Frontend UI: Will open on next available port (likely 4201-4210)"
+else
+    echo "🖥️  Frontend UI: http://127.0.0.1:$FRONTEND_PORT"
+fi
 echo ""
 echo "Press Ctrl+C to stop all services"
 echo ""
 
-# Wait a bit for servers to start
-sleep 3
+# Start frontend in background to capture the actual port
+npm run dev > /tmp/vite-output.log 2>&1 &
+FRONTEND_PID=$!
 
-# Open browser
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    # macOS
-    open http://127.0.0.1:4200
-elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    # Linux
-    xdg-open http://127.0.0.1:4200 2>/dev/null || sensible-browser http://127.0.0.1:4200
-elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
-    # Windows
-    start http://127.0.0.1:4200
+# Wait for frontend to start and detect the actual port
+echo "Waiting for frontend to start..."
+for i in {1..15}; do
+    # Try to extract port from Vite output
+    if [ -f /tmp/vite-output.log ]; then
+        ACTUAL_PORT=$(grep -o "localhost:[0-9]*" /tmp/vite-output.log | head -1 | cut -d: -f2)
+        if [ ! -z "$ACTUAL_PORT" ]; then
+            echo "✓ Frontend started on port $ACTUAL_PORT"
+            FRONTEND_PORT=$ACTUAL_PORT
+            break
+        fi
+    fi
+    echo -n "."
+    sleep 1
+done
+echo ""
+
+# Open browser with actual port
+if [ ! -z "$ACTUAL_PORT" ]; then
+    sleep 2
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS
+        open http://127.0.0.1:$ACTUAL_PORT
+    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        # Linux
+        xdg-open http://127.0.0.1:$ACTUAL_PORT 2>/dev/null || sensible-browser http://127.0.0.1:$ACTUAL_PORT
+    elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
+        # Windows
+        start http://127.0.0.1:$ACTUAL_PORT
+    fi
 fi
 
-# Start frontend (this will block)
-npm run dev
+# Update cleanup trap to include frontend
+trap "echo 'Stopping services...'; kill $FRONTEND_PID 2>/dev/null; kill $BACKEND_PID 2>/dev/null; echo 'Shutting down...'" EXIT
 
-# Cleanup on exit
-trap "echo 'Stopping services...'; kill $BACKEND_PID 2>/dev/null; pkill -x ollama 2>/dev/null" EXIT
+# Tail the Vite output (this will block)
+tail -f /tmp/vite-output.log

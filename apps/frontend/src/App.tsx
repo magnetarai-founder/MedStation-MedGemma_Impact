@@ -19,16 +19,19 @@ import { useSessionStore } from './stores/sessionStore'
 import { useNavigationStore } from './stores/navigationStore'
 import { useEditorStore } from './stores/editorStore'
 import { useChatStore } from './stores/chatStore'
+import { useUserStore } from './stores/userStore'
 import { api } from './lib/api'
 import { ClearWorkspaceDialog } from './components/ClearWorkspaceDialog'
 import * as settingsApi from './lib/settingsApi'
 import { FolderOpen, Clock, FileJson } from 'lucide-react'
+import { initializeSecurityMonitor, cleanupSecurityMonitor } from './lib/securityMonitor'
 
 export default function App() {
   const { sessionId, setSessionId, clearSession } = useSessionStore()
   const { activeTab, setActiveTab } = useNavigationStore()
   const { setCode } = useEditorStore()
   const { settings } = useChatStore()
+  const { fetchUser } = useUserStore()
   const [isLoading, setIsLoading] = useState(true)
   const [isLibraryOpen, setIsLibraryOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
@@ -43,20 +46,24 @@ export default function App() {
     setIsLibraryOpen(false)
   }
 
-  // Initialize session on mount
+  // Initialize user and session on mount
   useEffect(() => {
-    const initSession = async () => {
+    const initApp = async () => {
       try {
+        // Fetch or create user identity
+        await fetchUser()
+
+        // Create session
         const response = await api.createSession()
         setSessionId(response.session_id)
       } catch (error) {
-        console.error('Failed to create session:', error)
+        console.error('Failed to initialize app:', error)
       } finally {
         setIsLoading(false)
       }
     }
 
-    initSession()
+    initApp()
 
     // Cleanup on unmount
     return () => {
@@ -101,6 +108,15 @@ export default function App() {
     return () => {
       window.removeEventListener('open-library-with-code', handleOpenLibraryWithCode as EventListener)
       window.removeEventListener('open-library', handleOpenLibrary as EventListener)
+    }
+  }, [])
+
+  // Initialize security monitor (auto-lock, screenshot blocking)
+  useEffect(() => {
+    initializeSecurityMonitor()
+
+    return () => {
+      cleanupSecurityMonitor()
     }
   }, [])
 

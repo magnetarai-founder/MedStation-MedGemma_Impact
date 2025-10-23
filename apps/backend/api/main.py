@@ -118,7 +118,12 @@ app = FastAPI(
 # CORS for development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],  # Vite/React dev servers
+    allow_origins=[
+        "http://localhost:4200",
+        "http://127.0.0.1:4200",
+        "http://localhost:5173",
+        "http://localhost:3000"
+    ],  # Vite/React dev servers
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -167,6 +172,14 @@ try:
 except Exception as e:
     services_failed.append("Code")
     logger.debug(f"Code Editor not available: {e}")
+
+try:
+    from user_service import router as user_router
+    app.include_router(user_router)
+    services_loaded.append("User")
+except Exception as e:
+    services_failed.append("User")
+    logger.debug(f"User service not available: {e}")
 
 try:
     from docs_service import router as docs_router

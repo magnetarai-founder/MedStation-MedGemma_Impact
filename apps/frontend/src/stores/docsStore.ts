@@ -10,6 +10,8 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { useUserStore } from './userStore'
+import { generateVerificationToken, encryptData, verifyPassphrase } from '../lib/encryption'
 
 export type DocumentType = 'doc' | 'sheet' | 'insight'
 
@@ -48,8 +50,8 @@ export interface SecuritySettings {
 
 interface DocsStore {
   // Current workspace view
-  workspaceView: 'chat' | 'docs'
-  setWorkspaceView: (view: 'chat' | 'docs') => void
+  workspaceView: 'chat' | 'docs' | 'vault'
+  setWorkspaceView: (view: 'chat' | 'docs' | 'vault') => void
 
   // Documents
   documents: Document[]
@@ -60,6 +62,30 @@ interface DocsStore {
   createDocument: (type: DocumentType, title?: string) => Document
   updateDocument: (id: string, updates: Partial<Document>) => void
   deleteDocument: (id: string) => void
+
+  // Insights model selection
+  selectedInsightModel: string
+  setSelectedInsightModel: (model: string) => void
+
+  // Vault
+  vaultSetupComplete: boolean
+  vaultUnlocked: boolean
+  vaultPasswordHash: string | null
+  vaultPassword2Hash: string | null  // Second real password (when Touch ID not required)
+  decoyPasswordHash: string | null
+  currentVaultMode: 'real' | 'decoy' | null
+
+  // Vault encryption (stored encrypted verification tokens)
+  realVaultVerification: { encrypted: string; salt: string; iv: string } | null
+  realVault2Verification: { encrypted: string; salt: string; iv: string } | null
+  decoyVaultVerification: { encrypted: string; salt: string; iv: string } | null
+
+  // Runtime passphrase (NOT persisted, only in memory)
+  vaultPassphrase: string | null
+
+  setVaultPasswords: (realPassword: string, decoyPassword: string, realPassword2?: string) => Promise<void>
+  unlockVault: (password: string) => Promise<boolean>
+  lockVault: () => void
 
   // Security
   securitySettings: SecuritySettings
@@ -95,7 +121,174 @@ export const useDocsStore = create<DocsStore>()(
       activeDocumentId: null,
       setActiveDocument: (id) => set({ activeDocumentId: id }),
 
+      selectedInsightModel: '',
+      setSelectedInsightModel: (model) => set({ selectedInsightModel: model }),
+
+      // Vault state
+      vaultSetupComplete: false,
+      vaultUnlocked: false,
+      vaultPasswordHash: null,
+      vaultPassword2Hash: null,
+      decoyPasswordHash: null,
+      currentVaultMode: null,
+      realVaultVerification: null,
+      realVault2Verification: null,
+      decoyVaultVerification: null,
+      vaultPassphrase: null,
+
+      setVaultPasswords: async (realPassword, decoyPassword, realPassword2) => {
+        // Simple hash using Web Crypto API (for backwards compatibility)
+        const hashPassword = async (password: string): Promise<string> => {
+          const encoder = new TextEncoder()
+          const data = encoder.encode(password)
+          const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+          const hashArray = Array.from(new Uint8Array(hashBuffer))
+          return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+        }
+
+        const realHash = await hashPassword(realPassword)
+        const decoyHash = await hashPassword(decoyPassword)
+
+        // Create constant verification tokens for AES-256 encryption
+        const VAULT_VERIFICATION_TOKEN = 'ElohimOS_Vault_Verification_Real'
+        const VAULT2_VERIFICATION_TOKEN = 'ElohimOS_Vault_Verification_Real2'
+        const DECOY_VERIFICATION_TOKEN = 'ElohimOS_Vault_Verification_Decoy'
+
+        // Encrypt the verification tokens
+        const realVerification = await encryptData(VAULT_VERIFICATION_TOKEN, realPassword)
+        const decoyVerification = await encryptData(DECOY_VERIFICATION_TOKEN, decoyPassword)
+
+        // Handle optional second real password
+        let real2Hash: string | null = null
+        let real2Verification: { encrypted: string; salt: string; iv: string } | null = null
+
+        if (realPassword2) {
+          real2Hash = await hashPassword(realPassword2)
+          real2Verification = await encryptData(VAULT2_VERIFICATION_TOKEN, realPassword2)
+        }
+
+        set({
+          vaultSetupComplete: true,
+          vaultPasswordHash: realHash,
+          vaultPassword2Hash: real2Hash,
+          decoyPasswordHash: decoyHash,
+          realVaultVerification: realVerification,
+          realVault2Verification: real2Verification,
+          decoyVaultVerification: decoyVerification,
+        })
+      },
+
+      unlockVault: async (password) => {
+        const state = get()
+
+        const VAULT_VERIFICATION_TOKEN = 'ElohimOS_Vault_Verification_Real'
+        const VAULT2_VERIFICATION_TOKEN = 'ElohimOS_Vault_Verification_Real2'
+        const DECOY_VERIFICATION_TOKEN = 'ElohimOS_Vault_Verification_Decoy'
+
+        // Try to verify against real vault using AES encryption
+        if (state.realVaultVerification) {
+          const { encrypted, salt, iv } = state.realVaultVerification
+          const isReal = await verifyPassphrase(
+            VAULT_VERIFICATION_TOKEN,
+            encrypted,
+            salt,
+            iv,
+            password
+          ).catch(() => false)
+
+          if (isReal) {
+            set({
+              vaultUnlocked: true,
+              currentVaultMode: 'real',
+              vaultPassphrase: password
+            })
+            return true
+          }
+        }
+
+        // Try to verify against second real vault password (if exists)
+        if (state.realVault2Verification) {
+          const { encrypted, salt, iv } = state.realVault2Verification
+          const isReal2 = await verifyPassphrase(
+            VAULT2_VERIFICATION_TOKEN,
+            encrypted,
+            salt,
+            iv,
+            password
+          ).catch(() => false)
+
+          if (isReal2) {
+            set({
+              vaultUnlocked: true,
+              currentVaultMode: 'real',
+              vaultPassphrase: password
+            })
+            return true
+          }
+        }
+
+        // Try to verify against decoy vault using AES encryption
+        if (state.decoyVaultVerification) {
+          const { encrypted, salt, iv } = state.decoyVaultVerification
+          const isDecoy = await verifyPassphrase(
+            DECOY_VERIFICATION_TOKEN,
+            encrypted,
+            salt,
+            iv,
+            password
+          ).catch(() => false)
+
+          if (isDecoy) {
+            set({
+              vaultUnlocked: true,
+              currentVaultMode: 'decoy',
+              vaultPassphrase: password
+            })
+            return true
+          }
+        }
+
+        // Fallback to hash-based verification for backwards compatibility
+        const encoder = new TextEncoder()
+        const data = encoder.encode(password)
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+        const hashArray = Array.from(new Uint8Array(hashBuffer))
+        const enteredHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+
+        if (enteredHash === state.vaultPasswordHash) {
+          set({
+            vaultUnlocked: true,
+            currentVaultMode: 'real',
+            vaultPassphrase: password
+          })
+          return true
+        } else if (enteredHash === state.vaultPassword2Hash) {
+          set({
+            vaultUnlocked: true,
+            currentVaultMode: 'real',
+            vaultPassphrase: password
+          })
+          return true
+        } else if (enteredHash === state.decoyPasswordHash) {
+          set({
+            vaultUnlocked: true,
+            currentVaultMode: 'decoy',
+            vaultPassphrase: password
+          })
+          return true
+        }
+
+        return false
+      },
+
+      lockVault: () => {
+        set({ vaultUnlocked: false, currentVaultMode: null, vaultPassphrase: null })
+      },
+
       createDocument: (type, title) => {
+        // Get user ID from user store
+        const userId = useUserStore.getState().getUserId()
+
         const newDoc: Document = {
           id: `doc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           type,
@@ -103,7 +296,7 @@ export const useDocsStore = create<DocsStore>()(
           content: type === 'sheet' ? { rows: [], columns: [] } : type === 'insight' ? { raw: '', analysis: null } : '',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          created_by: 'local_user', // TODO: Replace with actual user ID
+          created_by: userId,
 
           // Security defaults for Insights
           is_private: type === 'insight',
@@ -173,12 +366,21 @@ export const useDocsStore = create<DocsStore>()(
     }),
     {
       name: 'elohimos.docs',
-      // Don't persist locked state or last activity
+      // Don't persist locked state, last activity, or vaultPassphrase (security)
       partialize: (state) => ({
         workspaceView: state.workspaceView,
         documents: state.documents,
         activeDocumentId: state.activeDocumentId,
+        selectedInsightModel: state.selectedInsightModel,
+        vaultSetupComplete: state.vaultSetupComplete,
+        vaultPasswordHash: state.vaultPasswordHash,
+        vaultPassword2Hash: state.vaultPassword2Hash,
+        decoyPasswordHash: state.decoyPasswordHash,
+        realVaultVerification: state.realVaultVerification,
+        realVault2Verification: state.realVault2Verification,
+        decoyVaultVerification: state.decoyVaultVerification,
         securitySettings: state.securitySettings,
+        // vaultPassphrase is intentionally NOT persisted (memory only)
       }),
     }
   )

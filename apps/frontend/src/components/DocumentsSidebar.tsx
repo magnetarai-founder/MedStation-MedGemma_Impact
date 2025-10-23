@@ -68,10 +68,10 @@ export function DocumentsSidebar() {
             const isActive = doc.id === activeDocumentId
 
             return (
-              <button
+              <div
                 key={doc.id}
                 onClick={() => setActiveDocument(doc.id)}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-all group ${
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-all group cursor-pointer ${
                   isActive
                     ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'
@@ -91,7 +91,7 @@ export function DocumentsSidebar() {
                     <Trash2 className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
                   </button>
                 )}
-              </button>
+              </div>
             )
           })}
         </div>

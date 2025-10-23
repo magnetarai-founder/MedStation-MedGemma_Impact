@@ -10,14 +10,25 @@ import { useState } from 'react'
 import { useDocsStore } from '@/stores/docsStore'
 import { TeamChat } from './TeamChat'
 import { DocsWorkspace } from './DocsWorkspace'
+import { VaultSetup } from './VaultSetup'
+import { VaultWorkspace } from './VaultWorkspace'
 import { NetworkSelector } from './NetworkSelector'
-import { MessageSquare, FileText } from 'lucide-react'
+import { MessageSquare, FileText, Lock } from 'lucide-react'
 
 type NetworkMode = 'solo' | 'lan' | 'p2p'
 
 export function TeamWorkspace() {
-  const { workspaceView, setWorkspaceView } = useDocsStore()
+  const { workspaceView, setWorkspaceView, vaultSetupComplete, vaultUnlocked } = useDocsStore()
   const [networkMode, setNetworkMode] = useState<NetworkMode>('solo')
+  const [showVaultSetup, setShowVaultSetup] = useState(false)
+
+  const handleVaultClick = () => {
+    if (!vaultSetupComplete) {
+      setShowVaultSetup(true)
+    } else {
+      setWorkspaceView('vault')
+    }
+  }
 
   return (
     <div className="h-full w-full flex flex-col">
@@ -30,7 +41,7 @@ export function TeamWorkspace() {
         <div className="h-6 w-px bg-gray-300 dark:bg-gray-600"></div>
 
         {/* View Tabs */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 flex-1">
           <button
             onClick={() => setWorkspaceView('chat')}
             className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-md transition-all ${
@@ -54,6 +65,22 @@ export function TeamWorkspace() {
             <FileText className="w-4 h-4" />
             <span>Docs & Sheets</span>
           </button>
+
+          {/* Spacer to push Vault to the right */}
+          <div className="flex-1"></div>
+
+          {/* Vault Tab - Right Aligned */}
+          <button
+            onClick={handleVaultClick}
+            className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-md transition-all ${
+              workspaceView === 'vault'
+                ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-medium'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-amber-50 dark:hover:bg-amber-900/20'
+            }`}
+          >
+            <Lock className="w-4 h-4" />
+            <span>Vault</span>
+          </button>
         </div>
       </div>
 
@@ -61,7 +88,21 @@ export function TeamWorkspace() {
       <div className="flex-1 min-h-0">
         {workspaceView === 'chat' && <TeamChat mode={networkMode} />}
         {workspaceView === 'docs' && <DocsWorkspace />}
+        {workspaceView === 'vault' && <VaultWorkspace />}
       </div>
+
+      {/* Vault Setup Modal */}
+      {showVaultSetup && (
+        <VaultSetup
+          onComplete={() => {
+            setShowVaultSetup(false)
+            setWorkspaceView('vault')
+          }}
+          onCancel={() => {
+            setShowVaultSetup(false)
+          }}
+        />
+      )}
     </div>
   )
 }

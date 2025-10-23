@@ -5,17 +5,19 @@
  * - Doc (Quip-like word processor)
  * - Sheet (lightweight spreadsheet)
  * - Insight (voice transcription + AI analysis)
+ * - Secure versions (requires vault authentication)
  */
 
-import { FileText, Table2, Lightbulb } from 'lucide-react'
+import { FileText, Table2, Lightbulb, Lock } from 'lucide-react'
 import type { DocumentType } from '@/stores/docsStore'
 
 interface DocumentTypeSelectorProps {
   onSelect: (type: DocumentType) => void
+  onSecureSelect: (type: DocumentType) => void
   onClose: () => void
 }
 
-export function DocumentTypeSelector({ onSelect, onClose }: DocumentTypeSelectorProps) {
+export function DocumentTypeSelector({ onSelect, onSecureSelect, onClose }: DocumentTypeSelectorProps) {
   const documentTypes = [
     {
       type: 'doc' as DocumentType,
@@ -46,7 +48,7 @@ export function DocumentTypeSelector({ onSelect, onClose }: DocumentTypeSelector
   return (
     <div className="absolute top-16 left-3 right-3 z-50">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-        {/* Options */}
+        {/* Regular Documents */}
         <div className="p-2">
           {documentTypes.map((docType) => {
             const Icon = docType.icon
@@ -65,6 +67,44 @@ export function DocumentTypeSelector({ onSelect, onClose }: DocumentTypeSelector
                   </div>
                   <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                     {docType.description}
+                  </div>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Divider */}
+        <div className="px-4 py-2 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-2 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+            <Lock className="w-3 h-3" />
+            <span>Secure Documents</span>
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Requires Touch ID + Password
+          </p>
+        </div>
+
+        {/* Secure Document Options */}
+        <div className="p-2">
+          {documentTypes.map((docType) => {
+            const Icon = docType.icon
+            return (
+              <button
+                key={`secure-${docType.type}`}
+                onClick={() => onSecureSelect(docType.type)}
+                className="w-full flex items-start gap-3 p-3 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-all group"
+              >
+                <div className="relative p-2 rounded-lg bg-amber-50 dark:bg-amber-900/20">
+                  <Icon className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                  <Lock className="absolute -top-1 -right-1 w-3 h-3 text-amber-700 dark:text-amber-300" />
+                </div>
+                <div className="flex-1 text-left">
+                  <div className="font-medium text-gray-900 dark:text-gray-100 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                    Secure {docType.label}
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    Encrypted vault storage
                   </div>
                 </div>
               </button>

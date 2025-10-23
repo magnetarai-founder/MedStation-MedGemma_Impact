@@ -12,7 +12,7 @@ export default defineConfig({
   server: {
     host: true,
     port: 4200,
-    strictPort: true,
+    strictPort: false, // Allow fallback ports if 4200 is in use
     hmr: {
       overlay: true,
     },

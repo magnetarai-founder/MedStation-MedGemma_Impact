@@ -79,14 +79,14 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <div className="relative flex items-center gap-2">
+    <div className="flex items-center gap-1">
+      <div className="relative flex items-center">
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="appearance-none bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 pl-4 pr-10 py-2 rounded-lg border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+          className="appearance-none bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 pl-3 pr-8 py-1 rounded border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-1 focus:ring-primary-500 cursor-pointer text-xs hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
         >
-          <option value="">Chat</option>
+          <option value="">Select Model</option>
           {loadedModels.length === 0 ? (
             <option value="" disabled>No models loaded</option>
           ) : (
@@ -99,8 +99,8 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
         </select>
 
         <ChevronDown
-          size={16}
-          className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500"
+          size={14}
+          className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500"
         />
       </div>
 
@@ -108,10 +108,10 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
       {value && (
         <button
           onClick={handleEject}
-          className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors text-gray-400 hover:text-red-500"
+          className="p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors text-gray-400 hover:text-red-500"
           title="Eject model"
         >
-          <XCircle size={18} />
+          <XCircle size={14} />
         </button>
       )}
     </div>

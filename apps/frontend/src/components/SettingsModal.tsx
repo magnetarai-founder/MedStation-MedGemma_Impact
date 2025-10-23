@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { X, Settings as SettingsIcon, Zap, AlertTriangle, Save, MessageSquare, Users2, Code2, Database, Download, Star, Loader2, CheckCircle2, Circle, Cpu } from 'lucide-react'
+import { X, Settings as SettingsIcon, Zap, AlertTriangle, Save, Download, Star, Loader2, CheckCircle2, Circle, Cpu, User } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as settingsApi from '@/lib/settingsApi'
 import { type NavTab } from '@/stores/navigationStore'
 import { useChatStore } from '@/stores/chatStore'
+import { ProfileSettings } from './ProfileSettings'
 
 
 interface SettingsModalProps {
@@ -14,25 +15,7 @@ interface SettingsModalProps {
 
 
 export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<'settings' | 'power' | 'models' | 'danger'>('settings')
-
-  // Get tab-specific title and icon
-  const getTabInfo = () => {
-    switch (activeNavTab) {
-      case 'team':
-        return { icon: Users2, title: 'Team Chat Settings' }
-      case 'chat':
-        return { icon: MessageSquare, title: 'AI Chat Settings' }
-      case 'editor':
-        return { icon: Code2, title: 'Code Editor Settings' }
-      case 'database':
-        return { icon: Database, title: 'Database Settings' }
-      default:
-        return { icon: SettingsIcon, title: 'Settings' }
-    }
-  }
-
-  const tabInfo = getTabInfo()
+  const [activeTab, setActiveTab] = useState<'profile' | 'settings' | 'power' | 'models' | 'danger'>('settings')
 
   // Handle ESC key to close modal
   useEffect(() => {
@@ -59,9 +42,9 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-3">
-            <tabInfo.icon className="w-6 h-6 text-primary-600 dark:text-primary-400" />
+            <SettingsIcon className="w-6 h-6 text-primary-600 dark:text-primary-400" />
             <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-              {tabInfo.title}
+              Global Settings
             </h2>
           </div>
           <button
@@ -75,6 +58,19 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
         {/* Tabs */}
         <div className="flex border-b border-gray-200 dark:border-gray-700 px-6">
           <button
+            onClick={() => setActiveTab('profile')}
+            className={`
+              flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors
+              ${activeTab === 'profile'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }
+            `}
+          >
+            <User className="w-4 h-4" />
+            <span className="font-medium">Profile</span>
+          </button>
+          <button
             onClick={() => setActiveTab('settings')}
             className={`
               flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors
@@ -85,23 +81,21 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
             `}
           >
             <SettingsIcon className="w-4 h-4" />
-            <span className="font-medium">Settings</span>
+            <span className="font-medium">App Settings</span>
           </button>
-          {activeNavTab === 'database' && (
-            <button
-              onClick={() => setActiveTab('power')}
-              className={`
-                flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors
-                ${activeTab === 'power'
-                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                }
-              `}
-            >
-              <Zap className="w-4 h-4" />
-              <span className="font-medium">Power User</span>
-            </button>
-          )}
+          <button
+            onClick={() => setActiveTab('power')}
+            className={`
+              flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors
+              ${activeTab === 'power'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }
+            `}
+          >
+            <Zap className="w-4 h-4" />
+            <span className="font-medium">Advanced</span>
+          </button>
           <button
             onClick={() => setActiveTab('models')}
             className={`
@@ -132,6 +126,7 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
 
         {/* Content */}
         <div className="flex-1 overflow-auto p-6">
+          {activeTab === 'profile' && <ProfileSettings />}
           {activeTab === 'settings' && <SettingsTab activeNavTab={activeNavTab} />}
           {activeTab === 'power' && <PowerUserTab />}
           {activeTab === 'models' && <ModelManagementTab />}
@@ -223,66 +218,16 @@ function SettingsTab({ activeNavTab }: { activeNavTab: NavTab }) {
     }
   }
 
-  // Render tab-specific settings sections
-  const renderTabSettings = () => {
-    switch (activeNavTab) {
-      case 'team':
-        return (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                Team Chat Configuration
-              </h3>
-              <div className="text-sm text-gray-600 dark:text-gray-400 space-y-3">
-                <p>Configure P2P team chat settings, encryption, and network preferences.</p>
-                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                  <p className="text-sm text-blue-900 dark:text-blue-100">
-                    Team chat settings are coming soon. Stay tuned for peer-to-peer messaging, file sharing, and collaboration features.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )
-
-      case 'chat':
-        return <ChatSettingsContent />
-
-      case 'editor':
-        return (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                Code Editor Preferences
-              </h3>
-              <div className="text-sm text-gray-600 dark:text-gray-400 space-y-3">
-                <p>Customize your code editor experience with themes, keybindings, and formatting options.</p>
-                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                  <p className="text-sm text-blue-900 dark:text-blue-100">
-                    Editor settings are coming soon. Configure themes, font size, tab width, auto-formatting, and more.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )
-
-      case 'database':
-      default:
-        // Database tab shows the full settings (existing content)
-        return null
-    }
-  }
-
-  const tabSpecificContent = renderTabSettings()
-
   return (
     <div className="space-y-8">
-      {/* Show tab-specific content if available */}
-      {tabSpecificContent ? (
-        tabSpecificContent
-      ) : (
-        <>
+      {/* AI Chat Settings */}
+      <ChatSettingsContent />
+
+      {/* Divider */}
+      <div className="border-t border-gray-200 dark:border-gray-700"></div>
+
+      {/* App Settings */}
+      <>
           {/* Performance & Memory */}
           <div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
@@ -580,7 +525,6 @@ function SettingsTab({ activeNavTab }: { activeNavTab: NavTab }) {
         <div className="text-green-600 text-sm text-center">Settings saved successfully!</div>
       )}
       </>
-    )}
     </div>
   )
 }

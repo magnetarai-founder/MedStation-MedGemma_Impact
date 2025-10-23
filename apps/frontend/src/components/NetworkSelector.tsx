@@ -41,6 +41,9 @@ export function NetworkSelector({ mode, onModeChange }: NetworkSelectorProps) {
   const [p2pPeers, setP2pPeers] = useState<P2PPeer[]>([])
   const [showAddPeer, setShowAddPeer] = useState(false)
   const [peerCode, setPeerCode] = useState('')
+  const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected')
+  const [isHub, setIsHub] = useState(false)
+  const [hubPort, setHubPort] = useState<number | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Close dropdown when clicking outside
@@ -139,6 +142,7 @@ export function NetworkSelector({ mode, onModeChange }: NetworkSelectorProps) {
   // Join LAN device
   const handleJoinLAN = async (device: LANDevice) => {
     console.log('Joining LAN device:', device)
+    setConnectionStatus('connecting')
 
     try {
       const response = await fetch('/api/v1/lan/connect', {
@@ -151,16 +155,21 @@ export function NetworkSelector({ mode, onModeChange }: NetworkSelectorProps) {
 
       if (data.status === 'success') {
         console.log('Successfully joined:', data.message)
-        // TODO: Update UI to show connection status
+        setConnectionStatus('connected')
+        setIsHub(false)
+      } else {
+        setConnectionStatus('disconnected')
       }
     } catch (error) {
       console.error('Failed to join device:', error)
+      setConnectionStatus('disconnected')
     }
   }
 
   // Host LAN network
   const handleHostLAN = async () => {
     console.log('Hosting LAN network as hub')
+    setConnectionStatus('connecting')
 
     try {
       const hostname = window.location.hostname || 'ElohimOS'
@@ -178,10 +187,15 @@ export function NetworkSelector({ mode, onModeChange }: NetworkSelectorProps) {
 
       if (data.status === 'success') {
         console.log('Hub started:', data.hub_info)
-        // TODO: Update UI to show hub status
+        setConnectionStatus('connected')
+        setIsHub(true)
+        setHubPort(data.hub_info?.port || 8765)
+      } else {
+        setConnectionStatus('disconnected')
       }
     } catch (error) {
       console.error('Failed to start hub:', error)
+      setConnectionStatus('disconnected')
     }
   }
 
@@ -240,27 +254,67 @@ export function NetworkSelector({ mode, onModeChange }: NetworkSelectorProps) {
       case 'solo':
         return 'Offline'
       case 'lan':
-        return isScanning ? 'Scanning...' : `${lanDevices.length} devices`
+        if (connectionStatus === 'connecting') return 'Connecting...'
+        if (connectionStatus === 'connected') {
+          return isHub ? `Hub (${lanDevices.length} devices)` : 'Connected'
+        }
+        return isScanning ? 'Scanning...' : `${lanDevices.length} found`
       case 'p2p':
         const connected = p2pPeers.filter(p => p.connected).length
-        return `${connected} connected`
+        if (connectionStatus === 'connecting') return 'Connecting...'
+        return `${connected} peer${connected !== 1 ? 's' : ''}`
       default:
         return 'Offline'
     }
   }
 
-  // Get icon color based on mode
+  // Get icon color based on mode and connection status
   const getIconColor = () => {
-    switch (mode) {
-      case 'solo':
-        return 'text-gray-400'
-      case 'lan':
-        return 'text-blue-500'
-      case 'p2p':
-        return 'text-green-500'
-      default:
-        return 'text-gray-400'
+    if (connectionStatus === 'connecting') return 'text-yellow-500 animate-pulse'
+    if (connectionStatus === 'connected') {
+      switch (mode) {
+        case 'lan':
+          return 'text-blue-500'
+        case 'p2p':
+          return 'text-green-500'
+        default:
+          return 'text-gray-400'
+      }
     }
+    return 'text-gray-400'
+  }
+
+  // Get status badge
+  const getStatusBadge = () => {
+    if (mode === 'solo') return null
+
+    if (connectionStatus === 'connecting') {
+      return (
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 rounded">
+          <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse"></span>
+          Connecting
+        </span>
+      )
+    }
+
+    if (connectionStatus === 'connected') {
+      if (mode === 'lan' && isHub) {
+        return (
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded">
+            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+            Hub:{hubPort}
+          </span>
+        )
+      }
+      return (
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded">
+          <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+          Connected
+        </span>
+      )
+    }
+
+    return null
   }
 
   return (
@@ -272,7 +326,10 @@ export function NetworkSelector({ mode, onModeChange }: NetworkSelectorProps) {
         title="Network"
       >
         <Globe className={`w-5 h-5 ${getIconColor()}`} />
-        <span className="text-xs text-gray-500 dark:text-gray-400">{getStatusText()}</span>
+        <div className="flex flex-col items-start gap-0.5">
+          <span className="text-xs text-gray-500 dark:text-gray-400">{getStatusText()}</span>
+          {getStatusBadge()}
+        </div>
       </button>
 
       {/* Dropdown Menu */}

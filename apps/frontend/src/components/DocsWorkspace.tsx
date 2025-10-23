@@ -13,6 +13,7 @@ import { DocumentEditor } from './DocumentEditor'
 import { DocumentsSidebar } from './DocumentsSidebar'
 import { Plus, Lock } from 'lucide-react'
 import { useState } from 'react'
+import toast from 'react-hot-toast'
 
 export function DocsWorkspace() {
   const {
@@ -20,6 +21,9 @@ export function DocsWorkspace() {
     activeDocumentId,
     setActiveDocument,
     createDocument,
+    vaultSetupComplete,
+    vaultUnlocked,
+    setWorkspaceView,
   } = useDocsStore()
 
   const [showTypeSelector, setShowTypeSelector] = useState(false)
@@ -30,6 +34,28 @@ export function DocsWorkspace() {
   const handleCreateDocument = (type: 'doc' | 'sheet' | 'insight') => {
     createDocument(type)
     setShowTypeSelector(false)
+  }
+
+  const handleCreateSecureDocument = (type: 'doc' | 'sheet' | 'insight') => {
+    setShowTypeSelector(false)
+
+    // Check if vault is setup
+    if (!vaultSetupComplete) {
+      toast.error('Please setup your vault first from the Vault tab')
+      return
+    }
+
+    // Check if vault is unlocked
+    if (!vaultUnlocked) {
+      toast.error('Please unlock the vault first')
+      // Switch to vault tab
+      setWorkspaceView('vault')
+      return
+    }
+
+    // Create document and mark it for vault storage
+    // TODO: Implement secure document creation
+    toast.success('Secure document creation - coming soon!')
   }
 
   return (
@@ -52,6 +78,7 @@ export function DocsWorkspace() {
         {showTypeSelector && (
           <DocumentTypeSelector
             onSelect={handleCreateDocument}
+            onSecureSelect={handleCreateSecureDocument}
             onClose={() => setShowTypeSelector(false)}
           />
         )}

@@ -21,6 +21,12 @@ import logging
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+# Import user service
+try:
+    from user_service import get_or_create_user
+except ImportError:
+    from api.user_service import get_or_create_user
+
 logger = logging.getLogger(__name__)
 
 # Storage paths
@@ -141,7 +147,7 @@ async def create_document(doc: DocumentCreate):
             json.dumps(doc.content),
             now,
             now,
-            "local_user",  # TODO: Replace with actual user ID
+            get_or_create_user().user_id,
             1 if doc.is_private else 0,
             doc.security_level,
             json.dumps([])
@@ -426,7 +432,7 @@ async def sync_documents(request: SyncRequest):
                     json.dumps(doc_data.get("content", "")),
                     doc_data.get("created_at", now),
                     now,
-                    doc_data.get("created_by", "local_user"),
+                    doc_data.get("created_by", get_or_create_user().user_id),
                     1 if doc_data.get("is_private", False) else 0,
                     doc_data.get("security_level"),
                     json.dumps(doc_data.get("shared_with", []))
