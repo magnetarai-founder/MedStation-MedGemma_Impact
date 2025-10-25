@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Save } from 'lucide-react'
+import { Save, Settings, Zap, Database, FileJson, Users, Clock, Cpu } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as settingsApi from '@/lib/settingsApi'
 import { type NavTab } from '@/stores/navigationStore'
@@ -221,6 +221,465 @@ export default function SettingsTab({ activeNavTab }: SettingsTabProps) {
                 JSON Auto-safe mode
               </span>
             </label>
+          </div>
+        </div>
+      </div>
+
+      {/* JSON Processing Settings */}
+      <div>
+        <div className="flex items-center space-x-2 mb-4">
+          <FileJson className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            JSON Processing
+          </h3>
+        </div>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Max JSON Depth: {localSettings.json_max_depth}
+            </label>
+            <input
+              type="range"
+              min="1"
+              max="20"
+              value={localSettings.json_max_depth}
+              onChange={(e) =>
+                setLocalSettings({
+                  ...localSettings,
+                  json_max_depth: parseInt(e.target.value),
+                })
+              }
+              className="w-full"
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Maximum depth for nested JSON structures
+            </p>
+          </div>
+
+          <div>
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={localSettings.json_flatten_arrays}
+                onChange={(e) =>
+                  setLocalSettings({ ...localSettings, json_flatten_arrays: e.target.checked })
+                }
+                className="rounded"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                Flatten nested arrays
+              </span>
+            </label>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">
+              Convert nested arrays to separate columns when possible
+            </p>
+          </div>
+
+          <div>
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={localSettings.json_preserve_nulls}
+                onChange={(e) =>
+                  setLocalSettings({ ...localSettings, json_preserve_nulls: e.target.checked })
+                }
+                className="rounded"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                Preserve null values
+              </span>
+            </label>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">
+              Keep null values in output instead of removing them
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Automation & Workflows */}
+      <div>
+        <div className="flex items-center space-x-2 mb-4">
+          <Zap className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            Automation & Workflows
+          </h3>
+        </div>
+        <div className="space-y-4">
+          <div>
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={localSettings.automation_enabled}
+                onChange={(e) =>
+                  setLocalSettings({ ...localSettings, automation_enabled: e.target.checked })
+                }
+                className="rounded"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                Enable automation
+              </span>
+            </label>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">
+              Allow automated tasks and workflows to run
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Auto-save interval: {localSettings.auto_save_interval_seconds}s
+            </label>
+            <input
+              type="range"
+              min="30"
+              max="600"
+              step="30"
+              value={localSettings.auto_save_interval_seconds}
+              onChange={(e) =>
+                setLocalSettings({
+                  ...localSettings,
+                  auto_save_interval_seconds: parseInt(e.target.value),
+                })
+              }
+              className="w-full"
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              How often to automatically save work (30s - 10min)
+            </p>
+          </div>
+
+          <div>
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={localSettings.auto_backup_enabled}
+                onChange={(e) =>
+                  setLocalSettings({ ...localSettings, auto_backup_enabled: e.target.checked })
+                }
+                className="rounded"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                Enable automatic backups
+              </span>
+            </label>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">
+              Automatically backup queries and data
+            </p>
+          </div>
+
+          <div>
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={localSettings.workflow_execution_enabled}
+                onChange={(e) =>
+                  setLocalSettings({ ...localSettings, workflow_execution_enabled: e.target.checked })
+                }
+                className="rounded"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                Enable workflow execution
+              </span>
+            </label>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">
+              Allow custom workflows to execute automatically
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Database Performance */}
+      <div>
+        <div className="flex items-center space-x-2 mb-4">
+          <Database className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            Database Performance
+          </h3>
+        </div>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Database cache size: {localSettings.database_cache_size_mb} MB
+            </label>
+            <input
+              type="range"
+              min="64"
+              max="2048"
+              step="64"
+              value={localSettings.database_cache_size_mb}
+              onChange={(e) =>
+                setLocalSettings({
+                  ...localSettings,
+                  database_cache_size_mb: parseInt(e.target.value),
+                })
+              }
+              className="w-full"
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Memory allocated for database caching (64MB - 2GB)
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Max query timeout: {localSettings.max_query_timeout_seconds}s
+            </label>
+            <input
+              type="range"
+              min="30"
+              max="600"
+              step="30"
+              value={localSettings.max_query_timeout_seconds}
+              onChange={(e) =>
+                setLocalSettings({
+                  ...localSettings,
+                  max_query_timeout_seconds: parseInt(e.target.value),
+                })
+              }
+              className="w-full"
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Maximum time allowed for a single query (30s - 10min)
+            </p>
+          </div>
+
+          <div>
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={localSettings.enable_query_optimization}
+                onChange={(e) =>
+                  setLocalSettings({ ...localSettings, enable_query_optimization: e.target.checked })
+                }
+                className="rounded"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                Enable query optimization
+              </span>
+            </label>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">
+              Automatically optimize queries for better performance
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Memory Allocation */}
+      <div>
+        <div className="flex items-center space-x-2 mb-4">
+          <Cpu className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            Memory Allocation
+          </h3>
+        </div>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              App memory: {localSettings.app_memory_percent}%
+            </label>
+            <input
+              type="range"
+              min="10"
+              max="80"
+              value={localSettings.app_memory_percent}
+              onChange={(e) =>
+                setLocalSettings({
+                  ...localSettings,
+                  app_memory_percent: parseInt(e.target.value),
+                })
+              }
+              className="w-full"
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Percentage of system memory for app operations
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Processing memory: {localSettings.processing_memory_percent}%
+            </label>
+            <input
+              type="range"
+              min="10"
+              max="80"
+              value={localSettings.processing_memory_percent}
+              onChange={(e) =>
+                setLocalSettings({
+                  ...localSettings,
+                  processing_memory_percent: parseInt(e.target.value),
+                })
+              }
+              className="w-full"
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Percentage of system memory for data processing
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Cache memory: {localSettings.cache_memory_percent}%
+            </label>
+            <input
+              type="range"
+              min="5"
+              max="40"
+              value={localSettings.cache_memory_percent}
+              onChange={(e) =>
+                setLocalSettings({
+                  ...localSettings,
+                  cache_memory_percent: parseInt(e.target.value),
+                })
+              }
+              className="w-full"
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Percentage of system memory for caching
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Power User Features */}
+      <div>
+        <div className="flex items-center space-x-2 mb-4">
+          <Users className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            Power User Features
+          </h3>
+        </div>
+        <div className="space-y-4">
+          <div>
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={localSettings.enable_semantic_search}
+                onChange={(e) =>
+                  setLocalSettings({ ...localSettings, enable_semantic_search: e.target.checked })
+                }
+                className="rounded"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                Enable semantic search
+              </span>
+            </label>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">
+              Use AI-powered semantic search for queries
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Semantic similarity threshold: {localSettings.semantic_similarity_threshold.toFixed(2)}
+            </label>
+            <input
+              type="range"
+              min="0.1"
+              max="1.0"
+              step="0.05"
+              value={localSettings.semantic_similarity_threshold}
+              onChange={(e) =>
+                setLocalSettings({
+                  ...localSettings,
+                  semantic_similarity_threshold: parseFloat(e.target.value),
+                })
+              }
+              className="w-full"
+              disabled={!localSettings.enable_semantic_search}
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Minimum similarity score for search results (0.1 - 1.0)
+            </p>
+          </div>
+
+          <div>
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={localSettings.show_keyboard_shortcuts}
+                onChange={(e) =>
+                  setLocalSettings({ ...localSettings, show_keyboard_shortcuts: e.target.checked })
+                }
+                className="rounded"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                Show keyboard shortcuts
+              </span>
+            </label>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">
+              Display keyboard shortcuts in the UI
+            </p>
+          </div>
+
+          <div>
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={localSettings.enable_bulk_operations}
+                onChange={(e) =>
+                  setLocalSettings({ ...localSettings, enable_bulk_operations: e.target.checked })
+                }
+                className="rounded"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                Enable bulk operations
+              </span>
+            </label>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">
+              Allow batch processing of multiple files or queries
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Session Settings */}
+      <div>
+        <div className="flex items-center space-x-2 mb-4">
+          <Clock className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            Session Settings
+          </h3>
+        </div>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Session timeout: {localSettings.session_timeout_hours} hours
+            </label>
+            <input
+              type="range"
+              min="1"
+              max="168"
+              value={localSettings.session_timeout_hours}
+              onChange={(e) =>
+                setLocalSettings({
+                  ...localSettings,
+                  session_timeout_hours: parseInt(e.target.value),
+                })
+              }
+              className="w-full"
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Automatically log out after inactivity (1 hour - 7 days)
+            </p>
+          </div>
+
+          <div>
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={localSettings.clear_temp_on_close}
+                onChange={(e) =>
+                  setLocalSettings({ ...localSettings, clear_temp_on_close: e.target.checked })
+                }
+                className="rounded"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                Clear temporary files on close
+              </span>
+            </label>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">
+              Automatically delete temporary files when session ends
+            </p>
           </div>
         </div>
       </div>

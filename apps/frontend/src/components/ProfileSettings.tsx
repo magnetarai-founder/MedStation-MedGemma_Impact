@@ -26,9 +26,12 @@ import {
   Building2,
   Church,
   ChevronRight,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react'
 import { useUserStore } from '@/stores/userStore'
 import { useDocsStore } from '@/stores/docsStore'
+import { isBiometricAvailable, registerBiometric, hasBiometricCredential } from '@/lib/biometricAuth'
 import toast from 'react-hot-toast'
 
 type ProfileTab = 'identity' | 'security' | 'cloud' | 'privacy' | 'danger'
@@ -54,12 +57,37 @@ export function ProfileSettings() {
   const [licenseType, setLicenseType] = useState<LicenseType>('none')
   const [licenseKey, setLicenseKey] = useState('')
 
+  // Biometric state
+  const [biometricAvailable, setBiometricAvailable] = useState(false)
+  const [biometricRegistered, setBiometricRegistered] = useState(false)
+  const [checkingBiometric, setCheckingBiometric] = useState(true)
+
   // Auto-fetch user on mount if not loaded
   useEffect(() => {
     if (!user && !isLoading) {
       fetchUser()
     }
   }, [])
+
+  // Check biometric availability on mount
+  useEffect(() => {
+    const checkBiometric = async () => {
+      setCheckingBiometric(true)
+      const available = await isBiometricAvailable()
+      setBiometricAvailable(available)
+
+      if (available && user?.user_id) {
+        const registered = hasBiometricCredential(`vault-${user.user_id}`)
+        setBiometricRegistered(registered)
+      }
+
+      setCheckingBiometric(false)
+    }
+
+    if (user?.user_id) {
+      checkBiometric()
+    }
+  }, [user?.user_id])
 
   // Update local state when user changes
   useEffect(() => {
@@ -139,6 +167,19 @@ export function ProfileSettings() {
 
   const handleActivateLicense = () => {
     toast('Cloud activation - Coming soon')
+  }
+
+  const handleRegisterBiometric = async () => {
+    if (!user?.user_id) {
+      toast.error('User ID not found')
+      return
+    }
+
+    const success = await registerBiometric(`vault-${user.user_id}`, user.user_id)
+    if (success) {
+      setBiometricRegistered(true)
+      toast.success('Touch ID registered successfully')
+    }
   }
 
   const tabs = [
@@ -385,9 +426,9 @@ export function ProfileSettings() {
                 </div>
                 <input
                   type="checkbox"
-                  checked={securitySettings.auto_lock_on_exit}
+                  checked={securitySettings.lock_on_exit}
                   onChange={(e) =>
-                    updateSecuritySettings({ auto_lock_on_exit: e.target.checked })
+                    updateSecuritySettings({ lock_on_exit: e.target.checked })
                   }
                   className="w-5 h-5 rounded text-primary-600"
                 />
@@ -422,21 +463,71 @@ export function ProfileSettings() {
                   Inactivity Lock Timer
                 </label>
                 <select
-                  value={securitySettings.inactivity_lock_minutes || 0}
+                  value={securitySettings.inactivity_lock}
                   onChange={(e) =>
                     updateSecuritySettings({
-                      inactivity_lock_minutes: parseInt(e.target.value),
+                      inactivity_lock: e.target.value as 'instant' | '30s' | '1m' | '2m' | '3m' | '4m' | '5m',
                     })
                   }
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 >
-                  <option value={0}>Instant</option>
-                  <option value={1}>1 minute</option>
-                  <option value={5}>5 minutes</option>
-                  <option value={15}>15 minutes</option>
-                  <option value={30}>30 minutes</option>
-                  <option value={-1}>Never</option>
+                  <option value="instant">Instant</option>
+                  <option value="30s">30 seconds</option>
+                  <option value="1m">1 minute</option>
+                  <option value="2m">2 minutes</option>
+                  <option value="3m">3 minutes</option>
+                  <option value="4m">4 minutes</option>
+                  <option value="5m">5 minutes</option>
                 </select>
+              </div>
+
+              {/* Biometric Credential Registration */}
+              <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <div className="flex items-start gap-3 mb-3">
+                  <Fingerprint className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                  <div className="flex-1">
+                    <div className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                      Biometric Credential Setup
+                    </div>
+                    <div className="text-xs text-blue-700 dark:text-blue-300 mb-3">
+                      {checkingBiometric ? (
+                        'Checking biometric availability...'
+                      ) : !biometricAvailable ? (
+                        'Touch ID / Face ID not available on this device'
+                      ) : biometricRegistered ? (
+                        'Touch ID is registered and ready to use for vault access'
+                      ) : (
+                        'Register your biometric credential to unlock vault with Touch ID / Face ID'
+                      )}
+                    </div>
+
+                    {!checkingBiometric && (
+                      <div className="flex items-center gap-3">
+                        {biometricAvailable ? (
+                          biometricRegistered ? (
+                            <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                              <CheckCircle className="w-4 h-4" />
+                              <span className="text-xs font-medium">Registered</span>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={handleRegisterBiometric}
+                              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                            >
+                              <Fingerprint className="w-4 h-4" />
+                              <span>Register Touch ID</span>
+                            </button>
+                          )
+                        ) : (
+                          <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+                            <XCircle className="w-4 h-4" />
+                            <span className="text-xs">Not available</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -624,40 +715,56 @@ export function ProfileSettings() {
               {/* Stealth Mode */}
               <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
                 <div className="flex items-center gap-3">
-                  <Eye className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                  <Eye className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                   <div>
                     <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      Stealth Mode Labels
+                      Stealth Labels
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">
-                      Hide sensitive document titles in UI
+                      Hide sensitive document titles in UI (shows generic labels)
                     </div>
                   </div>
                 </div>
                 <input
                   type="checkbox"
+                  checked={securitySettings.stealth_labels}
+                  onChange={(e) => {
+                    updateSecuritySettings({ stealth_labels: e.target.checked })
+                    toast.success(
+                      e.target.checked
+                        ? 'Stealth labels enabled - Document titles will be hidden'
+                        : 'Stealth labels disabled - Document titles will be shown'
+                    )
+                  }}
                   className="w-5 h-5 rounded text-primary-600"
-                  onChange={() => toast('Stealth mode - Coming soon')}
                 />
               </div>
 
               {/* Decoy Mode */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+              <div className="flex items-center justify-between p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
                 <div className="flex items-center gap-3">
-                  <Shield className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                  <Shield className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                   <div>
                     <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      Decoy Mode
+                      Decoy Vault Enabled
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">
-                      Show fake data when unlocking with alternate password
+                      Dual vault system with plausible deniability
                     </div>
                   </div>
                 </div>
                 <input
                   type="checkbox"
-                  className="w-5 h-5 rounded text-primary-600"
-                  onChange={() => toast('Decoy mode - Coming soon')}
+                  checked={securitySettings.decoy_mode_enabled}
+                  onChange={(e) => {
+                    updateSecuritySettings({ decoy_mode_enabled: e.target.checked })
+                    toast.success(
+                      e.target.checked
+                        ? 'Decoy vault enabled - Use alternate password to access decoy vault'
+                        : 'Decoy vault disabled - Only real vault is active'
+                    )
+                  }}
+                  className="w-5 h-5 rounded text-amber-600"
                 />
               </div>
 

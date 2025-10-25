@@ -18,6 +18,8 @@ export interface AppSettings {
   json_default_format: string
   json_auto_safe: boolean
   json_max_depth: number
+  json_flatten_arrays: boolean
+  json_preserve_nulls: boolean
 
   // Naming Patterns
   naming_pattern_global: string
@@ -30,6 +32,17 @@ export interface AppSettings {
   naming_pattern_json_csv?: string | null
   naming_pattern_json_tsv?: string | null
   naming_pattern_json_parquet?: string | null
+
+  // Automation & Workflows
+  automation_enabled: boolean
+  auto_save_interval_seconds: number
+  auto_backup_enabled: boolean
+  workflow_execution_enabled: boolean
+
+  // Database Performance
+  database_cache_size_mb: number
+  max_query_timeout_seconds: number
+  enable_query_optimization: boolean
 
   // Power User Features
   enable_semantic_search: boolean

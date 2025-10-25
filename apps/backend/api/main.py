@@ -1145,6 +1145,8 @@ class AppSettings(BaseModel):
     json_default_format: str = "excel"
     json_auto_safe: bool = True
     json_max_depth: int = 5
+    json_flatten_arrays: bool = False
+    json_preserve_nulls: bool = True
 
     # Naming Patterns
     naming_pattern_global: str = "{name}_{YYYYMMDD}"
@@ -1157,6 +1159,17 @@ class AppSettings(BaseModel):
     naming_pattern_json_csv: Optional[str] = None
     naming_pattern_json_tsv: Optional[str] = None
     naming_pattern_json_parquet: Optional[str] = None
+
+    # Automation & Workflows
+    automation_enabled: bool = True
+    auto_save_interval_seconds: int = 300
+    auto_backup_enabled: bool = True
+    workflow_execution_enabled: bool = True
+
+    # Database Performance
+    database_cache_size_mb: int = 256
+    max_query_timeout_seconds: int = 300
+    enable_query_optimization: bool = True
 
     # Power User Features
     enable_semantic_search: bool = False
