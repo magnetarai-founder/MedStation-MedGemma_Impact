@@ -221,6 +221,14 @@ except Exception as e:
     services_failed.append("Vault")
     logger.debug(f"Vault service not available: {e}")
 
+try:
+    from automation_router import router as automation_router
+    app.include_router(automation_router)
+    services_loaded.append("Automation")
+except Exception as e:
+    services_failed.append("Automation")
+    logger.debug(f"Automation service not available: {e}")
+
 # Log summary of loaded services
 if services_loaded:
     logger.info(f"✓ Services: {', '.join(services_loaded)}")
