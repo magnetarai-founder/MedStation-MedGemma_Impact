@@ -203,13 +203,11 @@ class OfflineDataSync:
             ops_to_send = await self._get_operations_since_last_sync(peer_id, tables)
 
             # Step 2: Send operations to peer
-            # TODO: Implement actual network send via WebSocket/HTTP
             logger.info(f"📤 Sending {len(ops_to_send)} operations to {peer_id}")
+            ops_received = await self._exchange_operations_with_peer(peer_id, ops_to_send)
             state.operations_sent += len(ops_to_send)
 
-            # Step 3: Receive operations from peer
-            # TODO: Implement actual network receive
-            ops_received = []  # Placeholder
+            # Step 3: Operations received from peer during exchange
             logger.info(f"📥 Received {len(ops_received)} operations from {peer_id}")
 
             # Step 4: Apply received operations
@@ -414,6 +412,84 @@ class OfflineDataSync:
 
         conn.commit()
         conn.close()
+
+    async def _exchange_operations_with_peer(self,
+                                             peer_id: str,
+                                             operations_to_send: List[SyncOperation]) -> List[SyncOperation]:
+        """
+        Exchange sync operations with peer via HTTP
+
+        Args:
+            peer_id: Peer to sync with
+            operations_to_send: Our operations to send
+
+        Returns:
+            Operations received from peer
+        """
+        try:
+            # Import here to avoid circular dependency
+            from offline_mesh_discovery import get_mesh_discovery
+
+            # Get peer info from discovery
+            discovery = get_mesh_discovery()
+            peer = discovery.get_peer_by_id(peer_id)
+
+            if not peer:
+                logger.warning(f"Peer {peer_id} not found in discovery")
+                return []
+
+            # Prepare payload
+            import aiohttp
+            payload = {
+                'sender_peer_id': self.local_peer_id,
+                'operations': [
+                    {
+                        'op_id': op.op_id,
+                        'table_name': op.table_name,
+                        'operation': op.operation,
+                        'row_id': op.row_id,
+                        'data': op.data,
+                        'timestamp': op.timestamp,
+                        'peer_id': op.peer_id,
+                        'version': op.version
+                    }
+                    for op in operations_to_send
+                ]
+            }
+
+            # Send to peer's sync endpoint
+            url = f"http://{peer.ip_address}:{peer.port}/api/v1/mesh/sync/exchange"
+            timeout = aiohttp.ClientTimeout(total=30)
+
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.post(url, json=payload) as response:
+                    if response.status != 200:
+                        logger.error(f"Sync exchange failed with {peer_id}: HTTP {response.status}")
+                        return []
+
+                    result = await response.json()
+
+                    # Parse received operations
+                    received_ops = []
+                    for op_data in result.get('operations', []):
+                        op = SyncOperation(
+                            op_id=op_data['op_id'],
+                            table_name=op_data['table_name'],
+                            operation=op_data['operation'],
+                            row_id=op_data['row_id'],
+                            data=op_data.get('data'),
+                            timestamp=op_data['timestamp'],
+                            peer_id=op_data['peer_id'],
+                            version=op_data['version']
+                        )
+                        received_ops.append(op)
+
+                    logger.info(f"✅ Exchanged operations with {peer_id}: sent {len(operations_to_send)}, received {len(received_ops)}")
+                    return received_ops
+
+        except Exception as e:
+            logger.error(f"Failed to exchange operations with {peer_id}: {e}")
+            return []
 
     async def _save_sync_state(self, state: SyncState):
         """Save sync state to database"""

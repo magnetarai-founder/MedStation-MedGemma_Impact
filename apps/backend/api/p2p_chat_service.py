@@ -204,6 +204,36 @@ class P2PChatService:
         self.is_running = False
         logger.info("P2P service stopped")
 
+    async def close_all_connections(self):
+        """Emergency: Close all P2P connections immediately (for panic mode)"""
+        if not self.host:
+            logger.debug("No P2P host active - skipping connection close")
+            return
+
+        try:
+            # Close all active streams
+            network = self.host.get_network()
+            if network:
+                # Get all connected peers
+                connected_peers = list(network.connections.keys()) if hasattr(network, 'connections') else []
+
+                for peer_id in connected_peers:
+                    try:
+                        # Close connection to each peer
+                        await network.close_peer(peer_id)
+                        logger.debug(f"Closed connection to peer: {peer_id}")
+                    except Exception as e:
+                        logger.debug(f"Error closing connection to {peer_id}: {e}")
+
+            # Clear in-memory state
+            self.discovered_peers.clear()
+            self.active_channels.clear()
+
+            logger.info("✓ All P2P connections closed (panic mode)")
+        except Exception as e:
+            logger.error(f"Error closing P2P connections: {e}")
+            raise
+
     async def _start_mdns_discovery(self):
         """Start mDNS peer discovery on local network"""
         try:

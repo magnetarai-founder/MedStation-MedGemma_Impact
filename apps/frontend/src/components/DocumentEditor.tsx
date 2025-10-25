@@ -21,7 +21,7 @@ import {
   isBiometricAvailable,
   hasBiometricCredential,
 } from '@/lib/biometricAuth'
-import { encryptDocument } from '@/lib/encryption'
+import { encryptDocument, decryptDocument } from '@/lib/encryption'
 
 interface DocumentEditorProps {
   document: Document
@@ -38,6 +38,9 @@ export function DocumentEditor({ document, onToggleSidebar, isSidebarCollapsed }
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [biometricAvailable, setBiometricAvailable] = useState(false)
   const [hasBiometric, setHasBiometric] = useState(false)
+  const [isDecrypting, setIsDecrypting] = useState(false)
+  const [isEncrypted, setIsEncrypted] = useState(false)
+  const [decryptionError, setDecryptionError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const isLocked = lockedDocuments.has(document.id)
@@ -45,7 +48,74 @@ export function DocumentEditor({ document, onToggleSidebar, isSidebarCollapsed }
   useEffect(() => {
     setContent(document.content)
     setHasUnsavedChanges(false)
+    setDecryptionError(null)
+
+    // Check if document is encrypted
+    const isDocEncrypted = typeof document.content === 'object' && document.content?.encrypted === true
+    setIsEncrypted(isDocEncrypted)
   }, [document.id])
+
+  // Automatically decrypt encrypted documents on mount
+  useEffect(() => {
+    const handleDecryption = async () => {
+      // Check if document is encrypted
+      if (typeof document.content !== 'object' || document.content?.encrypted !== true) {
+        return
+      }
+
+      // Get vault state
+      const { vaultUnlocked, vaultPassphrase } = useDocsStore.getState()
+
+      // If vault is locked, show error
+      if (!vaultUnlocked || !vaultPassphrase) {
+        setDecryptionError('Vault is locked. Please unlock vault to view this document.')
+        return
+      }
+
+      // Decrypt the document
+      setIsDecrypting(true)
+      setDecryptionError(null)
+      toast.loading('Decrypting document...', { id: 'decrypt' })
+
+      try {
+        // Prepare encrypted document structure
+        const encryptedDoc = {
+          id: document.id,
+          title: document.title,
+          encrypted_content: document.content.encrypted_content,
+          salt: document.content.salt,
+          iv: document.content.iv,
+          created_at: document.created_at,
+          modified_at: document.updated_at,
+          metadata: document.content.metadata
+        }
+
+        // Decrypt the content
+        const decryptedContent = await decryptDocument(encryptedDoc, vaultPassphrase)
+
+        // Parse the decrypted content (it was stringified during encryption)
+        let parsedContent
+        try {
+          parsedContent = JSON.parse(decryptedContent)
+        } catch {
+          // If it's not JSON, use as plain text
+          parsedContent = decryptedContent
+        }
+
+        // Update the content state with decrypted content
+        setContent(parsedContent)
+        toast.success('Document decrypted successfully!', { id: 'decrypt' })
+      } catch (error) {
+        console.error('Decryption error:', error)
+        setDecryptionError('Failed to decrypt document. The passphrase may be incorrect.')
+        toast.error('Failed to decrypt document', { id: 'decrypt' })
+      } finally {
+        setIsDecrypting(false)
+      }
+    }
+
+    handleDecryption()
+  }, [document.id, document.content])
 
   // Check biometric availability on mount
   useEffect(() => {
@@ -260,6 +330,53 @@ export function DocumentEditor({ document, onToggleSidebar, isSidebarCollapsed }
 
   // Render different editors based on document type
   const renderEditor = () => {
+    // Show decryption loading state
+    if (isDecrypting) {
+      return (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="w-16 h-16 mx-auto mb-4 text-primary-600 animate-spin" />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+              Decrypting Document
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Please wait while we decrypt your document...
+            </p>
+          </div>
+        </div>
+      )
+    }
+
+    // Show decryption error state
+    if (decryptionError) {
+      return (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center max-w-md">
+            <Lock className="w-16 h-16 mx-auto mb-4 text-red-500" />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+              Cannot Decrypt Document
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              {decryptionError}
+            </p>
+            <button
+              onClick={() => {
+                const { workspaceView, setWorkspaceView } = useDocsStore.getState()
+                if (workspaceView !== 'vault') {
+                  setWorkspaceView('vault')
+                  toast.success('Switched to Vault tab. Please unlock the vault.')
+                }
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium transition-colors"
+            >
+              <Shield size={18} />
+              Go to Vault
+            </button>
+          </div>
+        </div>
+      )
+    }
+
     if (isLocked) {
       return (
         <div className="flex-1 flex items-center justify-center">
@@ -450,7 +567,7 @@ export function DocumentEditor({ document, onToggleSidebar, isSidebarCollapsed }
           )}
         </div>
 
-        {/* Center - Document Title with Pencil Hover */}
+        {/* Center - Document Title with Pencil Hover and Encryption Badge */}
         <div className="flex items-center gap-2 group">
           <input
             type="text"
@@ -460,6 +577,22 @@ export function DocumentEditor({ document, onToggleSidebar, isSidebarCollapsed }
             disabled={isLocked}
           />
           <Pencil className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+          {isEncrypted && (
+            <button
+              onClick={() => {
+                const metadata = document.content?.metadata
+                const info = metadata
+                  ? `Encrypted Document\n\nOriginal size: ${metadata.original_size} bytes\nEncrypted size: ${metadata.encrypted_size} bytes\nCompression: ${((1 - metadata.encrypted_size / metadata.original_size) * 100).toFixed(1)}%`
+                  : 'This document is encrypted and stored securely in the vault.'
+                toast.success(info, { duration: 5000 })
+              }}
+              className="flex items-center gap-1 px-2 py-1 bg-amber-100 dark:bg-amber-900/30 rounded text-xs text-amber-700 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors"
+              title="Click to view encryption details"
+            >
+              <Lock className="w-3 h-3" />
+              <span>Encrypted</span>
+            </button>
+          )}
         </div>
 
         {/* Right side - Actions */}

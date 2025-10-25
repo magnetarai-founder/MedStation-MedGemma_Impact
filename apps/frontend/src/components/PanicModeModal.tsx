@@ -23,7 +23,7 @@ export function PanicModeModal({ isOpen, onClose }: PanicModeModalProps) {
     setIsTriggering(true)
 
     try {
-      const response = await fetch('/api/v1/chat/panic/trigger', {
+      const response = await fetch('/api/v1/panic/trigger', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

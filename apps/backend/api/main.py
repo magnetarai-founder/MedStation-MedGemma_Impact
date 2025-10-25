@@ -205,6 +205,22 @@ except Exception as e:
     services_failed.append("Mesh")
     logger.debug(f"Offline Mesh not available: {e}")
 
+try:
+    from panic_mode_router import router as panic_router
+    app.include_router(panic_router)
+    services_loaded.append("Panic")
+except Exception as e:
+    services_failed.append("Panic")
+    logger.debug(f"Panic Mode not available: {e}")
+
+try:
+    from vault_service import router as vault_router
+    app.include_router(vault_router)
+    services_loaded.append("Vault")
+except Exception as e:
+    services_failed.append("Vault")
+    logger.debug(f"Vault service not available: {e}")
+
 # Log summary of loaded services
 if services_loaded:
     logger.info(f"✓ Services: {', '.join(services_loaded)}")

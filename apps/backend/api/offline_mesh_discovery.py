@@ -279,6 +279,10 @@ class OfflineMeshDiscovery:
         """Get specific peer by ID"""
         return self.peers.get(peer_id)
 
+    def get_peer_by_id(self, peer_id: str) -> Optional[LocalPeer]:
+        """Alias for get_peer - get specific peer by ID"""
+        return self.get_peer(peer_id)
+
     def on_peer_event(self, callback: Callable):
         """Register callback for peer events"""
         self.peer_callbacks.append(callback)

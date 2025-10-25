@@ -29,6 +29,9 @@ export interface Document {
   security_level?: 'standard' | 'encrypted' | 'secure_enclave' | 'stealth'
   is_locked?: boolean
 
+  // Vault mode (for dual vault storage)
+  vaultMode?: 'real' | 'decoy'
+
   // Collaboration
   shared_with?: string[]
   last_synced?: string
@@ -55,6 +58,8 @@ interface DocsStore {
 
   // Documents
   documents: Document[]
+  realVaultDocuments: Document[]
+  decoyVaultDocuments: Document[]
   activeDocumentId: string | null
   setActiveDocument: (id: string | null) => void
 
@@ -62,6 +67,15 @@ interface DocsStore {
   createDocument: (type: DocumentType, title?: string) => Document
   updateDocument: (id: string, updates: Partial<Document>) => void
   deleteDocument: (id: string) => void
+
+  // Vault document getters
+  getVaultDocuments: () => Document[]
+  getRealVaultDocuments: () => Document[]
+  getDecoyVaultDocuments: () => Document[]
+
+  // Vault document management
+  moveToVault: (docId: string, vaultMode: 'real' | 'decoy') => void
+  removeFromVault: (docId: string) => void
 
   // Insights model selection
   selectedInsightModel: string
@@ -118,6 +132,8 @@ export const useDocsStore = create<DocsStore>()(
       setWorkspaceView: (view) => set({ workspaceView: view }),
 
       documents: [],
+      realVaultDocuments: [],
+      decoyVaultDocuments: [],
       activeDocumentId: null,
       setActiveDocument: (id) => set({ activeDocumentId: id }),
 
@@ -288,6 +304,7 @@ export const useDocsStore = create<DocsStore>()(
       createDocument: (type, title) => {
         // Get user ID from user store
         const userId = useUserStore.getState().getUserId()
+        const state = get()
 
         const newDoc: Document = {
           id: `doc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -305,29 +322,161 @@ export const useDocsStore = create<DocsStore>()(
           shared_with: [],
         }
 
-        set((state) => ({
-          documents: [...state.documents, newDoc],
-          activeDocumentId: newDoc.id,
-        }))
+        // If vault is unlocked and we're in vault view, assign to current vault mode
+        if (state.vaultUnlocked && state.currentVaultMode && state.workspaceView === 'vault') {
+          newDoc.vaultMode = state.currentVaultMode
+
+          if (state.currentVaultMode === 'real') {
+            set((state) => ({
+              realVaultDocuments: [...state.realVaultDocuments, newDoc],
+              activeDocumentId: newDoc.id,
+            }))
+          } else {
+            set((state) => ({
+              decoyVaultDocuments: [...state.decoyVaultDocuments, newDoc],
+              activeDocumentId: newDoc.id,
+            }))
+          }
+        } else {
+          // Regular document (non-vault)
+          set((state) => ({
+            documents: [...state.documents, newDoc],
+            activeDocumentId: newDoc.id,
+          }))
+        }
 
         return newDoc
       },
 
       updateDocument: (id, updates) => {
-        set((state) => ({
-          documents: state.documents.map((doc) =>
-            doc.id === id
-              ? { ...doc, ...updates, updated_at: new Date().toISOString() }
-              : doc
-          ),
-        }))
+        set((state) => {
+          // Check which array the document belongs to
+          const isInRealVault = state.realVaultDocuments.some(doc => doc.id === id)
+          const isInDecoyVault = state.decoyVaultDocuments.some(doc => doc.id === id)
+
+          if (isInRealVault) {
+            return {
+              realVaultDocuments: state.realVaultDocuments.map((doc) =>
+                doc.id === id
+                  ? { ...doc, ...updates, updated_at: new Date().toISOString() }
+                  : doc
+              ),
+            }
+          } else if (isInDecoyVault) {
+            return {
+              decoyVaultDocuments: state.decoyVaultDocuments.map((doc) =>
+                doc.id === id
+                  ? { ...doc, ...updates, updated_at: new Date().toISOString() }
+                  : doc
+              ),
+            }
+          } else {
+            return {
+              documents: state.documents.map((doc) =>
+                doc.id === id
+                  ? { ...doc, ...updates, updated_at: new Date().toISOString() }
+                  : doc
+              ),
+            }
+          }
+        })
       },
 
       deleteDocument: (id) => {
-        set((state) => ({
-          documents: state.documents.filter((doc) => doc.id !== id),
-          activeDocumentId: state.activeDocumentId === id ? null : state.activeDocumentId,
-        }))
+        set((state) => {
+          // Check which array the document belongs to
+          const isInRealVault = state.realVaultDocuments.some(doc => doc.id === id)
+          const isInDecoyVault = state.decoyVaultDocuments.some(doc => doc.id === id)
+
+          if (isInRealVault) {
+            return {
+              realVaultDocuments: state.realVaultDocuments.filter((doc) => doc.id !== id),
+              activeDocumentId: state.activeDocumentId === id ? null : state.activeDocumentId,
+            }
+          } else if (isInDecoyVault) {
+            return {
+              decoyVaultDocuments: state.decoyVaultDocuments.filter((doc) => doc.id !== id),
+              activeDocumentId: state.activeDocumentId === id ? null : state.activeDocumentId,
+            }
+          } else {
+            return {
+              documents: state.documents.filter((doc) => doc.id !== id),
+              activeDocumentId: state.activeDocumentId === id ? null : state.activeDocumentId,
+            }
+          }
+        })
+      },
+
+      // Vault document getters
+      getVaultDocuments: () => {
+        const state = get()
+        if (!state.vaultUnlocked || !state.currentVaultMode) {
+          return []
+        }
+        return state.currentVaultMode === 'real'
+          ? state.realVaultDocuments
+          : state.decoyVaultDocuments
+      },
+
+      getRealVaultDocuments: () => {
+        return get().realVaultDocuments
+      },
+
+      getDecoyVaultDocuments: () => {
+        return get().decoyVaultDocuments
+      },
+
+      // Vault document management
+      moveToVault: (docId, vaultMode) => {
+        set((state) => {
+          // Find the document in regular documents
+          const doc = state.documents.find(d => d.id === docId)
+          if (!doc) return state
+
+          // Update document with vault mode
+          const updatedDoc = { ...doc, vaultMode }
+
+          // Remove from regular documents and add to appropriate vault
+          const newDocuments = state.documents.filter(d => d.id !== docId)
+
+          if (vaultMode === 'real') {
+            return {
+              documents: newDocuments,
+              realVaultDocuments: [...state.realVaultDocuments, updatedDoc],
+            }
+          } else {
+            return {
+              documents: newDocuments,
+              decoyVaultDocuments: [...state.decoyVaultDocuments, updatedDoc],
+            }
+          }
+        })
+      },
+
+      removeFromVault: (docId) => {
+        set((state) => {
+          // Check which vault the document is in
+          const realDoc = state.realVaultDocuments.find(d => d.id === docId)
+          const decoyDoc = state.decoyVaultDocuments.find(d => d.id === docId)
+
+          if (realDoc) {
+            // Remove from real vault, add to regular documents
+            const { vaultMode, ...docWithoutVaultMode } = realDoc
+            return {
+              realVaultDocuments: state.realVaultDocuments.filter(d => d.id !== docId),
+              documents: [...state.documents, docWithoutVaultMode],
+            }
+          } else if (decoyDoc) {
+            // Remove from decoy vault, add to regular documents
+            const { vaultMode, ...docWithoutVaultMode } = decoyDoc
+            return {
+              decoyVaultDocuments: state.decoyVaultDocuments.filter(d => d.id !== docId),
+              documents: [...state.documents, docWithoutVaultMode],
+            }
+          }
+
+          return state
+        })
       },
 
       securitySettings: defaultSecuritySettings,
@@ -370,6 +519,8 @@ export const useDocsStore = create<DocsStore>()(
       partialize: (state) => ({
         workspaceView: state.workspaceView,
         documents: state.documents,
+        realVaultDocuments: state.realVaultDocuments,
+        decoyVaultDocuments: state.decoyVaultDocuments,
         activeDocumentId: state.activeDocumentId,
         selectedInsightModel: state.selectedInsightModel,
         vaultSetupComplete: state.vaultSetupComplete,

@@ -482,6 +482,70 @@ async def get_sync_stats():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+class SyncExchangeRequest(BaseModel):
+    """Sync operation exchange request"""
+    sender_peer_id: str
+    operations: List[Dict[str, Any]]
+
+
+@router.post("/sync/exchange")
+async def exchange_sync_operations(request: SyncExchangeRequest):
+    """
+    Exchange sync operations with peer (called by remote peer during sync)
+
+    This endpoint receives operations from a remote peer and returns
+    our operations for them to apply.
+    """
+    try:
+        sync = get_data_sync()
+
+        # Parse incoming operations
+        from offline_data_sync import SyncOperation
+        incoming_ops = []
+        for op_data in request.operations:
+            op = SyncOperation(
+                op_id=op_data['op_id'],
+                table_name=op_data['table_name'],
+                operation=op_data['operation'],
+                row_id=op_data['row_id'],
+                data=op_data.get('data'),
+                timestamp=op_data['timestamp'],
+                peer_id=op_data['peer_id'],
+                version=op_data['version']
+            )
+            incoming_ops.append(op)
+
+        # Apply incoming operations
+        conflicts = await sync._apply_operations(incoming_ops)
+        logger.info(f"Applied {len(incoming_ops)} operations from {request.sender_peer_id} ({conflicts} conflicts)")
+
+        # Get our operations to send back
+        ops_to_return = await sync._get_operations_since_last_sync(request.sender_peer_id, tables=None)
+
+        # Format response
+        return {
+            "operations": [
+                {
+                    'op_id': op.op_id,
+                    'table_name': op.table_name,
+                    'operation': op.operation,
+                    'row_id': op.row_id,
+                    'data': op.data,
+                    'timestamp': op.timestamp,
+                    'peer_id': op.peer_id,
+                    'version': op.version
+                }
+                for op in ops_to_return
+            ],
+            "conflicts_resolved": conflicts,
+            "operations_applied": len(incoming_ops)
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to exchange sync operations: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ============================================================================
 # MLX DISTRIBUTED COMPUTING ENDPOINTS
 # ============================================================================
