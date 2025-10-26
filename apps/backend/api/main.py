@@ -263,6 +263,15 @@ except Exception as e:
     services_failed.append("Authentication")
     logger.error(f"Authentication service failed to load: {e}")
 
+# Monitoring routes
+try:
+    from monitoring_routes import router as monitoring_router
+    app.include_router(monitoring_router)
+    services_loaded.append("Monitoring")
+except Exception as e:
+    services_failed.append("Monitoring")
+    logger.error(f"Monitoring service failed to load: {e}")
+
 # Log summary of loaded services
 if services_loaded:
     logger.info(f"✓ Services: {', '.join(services_loaded)}")

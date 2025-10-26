@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, Activity } from 'lucide-react'
 import { QuickChatDropdown } from './QuickChatDropdown'
 import { PerformanceMonitorDropdown } from './PerformanceMonitorDropdown'
+import { ControlCenterModal } from './ControlCenterModal'
 import { ModelManagementSidebar } from './ModelManagementSidebar'
 import { useOllamaStore } from '../stores/ollamaStore'
 import { ShutdownModal, RestartModal } from './OllamaServerModals'
@@ -18,6 +19,7 @@ export function Header({ onOpenServerControls }: HeaderProps) {
   const [showRestartModal, setShowRestartModal] = useState(false)
   const [previousModels, setPreviousModels] = useState<string[]>([])
   const [showPanicConfirm, setShowPanicConfirm] = useState(false)
+  const [showControlCenter, setShowControlCenter] = useState(false)
   const [activeDropdown, setActiveDropdown] = useState<'chat' | 'performance' | null>(null)
 
   // Fetch server status on mount and periodically
@@ -157,6 +159,15 @@ export function Header({ onOpenServerControls }: HeaderProps) {
               onToggle={() => setActiveDropdown(activeDropdown === 'performance' ? null : 'performance')}
             />
 
+            {/* Control Center */}
+            <button
+              onClick={() => setShowControlCenter(true)}
+              className="p-2 hover:bg-blue-100 dark:hover:bg-blue-900/20 rounded-lg transition-colors text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+              title="Control Center (System Monitoring)"
+            >
+              <Activity size={20} />
+            </button>
+
             {/* PANIC BUTTON (Emergency Data Wipe) */}
             <button
               onClick={() => setShowPanicConfirm(true)}
@@ -194,6 +205,12 @@ export function Header({ onOpenServerControls }: HeaderProps) {
       <PanicModeModal
         isOpen={showPanicConfirm}
         onClose={() => setShowPanicConfirm(false)}
+      />
+
+      {/* Control Center Modal */}
+      <ControlCenterModal
+        isOpen={showControlCenter}
+        onClose={() => setShowControlCenter(false)}
       />
     </>
   )
