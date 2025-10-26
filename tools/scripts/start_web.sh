@@ -29,9 +29,9 @@ fi
 source venv/bin/activate
 
 # Install Python dependencies only if needed
-if ! venv/bin/python3 -c "import fastapi, uvicorn, duckdb, pandas, httpx" 2>/dev/null; then
+if ! venv/bin/python3 -c "import fastapi, uvicorn, duckdb, pandas, httpx, jwt" 2>/dev/null; then
     echo "Installing Python dependencies..."
-    venv/bin/python3 -m pip install -q -r apps/backend/backend_requirements.txt
+    venv/bin/python3 -m pip install -q -r apps/backend/requirements.txt
 else
     echo "✓ Python dependencies already installed"
 fi

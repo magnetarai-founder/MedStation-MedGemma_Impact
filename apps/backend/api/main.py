@@ -6,6 +6,7 @@ FastAPI backend wrapper for the existing SQL engine
 import os
 import asyncio
 import uuid
+import re
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from datetime import datetime
@@ -252,6 +253,15 @@ try:
 except Exception as e:
     services_failed.append("Secure Enclave")
     logger.debug(f"Secure Enclave service not available: {e}")
+
+# Auth routes
+try:
+    from auth_routes import router as auth_router
+    app.include_router(auth_router)
+    services_loaded.append("Authentication")
+except Exception as e:
+    services_failed.append("Authentication")
+    logger.error(f"Authentication service failed to load: {e}")
 
 # Log summary of loaded services
 if services_loaded:
@@ -1693,6 +1703,10 @@ async def rediscover_queries(dataset_id: str):
             raise HTTPException(status_code=404, detail="Dataset not found")
 
         table_name = metadata['table_name']
+
+        # Validate table name to prevent SQL injection
+        if not re.match(r'^[a-zA-Z0-9_]+$', table_name):
+            raise HTTPException(status_code=400, detail="Invalid table name")
 
         # Get dataframe from table
         cursor = data_engine.conn.execute(f"SELECT * FROM {table_name} LIMIT 1000")

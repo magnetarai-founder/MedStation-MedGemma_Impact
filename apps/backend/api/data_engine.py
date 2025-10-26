@@ -427,6 +427,11 @@ class DataEngine:
 
         table_name = metadata['table_name']
 
+        # Validate table name to prevent SQL injection
+        if not re.match(r'^[a-zA-Z0-9_]+$', table_name):
+            logger.error(f"Invalid table name: {table_name}")
+            return False
+
         with self._write_lock:
             # Drop table
             self.conn.execute(f"DROP TABLE IF EXISTS {table_name}")

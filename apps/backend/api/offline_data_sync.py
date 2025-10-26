@@ -9,6 +9,7 @@ import asyncio
 import json
 import sqlite3
 import logging
+import re
 from typing import Dict, List, Optional, Set, Any
 from dataclasses import dataclass, asdict
 from datetime import datetime
@@ -367,10 +368,22 @@ class OfflineDataSync:
         """Execute database operation"""
         cursor = conn.cursor()
 
+        # Validate table name to prevent SQL injection (critical for P2P data)
+        if not re.match(r'^[a-zA-Z0-9_]+$', op.table_name):
+            logger.error(f"Invalid table name from P2P: {op.table_name}")
+            raise ValueError(f"Invalid table name: {op.table_name}")
+
         try:
             if op.operation == 'insert':
                 # Build INSERT statement
                 columns = list(op.data.keys())
+
+                # Validate column names to prevent SQL injection
+                for col in columns:
+                    if not re.match(r'^[a-zA-Z0-9_]+$', col):
+                        logger.error(f"Invalid column name from P2P: {col}")
+                        raise ValueError(f"Invalid column name: {col}")
+
                 placeholders = ','.join('?' * len(columns))
                 column_names = ','.join(columns)
 
@@ -380,6 +393,12 @@ class OfflineDataSync:
                 """, list(op.data.values()))
 
             elif op.operation == 'update':
+                # Validate column names to prevent SQL injection
+                for col in op.data.keys():
+                    if not re.match(r'^[a-zA-Z0-9_]+$', col):
+                        logger.error(f"Invalid column name from P2P: {col}")
+                        raise ValueError(f"Invalid column name: {col}")
+
                 # Build UPDATE statement
                 set_clause = ','.join(f"{k} = ?" for k in op.data.keys())
 
