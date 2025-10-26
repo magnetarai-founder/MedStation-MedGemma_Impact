@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
-import { Plus, FileText, Users, DollarSign, Plane, BookOpen, Heart, Calendar, UserPlus, ChurchIcon as Church, Star, Pencil, Trash2, X, Save, AlertTriangle, Briefcase, BarChart } from 'lucide-react'
+import { Plus, FileText, Users, DollarSign, Plane, BookOpen, Heart, Calendar, UserPlus, ChurchIcon as Church, Star, Pencil, Trash2, X, Save, AlertTriangle, Briefcase, BarChart, Workflow as WorkflowIcon } from 'lucide-react'
 import { WorkflowBuilder } from './WorkflowBuilder'
 import { WorkflowQueue } from './WorkflowQueue'
 import { ActiveWorkItem } from './ActiveWorkItem'
 import { WorkflowStatusTracker } from './WorkflowStatusTracker'
+import { WorkflowDesigner } from './WorkflowDesigner'
 import { ReactFlowProvider } from 'reactflow'
-import type { WorkItem } from '../types/workflow'
+import type { WorkItem, Workflow } from '../types/workflow'
 
 interface WorkflowTemplate {
   id: string
@@ -145,7 +146,7 @@ const CATEGORY_INFO = {
 
 export function AutomationTab() {
   // View state
-  const [currentView, setCurrentView] = useState<'library' | 'builder' | 'queue' | 'tracker'>('library')
+  const [currentView, setCurrentView] = useState<'library' | 'builder' | 'queue' | 'tracker' | 'designer'>('library')
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
   const [selectedWorkItem, setSelectedWorkItem] = useState<WorkItem | null>(null)
   const [selectedWorkflowForQueue, setSelectedWorkflowForQueue] = useState<string | null>(null)
@@ -340,6 +341,20 @@ export function AutomationTab() {
   })
 
   // Show different views based on currentView
+  if (currentView === 'designer') {
+    return (
+      <WorkflowDesigner
+        onSave={(workflow: Workflow) => {
+          console.log('Workflow saved:', workflow)
+          setCurrentView('library')
+        }}
+        onCancel={() => {
+          setCurrentView('library')
+        }}
+      />
+    )
+  }
+
   if (currentView === 'builder' && selectedTemplate) {
     return (
       <ReactFlowProvider>
@@ -392,31 +407,31 @@ export function AutomationTab() {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-gray-50 dark:bg-gray-900">
+    <div className="h-full w-full flex flex-col">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Automation</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Automation</h1>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
               Equipping the global church to do more with less
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setCurrentView('queue')}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg font-medium transition-colors text-gray-700 dark:text-gray-300"
-            >
-              <Briefcase className="w-4 h-4" />
-              My Work
-            </button>
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setCurrentView('tracker')}
               disabled={!selectedWorkflowForQueue}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg font-medium transition-colors text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <BarChart className="w-4 h-4" />
               Tracker
+            </button>
+            <button
+              onClick={() => setCurrentView('queue')}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-700 dark:text-gray-300"
+            >
+              <Briefcase className="w-4 h-4" />
+              My Work
             </button>
             <button
               onClick={() => {
@@ -427,7 +442,7 @@ export function AutomationTab() {
                   setIsEditMode(true)
                 }
               }}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg font-medium transition-colors text-gray-700 dark:text-gray-300"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-700 dark:text-gray-300"
             >
               {isEditMode ? (
                 <>
@@ -441,9 +456,12 @@ export function AutomationTab() {
                 </>
               )}
             </button>
-            <button className="flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg font-medium transition-colors">
-              <Plus className="w-4 h-4" />
-              New Workflow
+            <button
+              onClick={() => setCurrentView('designer')}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+            >
+              <WorkflowIcon className="w-4 h-4" />
+              Create Workflow
             </button>
           </div>
         </div>

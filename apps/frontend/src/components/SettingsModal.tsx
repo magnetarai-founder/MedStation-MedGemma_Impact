@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
-import { X, Settings as SettingsIcon, Zap, AlertTriangle, Cpu, User, Loader2 } from 'lucide-react'
+import { X, Settings as SettingsIcon, Zap, AlertTriangle, Cpu, User, Loader2, Plug } from 'lucide-react'
 import { type NavTab } from '@/stores/navigationStore'
 import { ProfileSettings } from './ProfileSettings'
 
@@ -7,6 +7,7 @@ import { ProfileSettings } from './ProfileSettings'
 const SettingsTab = lazy(() => import('./settings/SettingsTab'))
 const PowerUserTab = lazy(() => import('./settings/PowerUserTab'))
 const ModelManagementTab = lazy(() => import('./settings/ModelManagementTab'))
+const IntegrationsTab = lazy(() => import('./settings/IntegrationsTab'))
 const DangerZoneTab = lazy(() => import('./settings/DangerZoneTab'))
 
 
@@ -30,7 +31,7 @@ function LoadingFallback() {
 }
 
 export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<'profile' | 'settings' | 'power' | 'models' | 'danger'>('settings')
+  const [activeTab, setActiveTab] = useState<'profile' | 'settings' | 'power' | 'models' | 'integrations' | 'danger'>('settings')
 
   // Handle ESC key to close modal
   useEffect(() => {
@@ -125,6 +126,19 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
             <span className="font-medium">Model Management</span>
           </button>
           <button
+            onClick={() => setActiveTab('integrations')}
+            className={`
+              flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors
+              ${activeTab === 'integrations'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }
+            `}
+          >
+            <Plug className="w-4 h-4" />
+            <span className="font-medium">Integrations</span>
+          </button>
+          <button
             onClick={() => setActiveTab('danger')}
             className={`
               flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors
@@ -146,6 +160,7 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
             {activeTab === 'settings' && <SettingsTab activeNavTab={activeNavTab} />}
             {activeTab === 'power' && <PowerUserTab />}
             {activeTab === 'models' && <ModelManagementTab />}
+            {activeTab === 'integrations' && <IntegrationsTab />}
             {activeTab === 'danger' && <DangerZoneTab />}
           </Suspense>
         </div>

@@ -197,12 +197,12 @@ export default function App() {
               storageKey="ns.editorSidebarWidth"
               left={
                 <div className="h-full flex flex-col">
-                  <div className="p-4 pb-3 border-b border-gray-200 dark:border-gray-800">
+                  <div className="p-4 pb-3 border-b border-gray-200 dark:border-gray-700">
                     <FileUpload />
                   </div>
 
                   {/* Icon Row - Library, Query History, JSON */}
-                  <div className="flex items-center justify-center gap-2 py-2 border-b border-gray-200 dark:border-gray-800">
+                  <div className="flex items-center justify-center gap-2 py-2 border-b border-gray-200 dark:border-gray-700">
                     <button
                       onClick={() => setIsLibraryOpen(true)}
                       className="p-2 hover:bg-white/60 dark:hover:bg-gray-700/60 rounded-lg transition-all text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400"

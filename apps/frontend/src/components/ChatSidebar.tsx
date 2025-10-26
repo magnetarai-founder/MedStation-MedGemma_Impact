@@ -130,9 +130,9 @@ export function ChatSidebar() {
       <div className="p-4 border-b border-white/10 dark:border-gray-700/30">
         <button
           onClick={createNewChat}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl hover:shadow-md transition-all font-medium"
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-primary-600 hover:bg-primary-700 text-white rounded-lg hover:shadow-md transition-all"
         >
-          <MessageSquarePlus size={18} />
+          <MessageSquarePlus size={16} />
           <span>New Chat</span>
         </button>
       </div>

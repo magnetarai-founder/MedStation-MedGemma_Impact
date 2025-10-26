@@ -33,7 +33,7 @@ export function TeamWorkspace() {
   return (
     <div className="h-full w-full flex flex-col">
       {/* Sub-navigation bar */}
-      <div className="flex items-center gap-3 px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30">
         {/* Network Selector - Globe Icon */}
         <NetworkSelector mode={networkMode} onModeChange={setNetworkMode} />
 

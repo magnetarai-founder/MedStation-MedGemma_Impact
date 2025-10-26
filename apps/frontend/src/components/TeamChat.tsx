@@ -1,3 +1,4 @@
+import { ResizableSidebar } from './ResizableSidebar'
 import { TeamChatSidebar } from './TeamChatSidebar'
 import { TeamChatWindow } from './TeamChatWindow'
 
@@ -10,16 +11,12 @@ export function TeamChat({ mode }: TeamChatProps) {
   const chatMode: 'solo' | 'p2p' = mode === 'solo' ? 'solo' : 'p2p'
 
   return (
-    <div className="h-full w-full flex">
-      {/* Sidebar */}
-      <div className="w-80 flex-shrink-0 bg-gray-50/80 dark:bg-gray-800/50 backdrop-blur-xl border-r border-white/10 dark:border-gray-700/30">
-        <TeamChatSidebar mode={chatMode} onModeChange={() => {}} />
-      </div>
-
-      {/* Main chat area */}
-      <div className="flex-1">
-        <TeamChatWindow mode={chatMode} />
-      </div>
-    </div>
+    <ResizableSidebar
+      initialWidth={320}
+      minWidth={280}
+      storageKey="ns.teamChatSidebarWidth"
+      left={<TeamChatSidebar mode={chatMode} onModeChange={() => {}} />}
+      right={<TeamChatWindow mode={chatMode} />}
+    />
   )
 }

@@ -222,12 +222,12 @@ export function ChatWindow() {
       )}
 
       {/* Header */}
-      <div className="relative flex-shrink-0 px-6 py-4 border-b border-white/10 dark:border-gray-700/30 flex items-center justify-between backdrop-blur-sm bg-white/50 dark:bg-gray-900/50">
+      <div className="relative flex-shrink-0 px-4 py-3 border-b border-white/10 dark:border-gray-700/30 flex items-center justify-between backdrop-blur-sm bg-white/50 dark:bg-gray-900/50">
         <div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
             {activeSession?.title || 'Chat'}
           </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
             {messages.length} messages
           </p>
         </div>

@@ -237,6 +237,14 @@ except Exception as e:
     services_failed.append("Workflow")
     logger.debug(f"Workflow service not available: {e}")
 
+try:
+    from n8n_router import router as n8n_router
+    app.include_router(n8n_router)
+    services_loaded.append("n8n Integration")
+except Exception as e:
+    services_failed.append("n8n Integration")
+    logger.debug(f"n8n integration not available: {e}")
+
 # Log summary of loaded services
 if services_loaded:
     logger.info(f"✓ Services: {', '.join(services_loaded)}")

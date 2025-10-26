@@ -110,7 +110,7 @@ export function TeamChatWindow({ mode }: TeamChatWindowProps) {
 
   if (!activeChannelId) {
     return (
-      <div className="h-full flex items-center justify-center bg-white dark:bg-gray-950">
+      <div className="h-full flex items-center justify-center">
         <div className="text-center max-w-md">
           <div className="w-20 h-20 bg-gray-100 dark:bg-gray-900 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Hash size={40} className="text-gray-400 dark:text-gray-600" />
@@ -129,9 +129,9 @@ export function TeamChatWindow({ mode }: TeamChatWindowProps) {
   }
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-gray-950">
+    <div className="h-full flex flex-col">
       {/* Channel Header (Slack-style) */}
-      <div className="flex-shrink-0 px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950">
+      <div className="flex-shrink-0 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center gap-1">
@@ -234,7 +234,7 @@ export function TeamChatWindow({ mode }: TeamChatWindowProps) {
       <div className="flex-shrink-0 px-4 pb-6">
         <div className="border-2 border-gray-300 dark:border-gray-700 rounded-lg focus-within:border-gray-400 dark:focus-within:border-gray-600 transition-colors">
           {/* Formatting toolbar */}
-          <div className="flex items-center gap-1 px-2 py-1.5 border-b border-gray-200 dark:border-gray-800">
+          <div className="flex items-center gap-1 px-2 py-1.5 border-b border-gray-200 dark:border-gray-700">
             <button className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-900 rounded text-gray-600 dark:text-gray-400 transition-colors" title="Bold">
               <Bold size={16} />
             </button>
@@ -274,7 +274,7 @@ export function TeamChatWindow({ mode }: TeamChatWindowProps) {
           </div>
 
           {/* Bottom actions */}
-          <div className="flex items-center justify-between px-2 py-1.5 border-t border-gray-200 dark:border-gray-800">
+          <div className="flex items-center justify-between px-2 py-1.5 border-t border-gray-200 dark:border-gray-700">
             <button className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-900 rounded text-gray-600 dark:text-gray-400 transition-colors text-xs font-medium" title="Mention someone">
               <AtSign size={14} className="inline mr-1" />
             </button>

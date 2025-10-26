@@ -86,8 +86,15 @@ export function TeamChatSidebar({ mode, onModeChange }: TeamChatSidebarProps) {
 
   return (
     <div className="h-full flex flex-col">
+      {/* Header - matches AI Chat sidebar */}
+      <div className="p-4 border-b border-white/10 dark:border-gray-700/30">
+        <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+          Team Channels
+        </div>
+      </div>
+
       {/* Channels - Network mode is now controlled by Globe icon in TeamWorkspace */}
-      <div className="flex-1 overflow-y-auto p-2 pt-4">
+      <div className="flex-1 overflow-y-auto p-2">
         <div className="mb-3">
           <div className="flex items-center justify-between px-2 py-1 mb-1">
             <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">CHANNELS</span>

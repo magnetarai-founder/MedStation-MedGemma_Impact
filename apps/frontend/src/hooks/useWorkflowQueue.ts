@@ -45,6 +45,37 @@ export function useWorkflow(workflowId: string) {
   });
 }
 
+export function useCreateWorkflow() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (workflow: Partial<Workflow> & { created_by: string }) => {
+      const res = await fetch(`${API_BASE}/workflows?created_by=${workflow.created_by}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: workflow.name,
+          description: workflow.description,
+          icon: workflow.icon,
+          category: workflow.category,
+          stages: workflow.stages,
+          triggers: workflow.triggers,
+        }),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.detail || 'Failed to create workflow');
+      }
+
+      return res.json() as Promise<Workflow>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workflows'] });
+    },
+  });
+}
+
 // ============================================
 // WORK ITEM QUERIES
 // ============================================

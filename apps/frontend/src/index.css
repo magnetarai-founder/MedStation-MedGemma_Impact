@@ -19,7 +19,7 @@
 
     body {
       @apply text-gray-100;
-      background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #1c2128 100%);
+      background: #0f1419;
     }
   }
 }
@@ -27,11 +27,11 @@
 /* macOS/visionOS Glass morphism utilities */
 @layer utilities {
   .glass {
-    @apply bg-white/75 dark:bg-gray-900/80 backdrop-blur-2xl border border-white/30 dark:border-gray-700/40 shadow-lg;
+    @apply bg-white/75 dark:bg-[#0f1419] backdrop-blur-2xl border border-white/30 dark:border-gray-700/40 shadow-lg;
   }
 
   .glass-panel {
-    @apply bg-white/85 dark:bg-[#161b22]/90 backdrop-blur-3xl shadow-xl border border-white/20 dark:border-gray-700/30;
+    @apply bg-white/85 dark:bg-[#0f1419] backdrop-blur-3xl shadow-xl border border-white/20 dark:border-gray-700/30;
   }
 }
 
