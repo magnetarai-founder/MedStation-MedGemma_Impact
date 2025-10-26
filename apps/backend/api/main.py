@@ -229,6 +229,14 @@ except Exception as e:
     services_failed.append("Automation")
     logger.debug(f"Automation service not available: {e}")
 
+try:
+    from workflow_service import router as workflow_router
+    app.include_router(workflow_router)
+    services_loaded.append("Workflow")
+except Exception as e:
+    services_failed.append("Workflow")
+    logger.debug(f"Workflow service not available: {e}")
+
 # Log summary of loaded services
 if services_loaded:
     logger.info(f"✓ Services: {', '.join(services_loaded)}")

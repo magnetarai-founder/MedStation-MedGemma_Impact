@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react'
-import { Plus, FileText, Users, DollarSign, Plane, BookOpen, Heart, Calendar, UserPlus, ChurchIcon as Church, Star, Pencil, Trash2, X, Save, AlertTriangle } from 'lucide-react'
+import { Plus, FileText, Users, DollarSign, Plane, BookOpen, Heart, Calendar, UserPlus, ChurchIcon as Church, Star, Pencil, Trash2, X, Save, AlertTriangle, Briefcase, BarChart } from 'lucide-react'
 import { WorkflowBuilder } from './WorkflowBuilder'
+import { WorkflowQueue } from './WorkflowQueue'
+import { ActiveWorkItem } from './ActiveWorkItem'
+import { WorkflowStatusTracker } from './WorkflowStatusTracker'
 import { ReactFlowProvider } from 'reactflow'
+import type { WorkItem } from '../types/workflow'
 
 interface WorkflowTemplate {
   id: string
@@ -140,7 +144,12 @@ const CATEGORY_INFO = {
 }
 
 export function AutomationTab() {
+  // View state
+  const [currentView, setCurrentView] = useState<'library' | 'builder' | 'queue' | 'tracker'>('library')
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
+  const [selectedWorkItem, setSelectedWorkItem] = useState<WorkItem | null>(null)
+  const [selectedWorkflowForQueue, setSelectedWorkflowForQueue] = useState<string | null>(null)
+
   const [workflows, setWorkflows] = useState<WorkflowTemplate[]>(INITIAL_WORKFLOWS)
   const [deletedWorkflows, setDeletedWorkflows] = useState<WorkflowTemplate[]>([])
 
@@ -161,6 +170,13 @@ export function AutomationTab() {
   const [customCategory, setCustomCategory] = useState('')
   const [showCustomInput, setShowCustomInput] = useState(false)
 
+  // Mock user data (in production, get from auth context)
+  const currentUser = {
+    id: 'user_1',
+    name: 'Current User',
+    role: 'intake_worker',
+  }
+
   // Auto-delete workflows older than 30 days
   useEffect(() => {
     const interval = setInterval(() => {
@@ -180,10 +196,12 @@ export function AutomationTab() {
 
   const handleCreateFromTemplate = (templateId: string) => {
     setSelectedTemplate(templateId)
+    setCurrentView('builder')
   }
 
   const handleBackToTemplates = () => {
     setSelectedTemplate(null)
+    setCurrentView('library')
   }
 
   const handleToggleFavorite = (workflowId: string) => {
@@ -321,12 +339,55 @@ export function AutomationTab() {
     return (a.order || 999) - (b.order || 999)
   })
 
-  // Show workflow builder if template selected
-  if (selectedTemplate) {
+  // Show different views based on currentView
+  if (currentView === 'builder' && selectedTemplate) {
     return (
       <ReactFlowProvider>
-        <WorkflowBuilder templateId={selectedTemplate} onBack={handleBackToTemplates} />
+        <WorkflowBuilder
+          templateId={selectedTemplate}
+          onBack={() => {
+            setCurrentView('library')
+            setSelectedTemplate(null)
+          }}
+        />
       </ReactFlowProvider>
+    )
+  }
+
+  if (currentView === 'queue') {
+    if (selectedWorkItem) {
+      return (
+        <ActiveWorkItem
+          workItemId={selectedWorkItem.id}
+          userId={currentUser.id}
+          onClose={() => setSelectedWorkItem(null)}
+          onCompleted={() => {
+            setSelectedWorkItem(null)
+          }}
+        />
+      )
+    }
+
+    return (
+      <WorkflowQueue
+        userId={currentUser.id}
+        userName={currentUser.name}
+        role={currentUser.role}
+        workflowId={selectedWorkflowForQueue || undefined}
+        onSelectWorkItem={(item) => setSelectedWorkItem(item)}
+      />
+    )
+  }
+
+  if (currentView === 'tracker' && selectedWorkflowForQueue) {
+    return (
+      <WorkflowStatusTracker
+        workflowId={selectedWorkflowForQueue}
+        onSelectWorkItem={(item) => {
+          setSelectedWorkItem(item)
+          setCurrentView('queue')
+        }}
+      />
     )
   }
 
@@ -342,6 +403,21 @@ export function AutomationTab() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setCurrentView('queue')}
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg font-medium transition-colors text-gray-700 dark:text-gray-300"
+            >
+              <Briefcase className="w-4 h-4" />
+              My Work
+            </button>
+            <button
+              onClick={() => setCurrentView('tracker')}
+              disabled={!selectedWorkflowForQueue}
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg font-medium transition-colors text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <BarChart className="w-4 h-4" />
+              Tracker
+            </button>
             <button
               onClick={() => {
                 if (isEditMode) {
