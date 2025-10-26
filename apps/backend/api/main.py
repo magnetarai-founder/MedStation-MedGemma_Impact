@@ -245,6 +245,14 @@ except Exception as e:
     services_failed.append("n8n Integration")
     logger.debug(f"n8n integration not available: {e}")
 
+try:
+    from secure_enclave_service import router as secure_enclave_router
+    app.include_router(secure_enclave_router)
+    services_loaded.append("Secure Enclave")
+except Exception as e:
+    services_failed.append("Secure Enclave")
+    logger.debug(f"Secure Enclave service not available: {e}")
+
 # Log summary of loaded services
 if services_loaded:
     logger.info(f"✓ Services: {', '.join(services_loaded)}")
