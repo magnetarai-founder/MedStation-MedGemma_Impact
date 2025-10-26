@@ -10,7 +10,6 @@ Keys never leave the hardware security chip.
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import keyring
-from keyring.backends import macOS
 import secrets
 import base64
 import logging
@@ -20,8 +19,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/secure-enclave", tags=["secure-enclave"])
 
-# Use macOS Keychain backend (hardware-backed when available)
-keyring.set_keyring(macOS.Keychain())
+# keyring automatically uses the best backend available (macOS Keychain on macOS)
+# No need to explicitly set it - it detects the platform
 
 SERVICE_NAME = "com.magnetarai.elohimos"
 
