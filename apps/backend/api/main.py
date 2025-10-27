@@ -81,6 +81,7 @@ def cleanup_sessions():
     """Clean up all active sessions and close database connections"""
     logger.info("Cleaning up sessions...")
     try:
+        # Clean up session engines
         for session_id, session in sessions.items():
             if 'engine' in session:
                 try:
@@ -88,6 +89,7 @@ def cleanup_sessions():
                     logger.debug(f"Closed engine for session {session_id}")
                 except Exception as e:
                     logger.error(f"Error closing engine for session {session_id}: {e}")
+
         logger.info("Session cleanup complete")
     except Exception as e:
         logger.error(f"Error during session cleanup: {e}")
