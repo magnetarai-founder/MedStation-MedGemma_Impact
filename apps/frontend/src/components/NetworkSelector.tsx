@@ -86,12 +86,8 @@ export function NetworkSelector({ mode, onModeChange }: NetworkSelectorProps) {
       }
     } catch (error) {
       console.error('Failed to scan LAN:', error)
-      // Fall back to mock data for demo
-      setLanDevices([
-        { id: 'device1', name: "Pastor John's MacBook", ip: '192.168.1.10', isHub: true },
-        { id: 'device2', name: 'Ministry Laptop', ip: '192.168.1.15', isHub: false },
-        { id: 'device3', name: 'Admin Computer', ip: '192.168.1.20', isHub: false },
-      ])
+      // No fallback - show empty state
+      setLanDevices([])
     } finally {
       setIsScanning(false)
     }
@@ -119,12 +115,8 @@ export function NetworkSelector({ mode, onModeChange }: NetworkSelectorProps) {
       }
     } catch (error) {
       console.error('Failed to load P2P peers:', error)
-      // Fall back to mock data
-      setP2pPeers([
-        { id: 'peer1', name: 'Brother Michael', location: 'Kenya', connected: true },
-        { id: 'peer2', name: 'Sister Sarah', location: 'Philippines', connected: true },
-        { id: 'peer3', name: 'Pastor David', location: 'China', connected: false },
-      ])
+      // No fallback - show empty state
+      setP2pPeers([])
     }
   }
 

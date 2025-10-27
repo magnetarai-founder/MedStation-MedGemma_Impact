@@ -417,11 +417,8 @@ export function TeamChatWindow({ mode }: TeamChatWindowProps) {
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {messages.length === 0 ? (
           <div className="mt-8">
-            <div className="w-12 h-12 bg-gray-100 dark:bg-gray-900 rounded-lg flex items-center justify-center mb-2">
-              <Hash size={24} className="text-gray-400 dark:text-gray-600" />
-            </div>
             <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">
-              This is the very beginning of the <span className="text-gray-700 dark:text-gray-300">#{activeChannel?.name}</span> channel
+              This is the very beginning of the <span className="text-gray-700 dark:text-gray-300">{activeChannel?.name}</span> channel
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
               {mode === 'solo'
