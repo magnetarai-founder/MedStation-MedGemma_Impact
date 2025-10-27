@@ -337,8 +337,9 @@ async def health_check():
         test_data = b"test"
 
         # Try to store and retrieve
-        store_key_in_keychain(test_key_id, test_data, "test")
-        retrieved = retrieve_key_from_keychain(test_key_id)
+        test_passphrase = "test_health_check_pass"
+        store_key_in_keychain(test_key_id, test_data, test_passphrase)
+        retrieved = retrieve_key_from_keychain(test_key_id, test_passphrase)
         delete_key_from_keychain(test_key_id)
 
         if retrieved == test_data:
