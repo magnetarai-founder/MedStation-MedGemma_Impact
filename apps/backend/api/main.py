@@ -14,11 +14,14 @@ from datetime import datetime
 import json
 import logging
 
-from fastapi import FastAPI, File, UploadFile, HTTPException, WebSocket, WebSocketDisconnect, Form, Query
+from fastapi import FastAPI, File, UploadFile, HTTPException, WebSocket, WebSocketDisconnect, Form, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from starlette.background import BackgroundTask
 from pydantic import BaseModel, Field
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 import pandas as pd
 import aiofiles
 from contextlib import asynccontextmanager
@@ -43,6 +46,9 @@ logging.getLogger("chat_service").setLevel(logging.WARNING)
 logging.getLogger("neutron_core.engine").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
+
+# Initialize rate limiter
+limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
 # Import existing backend modules
 import sys
@@ -146,6 +152,10 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
+# Add rate limiter to app state
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS for development
 app.add_middleware(
@@ -445,7 +455,8 @@ async def delete_session(session_id: str):
     return {"message": "Session deleted"}
 
 @app.post("/api/sessions/{session_id}/upload", response_model=FileUploadResponse)
-async def upload_file(session_id: str, file: UploadFile = File(...), sheet_name: Optional[str] = Form(None)):
+@limiter.limit("10/minute")  # Limit file uploads to 10 per minute
+async def upload_file(request: Request, session_id: str, file: UploadFile = File(...), sheet_name: Optional[str] = Form(None)):
     """Upload and load an Excel file"""
     if session_id not in sessions:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -541,7 +552,8 @@ async def validate_sql(session_id: str, request: ValidationRequest):
     )
 
 @app.post("/api/sessions/{session_id}/query", response_model=QueryResponse)
-async def execute_query(session_id: str, request: QueryRequest):
+@limiter.limit("60/minute")  # Allow 60 queries per minute (1 per second)
+async def execute_query(req: Request, session_id: str, request: QueryRequest):
     """Execute SQL query"""
     logger.info(f"Executing query for session {session_id}: {request.sql[:100]}...")
     
@@ -1328,7 +1340,8 @@ async def get_memory_status():
 # ============================================================================
 
 @app.post("/api/admin/reset-all")
-async def reset_all_data():
+@limiter.limit("3/hour")  # Very strict limit for destructive admin operations
+async def reset_all_data(request: Request):
     """Reset all app data - clears database and temp files"""
     try:
         import shutil
@@ -1624,7 +1637,9 @@ async def export_queries():
 # ============================================================================
 
 @app.post("/api/data/upload")
+@limiter.limit("10/minute")  # Limit dataset uploads to 10 per minute
 async def upload_dataset(
+    request: Request,
     file: UploadFile = File(...),
     session_id: Optional[str] = Form(None)
 ):
