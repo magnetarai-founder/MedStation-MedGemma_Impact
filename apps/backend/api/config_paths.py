@@ -34,22 +34,16 @@ class PathConfig:
         self.data_dir.mkdir(exist_ok=True)
 
     # ===== Database Paths =====
+    # Consolidated: 3 databases total (was 7+)
 
     @property
-    def memory_dir(self) -> Path:
-        """Chat memory directory"""
-        path = self.data_dir / "memory"
-        path.mkdir(exist_ok=True)
-        return path
-
-    @property
-    def memory_db(self) -> Path:
-        """Chat memory database"""
-        return self.memory_dir / "chat_memory.db"
+    def app_db(self) -> Path:
+        """Main application database (consolidated from auth, users, docs, chat, workflows)"""
+        return self.data_dir / "elohimos_app.db"
 
     @property
     def vault_db(self) -> Path:
-        """Vault database for secure storage"""
+        """Vault database for secure storage (kept separate for security isolation)"""
         return self.data_dir / "vault.db"
 
     @property
@@ -61,31 +55,41 @@ class PathConfig:
 
     @property
     def datasets_db(self) -> Path:
-        """Datasets database"""
+        """Datasets database (kept separate for easy backup/restore)"""
         return self.datasets_dir / "datasets.db"
+
+    # ===== Backwards Compatibility Aliases =====
+    # All these now point to the consolidated app database
+
+    @property
+    def memory_db(self) -> Path:
+        """Chat memory database (now in app_db)"""
+        return self.app_db
 
     @property
     def users_db(self) -> Path:
-        """Users database"""
-        return self.data_dir / "users.db"
+        """Users database (now in app_db)"""
+        return self.app_db
 
     @property
-    def p2p_chat_db(self) -> Path:
-        """P2P chat database"""
-        return self.data_dir / "p2p_chat.db"
+    def auth_db(self) -> Path:
+        """Auth database (now in app_db)"""
+        return self.app_db
 
     @property
     def docs_db(self) -> Path:
-        """Documents database"""
-        return self.data_dir / "docs.db"
+        """Documents database (now in app_db)"""
+        return self.app_db
 
     @property
     def workflows_db(self) -> Path:
-        """Workflows database"""
-        # Note: This one is in the project root /data, not .neutron_data
-        workflows_path = Path("data/workflows.db")
-        workflows_path.parent.mkdir(exist_ok=True)
-        return workflows_path
+        """Workflows database (now in app_db)"""
+        return self.app_db
+
+    @property
+    def p2p_chat_db(self) -> Path:
+        """P2P chat database (now in app_db)"""
+        return self.app_db
 
     # ===== Upload and Storage Directories =====
 
