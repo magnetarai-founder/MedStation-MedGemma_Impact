@@ -87,8 +87,11 @@ async def get_system_health():
 
     # Check embeddings
     try:
-        from unified_embedder import get_unified_embedder
-        embedder = get_unified_embedder()
+        try:
+            from unified_embedder import get_unified_embedder
+            embedder = get_unified_embedder()
+        except (ImportError, AttributeError):
+            embedder = None
 
         if embedder and embedder.is_available():
             health_status["services"]["embeddings"] = {
@@ -113,8 +116,11 @@ async def get_system_health():
 
     # Check P2P
     try:
-        from offline_data_sync import get_sync_service
-        sync_service = get_sync_service()
+        try:
+            from offline_data_sync import get_sync_service
+            sync_service = get_sync_service()
+        except (ImportError, AttributeError):
+            sync_service = None
 
         if sync_service:
             peer_count = len(sync_service.discovered_peers)
@@ -144,7 +150,7 @@ async def get_system_health():
         vault = get_vault_service()
 
         if vault:
-            is_unlocked = vault.is_unlocked()
+            is_unlocked = vault.is_unlocked
             health_status["services"]["vault"] = {
                 "status": "healthy" if is_unlocked else "degraded",
                 "message": "Unlocked" if is_unlocked else "Locked",

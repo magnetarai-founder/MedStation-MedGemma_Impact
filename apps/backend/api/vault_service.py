@@ -69,6 +69,7 @@ class VaultService:
     def __init__(self):
         self.db_path = VAULT_DB_PATH
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self.is_unlocked = False  # Track vault unlock status
         self._init_db()
         logger.info("Vault service initialized")
 

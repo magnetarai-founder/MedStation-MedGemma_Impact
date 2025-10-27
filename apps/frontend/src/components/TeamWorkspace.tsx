@@ -41,7 +41,7 @@ export function TeamWorkspace() {
         <div className="h-6 w-px bg-gray-300 dark:bg-gray-600"></div>
 
         {/* View Tabs */}
-        <div className="flex items-center gap-1 flex-1">
+        <div className="flex items-center gap-1">
           <button
             onClick={() => setWorkspaceView('chat')}
             className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-md transition-all ${
@@ -51,7 +51,7 @@ export function TeamWorkspace() {
             }`}
           >
             <MessageSquare className="w-4 h-4" />
-            <span>Team Chat</span>
+            <span>Chat</span>
           </button>
 
           <button
@@ -63,13 +63,13 @@ export function TeamWorkspace() {
             }`}
           >
             <FileText className="w-4 h-4" />
-            <span>Docs & Sheets</span>
+            <span>Docs</span>
           </button>
 
-          {/* Spacer to push Vault to the right */}
-          <div className="flex-1"></div>
+          {/* Vertical Divider */}
+          <div className="h-6 w-px bg-gray-300 dark:bg-gray-600 mx-2"></div>
 
-          {/* Vault Tab - Right Aligned */}
+          {/* Vault Tab */}
           <button
             onClick={handleVaultClick}
             className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-md transition-all ${

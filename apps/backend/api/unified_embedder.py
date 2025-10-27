@@ -23,6 +23,7 @@ class UnifiedEmbedder:
         self._initialized = False
         self.available_backends = ['mlx', 'ollama', 'sentence-transformers', 'hash']
         self.mlx_available = False  # Will be set during initialization
+        self.model_name = None  # Will be set during initialization
         
     def _get_backend(self) -> str:
         """Get configured embedding backend"""
@@ -44,6 +45,12 @@ class UnifiedEmbedder:
             
         return 'mlx'  # Default
     
+    def is_available(self) -> bool:
+        """Check if embedder is available"""
+        if not self._initialized:
+            self.initialize()
+        return self._initialized
+
     def initialize(self) -> bool:
         """Initialize the embedding backend"""
         if self._initialized:
@@ -59,6 +66,7 @@ class UnifiedEmbedder:
                 if self._embedder.initialize():
                     self._initialized = True
                     self.mlx_available = True
+                    self.model_name = "MLX Sentence Transformer"
                     logger.info("MLX sentence transformer initialized")
                     return True
             except Exception:
@@ -71,29 +79,33 @@ class UnifiedEmbedder:
                 if self._embedder.initialize():
                     self._initialized = True
                     self.mlx_available = True
+                    self.model_name = "MLX Embedder"
                     logger.info("MLX embedder initialized")
                     return True
             except Exception:
                 pass  # Silently fail
-                
+
         elif self.backend == 'sentence-transformers':
             try:
                 from embedding_system import EmbeddingSystem
                 self._embedder = EmbeddingSystem()
                 self._initialized = True
+                self.model_name = "sentence-transformers"
                 logger.info("Sentence transformers initialized")
                 return True
             except Exception as e:
                 logger.warning(f"Sentence transformers failed: {e}")
-                
+
         elif self.backend == 'ollama':
             # Ollama doesn't need initialization
             self._initialized = True
+            self.model_name = os.getenv('JARVIS_EMBED_MODEL', 'nomic-embed-text')
             return True
-            
+
         # Fall back to hash
         logger.info("Using hash embedding fallback")
         self.backend = 'hash'
+        self.model_name = "Hash Fallback (384d)"
         self._initialized = True
         return True
     
@@ -194,6 +206,13 @@ def get_embedder() -> UnifiedEmbedder:
     if _unified_embedder is None:
         _unified_embedder = UnifiedEmbedder()
     return _unified_embedder
+
+
+def get_unified_embedder() -> Optional[UnifiedEmbedder]:
+    """Alias for get_embedder() - for compatibility"""
+    embedder = get_embedder()
+    embedder.initialize()
+    return embedder if embedder._initialized else None
 
 
 def embed_text(text: str) -> List[float]:

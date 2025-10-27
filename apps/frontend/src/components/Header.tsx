@@ -86,7 +86,7 @@ export function Header({ onOpenServerControls }: HeaderProps) {
 
   return (
     <>
-      <header className="glass border-b border-white/30 dark:border-gray-700/40 relative z-50">
+      <header className="glass border-b border-white/20 dark:border-gray-700/30 relative z-50 bg-gradient-to-r from-blue-50/80 via-purple-50/80 to-pink-50/80 dark:from-gray-900/80 dark:via-gray-850/80 dark:to-gray-900/80 backdrop-blur-xl">
         <div className="flex items-center justify-between py-3.5 px-6">
           {/* Left: Neutron Star Logo */}
           <div className="flex items-center gap-2">
@@ -153,13 +153,7 @@ export function Header({ onOpenServerControls }: HeaderProps) {
               onToggle={() => setActiveDropdown(activeDropdown === 'chat' ? null : 'chat')}
             />
 
-            {/* Performance Monitor */}
-            <PerformanceMonitorDropdown
-              isOpen={activeDropdown === 'performance'}
-              onToggle={() => setActiveDropdown(activeDropdown === 'performance' ? null : 'performance')}
-            />
-
-            {/* Control Center */}
+            {/* Control Center (includes Performance Monitor) */}
             <button
               onClick={() => setShowControlCenter(true)}
               className="p-2 hover:bg-blue-100 dark:hover:bg-blue-900/20 rounded-lg transition-colors text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"

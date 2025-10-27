@@ -9,7 +9,8 @@
 
   body {
     @apply text-gray-900;
-    background: linear-gradient(135deg, #f6f8fa 0%, #ffffff 50%, #f0f3f7 100%);
+    background: linear-gradient(135deg, #e0e7ff 0%, #faf5ff 25%, #fef3f2 50%, #f0f9ff 75%, #ede9fe 100%);
+    background-attachment: fixed;
   }
 
   @media (prefers-color-scheme: dark) {
@@ -19,7 +20,8 @@
 
     body {
       @apply text-gray-100;
-      background: #0f1419;
+      background: linear-gradient(135deg, #0a0e1a 0%, #0f1419 25%, #1a1625 50%, #0f1419 75%, #0a0e1a 100%);
+      background-attachment: fixed;
     }
   }
 }

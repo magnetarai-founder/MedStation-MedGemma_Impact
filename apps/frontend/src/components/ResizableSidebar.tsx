@@ -82,10 +82,10 @@ export function ResizableSidebar({
   }, [clamp])
 
   return (
-    <div ref={containerRef} className="flex flex-1 overflow-hidden">
+    <div ref={containerRef} className="flex flex-1 h-full overflow-hidden">
       {/* Left sidebar */}
       <div
-        className="h-full glass border-r border-white/30 dark:border-gray-700/40 flex-shrink-0"
+        className="h-full glass border-r border-white/30 dark:border-gray-700/40 flex-shrink-0 bg-gray-50/50 dark:bg-gray-800/30"
         style={{ width: `${width}px`, minWidth: `${minWidth}px` }}
       >
         {left}

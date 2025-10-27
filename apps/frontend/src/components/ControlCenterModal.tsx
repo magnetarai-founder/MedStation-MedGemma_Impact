@@ -173,6 +173,19 @@ export function ControlCenterModal({ isOpen, onClose }: ControlCenterModalProps)
     }
   }
 
+  const getPressureLabel = (pressure: string) => {
+    switch (pressure?.toLowerCase()) {
+      case 'low':
+        return 'Normal'
+      case 'medium':
+        return 'Medium'
+      case 'high':
+        return 'High'
+      default:
+        return pressure
+    }
+  }
+
   if (!isOpen) return null
 
   return (
@@ -180,7 +193,6 @@ export function ControlCenterModal({ isOpen, onClose }: ControlCenterModalProps)
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
       />
 
       {/* Modal */}
@@ -352,8 +364,8 @@ export function ControlCenterModal({ isOpen, onClose }: ControlCenterModalProps)
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                         Unified Memory
                       </span>
-                      <span className={`text-sm font-semibold capitalize ${getPressureColor(metal4Stats.memory.pressure)}`}>
-                        {metal4Stats.memory.pressure}
+                      <span className={`text-sm font-semibold ${getPressureColor(metal4Stats.memory.pressure)}`}>
+                        {getPressureLabel(metal4Stats.memory.pressure)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
