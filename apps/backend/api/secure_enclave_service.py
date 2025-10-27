@@ -17,7 +17,7 @@ import secrets
 import base64
 import hashlib
 import logging
-from typing import Optional
+from typing import Optional, Tuple
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -76,7 +76,7 @@ def generate_encryption_key() -> bytes:
     return secrets.token_bytes(32)  # 256 bits
 
 
-def encrypt_key_with_passphrase(key_data: bytes, passphrase: str) -> tuple[bytes, bytes, bytes]:
+def encrypt_key_with_passphrase(key_data: bytes, passphrase: str) -> Tuple[bytes, bytes, bytes]:
     """
     Encrypt the master key using passphrase-derived key (envelope encryption)
 
