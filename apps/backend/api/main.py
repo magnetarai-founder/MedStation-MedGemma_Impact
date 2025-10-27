@@ -7,6 +7,7 @@ import os
 import asyncio
 import uuid
 import re
+import signal
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from datetime import datetime
@@ -70,10 +71,42 @@ data_engine = get_data_engine()
 
 
 
+def cleanup_sessions():
+    """Clean up all active sessions and close database connections"""
+    logger.info("Cleaning up sessions...")
+    try:
+        for session_id, session in sessions.items():
+            if 'engine' in session:
+                try:
+                    session['engine'].close()
+                    logger.debug(f"Closed engine for session {session_id}")
+                except Exception as e:
+                    logger.error(f"Error closing engine for session {session_id}: {e}")
+        logger.info("Session cleanup complete")
+    except Exception as e:
+        logger.error(f"Error during session cleanup: {e}")
+
+
+def handle_shutdown_signal(signum, frame):
+    """Handle SIGTERM/SIGINT for graceful shutdown"""
+    sig_name = signal.Signals(signum).name
+    logger.warning(f"Received {sig_name} - initiating graceful shutdown...")
+    cleanup_sessions()
+    logger.info("Graceful shutdown complete")
+    # Exit cleanly
+    os._exit(0)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
     print("Starting ElohimOS API...")
+
+    # Register signal handlers for graceful shutdown
+    signal.signal(signal.SIGTERM, handle_shutdown_signal)
+    signal.signal(signal.SIGINT, handle_shutdown_signal)
+    logger.info("Registered SIGTERM/SIGINT handlers for graceful shutdown")
+
     # Create necessary directories
     api_dir = Path(__file__).parent
     (api_dir / "temp_uploads").mkdir(exist_ok=True)
@@ -103,11 +136,9 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(load_favorites())
 
     yield
-    # Shutdown
+    # Shutdown (clean shutdown via lifespan)
     print("Shutting down...")
-    for session in sessions.values():
-        if 'engine' in session:
-            session['engine'].close()
+    cleanup_sessions()
 
 app = FastAPI(
     title="ElohimOS API",
@@ -1600,8 +1631,23 @@ async def upload_dataset(
     """
     Upload and load Excel/JSON/CSV into SQLite
     Returns dataset metadata and query suggestions
+
+    Max file size: 2GB
     """
     try:
+        # Validate file size (2GB max)
+        MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024  # 2GB in bytes
+
+        # Read file content
+        content = await file.read()
+        file_size = len(content)
+
+        if file_size > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File too large. Maximum size is 2GB, got {file_size / (1024**3):.2f}GB"
+            )
+
         # Save uploaded file temporarily
         temp_dir = Path("/tmp/omnistudio_uploads")
         temp_dir.mkdir(exist_ok=True)
@@ -1609,7 +1655,6 @@ async def upload_dataset(
         file_path = temp_dir / file.filename
 
         async with aiofiles.open(file_path, 'wb') as f:
-            content = await file.read()
             await f.write(content)
 
         # Load into data engine

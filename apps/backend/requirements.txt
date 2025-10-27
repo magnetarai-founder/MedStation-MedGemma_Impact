@@ -14,6 +14,7 @@ ffmpeg-python==0.2.0
 pyobjc-framework-Metal>=10.0
 pyobjc-framework-MetalPerformanceShaders>=10.0
 pyobjc-framework-MetalPerformanceShadersGraph>=10.0
+cryptography>=42.0.0
 
 # Offline mesh networking & distributed computing
 zeroconf>=0.132.0

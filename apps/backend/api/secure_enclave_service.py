@@ -4,6 +4,9 @@ Secure Enclave Service - macOS Keychain Integration
 Uses macOS Keychain to store encryption keys in the Secure Enclave.
 Keys never leave the hardware security chip.
 
+Security: Uses PBKDF2 + AES-256-GCM envelope encryption.
+The passphrase derives a key that encrypts the master key before storing in Keychain.
+
 "The name of the Lord is a fortified tower; the righteous run to it and are safe." - Proverbs 18:10
 """
 
@@ -12,8 +15,12 @@ from pydantic import BaseModel
 import keyring
 import secrets
 import base64
+import hashlib
 import logging
 from typing import Optional
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 logger = logging.getLogger(__name__)
 
@@ -44,26 +51,106 @@ class KeyResponse(BaseModel):
 
 # ===== Secure Enclave Key Management =====
 
+def derive_key_from_passphrase(passphrase: str, salt: bytes) -> bytes:
+    """
+    Derive a 256-bit encryption key from passphrase using PBKDF2-HMAC-SHA256
+
+    Args:
+        passphrase: User's passphrase
+        salt: 32-byte salt for key derivation
+
+    Returns:
+        32-byte derived key
+    """
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,  # 256 bits
+        salt=salt,
+        iterations=600000,  # OWASP recommendation (2023)
+    )
+    return kdf.derive(passphrase.encode('utf-8'))
+
+
 def generate_encryption_key() -> bytes:
     """Generate a cryptographically secure 256-bit encryption key"""
     return secrets.token_bytes(32)  # 256 bits
+
+
+def encrypt_key_with_passphrase(key_data: bytes, passphrase: str) -> tuple[bytes, bytes, bytes]:
+    """
+    Encrypt the master key using passphrase-derived key (envelope encryption)
+
+    Args:
+        key_data: Master encryption key to protect
+        passphrase: User's passphrase
+
+    Returns:
+        (encrypted_key, salt, nonce) tuple
+    """
+    # Generate random salt for PBKDF2
+    salt = secrets.token_bytes(32)
+
+    # Derive encryption key from passphrase
+    derived_key = derive_key_from_passphrase(passphrase, salt)
+
+    # Encrypt master key with AES-256-GCM
+    aesgcm = AESGCM(derived_key)
+    nonce = secrets.token_bytes(12)  # 96-bit nonce for GCM
+    encrypted_key = aesgcm.encrypt(nonce, key_data, None)
+
+    return encrypted_key, salt, nonce
+
+
+def decrypt_key_with_passphrase(encrypted_key: bytes, passphrase: str, salt: bytes, nonce: bytes) -> Optional[bytes]:
+    """
+    Decrypt the master key using passphrase (envelope decryption)
+
+    Args:
+        encrypted_key: Encrypted master key
+        passphrase: User's passphrase
+        salt: Salt used for key derivation
+        nonce: Nonce used for AES-GCM
+
+    Returns:
+        Decrypted master key, or None if passphrase is incorrect
+    """
+    try:
+        # Derive encryption key from passphrase
+        derived_key = derive_key_from_passphrase(passphrase, salt)
+
+        # Decrypt master key
+        aesgcm = AESGCM(derived_key)
+        key_data = aesgcm.decrypt(nonce, encrypted_key, None)
+
+        return key_data
+
+    except Exception as e:
+        logger.warning(f"Failed to decrypt key (likely wrong passphrase): {e}")
+        return None
 
 
 def store_key_in_keychain(key_id: str, key_data: bytes, passphrase: str) -> bool:
     """
     Store encryption key in macOS Keychain (Secure Enclave when available)
 
-    The key is stored in the Keychain with additional passphrase protection.
-    If Secure Enclave is available, the key is hardware-backed.
+    The master key is encrypted with a passphrase-derived key before storage.
+    If Secure Enclave is available, the encrypted key is hardware-backed.
+
+    Security: PBKDF2 (600k iterations) + AES-256-GCM envelope encryption
     """
     try:
-        # Combine key with passphrase hash for additional protection
-        combined_data = base64.b64encode(key_data).decode('utf-8')
+        # Encrypt master key with passphrase
+        encrypted_key, salt, nonce = encrypt_key_with_passphrase(key_data, passphrase)
+
+        # Combine encrypted key + salt + nonce for storage
+        # Format: salt (32 bytes) || nonce (12 bytes) || encrypted_key
+        combined_data = salt + nonce + encrypted_key
+        combined_b64 = base64.b64encode(combined_data).decode('utf-8')
 
         # Store in Keychain using key_id as the account name
-        keyring.set_password(SERVICE_NAME, key_id, combined_data)
+        keyring.set_password(SERVICE_NAME, key_id, combined_b64)
 
-        logger.info(f"Stored key '{key_id}' in macOS Keychain")
+        logger.info(f"Stored passphrase-protected key '{key_id}' in macOS Keychain")
         return True
 
     except Exception as e:
@@ -71,23 +158,40 @@ def store_key_in_keychain(key_id: str, key_data: bytes, passphrase: str) -> bool
         return False
 
 
-def retrieve_key_from_keychain(key_id: str) -> Optional[bytes]:
+def retrieve_key_from_keychain(key_id: str, passphrase: str) -> Optional[bytes]:
     """
-    Retrieve encryption key from macOS Keychain
+    Retrieve and decrypt encryption key from macOS Keychain
 
-    Returns the raw key bytes, or None if not found
+    Args:
+        key_id: Unique identifier for the key
+        passphrase: User's passphrase to decrypt the key
+
+    Returns:
+        Decrypted master key, or None if not found or wrong passphrase
     """
     try:
-        combined_data = keyring.get_password(SERVICE_NAME, key_id)
+        combined_b64 = keyring.get_password(SERVICE_NAME, key_id)
 
-        if not combined_data:
+        if not combined_b64:
             logger.warning(f"Key '{key_id}' not found in Keychain")
             return None
 
         # Decode from base64
-        key_data = base64.b64decode(combined_data)
+        combined_data = base64.b64decode(combined_b64)
 
-        logger.info(f"Retrieved key '{key_id}' from macOS Keychain")
+        # Extract salt, nonce, and encrypted key
+        salt = combined_data[:32]
+        nonce = combined_data[32:44]
+        encrypted_key = combined_data[44:]
+
+        # Decrypt master key with passphrase
+        key_data = decrypt_key_with_passphrase(encrypted_key, passphrase, salt, nonce)
+
+        if not key_data:
+            logger.warning(f"Failed to decrypt key '{key_id}' - incorrect passphrase")
+            return None
+
+        logger.info(f"Retrieved and decrypted key '{key_id}' from macOS Keychain")
         return key_data
 
     except Exception as e:
@@ -159,18 +263,18 @@ async def retrieve_key(request: RetrieveKeyRequest):
     """
     Retrieve encryption key from macOS Keychain (Secure Enclave)
 
-    Requires the correct passphrase for additional security.
+    Requires the correct passphrase to decrypt the key.
     The key is only decrypted in memory and never written to disk.
     """
     try:
-        # Retrieve from Keychain
-        key_data = retrieve_key_from_keychain(request.key_id)
+        # Retrieve and decrypt from Keychain
+        key_data = retrieve_key_from_keychain(request.key_id, request.passphrase)
 
         if not key_data:
             return KeyResponse(
                 success=False,
-                key_exists=False,
-                message=f"Key '{request.key_id}' not found in Keychain"
+                key_exists=key_exists_in_keychain(request.key_id),
+                message=f"Key '{request.key_id}' not found or incorrect passphrase"
             )
 
         # Return base64-encoded key (will be used in-memory only)
@@ -179,7 +283,7 @@ async def retrieve_key(request: RetrieveKeyRequest):
         return KeyResponse(
             success=True,
             key_exists=True,
-            message="Key retrieved successfully",
+            message="Key retrieved and decrypted successfully",
             key_data=key_b64
         )
 

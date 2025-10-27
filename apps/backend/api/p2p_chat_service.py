@@ -250,14 +250,26 @@ class P2PChatService:
             logger.error(f"Failed to start mDNS discovery: {e}")
 
     async def _monitor_peer_discovery(self):
-        """Monitor for newly discovered peers"""
+        """Monitor for newly discovered peers and handle reconnections"""
         seen_peers = set()
+        last_peer_count = 0
 
         while self.is_running:
             try:
                 # Get currently connected peers from the peerstore
                 peerstore = self.host.get_network().peerstore
                 peer_ids = peerstore.peer_ids()
+                current_peer_count = len(peer_ids)
+
+                # Detect peer loss (network interruption)
+                if current_peer_count < last_peer_count:
+                    lost_count = last_peer_count - current_peer_count
+                    logger.warning(f"⚠️ Lost {lost_count} peer(s) - attempting auto-reconnect...")
+
+                    # Trigger reconnection for known peers
+                    await self._auto_reconnect_lost_peers(peer_ids)
+
+                last_peer_count = current_peer_count
 
                 for peer_id in peer_ids:
                     peer_id_str = peer_id.pretty()
@@ -283,7 +295,65 @@ class P2PChatService:
 
             except Exception as e:
                 logger.error(f"Error in peer discovery monitor: {e}")
-                await asyncio.sleep(10)
+                # On error, try to restart host connection
+                if self.is_running:
+                    logger.info("Attempting to recover from peer discovery error...")
+                    await asyncio.sleep(10)
+
+    async def _auto_reconnect_lost_peers(self, current_peer_ids):
+        """
+        Auto-reconnect to previously known peers that were lost
+
+        Implements exponential backoff retry (max 3 attempts)
+        """
+        try:
+            # Get all known peers from database
+            conn = sqlite3.connect(str(self.db_path))
+            cursor = conn.cursor()
+            cursor.execute("SELECT peer_id, display_name FROM peers WHERE status = 'online'")
+            known_peers = cursor.fetchall()
+            conn.close()
+
+            current_peer_ids_str = {pid.pretty() for pid in current_peer_ids}
+
+            for peer_id_str, display_name in known_peers:
+                if peer_id_str not in current_peer_ids_str:
+                    logger.info(f"🔄 Attempting to reconnect to {display_name or peer_id_str[:8]}...")
+
+                    # Retry connection with exponential backoff
+                    for attempt in range(1, 4):  # 3 attempts max
+                        try:
+                            # Try to reconnect (libp2p will use cached multiaddrs)
+                            await self.host.connect(peer_id_str)
+                            logger.info(f"✓ Reconnected to {display_name or peer_id_str[:8]}")
+                            break  # Success
+
+                        except Exception as e:
+                            wait_time = 2 ** attempt  # 2s, 4s, 8s
+                            if attempt < 3:
+                                logger.debug(f"Reconnect attempt {attempt} failed, retrying in {wait_time}s...")
+                                await asyncio.sleep(wait_time)
+                            else:
+                                logger.warning(f"Failed to reconnect to {peer_id_str[:8]} after 3 attempts")
+                                # Mark peer as offline
+                                await self._mark_peer_offline(peer_id_str)
+
+        except Exception as e:
+            logger.error(f"Error in auto-reconnect: {e}")
+
+    async def _mark_peer_offline(self, peer_id: str):
+        """Mark a peer as offline in the database"""
+        try:
+            conn = sqlite3.connect(str(self.db_path))
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE peers SET status = 'offline', last_seen = ? WHERE peer_id = ?",
+                (datetime.utcnow().isoformat(), peer_id)
+            )
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            logger.error(f"Failed to mark peer offline: {e}")
 
     async def _save_discovered_peer(self, peer_id: str, multiaddrs: List[str]):
         """Save a discovered peer to the database"""
