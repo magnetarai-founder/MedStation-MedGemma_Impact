@@ -50,3 +50,4 @@ Thumbs.db
 *.log
 logs/
 Neutron-Star-master/
+.env
