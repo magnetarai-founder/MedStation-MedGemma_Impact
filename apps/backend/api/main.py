@@ -53,7 +53,8 @@ limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 # Import existing backend modules
 import sys
 # Insert at the beginning of sys.path to prioritize local modules
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))  # /apps/backend
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "packages"))  # /packages
 
 from neutron_core.engine import NeutronEngine, SQLDialect, QueryResult
 from redshift_sql_processor import RedshiftSQLProcessor
@@ -290,30 +291,7 @@ except Exception as e:
 #     services_failed.append("n8n Integration")
 #     logger.debug(f"n8n integration not available: {e}")
 
-# Security & RBAC routers
-try:
-    from e2e_router import router as e2e_router
-    app.include_router(e2e_router)
-    services_loaded.append("E2E Encryption API")
-except Exception as e:
-    services_failed.append("E2E Encryption API")
-    logger.debug(f"E2E Encryption API not available: {e}")
-
-try:
-    from database_router import router as database_router
-    app.include_router(database_router)
-    services_loaded.append("Database Encryption API")
-except Exception as e:
-    services_failed.append("Database Encryption API")
-    logger.debug(f"Database Encryption API not available: {e}")
-
-try:
-    from users_router import router as users_router
-    app.include_router(users_router)
-    services_loaded.append("Users & RBAC API")
-except Exception as e:
-    services_failed.append("Users & RBAC API")
-    logger.debug(f"Users & RBAC API not available: {e}")
+# Security & RBAC routers removed - internal services not exposed as REST APIs
 
 try:
     from secure_enclave_service import router as secure_enclave_router

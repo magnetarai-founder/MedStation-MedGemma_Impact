@@ -220,6 +220,43 @@ def key_exists_in_keychain(key_id: str) -> bool:
         return False
 
 
+# ===== Service Class Wrapper =====
+
+class SecureEnclaveService:
+    """
+    Wrapper class for Secure Enclave functions
+    Provides object-oriented interface for dependency injection
+    """
+
+    def store_key_in_keychain(self, key_id: str, key_data: bytes, passphrase: str) -> bool:
+        """Store encryption key in macOS Keychain (Secure Enclave)"""
+        return store_key_in_keychain(key_id, key_data, passphrase)
+
+    def retrieve_key_from_keychain(self, key_id: str, passphrase: str) -> Optional[bytes]:
+        """Retrieve and decrypt key from macOS Keychain"""
+        return retrieve_key_from_keychain(key_id, passphrase)
+
+    def delete_key_from_keychain(self, key_id: str) -> bool:
+        """Delete encryption key from macOS Keychain"""
+        return delete_key_from_keychain(key_id)
+
+    def key_exists_in_keychain(self, key_id: str) -> bool:
+        """Check if a key exists in the Keychain"""
+        return key_exists_in_keychain(key_id)
+
+
+# Global singleton instance
+_secure_enclave_service: Optional[SecureEnclaveService] = None
+
+
+def get_secure_enclave_service() -> SecureEnclaveService:
+    """Get global Secure Enclave service instance"""
+    global _secure_enclave_service
+    if _secure_enclave_service is None:
+        _secure_enclave_service = SecureEnclaveService()
+    return _secure_enclave_service
+
+
 # ===== API Endpoints =====
 
 @router.post("/generate-key", response_model=KeyResponse)
