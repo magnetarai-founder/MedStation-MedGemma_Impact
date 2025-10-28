@@ -36,6 +36,9 @@ class UserProfile(BaseModel):
     created_at: str
     avatar_color: Optional[str] = None
     bio: Optional[str] = None
+    role: Optional[str] = "member"
+    role_changed_at: Optional[str] = None
+    role_changed_by: Optional[str] = None
 
 
 class UserProfileUpdate(BaseModel):
@@ -59,9 +62,32 @@ def init_db():
             device_name TEXT NOT NULL,
             created_at TEXT NOT NULL,
             avatar_color TEXT,
-            bio TEXT
+            bio TEXT,
+            role TEXT DEFAULT 'member',
+            role_changed_at TEXT,
+            role_changed_by TEXT
         )
     """)
+
+    # Migrate existing users table if role column doesn't exist
+    cursor.execute("PRAGMA table_info(users)")
+    columns = [row[1] for row in cursor.fetchall()]
+
+    if 'role' not in columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'member'")
+        cursor.execute("ALTER TABLE users ADD COLUMN role_changed_at TEXT")
+        cursor.execute("ALTER TABLE users ADD COLUMN role_changed_by TEXT")
+
+        # Set first user as super_admin
+        cursor.execute("SELECT user_id FROM users LIMIT 1")
+        first_user = cursor.fetchone()
+        if first_user:
+            cursor.execute("""
+                UPDATE users
+                SET role = 'super_admin', role_changed_at = ?
+                WHERE user_id = ?
+            """, (datetime.utcnow().isoformat(), first_user[0]))
+            logger.info(f"Migrated first user to super_admin: {first_user[0]}")
 
     conn.commit()
     conn.close()
@@ -97,7 +123,10 @@ def get_or_create_user() -> UserProfile:
             device_name=row[2],
             created_at=row[3],
             avatar_color=row[4],
-            bio=row[5]
+            bio=row[5],
+            role=row[6] if len(row) > 6 else "member",
+            role_changed_at=row[7] if len(row) > 7 else None,
+            role_changed_by=row[8] if len(row) > 8 else None
         )
 
     # Create new user
@@ -108,8 +137,8 @@ def get_or_create_user() -> UserProfile:
     avatar_color = "#3b82f6"  # Default blue
 
     cursor.execute("""
-        INSERT INTO users (user_id, display_name, device_name, created_at, avatar_color)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO users (user_id, display_name, device_name, created_at, avatar_color, role)
+        VALUES (?, ?, ?, ?, ?, 'super_admin')
     """, (user_id, display_name, device_name, created_at, avatar_color))
 
     conn.commit()
@@ -122,7 +151,8 @@ def get_or_create_user() -> UserProfile:
         display_name=display_name,
         device_name=device_name,
         created_at=created_at,
-        avatar_color=avatar_color
+        avatar_color=avatar_color,
+        role="super_admin"
     )
 
 
