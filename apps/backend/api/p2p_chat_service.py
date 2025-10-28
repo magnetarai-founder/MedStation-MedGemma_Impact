@@ -54,6 +54,10 @@ class P2PChatService:
         self.peer_id = None
         self.key_pair = None
 
+        # E2E Encryption service
+        from e2e_encryption_service import get_e2e_service
+        self.e2e_service = get_e2e_service()
+
         # Local storage
         self.db_path = DB_PATH
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -151,9 +155,256 @@ class P2PChatService:
             )
         """)
 
+        # E2E Encryption: Device keys table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS device_keys (
+                device_id TEXT PRIMARY KEY,
+                public_key BLOB NOT NULL,
+                fingerprint BLOB NOT NULL,
+                verify_key BLOB NOT NULL,
+                created_at TEXT NOT NULL,
+                last_used TEXT
+            )
+        """)
+
+        # E2E Encryption: Peer keys table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS peer_keys (
+                peer_device_id TEXT PRIMARY KEY,
+                public_key BLOB NOT NULL,
+                fingerprint BLOB NOT NULL,
+                verify_key BLOB NOT NULL,
+                verified BOOLEAN DEFAULT 0,
+                verified_at TEXT,
+                safety_number TEXT,
+                first_seen TEXT NOT NULL,
+                last_key_change TEXT
+            )
+        """)
+
+        # E2E Encryption: Safety number changes tracking
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS safety_number_changes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                peer_device_id TEXT NOT NULL,
+                old_safety_number TEXT,
+                new_safety_number TEXT NOT NULL,
+                changed_at TEXT NOT NULL,
+                acknowledged BOOLEAN DEFAULT 0,
+                acknowledged_at TEXT,
+                FOREIGN KEY (peer_device_id) REFERENCES peer_keys(peer_device_id)
+            )
+        """)
+
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_safety_changes_peer ON safety_number_changes(peer_device_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_safety_changes_ack ON safety_number_changes(acknowledged)")
+
         conn.commit()
         conn.close()
         logger.info("Database initialized")
+
+    # ===== E2E Encryption Methods =====
+
+    def init_device_keys(self, device_id: str, passphrase: str) -> Dict:
+        """
+        Initialize E2E encryption keys for this device
+
+        Args:
+            device_id: Unique device identifier
+            passphrase: User's passphrase for Secure Enclave
+
+        Returns:
+            Dict with public_key and fingerprint
+        """
+        try:
+            # Try to load existing keys first
+            public_key, fingerprint = self.e2e_service.load_identity_keypair(device_id, passphrase)
+            logger.info(f"Loaded existing E2E keys for device {device_id}")
+        except:
+            # Generate new keys if they don't exist
+            public_key, fingerprint = self.e2e_service.generate_identity_keypair(device_id, passphrase)
+            logger.info(f"Generated new E2E keys for device {device_id}")
+
+        # Store in database
+        conn = sqlite3.connect(str(self.db_path))
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT OR REPLACE INTO device_keys
+            (device_id, public_key, fingerprint, verify_key, created_at, last_used)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (
+            device_id,
+            public_key,
+            fingerprint,
+            bytes(self.e2e_service._signing_keypair.verify_key) if self.e2e_service._signing_keypair else b'',
+            datetime.utcnow().isoformat(),
+            datetime.utcnow().isoformat()
+        ))
+
+        conn.commit()
+        conn.close()
+
+        return {
+            "public_key": public_key.hex(),
+            "fingerprint": self.e2e_service.format_fingerprint(fingerprint),
+            "device_id": device_id
+        }
+
+    def store_peer_key(self, peer_device_id: str, public_key: bytes, verify_key: bytes) -> Dict:
+        """
+        Store a peer's public key and generate safety number
+
+        Args:
+            peer_device_id: Peer's device identifier
+            public_key: Peer's Curve25519 public key
+            verify_key: Peer's Ed25519 verify key
+
+        Returns:
+            Dict with safety_number and fingerprint
+        """
+        fingerprint = self.e2e_service.generate_fingerprint(public_key)
+
+        # Get our public key to generate safety number
+        conn = sqlite3.connect(str(self.db_path))
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT public_key FROM device_keys LIMIT 1")
+        row = cursor.fetchone()
+
+        if not row:
+            conn.close()
+            raise RuntimeError("Device keys not initialized. Call init_device_keys() first.")
+
+        local_public_key = row[0]
+        safety_number = self.e2e_service.generate_safety_number(local_public_key, public_key)
+
+        # Check if this is a key change
+        cursor.execute("SELECT safety_number FROM peer_keys WHERE peer_device_id = ?", (peer_device_id,))
+        existing = cursor.fetchone()
+
+        if existing and existing[0] != safety_number:
+            # Key change detected - log it
+            cursor.execute("""
+                INSERT INTO safety_number_changes
+                (peer_device_id, old_safety_number, new_safety_number, changed_at)
+                VALUES (?, ?, ?, ?)
+            """, (peer_device_id, existing[0], safety_number, datetime.utcnow().isoformat()))
+            logger.warning(f"⚠️ Safety number changed for peer {peer_device_id}")
+
+        # Store/update peer key
+        cursor.execute("""
+            INSERT OR REPLACE INTO peer_keys
+            (peer_device_id, public_key, fingerprint, verify_key, safety_number, first_seen, last_key_change)
+            VALUES (?, ?, ?, ?, ?, COALESCE((SELECT first_seen FROM peer_keys WHERE peer_device_id = ?), ?), ?)
+        """, (
+            peer_device_id,
+            public_key,
+            fingerprint,
+            verify_key,
+            safety_number,
+            peer_device_id,
+            datetime.utcnow().isoformat(),
+            datetime.utcnow().isoformat() if existing else None
+        ))
+
+        conn.commit()
+        conn.close()
+
+        return {
+            "safety_number": safety_number,
+            "fingerprint": self.e2e_service.format_fingerprint(fingerprint),
+            "key_changed": bool(existing)
+        }
+
+    def verify_peer_fingerprint(self, peer_device_id: str) -> bool:
+        """
+        Mark a peer's fingerprint as verified
+
+        Args:
+            peer_device_id: Peer's device identifier
+
+        Returns:
+            True if marked verified
+        """
+        conn = sqlite3.connect(str(self.db_path))
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            UPDATE peer_keys
+            SET verified = 1, verified_at = ?
+            WHERE peer_device_id = ?
+        """, (datetime.utcnow().isoformat(), peer_device_id))
+
+        conn.commit()
+        conn.close()
+
+        logger.info(f"✓ Verified fingerprint for peer {peer_device_id}")
+        return True
+
+    def get_unacknowledged_safety_changes(self) -> List[Dict]:
+        """
+        Get list of unacknowledged safety number changes (for yellow warning UI)
+
+        Returns:
+            List of safety number changes that need user acknowledgment
+        """
+        conn = sqlite3.connect(str(self.db_path))
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT
+                sc.id,
+                sc.peer_device_id,
+                pk.public_key,
+                sc.old_safety_number,
+                sc.new_safety_number,
+                sc.changed_at,
+                p.display_name
+            FROM safety_number_changes sc
+            JOIN peer_keys pk ON sc.peer_device_id = pk.peer_device_id
+            LEFT JOIN peers p ON pk.peer_device_id = p.peer_id
+            WHERE sc.acknowledged = 0
+            ORDER BY sc.changed_at DESC
+        """)
+
+        changes = []
+        for row in cursor.fetchall():
+            changes.append({
+                "id": row[0],
+                "peer_device_id": row[1],
+                "peer_name": row[6] or row[1],
+                "old_safety_number": row[3],
+                "new_safety_number": row[4],
+                "changed_at": row[5]
+            })
+
+        conn.close()
+        return changes
+
+    def acknowledge_safety_change(self, change_id: int) -> bool:
+        """
+        Mark a safety number change as acknowledged
+
+        Args:
+            change_id: ID of the safety_number_changes record
+
+        Returns:
+            True if acknowledged
+        """
+        conn = sqlite3.connect(str(self.db_path))
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            UPDATE safety_number_changes
+            SET acknowledged = 1, acknowledged_at = ?
+            WHERE id = ?
+        """, (datetime.utcnow().isoformat(), change_id))
+
+        conn.commit()
+        conn.close()
+
+        return True
 
     async def start(self):
         """Start the P2P service with libp2p"""
@@ -512,6 +763,17 @@ class P2PChatService:
 
             # Handle regular chat messages
             if message_type == MessageType.TEXT.value or message_type == MessageType.FILE.value:
+                # Decrypt message content if encrypted
+                if message_data.get("encrypted", False):
+                    try:
+                        encrypted_content = bytes.fromhex(message_data["content"])
+                        decrypted_content = self.e2e_service.decrypt_message(encrypted_content)
+                        message_data["content"] = decrypted_content
+                        logger.debug(f"🔓 Decrypted message from {message_data.get('sender_id', 'unknown')[:8]}")
+                    except Exception as e:
+                        logger.error(f"Failed to decrypt message: {e}")
+                        message_data["content"] = "[⚠️ Failed to decrypt message]"
+
                 # Parse message
                 message = Message(**message_data)
 
@@ -643,8 +905,33 @@ class P2PChatService:
             # Open stream to peer
             stream = await self.host.new_stream(peer_id, [PROTOCOL_ID])
 
-            # Convert message to dict and send
+            # Convert message to dict
             message_dict = message.dict()
+
+            # Encrypt message content if E2E keys exist
+            try:
+                # Get peer's public key from database
+                conn = sqlite3.connect(str(self.db_path))
+                cursor = conn.cursor()
+                cursor.execute("SELECT public_key FROM peer_keys WHERE peer_device_id = ?", (peer_id_str,))
+                row = cursor.fetchone()
+                conn.close()
+
+                if row and row[0]:
+                    # Encrypt the content
+                    recipient_public_key = row[0]
+                    encrypted_content = self.e2e_service.encrypt_message(recipient_public_key, message.content)
+                    message_dict["content"] = encrypted_content.hex()
+                    message_dict["encrypted"] = True
+                    logger.debug(f"🔒 Encrypted message for {peer_id_str[:8]}")
+                else:
+                    logger.warning(f"No E2E keys for peer {peer_id_str[:8]}, sending unencrypted")
+                    message_dict["encrypted"] = False
+            except Exception as e:
+                logger.warning(f"E2E encryption failed for {peer_id_str[:8]}: {e}, sending unencrypted")
+                message_dict["encrypted"] = False
+
+            # Send message
             await stream.write(json.dumps(message_dict).encode())
 
             # Wait for ACK
