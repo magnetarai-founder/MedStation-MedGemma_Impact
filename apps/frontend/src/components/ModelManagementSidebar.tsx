@@ -38,6 +38,18 @@ export function ModelManagementSidebar({ isOpen, onClose }: ModelManagementSideb
     }
   }, [isOpen])
 
+  // Handle ESC key to close sidebar
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose()
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [isOpen, onClose])
+
   const loadSystemMemory = async () => {
     try {
       const response = await fetch('/api/v1/chat/system/memory')
@@ -323,6 +335,26 @@ export function ModelManagementSidebar({ isOpen, onClose }: ModelManagementSideb
                   </div>
                 </div>
               )}
+
+              {/* Browse More Models Link */}
+              <div className="p-4 rounded-lg bg-gradient-to-r from-primary-50 to-blue-50 dark:from-primary-900/20 dark:to-blue-900/20 border border-primary-200 dark:border-primary-800">
+                <a
+                  href="https://ollama.com/library"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between group"
+                >
+                  <div>
+                    <h4 className="text-sm font-semibold text-primary-900 dark:text-primary-100">
+                      Browse More Models
+                    </h4>
+                    <p className="text-xs text-primary-700 dark:text-primary-300 mt-0.5">
+                      Explore the Ollama model library
+                    </p>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-primary-600 dark:text-primary-400 group-hover:translate-x-1 transition-transform" />
+                </a>
+              </div>
 
               {/* All Models Section */}
               <div>

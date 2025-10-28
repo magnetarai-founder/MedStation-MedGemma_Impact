@@ -1,14 +1,14 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
-import { X, Settings as SettingsIcon, Zap, AlertTriangle, Cpu, User, Loader2, Plug, Shield, Database, FileText, Accessibility } from 'lucide-react'
+import { X, Settings as SettingsIcon, Zap, AlertTriangle, Cpu, User, Loader2, Shield, MessageSquare, Sparkles } from 'lucide-react'
 import { type NavTab } from '@/stores/navigationStore'
 import { ProfileSettings } from './ProfileSettings'
 
 // Lazy load heavy tab components for better performance
-const SettingsTab = lazy(() => import('./settings/SettingsTab'))
+const ChatTab = lazy(() => import('./settings/ChatTab'))
+const ModelsTab = lazy(() => import('./settings/ModelsTab'))
+const AppSettingsTab = lazy(() => import('./settings/AppSettingsTab'))
+const AdvancedTab = lazy(() => import('./settings/AdvancedTab'))
 const SecurityTab = lazy(() => import('./settings/SecurityTab'))
-const PowerUserTab = lazy(() => import('./settings/PowerUserTab'))
-const ModelManagementTab = lazy(() => import('./settings/ModelManagementTab'))
-const IntegrationsTab = lazy(() => import('./settings/IntegrationsTab'))
 const DangerZoneTab = lazy(() => import('./settings/DangerZoneTab'))
 
 
@@ -32,7 +32,7 @@ function LoadingFallback() {
 }
 
 export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<'profile' | 'settings' | 'security' | 'power' | 'models' | 'integrations' | 'danger'>('settings')
+  const [activeTab, setActiveTab] = useState<'profile' | 'chat' | 'models' | 'app' | 'advanced' | 'security' | 'danger'>('app')
 
   // Handle ESC key to close modal
   useEffect(() => {
@@ -61,7 +61,7 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
           <div className="flex items-center gap-3">
             <SettingsIcon className="w-6 h-6 text-primary-600 dark:text-primary-400" />
             <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-              Global Settings
+              Settings
             </h2>
           </div>
           <button
@@ -73,97 +73,89 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-200 dark:border-gray-700 px-6">
+        <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700 px-6 py-2 overflow-x-auto scrollbar-hide">
           <button
             onClick={() => setActiveTab('profile')}
-            className={`
-              flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors
-              ${activeTab === 'profile'
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }
-            `}
+            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all whitespace-nowrap ${
+              activeTab === 'profile'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400 font-semibold'
+                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-t-md'
+            }`}
           >
             <User className="w-4 h-4" />
-            <span className="font-medium">Profile</span>
+            <span>Profile</span>
           </button>
+
           <button
-            onClick={() => setActiveTab('settings')}
-            className={`
-              flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors
-              ${activeTab === 'settings'
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }
-            `}
+            onClick={() => setActiveTab('chat')}
+            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all whitespace-nowrap ${
+              activeTab === 'chat'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400 font-semibold'
+                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-t-md'
+            }`}
           >
-            <SettingsIcon className="w-4 h-4" />
-            <span className="font-medium">App Settings</span>
+            <MessageSquare className="w-4 h-4" />
+            <span>Chat</span>
           </button>
-          <button
-            onClick={() => setActiveTab('security')}
-            className={`
-              flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors
-              ${activeTab === 'security'
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }
-            `}
-          >
-            <Shield className="w-4 h-4" />
-            <span className="font-medium">Security</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('power')}
-            className={`
-              flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors
-              ${activeTab === 'power'
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }
-            `}
-          >
-            <Zap className="w-4 h-4" />
-            <span className="font-medium">Advanced</span>
-          </button>
+
           <button
             onClick={() => setActiveTab('models')}
-            className={`
-              flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors
-              ${activeTab === 'models'
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }
-            `}
+            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all whitespace-nowrap ${
+              activeTab === 'models'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400 font-semibold'
+                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-t-md'
+            }`}
           >
-            <Cpu className="w-4 h-4" />
-            <span className="font-medium">Model Management</span>
+            <Sparkles className="w-4 h-4" />
+            <span>Models</span>
           </button>
+
           <button
-            onClick={() => setActiveTab('integrations')}
-            className={`
-              flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors
-              ${activeTab === 'integrations'
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }
-            `}
+            onClick={() => setActiveTab('app')}
+            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all whitespace-nowrap ${
+              activeTab === 'app'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400 font-semibold'
+                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-t-md'
+            }`}
           >
-            <Plug className="w-4 h-4" />
-            <span className="font-medium">Integrations</span>
+            <SettingsIcon className="w-4 h-4" />
+            <span>App</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab('advanced')}
+            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all whitespace-nowrap ${
+              activeTab === 'advanced'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400 font-semibold'
+                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-t-md'
+            }`}
+          >
+            <Zap className="w-4 h-4" />
+            <span>Advanced</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('security')}
+            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all whitespace-nowrap ${
+              activeTab === 'security'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400 font-semibold'
+                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-t-md'
+            }`}
+          >
+            <Shield className="w-4 h-4" />
+            <span>Security</span>
+          </button>
+
           <button
             onClick={() => setActiveTab('danger')}
-            className={`
-              flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors
-              ${activeTab === 'danger'
-                ? 'border-red-500 text-red-600 dark:text-red-400'
-                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }
-            `}
+            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all whitespace-nowrap ${
+              activeTab === 'danger'
+                ? 'border-red-500 text-red-600 dark:text-red-400 font-semibold'
+                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-t-md'
+            }`}
           >
             <AlertTriangle className="w-4 h-4" />
-            <span className="font-medium">Danger Zone</span>
+            <span>Danger Zone</span>
           </button>
         </div>
 
@@ -171,11 +163,11 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
         <div className="flex-1 overflow-auto p-6">
           <Suspense fallback={<LoadingFallback />}>
             {activeTab === 'profile' && <ProfileSettings />}
-            {activeTab === 'settings' && <SettingsTab activeNavTab={activeNavTab} />}
+            {activeTab === 'chat' && <ChatTab />}
+            {activeTab === 'models' && <ModelsTab />}
+            {activeTab === 'app' && <AppSettingsTab activeNavTab={activeNavTab} />}
+            {activeTab === 'advanced' && <AdvancedTab />}
             {activeTab === 'security' && <SecurityTab />}
-            {activeTab === 'power' && <PowerUserTab />}
-            {activeTab === 'models' && <ModelManagementTab />}
-            {activeTab === 'integrations' && <IntegrationsTab />}
             {activeTab === 'danger' && <DangerZoneTab />}
           </Suspense>
         </div>

@@ -111,7 +111,7 @@ export const useChatStore = create<ChatStore>()(
       settings: {
         defaultModel: 'qwen2.5-coder:7b-instruct',
         autoGenerateTitles: true,
-        contextWindow: 50,
+        contextWindow: 75,
 
         // LLM Parameters - Balanced preset
         tone: 'balanced',

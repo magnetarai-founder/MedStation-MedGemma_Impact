@@ -511,8 +511,22 @@ async def send_message(chat_id: str, request: SendMessageRequest):
     if use_recursive:
         logger.info("🔄 Using recursive prompt decomposition for complex query")
 
-    # Get conversation history (full 200k token context)
-    history = await ChatStorage.get_messages(chat_id, limit=None)
+    # Get conversation history
+    # Use last 75 messages for full context + summary of earlier messages
+    all_history = await ChatStorage.get_messages(chat_id, limit=None)
+    CONTEXT_WINDOW = 75
+
+    if len(all_history) > CONTEXT_WINDOW:
+        # Use last 75 messages
+        history = all_history[-CONTEXT_WINDOW:]
+
+        # Get summary of earlier messages
+        summary_data = await asyncio.to_thread(memory.get_summary, chat_id)
+        earlier_summary = summary_data['summary'] if summary_data else None
+    else:
+        # Use all messages if less than context window
+        history = all_history
+        earlier_summary = None
 
     # ===== METAL 4 TICK FLOW (OPTIMIZED) =====
     # Only use Metal4 RAG if there are documents in this session
@@ -585,6 +599,17 @@ async def send_message(chat_id: str, request: SendMessageRequest):
     # Add system prompt at the beginning if provided
     if request.system_prompt:
         ollama_messages.insert(0, {"role": "system", "content": request.system_prompt})
+
+    # Prepend summary of earlier messages if conversation is long
+    if earlier_summary:
+        summary_message = {
+            "role": "system",
+            "content": f"📋 Summary of earlier conversation:\n\n{earlier_summary}\n\n---\nThe following messages are the recent conversation:"
+        }
+        # Insert after system prompt if exists, otherwise at beginning
+        insert_pos = 1 if request.system_prompt else 0
+        ollama_messages.insert(insert_pos, summary_message)
+        logger.info(f"Added conversation summary for {len(all_history) - CONTEXT_WINDOW} earlier messages")
 
     # Inject RAG context into the last user message if available
     if rag_context and ollama_messages:
