@@ -124,7 +124,7 @@ export function QueryHistoryModal({ isOpen, onClose, onRunQuery }: QueryHistoryM
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       {/* Query */}
-                      <pre className="text-sm font-mono text-gray-900 dark:text-gray-100 whitespace-pre-wrap break-words mb-2">
+                      <pre className="text-sm font-mono text-gray-900 dark:text-gray-100 whitespace-pre-wrap break-words mb-2 select-text cursor-text">
                         {item.query}
                       </pre>
 

@@ -619,6 +619,48 @@ async def execute_query(req: Request, session_id: str, request: QueryRequest):
         has_more=result.row_count > preview_limit
     )
 
+@app.get("/api/sessions/{session_id}/query-history")
+async def get_query_history(session_id: str):
+    """Get query history for a session"""
+    if session_id not in sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    queries = sessions[session_id].get('queries', {})
+    history = []
+
+    for query_id, query_info in queries.items():
+        history.append({
+            "id": query_id,
+            "query": query_info["sql"],
+            "timestamp": query_info["executed_at"].isoformat(),
+            "executionTime": query_info.get("execution_time_ms"),
+            "rowCount": query_info.get("row_count"),
+            "status": "success"  # We only store successful queries
+        })
+
+    # Sort by timestamp descending (most recent first)
+    history.sort(key=lambda x: x["timestamp"], reverse=True)
+
+    return {"history": history}
+
+@app.delete("/api/sessions/{session_id}/query-history/{query_id}")
+async def delete_query_from_history(session_id: str, query_id: str):
+    """Delete a query from history"""
+    if session_id not in sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    queries = sessions[session_id].get('queries', {})
+    if query_id not in queries:
+        raise HTTPException(status_code=404, detail="Query not found")
+
+    del queries[query_id]
+
+    # Also remove from query_results if it exists
+    if query_id in query_results:
+        del query_results[query_id]
+
+    return {"message": "Query deleted successfully"}
+
 @app.post("/api/sessions/{session_id}/export")
 async def export_results(session_id: str, request: ExportRequest):
     """Export query results"""
