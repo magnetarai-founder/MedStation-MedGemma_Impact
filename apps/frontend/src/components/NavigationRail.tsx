@@ -17,7 +17,7 @@ const NAV_ITEMS = {
 } as const
 
 // Static navigation order
-const NAV_ORDER: NavTab[] = ['chat', 'team', 'database', 'editor']
+const NAV_ORDER: NavTab[] = ['chat', 'team', 'editor', 'database']
 
 export function NavigationRail({ activeTab, onTabChange, onOpenSettings, onOpenServerControls }: NavigationRailProps) {
   const getButtonClasses = (itemId: string) => {
