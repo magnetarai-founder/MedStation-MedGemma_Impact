@@ -27,7 +27,7 @@ async def get_system_health():
 
     health_status = {
         "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now().isoformat(),
         "services": {},
         "system": {}
     }
