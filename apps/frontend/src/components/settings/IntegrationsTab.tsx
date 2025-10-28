@@ -1,4 +1,5 @@
-import { N8NConfig } from '../N8NConfig'
+// n8n integration disabled - keeping for future use
+// import { N8NConfig } from '../N8NConfig'
 
 export default function IntegrationsTab() {
   return (
@@ -12,7 +13,13 @@ export default function IntegrationsTab() {
         </p>
       </div>
 
-      <N8NConfig />
+      <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+        <p>No integrations configured</p>
+        <p className="text-sm mt-2">External integrations will be available in a future update</p>
+      </div>
+
+      {/* n8n integration disabled - keeping for future use */}
+      {/* <N8NConfig /> */}
     </div>
   )
 }

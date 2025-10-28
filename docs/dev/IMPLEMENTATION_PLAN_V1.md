@@ -39,9 +39,51 @@
 - **All critical security, compliance, and data protection features complete**
 
 ### 🎯 Remaining Work
-- **UI Integration** for all backend APIs (Phases 1-4)
 - **Phase 4.4**: Dynamic shortcuts (backend remaining)
-- **Phase 5-6**: Documentation and Emergency Mode (UI-focused)
+- **Phase 5-6**: Documentation and Emergency Mode
+- **Phase 7: UI Integration** - Connect all backend services to React frontend (see below)
+
+---
+
+## 🎨 PHASE 7: UI INTEGRATION (After Backend Complete)
+
+**Strategy**: Finish all backend services first, then build UI layer on top.
+
+### Security UI (Phase 1)
+- [ ] Settings → Security → Device Fingerprint display (E2E encryption)
+- [ ] Settings → Security → QR code for device linking
+- [ ] Chat window → Safety number changed banner
+- [ ] Message bubbles → "⚠️ Unverified" indicator
+- [ ] Startup → Passphrase entry modal (database encryption)
+- [ ] Settings → Security → Backup codes viewer
+- [ ] Settings → Users → RBAC role management dropdown
+- [ ] User profile → Role badge display
+
+### Data Protection UI (Phase 2)
+- [ ] Settings → Backups → List of available backups
+- [ ] Settings → Backups → Restore button with confirmation
+- [ ] Settings → Backups → "Backup Now" manual trigger
+- [ ] Settings → Audit Logs → Log viewer table (Admin only)
+- [ ] Settings → Audit Logs → Export to CSV button
+- [ ] Settings → Audit Logs → Search and filter UI
+
+### Compliance UI (Phase 3)
+- [ ] Workflow Designer → PHI warning banner (when detected)
+- [ ] Chat window → Footer with medical disclaimer
+- [ ] Settings → Legal → Full disclaimer text page
+- [ ] Settings → About → Export control information
+
+### UX Enhancements UI (Phase 4)
+- [ ] Header → Focus Mode dropdown (liquid glass design)
+- [ ] Focus Mode → Mode-specific styling applied globally
+- [ ] Emergency Mode → Quick actions bar at bottom
+- [ ] Toast notification system (bottom-right, stacking)
+- [ ] Toast → Undo button for reversible actions
+- [ ] Confirmation modals for destructive actions
+- [ ] Settings → Accessibility → Colorblind mode toggle
+- [ ] Settings → Accessibility → Font size selector
+- [ ] Settings → Accessibility → High contrast toggle
+- [ ] Status indicators → Icons + patterns (audit all red/green/yellow)
 
 ---
 

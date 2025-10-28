@@ -281,13 +281,14 @@ except Exception as e:
     services_failed.append("Workflow")
     logger.debug(f"Workflow service not available: {e}")
 
-try:
-    from n8n_router import router as n8n_router
-    app.include_router(n8n_router)
-    services_loaded.append("n8n Integration")
-except Exception as e:
-    services_failed.append("n8n Integration")
-    logger.debug(f"n8n integration not available: {e}")
+# n8n integration disabled - keeping code for future use
+# try:
+#     from n8n_router import router as n8n_router
+#     app.include_router(n8n_router)
+#     services_loaded.append("n8n Integration")
+# except Exception as e:
+#     services_failed.append("n8n Integration")
+#     logger.debug(f"n8n integration not available: {e}")
 
 try:
     from secure_enclave_service import router as secure_enclave_router
