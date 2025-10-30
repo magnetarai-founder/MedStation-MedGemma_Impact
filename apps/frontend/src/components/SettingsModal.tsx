@@ -192,14 +192,30 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
           {/* Content */}
           <div className="flex-1 overflow-auto p-8">
             <Suspense fallback={<LoadingFallback />}>
-              {activeTab === 'profile' && <ProfileSettings />}
-              {activeTab === 'chat' && <ChatTab />}
-              {activeTab === 'models' && <ModelsTab />}
-              {activeTab === 'app' && <AppSettingsTab activeNavTab={activeNavTab} />}
-              {activeTab === 'automation' && <AutomationTab />}
-              {activeTab === 'advanced' && <AdvancedTab />}
-              {activeTab === 'security' && <SecurityTab />}
-              {activeTab === 'danger' && <DangerZoneTab />}
+              <div className={activeTab === 'profile' ? '' : 'hidden'}>
+                <ProfileSettings />
+              </div>
+              <div className={activeTab === 'chat' ? '' : 'hidden'}>
+                <ChatTab />
+              </div>
+              <div className={activeTab === 'models' ? '' : 'hidden'}>
+                <ModelsTab />
+              </div>
+              <div className={activeTab === 'app' ? '' : 'hidden'}>
+                <AppSettingsTab activeNavTab={activeNavTab} />
+              </div>
+              <div className={activeTab === 'automation' ? '' : 'hidden'}>
+                <AutomationTab />
+              </div>
+              <div className={activeTab === 'advanced' ? '' : 'hidden'}>
+                <AdvancedTab />
+              </div>
+              <div className={activeTab === 'security' ? '' : 'hidden'}>
+                <SecurityTab />
+              </div>
+              <div className={activeTab === 'danger' ? '' : 'hidden'}>
+                <DangerZoneTab />
+              </div>
             </Suspense>
           </div>
         </div>
