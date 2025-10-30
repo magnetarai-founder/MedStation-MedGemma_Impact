@@ -1,6 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { X, Settings as SettingsIcon, Zap, AlertTriangle, Cpu, User, Loader2, Shield, MessageSquare, Sparkles, Workflow } from 'lucide-react'
 import { type NavTab } from '@/stores/navigationStore'
+import { usePermissions } from '@/hooks/usePermissions'
 import { ProfileSettings } from './ProfileSettings'
 
 // Lazy load heavy tab components for better performance
@@ -33,6 +34,7 @@ function LoadingFallback() {
 }
 
 export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalProps) {
+  const permissions = usePermissions()
   const [activeTab, setActiveTab] = useState<'profile' | 'chat' | 'models' | 'app' | 'automation' | 'advanced' | 'security' | 'danger'>('app')
 
   // Handle ESC key to close modal
@@ -117,29 +119,35 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
               <span>App</span>
             </button>
 
-            <button
-              onClick={() => setActiveTab('automation')}
-              className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all rounded-lg ${
-                activeTab === 'automation'
-                  ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50'
-              }`}
-            >
-              <Workflow className="w-4 h-4" />
-              <span>Automation</span>
-            </button>
+            {/* Automation - Members and above only */}
+            {permissions.canAccessAutomation && (
+              <button
+                onClick={() => setActiveTab('automation')}
+                className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all rounded-lg ${
+                  activeTab === 'automation'
+                    ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50'
+                }`}
+              >
+                <Workflow className="w-4 h-4" />
+                <span>Automation</span>
+              </button>
+            )}
 
-            <button
-              onClick={() => setActiveTab('advanced')}
-              className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all rounded-lg ${
-                activeTab === 'advanced'
-                  ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50'
-              }`}
-            >
-              <Zap className="w-4 h-4" />
-              <span>Advanced</span>
-            </button>
+            {/* Advanced - Members and above only */}
+            {permissions.canAccessAutomation && (
+              <button
+                onClick={() => setActiveTab('advanced')}
+                className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all rounded-lg ${
+                  activeTab === 'advanced'
+                    ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50'
+                }`}
+              >
+                <Zap className="w-4 h-4" />
+                <span>Advanced</span>
+              </button>
+            )}
 
             <button
               onClick={() => setActiveTab('security')}

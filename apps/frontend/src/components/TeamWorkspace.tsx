@@ -8,6 +8,7 @@
 
 import { useState } from 'react'
 import { useDocsStore } from '@/stores/docsStore'
+import { usePermissions } from '@/hooks/usePermissions'
 import { TeamChat } from './TeamChat'
 import { DocsWorkspace } from './DocsWorkspace'
 import { VaultSetup } from './VaultSetup'
@@ -19,6 +20,7 @@ type NetworkMode = 'solo' | 'lan' | 'p2p'
 
 export function TeamWorkspace() {
   const { workspaceView, setWorkspaceView, vaultSetupComplete, vaultUnlocked } = useDocsStore()
+  const permissions = usePermissions()
   const [networkMode, setNetworkMode] = useState<NetworkMode>('solo')
   const [showVaultSetup, setShowVaultSetup] = useState(false)
 
@@ -54,33 +56,40 @@ export function TeamWorkspace() {
             <span>Chat</span>
           </button>
 
-          <button
-            onClick={() => setWorkspaceView('docs')}
-            className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-md transition-all ${
-              workspaceView === 'docs'
-                ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 font-medium'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'
-            }`}
-          >
-            <FileText className="w-4 h-4" />
-            <span>Docs</span>
-          </button>
+          {/* Docs Tab - Members and above only */}
+          {permissions.canAccessDocuments && (
+            <button
+              onClick={() => setWorkspaceView('docs')}
+              className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-md transition-all ${
+                workspaceView === 'docs'
+                  ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 font-medium'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              <span>Docs</span>
+            </button>
+          )}
 
-          {/* Vertical Divider */}
-          <div className="h-6 w-px bg-gray-300 dark:bg-gray-600 mx-2"></div>
+          {/* Vertical Divider - only show if Docs or Vault are visible */}
+          {(permissions.canAccessDocuments || permissions.canAccessVault) && (
+            <div className="h-6 w-px bg-gray-300 dark:bg-gray-600 mx-2"></div>
+          )}
 
-          {/* Vault Tab */}
-          <button
-            onClick={handleVaultClick}
-            className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-md transition-all ${
-              workspaceView === 'vault'
-                ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-medium'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-amber-50 dark:hover:bg-amber-900/20'
-            }`}
-          >
-            <Lock className="w-4 h-4" />
-            <span>Vault</span>
-          </button>
+          {/* Vault Tab - Members and above only */}
+          {permissions.canAccessVault && (
+            <button
+              onClick={handleVaultClick}
+              className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-md transition-all ${
+                workspaceView === 'vault'
+                  ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-medium'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-amber-50 dark:hover:bg-amber-900/20'
+              }`}
+            >
+              <Lock className="w-4 h-4" />
+              <span>Vault</span>
+            </button>
+          )}
         </div>
       </div>
 

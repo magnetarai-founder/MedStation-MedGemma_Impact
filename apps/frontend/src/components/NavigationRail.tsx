@@ -1,5 +1,6 @@
 import { Database, SlidersHorizontal, MessageSquare, Briefcase, GitBranch, Power } from 'lucide-react'
 import { type NavTab } from '../stores/navigationStore'
+import { usePermissions } from '@/hooks/usePermissions'
 
 interface NavigationRailProps {
   activeTab: NavTab
@@ -20,6 +21,32 @@ const NAV_ITEMS = {
 const NAV_ORDER: NavTab[] = ['chat', 'team', 'editor', 'database']
 
 export function NavigationRail({ activeTab, onTabChange, onOpenSettings, onOpenServerControls }: NavigationRailProps) {
+  const permissions = usePermissions()
+
+  // Filter navigation items based on permissions
+  const getVisibleNavItems = (): NavTab[] => {
+    return NAV_ORDER.filter((itemId) => {
+      switch (itemId) {
+        case 'team':
+          // Team workspace: Everyone can access (includes chat + file share for guests)
+          return true
+        case 'chat':
+          // AI Chat: Everyone can access
+          return permissions.canAccessChat
+        case 'editor':
+          // Automation: Members and above only (no guests)
+          return permissions.canAccessAutomation
+        case 'database':
+          // Database: Members and above only (no guests)
+          return permissions.canAccessDocuments
+        default:
+          return true
+      }
+    })
+  }
+
+  const visibleNavItems = getVisibleNavItems()
+
   const getButtonClasses = (itemId: string) => {
     const isActive = activeTab === itemId
 
@@ -34,8 +61,8 @@ export function NavigationRail({ activeTab, onTabChange, onOpenSettings, onOpenS
     <div className="w-18 glass flex flex-col items-center bg-gradient-to-b from-indigo-50/80 via-purple-50/80 to-blue-50/80 dark:from-gray-900/80 dark:via-gray-850/80 dark:to-gray-900/80 backdrop-blur-xl border-r border-white/20 dark:border-gray-700/30">
       {/* Top section with navigation items */}
       <div className="flex flex-col items-center gap-3 pt-5">
-        {/* Static navigation items */}
-        {NAV_ORDER.map((itemId) => {
+        {/* Role-filtered navigation items */}
+        {visibleNavItems.map((itemId) => {
           const item = NAV_ITEMS[itemId]
           const Icon = item.icon
 
