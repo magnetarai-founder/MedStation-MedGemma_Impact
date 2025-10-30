@@ -7,6 +7,7 @@ import { WorkflowStatusTracker } from './WorkflowStatusTracker'
 import { WorkflowDesigner } from './WorkflowDesigner'
 import { ReactFlowProvider } from 'reactflow'
 import type { WorkItem, Workflow } from '../types/workflow'
+import { showToast, showUndoToast, showWorkflowNotification } from '@/lib/toast'
 
 interface WorkflowTemplate {
   id: string
@@ -196,8 +197,13 @@ export function AutomationTab() {
   }, [])
 
   const handleCreateFromTemplate = (templateId: string) => {
+    const template = workflows.find(w => w.id === templateId)
     setSelectedTemplate(templateId)
     setCurrentView('builder')
+
+    if (template) {
+      showToast.success(`Opening ${template.name}`)
+    }
   }
 
   const handleBackToTemplates = () => {
@@ -241,12 +247,26 @@ export function AutomationTab() {
   const confirmDelete = () => {
     if (!deleteConfirmWorkflow) return
 
+    const workflowToDelete = deleteConfirmWorkflow
+
     // Move to trash
     const deletedWorkflow = { ...deleteConfirmWorkflow, deletedAt: new Date().toISOString() }
     setDeletedWorkflows(prev => [...prev, deletedWorkflow])
     setWorkflows(prev => prev.filter(wf => wf.id !== deleteConfirmWorkflow.id))
     setDeleteConfirmWorkflow(null)
     setEditingWorkflow(null)
+
+    // Show undo toast
+    showUndoToast(
+      `"${workflowToDelete.name}" moved to trash`,
+      () => {
+        // Undo: restore the workflow
+        setWorkflows(prev => [...prev, { ...workflowToDelete, deletedAt: null }])
+        setDeletedWorkflows(prev => prev.filter(wf => wf.id !== workflowToDelete.id))
+        showToast.success('Workflow restored')
+      },
+      { duration: 7000 }
+    )
   }
 
   const handleRestoreWorkflow = (workflowId: string) => {
@@ -255,6 +275,8 @@ export function AutomationTab() {
 
     setWorkflows(prev => [...prev, { ...workflow, deletedAt: null }])
     setDeletedWorkflows(prev => prev.filter(wf => wf.id !== workflowId))
+
+    showToast.success(`"${workflow.name}" restored`)
   }
 
   const handleEmptyTrash = () => {

@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { Send, Smile, Paperclip, Hash, Bold, Italic, Code, Link as LinkIcon, AtSign, X, Pencil, Trash2, Check } from 'lucide-react'
 import { useTeamChatStore } from '../stores/teamChatStore'
+import { showToast, showUndoToast } from '@/lib/toast'
 
 interface TeamChatWindowProps {
   mode: 'solo' | 'p2p'
@@ -135,11 +136,14 @@ export function TeamChatWindow({ mode }: TeamChatWindowProps) {
   const handleSendMessage = () => {
     if ((!messageInput.trim() && !uploadedFile) || !activeChannelId) return
 
+    const messageContent = messageInput.trim()
+    const messageId = `msg_${Date.now()}`
+
     const newMessage: LocalMessage = {
-      id: `msg_${Date.now()}`,
+      id: messageId,
       channel_id: activeChannelId,
       sender_name: mode === 'solo' ? 'You' : 'Me',
-      content: messageInput.trim(),
+      content: messageContent,
       timestamp: new Date().toISOString(),
       type: uploadedFile ? 'file' : 'text',
       ...(uploadedFile && {
@@ -158,6 +162,19 @@ export function TeamChatWindow({ mode }: TeamChatWindowProps) {
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
+
+    // Show toast with undo option
+    showUndoToast(
+      uploadedFile ? 'File sent' : 'Message sent',
+      () => {
+        // Undo: remove the message
+        setMessages(prev => prev.filter(m => m.id !== messageId))
+        if (mode === 'solo' && activeChannelId) {
+          const updatedMessages = messages.filter(m => m.id !== messageId)
+          localStorage.setItem(`solo_messages_${activeChannelId}`, JSON.stringify(updatedMessages))
+        }
+      }
+    )
     inputRef.current?.focus()
   }
 
@@ -198,12 +215,33 @@ export function TeamChatWindow({ mode }: TeamChatWindowProps) {
   }
 
   const handleDeleteMessage = (messageId: string) => {
+    // Store the deleted message for undo
+    const deletedMessage = messages.find(m => m.id === messageId)
     const updatedMessages = messages.filter(m => m.id !== messageId)
     setMessages(updatedMessages)
 
     // Update localStorage immediately
     if (mode === 'solo' && activeChannelId) {
       localStorage.setItem(`solo_messages_${activeChannelId}`, JSON.stringify(updatedMessages))
+    }
+
+    // Show undo toast
+    if (deletedMessage) {
+      showUndoToast(
+        'Message deleted',
+        () => {
+          // Undo: restore the deleted message
+          setMessages(prev => [...prev, deletedMessage].sort((a, b) =>
+            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+          ))
+          if (mode === 'solo' && activeChannelId) {
+            const restored = [...updatedMessages, deletedMessage].sort((a, b) =>
+              new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+            )
+            localStorage.setItem(`solo_messages_${activeChannelId}`, JSON.stringify(restored))
+          }
+        }
+      )
     }
   }
 
