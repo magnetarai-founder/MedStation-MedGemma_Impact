@@ -56,158 +56,152 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-4xl max-h-[85vh] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-3">
-            <SettingsIcon className="w-6 h-6 text-primary-600 dark:text-primary-400" />
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+      <div className="relative w-full max-w-5xl max-h-[85vh] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl flex overflow-hidden">
+        {/* Sidebar */}
+        <div className="w-56 bg-gray-50 dark:bg-gray-800/30 border-r border-gray-200 dark:border-gray-700 flex flex-col">
+          {/* Header */}
+          <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-200 dark:border-gray-700">
+            <SettingsIcon className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
               Settings
             </h2>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-          >
-            <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-          </button>
+
+          {/* Navigation */}
+          <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-1">
+            <button
+              onClick={() => setActiveTab('profile')}
+              className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all rounded-lg ${
+                activeTab === 'profile'
+                  ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50'
+              }`}
+            >
+              <User className="w-4 h-4" />
+              <span>Profile</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('chat')}
+              className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all rounded-lg ${
+                activeTab === 'chat'
+                  ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50'
+              }`}
+            >
+              <MessageSquare className="w-4 h-4" />
+              <span>Chat</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('models')}
+              className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all rounded-lg ${
+                activeTab === 'models'
+                  ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50'
+              }`}
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>Models</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('app')}
+              className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all rounded-lg ${
+                activeTab === 'app'
+                  ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50'
+              }`}
+            >
+              <SettingsIcon className="w-4 h-4" />
+              <span>App</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('automation')}
+              className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all rounded-lg ${
+                activeTab === 'automation'
+                  ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50'
+              }`}
+            >
+              <Workflow className="w-4 h-4" />
+              <span>Automation</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('advanced')}
+              className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all rounded-lg ${
+                activeTab === 'advanced'
+                  ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50'
+              }`}
+            >
+              <Zap className="w-4 h-4" />
+              <span>Advanced</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('security')}
+              className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all rounded-lg ${
+                activeTab === 'security'
+                  ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50'
+              }`}
+            >
+              <Shield className="w-4 h-4" />
+              <span>Security</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('danger')}
+              className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all rounded-lg ${
+                activeTab === 'danger'
+                  ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50'
+              }`}
+            >
+              <AlertTriangle className="w-4 h-4" />
+              <span>Danger Zone</span>
+            </button>
+          </nav>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-1 border-b border-gray-200 dark:border-gray-700 px-6 overflow-x-auto scrollbar-hide">
-          <button
-            onClick={() => setActiveTab('profile')}
-            className={`flex items-center gap-2 px-3 py-2.5 text-sm font-medium transition-all whitespace-nowrap relative ${
-              activeTab === 'profile'
-                ? 'text-primary-600 dark:text-primary-400'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-t-lg'
-            }`}
-          >
-            <User className="w-4 h-4" />
-            <span>Profile</span>
-            {activeTab === 'profile' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 dark:bg-primary-400" />
-            )}
-          </button>
+        {/* Content Area */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Content Header */}
+          <div className="flex items-center justify-between px-8 py-5 border-b border-gray-200 dark:border-gray-700">
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+              {activeTab === 'profile' && 'Profile'}
+              {activeTab === 'chat' && 'Chat'}
+              {activeTab === 'models' && 'Models'}
+              {activeTab === 'app' && 'App'}
+              {activeTab === 'automation' && 'Automation'}
+              {activeTab === 'advanced' && 'Advanced'}
+              {activeTab === 'security' && 'Security'}
+              {activeTab === 'danger' && 'Danger Zone'}
+            </h3>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
+              <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+            </button>
+          </div>
 
-          <button
-            onClick={() => setActiveTab('chat')}
-            className={`flex items-center gap-2 px-3 py-2.5 text-sm font-medium transition-all whitespace-nowrap relative ${
-              activeTab === 'chat'
-                ? 'text-primary-600 dark:text-primary-400'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-t-lg'
-            }`}
-          >
-            <MessageSquare className="w-4 h-4" />
-            <span>Chat</span>
-            {activeTab === 'chat' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 dark:bg-primary-400" />
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('models')}
-            className={`flex items-center gap-2 px-3 py-2.5 text-sm font-medium transition-all whitespace-nowrap relative ${
-              activeTab === 'models'
-                ? 'text-primary-600 dark:text-primary-400'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-t-lg'
-            }`}
-          >
-            <Sparkles className="w-4 h-4" />
-            <span>Models</span>
-            {activeTab === 'models' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 dark:bg-primary-400" />
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('app')}
-            className={`flex items-center gap-2 px-3 py-2.5 text-sm font-medium transition-all whitespace-nowrap relative ${
-              activeTab === 'app'
-                ? 'text-primary-600 dark:text-primary-400'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-t-lg'
-            }`}
-          >
-            <SettingsIcon className="w-4 h-4" />
-            <span>App</span>
-            {activeTab === 'app' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 dark:bg-primary-400" />
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('automation')}
-            className={`flex items-center gap-2 px-3 py-2.5 text-sm font-medium transition-all whitespace-nowrap relative ${
-              activeTab === 'automation'
-                ? 'text-primary-600 dark:text-primary-400'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-t-lg'
-            }`}
-          >
-            <Workflow className="w-4 h-4" />
-            <span>Automation</span>
-            {activeTab === 'automation' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 dark:bg-primary-400" />
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('advanced')}
-            className={`flex items-center gap-2 px-3 py-2.5 text-sm font-medium transition-all whitespace-nowrap relative ${
-              activeTab === 'advanced'
-                ? 'text-primary-600 dark:text-primary-400'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-t-lg'
-            }`}
-          >
-            <Zap className="w-4 h-4" />
-            <span>Advanced</span>
-            {activeTab === 'advanced' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 dark:bg-primary-400" />
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('security')}
-            className={`flex items-center gap-2 px-3 py-2.5 text-sm font-medium transition-all whitespace-nowrap relative ${
-              activeTab === 'security'
-                ? 'text-primary-600 dark:text-primary-400'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-t-lg'
-            }`}
-          >
-            <Shield className="w-4 h-4" />
-            <span>Security</span>
-            {activeTab === 'security' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 dark:bg-primary-400" />
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('danger')}
-            className={`flex items-center gap-2 px-3 py-2.5 text-sm font-medium transition-all whitespace-nowrap relative ${
-              activeTab === 'danger'
-                ? 'text-red-600 dark:text-red-400'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-t-lg'
-            }`}
-          >
-            <AlertTriangle className="w-4 h-4" />
-            <span>Danger Zone</span>
-            {activeTab === 'danger' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600 dark:bg-red-400" />
-            )}
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-auto p-6">
-          <Suspense fallback={<LoadingFallback />}>
-            {activeTab === 'profile' && <ProfileSettings />}
-            {activeTab === 'chat' && <ChatTab />}
-            {activeTab === 'models' && <ModelsTab />}
-            {activeTab === 'app' && <AppSettingsTab activeNavTab={activeNavTab} />}
-            {activeTab === 'automation' && <AutomationTab />}
-            {activeTab === 'advanced' && <AdvancedTab />}
-            {activeTab === 'security' && <SecurityTab />}
-            {activeTab === 'danger' && <DangerZoneTab />}
-          </Suspense>
+          {/* Content */}
+          <div className="flex-1 overflow-auto p-8">
+            <Suspense fallback={<LoadingFallback />}>
+              {activeTab === 'profile' && <ProfileSettings />}
+              {activeTab === 'chat' && <ChatTab />}
+              {activeTab === 'models' && <ModelsTab />}
+              {activeTab === 'app' && <AppSettingsTab activeNavTab={activeNavTab} />}
+              {activeTab === 'automation' && <AutomationTab />}
+              {activeTab === 'advanced' && <AdvancedTab />}
+              {activeTab === 'security' && <SecurityTab />}
+              {activeTab === 'danger' && <DangerZoneTab />}
+            </Suspense>
+          </div>
         </div>
       </div>
     </div>
