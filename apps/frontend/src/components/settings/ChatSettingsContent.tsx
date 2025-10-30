@@ -82,7 +82,8 @@ function ModelManagerSection() {
     )
   }
 
-  const models = modelStatus?.models || []
+  // Only show available (chat) models in settings
+  const models = modelStatus?.available || []
 
   return (
     <div className="space-y-6">

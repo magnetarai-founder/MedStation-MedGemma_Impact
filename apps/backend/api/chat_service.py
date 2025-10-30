@@ -950,9 +950,16 @@ async def check_health():
 
 @router.get("/models/status")
 async def get_models_status():
-    """Get status of all models (loaded/unloaded, favorites)"""
-    status = await model_manager.get_model_status(ollama_client)
-    return {"models": status}
+    """
+    Get status of all models (loaded/unloaded, favorites)
+
+    Returns:
+    {
+        "available": [...],    # Chat models suitable for conversation
+        "unavailable": [...]   # Embedding/foundation models with reasons
+    }
+    """
+    return await model_manager.get_model_status(ollama_client)
 
 
 @router.get("/models/favorites")

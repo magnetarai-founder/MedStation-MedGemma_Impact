@@ -8,6 +8,7 @@ interface ModelStatus {
   is_favorite: boolean
   size: string
   modified_at?: string
+  unavailable_reason?: string  // Reason why model is unavailable (for embedding/foundation models)
 }
 
 interface HotSlot {
@@ -22,6 +23,7 @@ interface ModelManagementSidebarProps {
 
 export function ModelManagementSidebar({ isOpen, onClose }: ModelManagementSidebarProps) {
   const [models, setModels] = useState<ModelStatus[]>([])
+  const [unavailableModels, setUnavailableModels] = useState<ModelStatus[]>([])
   const [loading, setLoading] = useState(false)
   const [systemMemoryGB, setSystemMemoryGB] = useState<number>(128) // Default fallback
   const [hotSlots, setHotSlots] = useState<HotSlot[]>([
@@ -69,11 +71,14 @@ export function ModelManagementSidebar({ isOpen, onClose }: ModelManagementSideb
       const response = await fetch('/api/v1/chat/models/status')
       if (response.ok) {
         const data = await response.json()
-        const modelList = data.models || []
-        setModels(modelList)
+        const availableModels = data.available || []
+        const unavailableModelsList = data.unavailable || []
 
-        // Auto-populate hot slots with loaded models
-        const loadedModels = modelList.filter((m: ModelStatus) => m.loaded)
+        setModels(availableModels)
+        setUnavailableModels(unavailableModelsList)
+
+        // Auto-populate hot slots with loaded models (only from available models)
+        const loadedModels = availableModels.filter((m: ModelStatus) => m.loaded)
         const newSlots = [...hotSlots]
         loadedModels.slice(0, 4).forEach((model: ModelStatus, idx: number) => {
           newSlots[idx] = { slotNumber: idx + 1, model }
@@ -404,6 +409,44 @@ export function ModelManagementSidebar({ isOpen, onClose }: ModelManagementSideb
                         >
                           <Star size={16} className={model.is_favorite ? 'fill-current' : ''} />
                         </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Unavailable Models Section (Embedding/Foundation) */}
+              {unavailableModels.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Unavailable ({unavailableModels.length})
+                    </h3>
+                    <div className="group relative">
+                      <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                      <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-gray-900 dark:bg-gray-800 text-white text-xs rounded-lg shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity z-50">
+                        These models cannot be used for chat. They are either embedding models (used for semantic search) or foundation models (require instruction tuning).
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {unavailableModels.map((model) => (
+                      <div
+                        key={model.name}
+                        className="flex items-center gap-3 p-3 bg-gray-100 dark:bg-gray-800/50 rounded-xl border border-gray-300 dark:border-gray-700 opacity-60"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                            {model.name}
+                          </h4>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            {formatFileSize(model.size)} • {model.unavailable_reason}
+                          </p>
+                        </div>
                       </div>
                     ))}
                   </div>

@@ -15,6 +15,79 @@ logger = logging.getLogger(__name__)
 FAVORITES_FILE = Path(".neutron_data/model_favorites.json")
 FAVORITES_FILE.parent.mkdir(parents=True, exist_ok=True)
 
+# Model filtering patterns
+EMBEDDING_MODEL_PATTERNS = [
+    'embed',
+    'embedding',
+    'nomic-embed',
+    'mxbai-embed',
+    'bge-',
+    'e5-',
+    'gte-',
+    'sentence-',
+]
+
+FOUNDATION_MODEL_PATTERNS = [
+    '-base',
+    'foundation',
+    'pretrain',
+    'base-',
+]
+
+
+def is_chat_model(model_name: str) -> bool:
+    """
+    Determine if a model is suitable for chat
+
+    Returns False for:
+    - Embedding models (nomic-embed-text, mxbai-embed-large, etc.)
+    - Foundation models (base models without instruction tuning)
+
+    Returns True for:
+    - Instruction-tuned chat models
+    - Code models
+    - Reasoning models
+    """
+    name_lower = model_name.lower()
+
+    # Filter out embedding models
+    for pattern in EMBEDDING_MODEL_PATTERNS:
+        if pattern in name_lower:
+            logger.debug(f"Model '{model_name}' filtered as embedding model (pattern: {pattern})")
+            return False
+
+    # Filter out foundation models
+    for pattern in FOUNDATION_MODEL_PATTERNS:
+        if pattern in name_lower:
+            logger.debug(f"Model '{model_name}' filtered as foundation model (pattern: {pattern})")
+            return False
+
+    return True
+
+
+def get_model_unavailable_reason(model_name: str) -> Optional[str]:
+    """
+    Get the reason why a model is unavailable for chat
+
+    Returns:
+    - "Embedding Model (not for chat)" for embedding models
+    - "Foundation Model (requires instruction tuning)" for foundation models
+    - None if model is available
+    """
+    name_lower = model_name.lower()
+
+    # Check embedding patterns first
+    for pattern in EMBEDDING_MODEL_PATTERNS:
+        if pattern in name_lower:
+            return "Embedding Model (not for chat)"
+
+    # Check foundation patterns
+    for pattern in FOUNDATION_MODEL_PATTERNS:
+        if pattern in name_lower:
+            return "Foundation Model (requires instruction tuning)"
+
+    return None
+
 
 class ModelManager:
     """Manages model favorites and status"""
@@ -74,16 +147,23 @@ class ModelManager:
         """Check if a model is favorited"""
         return model_name in self.favorites
 
-    async def get_model_status(self, ollama_client) -> List[Dict[str, Any]]:
+    async def get_model_status(self, ollama_client) -> Dict[str, Any]:
         """
         Get status of all models (loaded/unloaded, memory usage)
 
-        Returns list of models with status info:
+        Returns dict with two categories:
+        {
+            "available": [...],    # Chat models suitable for conversation
+            "unavailable": [...]   # Embedding/foundation models with reasons
+        }
+
+        Each model entry contains:
         - name: model name
         - loaded: whether model is currently loaded
         - is_favorite: whether model is in favorites
         - size: model size
-        - memory_usage: estimated memory usage (if loaded)
+        - modified_at: last modified timestamp
+        - unavailable_reason: (for unavailable models only) reason why unavailable
         """
         try:
             # Get all available models
@@ -102,22 +182,39 @@ class ModelManager:
             except Exception as e:
                 logger.debug(f"Could not get running models: {e}")
 
-            # Build status list
-            status_list = []
+            # Separate models into available and unavailable
+            available_models = []
+            unavailable_models = []
+
             for model in models:
-                status_list.append({
+                model_info = {
                     "name": model.name,
                     "loaded": model.name in running_models,
                     "is_favorite": self.is_favorite(model.name),
                     "size": model.size,
                     "modified_at": model.modified_at
-                })
+                }
 
-            return status_list
+                # Check if model is suitable for chat
+                if is_chat_model(model.name):
+                    available_models.append(model_info)
+                else:
+                    # Add reason why model is unavailable
+                    reason = get_model_unavailable_reason(model.name)
+                    model_info["unavailable_reason"] = reason
+                    unavailable_models.append(model_info)
+
+            return {
+                "available": available_models,
+                "unavailable": unavailable_models
+            }
 
         except Exception as e:
             logger.error(f"Failed to get model status: {e}")
-            return []
+            return {
+                "available": [],
+                "unavailable": []
+            }
 
 
 # Global instance

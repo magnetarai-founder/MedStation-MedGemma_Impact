@@ -41,7 +41,8 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
       const response = await fetch('/api/v1/chat/models/status')
       if (response.ok) {
         const data = await response.json()
-        setModelStatuses(data.models || [])
+        // Only show available (chat) models in selector
+        setModelStatuses(data.available || [])
       }
     } catch (error) {
       console.debug('Failed to load model statuses:', error)
