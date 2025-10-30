@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
-import { X, Settings as SettingsIcon, Zap, AlertTriangle, Cpu, User, Loader2, Shield, MessageSquare, Sparkles } from 'lucide-react'
+import { X, Settings as SettingsIcon, Zap, AlertTriangle, Cpu, User, Loader2, Shield, MessageSquare, Sparkles, Workflow } from 'lucide-react'
 import { type NavTab } from '@/stores/navigationStore'
 import { ProfileSettings } from './ProfileSettings'
 
@@ -7,6 +7,7 @@ import { ProfileSettings } from './ProfileSettings'
 const ChatTab = lazy(() => import('./settings/ChatTab'))
 const ModelsTab = lazy(() => import('./settings/ModelsTab'))
 const AppSettingsTab = lazy(() => import('./settings/AppSettingsTab'))
+const AutomationTab = lazy(() => import('./settings/AutomationTab'))
 const AdvancedTab = lazy(() => import('./settings/AdvancedTab'))
 const SecurityTab = lazy(() => import('./settings/SecurityTab'))
 const DangerZoneTab = lazy(() => import('./settings/DangerZoneTab'))
@@ -32,7 +33,7 @@ function LoadingFallback() {
 }
 
 export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<'profile' | 'chat' | 'models' | 'app' | 'advanced' | 'security' | 'danger'>('app')
+  const [activeTab, setActiveTab] = useState<'profile' | 'chat' | 'models' | 'app' | 'automation' | 'advanced' | 'security' | 'danger'>('app')
 
   // Handle ESC key to close modal
   useEffect(() => {
@@ -123,6 +124,18 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
           </button>
 
           <button
+            onClick={() => setActiveTab('automation')}
+            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all whitespace-nowrap ${
+              activeTab === 'automation'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400 font-semibold'
+                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-t-md'
+            }`}
+          >
+            <Workflow className="w-4 h-4" />
+            <span>Automation</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('advanced')}
             className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all whitespace-nowrap ${
               activeTab === 'advanced'
@@ -166,6 +179,7 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
             {activeTab === 'chat' && <ChatTab />}
             {activeTab === 'models' && <ModelsTab />}
             {activeTab === 'app' && <AppSettingsTab activeNavTab={activeNavTab} />}
+            {activeTab === 'automation' && <AutomationTab />}
             {activeTab === 'advanced' && <AdvancedTab />}
             {activeTab === 'security' && <SecurityTab />}
             {activeTab === 'danger' && <DangerZoneTab />}

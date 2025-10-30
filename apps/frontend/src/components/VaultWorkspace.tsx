@@ -10,6 +10,7 @@ import { Lock, Fingerprint, AlertTriangle, FileText, Table2, Lightbulb, Eye, Eye
 import { authenticateBiometric, isBiometricAvailable } from '@/lib/biometricAuth'
 import toast from 'react-hot-toast'
 import type { Document, DocumentType } from '@/stores/docsStore'
+import { decryptDocument } from '@/lib/encryption'
 
 export function VaultWorkspace() {
   const {
@@ -23,7 +24,9 @@ export function VaultWorkspace() {
     setWorkspaceView,
     createDocument,
     deleteDocument,
-    removeFromVault
+    removeFromVault,
+    vaultPassphrase,
+    updateDocument
   } = useDocsStore()
   const requireTouchID = securitySettings.require_touch_id
   const [isAuthenticating, setIsAuthenticating] = useState(false)
@@ -144,10 +147,51 @@ export function VaultWorkspace() {
   }
 
   // Document actions
-  const handleOpenDocument = (doc: Document) => {
-    setActiveDocument(doc.id)
-    setWorkspaceView('docs')
-    toast.success('Document decrypted and opened')
+  const handleOpenDocument = async (doc: Document) => {
+    // Check if document is encrypted
+    if (doc.security_level === 'encrypted') {
+      if (!vaultPassphrase) {
+        toast.error('Vault passphrase not available. Please unlock vault again.')
+        return
+      }
+
+      try {
+        toast.loading('Decrypting document...', { id: 'decrypt' })
+
+        // Decrypt the document
+        const contentString = typeof doc.content === 'string'
+          ? doc.content
+          : JSON.stringify(doc.content)
+
+        const decrypted = await decryptDocument(contentString, vaultPassphrase)
+
+        // Parse decrypted content
+        let decryptedContent
+        try {
+          decryptedContent = JSON.parse(decrypted.content)
+        } catch {
+          decryptedContent = decrypted.content
+        }
+
+        // Update document with decrypted content
+        updateDocument(doc.id, {
+          content: decryptedContent,
+          security_level: 'standard', // Temporarily mark as standard while editing
+        })
+
+        toast.success('Document decrypted and opened', { id: 'decrypt' })
+        setActiveDocument(doc.id)
+        setWorkspaceView('docs')
+      } catch (error) {
+        console.error('Decryption error:', error)
+        toast.error('Failed to decrypt document. Incorrect passphrase?', { id: 'decrypt' })
+      }
+    } else {
+      // Document not encrypted, open directly
+      setActiveDocument(doc.id)
+      setWorkspaceView('docs')
+      toast.success('Document opened')
+    }
   }
 
   const handleCreateDocument = (type: DocumentType) => {
