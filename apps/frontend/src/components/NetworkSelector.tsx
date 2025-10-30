@@ -12,8 +12,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Globe, Wifi, Users, Check, Plus, Share2, Loader2 } from 'lucide-react'
-
-type NetworkMode = 'solo' | 'lan' | 'p2p'
+import { useTeamStore, type NetworkMode } from '@/stores/teamStore'
 
 interface LANDevice {
   id: string
@@ -35,14 +34,21 @@ interface NetworkSelectorProps {
 }
 
 export function NetworkSelector({ mode, onModeChange }: NetworkSelectorProps) {
+  const {
+    connectionStatus,
+    setConnectionStatus,
+    isHub,
+    setIsHub,
+    connectedDevices,
+    setConnectedDevices,
+  } = useTeamStore()
+
   const [isOpen, setIsOpen] = useState(false)
   const [isScanning, setIsScanning] = useState(false)
   const [lanDevices, setLanDevices] = useState<LANDevice[]>([])
   const [p2pPeers, setP2pPeers] = useState<P2PPeer[]>([])
   const [showAddPeer, setShowAddPeer] = useState(false)
   const [peerCode, setPeerCode] = useState('')
-  const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected')
-  const [isHub, setIsHub] = useState(false)
   const [hubPort, setHubPort] = useState<number | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 

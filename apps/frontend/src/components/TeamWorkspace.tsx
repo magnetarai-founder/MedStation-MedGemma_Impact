@@ -8,6 +8,7 @@
 
 import { useState } from 'react'
 import { useDocsStore } from '@/stores/docsStore'
+import { useTeamStore } from '@/stores/teamStore'
 import { usePermissions } from '@/hooks/usePermissions'
 import { TeamChat } from './TeamChat'
 import { DocsWorkspace } from './DocsWorkspace'
@@ -16,12 +17,10 @@ import { VaultWorkspace } from './VaultWorkspace'
 import { NetworkSelector } from './NetworkSelector'
 import { MessageSquare, FileText, Lock } from 'lucide-react'
 
-type NetworkMode = 'solo' | 'lan' | 'p2p'
-
 export function TeamWorkspace() {
   const { workspaceView, setWorkspaceView, vaultSetupComplete, vaultUnlocked } = useDocsStore()
+  const { networkMode, setNetworkMode } = useTeamStore()
   const permissions = usePermissions()
-  const [networkMode, setNetworkMode] = useState<NetworkMode>('solo')
   const [showVaultSetup, setShowVaultSetup] = useState(false)
 
   const handleVaultClick = () => {

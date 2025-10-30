@@ -6,6 +6,7 @@
 
 import { useMemo } from 'react'
 import { useUserStore } from '@/stores/userStore'
+import { useTeamStore } from '@/stores/teamStore'
 import {
   isGodRights,
   isSuperAdmin,
@@ -66,15 +67,26 @@ export interface Permissions {
  */
 export function usePermissions(): Permissions {
   const { user } = useUserStore()
-  const role = user?.role
+  const { shouldActivateRoles } = useTeamStore()
+
+  // In Solo Mode, user has full access to everything (no role restrictions)
+  // In Team Mode, roles activate and permissions are enforced
+  const rolesActive = shouldActivateRoles()
+  const role = rolesActive ? user?.role : undefined
 
   return useMemo(() => {
     // Role checks
+    // Note: In Solo Mode (rolesActive = false, role = undefined),
+    // user is treated as having Member-level access by default
     const _isGodRights = isGodRights(role)
     const _isSuperAdmin = isSuperAdmin(role)
     const _isAdmin = isAdmin(role)
     const _isMember = isMember(role)
     const _isGuest = isGuest(role)
+
+    // In Solo Mode, treat user as Member (not Guest)
+    const _isSoloMode = !rolesActive
+    const _effectivelyGuest = rolesActive ? _isGuest : false
 
     // General permissions
     const _hasElevatedPermissions = hasElevatedPermissions(role)
@@ -84,11 +96,13 @@ export function usePermissions(): Permissions {
     const _canUseTerminal = canUseTerminal(role)
 
     // Feature access
-    // Guests can only access Team Chat and File Share
-    const _canAccessWorkflows = !_isGuest
-    const _canAccessDocuments = !_isGuest
-    const _canAccessVault = !_isGuest
-    const _canAccessAutomation = !_isGuest
+    // Solo Mode: Full access to everything (local-only, no restrictions)
+    // Team Mode with Guest role: Only Chat and File Share
+    // Team Mode with Member+: Full access
+    const _canAccessWorkflows = !_effectivelyGuest
+    const _canAccessDocuments = !_effectivelyGuest
+    const _canAccessVault = !_effectivelyGuest
+    const _canAccessAutomation = !_effectivelyGuest
     const _canAccessChat = true // Everyone can use AI chat
     const _canAccessTeamChat = true // Everyone can use team chat
     const _canAccessFileShare = true // Everyone can share files
@@ -127,7 +141,7 @@ export function usePermissions(): Permissions {
       canManageRole: (targetRole?: string) => canManageRole(role, targetRole),
       promotableRoles: getPromotableRoles(role),
     }
-  }, [role])
+  }, [role, rolesActive])
 }
 
 /**
