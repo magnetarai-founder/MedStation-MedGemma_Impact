@@ -6,7 +6,7 @@
 
 import { useState, useEffect } from 'react'
 import { useDocsStore } from '@/stores/docsStore'
-import { Lock, Fingerprint, AlertTriangle, FileText, Table2, Lightbulb, Eye, EyeOff, Grid3x3, List, Search, Plus, MoreVertical, Shield, Clock, HardDrive, FolderOpen } from 'lucide-react'
+import { Lock, Fingerprint, AlertTriangle, FileText, Table2, Lightbulb, Eye, EyeOff, Grid3x3, List, Search, Plus, MoreVertical, Shield, Clock, HardDrive, FolderOpen, Filter, SlidersHorizontal, ArrowUpDown } from 'lucide-react'
 import { authenticateBiometric, isBiometricAvailable } from '@/lib/biometricAuth'
 import toast from 'react-hot-toast'
 import type { Document, DocumentType } from '@/stores/docsStore'
@@ -40,6 +40,9 @@ export function VaultWorkspace() {
   const [searchQuery, setSearchQuery] = useState('')
   const [showCreateMenu, setShowCreateMenu] = useState(false)
   const [contextMenu, setContextMenu] = useState<{ docId: string; x: number; y: number } | null>(null)
+  const [filterType, setFilterType] = useState<'all' | DocumentType>('all')
+  const [sortBy, setSortBy] = useState<'name' | 'created' | 'modified'>('modified')
+  const [showFilters, setShowFilters] = useState(false)
 
   useEffect(() => {
     checkBiometric()
@@ -103,11 +106,35 @@ export function VaultWorkspace() {
     }
   }
 
-  // Get vault documents and filter by search
+  // Get vault documents and apply filters
   const vaultDocs = getVaultDocuments()
-  const filteredDocs = vaultDocs.filter(doc =>
-    doc.title.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+
+  const filteredDocs = vaultDocs
+    .filter(doc => {
+      // Search filter (title and content)
+      const matchesSearch = searchQuery === '' ||
+        doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (typeof doc.content === 'string' && doc.content.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (typeof doc.content === 'object' && JSON.stringify(doc.content).toLowerCase().includes(searchQuery.toLowerCase()))
+
+      // Type filter
+      const matchesType = filterType === 'all' || doc.type === filterType
+
+      return matchesSearch && matchesType
+    })
+    .sort((a, b) => {
+      // Sort logic
+      switch (sortBy) {
+        case 'name':
+          return a.title.localeCompare(b.title)
+        case 'created':
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        case 'modified':
+          return new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime()
+        default:
+          return 0
+      }
+    })
 
   // Helper functions
   const getDocumentIcon = (type: DocumentType) => {
@@ -409,8 +436,32 @@ export function VaultWorkspace() {
       {/* Vault Content - Proton Drive Style */}
       <div className="flex-1 p-6 overflow-auto">
         <div className="max-w-6xl mx-auto">
+          {/* Results Counter */}
+          {vaultDocs.length > 0 && (
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {filteredDocs.length === vaultDocs.length ? (
+                  <span>{vaultDocs.length} document{vaultDocs.length !== 1 ? 's' : ''}</span>
+                ) : (
+                  <span>{filteredDocs.length} of {vaultDocs.length} documents</span>
+                )}
+              </p>
+              {(searchQuery || filterType !== 'all') && (
+                <button
+                  onClick={() => {
+                    setSearchQuery('')
+                    setFilterType('all')
+                  }}
+                  className="text-sm text-amber-600 dark:text-amber-400 hover:underline"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Toolbar */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3 mb-6">
             {/* Search Bar */}
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -422,6 +473,29 @@ export function VaultWorkspace() {
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm"
               />
             </div>
+
+            {/* Filter by Type */}
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value as any)}
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+            >
+              <option value="all">All Types</option>
+              <option value="doc">Documents</option>
+              <option value="sheet">Spreadsheets</option>
+              <option value="insight">Insights</option>
+            </select>
+
+            {/* Sort By */}
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+            >
+              <option value="modified">Recently Modified</option>
+              <option value="created">Recently Created</option>
+              <option value="name">Name (A-Z)</option>
+            </select>
 
             {/* View Toggle */}
             <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
