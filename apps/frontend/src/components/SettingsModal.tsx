@@ -74,101 +74,125 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700 px-6 py-2 overflow-x-auto scrollbar-hide">
+        <div className="flex gap-1 border-b border-gray-200 dark:border-gray-700 px-6 overflow-x-auto scrollbar-hide">
           <button
             onClick={() => setActiveTab('profile')}
-            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all whitespace-nowrap ${
+            className={`flex items-center gap-2 px-3 py-2.5 text-sm font-medium transition-all whitespace-nowrap relative ${
               activeTab === 'profile'
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400 font-semibold'
-                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-t-md'
+                ? 'text-primary-600 dark:text-primary-400'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-t-lg'
             }`}
           >
             <User className="w-4 h-4" />
             <span>Profile</span>
+            {activeTab === 'profile' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 dark:bg-primary-400" />
+            )}
           </button>
 
           <button
             onClick={() => setActiveTab('chat')}
-            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all whitespace-nowrap ${
+            className={`flex items-center gap-2 px-3 py-2.5 text-sm font-medium transition-all whitespace-nowrap relative ${
               activeTab === 'chat'
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400 font-semibold'
-                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-t-md'
+                ? 'text-primary-600 dark:text-primary-400'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-t-lg'
             }`}
           >
             <MessageSquare className="w-4 h-4" />
             <span>Chat</span>
+            {activeTab === 'chat' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 dark:bg-primary-400" />
+            )}
           </button>
 
           <button
             onClick={() => setActiveTab('models')}
-            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all whitespace-nowrap ${
+            className={`flex items-center gap-2 px-3 py-2.5 text-sm font-medium transition-all whitespace-nowrap relative ${
               activeTab === 'models'
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400 font-semibold'
-                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-t-md'
+                ? 'text-primary-600 dark:text-primary-400'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-t-lg'
             }`}
           >
             <Sparkles className="w-4 h-4" />
             <span>Models</span>
+            {activeTab === 'models' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 dark:bg-primary-400" />
+            )}
           </button>
 
           <button
             onClick={() => setActiveTab('app')}
-            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all whitespace-nowrap ${
+            className={`flex items-center gap-2 px-3 py-2.5 text-sm font-medium transition-all whitespace-nowrap relative ${
               activeTab === 'app'
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400 font-semibold'
-                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-t-md'
+                ? 'text-primary-600 dark:text-primary-400'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-t-lg'
             }`}
           >
             <SettingsIcon className="w-4 h-4" />
             <span>App</span>
+            {activeTab === 'app' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 dark:bg-primary-400" />
+            )}
           </button>
 
           <button
             onClick={() => setActiveTab('automation')}
-            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all whitespace-nowrap ${
+            className={`flex items-center gap-2 px-3 py-2.5 text-sm font-medium transition-all whitespace-nowrap relative ${
               activeTab === 'automation'
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400 font-semibold'
-                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-t-md'
+                ? 'text-primary-600 dark:text-primary-400'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-t-lg'
             }`}
           >
             <Workflow className="w-4 h-4" />
             <span>Automation</span>
+            {activeTab === 'automation' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 dark:bg-primary-400" />
+            )}
           </button>
 
           <button
             onClick={() => setActiveTab('advanced')}
-            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all whitespace-nowrap ${
+            className={`flex items-center gap-2 px-3 py-2.5 text-sm font-medium transition-all whitespace-nowrap relative ${
               activeTab === 'advanced'
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400 font-semibold'
-                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-t-md'
+                ? 'text-primary-600 dark:text-primary-400'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-t-lg'
             }`}
           >
             <Zap className="w-4 h-4" />
             <span>Advanced</span>
+            {activeTab === 'advanced' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 dark:bg-primary-400" />
+            )}
           </button>
 
           <button
             onClick={() => setActiveTab('security')}
-            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all whitespace-nowrap ${
+            className={`flex items-center gap-2 px-3 py-2.5 text-sm font-medium transition-all whitespace-nowrap relative ${
               activeTab === 'security'
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400 font-semibold'
-                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-t-md'
+                ? 'text-primary-600 dark:text-primary-400'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-t-lg'
             }`}
           >
             <Shield className="w-4 h-4" />
             <span>Security</span>
+            {activeTab === 'security' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 dark:bg-primary-400" />
+            )}
           </button>
 
           <button
             onClick={() => setActiveTab('danger')}
-            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all whitespace-nowrap ${
+            className={`flex items-center gap-2 px-3 py-2.5 text-sm font-medium transition-all whitespace-nowrap relative ${
               activeTab === 'danger'
-                ? 'border-red-500 text-red-600 dark:text-red-400 font-semibold'
-                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-t-md'
+                ? 'text-red-600 dark:text-red-400'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-t-lg'
             }`}
           >
             <AlertTriangle className="w-4 h-4" />
             <span>Danger Zone</span>
+            {activeTab === 'danger' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600 dark:bg-red-400" />
+            )}
           </button>
         </div>
 
