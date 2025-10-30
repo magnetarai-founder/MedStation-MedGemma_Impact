@@ -32,6 +32,9 @@ export interface Document {
   // Vault mode (for dual vault storage)
   vaultMode?: 'real' | 'decoy'
 
+  // Stealth label (innocuous cover name when stealth_labels setting is enabled)
+  stealth_label?: string
+
   // Collaboration
   shared_with?: string[]
   last_synced?: string

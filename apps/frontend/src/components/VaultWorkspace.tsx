@@ -43,6 +43,8 @@ export function VaultWorkspace() {
   const [filterType, setFilterType] = useState<'all' | DocumentType>('all')
   const [sortBy, setSortBy] = useState<'name' | 'created' | 'modified'>('modified')
   const [showFilters, setShowFilters] = useState(false)
+  const [stealthLabelModal, setStealthLabelModal] = useState<{ docId: string; currentLabel: string } | null>(null)
+  const [stealthLabelInput, setStealthLabelInput] = useState('')
 
   useEffect(() => {
     checkBiometric()
@@ -150,6 +152,15 @@ export function VaultWorkspace() {
     }
   }
 
+  const getDisplayTitle = (doc: Document) => {
+    // If stealth labels are enabled and document has a stealth label, use it
+    if (securitySettings.stealth_labels && doc.stealth_label) {
+      return doc.stealth_label
+    }
+    // Otherwise use real title
+    return doc.title
+  }
+
   const formatFileSize = (doc: Document) => {
     // Estimate size based on content
     const contentSize = JSON.stringify(doc.content).length
@@ -243,6 +254,26 @@ export function VaultWorkspace() {
       removeFromVault(docId)
       toast.success('Document moved to regular workspace')
       setContextMenu(null)
+    }
+  }
+
+  const handleSetStealthLabel = (docId: string) => {
+    const doc = vaultDocs.find(d => d.id === docId)
+    if (doc) {
+      setStealthLabelModal({ docId, currentLabel: doc.stealth_label || '' })
+      setStealthLabelInput(doc.stealth_label || '')
+    }
+    setContextMenu(null)
+  }
+
+  const handleSaveStealthLabel = () => {
+    if (stealthLabelModal) {
+      updateDocument(stealthLabelModal.docId, {
+        stealth_label: stealthLabelInput.trim() || undefined
+      })
+      toast.success(stealthLabelInput.trim() ? 'Stealth label set' : 'Stealth label removed')
+      setStealthLabelModal(null)
+      setStealthLabelInput('')
     }
   }
 
@@ -621,7 +652,7 @@ export function VaultWorkspace() {
 
                     {/* Document Title */}
                     <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1 truncate">
-                      {doc.title}
+                      {getDisplayTitle(doc)}
                     </h3>
 
                     {/* Metadata */}
@@ -674,7 +705,7 @@ export function VaultWorkspace() {
                     {/* Title & Metadata */}
                     <div className="flex-1 min-w-0">
                       <h3 className="font-medium text-gray-900 dark:text-gray-100 truncate">
-                        {doc.title}
+                        {getDisplayTitle(doc)}
                       </h3>
                       <div className="flex items-center gap-3 mt-1">
                         <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
@@ -726,6 +757,13 @@ export function VaultWorkspace() {
             <span className="text-gray-700 dark:text-gray-300">Open</span>
           </button>
           <button
+            onClick={() => handleSetStealthLabel(contextMenu.docId)}
+            className="w-full px-4 py-2 text-left hover:bg-purple-50 dark:hover:bg-purple-900/20 flex items-center gap-3 text-sm"
+          >
+            <EyeOff className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+            <span className="text-gray-700 dark:text-gray-300">Set Stealth Label</span>
+          </button>
+          <button
             onClick={() => handleMoveToRegular(contextMenu.docId)}
             className="w-full px-4 py-2 text-left hover:bg-amber-50 dark:hover:bg-amber-900/20 flex items-center gap-3 text-sm"
           >
@@ -740,6 +778,77 @@ export function VaultWorkspace() {
             <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
             <span className="text-red-700 dark:text-red-300">Delete</span>
           </button>
+        </div>
+      )}
+
+      {/* Stealth Label Modal */}
+      {stealthLabelModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md p-6 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-3 mb-4">
+              <EyeOff className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                Set Stealth Label
+              </h3>
+            </div>
+
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Create an innocuous cover name for this document. When "Stealth Labels" is enabled in Security settings, this name will be shown instead of the real title.
+            </p>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+                Real Title
+              </label>
+              <div className="px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-gray-900 dark:text-gray-100 text-sm">
+                {vaultDocs.find(d => d.id === stealthLabelModal.docId)?.title}
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+                Stealth Label (Cover Name)
+              </label>
+              <input
+                type="text"
+                value={stealthLabelInput}
+                onChange={(e) => setStealthLabelInput(e.target.value)}
+                placeholder="e.g., Grocery List.txt"
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                autoFocus
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Leave blank to remove stealth label
+              </p>
+            </div>
+
+            <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-3 mb-6 border border-amber-200 dark:border-amber-800">
+              <p className="text-xs text-amber-800 dark:text-amber-200">
+                <strong>Example:</strong> "Financial Report 2024.xlsx" could be labeled as "Recipe Book.txt"
+              </p>
+              <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                Provides plausible deniability during device searches. Real title visible when you open the document.
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setStealthLabelModal(null)
+                  setStealthLabelInput('')
+                }}
+                className="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveStealthLabel}
+                className="flex-1 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition-colors"
+              >
+                Save Label
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
