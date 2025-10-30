@@ -60,7 +60,7 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
         {/* Sidebar */}
         <div className="w-56 bg-gray-50 dark:bg-gray-800/30 flex flex-col border-r border-gray-200 dark:border-gray-700">
           {/* Header */}
-          <div className="flex items-center gap-3 px-5 py-5 h-[73px]">
+          <div className="flex items-center gap-3 px-5 py-5 h-[73px] border-b border-gray-200 dark:border-gray-700">
             <SettingsIcon className="w-5 h-5 text-primary-600 dark:text-primary-400" />
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
               Settings
