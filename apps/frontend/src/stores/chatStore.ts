@@ -26,18 +26,43 @@ export interface ChatSession {
 
 type TonePreset = 'creative' | 'balanced' | 'precise' | 'custom'
 
-interface ChatSettings {
-  defaultModel: string
-  autoGenerateTitles: boolean
-  contextWindow: number
+// Model classification types
+export type ModelClassification =
+  | 'chat'       // General conversation
+  | 'reasoning'  // Step-by-step logical reasoning
+  | 'code'       // Programming and development
+  | 'writing'    // Creative writing, documents
+  | 'research'   // Research, analysis, summarization
+  | 'intelligent' // Auto-detect based on task
 
-  // LLM Parameters
+// Per-model configuration
+export interface ModelConfig {
+  classification: ModelClassification
+  systemPrompt: string  // Model-specific system prompt
+
+  // Model-specific LLM parameters
   tone: TonePreset
   temperature: number
   topP: number
   topK: number
   repeatPenalty: number
-  systemPrompt: string
+}
+
+interface ChatSettings {
+  defaultModel: string
+  autoGenerateTitles: boolean
+  contextWindow: number
+
+  // Global LLM Parameters (used when model-specific not set)
+  tone: TonePreset
+  temperature: number
+  topP: number
+  topK: number
+  repeatPenalty: number
+  systemPrompt: string  // Global system prompt
+
+  // Per-model configurations
+  modelConfigs: Record<string, ModelConfig>
 }
 
 interface ChatStore {
@@ -71,6 +96,8 @@ interface ChatStore {
   setIsSending: (sending: boolean) => void
   setAvailableModels: (models: Array<{ name: string; size: string }>) => void
   updateSettings: (settings: Partial<ChatSettings>) => void
+  updateModelConfig: (modelName: string, config: Partial<ModelConfig>) => void
+  getModelConfig: (modelName: string) => ModelConfig | null
 
   // Helpers
   getActiveSession: () => ChatSession | null
@@ -113,13 +140,16 @@ export const useChatStore = create<ChatStore>()(
         autoGenerateTitles: true,
         contextWindow: 75,
 
-        // LLM Parameters - Balanced preset
+        // Global LLM Parameters - Balanced preset
         tone: 'balanced',
         temperature: 0.7,
         topP: 0.9,
         topK: 40,
         repeatPenalty: 1.1,
-        systemPrompt: ''
+        systemPrompt: '',
+
+        // Per-model configurations
+        modelConfigs: {}
       },
 
       // Actions
@@ -186,6 +216,63 @@ export const useChatStore = create<ChatStore>()(
 
         return { settings: updatedSettings }
       }),
+
+      updateModelConfig: (modelName, configUpdate) => set((state) => {
+        const existingConfig = state.settings.modelConfigs[modelName] || {
+          classification: 'intelligent',
+          systemPrompt: '',
+          tone: 'balanced',
+          temperature: 0.7,
+          topP: 0.9,
+          topK: 40,
+          repeatPenalty: 1.1
+        }
+
+        const updatedConfig = { ...existingConfig, ...configUpdate }
+
+        // Apply tone presets if tone is changed
+        if (configUpdate.tone && configUpdate.tone !== 'custom') {
+          const presets = {
+            creative: {
+              temperature: 1.2,
+              topP: 0.95,
+              topK: 60,
+              repeatPenalty: 1.05
+            },
+            balanced: {
+              temperature: 0.7,
+              topP: 0.9,
+              topK: 40,
+              repeatPenalty: 1.1
+            },
+            precise: {
+              temperature: 0.3,
+              topP: 0.8,
+              topK: 20,
+              repeatPenalty: 1.2
+            }
+          }
+
+          if (configUpdate.tone in presets) {
+            Object.assign(updatedConfig, presets[configUpdate.tone as keyof typeof presets])
+          }
+        }
+
+        return {
+          settings: {
+            ...state.settings,
+            modelConfigs: {
+              ...state.settings.modelConfigs,
+              [modelName]: updatedConfig
+            }
+          }
+        }
+      }),
+
+      getModelConfig: (modelName) => {
+        const { settings } = get()
+        return settings.modelConfigs[modelName] || null
+      },
 
       // Helpers
       getActiveSession: () => {

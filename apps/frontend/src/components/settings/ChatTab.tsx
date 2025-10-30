@@ -1,33 +1,28 @@
 import { useState, useEffect } from 'react'
-import { useChatStore } from '@/stores/chatStore'
+import { useChatStore, type ModelClassification } from '@/stores/chatStore'
 
 export default function ChatTab() {
   const {
     settings,
     availableModels,
     setAvailableModels,
-    updateSettings
+    updateSettings,
+    updateModelConfig,
+    getModelConfig
   } = useChatStore()
 
-  // Ensure settings have all required fields with defaults
-  const safeSettings = {
-    tone: settings.tone || 'balanced',
-    temperature: settings.temperature ?? 0.7,
-    topP: settings.topP ?? 0.9,
-    topK: settings.topK ?? 40,
-    repeatPenalty: settings.repeatPenalty ?? 1.1,
-    systemPrompt: settings.systemPrompt || '',
-    ...settings
-  }
+  // Currently selected model for configuration ("" = None/Global)
+  const [selectedConfigModel, setSelectedConfigModel] = useState<string>('')
 
   // Load models on mount
   useEffect(() => {
     const loadModels = async () => {
       try {
-        const response = await fetch(`/api/v1/chat/models`)
+        const response = await fetch(`/api/v1/chat/models/status`)
         if (response.ok) {
-          const models = await response.json()
-          setAvailableModels(models)
+          const data = await response.json()
+          // Only show available (chat) models
+          setAvailableModels(data.available || [])
         }
       } catch (error) {
         console.error('Failed to load models:', error)
@@ -35,6 +30,40 @@ export default function ChatTab() {
     }
     loadModels()
   }, [setAvailableModels])
+
+  // Get configuration for selected model or global settings
+  const isGlobalSettings = selectedConfigModel === ''
+  const modelConfig = isGlobalSettings ? null : getModelConfig(selectedConfigModel)
+
+  // Active config values (either global or per-model)
+  const activeConfig = isGlobalSettings
+    ? {
+        tone: settings.tone,
+        temperature: settings.temperature ?? 0.7,
+        topP: settings.topP ?? 0.9,
+        topK: settings.topK ?? 40,
+        repeatPenalty: settings.repeatPenalty ?? 1.1,
+        systemPrompt: settings.systemPrompt || '',
+        classification: null
+      }
+    : {
+        tone: modelConfig?.tone || 'balanced',
+        temperature: modelConfig?.temperature ?? 0.7,
+        topP: modelConfig?.topP ?? 0.9,
+        topK: modelConfig?.topK ?? 40,
+        repeatPenalty: modelConfig?.repeatPenalty ?? 1.1,
+        systemPrompt: modelConfig?.systemPrompt || '',
+        classification: modelConfig?.classification || 'intelligent'
+      }
+
+  // Update handler
+  const handleUpdate = (updates: any) => {
+    if (isGlobalSettings) {
+      updateSettings(updates)
+    } else {
+      updateModelConfig(selectedConfigModel, updates)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -44,28 +73,58 @@ export default function ChatTab() {
         </h3>
 
         <div className="space-y-4">
-          {/* Model Selection */}
+          {/* Model Settings Selector */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Default Model
+              Model Settings
             </label>
             <select
-              value={settings.defaultModel}
-              onChange={(e) => updateSettings({ defaultModel: e.target.value })}
+              value={selectedConfigModel}
+              onChange={(e) => setSelectedConfigModel(e.target.value)}
               className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             >
+              <option value="">None (Global Settings)</option>
               {availableModels.length === 0 ? (
-                <option value="">Loading models...</option>
+                <option value="" disabled>Loading models...</option>
               ) : (
                 availableModels.map((model) => (
                   <option key={model.name} value={model.name}>
-                    {model.name} ({model.size})
+                    {model.name}
                   </option>
                 ))
               )}
             </select>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Pre-loaded on app start</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              {isGlobalSettings
+                ? 'Configure global app settings (like ChatGPT personalization)'
+                : `Configure settings specifically for ${selectedConfigModel}`
+              }
+            </p>
           </div>
+
+          {/* Model Classification (only for per-model settings) */}
+          {!isGlobalSettings && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Model Classification
+              </label>
+              <select
+                value={activeConfig.classification as ModelClassification}
+                onChange={(e) => handleUpdate({ classification: e.target.value as ModelClassification })}
+                className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+              >
+                <option value="intelligent">Intelligent (Auto-detect)</option>
+                <option value="chat">Chat (General conversation)</option>
+                <option value="reasoning">Reasoning (Step-by-step logic)</option>
+                <option value="code">Code (Programming & development)</option>
+                <option value="writing">Writing (Creative writing, documents)</option>
+                <option value="research">Research (Analysis, summarization)</option>
+              </select>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                How this model should be used (Intelligent auto-detects based on task)
+              </p>
+            </div>
+          )}
 
           {/* Tone Presets */}
           <div>
@@ -76,9 +135,9 @@ export default function ChatTab() {
               {(['creative', 'balanced', 'precise', 'custom'] as const).map((tone) => (
                 <button
                   key={tone}
-                  onClick={() => updateSettings({ tone })}
+                  onClick={() => handleUpdate({ tone })}
                   className={`px-3 py-2 text-xs font-medium rounded-lg border transition-all ${
-                    safeSettings.tone === tone
+                    activeConfig.tone === tone
                       ? 'bg-primary-100 dark:bg-primary-900/30 border-primary-500 text-primary-700 dark:text-primary-300'
                       : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-primary-300'
                   }`}
@@ -88,10 +147,10 @@ export default function ChatTab() {
               ))}
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              {safeSettings.tone === 'creative' && 'Higher temp, more creative & varied'}
-              {safeSettings.tone === 'balanced' && 'Balanced creativity & accuracy'}
-              {safeSettings.tone === 'precise' && 'Lower temp, more focused & deterministic'}
-              {safeSettings.tone === 'custom' && 'Use custom parameters below'}
+              {activeConfig.tone === 'creative' && 'Higher temp, more creative & varied'}
+              {activeConfig.tone === 'balanced' && 'Balanced creativity & accuracy'}
+              {activeConfig.tone === 'precise' && 'Lower temp, more focused & deterministic'}
+              {activeConfig.tone === 'custom' && 'Use custom parameters below'}
             </p>
           </div>
 
@@ -102,7 +161,7 @@ export default function ChatTab() {
                 Temperature
               </label>
               <span className="text-xs text-gray-500 dark:text-gray-400">
-                {safeSettings.temperature.toFixed(2)}
+                {activeConfig.temperature.toFixed(2)}
               </span>
             </div>
             <input
@@ -110,10 +169,10 @@ export default function ChatTab() {
               min="0"
               max="2"
               step="0.05"
-              value={safeSettings.temperature}
-              onChange={(e) => updateSettings({ temperature: parseFloat(e.target.value), tone: 'custom' })}
+              value={activeConfig.temperature}
+              onChange={(e) => handleUpdate({ temperature: parseFloat(e.target.value), tone: 'custom' })}
               className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary-600"
-              disabled={safeSettings.tone !== 'custom'}
+              disabled={activeConfig.tone !== 'custom'}
             />
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Controls randomness (0 = deterministic, 2 = very creative)</p>
           </div>
@@ -125,7 +184,7 @@ export default function ChatTab() {
                 Top P (Nucleus Sampling)
               </label>
               <span className="text-xs text-gray-500 dark:text-gray-400">
-                {safeSettings.topP.toFixed(2)}
+                {activeConfig.topP.toFixed(2)}
               </span>
             </div>
             <input
@@ -133,10 +192,10 @@ export default function ChatTab() {
               min="0"
               max="1"
               step="0.05"
-              value={safeSettings.topP}
-              onChange={(e) => updateSettings({ topP: parseFloat(e.target.value), tone: 'custom' })}
+              value={activeConfig.topP}
+              onChange={(e) => handleUpdate({ topP: parseFloat(e.target.value), tone: 'custom' })}
               className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary-600"
-              disabled={safeSettings.tone !== 'custom'}
+              disabled={activeConfig.tone !== 'custom'}
             />
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Cumulative probability cutoff for token selection</p>
           </div>
@@ -148,7 +207,7 @@ export default function ChatTab() {
                 Top K
               </label>
               <span className="text-xs text-gray-500 dark:text-gray-400">
-                {safeSettings.topK}
+                {activeConfig.topK}
               </span>
             </div>
             <input
@@ -156,10 +215,10 @@ export default function ChatTab() {
               min="1"
               max="100"
               step="1"
-              value={safeSettings.topK}
-              onChange={(e) => updateSettings({ topK: parseInt(e.target.value), tone: 'custom' })}
+              value={activeConfig.topK}
+              onChange={(e) => handleUpdate({ topK: parseInt(e.target.value), tone: 'custom' })}
               className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary-600"
-              disabled={safeSettings.tone !== 'custom'}
+              disabled={activeConfig.tone !== 'custom'}
             />
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Limits sampling to top K most likely tokens</p>
           </div>
@@ -171,7 +230,7 @@ export default function ChatTab() {
                 Repeat Penalty
               </label>
               <span className="text-xs text-gray-500 dark:text-gray-400">
-                {safeSettings.repeatPenalty.toFixed(2)}
+                {activeConfig.repeatPenalty.toFixed(2)}
               </span>
             </div>
             <input
@@ -179,10 +238,10 @@ export default function ChatTab() {
               min="0"
               max="2"
               step="0.05"
-              value={safeSettings.repeatPenalty}
-              onChange={(e) => updateSettings({ repeatPenalty: parseFloat(e.target.value), tone: 'custom' })}
+              value={activeConfig.repeatPenalty}
+              onChange={(e) => handleUpdate({ repeatPenalty: parseFloat(e.target.value), tone: 'custom' })}
               className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary-600"
-              disabled={safeSettings.tone !== 'custom'}
+              disabled={activeConfig.tone !== 'custom'}
             />
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Penalizes repetition (1.0 = no penalty, higher = less repetition)</p>
           </div>
@@ -190,37 +249,51 @@ export default function ChatTab() {
           {/* System Prompt */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              System Prompt
+              {isGlobalSettings ? 'Global System Prompt' : 'Model-Specific System Prompt'}
             </label>
             <textarea
-              value={safeSettings.systemPrompt}
-              onChange={(e) => updateSettings({ systemPrompt: e.target.value })}
-              placeholder="You are a helpful AI assistant..."
+              value={activeConfig.systemPrompt}
+              onChange={(e) => handleUpdate({ systemPrompt: e.target.value })}
+              placeholder={
+                isGlobalSettings
+                  ? 'You are a helpful AI assistant... (applies to all models unless overridden)'
+                  : `Override global system prompt for ${selectedConfigModel}...`
+              }
               rows={3}
               className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 resize-none"
             />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Instructions sent with every message</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              {isGlobalSettings
+                ? 'Instructions sent with every message (all models)'
+                : 'Overrides global system prompt when using this model'
+              }
+            </p>
           </div>
 
-          {/* Auto-generate titles */}
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Auto-generate titles</label>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Name chats from first message</p>
-            </div>
-            <input
-              type="checkbox"
-              checked={settings.autoGenerateTitles}
-              onChange={(e) => updateSettings({ autoGenerateTitles: e.target.checked })}
-              className="w-4 h-4 rounded text-primary-600"
-            />
-          </div>
+          {/* Global Settings Only */}
+          {isGlobalSettings && (
+            <>
+              {/* Auto-generate titles */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Auto-generate titles</label>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Name chats from first message</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={settings.autoGenerateTitles}
+                  onChange={(e) => updateSettings({ autoGenerateTitles: e.target.checked })}
+                  className="w-4 h-4 rounded text-primary-600"
+                />
+              </div>
 
-          {/* Context Window (locked) */}
-          <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Context Window: 200k tokens</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Last 75 messages sent in full, earlier messages automatically summarized</p>
-          </div>
+              {/* Context Window (locked) */}
+              <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Context Window: 200k tokens</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Last 75 messages sent in full, earlier messages automatically summarized</p>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
