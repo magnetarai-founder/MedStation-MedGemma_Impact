@@ -12,7 +12,7 @@ This is the **master implementation roadmap** for ElohimOS hardening and feature
 **Current State:**
 - **Backend:** 95% Complete (78 services, 4,502+ LOC) ✅
 - **Frontend:** 60-70% Complete (113 files, ~40K LOC) ⚠️
-- **Security Grade:** A- (Excellent, 5 high priority issues remain)
+- **Security Grade:** A (Excellent, all critical/high issues resolved)
 - **Missing Features:** ~40% of documented features not implemented
 
 **Goal:** Harden security, complete missing features, polish UI integrations.
@@ -21,224 +21,19 @@ This is the **master implementation roadmap** for ElohimOS hardening and feature
 
 ## 📋 Roadmap Structure
 
-**7 Phases (Priority Order):**
-1. **Phase 1:** HIGH Priority Security (5 issues)
-2. **Phase 2:** Vault & Decoy System (CRITICAL missing feature)
-3. **Phase 3:** UI Integration - Security (6 tasks)
-4. **Phase 4:** UI Integration - Data Protection & Compliance (12 tasks)
-5. **Phase 5:** Collaborative Features (16 tasks)
-6. **Phase 6:** Advanced Features (8 tasks)
-7. **Phase 7:** Performance & Polish (3 tasks)
+**6 Phases (Priority Order):**
+1. **Phase 1:** Vault & Decoy System (CRITICAL missing feature)
+2. **Phase 2:** UI Integration - Security (6 tasks)
+3. **Phase 3:** UI Integration - Data Protection & Compliance (12 tasks)
+4. **Phase 4:** Collaborative Features (16 tasks)
+5. **Phase 5:** Advanced Features (8 tasks)
+6. **Phase 6:** Performance & Polish (3 tasks)
 
-**Total Tasks:** 50 actionable implementation items
-
----
-
-## PHASE 1: HIGH Priority Security
-
-### HIGH-01: Path Traversal Risk in File Uploads
-**Location:** `apps/backend/api/main.py:400` + 30 other files
-
-**Current Code:**
-```python
-file_path = temp_dir / f"{uuid.uuid4()}_{upload_file.filename}"
-```
-
-**Issue:** `upload_file.filename` is user-controlled. Attack: `../../../etc/passwd`
-
-**Fix:**
-```python
-import os
-from pathlib import Path
-
-def sanitize_filename(filename: str) -> str:
-    """Remove path traversal characters and dangerous names"""
-    # Get basename only (removes directory components)
-    safe_name = os.path.basename(filename)
-
-    # Remove dangerous characters (keep only alphanumeric, dash, underscore, dot)
-    safe_name = re.sub(r'[^\w\-_\.]', '_', safe_name)
-
-    # Limit length to 255 characters
-    safe_name = safe_name[:255]
-
-    # Prevent empty filename
-    if not safe_name:
-        safe_name = "upload"
-
-    return safe_name
-
-# Usage:
-file_path = temp_dir / f"{uuid.uuid4()}_{sanitize_filename(upload_file.filename)}"
-```
-
-**Files to Modify:**
-- `apps/backend/api/main.py:400`
-- 30 other files with Path/open operations (see audit)
-
-**Implementation Steps:**
-1. Create `sanitize_filename()` utility function in `apps/backend/api/utils.py`
-2. Find all file upload handlers with `upload_file.filename`
-3. Wrap all occurrences with `sanitize_filename()`
-4. Add unit tests for edge cases: `../`, null bytes, long names
+**Total Tasks:** 45 actionable implementation items
 
 ---
 
-### HIGH-02: Subprocess Usage Without Input Validation
-**Locations:** 4 files use `subprocess` or `shell=True`
-- `apps/backend/api/chat_service.py`
-- `apps/backend/api/metal4_engine.py`
-- `apps/backend/api/performance_monitor.py`
-- `apps/backend/api/insights_service.py`
-
-**Issue:** If user input reaches subprocess with `shell=True`, it's command injection.
-
-**Example Risk:**
-```python
-model_name = user_input  # e.g., "qwen; rm -rf /"
-subprocess.run(f"ollama pull {model_name}", shell=True)  # DANGER!
-```
-
-**Fix:**
-```python
-# BAD:
-subprocess.run(f"command {user_input}", shell=True)
-
-# GOOD:
-ALLOWED_MODELS = ['qwen', 'llama2', 'codellama', 'mistral']
-if model_name not in ALLOWED_MODELS:
-    raise ValueError(f"Invalid model: {model_name}")
-
-subprocess.run(["ollama", "pull", model_name], shell=False)
-```
-
-**Implementation Steps:**
-1. **Audit all subprocess calls** in 4 files
-2. **Create whitelists** for allowed values (models, commands, etc.)
-3. **Replace `shell=True`** with argument lists `["cmd", "arg1", "arg2"]`
-4. **Add validation** before subprocess execution
-5. **Document why subprocess is needed** (can't avoid it?)
-
----
-
-### HIGH-03: Sensitive Data in Logs
-**Locations:** 24 files with 304 occurrences of password/secret/token
-
-**Issue:** Risk of logging credentials, tokens, API keys in plaintext.
-
-**Fix:**
-```python
-def sanitize_for_log(data: dict) -> dict:
-    """Remove sensitive keys before logging"""
-    SENSITIVE_KEYS = ['password', 'token', 'api_key', 'secret', 'passphrase',
-                      'auth_key', 'private_key', 'credit_card']
-
-    return {
-        k: '***REDACTED***' if k.lower() in SENSITIVE_KEYS else v
-        for k, v in data.items()
-    }
-
-# Usage:
-logger.info(f"User data: {sanitize_for_log(user_data)}")
-```
-
-**Implementation Steps:**
-1. Create `sanitize_for_log()` utility in `apps/backend/api/utils.py`
-2. **Grep for all logger calls** with password/token/secret variables
-3. **Wrap sensitive data** with sanitize function
-4. **Never log** raw credentials (hash first if needed)
-5. **Add lint rule** to catch future violations
-
----
-
-### HIGH-04: Missing CSRF Protection
-**Location:** All POST/PUT/DELETE endpoints (no CSRF tokens detected)
-
-**Issue:** Web app vulnerable to CSRF if user visits malicious local HTML while authenticated.
-
-**Attack Scenario:**
-```html
-<!-- Malicious local HTML file -->
-<img src="http://localhost:8000/api/admin/reset-all" />
-<!-- If user logged in, this triggers data wipe -->
-```
-
-**Fix (Option 1 - CSRF Middleware):**
-```python
-from starlette.middleware.csrf import CSRFMiddleware
-
-app.add_middleware(
-    CSRFMiddleware,
-    secret="your-secret-key-from-env"
-)
-```
-
-**Fix (Option 2 - SameSite Cookies):**
-```python
-response.set_cookie(
-    "session",
-    value=session_id,
-    httponly=True,
-    secure=True,
-    samesite="strict"  # Prevents CSRF
-)
-```
-
-**Implementation Steps:**
-1. **Choose approach**: CSRF tokens vs SameSite cookies
-2. **If tokens**: Add CSRFMiddleware to main.py
-3. **If SameSite**: Update all set_cookie() calls
-4. **Add Origin header check** on critical operations
-5. **Document CSRF protection** in security docs
-
----
-
-### HIGH-05: Invite Code Security
-**Location:** `apps/backend/api/team_service.py:268-296`
-
-**Issue:** 15-character invite codes (36^15 = 77 bits entropy) but no rate limiting on validation.
-
-**Current Implementation:**
-```python
-# 3 groups of 5 alphanumeric: XXXXX-XXXXX-XXXXX
-code = f"{group1}-{group2}-{group3}"
-```
-
-**Fix:**
-```python
-# Add rate limiting to invite code validation
-@router.post("/api/v1/teams/validate-invite")
-@limiter.limit("10/minute")  # Limit validation attempts
-async def validate_invite(request: Request, code: str):
-    # ... existing code ...
-    pass
-
-# Track failed attempts
-CREATE TABLE invite_code_attempts (
-    code TEXT,
-    attempt_timestamp TIMESTAMP,
-    ip_address TEXT,
-    success BOOLEAN
-);
-
-# Lock code after 10 failed attempts
-def validate_invite_code(code: str, ip: str):
-    failed_attempts = count_failed_attempts(code, ip, last_hour=True)
-    if failed_attempts >= 10:
-        raise HTTPException(status_code=429, detail="Too many attempts")
-    # ... validation logic ...
-```
-
-**Implementation Steps:**
-1. **Add rate limiter** to `/teams/validate-invite` endpoint
-2. **Create attempts tracking table** in SQLite
-3. **Count failed attempts** (per code + per IP)
-4. **Lock code** after 10 failures in 1 hour
-5. **Consider shorter expiration** (7 days instead of 30)
-
----
-
-## PHASE 2: Vault & Decoy System (CRITICAL Missing Feature)
+## PHASE 1: Vault & Decoy System (CRITICAL Missing Feature)
 
 ### 🔴 CRITICAL: Decoy Vault Storage System
 **Status:** Advertised feature that DOESN'T WORK (security risk!)
@@ -613,7 +408,7 @@ export function BiometricSetup() {
 
 ---
 
-## PHASE 3: UI Integration - Security
+## PHASE 2: UI Integration - Security
 
 ### Task 4.1: QR Code Device Linking
 **Location:** Settings → Security → Device Linking
@@ -898,7 +693,7 @@ export function UserManagementPanel() {
 
 ---
 
-## PHASE 4: UI Integration - Data Protection & Compliance
+## PHASE 3: UI Integration - Data Protection & Compliance
 
 ### Task 5.1: Backups Tab
 **File:** `apps/frontend/src/components/settings/BackupsTab.tsx` (NEW)
@@ -1129,7 +924,7 @@ export function FocusModeSelector() {
 
 ---
 
-## PHASE 5: Collaborative Features
+## PHASE 4: Collaborative Features
 
 ### Task 6.1: Doc Comments & Threads System
 **Status:** Zero implementation (major feature)
@@ -1637,7 +1432,7 @@ export function VersionHistory({ fileId }) {
 
 ---
 
-## PHASE 6: Advanced Features
+## PHASE 5: Advanced Features
 
 ### Task 7.1: Excel Formula to DuckDB Conversion
 **Status:** Core Sheets feature missing
@@ -1935,7 +1730,7 @@ export function detectMarkdown(text: string, cursorPos: number): { type: string;
 
 ---
 
-## PHASE 7: Performance & Polish
+## PHASE 6: Performance & Polish
 
 ### Task 8.1: Large File Encryption Optimization
 **Issue:** All files encrypted in memory (crashes on 500MB+ files)
