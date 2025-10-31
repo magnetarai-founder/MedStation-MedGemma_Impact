@@ -185,6 +185,20 @@ class TeamManager:
             )
         """)
 
+        # God Rights authorization table (Phase 6.1)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS god_rights_auth (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL UNIQUE,
+                auth_key_hash TEXT,
+                delegated_by TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                revoked_at TIMESTAMP,
+                is_active INTEGER DEFAULT 1,
+                notes TEXT
+            )
+        """)
+
         self.conn.commit()
         logger.info("Team database initialized")
 
@@ -592,7 +606,7 @@ class TeamManager:
             logger.error(f"Failed to check Super Admin limit: {e}")
             return False, str(e)
 
-    def update_member_role(self, team_id: str, user_id: str, new_role: str, requesting_user_role: str = None) -> tuple[bool, str]:
+    def update_member_role(self, team_id: str, user_id: str, new_role: str, requesting_user_role: str = None, requesting_user_id: str = None) -> tuple[bool, str]:
         """
         Update a team member's role with validation
 
@@ -601,6 +615,7 @@ class TeamManager:
             user_id: User whose role to update
             new_role: New role to assign
             requesting_user_role: Role of user making the request (for God Rights check)
+            requesting_user_id: ID of user making the request (for God Rights protection)
 
         Returns:
             Tuple of (success: bool, message: str)
@@ -618,6 +633,20 @@ class TeamManager:
                 return False, f"User {user_id} is not a member of team {team_id}"
 
             current_role = row['role']
+
+            # God Rights Protection (Phase 6.1)
+            # Check if target user has God Rights - only God Rights can modify God Rights users
+            target_has_god_rights, _ = self.check_god_rights(user_id)
+            if target_has_god_rights:
+                # Check if requester has God Rights
+                requester_has_god_rights = False
+                if requesting_user_id:
+                    requester_has_god_rights, _ = self.check_god_rights(requesting_user_id)
+                elif requesting_user_role == 'god_rights':
+                    requester_has_god_rights = True
+
+                if not requester_has_god_rights:
+                    return False, "Only users with God Rights can modify other God Rights users"
 
             # If promoting to Super Admin, check limits
             if new_role == 'super_admin' and current_role != 'super_admin':
@@ -1915,6 +1944,218 @@ class TeamManager:
             logger.error(f"Failed to get queue: {e}")
             return None
 
+    # ========================================================================
+    # GOD RIGHTS AUTHORIZATION METHODS (Phase 6.1)
+    # ========================================================================
+
+    def grant_god_rights(self, user_id: str, delegated_by: str = None, auth_key: str = None, notes: str = None) -> tuple[bool, str]:
+        """
+        Grant God Rights to a user (Phase 6.1)
+
+        Args:
+            user_id: User ID to grant God Rights
+            delegated_by: User ID who is delegating (must have God Rights), NULL if founder
+            auth_key: Optional authentication key for God Rights access
+            notes: Reason for granting God Rights
+
+        Returns:
+            Tuple of (success: bool, message: str)
+        """
+        try:
+            import hashlib
+
+            cursor = self.conn.cursor()
+
+            # If delegated_by is specified, verify they have active God Rights
+            if delegated_by:
+                has_rights, _ = self.check_god_rights(delegated_by)
+                if not has_rights:
+                    return False, "Delegator does not have active God Rights"
+
+            # Check if user already has God Rights
+            cursor.execute("""
+                SELECT is_active FROM god_rights_auth
+                WHERE user_id = ?
+            """, (user_id,))
+
+            existing = cursor.fetchone()
+            if existing and existing['is_active']:
+                return False, "User already has active God Rights"
+
+            # Hash auth key if provided
+            auth_key_hash = None
+            if auth_key:
+                auth_key_hash = hashlib.sha256(auth_key.encode()).hexdigest()
+
+            # Grant God Rights
+            if existing:
+                # Reactivate previously revoked God Rights
+                cursor.execute("""
+                    UPDATE god_rights_auth
+                    SET is_active = 1, revoked_at = NULL, delegated_by = ?, auth_key_hash = ?, notes = ?
+                    WHERE user_id = ?
+                """, (delegated_by, auth_key_hash, notes, user_id))
+            else:
+                # New God Rights grant
+                cursor.execute("""
+                    INSERT INTO god_rights_auth (user_id, delegated_by, auth_key_hash, notes)
+                    VALUES (?, ?, ?, ?)
+                """, (user_id, delegated_by, auth_key_hash, notes))
+
+            self.conn.commit()
+
+            logger.info(f"Granted God Rights to {user_id}" + (f" by {delegated_by}" if delegated_by else " (founder)"))
+
+            return True, f"God Rights granted to {user_id}"
+
+        except Exception as e:
+            logger.error(f"Failed to grant God Rights: {e}")
+            return False, str(e)
+
+    def revoke_god_rights(self, user_id: str, revoked_by: str) -> tuple[bool, str]:
+        """
+        Revoke God Rights from a user (Phase 6.1)
+
+        Only other God Rights users can revoke God Rights.
+
+        Args:
+            user_id: User ID to revoke God Rights from
+            revoked_by: User ID who is revoking (must have God Rights)
+
+        Returns:
+            Tuple of (success: bool, message: str)
+        """
+        try:
+            cursor = self.conn.cursor()
+
+            # Verify revoker has God Rights
+            has_rights, _ = self.check_god_rights(revoked_by)
+            if not has_rights:
+                return False, "Only God Rights users can revoke God Rights"
+
+            # Check if user has God Rights
+            cursor.execute("""
+                SELECT is_active FROM god_rights_auth
+                WHERE user_id = ?
+            """, (user_id,))
+
+            existing = cursor.fetchone()
+            if not existing or not existing['is_active']:
+                return False, "User does not have active God Rights"
+
+            # Revoke God Rights
+            cursor.execute("""
+                UPDATE god_rights_auth
+                SET is_active = 0, revoked_at = CURRENT_TIMESTAMP
+                WHERE user_id = ?
+            """, (user_id,))
+
+            self.conn.commit()
+
+            logger.info(f"Revoked God Rights from {user_id} by {revoked_by}")
+
+            return True, f"God Rights revoked from {user_id}"
+
+        except Exception as e:
+            logger.error(f"Failed to revoke God Rights: {e}")
+            return False, str(e)
+
+    def check_god_rights(self, user_id: str) -> tuple[bool, str]:
+        """
+        Check if a user has active God Rights (Phase 6.1)
+
+        Args:
+            user_id: User ID to check
+
+        Returns:
+            Tuple of (has_rights: bool, message: str)
+        """
+        try:
+            cursor = self.conn.cursor()
+
+            cursor.execute("""
+                SELECT is_active, delegated_by, created_at FROM god_rights_auth
+                WHERE user_id = ? AND is_active = 1
+            """, (user_id,))
+
+            result = cursor.fetchone()
+
+            if result:
+                delegated_by = result['delegated_by'] or 'Founder'
+                return True, f"Active God Rights (granted by {delegated_by})"
+            else:
+                return False, "No active God Rights"
+
+        except Exception as e:
+            logger.error(f"Failed to check God Rights: {e}")
+            return False, str(e)
+
+    def get_god_rights_users(self) -> List[Dict]:
+        """
+        Get all users with active God Rights (Phase 6.1)
+
+        Returns:
+            List of God Rights users with details
+        """
+        try:
+            cursor = self.conn.cursor()
+
+            cursor.execute("""
+                SELECT user_id, delegated_by, created_at, notes
+                FROM god_rights_auth
+                WHERE is_active = 1
+                ORDER BY created_at
+            """)
+
+            users = []
+            for row in cursor.fetchall():
+                users.append({
+                    'user_id': row['user_id'],
+                    'delegated_by': row['delegated_by'],
+                    'created_at': row['created_at'],
+                    'notes': row['notes'],
+                    'is_founder': row['delegated_by'] is None
+                })
+
+            return users
+
+        except Exception as e:
+            logger.error(f"Failed to get God Rights users: {e}")
+            return []
+
+    def get_revoked_god_rights(self) -> List[Dict]:
+        """
+        Get all users with revoked God Rights (Phase 6.1)
+
+        Returns:
+            List of revoked God Rights users
+        """
+        try:
+            cursor = self.conn.cursor()
+
+            cursor.execute("""
+                SELECT user_id, delegated_by, created_at, revoked_at, notes
+                FROM god_rights_auth
+                WHERE is_active = 0
+                ORDER BY revoked_at DESC
+            """)
+
+            users = []
+            for row in cursor.fetchall():
+                users.append({
+                    'user_id': row['user_id'],
+                    'delegated_by': row['delegated_by'],
+                    'created_at': row['created_at'],
+                    'revoked_at': row['revoked_at'],
+                    'notes': row['notes']
+                })
+
+            return users
+
+        except Exception as e:
+            logger.error(f"Failed to get revoked God Rights: {e}")
+            return []
+
     def close(self):
         """Close database connection"""
         if self.conn:
@@ -2086,6 +2327,7 @@ async def join_team(request: JoinTeamRequest):
 class UpdateRoleRequest(BaseModel):
     new_role: str
     requesting_user_role: Optional[str] = None  # For God Rights override
+    requesting_user_id: Optional[str] = None  # For God Rights protection (Phase 6.1)
 
 
 class UpdateRoleResponse(BaseModel):
@@ -2127,7 +2369,8 @@ async def update_member_role(team_id: str, user_id: str, request: UpdateRoleRequ
             team_id=team_id,
             user_id=user_id,
             new_role=request.new_role,
-            requesting_user_role=request.requesting_user_role
+            requesting_user_role=request.requesting_user_role,
+            requesting_user_id=request.requesting_user_id
         )
 
         if not success:
@@ -3275,4 +3518,182 @@ async def get_queue(team_id: str, queue_id: str):
         raise
     except Exception as e:
         logger.error(f"Failed to get queue: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== God Rights Endpoints (Phase 6.1) =====
+
+class GrantGodRightsRequest(BaseModel):
+    user_id: str
+    delegated_by: Optional[str] = None
+    auth_key: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class GrantGodRightsResponse(BaseModel):
+    success: bool
+    message: str
+
+
+@router.post("/god-rights/grant", response_model=GrantGodRightsResponse)
+async def grant_god_rights(request: GrantGodRightsRequest):
+    """
+    Grant God Rights to a user (Phase 6.1)
+
+    God Rights is the highest authority level in ElohimOS.
+    Can be granted by founder or delegated by existing God Rights users.
+    Optional auth_key provides additional security layer.
+    """
+    team_manager = get_team_manager()
+
+    try:
+        success, message = team_manager.grant_god_rights(
+            user_id=request.user_id,
+            delegated_by=request.delegated_by,
+            auth_key=request.auth_key,
+            notes=request.notes
+        )
+
+        if not success:
+            raise HTTPException(status_code=400, detail=message)
+
+        return GrantGodRightsResponse(success=True, message=message)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to grant God Rights: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class RevokeGodRightsRequest(BaseModel):
+    user_id: str
+    revoked_by: str
+
+
+class RevokeGodRightsResponse(BaseModel):
+    success: bool
+    message: str
+
+
+@router.post("/god-rights/revoke", response_model=RevokeGodRightsResponse)
+async def revoke_god_rights(request: RevokeGodRightsRequest):
+    """
+    Revoke God Rights from a user (Phase 6.1)
+
+    Only users with active God Rights can revoke God Rights from others.
+    This maintains the security of the God Rights system.
+    """
+    team_manager = get_team_manager()
+
+    try:
+        success, message = team_manager.revoke_god_rights(
+            user_id=request.user_id,
+            revoked_by=request.revoked_by
+        )
+
+        if not success:
+            raise HTTPException(status_code=400, detail=message)
+
+        return RevokeGodRightsResponse(success=True, message=message)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to revoke God Rights: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class CheckGodRightsRequest(BaseModel):
+    user_id: str
+
+
+class CheckGodRightsResponse(BaseModel):
+    has_god_rights: bool
+    message: str
+
+
+@router.post("/god-rights/check", response_model=CheckGodRightsResponse)
+async def check_god_rights(request: CheckGodRightsRequest):
+    """
+    Check if a user has active God Rights (Phase 6.1)
+    """
+    team_manager = get_team_manager()
+
+    try:
+        has_rights, message = team_manager.check_god_rights(request.user_id)
+
+        return CheckGodRightsResponse(
+            has_god_rights=has_rights,
+            message=message
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to check God Rights: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class GodRightsUser(BaseModel):
+    user_id: str
+    delegated_by: Optional[str] = None
+    created_at: str
+    notes: Optional[str] = None
+    is_founder: bool
+
+
+class GetGodRightsUsersResponse(BaseModel):
+    users: List[GodRightsUser]
+    count: int
+
+
+@router.get("/god-rights/users", response_model=GetGodRightsUsersResponse)
+async def get_god_rights_users():
+    """
+    Get all users with active God Rights (Phase 6.1)
+    """
+    team_manager = get_team_manager()
+
+    try:
+        users = team_manager.get_god_rights_users()
+
+        return GetGodRightsUsersResponse(
+            users=users,
+            count=len(users)
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to get God Rights users: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class RevokedGodRightsUser(BaseModel):
+    user_id: str
+    delegated_by: Optional[str] = None
+    created_at: str
+    revoked_at: str
+    notes: Optional[str] = None
+
+
+class GetRevokedGodRightsResponse(BaseModel):
+    users: List[RevokedGodRightsUser]
+    count: int
+
+
+@router.get("/god-rights/revoked", response_model=GetRevokedGodRightsResponse)
+async def get_revoked_god_rights():
+    """
+    Get all users with revoked God Rights (Phase 6.1)
+    """
+    team_manager = get_team_manager()
+
+    try:
+        users = team_manager.get_revoked_god_rights()
+
+        return GetRevokedGodRightsResponse(
+            users=users,
+            count=len(users)
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to get revoked God Rights: {e}")
         raise HTTPException(status_code=500, detail=str(e))
