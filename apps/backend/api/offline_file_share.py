@@ -17,6 +17,9 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
+# Import security utilities
+from utils import sanitize_filename
+
 
 @dataclass
 class SharedFile:
@@ -124,7 +127,9 @@ class OfflineFileShare:
         mime_type = self._detect_mime_type(file_path)
 
         # Copy file to shared storage
-        shared_path = self.storage_dir / file_id / file_path.name
+        # Sanitize filename to prevent path traversal (HIGH-01)
+        safe_filename = sanitize_filename(file_path.name)
+        shared_path = self.storage_dir / file_id / safe_filename
         shared_path.parent.mkdir(parents=True, exist_ok=True)
 
         async with aiofiles.open(file_path, 'rb') as src:
@@ -138,7 +143,7 @@ class OfflineFileShare:
         # Create shared file metadata
         shared_file = SharedFile(
             file_id=file_id,
-            filename=file_path.name,
+            filename=safe_filename,
             size_bytes=file_path.stat().st_size,
             mime_type=mime_type,
             sha256_hash=sha256_hash,

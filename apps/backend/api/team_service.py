@@ -13,14 +13,19 @@ import string
 from pathlib import Path
 from typing import Dict, List, Optional
 from datetime import datetime, timedelta
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 logger = logging.getLogger(__name__)
 
 # Database path for team data
 TEAM_DB = Path(".neutron_data/teams.db")
 TEAM_DB.parent.mkdir(parents=True, exist_ok=True)
+
+# Rate limiter for brute-force protection (HIGH-05)
+limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter(prefix="/api/v1/teams", tags=["teams"])
 
@@ -134,6 +139,23 @@ class TeamManager:
                 FOREIGN KEY (team_id) REFERENCES teams (team_id),
                 UNIQUE(team_id, promoted_admin_id, status)
             )
+        """)
+
+        # Invite code attempts tracking (HIGH-05: Brute-force protection)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS invite_attempts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                invite_code TEXT NOT NULL,
+                ip_address TEXT NOT NULL,
+                attempt_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                success BOOLEAN NOT NULL
+            )
+        """)
+
+        # Index for fast lookup of recent attempts
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_invite_attempts_code_ip
+            ON invite_attempts(invite_code, ip_address, attempt_timestamp DESC)
         """)
 
         # Workflow permissions table (Phase 5.2)
@@ -470,13 +492,66 @@ class TeamManager:
             logger.error(f"Failed to regenerate invite code: {e}")
             raise
 
-    def validate_invite_code(self, invite_code: str) -> Optional[str]:
+    def record_invite_attempt(self, invite_code: str, ip_address: str, success: bool):
+        """Record an invite code validation attempt (HIGH-05)"""
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                INSERT INTO invite_attempts (invite_code, ip_address, success)
+                VALUES (?, ?, ?)
+            """, (invite_code, ip_address, success))
+            self.conn.commit()
+        except Exception as e:
+            logger.error(f"Failed to record invite attempt: {e}")
+
+    def check_brute_force_lockout(self, invite_code: str, ip_address: str) -> bool:
+        """
+        Check if invite code is locked due to too many failed attempts (HIGH-05)
+
+        Returns:
+            True if locked (too many failures), False if attempts are allowed
+        """
+        try:
+            cursor = self.conn.cursor()
+            # Count failed attempts in last hour for this code+IP combination
+            cursor.execute("""
+                SELECT COUNT(*) as failed_count
+                FROM invite_attempts
+                WHERE invite_code = ?
+                AND ip_address = ?
+                AND success = FALSE
+                AND attempt_timestamp > datetime('now', '-1 hour')
+            """, (invite_code, ip_address))
+
+            row = cursor.fetchone()
+            failed_count = row['failed_count'] if row else 0
+
+            if failed_count >= 10:
+                logger.warning(f"Invite code locked: {invite_code} from {ip_address} ({failed_count} failed attempts)")
+                return True
+
+            return False
+
+        except Exception as e:
+            logger.error(f"Failed to check brute force lockout: {e}")
+            return False  # Fail open to avoid blocking legitimate users
+
+    def validate_invite_code(self, invite_code: str, ip_address: Optional[str] = None) -> Optional[str]:
         """
         Validate invite code and return team_id if valid
+
+        Args:
+            invite_code: The invite code to validate
+            ip_address: IP address of requester (for brute-force protection)
 
         Returns:
             team_id if code is valid and not expired/used, None otherwise
         """
+        # Check for brute-force lockout (HIGH-05)
+        if ip_address and self.check_brute_force_lockout(invite_code, ip_address):
+            if ip_address:
+                self.record_invite_attempt(invite_code, ip_address, False)
+            return None
         try:
             cursor = self.conn.cursor()
             cursor.execute("""
@@ -489,11 +564,15 @@ class TeamManager:
 
             if not row:
                 logger.warning(f"Invite code not found: {invite_code}")
+                if ip_address:
+                    self.record_invite_attempt(invite_code, ip_address, False)
                 return None
 
             # Check if already used
             if row['used']:
                 logger.warning(f"Invite code already used: {invite_code}")
+                if ip_address:
+                    self.record_invite_attempt(invite_code, ip_address, False)
                 return None
 
             # Check if expired
@@ -502,7 +581,13 @@ class TeamManager:
                 expires_at = datetime.fromisoformat(row['expires_at'])
                 if datetime.now() > expires_at:
                     logger.warning(f"Invite code expired: {invite_code}")
+                    if ip_address:
+                        self.record_invite_attempt(invite_code, ip_address, False)
                     return None
+
+            # Success - record attempt
+            if ip_address:
+                self.record_invite_attempt(invite_code, ip_address, True)
 
             return row['team_id']
 
@@ -2894,17 +2979,22 @@ class JoinTeamResponse(BaseModel):
 
 
 @router.post("/join", response_model=JoinTeamResponse)
-async def join_team(request: JoinTeamRequest):
+@limiter.limit("10/minute")  # HIGH-05: Brute-force protection for invite codes
+async def join_team(req: Request, request: JoinTeamRequest):
     """
     Join a team using an invite code
 
     Validates invite code and adds user as member
+    Rate limited to 10 attempts per minute to prevent brute-force attacks
     """
     team_manager = get_team_manager()
 
     try:
-        # Validate invite code
-        team_id = team_manager.validate_invite_code(request.invite_code)
+        # Get IP address for brute-force tracking
+        ip_address = get_remote_address(req)
+
+        # Validate invite code (with IP tracking for brute-force protection)
+        team_id = team_manager.validate_invite_code(request.invite_code, ip_address)
 
         if not team_id:
             raise HTTPException(

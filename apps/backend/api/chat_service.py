@@ -13,7 +13,7 @@ from typing import Optional, List, Dict, Any, AsyncGenerator
 from datetime import datetime
 import logging
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 import aiofiles
@@ -683,6 +683,7 @@ async def send_message(chat_id: str, request: SendMessageRequest):
 
 @router.post("/sessions/{chat_id}/upload")
 async def upload_file_to_chat(
+    request: Request,
     chat_id: str,
     file: UploadFile = File(...)
 ):

@@ -11,7 +11,7 @@ from datetime import datetime
 import logging
 import json
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Request
 from pydantic import BaseModel
 
 from elohimos_memory import ElohimOSMemory
@@ -244,7 +244,7 @@ def scan_disk_directory(dir_path: str) -> List[Dict[str, Any]]:
 
 # Endpoints
 @router.post("/workspaces", response_model=WorkspaceResponse)
-async def create_workspace(workspace: WorkspaceCreate):
+async def create_workspace(request: Request, workspace: WorkspaceCreate):
     """Create a new database workspace"""
     try:
         if workspace.source_type != 'database':
@@ -284,7 +284,7 @@ async def create_workspace(workspace: WorkspaceCreate):
 
 
 @router.post("/workspaces/open-disk", response_model=WorkspaceResponse)
-async def open_disk_workspace(name: str = Form(...), disk_path: str = Form(...)):
+async def open_disk_workspace(request: Request, name: str = Form(...), disk_path: str = Form(...)):
     """Open folder from disk and create workspace"""
     try:
         # Validate path exists
@@ -345,7 +345,7 @@ async def open_disk_workspace(name: str = Form(...), disk_path: str = Form(...))
 
 
 @router.post("/workspaces/open-database", response_model=WorkspaceResponse)
-async def open_database_workspace(workspace_id: str = Form(...)):
+async def open_database_workspace(request: Request, workspace_id: str = Form(...)):
     """Open existing workspace from database"""
     try:
         conn = memory.memory.conn
@@ -448,7 +448,7 @@ async def get_file(file_id: str):
 
 
 @router.post("/files", response_model=FileResponse)
-async def create_file(file: FileCreate):
+async def create_file(request: Request, file: FileCreate):
     """Create new file in workspace"""
     try:
         file_id = str(uuid.uuid4())
@@ -511,7 +511,7 @@ async def create_file(file: FileCreate):
 
 
 @router.put("/files/{file_id}", response_model=FileResponse)
-async def update_file(file_id: str, file_update: FileUpdate):
+async def update_file(request: Request, file_id: str, file_update: FileUpdate):
     """Update file"""
     try:
         conn = memory.memory.conn
@@ -608,7 +608,7 @@ async def update_file(file_id: str, file_update: FileUpdate):
 
 
 @router.delete("/files/{file_id}")
-async def delete_file(file_id: str):
+async def delete_file(request: Request, file_id: str):
     """Delete file"""
     try:
         conn = memory.memory.conn
@@ -659,6 +659,7 @@ async def delete_file(file_id: str):
 
 @router.post("/files/import")
 async def import_file(
+    request: Request,
     workspace_id: str = Form(...),
     file: UploadFile = File(...)
 ):
@@ -695,7 +696,7 @@ async def import_file(
 
 
 @router.post("/workspaces/{workspace_id}/sync")
-async def sync_workspace(workspace_id: str):
+async def sync_workspace(request: Request, workspace_id: str):
     """Sync disk workspace with filesystem"""
     try:
         conn = memory.memory.conn

@@ -15,7 +15,7 @@ from typing import Optional
 from datetime import datetime
 import logging
 
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, HTTPException, UploadFile, File, Request
 from pydantic import BaseModel
 import aiofiles
 
@@ -251,7 +251,7 @@ Provide a thoughtful analysis that helps organize these thoughts and surface the
 # ===== Endpoints =====
 
 @router.post("/transcribe", response_model=TranscribeResponse)
-async def transcribe_audio(audio_file: UploadFile = File(...)):
+async def transcribe_audio(request: Request, audio_file: UploadFile = File(...)):
     """
     Transcribe audio file using Whisper (local)
 
@@ -300,7 +300,7 @@ async def transcribe_audio(audio_file: UploadFile = File(...)):
 
 
 @router.post("/analyze", response_model=AnalyzeResponse)
-async def analyze_transcript(request: AnalyzeRequest):
+async def analyze_transcript(req: Request, request: AnalyzeRequest):
     """
     Analyze theological reflection transcript with AI
 

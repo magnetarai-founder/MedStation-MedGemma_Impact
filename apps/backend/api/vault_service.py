@@ -12,12 +12,15 @@ import hashlib
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from datetime import datetime
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from cryptography.fernet import Fernet
 
 logger = logging.getLogger(__name__)
+
+# Import security utilities
+from utils import sanitize_filename
 
 # Import WebSocket connection manager
 from .websocket_manager import manager
@@ -2837,6 +2840,7 @@ async def get_vault_stats(vault_type: str):
 
 @router.post("/upload", response_model=VaultFile)
 async def upload_vault_file(
+    request: Request,
     file: UploadFile = File(...),
     vault_passphrase: str = Form(...),
     vault_type: str = Form(default="real"),
@@ -2872,10 +2876,12 @@ async def upload_vault_file(
     # Upload and encrypt
     service = get_vault_service()
     try:
+        # Sanitize filename to prevent path traversal (HIGH-01)
+        safe_filename = sanitize_filename(file.filename or "untitled")
         vault_file = service.upload_file(
             user_id=user_id,
             file_data=file_data,
-            filename=file.filename or "untitled",
+            filename=safe_filename,
             mime_type=mime_type,
             vault_type=vault_type,
             passphrase=vault_passphrase,
@@ -2898,6 +2904,7 @@ async def upload_vault_file(
 
 @router.post("/upload-chunk")
 async def upload_chunk(
+    request: Request,
     chunk: UploadFile = File(...),
     chunk_index: int = Form(...),
     total_chunks: int = Form(...),

@@ -47,6 +47,9 @@ logging.getLogger("neutron_core.engine").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 
+# Import security utilities
+from utils import sanitize_filename, sanitize_for_log
+
 # Initialize rate limiter
 limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
@@ -142,6 +145,10 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS for development
+# Security (HIGH-04): CSRF Protection provided by:
+# 1. JWT tokens in Authorization header (not cookies - no automatic sending)
+# 2. CORS restricts origins to trusted dev servers
+# 3. Browsers enforce SOP - malicious sites can't read responses
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -376,8 +383,10 @@ async def save_upload(upload_file: UploadFile) -> Path:
     api_dir = Path(__file__).parent
     temp_dir = api_dir / "temp_uploads"
     temp_dir.mkdir(exist_ok=True)
-    
-    file_path = temp_dir / f"{uuid.uuid4()}_{upload_file.filename}"
+
+    # Sanitize filename to prevent path traversal (HIGH-01)
+    safe_filename = sanitize_filename(upload_file.filename)
+    file_path = temp_dir / f"{uuid.uuid4()}_{safe_filename}"
     # Stream upload to disk in chunks to avoid memory spikes
     chunk_size = 16 * 1024 * 1024  # 16MB
     async with aiofiles.open(file_path, 'wb') as f:
@@ -858,8 +867,10 @@ async def upload_json(request: Request, session_id: str, file: UploadFile = File
     api_dir = Path(__file__).parent
     temp_dir = api_dir / "temp_uploads"
     temp_dir.mkdir(exist_ok=True)
-    
-    file_path = temp_dir / f"{uuid.uuid4()}_{file.filename}"
+
+    # Sanitize filename to prevent path traversal (HIGH-01)
+    safe_filename = sanitize_filename(file.filename)
+    file_path = temp_dir / f"{uuid.uuid4()}_{safe_filename}"
     
     try:
         # Save file
@@ -1704,7 +1715,9 @@ async def upload_dataset(
         temp_dir = Path("/tmp/omnistudio_uploads")
         temp_dir.mkdir(exist_ok=True)
 
-        file_path = temp_dir / file.filename
+        # Sanitize filename to prevent path traversal (HIGH-01)
+        safe_filename = sanitize_filename(file.filename)
+        file_path = temp_dir / safe_filename
 
         async with aiofiles.open(file_path, 'wb') as f:
             await f.write(content)
