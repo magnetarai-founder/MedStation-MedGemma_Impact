@@ -642,7 +642,7 @@ async def get_query_history(session_id: str):
     return {"history": history}
 
 @app.delete("/api/sessions/{session_id}/query-history/{query_id}")
-async def delete_query_from_history(session_id: str, query_id: str):
+async def delete_query_from_history(request: Request, session_id: str, query_id: str):
     """Delete a query from history"""
     if session_id not in sessions:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -660,7 +660,7 @@ async def delete_query_from_history(session_id: str, query_id: str):
     return {"message": "Query deleted successfully"}
 
 @app.post("/api/sessions/{session_id}/export")
-async def export_results(session_id: str, request: ExportRequest):
+async def export_results(req: Request, session_id: str, request: ExportRequest):
     """Export query results"""
     if session_id not in sessions:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -1454,7 +1454,7 @@ async def uninstall_app(request: Request):
 # New Danger Zone Endpoints
 
 @app.post("/api/admin/clear-chats")
-async def clear_chats():
+async def clear_chats(request: Request):
     """Clear all AI chat history"""
     try:
         import shutil
@@ -1471,7 +1471,7 @@ async def clear_chats():
         raise HTTPException(status_code=500, detail=f"Clear chats failed: {str(e)}")
 
 @app.post("/api/admin/clear-team-messages")
-async def clear_team_messages():
+async def clear_team_messages(request: Request):
     """Clear P2P team chat history"""
     try:
         import shutil
@@ -1487,7 +1487,7 @@ async def clear_team_messages():
         raise HTTPException(status_code=500, detail=f"Clear team messages failed: {str(e)}")
 
 @app.post("/api/admin/clear-query-library")
-async def clear_query_library():
+async def clear_query_library(request: Request):
     """Clear all saved SQL queries"""
     try:
         elohimos_memory.memory.conn.execute("DELETE FROM saved_queries")
@@ -1498,7 +1498,7 @@ async def clear_query_library():
         raise HTTPException(status_code=500, detail=f"Clear library failed: {str(e)}")
 
 @app.post("/api/admin/clear-query-history")
-async def clear_query_history():
+async def clear_query_history(request: Request):
     """Clear SQL execution history"""
     try:
         elohimos_memory.memory.conn.execute("DELETE FROM query_history")
@@ -1509,7 +1509,7 @@ async def clear_query_history():
         raise HTTPException(status_code=500, detail=f"Clear history failed: {str(e)}")
 
 @app.post("/api/admin/clear-temp-files")
-async def clear_temp_files():
+async def clear_temp_files(request: Request):
     """Clear uploaded files and exports"""
     try:
         import shutil
@@ -1526,7 +1526,7 @@ async def clear_temp_files():
         raise HTTPException(status_code=500, detail=f"Clear temp failed: {str(e)}")
 
 @app.post("/api/admin/clear-code-files")
-async def clear_code_files():
+async def clear_code_files(request: Request):
     """Clear saved code editor files"""
     try:
         import shutil
@@ -1542,7 +1542,7 @@ async def clear_code_files():
         raise HTTPException(status_code=500, detail=f"Clear code failed: {str(e)}")
 
 @app.post("/api/admin/reset-settings")
-async def reset_settings():
+async def reset_settings(request: Request):
     """Reset all settings to defaults"""
     try:
         elohimos_memory.memory.conn.execute("DELETE FROM app_settings")
@@ -1556,7 +1556,7 @@ async def reset_settings():
         raise HTTPException(status_code=500, detail=f"Reset settings failed: {str(e)}")
 
 @app.post("/api/admin/reset-data")
-async def reset_data():
+async def reset_data(request: Request):
     """Delete all data but keep settings"""
     try:
         import shutil
@@ -1591,7 +1591,7 @@ async def reset_data():
         raise HTTPException(status_code=500, detail=f"Reset data failed: {str(e)}")
 
 @app.post("/api/admin/export-all")
-async def export_all():
+async def export_all(request: Request):
     """Export complete backup as ZIP"""
     try:
         import shutil
@@ -1627,7 +1627,7 @@ async def export_all():
         raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
 
 @app.post("/api/admin/export-chats")
-async def export_chats():
+async def export_chats(request: Request):
     """Export AI chat history as JSON"""
     try:
         import json
@@ -1658,7 +1658,7 @@ async def export_chats():
         raise HTTPException(status_code=500, detail=f"Export chats failed: {str(e)}")
 
 @app.post("/api/admin/export-queries")
-async def export_queries():
+async def export_queries(request: Request):
     """Export query library as JSON"""
     try:
         queries = elohimos_memory.get_saved_queries()
@@ -1773,7 +1773,7 @@ async def get_dataset(dataset_id: str):
 
 
 @app.delete("/api/data/datasets/{dataset_id}")
-async def delete_dataset(dataset_id: str):
+async def delete_dataset(request: Request, dataset_id: str):
     """Delete a dataset"""
     try:
         deleted = await asyncio.to_thread(
@@ -1796,7 +1796,7 @@ class QueryRequest(BaseModel):
 
 
 @app.post("/api/data/query")
-async def execute_data_query(request: QueryRequest):
+async def execute_data_query(req: Request, request: QueryRequest):
     """Execute SQL query on loaded datasets"""
     try:
         result = await asyncio.to_thread(
@@ -1810,7 +1810,7 @@ async def execute_data_query(request: QueryRequest):
 
 
 @app.post("/api/data/discover/{dataset_id}")
-async def rediscover_queries(dataset_id: str):
+async def rediscover_queries(request: Request, dataset_id: str):
     """Re-run brute-force discovery on a dataset"""
     try:
         metadata = await asyncio.to_thread(
