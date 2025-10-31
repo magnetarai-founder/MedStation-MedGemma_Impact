@@ -52,6 +52,7 @@ export function ProfileSettings() {
   const [deviceName, setDeviceName] = useState(user?.device_name || '')
   const [avatarColor, setAvatarColor] = useState(user?.avatar_color || '#3b82f6')
   const [bio, setBio] = useState(user?.bio || '')
+  const [jobRole, setJobRole] = useState(user?.job_role || 'unassigned')
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [copiedUserId, setCopiedUserId] = useState(false)
 
@@ -98,6 +99,7 @@ export function ProfileSettings() {
       setDeviceName(user.device_name || '')
       setAvatarColor(user.avatar_color || '#3b82f6')
       setBio(user.bio || '')
+      setJobRole(user.job_role || 'unassigned')
     }
   }, [user])
 
@@ -108,6 +110,7 @@ export function ProfileSettings() {
         device_name: deviceName,
         avatar_color: avatarColor,
         bio: bio,
+        job_role: jobRole,
       })
       setHasUnsavedChanges(false)
       toast.success('Profile updated successfully')
@@ -406,8 +409,11 @@ export function ProfileSettings() {
                     </p>
 
                     <select
-                      value={formData.job_role || 'unassigned'}
-                      onChange={(e) => setFormData({ ...formData, job_role: e.target.value })}
+                      value={jobRole}
+                      onChange={(e) => {
+                        setJobRole(e.target.value)
+                        setHasUnsavedChanges(true)
+                      }}
                       className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-green-300 dark:border-green-700 rounded-lg text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                     >
                       <option value="unassigned">Unassigned</option>
@@ -419,7 +425,7 @@ export function ProfileSettings() {
                     </select>
 
                     <p className="text-xs text-green-600 dark:text-green-400 mt-2">
-                      Current: <span className="font-semibold">{formData.job_role === 'admin_staff' ? 'Admin Staff' : (formData.job_role?.charAt(0).toUpperCase() + formData.job_role?.slice(1)) || 'Unassigned'}</span>
+                      Current: <span className="font-semibold">{jobRole === 'admin_staff' ? 'Admin Staff' : (jobRole?.charAt(0).toUpperCase() + jobRole?.slice(1)) || 'Unassigned'}</span>
                     </p>
                   </div>
                 </div>
