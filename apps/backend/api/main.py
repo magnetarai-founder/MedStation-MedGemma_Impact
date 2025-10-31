@@ -1016,10 +1016,10 @@ async def convert_json(request: Request, session_id: str, body: JsonConvertReque
             result = engine.convert(
                 str(temp_json),
                 str(temp_excel),
-                expand_arrays=request.options.get('expand_arrays', True),
-                max_depth=request.options.get('max_depth', 5),
-                auto_safe=request.options.get('auto_safe', True),
-                include_summary=request.options.get('include_summary', True)
+                expand_arrays=body.options.get('expand_arrays', True),
+                max_depth=body.options.get('max_depth', 5),
+                auto_safe=body.options.get('auto_safe', True),
+                include_summary=body.options.get('include_summary', True)
             )
 
             logger.info(f"Conversion completed with result: {result.get('success', False)}")
