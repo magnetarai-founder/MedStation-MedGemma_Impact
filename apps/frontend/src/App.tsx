@@ -22,6 +22,7 @@ import { useChatStore } from './stores/chatStore'
 import { useUserStore } from './stores/userStore'
 import { api } from './lib/api'
 import { ClearWorkspaceDialog } from './components/ClearWorkspaceDialog'
+import { OfflineIndicator } from './components/OfflineIndicator'
 import * as settingsApi from './lib/settingsApi'
 import { FolderOpen, Clock, FileJson } from 'lucide-react'
 import { initializeSecurityMonitor, cleanupSecurityMonitor } from './lib/securityMonitor'
@@ -263,6 +264,7 @@ export default function App() {
       <JsonConverterModal isOpen={isJsonConverterOpen} onClose={() => setIsJsonConverterOpen(false)} />
       <ServerControlModal isOpen={isServerControlsOpen} onClose={() => setIsServerControlsOpen(false)} />
       <ClearWorkspaceDialog />
+      <OfflineIndicator />
       <Toaster
         position="bottom-right"
         toastOptions={{
