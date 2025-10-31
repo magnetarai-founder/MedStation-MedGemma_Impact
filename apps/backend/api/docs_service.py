@@ -18,7 +18,7 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 # Import user service
@@ -126,7 +126,7 @@ def get_db():
 # ===== CRUD Operations =====
 
 @router.post("/documents", response_model=Document)
-async def create_document(doc: DocumentCreate):
+async def create_document(request: Request, doc: DocumentCreate):
     """Create a new document"""
     doc_id = f"doc_{datetime.utcnow().timestamp()}_{os.urandom(4).hex()}"
     now = datetime.utcnow().isoformat()
@@ -337,7 +337,7 @@ async def update_document(doc_id: str, updates: DocumentUpdate):
 
 
 @router.delete("/documents/{doc_id}")
-async def delete_document(doc_id: str):
+async def delete_document(request: Request, doc_id: str):
     """Delete a document"""
     conn = get_db()
     cursor = conn.cursor()
@@ -362,7 +362,7 @@ async def delete_document(doc_id: str):
 
 
 @router.post("/sync", response_model=SyncResponse)
-async def sync_documents(request: SyncRequest):
+async def sync_documents(request: Request, body: SyncRequest):
     """
     Batch sync endpoint (Notion-style)
 
@@ -379,7 +379,7 @@ async def sync_documents(request: SyncRequest):
 
     try:
         # Process each document in the batch
-        for doc_data in request.documents:
+        for doc_data in body.documents:
             doc_id = doc_data.get("id")
 
             if not doc_id:
@@ -441,10 +441,10 @@ async def sync_documents(request: SyncRequest):
         conn.commit()
 
         # Get all documents updated since last sync (or all if first sync)
-        if request.last_sync:
+        if body.last_sync:
             cursor.execute(
                 "SELECT * FROM documents WHERE updated_at > ?",
-                (request.last_sync,)
+                (body.last_sync,)
             )
         else:
             cursor.execute("SELECT * FROM documents")

@@ -377,11 +377,11 @@ ollama_client = OllamaClient()
 
 
 @router.post("/sessions", response_model=ChatSession)
-async def create_chat_session(request: CreateChatRequest):
+async def create_chat_session(request: Request, body: CreateChatRequest):
     """Create a new chat session"""
     session = await ChatStorage.create_session(
-        title=request.title or "New Chat",
-        model=request.model or "qwen2.5-coder:7b-instruct"
+        title=body.title or "New Chat",
+        model=body.model or "qwen2.5-coder:7b-instruct"
     )
     return session
 
@@ -411,14 +411,14 @@ async def get_chat_session(chat_id: str, limit: Optional[int] = None):
 
 
 @router.delete("/sessions/{chat_id}")
-async def delete_chat_session(chat_id: str):
+async def delete_chat_session(request: Request, chat_id: str):
     """Delete a chat session"""
     await ChatStorage.delete_session(chat_id)
     return {"status": "deleted", "chat_id": chat_id}
 
 
 @router.post("/sessions/{chat_id}/messages")
-async def send_message(chat_id: str, request: SendMessageRequest):
+async def send_message(request: Request, chat_id: str, body: SendMessageRequest):
     """Send a message and get streaming response"""
 
     # Verify session exists
@@ -426,8 +426,8 @@ async def send_message(chat_id: str, request: SendMessageRequest):
     if not session:
         raise HTTPException(status_code=404, detail="Chat session not found")
 
-    # Use model from request or session default
-    model = request.model or session.model
+    # Use model from body or session default
+    model = body.model or session.model
 
     # Auto-generate title from first message
     session_data = await asyncio.to_thread(memory.get_session, chat_id)
@@ -435,7 +435,7 @@ async def send_message(chat_id: str, request: SendMessageRequest):
         # This is the first message - generate title
         title = await asyncio.to_thread(
             ChatTitleGenerator.generate_from_first_message,
-            request.content
+            body.content
         )
         await asyncio.to_thread(memory.update_session_title, chat_id, title, auto_titled=True)
         logger.info(f"Auto-generated title for {chat_id}: {title}")
@@ -443,7 +443,7 @@ async def send_message(chat_id: str, request: SendMessageRequest):
     # Save user message
     user_message = ChatMessage(
         role="user",
-        content=request.content,
+        content=body.content,
         timestamp=datetime.utcnow().isoformat()
     )
     await ChatStorage.append_message(chat_id, user_message)
@@ -456,7 +456,7 @@ async def send_message(chat_id: str, request: SendMessageRequest):
         # ANE routing (ultra-low power, <0.1W)
         ane_result = await asyncio.to_thread(
             ane_router.route,
-            request.content
+            body.content
         )
         routing_time = (asyncio.get_event_loop().time() - routing_start) * 1000
 
@@ -490,7 +490,7 @@ async def send_message(chat_id: str, request: SendMessageRequest):
         # Adaptive routing (GPU, learns from history)
         route_result = await asyncio.to_thread(
             adaptive_router.route_task,
-            request.content
+            body.content
         )
         routing_time = (asyncio.get_event_loop().time() - routing_start) * 1000
 
@@ -507,7 +507,7 @@ async def send_message(chat_id: str, request: SendMessageRequest):
 
     # ===== RECURSIVE PROMPT PROCESSING =====
     # Determine if query is complex enough for recursive decomposition
-    use_recursive = request.use_recursive and len(request.content.split()) > 10
+    use_recursive = body.use_recursive and len(body.content.split()) > 10
 
     if use_recursive:
         logger.info("🔄 Using recursive prompt decomposition for complex query")
@@ -570,7 +570,7 @@ async def send_message(chat_id: str, request: SendMessageRequest):
         # Process on Metal4 Q_ml queue (runs in parallel with potential UI updates)
         metal_result = await asyncio.to_thread(
             metal4_engine.process_chat_message,
-            request.content,
+            body.content,
             embedder=embedder,
             rag_retriever=rag_retriever
         )
@@ -598,8 +598,8 @@ async def send_message(chat_id: str, request: SendMessageRequest):
     ]
 
     # Add system prompt at the beginning if provided
-    if request.system_prompt:
-        ollama_messages.insert(0, {"role": "system", "content": request.system_prompt})
+    if body.system_prompt:
+        ollama_messages.insert(0, {"role": "system", "content": body.system_prompt})
 
     # Prepend summary of earlier messages if conversation is long
     if earlier_summary:
@@ -608,7 +608,7 @@ async def send_message(chat_id: str, request: SendMessageRequest):
             "content": f"📋 Summary of earlier conversation:\n\n{earlier_summary}\n\n---\nThe following messages are the recent conversation:"
         }
         # Insert after system prompt if exists, otherwise at beginning
-        insert_pos = 1 if request.system_prompt else 0
+        insert_pos = 1 if body.system_prompt else 0
         ollama_messages.insert(insert_pos, summary_message)
         logger.info(f"Added conversation summary for {len(all_history) - CONTEXT_WINDOW} earlier messages")
 
@@ -631,10 +631,10 @@ async def send_message(chat_id: str, request: SendMessageRequest):
             async for chunk in ollama_client.chat(
                 model,
                 ollama_messages,
-                temperature=request.temperature,
-                top_p=request.top_p,
-                top_k=request.top_k,
-                repeat_penalty=request.repeat_penalty
+                temperature=body.temperature,
+                top_p=body.top_p,
+                top_k=body.top_k,
+                repeat_penalty=body.repeat_penalty
             ):
                 full_response += chunk
                 # Send as SSE event
@@ -652,7 +652,7 @@ async def send_message(chat_id: str, request: SendMessageRequest):
 
             # Preserve context with ANE (background vectorization)
             context_data = {
-                "user_message": request.content,
+                "user_message": body.content,
                 "assistant_response": full_response,
                 "model": model,
                 "timestamp": datetime.utcnow().isoformat()
@@ -788,7 +788,7 @@ async def list_ollama_models():
 
 
 @router.post("/models/preload")
-async def preload_model(model: str, keep_alive: str = "1h"):
+async def preload_model(request: Request, model: str, keep_alive: str = "1h"):
     """
     Pre-load a model into memory for instant responses
 
@@ -916,7 +916,7 @@ async def get_embedding_info():
 
 
 @router.post("/sessions/{chat_id}/token-count")
-async def get_token_count(chat_id: str):
+async def get_token_count(request: Request, chat_id: str):
     """Get token count for a chat session"""
     session = await ChatStorage.get_session(chat_id)
     if not session:
@@ -972,7 +972,7 @@ async def get_hot_slots():
 
 
 @router.post("/models/hot-slots/{slot_number}")
-async def assign_to_hot_slot(slot_number: int, model_name: str):
+async def assign_to_hot_slot(request: Request, slot_number: int, model_name: str):
     """
     Assign a model to a specific hot slot (1-4)
 
@@ -1015,7 +1015,7 @@ async def assign_to_hot_slot(slot_number: int, model_name: str):
 
 
 @router.delete("/models/hot-slots/{slot_number}")
-async def remove_from_hot_slot(slot_number: int):
+async def remove_from_hot_slot(request: Request, slot_number: int):
     """
     Remove a model from a specific hot slot
 
@@ -1049,7 +1049,7 @@ async def remove_from_hot_slot(slot_number: int):
 
 
 @router.post("/models/load-hot-slots")
-async def load_hot_slot_models(keep_alive: str = "1h"):
+async def load_hot_slot_models(request: Request, keep_alive: str = "1h"):
     """
     Load all hot slot models into memory
     Useful for startup to pre-warm all hot slots
@@ -1081,7 +1081,7 @@ class ExportToChatRequest(BaseModel):
 
 
 @router.post("/data/export-to-chat")
-async def export_data_to_chat(request: ExportToChatRequest):
+async def export_data_to_chat(request: Request, body: ExportToChatRequest):
     """
     Export query results from Data tab to AI Chat
     Creates a new chat session with CSV + JSON results pre-attached
@@ -1091,7 +1091,7 @@ async def export_data_to_chat(request: ExportToChatRequest):
         import io
 
         # Create DataFrame from results
-        df = pd.DataFrame(request.results)
+        df = pd.DataFrame(body.results)
 
         # Create new chat session
         chat_session = await ChatStorage.create_session(
@@ -1118,10 +1118,10 @@ async def export_data_to_chat(request: ExportToChatRequest):
         extracted_text = f"""Query Results Dataset
 
 SQL Query:
-{request.query}
+{body.query}
 
 Dataset Information:
-- Rows: {len(request.results)}
+- Rows: {len(body.results)}
 - Columns: {', '.join(df.columns.tolist())}
 
 Data Preview (CSV format):
@@ -1138,8 +1138,8 @@ Column Statistics:
             {
                 "original_name": csv_filename,
                 "type": "text/csv",
-                "query": request.query,
-                "row_count": len(request.results)
+                "query": body.query,
+                "row_count": len(body.results)
             }
         )
 
@@ -1155,11 +1155,11 @@ I've analyzed your SQL query results. Here's what I found:
 
 **Query:**
 ```sql
-{request.query}
+{body.query}
 ```
 
 **Dataset Summary:**
-- Total Rows: {len(request.results):,}
+- Total Rows: {len(body.results):,}
 - Columns: {len(df.columns)}
 - Data File: `{csv_filename}`
 
@@ -1196,7 +1196,7 @@ What would you like to know about this data?""",
         )
         await ChatStorage.append_message(chat_session.id, system_message)
 
-        logger.info(f"Exported {len(request.results)} rows to chat session {chat_session.id} with {len(chunks)} RAG chunks")
+        logger.info(f"Exported {len(body.results)} rows to chat session {chat_session.id} with {len(chunks)} RAG chunks")
 
         return {
             "chat_id": chat_session.id,
@@ -1206,7 +1206,7 @@ What would you like to know about this data?""",
                 "stored_name": csv_stored_filename,
                 "size": csv_file_path.stat().st_size,
                 "type": "text/csv",
-                "row_count": len(request.results),
+                "row_count": len(body.results),
                 "chunks_created": len(chunks)
             },
             "status": "success"
@@ -1287,7 +1287,7 @@ async def get_ollama_server_status():
 
 
 @router.post("/ollama/server/shutdown")
-async def shutdown_ollama_server():
+async def shutdown_ollama_server(request: Request):
     """
     Shutdown Ollama server (unloads all models and stops server)
     WARNING: This will terminate all active model sessions
@@ -1332,7 +1332,7 @@ async def shutdown_ollama_server():
 
 
 @router.post("/ollama/server/start")
-async def start_ollama_server():
+async def start_ollama_server(request: Request):
     """
     Start Ollama server in background
     """
@@ -1379,7 +1379,7 @@ async def start_ollama_server():
 
 
 @router.post("/ollama/server/restart")
-async def restart_ollama_server(reload_models: bool = False, models_to_load: List[str] = []):
+async def restart_ollama_server(request: Request, reload_models: bool = False, models_to_load: List[str] = []):
     """
     Restart Ollama server and optionally reload specific models
 
@@ -1457,7 +1457,7 @@ async def restart_ollama_server(reload_models: bool = False, models_to_load: Lis
 
 
 @router.post("/models/unload/{model_name}")
-async def unload_model(model_name: str):
+async def unload_model(request: Request, model_name: str):
     """
     Unload a specific model from memory
     Uses keep_alive=0 to immediately unload
@@ -1506,7 +1506,7 @@ class RouterFeedback(BaseModel):
 
 
 @router.post("/adaptive-router/feedback")
-async def submit_router_feedback(feedback: RouterFeedback):
+async def submit_router_feedback(request: Request, feedback: RouterFeedback):
     """Submit feedback for adaptive router to learn from"""
     try:
         # Record execution result
@@ -1615,7 +1615,7 @@ async def get_router_mode():
 
 
 @router.post("/router/mode")
-async def set_router_mode(mode: str):
+async def set_router_mode(request: Request, mode: str):
     """
     Set router mode for battery optimization
 
@@ -1665,14 +1665,14 @@ class RecursiveQueryRequest(BaseModel):
 
 
 @router.post("/recursive-prompt/execute")
-async def execute_recursive_prompt(request: RecursiveQueryRequest):
+async def execute_recursive_prompt(request: Request, body: RecursiveQueryRequest):
     """Execute a query using recursive prompt decomposition"""
     try:
         import ollama
         ollama_client = ollama.AsyncClient()
 
         result = await recursive_library.process_query(
-            request.query,
+            body.query,
             ollama_client
         )
 
@@ -1742,13 +1742,13 @@ async def get_ollama_configuration():
 
 
 @router.post("/ollama/config/mode")
-async def set_ollama_mode(request: SetModeRequest):
+async def set_ollama_mode(request: Request, body: SetModeRequest):
     """Set Ollama performance mode"""
     try:
-        ollama_config.set_mode(request.mode)
+        ollama_config.set_mode(body.mode)
         return {
             "status": "success",
-            "mode": request.mode,
+            "mode": body.mode,
             "config": ollama_config.get_config_summary()
         }
     except ValueError as e:
@@ -1759,7 +1759,7 @@ async def set_ollama_mode(request: SetModeRequest):
 
 
 @router.post("/ollama/config/auto-detect")
-async def auto_detect_ollama_config():
+async def auto_detect_ollama_config(request: Request):
     """Auto-detect optimal Ollama settings for current hardware"""
     try:
         optimal_config = ollama_config.detect_optimal_settings()
@@ -1823,7 +1823,7 @@ async def check_thermal_throttling():
 
 
 @router.post("/performance/reset")
-async def reset_performance_metrics():
+async def reset_performance_metrics(request: Request):
     """Reset performance metrics"""
     try:
         performance_monitor.reset()
@@ -1842,20 +1842,20 @@ class PanicTriggerRequest(BaseModel):
 
 
 @router.post("/panic/trigger")
-async def trigger_panic_mode(request: PanicTriggerRequest):
+async def trigger_panic_mode(request: Request, body: PanicTriggerRequest):
     """
     🚨 EMERGENCY: Trigger panic mode
     Wipes sensitive data, closes connections, secures databases
     THIS IS IRREVERSIBLE!
     """
-    if request.confirmation != "CONFIRM":
+    if body.confirmation != "CONFIRM":
         raise HTTPException(
             status_code=400,
             detail="Panic mode requires confirmation='CONFIRM'"
         )
 
     try:
-        result = await panic_mode.trigger_panic(request.reason)
+        result = await panic_mode.trigger_panic(body.reason)
         return result
     except Exception as e:
         logger.critical(f"Panic mode execution failed: {e}")
@@ -1874,7 +1874,7 @@ async def get_panic_status():
 
 
 @router.post("/panic/reset")
-async def reset_panic_mode():
+async def reset_panic_mode(request: Request):
     """Reset panic mode (admin only)"""
     try:
         panic_mode.reset_panic()
@@ -1921,7 +1921,7 @@ async def get_recommendations():
 
 
 @router.post("/learning/recommendations/{recommendation_id}/accept")
-async def accept_recommendation(recommendation_id: int, feedback: Optional[str] = None):
+async def accept_recommendation(request: Request, recommendation_id: int, feedback: Optional[str] = None):
     """Accept a classification recommendation"""
     try:
         learning_engine = get_learning_engine()
@@ -1937,7 +1937,7 @@ async def accept_recommendation(recommendation_id: int, feedback: Optional[str] 
 
 
 @router.post("/learning/recommendations/{recommendation_id}/reject")
-async def reject_recommendation(recommendation_id: int, feedback: Optional[str] = None):
+async def reject_recommendation(request: Request, recommendation_id: int, feedback: Optional[str] = None):
     """Reject a classification recommendation"""
     try:
         learning_engine = get_learning_engine()
@@ -1982,6 +1982,7 @@ async def get_optimal_model(task_type: str, top_n: int = 3):
 
 @router.post("/learning/track-usage")
 async def track_usage_manually(
+    request: Request,
     model_name: str,
     classification: Optional[str] = None,
     session_id: Optional[str] = None,

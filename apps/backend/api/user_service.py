@@ -14,7 +14,7 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -204,13 +204,13 @@ async def get_current_user():
 
 
 @router.put("/me", response_model=UserProfile)
-async def update_current_user(updates: UserProfileUpdate):
+async def update_current_user(request: Request, updates: UserProfileUpdate):
     """Update the current user profile"""
     return update_user_profile(updates.dict(exclude_unset=True))
 
 
 @router.post("/reset")
-async def reset_user():
+async def reset_user(request: Request):
     """Reset user identity (for testing/dev)"""
     conn = get_conn()
     cursor = conn.cursor()

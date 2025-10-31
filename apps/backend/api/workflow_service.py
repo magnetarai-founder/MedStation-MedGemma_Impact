@@ -3,7 +3,7 @@ Workflow Service Layer
 REST API and business logic for workflow operations
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from datetime import datetime
@@ -73,7 +73,7 @@ def setup_p2p_sync(peer_id: str):
 # ============================================
 
 @router.post("/workflows", response_model=Workflow)
-async def create_workflow(request: CreateWorkflowRequest, created_by: str = "system"):
+async def create_workflow(request: Request, body: CreateWorkflowRequest, created_by: str = "system"):
     """
     Create a new workflow definition
 
@@ -87,12 +87,12 @@ async def create_workflow(request: CreateWorkflowRequest, created_by: str = "sys
     try:
         # Build workflow from request
         workflow = Workflow(
-            name=request.name,
-            description=request.description,
-            icon=request.icon,
-            category=request.category,
-            stages=[Stage(**stage) if isinstance(stage, dict) else Stage(**stage.model_dump()) for stage in request.stages],
-            triggers=request.triggers,
+            name=body.name,
+            description=body.description,
+            icon=body.icon,
+            category=body.category,
+            stages=[Stage(**stage) if isinstance(stage, dict) else Stage(**stage.model_dump()) for stage in body.stages],
+            triggers=body.triggers,
             created_by=created_by,
         )
 
@@ -156,7 +156,7 @@ async def get_workflow(workflow_id: str):
 
 
 @router.delete("/workflows/{workflow_id}")
-async def delete_workflow(workflow_id: str):
+async def delete_workflow(request: Request, workflow_id: str):
     """
     Delete workflow (soft delete - sets enabled=False)
 
@@ -183,7 +183,7 @@ async def delete_workflow(workflow_id: str):
 # ============================================
 
 @router.post("/work-items", response_model=WorkItem)
-async def create_work_item(request: CreateWorkItemRequest, created_by: str = "system"):
+async def create_work_item(request: Request, body: CreateWorkItemRequest, created_by: str = "system"):
     """
     Create a new work item
 
@@ -199,11 +199,11 @@ async def create_work_item(request: CreateWorkItemRequest, created_by: str = "sy
     """
     try:
         work_item = orchestrator.create_work_item(
-            workflow_id=request.workflow_id,
-            data=request.data,
+            workflow_id=body.workflow_id,
+            data=body.data,
             created_by=created_by,
-            priority=request.priority or WorkItemPriority.NORMAL,
-            tags=request.tags,
+            priority=body.priority or WorkItemPriority.NORMAL,
+            tags=body.tags,
         )
 
         logger.info(f"✨ Created work item: {work_item.id}")
@@ -290,7 +290,7 @@ async def get_work_item(work_item_id: str):
 # ============================================
 
 @router.post("/work-items/{work_item_id}/claim", response_model=WorkItem)
-async def claim_work_item(work_item_id: str, user_id: str):
+async def claim_work_item(request: Request, work_item_id: str, user_id: str):
     """
     Claim a work item from queue
 
@@ -323,7 +323,7 @@ async def claim_work_item(work_item_id: str, user_id: str):
 
 
 @router.post("/work-items/{work_item_id}/start", response_model=WorkItem)
-async def start_work(work_item_id: str, user_id: str):
+async def start_work(request: Request, work_item_id: str, user_id: str):
     """
     Start work on claimed item
 
@@ -344,7 +344,7 @@ async def start_work(work_item_id: str, user_id: str):
 
 
 @router.post("/work-items/{work_item_id}/complete", response_model=WorkItem)
-async def complete_stage(request: CompleteStageRequest, user_id: str = "system"):
+async def complete_stage(request: Request, body: CompleteStageRequest, user_id: str = "system"):
     """
     Complete current stage and transition to next
 
@@ -360,14 +360,14 @@ async def complete_stage(request: CompleteStageRequest, user_id: str = "system")
     """
     try:
         work_item = orchestrator.complete_stage(
-            work_item_id=request.work_item_id,
+            work_item_id=body.work_item_id,
             user_id=user_id,
-            stage_data=request.data,
-            notes=request.notes,
+            stage_data=body.data,
+            notes=body.notes,
         )
 
         if work_item.status == WorkItemStatus.COMPLETED:
-            logger.info(f"🎉 Work item {request.work_item_id} completed")
+            logger.info(f"🎉 Work item {body.work_item_id} completed")
         else:
             logger.info(f"✅ Stage completed, transitioned to: {work_item.current_stage_name}")
 
@@ -389,7 +389,7 @@ async def complete_stage(request: CompleteStageRequest, user_id: str = "system")
 
 
 @router.post("/work-items/{work_item_id}/cancel", response_model=WorkItem)
-async def cancel_work_item(work_item_id: str, user_id: str, reason: Optional[str] = None):
+async def cancel_work_item(request: Request, work_item_id: str, user_id: str, reason: Optional[str] = None):
     """
     Cancel a work item
 

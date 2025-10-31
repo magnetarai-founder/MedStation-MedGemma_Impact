@@ -4,7 +4,7 @@ Authentication Routes for ElohimOS API
 """
 
 import logging
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, Field
 from typing import Optional
 
@@ -46,7 +46,7 @@ class UserResponse(BaseModel):
 
 
 @router.post("/register", response_model=UserResponse)
-async def register(request: RegisterRequest):
+async def register(request: Request, body: RegisterRequest):
     """
     Register a new user
 
@@ -54,9 +54,9 @@ async def register(request: RegisterRequest):
     """
     try:
         user = auth_service.create_user(
-            username=request.username,
-            password=request.password,
-            device_id=request.device_id
+            username=body.username,
+            password=body.password,
+            device_id=body.device_id
         )
 
         return UserResponse(
@@ -73,15 +73,15 @@ async def register(request: RegisterRequest):
 
 
 @router.post("/login", response_model=LoginResponse)
-async def login(request: LoginRequest):
+async def login(request: Request, body: LoginRequest):
     """
     Login and receive JWT token
     """
     try:
         auth_result = auth_service.authenticate(
-            username=request.username,
-            password=request.password,
-            device_fingerprint=request.device_fingerprint
+            username=body.username,
+            password=body.password,
+            device_fingerprint=body.device_fingerprint
         )
 
         if not auth_result:
@@ -110,7 +110,7 @@ async def login(request: LoginRequest):
 
 
 @router.post("/logout")
-async def logout(user: dict = Depends(get_current_user)):
+async def logout(request: Request, user: dict = Depends(get_current_user)):
     """
     Logout current user
     """
@@ -152,7 +152,7 @@ async def verify_token(user: dict = Depends(get_current_user)):
 
 
 @router.post("/cleanup-sessions")
-async def cleanup_expired_sessions():
+async def cleanup_expired_sessions(request: Request):
     """
     Cleanup expired sessions (can be called by a cron job)
     """

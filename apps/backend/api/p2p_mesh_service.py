@@ -6,7 +6,7 @@ Provides simple API for peer discovery, connection codes, and mesh networking.
 """
 
 from typing import List, Dict, Optional
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 import logging
 import secrets
@@ -55,7 +55,7 @@ def generate_connection_code() -> str:
 
 
 @router.post("/start")
-async def start_p2p_mesh(display_name: str = "ElohimOS User", device_name: str = "My Device"):
+async def start_p2p_mesh(request: Request, display_name: str = "ElohimOS User", device_name: str = "My Device"):
     """
     Start P2P mesh networking
     Initializes libp2p and begins peer discovery
@@ -100,7 +100,7 @@ async def start_p2p_mesh(display_name: str = "ElohimOS User", device_name: str =
 
 
 @router.post("/stop")
-async def stop_p2p_mesh():
+async def stop_p2p_mesh(request: Request):
     """
     Stop P2P mesh networking
 
@@ -167,7 +167,7 @@ async def get_p2p_peers():
 
 
 @router.post("/connection-code")
-async def generate_connection_code_endpoint():
+async def generate_connection_code_endpoint(request: Request):
     """
     Generate a connection code for this peer
     Other peers can use this code to connect
@@ -212,7 +212,7 @@ async def generate_connection_code_endpoint():
 
 
 @router.post("/connect")
-async def connect_to_peer(request: AddPeerRequest):
+async def connect_to_peer(request: Request, body: AddPeerRequest):
     """
     Connect to a peer using their connection code
 
@@ -229,10 +229,10 @@ async def connect_to_peer(request: AddPeerRequest):
             raise HTTPException(status_code=503, detail="P2P service not running")
 
         # Look up connection code
-        if request.code not in connection_codes:
+        if body.code not in connection_codes:
             raise HTTPException(status_code=404, detail="Invalid connection code")
 
-        connection_info = connection_codes[request.code]
+        connection_info = connection_codes[body.code]
 
         # TODO: Actually connect to the peer using multiaddrs
         # For now, just return success

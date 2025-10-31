@@ -4,7 +4,7 @@ LAN Discovery API Endpoints
 FastAPI routes for LAN discovery and central hub management.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import List, Dict, Optional
 import logging
@@ -28,7 +28,7 @@ class JoinDeviceRequest(BaseModel):
 
 
 @router.post("/discovery/start")
-async def start_discovery():
+async def start_discovery(request: Request):
     """
     Start discovering ElohimOS instances on the local network
 
@@ -48,7 +48,7 @@ async def start_discovery():
 
 
 @router.post("/discovery/stop")
-async def stop_discovery():
+async def stop_discovery(request: Request):
     """
     Stop LAN discovery
 
@@ -87,7 +87,7 @@ async def get_discovered_devices():
 
 
 @router.post("/hub/start")
-async def start_hub(request: StartHubRequest):
+async def start_hub(request: Request, body: StartHubRequest):
     """
     Start this instance as a central hub
     Other devices can discover and connect to this hub
@@ -100,10 +100,10 @@ async def start_hub(request: StartHubRequest):
     """
     try:
         # Update device name if provided
-        if request.device_name:
-            lan_service.device_name = request.device_name
+        if body.device_name:
+            lan_service.device_name = body.device_name
 
-        await lan_service.start_hub(port=request.port)
+        await lan_service.start_hub(port=body.port)
 
         return {
             "status": "success",
@@ -111,7 +111,7 @@ async def start_hub(request: StartHubRequest):
             "hub_info": {
                 "device_id": lan_service.device_id,
                 "device_name": lan_service.device_name,
-                "port": request.port,
+                "port": body.port,
                 "local_ip": lan_service._get_local_ip()
             }
         }
@@ -121,7 +121,7 @@ async def start_hub(request: StartHubRequest):
 
 
 @router.post("/hub/stop")
-async def stop_hub():
+async def stop_hub(request: Request):
     """
     Stop broadcasting as hub
 
@@ -140,7 +140,7 @@ async def stop_hub():
 
 
 @router.post("/connect")
-async def connect_to_device(request: JoinDeviceRequest):
+async def connect_to_device(request: Request, body: JoinDeviceRequest):
     """
     Connect to a discovered device
 
@@ -153,10 +153,10 @@ async def connect_to_device(request: JoinDeviceRequest):
     try:
         devices = lan_service.discovered_devices
 
-        if request.device_id not in devices:
+        if body.device_id not in devices:
             raise HTTPException(status_code=404, detail="Device not found")
 
-        device = devices[request.device_id]
+        device = devices[body.device_id]
 
         # TODO: Implement actual connection logic
         # For now, just return success

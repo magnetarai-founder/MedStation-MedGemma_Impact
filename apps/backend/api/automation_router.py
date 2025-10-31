@@ -3,7 +3,7 @@ Automation Workflow Router
 Handles workflow execution and management
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import asyncio
@@ -57,7 +57,7 @@ class WorkflowSaveResponse(BaseModel):
 
 
 @router.post("/run", response_model=WorkflowRunResponse)
-async def run_workflow(request: WorkflowRunRequest):
+async def run_workflow(request: Request, body: WorkflowRunRequest):
     """
     Execute a workflow
 
@@ -68,19 +68,19 @@ async def run_workflow(request: WorkflowRunRequest):
     """
     start_time = datetime.now()
 
-    logger.info(f"🚀 Running workflow: {request.name} (ID: {request.workflow_id})")
-    logger.info(f"   Nodes: {len(request.nodes)}, Edges: {len(request.edges)}")
+    logger.info(f"🚀 Running workflow: {body.name} (ID: {body.workflow_id})")
+    logger.info(f"   Nodes: {len(body.nodes)}, Edges: {len(body.edges)}")
 
     # Simulate workflow execution
     steps_executed = 0
     results = {}
 
     # Build execution graph
-    node_map = {node.id: node for node in request.nodes}
+    node_map = {node.id: node for node in body.nodes}
 
     # Find trigger nodes (nodes with no incoming edges)
-    incoming = {edge.target for edge in request.edges}
-    trigger_nodes = [node for node in request.nodes if node.id not in incoming]
+    incoming = {edge.target for edge in body.edges}
+    trigger_nodes = [node for node in body.nodes if node.id not in incoming]
 
     if not trigger_nodes:
         raise HTTPException(status_code=400, detail="No trigger node found in workflow")
@@ -112,7 +112,7 @@ async def run_workflow(request: WorkflowRunRequest):
         executed.add(node_id)
 
         # Add dependent nodes to queue
-        for edge in request.edges:
+        for edge in body.edges:
             if edge.source == node_id and edge.target not in executed:
                 queue.append(edge.target)
 
@@ -122,8 +122,8 @@ async def run_workflow(request: WorkflowRunRequest):
 
     return WorkflowRunResponse(
         status="success",
-        workflow_id=request.workflow_id,
-        workflow_name=request.name,
+        workflow_id=body.workflow_id,
+        workflow_name=body.name,
         steps_executed=steps_executed,
         execution_time_ms=execution_time,
         results=results
@@ -131,20 +131,20 @@ async def run_workflow(request: WorkflowRunRequest):
 
 
 @router.post("/save", response_model=WorkflowSaveResponse)
-async def save_workflow(request: WorkflowSaveRequest):
+async def save_workflow(request: Request, body: WorkflowSaveRequest):
     """
     Save workflow configuration
 
     In production, this would save to database or n8n
     """
-    logger.info(f"💾 Saving workflow: {request.name} (ID: {request.workflow_id})")
+    logger.info(f"💾 Saving workflow: {body.name} (ID: {body.workflow_id})")
 
     # TODO: Save to database
     # For now, just simulate success
 
     return WorkflowSaveResponse(
         status="saved",
-        workflow_id=request.workflow_id,
+        workflow_id=body.workflow_id,
         saved_at=datetime.now().isoformat()
     )
 
@@ -171,7 +171,7 @@ async def get_workflow(workflow_id: str):
 
 
 @router.delete("/workflows/{workflow_id}")
-async def delete_workflow(workflow_id: str):
+async def delete_workflow(request: Request, workflow_id: str):
     """
     Delete workflow
     """

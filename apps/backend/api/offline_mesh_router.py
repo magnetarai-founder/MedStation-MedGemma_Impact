@@ -4,7 +4,7 @@ FastAPI Router for Offline Mesh Networking
 Exposes all offline collaboration features via REST API
 """
 
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, HTTPException, UploadFile, File, Request
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from pathlib import Path
@@ -26,7 +26,7 @@ router = APIRouter(prefix="/api/v1/mesh", tags=["Offline Mesh"])
 # ============================================================================
 
 @router.post("/discovery/start")
-async def start_discovery(display_name: str, device_name: str):
+async def start_discovery(request: Request, display_name: str, device_name: str):
     """Start mDNS peer discovery on local network"""
     try:
         discovery = get_mesh_discovery(display_name, device_name)
@@ -89,7 +89,7 @@ async def get_discovery_stats():
 
 
 @router.post("/discovery/stop")
-async def stop_discovery():
+async def stop_discovery(request: Request):
     """Stop peer discovery"""
     try:
         discovery = get_mesh_discovery()
@@ -115,21 +115,21 @@ class ShareFileRequest(BaseModel):
 
 
 @router.post("/files/share")
-async def share_file(request: ShareFileRequest):
+async def share_file(request: Request, body: ShareFileRequest):
     """Share a file on the local mesh network"""
     try:
         file_share = get_file_share()
 
-        file_path = Path(request.file_path)
+        file_path = Path(body.file_path)
         if not file_path.exists():
             raise HTTPException(status_code=404, detail="File not found")
 
         shared_file = await file_share.share_file(
             file_path=file_path,
-            shared_by_peer_id=request.shared_by_peer_id,
-            shared_by_name=request.shared_by_name,
-            description=request.description,
-            tags=request.tags
+            shared_by_peer_id=body.shared_by_peer_id,
+            shared_by_name=body.shared_by_name,
+            description=body.description,
+            tags=body.tags
         )
 
         return {
@@ -187,17 +187,17 @@ class DownloadFileRequest(BaseModel):
 
 
 @router.post("/files/download")
-async def download_file(request: DownloadFileRequest):
+async def download_file(request: Request, body: DownloadFileRequest):
     """Download file from peer"""
     try:
         file_share = get_file_share()
 
-        destination = Path(request.destination_path)
+        destination = Path(body.destination_path)
 
         downloaded_path = await file_share.download_file(
-            file_id=request.file_id,
-            peer_ip=request.peer_ip,
-            peer_port=request.peer_port,
+            file_id=body.file_id,
+            peer_ip=body.peer_ip,
+            peer_port=body.peer_port,
             destination=destination
         )
 
@@ -241,7 +241,7 @@ async def get_active_transfers():
 
 
 @router.delete("/files/{file_id}")
-async def delete_shared_file(file_id: str):
+async def delete_shared_file(request: Request, file_id: str):
     """Remove file from sharing"""
     try:
         file_share = get_file_share()
@@ -277,7 +277,7 @@ async def get_file_sharing_stats():
 # ============================================================================
 
 @router.post("/relay/peer/add")
-async def add_relay_peer(peer_id: str, latency_ms: float = 10.0):
+async def add_relay_peer(request: Request, peer_id: str, latency_ms: float = 10.0):
     """Add a direct peer to relay network"""
     try:
         relay = get_mesh_relay()
@@ -295,7 +295,7 @@ async def add_relay_peer(peer_id: str, latency_ms: float = 10.0):
 
 
 @router.delete("/relay/peer/{peer_id}")
-async def remove_relay_peer(peer_id: str):
+async def remove_relay_peer(request: Request, peer_id: str):
     """Remove peer from relay network"""
     try:
         relay = get_mesh_relay()
@@ -315,21 +315,21 @@ class SendMessageRequest(BaseModel):
 
 
 @router.post("/relay/send")
-async def send_relay_message(request: SendMessageRequest):
+async def send_relay_message(request: Request, body: SendMessageRequest):
     """Send message through relay network"""
     try:
         relay = get_mesh_relay()
 
         success = await relay.send_message(
-            dest_peer_id=request.dest_peer_id,
-            payload=request.payload,
-            ttl=request.ttl
+            dest_peer_id=body.dest_peer_id,
+            payload=body.payload,
+            ttl=body.ttl
         )
 
         if success:
-            return {"status": "sent", "dest_peer_id": request.dest_peer_id}
+            return {"status": "sent", "dest_peer_id": body.dest_peer_id}
         else:
-            return {"status": "queued", "dest_peer_id": request.dest_peer_id, "reason": "no_route"}
+            return {"status": "queued", "dest_peer_id": body.dest_peer_id, "reason": "no_route"}
 
     except Exception as e:
         logger.error(f"Failed to send message: {e}")
@@ -393,14 +393,14 @@ class SyncRequest(BaseModel):
 
 
 @router.post("/sync/start")
-async def start_sync(request: SyncRequest):
+async def start_sync(request: Request, body: SyncRequest):
     """Start data synchronization with peer"""
     try:
         sync = get_data_sync()
 
         state = await sync.sync_with_peer(
-            peer_id=request.peer_id,
-            tables=request.tables
+            peer_id=body.peer_id,
+            tables=body.tables
         )
 
         return {
@@ -489,7 +489,7 @@ class SyncExchangeRequest(BaseModel):
 
 
 @router.post("/sync/exchange")
-async def exchange_sync_operations(request: SyncExchangeRequest):
+async def exchange_sync_operations(request: Request, body: SyncExchangeRequest):
     """
     Exchange sync operations with peer (called by remote peer during sync)
 
@@ -502,7 +502,7 @@ async def exchange_sync_operations(request: SyncExchangeRequest):
         # Parse incoming operations
         from offline_data_sync import SyncOperation
         incoming_ops = []
-        for op_data in request.operations:
+        for op_data in body.operations:
             op = SyncOperation(
                 op_id=op_data['op_id'],
                 table_name=op_data['table_name'],
@@ -517,10 +517,10 @@ async def exchange_sync_operations(request: SyncExchangeRequest):
 
         # Apply incoming operations
         conflicts = await sync._apply_operations(incoming_ops)
-        logger.info(f"Applied {len(incoming_ops)} operations from {request.sender_peer_id} ({conflicts} conflicts)")
+        logger.info(f"Applied {len(incoming_ops)} operations from {body.sender_peer_id} ({conflicts} conflicts)")
 
         # Get our operations to send back
-        ops_to_return = await sync._get_operations_since_last_sync(request.sender_peer_id, tables=None)
+        ops_to_return = await sync._get_operations_since_last_sync(body.sender_peer_id, tables=None)
 
         # Format response
         return {
@@ -551,7 +551,7 @@ async def exchange_sync_operations(request: SyncExchangeRequest):
 # ============================================================================
 
 @router.post("/compute/start")
-async def start_compute_server(port: int = 8766):
+async def start_compute_server(request: Request, port: int = 8766):
     """Start MLX distributed compute server"""
     try:
         distributed = get_mlx_distributed()
@@ -613,15 +613,15 @@ class SubmitJobRequest(BaseModel):
 
 
 @router.post("/compute/job/submit")
-async def submit_compute_job(request: SubmitJobRequest):
+async def submit_compute_job(request: Request, body: SubmitJobRequest):
     """Submit job for distributed execution"""
     try:
         distributed = get_mlx_distributed()
 
         job = await distributed.submit_job(
-            job_type=request.job_type,
-            data=request.data,
-            model_name=request.model_name
+            job_type=body.job_type,
+            data=body.data,
+            model_name=body.model_name
         )
 
         return {

@@ -5,7 +5,7 @@ Provides REST API endpoints for the frontend
 
 import asyncio
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import StreamingResponse
 import logging
 
@@ -29,7 +29,7 @@ active_connections: List[WebSocket] = []
 # ===== Initialization Endpoint =====
 
 @router.post("/initialize")
-async def initialize_p2p_service(display_name: str, device_name: str):
+async def initialize_p2p_service(request: Request, display_name: str, device_name: str):
     """
     Initialize the P2P chat service
     Called once when the app starts
@@ -115,7 +115,7 @@ async def get_peer(peer_id: str):
 # ===== Channels =====
 
 @router.post("/channels", response_model=Channel)
-async def create_channel(request: CreateChannelRequest):
+async def create_channel(request: Request, body: CreateChannelRequest):
     """Create a new channel"""
     service = get_p2p_chat_service()
 
@@ -123,7 +123,7 @@ async def create_channel(request: CreateChannelRequest):
         raise HTTPException(status_code=503, detail="P2P service not running")
 
     try:
-        channel = await service.create_channel(request)
+        channel = await service.create_channel(body)
 
         # Notify all connected WebSocket clients
         await broadcast_event({
@@ -139,7 +139,7 @@ async def create_channel(request: CreateChannelRequest):
 
 
 @router.post("/dm", response_model=Channel)
-async def create_direct_message(request: CreateDMRequest):
+async def create_direct_message(request: Request, body: CreateDMRequest):
     """Create a direct message channel with another peer"""
     service = get_p2p_chat_service()
 
@@ -152,7 +152,7 @@ async def create_direct_message(request: CreateDMRequest):
         existing_dm = next(
             (ch for ch in channels
              if ch.type == ChannelType.DIRECT and
-             set(ch.dm_participants or []) == {service.peer_id, request.peer_id}),
+             set(ch.dm_participants or []) == {service.peer_id, body.peer_id}),
             None
         )
 
@@ -161,7 +161,7 @@ async def create_direct_message(request: CreateDMRequest):
 
         # Get peer info for DM name
         peers = await service.list_peers()
-        peer = next((p for p in peers if p.peer_id == request.peer_id), None)
+        peer = next((p for p in peers if p.peer_id == body.peer_id), None)
 
         if not peer:
             raise HTTPException(status_code=404, detail="Peer not found")
@@ -170,11 +170,11 @@ async def create_direct_message(request: CreateDMRequest):
         dm_request = CreateChannelRequest(
             name=f"DM with {peer.display_name}",
             type=ChannelType.DIRECT,
-            members=[request.peer_id]
+            members=[body.peer_id]
         )
 
         channel = await service.create_channel(dm_request)
-        channel.dm_participants = [service.peer_id, request.peer_id]
+        channel.dm_participants = [service.peer_id, body.peer_id]
 
         return channel
 
@@ -218,7 +218,7 @@ async def get_channel(channel_id: str):
 
 
 @router.post("/channels/{channel_id}/invite")
-async def invite_to_channel(channel_id: str, request: InviteToChannelRequest):
+async def invite_to_channel(request: Request, channel_id: str, body: InviteToChannelRequest):
     """Invite peers to a channel"""
     service = get_p2p_chat_service()
 
@@ -233,13 +233,13 @@ async def invite_to_channel(channel_id: str, request: InviteToChannelRequest):
     # TODO: Implement invitation system
     # For now, just add members directly
 
-    return {"status": "invited", "channel_id": channel_id, "peer_ids": request.peer_ids}
+    return {"status": "invited", "channel_id": channel_id, "peer_ids": body.peer_ids}
 
 
 # ===== Messages =====
 
 @router.post("/channels/{channel_id}/messages", response_model=Message)
-async def send_message(channel_id: str, request: SendMessageRequest):
+async def send_message(request: Request, channel_id: str, body: SendMessageRequest):
     """Send a message to a channel"""
     service = get_p2p_chat_service()
 
@@ -247,10 +247,10 @@ async def send_message(channel_id: str, request: SendMessageRequest):
         raise HTTPException(status_code=503, detail="P2P service not running")
 
     # Ensure channel_id matches
-    request.channel_id = channel_id
+    body.channel_id = channel_id
 
     try:
-        message = await service.send_message(request)
+        message = await service.send_message(body)
 
         # Notify all connected WebSocket clients
         await broadcast_event({
@@ -289,7 +289,7 @@ async def get_messages(channel_id: str, limit: int = 50):
 
 
 @router.post("/channels/{channel_id}/messages/{message_id}/read")
-async def mark_message_as_read(channel_id: str, message_id: str):
+async def mark_message_as_read(request: Request, channel_id: str, message_id: str):
     """Mark a message as read"""
     service = get_p2p_chat_service()
 
@@ -355,7 +355,7 @@ async def broadcast_event(event: dict):
 # ===== E2E Encryption Endpoints =====
 
 @router.post("/e2e/init")
-async def initialize_e2e_keys(device_id: str, passphrase: str):
+async def initialize_e2e_keys(request: Request, device_id: str, passphrase: str):
     """
     Initialize E2E encryption keys for this device
 
@@ -380,7 +380,7 @@ async def initialize_e2e_keys(device_id: str, passphrase: str):
 
 
 @router.post("/e2e/peers/{peer_id}/keys")
-async def store_peer_public_key(peer_id: str, public_key_hex: str, verify_key_hex: str):
+async def store_peer_public_key(request: Request, peer_id: str, public_key_hex: str, verify_key_hex: str):
     """
     Store a peer's public key and generate safety number
 
@@ -410,7 +410,7 @@ async def store_peer_public_key(peer_id: str, public_key_hex: str, verify_key_he
 
 
 @router.post("/e2e/peers/{peer_id}/verify")
-async def verify_peer(peer_id: str):
+async def verify_peer(request: Request, peer_id: str):
     """
     Mark a peer's fingerprint as verified
 
@@ -455,7 +455,7 @@ async def get_safety_changes():
 
 
 @router.post("/e2e/safety-changes/{change_id}/acknowledge")
-async def acknowledge_safety_change(change_id: int):
+async def acknowledge_safety_change(request: Request, change_id: int):
     """
     Mark a safety number change as acknowledged
 
@@ -479,7 +479,7 @@ async def acknowledge_safety_change(change_id: int):
 
 
 @router.post("/e2e/export")
-async def export_identity(passphrase: str):
+async def export_identity(request: Request, passphrase: str):
     """
     Export identity keypair for linking to another device (QR code)
 
@@ -504,6 +504,7 @@ async def export_identity(passphrase: str):
 
 @router.post("/e2e/import")
 async def import_identity(
+    request: Request,
     encrypted_bundle: str,
     salt: str,
     nonce: str,

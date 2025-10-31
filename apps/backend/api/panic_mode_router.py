@@ -5,7 +5,7 @@ Provides REST endpoints for emergency security operations
 """
 
 import logging
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 
@@ -45,7 +45,7 @@ panic_mode = get_panic_mode()
 
 
 @router.post("/trigger", response_model=PanicTriggerResponse)
-async def trigger_panic_mode(request: PanicTriggerRequest):
+async def trigger_panic_mode(request: Request, body: PanicTriggerRequest):
     """
     🚨 EMERGENCY: Trigger panic mode
 
@@ -60,16 +60,16 @@ async def trigger_panic_mode(request: PanicTriggerRequest):
     """
 
     # Require explicit confirmation
-    if request.confirmation != "CONFIRM":
+    if body.confirmation != "CONFIRM":
         raise HTTPException(
             status_code=400,
             detail="Must provide confirmation='CONFIRM' to trigger panic mode"
         )
 
-    logger.critical(f"🚨 PANIC MODE TRIGGERED: {request.reason}")
+    logger.critical(f"🚨 PANIC MODE TRIGGERED: {body.reason}")
 
     try:
-        result = await panic_mode.trigger_panic(reason=request.reason)
+        result = await panic_mode.trigger_panic(reason=body.reason)
         return PanicTriggerResponse(**result)
     except Exception as e:
         logger.error(f"Panic mode execution failed: {e}")
@@ -89,7 +89,7 @@ async def get_panic_status():
 
 
 @router.post("/reset")
-async def reset_panic_mode():
+async def reset_panic_mode(request: Request):
     """
     Reset panic mode (requires admin privileges)
 

@@ -10,7 +10,7 @@ The passphrase derives a key that encrypts the master key before storing in Keyc
 "The name of the Lord is a fortified tower; the righteous run to it and are safe." - Proverbs 18:10
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 import keyring
 import secrets
@@ -260,7 +260,7 @@ def get_secure_enclave_service() -> SecureEnclaveService:
 # ===== API Endpoints =====
 
 @router.post("/generate-key", response_model=KeyResponse)
-async def generate_and_store_key(request: StoreKeyRequest):
+async def generate_and_store_key(request: Request, body: StoreKeyRequest):
     """
     Generate a new encryption key and store it in macOS Keychain (Secure Enclave)
 
@@ -268,18 +268,18 @@ async def generate_and_store_key(request: StoreKeyRequest):
     """
     try:
         # Check if key already exists
-        if key_exists_in_keychain(request.key_id):
+        if key_exists_in_keychain(body.key_id):
             return KeyResponse(
                 success=False,
                 key_exists=True,
-                message=f"Key '{request.key_id}' already exists. Delete it first if you want to regenerate."
+                message=f"Key '{body.key_id}' already exists. Delete it first if you want to regenerate."
             )
 
         # Generate new encryption key
         key_data = generate_encryption_key()
 
         # Store in Keychain
-        success = store_key_in_keychain(request.key_id, key_data, request.passphrase)
+        success = store_key_in_keychain(body.key_id, key_data, body.passphrase)
 
         if not success:
             raise HTTPException(status_code=500, detail="Failed to store key in Keychain")
@@ -287,7 +287,7 @@ async def generate_and_store_key(request: StoreKeyRequest):
         return KeyResponse(
             success=True,
             key_exists=True,
-            message=f"Generated and stored new encryption key '{request.key_id}' in Secure Enclave"
+            message=f"Generated and stored new encryption key '{body.key_id}' in Secure Enclave"
         )
 
     except Exception as e:
@@ -296,7 +296,7 @@ async def generate_and_store_key(request: StoreKeyRequest):
 
 
 @router.post("/retrieve-key", response_model=KeyResponse)
-async def retrieve_key(request: RetrieveKeyRequest):
+async def retrieve_key(request: Request, body: RetrieveKeyRequest):
     """
     Retrieve encryption key from macOS Keychain (Secure Enclave)
 
@@ -305,13 +305,13 @@ async def retrieve_key(request: RetrieveKeyRequest):
     """
     try:
         # Retrieve and decrypt from Keychain
-        key_data = retrieve_key_from_keychain(request.key_id, request.passphrase)
+        key_data = retrieve_key_from_keychain(body.key_id, body.passphrase)
 
         if not key_data:
             return KeyResponse(
                 success=False,
-                key_exists=key_exists_in_keychain(request.key_id),
-                message=f"Key '{request.key_id}' not found or incorrect passphrase"
+                key_exists=key_exists_in_keychain(body.key_id),
+                message=f"Key '{body.key_id}' not found or incorrect passphrase"
             )
 
         # Return base64-encoded key (will be used in-memory only)
@@ -330,7 +330,7 @@ async def retrieve_key(request: RetrieveKeyRequest):
 
 
 @router.delete("/delete-key/{key_id}")
-async def delete_key(key_id: str):
+async def delete_key(request: Request, key_id: str):
     """Delete encryption key from macOS Keychain"""
     try:
         if not key_exists_in_keychain(key_id):
