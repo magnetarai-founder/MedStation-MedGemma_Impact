@@ -203,3 +203,208 @@ export async function decryptDocument(
     passphrase
   )
 }
+
+/**
+ * ============================================================================
+ * LARGE FILE ENCRYPTION (Phase 5 - Production Critical)
+ * ============================================================================
+ * Chunked encryption/decryption to handle files > 500MB without memory overflow
+ */
+
+/**
+ * Encrypt large file using chunked approach
+ * Prevents memory overflow for files > 500MB
+ */
+export async function encryptLargeFile(
+  file: File,
+  key: CryptoKey,
+  onProgress?: (percent: number) => void
+): Promise<Blob> {
+  const CHUNK_SIZE = 1024 * 1024 * 10 // 10 MB chunks
+  const chunks: Blob[] = []
+
+  // Generate single IV for entire file
+  const iv = crypto.getRandomValues(new Uint8Array(12))
+
+  // Prepend IV to result (needed for decryption)
+  chunks.push(new Blob([iv]))
+
+  // Process file in chunks
+  for (let offset = 0; offset < file.size; offset += CHUNK_SIZE) {
+    const chunk = file.slice(offset, Math.min(offset + CHUNK_SIZE, file.size))
+    const arrayBuffer = await chunk.arrayBuffer()
+
+    const encrypted = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv: iv },
+      key,
+      arrayBuffer
+    )
+
+    chunks.push(new Blob([encrypted]))
+
+    // Update progress bar
+    if (onProgress) {
+      const progress = ((offset + chunk.size) / file.size) * 100
+      onProgress(Math.min(progress, 100))
+    }
+  }
+
+  return new Blob(chunks)
+}
+
+/**
+ * Decrypt large file using chunked approach with progress callback
+ */
+export async function decryptLargeFile(
+  encryptedBlob: Blob,
+  key: CryptoKey,
+  onProgress?: (percent: number) => void
+): Promise<Blob> {
+  const CHUNK_SIZE = 1024 * 1024 * 10 // 10 MB chunks (encrypted size)
+  const decryptedChunks: Blob[] = []
+
+  // Extract IV from first 12 bytes
+  const ivBlob = encryptedBlob.slice(0, 12)
+  const ivBuffer = await ivBlob.arrayBuffer()
+  const iv = new Uint8Array(ivBuffer)
+
+  // Process remaining data in chunks
+  const dataBlob = encryptedBlob.slice(12)
+
+  for (let offset = 0; offset < dataBlob.size; offset += CHUNK_SIZE) {
+    const chunk = dataBlob.slice(offset, Math.min(offset + CHUNK_SIZE, dataBlob.size))
+    const arrayBuffer = await chunk.arrayBuffer()
+
+    try {
+      const decrypted = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: iv },
+        key,
+        arrayBuffer
+      )
+
+      decryptedChunks.push(new Blob([decrypted]))
+    } catch (err) {
+      throw new Error(`Decryption failed at offset ${offset}: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    }
+
+    // Update progress
+    if (onProgress) {
+      const progress = ((offset + chunk.size) / dataBlob.size) * 100
+      onProgress(Math.min(progress, 100))
+    }
+  }
+
+  return new Blob(decryptedChunks)
+}
+
+/**
+ * Encrypt file with passphrase (automatically uses chunked encryption for large files)
+ */
+export async function encryptFile(
+  file: File,
+  passphrase: string,
+  onProgress?: (percent: number) => void
+): Promise<{ encryptedBlob: Blob; salt: string; iv: string }> {
+  // Generate salt
+  const salt = crypto.getRandomValues(new Uint8Array(16))
+
+  // Derive key from passphrase
+  const key = await deriveKey(passphrase, salt)
+
+  // Use chunked encryption for files > 100MB, otherwise use single-pass
+  const useChunked = file.size > 100 * 1024 * 1024
+
+  let encryptedBlob: Blob
+
+  if (useChunked) {
+    encryptedBlob = await encryptLargeFile(file, key, onProgress)
+  } else {
+    // Small file - encrypt in one go
+    const iv = crypto.getRandomValues(new Uint8Array(12))
+    const arrayBuffer = await file.arrayBuffer()
+    const encrypted = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv: iv },
+      key,
+      arrayBuffer
+    )
+    // Prepend IV
+    encryptedBlob = new Blob([iv, encrypted])
+    if (onProgress) onProgress(100)
+  }
+
+  // Extract IV from encrypted blob (first 12 bytes)
+  const ivBlob = encryptedBlob.slice(0, 12)
+  const ivBuffer = await ivBlob.arrayBuffer()
+  const iv = new Uint8Array(ivBuffer)
+
+  return {
+    encryptedBlob,
+    salt: arrayBufferToBase64(salt.buffer),
+    iv: arrayBufferToBase64(iv.buffer),
+  }
+}
+
+/**
+ * Decrypt file with passphrase (automatically uses chunked decryption for large files)
+ */
+export async function decryptFile(
+  encryptedBlob: Blob,
+  salt: string,
+  passphrase: string,
+  onProgress?: (percent: number) => void
+): Promise<Blob> {
+  // Derive key from passphrase
+  const saltBuffer = base64ToArrayBuffer(salt)
+  const key = await deriveKey(passphrase, new Uint8Array(saltBuffer))
+
+  // Use chunked decryption for files > 100MB
+  const useChunked = encryptedBlob.size > 100 * 1024 * 1024
+
+  if (useChunked) {
+    return await decryptLargeFile(encryptedBlob, key, onProgress)
+  } else {
+    // Small file - decrypt in one go
+    const ivBlob = encryptedBlob.slice(0, 12)
+    const dataBlob = encryptedBlob.slice(12)
+
+    const ivBuffer = await ivBlob.arrayBuffer()
+    const iv = new Uint8Array(ivBuffer)
+
+    const dataBuffer = await dataBlob.arrayBuffer()
+    const decrypted = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: iv },
+      key,
+      dataBuffer
+    )
+
+    if (onProgress) onProgress(100)
+    return new Blob([decrypted])
+  }
+}
+
+/**
+ * Helper: Estimate encryption time for large files
+ */
+export function estimateEncryptionTime(fileSizeBytes: number): number {
+  // Rough estimate: ~50 MB/second encryption speed
+  const speedMBps = 50
+  const fileSizeMB = fileSizeBytes / (1024 * 1024)
+  return Math.ceil(fileSizeMB / speedMBps)
+}
+
+/**
+ * Helper: Estimate decryption time for large files
+ */
+export function estimateDecryptionTime(fileSizeBytes: number): number {
+  // Decryption is typically slightly faster than encryption
+  const speedMBps = 60
+  const fileSizeMB = fileSizeBytes / (1024 * 1024)
+  return Math.ceil(fileSizeMB / speedMBps)
+}
+
+/**
+ * Helper: Check if file size requires chunked processing
+ */
+export function requiresChunkedProcessing(fileSizeBytes: number): boolean {
+  return fileSizeBytes > 100 * 1024 * 1024 // 100 MB threshold
+}
