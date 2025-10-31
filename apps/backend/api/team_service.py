@@ -199,6 +199,47 @@ class TeamManager:
             )
         """)
 
+        # Team vault items table (Phase 6.2)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS team_vault_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                item_id TEXT NOT NULL,
+                team_id TEXT NOT NULL,
+                item_name TEXT NOT NULL,
+                item_type TEXT NOT NULL,
+                encrypted_content TEXT NOT NULL,
+                encryption_key_hash TEXT,
+                file_size INTEGER,
+                mime_type TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_by TEXT NOT NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_by TEXT,
+                is_deleted INTEGER DEFAULT 0,
+                deleted_at TIMESTAMP,
+                deleted_by TEXT,
+                metadata TEXT,
+                FOREIGN KEY (team_id) REFERENCES teams (team_id),
+                UNIQUE(item_id, team_id)
+            )
+        """)
+
+        # Team vault permissions table (Phase 6.2)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS team_vault_permissions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                item_id TEXT NOT NULL,
+                team_id TEXT NOT NULL,
+                permission_type TEXT NOT NULL,
+                grant_type TEXT NOT NULL,
+                grant_value TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_by TEXT NOT NULL,
+                FOREIGN KEY (team_id) REFERENCES teams (team_id),
+                UNIQUE(item_id, team_id, permission_type, grant_type, grant_value)
+            )
+        """)
+
         self.conn.commit()
         logger.info("Team database initialized")
 
@@ -2156,6 +2197,581 @@ class TeamManager:
             logger.error(f"Failed to get revoked God Rights: {e}")
             return []
 
+    # ========================================================================
+    # TEAM VAULT METHODS (Phase 6.2)
+    # ========================================================================
+
+    def _get_vault_encryption_key(self, team_id: str) -> bytes:
+        """
+        Get or generate encryption key for team vault (Phase 6.2)
+
+        In production, this should use a proper key management system.
+        For now, we derive a key from team_id.
+        """
+        import hashlib
+        from cryptography.fernet import Fernet
+        import base64
+
+        # Derive a consistent key from team_id
+        key_material = hashlib.sha256(f"elohimos_vault_{team_id}".encode()).digest()
+        # Fernet requires 32 url-safe base64-encoded bytes
+        key = base64.urlsafe_b64encode(key_material)
+        return key
+
+    def _encrypt_content(self, content: str, team_id: str) -> tuple[str, str]:
+        """
+        Encrypt vault content (Phase 6.2)
+
+        Returns:
+            Tuple of (encrypted_content, key_hash)
+        """
+        try:
+            from cryptography.fernet import Fernet
+            import hashlib
+
+            key = self._get_vault_encryption_key(team_id)
+            fernet = Fernet(key)
+
+            # Encrypt content
+            encrypted = fernet.encrypt(content.encode())
+            encrypted_b64 = encrypted.decode()
+
+            # Create key hash for verification
+            key_hash = hashlib.sha256(key).hexdigest()
+
+            return encrypted_b64, key_hash
+
+        except Exception as e:
+            logger.error(f"Encryption failed: {e}")
+            raise
+
+    def _decrypt_content(self, encrypted_content: str, team_id: str) -> str:
+        """
+        Decrypt vault content (Phase 6.2)
+
+        Returns:
+            Decrypted content string
+        """
+        try:
+            from cryptography.fernet import Fernet
+
+            key = self._get_vault_encryption_key(team_id)
+            fernet = Fernet(key)
+
+            # Decrypt content
+            decrypted = fernet.decrypt(encrypted_content.encode())
+            return decrypted.decode()
+
+        except Exception as e:
+            logger.error(f"Decryption failed: {e}")
+            raise
+
+    def create_vault_item(
+        self,
+        team_id: str,
+        item_name: str,
+        item_type: str,
+        content: str,
+        created_by: str,
+        mime_type: str = None,
+        metadata: str = None
+    ) -> tuple[bool, str, str]:
+        """
+        Create a new vault item (Phase 6.2)
+
+        Args:
+            team_id: Team ID
+            item_name: Name of the item
+            item_type: Type (document, image, file, note, patient_record, etc.)
+            content: Content to encrypt and store
+            created_by: User ID creating the item
+            mime_type: MIME type if applicable
+            metadata: JSON metadata string
+
+        Returns:
+            Tuple of (success: bool, message: str, item_id: str)
+        """
+        try:
+            import uuid
+
+            cursor = self.conn.cursor()
+
+            # Generate unique item ID
+            item_id = str(uuid.uuid4()).upper()[:8]
+
+            # Encrypt content
+            encrypted_content, key_hash = self._encrypt_content(content, team_id)
+
+            # Calculate file size
+            file_size = len(content.encode())
+
+            # Insert vault item
+            cursor.execute("""
+                INSERT INTO team_vault_items (
+                    item_id, team_id, item_name, item_type,
+                    encrypted_content, encryption_key_hash,
+                    file_size, mime_type, created_by, metadata
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                item_id, team_id, item_name, item_type,
+                encrypted_content, key_hash,
+                file_size, mime_type, created_by, metadata
+            ))
+
+            self.conn.commit()
+
+            logger.info(f"Created vault item {item_id} for team {team_id}")
+            return True, f"Vault item created successfully", item_id
+
+        except Exception as e:
+            logger.error(f"Failed to create vault item: {e}")
+            return False, str(e), ""
+
+    def update_vault_item(
+        self,
+        item_id: str,
+        team_id: str,
+        content: str,
+        updated_by: str
+    ) -> tuple[bool, str]:
+        """
+        Update vault item content (Phase 6.2)
+
+        Args:
+            item_id: Item ID
+            team_id: Team ID
+            content: New content
+            updated_by: User ID updating
+
+        Returns:
+            Tuple of (success: bool, message: str)
+        """
+        try:
+            from datetime import datetime
+
+            cursor = self.conn.cursor()
+
+            # Check if item exists and not deleted
+            cursor.execute("""
+                SELECT id FROM team_vault_items
+                WHERE item_id = ? AND team_id = ? AND is_deleted = 0
+            """, (item_id, team_id))
+
+            if not cursor.fetchone():
+                return False, "Vault item not found or deleted"
+
+            # Encrypt new content
+            encrypted_content, key_hash = self._encrypt_content(content, team_id)
+
+            # Calculate new file size
+            file_size = len(content.encode())
+
+            # Update item
+            cursor.execute("""
+                UPDATE team_vault_items
+                SET encrypted_content = ?,
+                    encryption_key_hash = ?,
+                    file_size = ?,
+                    updated_at = ?,
+                    updated_by = ?
+                WHERE item_id = ? AND team_id = ?
+            """, (
+                encrypted_content, key_hash, file_size,
+                datetime.now().isoformat(), updated_by,
+                item_id, team_id
+            ))
+
+            self.conn.commit()
+
+            logger.info(f"Updated vault item {item_id}")
+            return True, "Vault item updated successfully"
+
+        except Exception as e:
+            logger.error(f"Failed to update vault item: {e}")
+            return False, str(e)
+
+    def delete_vault_item(
+        self,
+        item_id: str,
+        team_id: str,
+        deleted_by: str
+    ) -> tuple[bool, str]:
+        """
+        Soft delete vault item (Phase 6.2)
+
+        Args:
+            item_id: Item ID
+            team_id: Team ID
+            deleted_by: User ID deleting
+
+        Returns:
+            Tuple of (success: bool, message: str)
+        """
+        try:
+            from datetime import datetime
+
+            cursor = self.conn.cursor()
+
+            # Soft delete
+            cursor.execute("""
+                UPDATE team_vault_items
+                SET is_deleted = 1,
+                    deleted_at = ?,
+                    deleted_by = ?
+                WHERE item_id = ? AND team_id = ? AND is_deleted = 0
+            """, (datetime.now().isoformat(), deleted_by, item_id, team_id))
+
+            if cursor.rowcount == 0:
+                return False, "Vault item not found or already deleted"
+
+            self.conn.commit()
+
+            logger.info(f"Deleted vault item {item_id}")
+            return True, "Vault item deleted successfully"
+
+        except Exception as e:
+            logger.error(f"Failed to delete vault item: {e}")
+            return False, str(e)
+
+    def get_vault_item(
+        self,
+        item_id: str,
+        team_id: str,
+        decrypt: bool = True
+    ) -> Optional[Dict]:
+        """
+        Get vault item and optionally decrypt (Phase 6.2)
+
+        Args:
+            item_id: Item ID
+            team_id: Team ID
+            decrypt: Whether to decrypt content
+
+        Returns:
+            Dict with item details or None
+        """
+        try:
+            cursor = self.conn.cursor()
+
+            cursor.execute("""
+                SELECT item_id, team_id, item_name, item_type,
+                       encrypted_content, file_size, mime_type,
+                       created_at, created_by, updated_at, updated_by,
+                       metadata
+                FROM team_vault_items
+                WHERE item_id = ? AND team_id = ? AND is_deleted = 0
+            """, (item_id, team_id))
+
+            row = cursor.fetchone()
+            if not row:
+                return None
+
+            item = dict(row)
+
+            # Decrypt content if requested
+            if decrypt and item['encrypted_content']:
+                try:
+                    item['content'] = self._decrypt_content(item['encrypted_content'], team_id)
+                    del item['encrypted_content']
+                except Exception as e:
+                    logger.error(f"Failed to decrypt vault item {item_id}: {e}")
+                    item['content'] = "[DECRYPTION ERROR]"
+                    del item['encrypted_content']
+
+            return item
+
+        except Exception as e:
+            logger.error(f"Failed to get vault item: {e}")
+            return None
+
+    def list_vault_items(
+        self,
+        team_id: str,
+        user_id: str,
+        item_type: str = None,
+        include_deleted: bool = False
+    ) -> List[Dict]:
+        """
+        List vault items accessible to user (Phase 6.2)
+
+        Args:
+            team_id: Team ID
+            user_id: User ID requesting
+            item_type: Filter by item type (optional)
+            include_deleted: Include soft-deleted items
+
+        Returns:
+            List of vault items (without decrypted content)
+        """
+        try:
+            cursor = self.conn.cursor()
+
+            # Build query
+            query = """
+                SELECT item_id, item_name, item_type, file_size, mime_type,
+                       created_at, created_by, updated_at, updated_by, metadata
+                FROM team_vault_items
+                WHERE team_id = ?
+            """
+            params = [team_id]
+
+            if not include_deleted:
+                query += " AND is_deleted = 0"
+
+            if item_type:
+                query += " AND item_type = ?"
+                params.append(item_type)
+
+            query += " ORDER BY created_at DESC"
+
+            cursor.execute(query, params)
+
+            items = []
+            for row in cursor.fetchall():
+                # Check if user has permission to view
+                can_view, _ = self.check_vault_permission(
+                    item_id=row['item_id'],
+                    team_id=team_id,
+                    user_id=user_id,
+                    permission_type='read'
+                )
+
+                if can_view:
+                    items.append(dict(row))
+
+            return items
+
+        except Exception as e:
+            logger.error(f"Failed to list vault items: {e}")
+            return []
+
+    def check_vault_permission(
+        self,
+        item_id: str,
+        team_id: str,
+        user_id: str,
+        permission_type: str
+    ) -> tuple[bool, str]:
+        """
+        Check if user has vault item permission (Phase 6.2)
+
+        Permission priority: God Rights > explicit user > job_role > role > defaults
+
+        Args:
+            item_id: Item ID
+            team_id: Team ID
+            user_id: User ID
+            permission_type: Permission type (read, write, admin)
+
+        Returns:
+            Tuple of (has_permission: bool, reason: str)
+        """
+        try:
+            cursor = self.conn.cursor()
+
+            # Check God Rights
+            has_god_rights, _ = self.check_god_rights(user_id)
+            if has_god_rights:
+                return True, "God Rights override"
+
+            # Get user's role and job_role
+            cursor.execute("""
+                SELECT role, job_role FROM team_members
+                WHERE team_id = ? AND user_id = ?
+            """, (team_id, user_id))
+
+            member = cursor.fetchone()
+            if not member:
+                return False, "User not a member of team"
+
+            user_role = member['role']
+            user_job_role = member['job_role'] or 'unassigned'
+
+            # Check explicit user permission
+            cursor.execute("""
+                SELECT permission_type FROM team_vault_permissions
+                WHERE item_id = ? AND team_id = ? AND grant_type = 'user' AND grant_value = ?
+            """, (item_id, team_id, user_id))
+
+            user_perms = [row['permission_type'] for row in cursor.fetchall()]
+            if permission_type in user_perms:
+                return True, f"Explicit user permission"
+
+            # Check job_role permission
+            cursor.execute("""
+                SELECT permission_type FROM team_vault_permissions
+                WHERE item_id = ? AND team_id = ? AND grant_type = 'job_role' AND grant_value = ?
+            """, (item_id, team_id, user_job_role))
+
+            job_perms = [row['permission_type'] for row in cursor.fetchall()]
+            if permission_type in job_perms:
+                return True, f"Job role permission ({user_job_role})"
+
+            # Check role permission
+            cursor.execute("""
+                SELECT permission_type FROM team_vault_permissions
+                WHERE item_id = ? AND team_id = ? AND grant_type = 'role' AND grant_value = ?
+            """, (item_id, team_id, user_role))
+
+            role_perms = [row['permission_type'] for row in cursor.fetchall()]
+            if permission_type in role_perms:
+                return True, f"Role permission ({user_role})"
+
+            # Default permissions
+            # READ: member+, WRITE/ADMIN: admin+
+            if permission_type == 'read':
+                if user_role in ['member', 'admin', 'super_admin']:
+                    return True, f"Default read permission for {user_role}"
+            elif permission_type in ['write', 'admin']:
+                if user_role in ['admin', 'super_admin']:
+                    return True, f"Default {permission_type} permission for {user_role}"
+
+            return False, "No permission granted"
+
+        except Exception as e:
+            logger.error(f"Failed to check vault permission: {e}")
+            return False, str(e)
+
+    def add_vault_permission(
+        self,
+        item_id: str,
+        team_id: str,
+        permission_type: str,
+        grant_type: str,
+        grant_value: str,
+        created_by: str
+    ) -> tuple[bool, str]:
+        """
+        Add vault item permission (Phase 6.2)
+
+        Args:
+            item_id: Item ID
+            team_id: Team ID
+            permission_type: Permission type (read, write, admin)
+            grant_type: Grant type (role, job_role, user)
+            grant_value: Grant value
+            created_by: User ID creating permission
+
+        Returns:
+            Tuple of (success: bool, message: str)
+        """
+        try:
+            cursor = self.conn.cursor()
+
+            # Validate permission type
+            if permission_type not in ['read', 'write', 'admin']:
+                return False, "Invalid permission type. Must be: read, write, admin"
+
+            # Validate grant type
+            if grant_type not in ['role', 'job_role', 'user']:
+                return False, "Invalid grant type. Must be: role, job_role, user"
+
+            # Check if permission already exists
+            cursor.execute("""
+                SELECT id FROM team_vault_permissions
+                WHERE item_id = ? AND team_id = ? AND permission_type = ?
+                  AND grant_type = ? AND grant_value = ?
+            """, (item_id, team_id, permission_type, grant_type, grant_value))
+
+            if cursor.fetchone():
+                return False, "Permission already exists"
+
+            # Add permission
+            cursor.execute("""
+                INSERT INTO team_vault_permissions (
+                    item_id, team_id, permission_type,
+                    grant_type, grant_value, created_by
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (item_id, team_id, permission_type, grant_type, grant_value, created_by))
+
+            self.conn.commit()
+
+            logger.info(f"Added {permission_type} permission for {grant_type}:{grant_value} to item {item_id}")
+            return True, "Permission added successfully"
+
+        except Exception as e:
+            logger.error(f"Failed to add vault permission: {e}")
+            return False, str(e)
+
+    def remove_vault_permission(
+        self,
+        item_id: str,
+        team_id: str,
+        permission_type: str,
+        grant_type: str,
+        grant_value: str
+    ) -> tuple[bool, str]:
+        """
+        Remove vault item permission (Phase 6.2)
+
+        Args:
+            item_id: Item ID
+            team_id: Team ID
+            permission_type: Permission type
+            grant_type: Grant type
+            grant_value: Grant value
+
+        Returns:
+            Tuple of (success: bool, message: str)
+        """
+        try:
+            cursor = self.conn.cursor()
+
+            cursor.execute("""
+                DELETE FROM team_vault_permissions
+                WHERE item_id = ? AND team_id = ? AND permission_type = ?
+                  AND grant_type = ? AND grant_value = ?
+            """, (item_id, team_id, permission_type, grant_type, grant_value))
+
+            if cursor.rowcount == 0:
+                return False, "Permission not found"
+
+            self.conn.commit()
+
+            logger.info(f"Removed {permission_type} permission for {grant_type}:{grant_value} from item {item_id}")
+            return True, "Permission removed successfully"
+
+        except Exception as e:
+            logger.error(f"Failed to remove vault permission: {e}")
+            return False, str(e)
+
+    def get_vault_permissions(
+        self,
+        item_id: str,
+        team_id: str
+    ) -> List[Dict]:
+        """
+        Get all permissions for a vault item (Phase 6.2)
+
+        Args:
+            item_id: Item ID
+            team_id: Team ID
+
+        Returns:
+            List of permission grants
+        """
+        try:
+            cursor = self.conn.cursor()
+
+            cursor.execute("""
+                SELECT permission_type, grant_type, grant_value, created_at, created_by
+                FROM team_vault_permissions
+                WHERE item_id = ? AND team_id = ?
+                ORDER BY created_at DESC
+            """, (item_id, team_id))
+
+            permissions = []
+            for row in cursor.fetchall():
+                permissions.append(dict(row))
+
+            return permissions
+
+        except Exception as e:
+            logger.error(f"Failed to get vault permissions: {e}")
+            return []
+
     def close(self):
         """Close database connection"""
         if self.conn:
@@ -3696,4 +4312,421 @@ async def get_revoked_god_rights():
 
     except Exception as e:
         logger.error(f"Failed to get revoked God Rights: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== Team Vault Endpoints (Phase 6.2) =====
+
+class CreateVaultItemRequest(BaseModel):
+    item_name: str
+    item_type: str  # document, image, file, note, patient_record, etc.
+    content: str
+    mime_type: Optional[str] = None
+    metadata: Optional[str] = None
+    created_by: str
+
+
+class CreateVaultItemResponse(BaseModel):
+    success: bool
+    message: str
+    item_id: str
+
+
+@router.post("/{team_id}/vault/items", response_model=CreateVaultItemResponse)
+async def create_vault_item(team_id: str, request: CreateVaultItemRequest):
+    """
+    Create a new team vault item (Phase 6.2)
+
+    Content will be encrypted using team-specific encryption.
+    Super Admins control access.
+    """
+    team_manager = get_team_manager()
+
+    try:
+        # Verify team exists
+        team = team_manager.get_team(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+
+        success, message, item_id = team_manager.create_vault_item(
+            team_id=team_id,
+            item_name=request.item_name,
+            item_type=request.item_type,
+            content=request.content,
+            created_by=request.created_by,
+            mime_type=request.mime_type,
+            metadata=request.metadata
+        )
+
+        if not success:
+            raise HTTPException(status_code=400, detail=message)
+
+        return CreateVaultItemResponse(success=True, message=message, item_id=item_id)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to create vault item: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class VaultItemInfo(BaseModel):
+    item_id: str
+    item_name: str
+    item_type: str
+    file_size: int
+    mime_type: Optional[str] = None
+    created_at: str
+    created_by: str
+    updated_at: Optional[str] = None
+    updated_by: Optional[str] = None
+    metadata: Optional[str] = None
+
+
+class ListVaultItemsResponse(BaseModel):
+    team_id: str
+    user_id: str
+    items: List[VaultItemInfo]
+    count: int
+
+
+@router.get("/{team_id}/vault/items", response_model=ListVaultItemsResponse)
+async def list_vault_items(team_id: str, user_id: str, item_type: str = None):
+    """
+    List vault items accessible to user (Phase 6.2)
+
+    Filters items based on user permissions.
+    Only returns items user has read access to.
+    """
+    team_manager = get_team_manager()
+
+    try:
+        # Verify team exists
+        team = team_manager.get_team(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+
+        items = team_manager.list_vault_items(
+            team_id=team_id,
+            user_id=user_id,
+            item_type=item_type
+        )
+
+        return ListVaultItemsResponse(
+            team_id=team_id,
+            user_id=user_id,
+            items=items,
+            count=len(items)
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to list vault items: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class VaultItemDetail(BaseModel):
+    item_id: str
+    team_id: str
+    item_name: str
+    item_type: str
+    content: str
+    file_size: int
+    mime_type: Optional[str] = None
+    created_at: str
+    created_by: str
+    updated_at: Optional[str] = None
+    updated_by: Optional[str] = None
+    metadata: Optional[str] = None
+
+
+@router.get("/{team_id}/vault/items/{item_id}", response_model=VaultItemDetail)
+async def get_vault_item(team_id: str, item_id: str):
+    """
+    Get vault item with decrypted content (Phase 6.2)
+
+    Returns decrypted content for authorized users.
+    """
+    team_manager = get_team_manager()
+
+    try:
+        # Verify team exists
+        team = team_manager.get_team(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+
+        item = team_manager.get_vault_item(item_id, team_id, decrypt=True)
+
+        if not item:
+            raise HTTPException(status_code=404, detail="Vault item not found")
+
+        return VaultItemDetail(**item)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get vault item: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class UpdateVaultItemRequest(BaseModel):
+    content: str
+    updated_by: str
+
+
+class UpdateVaultItemResponse(BaseModel):
+    success: bool
+    message: str
+
+
+@router.put("/{team_id}/vault/items/{item_id}", response_model=UpdateVaultItemResponse)
+async def update_vault_item(team_id: str, item_id: str, request: UpdateVaultItemRequest):
+    """
+    Update vault item content (Phase 6.2)
+
+    Content will be re-encrypted with new content.
+    """
+    team_manager = get_team_manager()
+
+    try:
+        # Verify team exists
+        team = team_manager.get_team(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+
+        success, message = team_manager.update_vault_item(
+            item_id=item_id,
+            team_id=team_id,
+            content=request.content,
+            updated_by=request.updated_by
+        )
+
+        if not success:
+            raise HTTPException(status_code=400, detail=message)
+
+        return UpdateVaultItemResponse(success=True, message=message)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update vault item: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class DeleteVaultItemRequest(BaseModel):
+    deleted_by: str
+
+
+class DeleteVaultItemResponse(BaseModel):
+    success: bool
+    message: str
+
+
+@router.delete("/{team_id}/vault/items/{item_id}", response_model=DeleteVaultItemResponse)
+async def delete_vault_item(team_id: str, item_id: str, request: DeleteVaultItemRequest):
+    """
+    Soft delete vault item (Phase 6.2)
+
+    Item is marked as deleted but data is retained.
+    """
+    team_manager = get_team_manager()
+
+    try:
+        # Verify team exists
+        team = team_manager.get_team(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+
+        success, message = team_manager.delete_vault_item(
+            item_id=item_id,
+            team_id=team_id,
+            deleted_by=request.deleted_by
+        )
+
+        if not success:
+            raise HTTPException(status_code=400, detail=message)
+
+        return DeleteVaultItemResponse(success=True, message=message)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete vault item: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class AddVaultPermissionRequest(BaseModel):
+    permission_type: str  # read, write, admin
+    grant_type: str  # role, job_role, user
+    grant_value: str
+    created_by: str
+
+
+class AddVaultPermissionResponse(BaseModel):
+    success: bool
+    message: str
+
+
+@router.post("/{team_id}/vault/items/{item_id}/permissions", response_model=AddVaultPermissionResponse)
+async def add_vault_permission(team_id: str, item_id: str, request: AddVaultPermissionRequest):
+    """
+    Add vault item permission (Phase 6.2)
+
+    Grant read/write/admin access to roles, job_roles, or specific users.
+    """
+    team_manager = get_team_manager()
+
+    try:
+        # Verify team exists
+        team = team_manager.get_team(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+
+        success, message = team_manager.add_vault_permission(
+            item_id=item_id,
+            team_id=team_id,
+            permission_type=request.permission_type,
+            grant_type=request.grant_type,
+            grant_value=request.grant_value,
+            created_by=request.created_by
+        )
+
+        if not success:
+            raise HTTPException(status_code=400, detail=message)
+
+        return AddVaultPermissionResponse(success=True, message=message)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to add vault permission: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class RemoveVaultPermissionRequest(BaseModel):
+    permission_type: str
+    grant_type: str
+    grant_value: str
+
+
+class RemoveVaultPermissionResponse(BaseModel):
+    success: bool
+    message: str
+
+
+@router.delete("/{team_id}/vault/items/{item_id}/permissions", response_model=RemoveVaultPermissionResponse)
+async def remove_vault_permission(team_id: str, item_id: str, request: RemoveVaultPermissionRequest):
+    """
+    Remove vault item permission (Phase 6.2)
+    """
+    team_manager = get_team_manager()
+
+    try:
+        # Verify team exists
+        team = team_manager.get_team(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+
+        success, message = team_manager.remove_vault_permission(
+            item_id=item_id,
+            team_id=team_id,
+            permission_type=request.permission_type,
+            grant_type=request.grant_type,
+            grant_value=request.grant_value
+        )
+
+        if not success:
+            raise HTTPException(status_code=400, detail=message)
+
+        return RemoveVaultPermissionResponse(success=True, message=message)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to remove vault permission: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class VaultPermissionGrant(BaseModel):
+    permission_type: str
+    grant_type: str
+    grant_value: str
+    created_at: str
+    created_by: str
+
+
+class GetVaultPermissionsResponse(BaseModel):
+    item_id: str
+    team_id: str
+    permissions: List[VaultPermissionGrant]
+    count: int
+
+
+@router.get("/{team_id}/vault/items/{item_id}/permissions", response_model=GetVaultPermissionsResponse)
+async def get_vault_permissions(team_id: str, item_id: str):
+    """
+    Get all permissions for a vault item (Phase 6.2)
+    """
+    team_manager = get_team_manager()
+
+    try:
+        # Verify team exists
+        team = team_manager.get_team(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+
+        permissions = team_manager.get_vault_permissions(item_id, team_id)
+
+        return GetVaultPermissionsResponse(
+            item_id=item_id,
+            team_id=team_id,
+            permissions=permissions,
+            count=len(permissions)
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get vault permissions: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class CheckVaultPermissionRequest(BaseModel):
+    user_id: str
+    permission_type: str
+
+
+class CheckVaultPermissionResponse(BaseModel):
+    has_permission: bool
+    reason: str
+
+
+@router.post("/{team_id}/vault/items/{item_id}/check-permission", response_model=CheckVaultPermissionResponse)
+async def check_vault_permission(team_id: str, item_id: str, request: CheckVaultPermissionRequest):
+    """
+    Check if user has vault item permission (Phase 6.2)
+    """
+    team_manager = get_team_manager()
+
+    try:
+        # Verify team exists
+        team = team_manager.get_team(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+
+        has_permission, reason = team_manager.check_vault_permission(
+            item_id=item_id,
+            team_id=team_id,
+            user_id=request.user_id,
+            permission_type=request.permission_type
+        )
+
+        return CheckVaultPermissionResponse(
+            has_permission=has_permission,
+            reason=reason
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to check vault permission: {e}")
         raise HTTPException(status_code=500, detail=str(e))
