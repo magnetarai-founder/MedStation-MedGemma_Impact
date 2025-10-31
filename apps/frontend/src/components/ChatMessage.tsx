@@ -1,4 +1,4 @@
-import { User, Bot, Copy, Check, FileText, Image as ImageIcon, File as FileIcon, Code } from 'lucide-react'
+import { User, Bot, Copy, Check, FileText, Image as ImageIcon, File as FileIcon, Code, AlertTriangle } from 'lucide-react'
 import { useState } from 'react'
 import { ChatMessage as ChatMessageType } from '../stores/chatStore'
 
@@ -175,6 +175,16 @@ export function ChatMessage({ message, isStreaming = false }: ChatMessageProps) 
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Unverified message badge (E2E encryption) */}
+          {(message as any).verified === false && !isUser && (
+            <div className="mt-3 pt-3 border-t border-white/20 dark:border-gray-700/50">
+              <div className="flex items-center gap-2 px-2 py-1.5 bg-amber-100 dark:bg-amber-900/30 rounded text-amber-800 dark:text-amber-300">
+                <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                <span className="text-xs font-medium">Unverified</span>
+              </div>
             </div>
           )}
 
