@@ -136,6 +136,22 @@ class TeamManager:
             )
         """)
 
+        # Workflow permissions table (Phase 5.2)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS workflow_permissions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                workflow_id TEXT NOT NULL,
+                team_id TEXT NOT NULL,
+                permission_type TEXT NOT NULL,
+                grant_type TEXT NOT NULL,
+                grant_value TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_by TEXT NOT NULL,
+                FOREIGN KEY (team_id) REFERENCES teams (team_id),
+                UNIQUE(workflow_id, team_id, permission_type, grant_type, grant_value)
+            )
+        """)
+
         self.conn.commit()
         logger.info("Team database initialized")
 
@@ -1251,6 +1267,251 @@ class TeamManager:
             logger.error(f"Failed to get job role: {e}")
             return None
 
+    def add_workflow_permission(self, workflow_id: str, team_id: str, permission_type: str, grant_type: str, grant_value: str, created_by: str) -> tuple[bool, str]:
+        """
+        Add a workflow permission grant (Phase 5.2)
+
+        Args:
+            workflow_id: Workflow ID
+            team_id: Team ID
+            permission_type: 'view', 'edit', 'delete', 'assign'
+            grant_type: 'role', 'job_role', 'user'
+            grant_value: Depends on grant_type (role name, job role, or user_id)
+            created_by: User ID who created this permission
+
+        Returns:
+            Tuple of (success: bool, message: str)
+        """
+        valid_permission_types = ['view', 'edit', 'delete', 'assign']
+        valid_grant_types = ['role', 'job_role', 'user']
+
+        if permission_type not in valid_permission_types:
+            return False, f"Invalid permission type. Must be one of: {', '.join(valid_permission_types)}"
+
+        if grant_type not in valid_grant_types:
+            return False, f"Invalid grant type. Must be one of: {', '.join(valid_grant_types)}"
+
+        try:
+            cursor = self.conn.cursor()
+
+            cursor.execute("""
+                INSERT INTO workflow_permissions (workflow_id, team_id, permission_type, grant_type, grant_value, created_by)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (workflow_id, team_id, permission_type, grant_type, grant_value, created_by))
+
+            self.conn.commit()
+
+            logger.info(f"Added {permission_type} permission for workflow {workflow_id}: {grant_type}={grant_value}")
+
+            return True, f"Permission granted: {grant_type}={grant_value} can {permission_type}"
+
+        except sqlite3.IntegrityError:
+            return False, "Permission already exists"
+        except Exception as e:
+            logger.error(f"Failed to add workflow permission: {e}")
+            return False, str(e)
+
+    def remove_workflow_permission(self, workflow_id: str, team_id: str, permission_type: str, grant_type: str, grant_value: str) -> tuple[bool, str]:
+        """
+        Remove a workflow permission grant (Phase 5.2)
+
+        Args:
+            workflow_id: Workflow ID
+            team_id: Team ID
+            permission_type: 'view', 'edit', 'delete', 'assign'
+            grant_type: 'role', 'job_role', 'user'
+            grant_value: Depends on grant_type
+
+        Returns:
+            Tuple of (success: bool, message: str)
+        """
+        try:
+            cursor = self.conn.cursor()
+
+            cursor.execute("""
+                DELETE FROM workflow_permissions
+                WHERE workflow_id = ? AND team_id = ? AND permission_type = ? AND grant_type = ? AND grant_value = ?
+            """, (workflow_id, team_id, permission_type, grant_type, grant_value))
+
+            self.conn.commit()
+
+            if cursor.rowcount == 0:
+                return False, "Permission not found"
+
+            logger.info(f"Removed {permission_type} permission for workflow {workflow_id}: {grant_type}={grant_value}")
+
+            return True, f"Permission revoked: {grant_type}={grant_value} can no longer {permission_type}"
+
+        except Exception as e:
+            logger.error(f"Failed to remove workflow permission: {e}")
+            return False, str(e)
+
+    def check_workflow_permission(self, workflow_id: str, team_id: str, user_id: str, permission_type: str) -> tuple[bool, str]:
+        """
+        Check if a user has a specific workflow permission (Phase 5.2)
+
+        Checks in order:
+        1. God Rights always have all permissions
+        2. Explicit user grants
+        3. Job role grants
+        4. Role grants
+        5. Default permissions (if no explicit permissions exist)
+
+        Args:
+            workflow_id: Workflow ID
+            team_id: Team ID
+            user_id: User ID to check
+            permission_type: 'view', 'edit', 'delete', 'assign'
+
+        Returns:
+            Tuple of (has_permission: bool, reason: str)
+        """
+        try:
+            cursor = self.conn.cursor()
+
+            # Get user's role and job_role
+            cursor.execute("""
+                SELECT role, job_role FROM team_members
+                WHERE team_id = ? AND user_id = ?
+            """, (team_id, user_id))
+
+            member = cursor.fetchone()
+            if not member:
+                return False, "User not found in team"
+
+            user_role = member['role']
+            user_job_role = member['job_role'] or 'unassigned'
+
+            # God Rights always have all permissions
+            if user_role == 'god_rights':
+                return True, "God Rights override"
+
+            # Check if any explicit permissions exist for this workflow
+            cursor.execute("""
+                SELECT COUNT(*) as count FROM workflow_permissions
+                WHERE workflow_id = ? AND team_id = ?
+            """, (workflow_id, team_id))
+
+            has_explicit_perms = cursor.fetchone()['count'] > 0
+
+            if has_explicit_perms:
+                # Check explicit permissions in order: user > job_role > role
+                cursor.execute("""
+                    SELECT grant_type, grant_value FROM workflow_permissions
+                    WHERE workflow_id = ? AND team_id = ? AND permission_type = ?
+                """, (workflow_id, team_id, permission_type))
+
+                grants = cursor.fetchall()
+
+                for grant in grants:
+                    if grant['grant_type'] == 'user' and grant['grant_value'] == user_id:
+                        return True, f"Explicit user grant"
+                    if grant['grant_type'] == 'job_role' and grant['grant_value'] == user_job_role:
+                        return True, f"Job role grant ({user_job_role})"
+                    if grant['grant_type'] == 'role' and grant['grant_value'] == user_role:
+                        return True, f"Role grant ({user_role})"
+
+                return False, f"No matching permission grant found"
+
+            else:
+                # Use default permissions
+                return self._check_default_permission(user_role, permission_type)
+
+        except Exception as e:
+            logger.error(f"Failed to check workflow permission: {e}")
+            return False, str(e)
+
+    def _check_default_permission(self, user_role: str, permission_type: str) -> tuple[bool, str]:
+        """
+        Check default permissions when no explicit grants exist (Phase 5.2)
+
+        Default permissions:
+        - VIEW: member and above
+        - EDIT: admin and above
+        - DELETE: super_admin and above
+        - ASSIGN: admin and above
+
+        Args:
+            user_role: User's role
+            permission_type: Permission to check
+
+        Returns:
+            Tuple of (has_permission: bool, reason: str)
+        """
+        role_hierarchy = {
+            'guest': 0,
+            'member': 1,
+            'admin': 2,
+            'super_admin': 3,
+            'god_rights': 4
+        }
+
+        user_level = role_hierarchy.get(user_role, 0)
+
+        if permission_type == 'view':
+            required_level = role_hierarchy['member']
+            if user_level >= required_level:
+                return True, "Default: members can view"
+            return False, "Default: only members and above can view"
+
+        elif permission_type == 'edit':
+            required_level = role_hierarchy['admin']
+            if user_level >= required_level:
+                return True, "Default: admins can edit"
+            return False, "Default: only admins and above can edit"
+
+        elif permission_type == 'delete':
+            required_level = role_hierarchy['super_admin']
+            if user_level >= required_level:
+                return True, "Default: super admins can delete"
+            return False, "Default: only super admins and above can delete"
+
+        elif permission_type == 'assign':
+            required_level = role_hierarchy['admin']
+            if user_level >= required_level:
+                return True, "Default: admins can assign"
+            return False, "Default: only admins and above can assign"
+
+        else:
+            return False, f"Unknown permission type: {permission_type}"
+
+    def get_workflow_permissions(self, workflow_id: str, team_id: str) -> List[Dict]:
+        """
+        Get all permission grants for a workflow (Phase 5.2)
+
+        Args:
+            workflow_id: Workflow ID
+            team_id: Team ID
+
+        Returns:
+            List of permission grants
+        """
+        try:
+            cursor = self.conn.cursor()
+
+            cursor.execute("""
+                SELECT permission_type, grant_type, grant_value, created_at, created_by
+                FROM workflow_permissions
+                WHERE workflow_id = ? AND team_id = ?
+                ORDER BY permission_type, grant_type, grant_value
+            """, (workflow_id, team_id))
+
+            permissions = []
+            for row in cursor.fetchall():
+                permissions.append({
+                    'permission_type': row['permission_type'],
+                    'grant_type': row['grant_type'],
+                    'grant_value': row['grant_value'],
+                    'created_at': row['created_at'],
+                    'created_by': row['created_by']
+                })
+
+            return permissions
+
+        except Exception as e:
+            logger.error(f"Failed to get workflow permissions: {e}")
+            return []
+
     def close(self):
         """Close database connection"""
         if self.conn:
@@ -2020,4 +2281,222 @@ async def get_member_job_role(team_id: str, user_id: str):
         raise
     except Exception as e:
         logger.error(f"Failed to get job role: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# WORKFLOW PERMISSIONS API (Phase 5.2)
+# ============================================================================
+
+class AddWorkflowPermissionRequest(BaseModel):
+    permission_type: str  # view, edit, delete, assign
+    grant_type: str  # role, job_role, user
+    grant_value: str
+    created_by: str
+
+
+class AddWorkflowPermissionResponse(BaseModel):
+    success: bool
+    message: str
+    workflow_id: str
+    permission_type: str
+    grant_type: str
+    grant_value: str
+
+
+@router.post("/{team_id}/workflows/{workflow_id}/permissions", response_model=AddWorkflowPermissionResponse)
+async def add_workflow_permission(team_id: str, workflow_id: str, request: AddWorkflowPermissionRequest):
+    """
+    Add a workflow permission grant (Phase 5.2)
+
+    Grants permission to a specific role, job_role, or user for a workflow.
+
+    Permission types:
+    - view: Can view the workflow
+    - edit: Can modify the workflow
+    - delete: Can delete the workflow
+    - assign: Can assign work items from the workflow
+
+    Grant types:
+    - role: Grant to all users with a specific role (guest, member, admin, super_admin)
+    - job_role: Grant to all users with a specific job role (doctor, pastor, nurse, etc.)
+    - user: Grant to a specific user by user_id
+    """
+    team_manager = get_team_manager()
+
+    try:
+        # Verify team exists
+        team = team_manager.get_team(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+
+        success, message = team_manager.add_workflow_permission(
+            workflow_id=workflow_id,
+            team_id=team_id,
+            permission_type=request.permission_type,
+            grant_type=request.grant_type,
+            grant_value=request.grant_value,
+            created_by=request.created_by
+        )
+
+        if not success:
+            raise HTTPException(status_code=400, detail=message)
+
+        return AddWorkflowPermissionResponse(
+            success=True,
+            message=message,
+            workflow_id=workflow_id,
+            permission_type=request.permission_type,
+            grant_type=request.grant_type,
+            grant_value=request.grant_value
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to add workflow permission: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class RemoveWorkflowPermissionRequest(BaseModel):
+    permission_type: str
+    grant_type: str
+    grant_value: str
+
+
+class RemoveWorkflowPermissionResponse(BaseModel):
+    success: bool
+    message: str
+
+
+@router.delete("/{team_id}/workflows/{workflow_id}/permissions", response_model=RemoveWorkflowPermissionResponse)
+async def remove_workflow_permission(team_id: str, workflow_id: str, request: RemoveWorkflowPermissionRequest):
+    """
+    Remove a workflow permission grant (Phase 5.2)
+    """
+    team_manager = get_team_manager()
+
+    try:
+        # Verify team exists
+        team = team_manager.get_team(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+
+        success, message = team_manager.remove_workflow_permission(
+            workflow_id=workflow_id,
+            team_id=team_id,
+            permission_type=request.permission_type,
+            grant_type=request.grant_type,
+            grant_value=request.grant_value
+        )
+
+        if not success:
+            raise HTTPException(status_code=400, detail=message)
+
+        return RemoveWorkflowPermissionResponse(success=True, message=message)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to remove workflow permission: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class WorkflowPermissionGrant(BaseModel):
+    id: int
+    permission_type: str
+    grant_type: str
+    grant_value: str
+    created_at: str
+    created_by: str
+
+
+class GetWorkflowPermissionsResponse(BaseModel):
+    workflow_id: str
+    team_id: str
+    permissions: List[WorkflowPermissionGrant]
+    count: int
+
+
+@router.get("/{team_id}/workflows/{workflow_id}/permissions", response_model=GetWorkflowPermissionsResponse)
+async def get_workflow_permissions(team_id: str, workflow_id: str):
+    """
+    Get all permission grants for a workflow (Phase 5.2)
+    """
+    team_manager = get_team_manager()
+
+    try:
+        # Verify team exists
+        team = team_manager.get_team(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+
+        permissions = team_manager.get_workflow_permissions(workflow_id, team_id)
+
+        return GetWorkflowPermissionsResponse(
+            workflow_id=workflow_id,
+            team_id=team_id,
+            permissions=permissions,
+            count=len(permissions)
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get workflow permissions: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class CheckWorkflowPermissionRequest(BaseModel):
+    user_id: str
+    permission_type: str
+
+
+class CheckWorkflowPermissionResponse(BaseModel):
+    has_permission: bool
+    message: str
+    workflow_id: str
+    user_id: str
+    permission_type: str
+
+
+@router.post("/{team_id}/workflows/{workflow_id}/check-permission", response_model=CheckWorkflowPermissionResponse)
+async def check_workflow_permission(team_id: str, workflow_id: str, request: CheckWorkflowPermissionRequest):
+    """
+    Check if a user has a specific permission for a workflow (Phase 5.2)
+
+    Checks in priority order:
+    1. God Rights - always have all permissions
+    2. User-specific grants
+    3. Job role grants
+    4. Role grants
+    5. Default permissions (based on role)
+    """
+    team_manager = get_team_manager()
+
+    try:
+        # Verify team exists
+        team = team_manager.get_team(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+
+        has_permission, message = team_manager.check_workflow_permission(
+            workflow_id=workflow_id,
+            team_id=team_id,
+            user_id=request.user_id,
+            permission_type=request.permission_type
+        )
+
+        return CheckWorkflowPermissionResponse(
+            has_permission=has_permission,
+            message=message,
+            workflow_id=workflow_id,
+            user_id=request.user_id,
+            permission_type=request.permission_type
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to check workflow permission: {e}")
         raise HTTPException(status_code=500, detail=str(e))
