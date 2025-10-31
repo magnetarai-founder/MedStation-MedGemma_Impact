@@ -53,6 +53,9 @@ interface ChatSettings {
   autoGenerateTitles: boolean
   contextWindow: number
 
+  // Orchestrator Model (always running for Jarvis routing)
+  orchestratorModel: string
+
   // Global LLM Parameters (used when model-specific not set)
   tone: TonePreset
   temperature: number
@@ -139,6 +142,9 @@ export const useChatStore = create<ChatStore>()(
         defaultModel: 'qwen2.5-coder:7b-instruct',
         autoGenerateTitles: true,
         contextWindow: 75,
+
+        // Orchestrator Model (empty by default, user configures)
+        orchestratorModel: '',
 
         // Global LLM Parameters - Balanced preset
         tone: 'balanced',

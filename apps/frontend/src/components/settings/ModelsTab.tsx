@@ -1,17 +1,37 @@
 import { useState, useEffect } from 'react'
-import { Cpu } from 'lucide-react'
+import { Cpu, Zap } from 'lucide-react'
 import { type NavTab } from '@/stores/navigationStore'
+import { useChatStore } from '@/stores/chatStore'
 
 interface ModelsTabProps {
   activeNavTab?: NavTab
 }
 
 export default function ModelsTab({ activeNavTab }: ModelsTabProps = {}) {
+  const { settings, availableModels, setAvailableModels, updateSettings } = useChatStore()
+
   const [localSettings, setLocalSettings] = useState({
     app_memory_percent: 30,
     processing_memory_percent: 40,
     cache_memory_percent: 20,
   })
+
+  // Load available models on mount
+  useEffect(() => {
+    const loadModels = async () => {
+      try {
+        const response = await fetch(`/api/v1/chat/models/status`)
+        if (response.ok) {
+          const data = await response.json()
+          // Only show available (chat) models
+          setAvailableModels(data.available || [])
+        }
+      } catch (error) {
+        console.error('Failed to load models:', error)
+      }
+    }
+    loadModels()
+  }, [setAvailableModels])
 
   // Load settings on mount
   useEffect(() => {
@@ -74,6 +94,77 @@ export default function ModelsTab({ activeNavTab }: ModelsTabProps = {}) {
 
   return (
     <div className="space-y-6">
+      {/* Orchestrator Model */}
+      <div>
+        <div className="flex items-center space-x-2 mb-4">
+          <Zap className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              Orchestrator Model
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Always-running model that powers Jarvis intelligent routing
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Orchestrator Model
+            </label>
+            <select
+              value={settings.orchestratorModel}
+              onChange={(e) => updateSettings({ orchestratorModel: e.target.value })}
+              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+            >
+              <option value="">None (Disable orchestrator)</option>
+              {availableModels.length === 0 ? (
+                <option value="" disabled>Loading models...</option>
+              ) : (
+                availableModels.map((model) => (
+                  <option key={model.name} value={model.name}>
+                    {model.name} ({model.size})
+                  </option>
+                ))
+              )}
+            </select>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Recommended: Small efficient models (1.5B-3B parameters) like llama3.2:1b or qwen2.5:0.5b
+            </p>
+          </div>
+
+          {/* Info card */}
+          <div className="p-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+            <h4 className="text-sm font-semibold text-amber-900 dark:text-amber-100 mb-2">
+              About Orchestrator
+            </h4>
+            <ul className="text-xs text-amber-800 dark:text-amber-200 space-y-1">
+              <li>• Always running in background for instant Jarvis responses</li>
+              <li>• Powers intelligent model routing and task detection</li>
+              <li>• Manages resource allocation (lazy loading/unloading models)</li>
+              <li>• Cannot be unloaded while app is running</li>
+              <li>• Choose a small, efficient model (1.5B-3B params recommended)</li>
+            </ul>
+          </div>
+
+          {/* Current orchestrator status */}
+          {settings.orchestratorModel && (
+            <div className="p-4 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                <h4 className="text-sm font-semibold text-green-900 dark:text-green-100">
+                  Orchestrator Active
+                </h4>
+              </div>
+              <p className="text-xs text-green-800 dark:text-green-200 mt-1">
+                Running: {settings.orchestratorModel}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Memory Allocation */}
       <div>
         <div className="flex items-center space-x-2 mb-4">
