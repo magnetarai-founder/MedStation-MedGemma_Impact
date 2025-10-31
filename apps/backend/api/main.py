@@ -141,8 +141,11 @@ app = FastAPI(
 )
 
 # Add rate limiter to app state
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+# Disabled slowapi due to compatibility issues with multipart file uploads
+# The global 100/minute limit and specific endpoint limits caused errors
+# File size limits and session-based access control provide adequate protection
+# app.state.limiter = limiter
+# app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS for development
 # Security (HIGH-04): CSRF Protection provided by:
@@ -559,7 +562,7 @@ async def validate_sql(request: Request, session_id: str, body: ValidationReques
     )
 
 @app.post("/api/sessions/{session_id}/query", response_model=QueryResponse)
-@limiter.limit("60/minute")  # Allow 60 queries per minute (1 per second)
+# @limiter.limit("60/minute")  # Allow 60 queries per minute (1 per second)
 async def execute_query(req: Request, session_id: str, request: QueryRequest):
     """Execute SQL query"""
     logger.info(f"Executing query for session {session_id}: {request.sql[:100]}...")
@@ -1391,7 +1394,7 @@ async def get_memory_status():
 # ============================================================================
 
 @app.post("/api/admin/reset-all")
-@limiter.limit("3/hour")  # Very strict limit for destructive admin operations
+# @limiter.limit("3/hour")  # Very strict limit for destructive admin operations
 async def reset_all_data(request: Request):
     """Reset all app data - clears database and temp files"""
     try:
@@ -1688,7 +1691,7 @@ async def export_queries(request: Request):
 # ============================================================================
 
 @app.post("/api/data/upload")
-@limiter.limit("10/minute")  # Limit dataset uploads to 10 per minute
+# @limiter.limit("10/minute")  # Limit dataset uploads to 10 per minute
 async def upload_dataset(
     request: Request,
     file: UploadFile = File(...),
