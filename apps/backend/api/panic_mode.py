@@ -136,10 +136,16 @@ class PanicMode:
                     # Overwrite files before deletion (basic anti-forensics)
                     for file_path in upload_path.glob("**/*"):
                         if file_path.is_file():
-                            # Overwrite with random data
+                            # Overwrite with random data (full file, not just 1MB)
                             size = file_path.stat().st_size
                             with open(file_path, 'wb') as f:
-                                f.write(os.urandom(min(size, 1024 * 1024)))  # Limit to 1MB per file
+                                # Write in chunks to avoid OOM on large files
+                                chunk_size = 1024 * 1024  # 1MB chunks
+                                remaining = size
+                                while remaining > 0:
+                                    write_size = min(chunk_size, remaining)
+                                    f.write(os.urandom(write_size))
+                                    remaining -= write_size
 
                     # Now delete
                     shutil.rmtree(upload_path)
@@ -149,12 +155,33 @@ class PanicMode:
                     logger.error(f"Failed to wipe {upload_path}: {e}")
 
     def _secure_databases(self):
-        """Ensure databases are encrypted"""
-        db_paths = [
-            Path(".neutron_data/neutron_chat.db"),
-            Path.home() / ".elohimos" / "elohimos_memory.db",
-            Path.home() / ".elohimos" / "learning.db",
-        ]
+        """Ensure databases are encrypted and discover all DBs via config_paths"""
+        # Import config paths to get all known database locations
+        try:
+            from config_paths import get_config_paths
+            paths = get_config_paths()
+
+            # Discover all .db files in data directory
+            db_paths = list(paths.data_dir.glob("**/*.db"))
+
+            # Add known additional DBs
+            db_paths.extend([
+                Path.home() / ".elohimos" / "elohimos_memory.db",
+                Path.home() / ".elohimos" / "learning.db",
+                paths.data_dir / "memory" / "chat_memory.db",
+                paths.data_dir / "vault" / "vault.db",
+                paths.data_dir / "users.db",
+                paths.data_dir / "docs.db",
+                paths.data_dir / "p2p_chat.db",
+            ])
+        except Exception as e:
+            logger.warning(f"Could not discover DBs via config_paths: {e}")
+            # Fallback to hardcoded paths
+            db_paths = [
+                Path(".neutron_data/neutron_chat.db"),
+                Path.home() / ".elohimos" / "elohimos_memory.db",
+                Path.home() / ".elohimos" / "learning.db",
+            ]
 
         for db_path in db_paths:
             if db_path.exists():

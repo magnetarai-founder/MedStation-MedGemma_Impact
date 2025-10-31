@@ -22,6 +22,8 @@ from pydantic import BaseModel, Field
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from collections import defaultdict
+from time import time
 import pandas as pd
 import aiofiles
 from contextlib import asynccontextmanager
@@ -50,8 +52,35 @@ logger = logging.getLogger(__name__)
 # Import security utilities
 from utils import sanitize_filename, sanitize_for_log
 
+# Security Note: sanitize_for_log is imported and should be used when logging
+# request bodies that may contain passwords, tokens, or API keys.
+# Current endpoints avoid logging request bodies directly.
+
 # Initialize rate limiter
 limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
+
+# Simple token bucket rate limiter (since slowapi has multipart issues)
+class SimpleRateLimiter:
+    def __init__(self):
+        self.buckets = defaultdict(lambda: {"tokens": 0, "last_update": time()})
+
+    def check_rate_limit(self, key: str, max_requests: int, window_seconds: int) -> bool:
+        """Check if request is within rate limit. Returns True if allowed."""
+        now = time()
+        bucket = self.buckets[key]
+
+        # Refill tokens based on time passed
+        time_passed = now - bucket["last_update"]
+        bucket["tokens"] = min(max_requests, bucket["tokens"] + (time_passed * max_requests / window_seconds))
+        bucket["last_update"] = now
+
+        # Check if we have tokens
+        if bucket["tokens"] >= 1:
+            bucket["tokens"] -= 1
+            return True
+        return False
+
+simple_limiter = SimpleRateLimiter()
 
 # Import existing backend modules
 import sys
@@ -562,9 +591,13 @@ async def validate_sql(request: Request, session_id: str, body: ValidationReques
     )
 
 @app.post("/api/sessions/{session_id}/query", response_model=QueryResponse)
-# @limiter.limit("60/minute")  # Allow 60 queries per minute (1 per second)
 async def execute_query(req: Request, session_id: str, request: QueryRequest):
     """Execute SQL query"""
+    # Rate limit: 60 queries per minute
+    client_ip = req.client.host if req.client else "unknown"
+    if not simple_limiter.check_rate_limit(f"query:{client_ip}", max_requests=60, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 60 queries per minute.")
+
     logger.info(f"Executing query for session {session_id}: {request.sql[:100]}...")
 
     if session_id not in sessions:
@@ -878,12 +911,29 @@ class JsonConvertResponse(BaseModel):
 @app.post("/api/sessions/{session_id}/json/upload", response_model=JsonUploadResponse)
 async def upload_json(request: Request, session_id: str, file: UploadFile = File(...)):
     """Upload and analyze JSON file"""
+    # Rate limit: 10 uploads per minute
+    client_ip = request.client.host if request.client else "unknown"
+    if not simple_limiter.check_rate_limit(f"upload:{client_ip}", max_requests=10, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 10 uploads per minute.")
+
     if session_id not in sessions:
         raise HTTPException(status_code=404, detail="Session not found")
-    
+
     if not file.filename.endswith('.json'):
         raise HTTPException(status_code=400, detail="Only JSON files are supported")
-    
+
+    # Security: Limit JSON file size to prevent OOM (100MB max, same as Excel)
+    MAX_JSON_SIZE = 100 * 1024 * 1024  # 100MB
+    file.file.seek(0, 2)  # Seek to end
+    file_size = file.file.tell()
+    file.file.seek(0)  # Reset to beginning
+
+    if file_size > MAX_JSON_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=f"JSON file too large ({file_size / 1024 / 1024:.1f}MB). Maximum size is {MAX_JSON_SIZE / 1024 / 1024}MB"
+        )
+
     # Save uploaded file temporarily
     api_dir = Path(__file__).parent
     temp_dir = api_dir / "temp_uploads"
@@ -892,12 +942,17 @@ async def upload_json(request: Request, session_id: str, file: UploadFile = File
     # Sanitize filename to prevent path traversal (HIGH-01)
     safe_filename = sanitize_filename(file.filename)
     file_path = temp_dir / f"{uuid.uuid4()}_{safe_filename}"
-    
+
     try:
-        # Save file
+        # Stream file to disk instead of loading entirely into memory
         async with aiofiles.open(file_path, 'wb') as f:
-            content = await file.read()
-            await f.write(content)
+            # Stream in chunks to avoid OOM
+            chunk_size = 1024 * 1024  # 1MB chunks
+            while True:
+                chunk = await file.read(chunk_size)
+                if not chunk:
+                    break
+                await f.write(chunk)
         
         # Analyze JSON structure
         engine = JsonToExcelEngine()
