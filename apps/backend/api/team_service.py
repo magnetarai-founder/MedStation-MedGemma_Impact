@@ -152,6 +152,39 @@ class TeamManager:
             )
         """)
 
+        # Queues table (Phase 5.3)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS queues (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                queue_id TEXT NOT NULL,
+                team_id TEXT NOT NULL,
+                queue_name TEXT NOT NULL,
+                queue_type TEXT NOT NULL,
+                description TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_by TEXT NOT NULL,
+                is_active INTEGER DEFAULT 1,
+                FOREIGN KEY (team_id) REFERENCES teams (team_id),
+                UNIQUE(queue_id, team_id)
+            )
+        """)
+
+        # Queue permissions table (Phase 5.3)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS queue_permissions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                queue_id TEXT NOT NULL,
+                team_id TEXT NOT NULL,
+                access_type TEXT NOT NULL,
+                grant_type TEXT NOT NULL,
+                grant_value TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_by TEXT NOT NULL,
+                FOREIGN KEY (team_id) REFERENCES teams (team_id),
+                UNIQUE(queue_id, team_id, access_type, grant_type, grant_value)
+            )
+        """)
+
         self.conn.commit()
         logger.info("Team database initialized")
 
@@ -1512,6 +1545,376 @@ class TeamManager:
             logger.error(f"Failed to get workflow permissions: {e}")
             return []
 
+    # ========================================================================
+    # QUEUE ACCESS CONTROL METHODS (Phase 5.3)
+    # ========================================================================
+
+    def create_queue(self, team_id: str, queue_name: str, queue_type: str, description: str, created_by: str) -> tuple[bool, str, str]:
+        """
+        Create a new queue (Phase 5.3)
+
+        Args:
+            team_id: Team ID
+            queue_name: Display name for the queue
+            queue_type: Type of queue (patient, medication, pharmacy, counseling, etc.)
+            description: Description of the queue's purpose
+            created_by: User ID who created the queue
+
+        Returns:
+            Tuple of (success: bool, message: str, queue_id: str)
+        """
+        try:
+            # Generate unique queue ID
+            import uuid
+            queue_id = f"{queue_type.upper()}-{uuid.uuid4().hex[:8].upper()}"
+
+            cursor = self.conn.cursor()
+
+            cursor.execute("""
+                INSERT INTO queues (queue_id, team_id, queue_name, queue_type, description, created_by)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (queue_id, team_id, queue_name, queue_type, description, created_by))
+
+            self.conn.commit()
+
+            logger.info(f"Created queue {queue_id} ({queue_name}) in team {team_id}")
+
+            return True, f"Queue '{queue_name}' created successfully", queue_id
+
+        except sqlite3.IntegrityError:
+            return False, "Queue already exists", ""
+        except Exception as e:
+            logger.error(f"Failed to create queue: {e}")
+            return False, str(e), ""
+
+    def add_queue_permission(self, queue_id: str, team_id: str, access_type: str, grant_type: str, grant_value: str, created_by: str) -> tuple[bool, str]:
+        """
+        Add queue access permission (Phase 5.3)
+
+        Args:
+            queue_id: Queue ID
+            team_id: Team ID
+            access_type: 'view', 'manage', 'assign'
+            grant_type: 'role', 'job_role', 'user'
+            grant_value: Depends on grant_type (role name, job role, or user_id)
+            created_by: User ID who created this permission
+
+        Returns:
+            Tuple of (success: bool, message: str)
+        """
+        valid_access_types = ['view', 'manage', 'assign']
+        valid_grant_types = ['role', 'job_role', 'user']
+
+        if access_type not in valid_access_types:
+            return False, f"Invalid access type. Must be one of: {', '.join(valid_access_types)}"
+
+        if grant_type not in valid_grant_types:
+            return False, f"Invalid grant type. Must be one of: {', '.join(valid_grant_types)}"
+
+        try:
+            cursor = self.conn.cursor()
+
+            cursor.execute("""
+                INSERT INTO queue_permissions (queue_id, team_id, access_type, grant_type, grant_value, created_by)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (queue_id, team_id, access_type, grant_type, grant_value, created_by))
+
+            self.conn.commit()
+
+            logger.info(f"Added {access_type} access for queue {queue_id}: {grant_type}={grant_value}")
+
+            return True, f"Access granted: {grant_type}={grant_value} can {access_type}"
+
+        except sqlite3.IntegrityError:
+            return False, "Permission already exists"
+        except Exception as e:
+            logger.error(f"Failed to add queue permission: {e}")
+            return False, str(e)
+
+    def remove_queue_permission(self, queue_id: str, team_id: str, access_type: str, grant_type: str, grant_value: str) -> tuple[bool, str]:
+        """
+        Remove queue access permission (Phase 5.3)
+
+        Args:
+            queue_id: Queue ID
+            team_id: Team ID
+            access_type: 'view', 'manage', 'assign'
+            grant_type: 'role', 'job_role', 'user'
+            grant_value: Depends on grant_type
+
+        Returns:
+            Tuple of (success: bool, message: str)
+        """
+        try:
+            cursor = self.conn.cursor()
+
+            cursor.execute("""
+                DELETE FROM queue_permissions
+                WHERE queue_id = ? AND team_id = ? AND access_type = ? AND grant_type = ? AND grant_value = ?
+            """, (queue_id, team_id, access_type, grant_type, grant_value))
+
+            self.conn.commit()
+
+            if cursor.rowcount == 0:
+                return False, "Permission not found"
+
+            logger.info(f"Removed {access_type} access for queue {queue_id}: {grant_type}={grant_value}")
+
+            return True, f"Access revoked: {grant_type}={grant_value} can no longer {access_type}"
+
+        except Exception as e:
+            logger.error(f"Failed to remove queue permission: {e}")
+            return False, str(e)
+
+    def check_queue_access(self, queue_id: str, team_id: str, user_id: str, access_type: str) -> tuple[bool, str]:
+        """
+        Check if a user has access to a queue (Phase 5.3)
+
+        Checks in order:
+        1. God Rights always have all access
+        2. Explicit user grants
+        3. Job role grants
+        4. Role grants
+        5. Default permissions (admins+ can manage, members+ can view)
+
+        Args:
+            queue_id: Queue ID
+            team_id: Team ID
+            user_id: User ID to check
+            access_type: 'view', 'manage', 'assign'
+
+        Returns:
+            Tuple of (has_access: bool, reason: str)
+        """
+        try:
+            cursor = self.conn.cursor()
+
+            # Get user's role and job_role
+            cursor.execute("""
+                SELECT role, job_role FROM team_members
+                WHERE team_id = ? AND user_id = ?
+            """, (team_id, user_id))
+
+            member = cursor.fetchone()
+            if not member:
+                return False, "User not found in team"
+
+            user_role = member['role']
+            user_job_role = member['job_role'] or 'unassigned'
+
+            # God Rights always have all access
+            if user_role == 'god_rights':
+                return True, "God Rights override"
+
+            # Check for explicit user grant
+            cursor.execute("""
+                SELECT 1 FROM queue_permissions
+                WHERE queue_id = ? AND team_id = ? AND access_type = ? AND grant_type = 'user' AND grant_value = ?
+            """, (queue_id, team_id, access_type, user_id))
+
+            if cursor.fetchone():
+                return True, f"User-specific {access_type} access"
+
+            # Check for job role grant
+            cursor.execute("""
+                SELECT 1 FROM queue_permissions
+                WHERE queue_id = ? AND team_id = ? AND access_type = ? AND grant_type = 'job_role' AND grant_value = ?
+            """, (queue_id, team_id, access_type, user_job_role))
+
+            if cursor.fetchone():
+                return True, f"Job role ({user_job_role}) {access_type} access"
+
+            # Check for role grant
+            cursor.execute("""
+                SELECT 1 FROM queue_permissions
+                WHERE queue_id = ? AND team_id = ? AND access_type = ? AND grant_type = 'role' AND grant_value = ?
+            """, (queue_id, team_id, access_type, user_role))
+
+            if cursor.fetchone():
+                return True, f"Role ({user_role}) {access_type} access"
+
+            # Check if there are any explicit permissions defined for this queue
+            cursor.execute("""
+                SELECT COUNT(*) as count FROM queue_permissions
+                WHERE queue_id = ? AND team_id = ? AND access_type = ?
+            """, (queue_id, team_id, access_type))
+
+            has_explicit_permissions = cursor.fetchone()['count'] > 0
+
+            # If no explicit permissions, apply defaults
+            if not has_explicit_permissions:
+                return self._check_default_queue_access(user_role, access_type)
+
+            # Explicit permissions exist but user doesn't match any
+            return False, "No matching access grants"
+
+        except Exception as e:
+            logger.error(f"Failed to check queue access: {e}")
+            return False, str(e)
+
+    def _check_default_queue_access(self, user_role: str, access_type: str) -> tuple[bool, str]:
+        """
+        Default queue access permissions (Phase 5.3)
+
+        Defaults when no explicit permissions are set:
+        - VIEW: member and above
+        - MANAGE: admin and above
+        - ASSIGN: admin and above
+
+        Args:
+            user_role: User's role
+            access_type: Access type to check
+
+        Returns:
+            Tuple of (has_access: bool, reason: str)
+        """
+        role_hierarchy = {
+            'guest': 0,
+            'member': 1,
+            'admin': 2,
+            'super_admin': 3,
+            'god_rights': 4
+        }
+
+        role_level = role_hierarchy.get(user_role, 0)
+
+        if access_type == 'view':
+            # Members and above can view
+            if role_level >= role_hierarchy['member']:
+                return True, f"Default view access for {user_role}"
+            return False, "Guests cannot view queues by default"
+
+        elif access_type in ['manage', 'assign']:
+            # Admins and above can manage/assign
+            if role_level >= role_hierarchy['admin']:
+                return True, f"Default {access_type} access for {user_role}"
+            return False, f"Only admins and above can {access_type} by default"
+
+        return False, f"Invalid access type: {access_type}"
+
+    def get_accessible_queues(self, team_id: str, user_id: str, access_type: str = 'view') -> List[Dict]:
+        """
+        Get all queues a user can access (Phase 5.3)
+
+        Args:
+            team_id: Team ID
+            user_id: User ID
+            access_type: 'view', 'manage', or 'assign' (default: 'view')
+
+        Returns:
+            List of accessible queues with details
+        """
+        try:
+            cursor = self.conn.cursor()
+
+            # Get all active queues for this team
+            cursor.execute("""
+                SELECT queue_id, queue_name, queue_type, description, created_at, created_by
+                FROM queues
+                WHERE team_id = ? AND is_active = 1
+                ORDER BY queue_name
+            """, (team_id,))
+
+            accessible_queues = []
+            for row in cursor.fetchall():
+                queue_id = row['queue_id']
+
+                # Check if user has access
+                has_access, reason = self.check_queue_access(queue_id, team_id, user_id, access_type)
+
+                if has_access:
+                    accessible_queues.append({
+                        'queue_id': queue_id,
+                        'queue_name': row['queue_name'],
+                        'queue_type': row['queue_type'],
+                        'description': row['description'],
+                        'created_at': row['created_at'],
+                        'created_by': row['created_by'],
+                        'access_reason': reason
+                    })
+
+            return accessible_queues
+
+        except Exception as e:
+            logger.error(f"Failed to get accessible queues: {e}")
+            return []
+
+    def get_queue_permissions(self, queue_id: str, team_id: str) -> List[Dict]:
+        """
+        Get all permission grants for a queue (Phase 5.3)
+
+        Args:
+            queue_id: Queue ID
+            team_id: Team ID
+
+        Returns:
+            List of permission grants
+        """
+        try:
+            cursor = self.conn.cursor()
+
+            cursor.execute("""
+                SELECT id, access_type, grant_type, grant_value, created_at, created_by
+                FROM queue_permissions
+                WHERE queue_id = ? AND team_id = ?
+                ORDER BY access_type, grant_type, grant_value
+            """, (queue_id, team_id))
+
+            permissions = []
+            for row in cursor.fetchall():
+                permissions.append({
+                    'id': row['id'],
+                    'access_type': row['access_type'],
+                    'grant_type': row['grant_type'],
+                    'grant_value': row['grant_value'],
+                    'created_at': row['created_at'],
+                    'created_by': row['created_by']
+                })
+
+            return permissions
+
+        except Exception as e:
+            logger.error(f"Failed to get queue permissions: {e}")
+            return []
+
+    def get_queue(self, queue_id: str, team_id: str) -> Optional[Dict]:
+        """
+        Get queue details (Phase 5.3)
+
+        Args:
+            queue_id: Queue ID
+            team_id: Team ID
+
+        Returns:
+            Queue details or None if not found
+        """
+        try:
+            cursor = self.conn.cursor()
+
+            cursor.execute("""
+                SELECT queue_id, queue_name, queue_type, description, created_at, created_by, is_active
+                FROM queues
+                WHERE queue_id = ? AND team_id = ?
+            """, (queue_id, team_id))
+
+            row = cursor.fetchone()
+            if not row:
+                return None
+
+            return {
+                'queue_id': row['queue_id'],
+                'queue_name': row['queue_name'],
+                'queue_type': row['queue_type'],
+                'description': row['description'],
+                'created_at': row['created_at'],
+                'created_by': row['created_by'],
+                'is_active': bool(row['is_active'])
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to get queue: {e}")
+            return None
+
     def close(self):
         """Close database connection"""
         if self.conn:
@@ -2499,4 +2902,377 @@ async def check_workflow_permission(team_id: str, workflow_id: str, request: Che
         raise
     except Exception as e:
         logger.error(f"Failed to check workflow permission: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# QUEUE ACCESS CONTROL API (Phase 5.3)
+# ============================================================================
+
+class CreateQueueRequest(BaseModel):
+    queue_name: str
+    queue_type: str  # patient, medication, pharmacy, counseling, etc.
+    description: str
+    created_by: str
+
+
+class CreateQueueResponse(BaseModel):
+    success: bool
+    message: str
+    queue_id: str
+
+
+@router.post("/{team_id}/queues", response_model=CreateQueueResponse)
+async def create_queue(team_id: str, request: CreateQueueRequest):
+    """
+    Create a new queue (Phase 5.3)
+
+    Queue types can be customized based on organization needs:
+    - patient: Patient queue for medical facilities
+    - medication: Medication/pharmacy queue
+    - counseling: Counseling/pastoral care queue
+    - emergency: Emergency/priority queue
+    - custom: Any other custom queue type
+    """
+    team_manager = get_team_manager()
+
+    try:
+        # Verify team exists
+        team = team_manager.get_team(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+
+        success, message, queue_id = team_manager.create_queue(
+            team_id=team_id,
+            queue_name=request.queue_name,
+            queue_type=request.queue_type,
+            description=request.description,
+            created_by=request.created_by
+        )
+
+        if not success:
+            raise HTTPException(status_code=400, detail=message)
+
+        return CreateQueueResponse(
+            success=True,
+            message=message,
+            queue_id=queue_id
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to create queue: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class AddQueuePermissionRequest(BaseModel):
+    access_type: str  # view, manage, assign
+    grant_type: str  # role, job_role, user
+    grant_value: str
+    created_by: str
+
+
+class AddQueuePermissionResponse(BaseModel):
+    success: bool
+    message: str
+    queue_id: str
+    access_type: str
+    grant_type: str
+    grant_value: str
+
+
+@router.post("/{team_id}/queues/{queue_id}/permissions", response_model=AddQueuePermissionResponse)
+async def add_queue_permission(team_id: str, queue_id: str, request: AddQueuePermissionRequest):
+    """
+    Add queue access permission (Phase 5.3)
+
+    Access types:
+    - view: Can see the queue and its items
+    - manage: Can modify queue settings and items
+    - assign: Can assign items to users
+
+    Grant types:
+    - role: Grant to all users with a specific role (guest, member, admin, super_admin)
+    - job_role: Grant to all users with a specific job role (doctor, pastor, nurse, etc.)
+    - user: Grant to a specific user by user_id
+
+    Example use cases:
+    - Doctors can view patient queue: grant_type=job_role, grant_value=doctor, access_type=view
+    - Pharmacy can view medication queue: grant_type=job_role, grant_value=pharmacy, access_type=view
+    - Pastors can view counseling queue: grant_type=job_role, grant_value=pastor, access_type=view
+    """
+    team_manager = get_team_manager()
+
+    try:
+        # Verify team exists
+        team = team_manager.get_team(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+
+        success, message = team_manager.add_queue_permission(
+            queue_id=queue_id,
+            team_id=team_id,
+            access_type=request.access_type,
+            grant_type=request.grant_type,
+            grant_value=request.grant_value,
+            created_by=request.created_by
+        )
+
+        if not success:
+            raise HTTPException(status_code=400, detail=message)
+
+        return AddQueuePermissionResponse(
+            success=True,
+            message=message,
+            queue_id=queue_id,
+            access_type=request.access_type,
+            grant_type=request.grant_type,
+            grant_value=request.grant_value
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to add queue permission: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class RemoveQueuePermissionRequest(BaseModel):
+    access_type: str
+    grant_type: str
+    grant_value: str
+
+
+class RemoveQueuePermissionResponse(BaseModel):
+    success: bool
+    message: str
+
+
+@router.delete("/{team_id}/queues/{queue_id}/permissions", response_model=RemoveQueuePermissionResponse)
+async def remove_queue_permission(team_id: str, queue_id: str, request: RemoveQueuePermissionRequest):
+    """
+    Remove queue access permission (Phase 5.3)
+    """
+    team_manager = get_team_manager()
+
+    try:
+        # Verify team exists
+        team = team_manager.get_team(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+
+        success, message = team_manager.remove_queue_permission(
+            queue_id=queue_id,
+            team_id=team_id,
+            access_type=request.access_type,
+            grant_type=request.grant_type,
+            grant_value=request.grant_value
+        )
+
+        if not success:
+            raise HTTPException(status_code=400, detail=message)
+
+        return RemoveQueuePermissionResponse(success=True, message=message)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to remove queue permission: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class QueuePermissionGrant(BaseModel):
+    id: int
+    access_type: str
+    grant_type: str
+    grant_value: str
+    created_at: str
+    created_by: str
+
+
+class GetQueuePermissionsResponse(BaseModel):
+    queue_id: str
+    team_id: str
+    permissions: List[QueuePermissionGrant]
+    count: int
+
+
+@router.get("/{team_id}/queues/{queue_id}/permissions", response_model=GetQueuePermissionsResponse)
+async def get_queue_permissions(team_id: str, queue_id: str):
+    """
+    Get all permission grants for a queue (Phase 5.3)
+    """
+    team_manager = get_team_manager()
+
+    try:
+        # Verify team exists
+        team = team_manager.get_team(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+
+        permissions = team_manager.get_queue_permissions(queue_id, team_id)
+
+        return GetQueuePermissionsResponse(
+            queue_id=queue_id,
+            team_id=team_id,
+            permissions=permissions,
+            count=len(permissions)
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get queue permissions: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class CheckQueueAccessRequest(BaseModel):
+    user_id: str
+    access_type: str
+
+
+class CheckQueueAccessResponse(BaseModel):
+    has_access: bool
+    message: str
+    queue_id: str
+    user_id: str
+    access_type: str
+
+
+@router.post("/{team_id}/queues/{queue_id}/check-access", response_model=CheckQueueAccessResponse)
+async def check_queue_access(team_id: str, queue_id: str, request: CheckQueueAccessRequest):
+    """
+    Check if a user has access to a queue (Phase 5.3)
+
+    Checks in priority order:
+    1. God Rights - always have all access
+    2. User-specific grants
+    3. Job role grants
+    4. Role grants
+    5. Default permissions (members+ can view, admins+ can manage/assign)
+    """
+    team_manager = get_team_manager()
+
+    try:
+        # Verify team exists
+        team = team_manager.get_team(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+
+        has_access, message = team_manager.check_queue_access(
+            queue_id=queue_id,
+            team_id=team_id,
+            user_id=request.user_id,
+            access_type=request.access_type
+        )
+
+        return CheckQueueAccessResponse(
+            has_access=has_access,
+            message=message,
+            queue_id=queue_id,
+            user_id=request.user_id,
+            access_type=request.access_type
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to check queue access: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class QueueInfo(BaseModel):
+    queue_id: str
+    queue_name: str
+    queue_type: str
+    description: str
+    created_at: str
+    created_by: str
+    access_reason: str
+
+
+class GetAccessibleQueuesResponse(BaseModel):
+    team_id: str
+    user_id: str
+    access_type: str
+    queues: List[QueueInfo]
+    count: int
+
+
+@router.get("/{team_id}/queues/accessible/{user_id}", response_model=GetAccessibleQueuesResponse)
+async def get_accessible_queues(team_id: str, user_id: str, access_type: str = 'view'):
+    """
+    Get all queues a user can access (Phase 5.3)
+
+    Returns queues filtered by user's permissions based on:
+    - Their role (guest, member, admin, super_admin, god_rights)
+    - Their job role (doctor, pastor, nurse, pharmacy, etc.)
+    - Explicit user grants
+
+    This endpoint implements the core queue filtering:
+    - Doctors see patient queue (if granted)
+    - Pastors see counseling queue (if granted)
+    - Pharmacy sees medication queue (if granted)
+    - Etc.
+    """
+    team_manager = get_team_manager()
+
+    try:
+        # Verify team exists
+        team = team_manager.get_team(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+
+        queues = team_manager.get_accessible_queues(team_id, user_id, access_type)
+
+        return GetAccessibleQueuesResponse(
+            team_id=team_id,
+            user_id=user_id,
+            access_type=access_type,
+            queues=queues,
+            count=len(queues)
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get accessible queues: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class QueueDetails(BaseModel):
+    queue_id: str
+    queue_name: str
+    queue_type: str
+    description: str
+    created_at: str
+    created_by: str
+    is_active: bool
+
+
+@router.get("/{team_id}/queues/{queue_id}", response_model=QueueDetails)
+async def get_queue(team_id: str, queue_id: str):
+    """
+    Get queue details (Phase 5.3)
+    """
+    team_manager = get_team_manager()
+
+    try:
+        # Verify team exists
+        team = team_manager.get_team(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+
+        queue = team_manager.get_queue(queue_id, team_id)
+
+        if not queue:
+            raise HTTPException(status_code=404, detail="Queue not found")
+
+        return QueueDetails(**queue)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get queue: {e}")
         raise HTTPException(status_code=500, detail=str(e))
