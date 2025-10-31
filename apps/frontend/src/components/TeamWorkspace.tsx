@@ -15,13 +15,15 @@ import { DocsWorkspace } from './DocsWorkspace'
 import { VaultSetup } from './VaultSetup'
 import { VaultWorkspace } from './VaultWorkspace'
 import { NetworkSelector } from './NetworkSelector'
-import { MessageSquare, FileText, Lock } from 'lucide-react'
+import { CreateTeamModal } from './CreateTeamModal'
+import { MessageSquare, FileText, Lock, Plus } from 'lucide-react'
 
 export function TeamWorkspace() {
   const { workspaceView, setWorkspaceView, vaultSetupComplete, vaultUnlocked } = useDocsStore()
-  const { networkMode, setNetworkMode } = useTeamStore()
+  const { networkMode, setNetworkMode, currentTeam } = useTeamStore()
   const permissions = usePermissions()
   const [showVaultSetup, setShowVaultSetup] = useState(false)
+  const [showCreateTeam, setShowCreateTeam] = useState(false)
 
   const handleVaultClick = () => {
     if (!vaultSetupComplete) {
@@ -90,6 +92,17 @@ export function TeamWorkspace() {
             </button>
           )}
         </div>
+
+        {/* Create Team Button - Show when not on a team */}
+        {!currentTeam && (
+          <button
+            onClick={() => setShowCreateTeam(true)}
+            className="ml-auto flex items-center gap-2 px-3 py-1.5 text-sm bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors font-medium"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Create Team</span>
+          </button>
+        )}
       </div>
 
       {/* Content area */}
@@ -111,6 +124,12 @@ export function TeamWorkspace() {
           }}
         />
       )}
+
+      {/* Create Team Modal */}
+      <CreateTeamModal
+        isOpen={showCreateTeam}
+        onClose={() => setShowCreateTeam(false)}
+      />
     </div>
   )
 }

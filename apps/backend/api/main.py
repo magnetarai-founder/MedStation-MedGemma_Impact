@@ -53,6 +53,7 @@ limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 # Import existing backend modules
 import sys
 # Insert at the beginning of sys.path to prioritize local modules
+sys.path.insert(0, str(Path(__file__).parent))  # /apps/backend/api - for api module imports
 sys.path.insert(0, str(Path(__file__).parent.parent))  # /apps/backend
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "packages"))  # /packages
 
@@ -225,6 +226,14 @@ try:
 except Exception as e:
     services_failed.append("User")
     logger.debug(f"User service not available: {e}")
+
+try:
+    from team_service import router as team_router
+    app.include_router(team_router)
+    services_loaded.append("Team")
+except Exception as e:
+    services_failed.append("Team")
+    logger.debug(f"Team service not available: {e}")
 
 try:
     from docs_service import router as docs_router

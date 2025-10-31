@@ -50,6 +50,7 @@ interface TeamStore {
   setMembershipStatus: (status: TeamMembershipStatus) => void
   setCurrentTeam: (team: TeamInfo | null) => void
   setTeamMembers: (members: TeamMember[]) => void
+  createTeam: (params: { teamId: string; teamName: string; teamDescription?: string | null }) => void
 
   // Computed
   isConnected: () => boolean
@@ -89,6 +90,20 @@ export const useTeamStore = create<TeamStore>()(
       setMembershipStatus: (status) => set({ membershipStatus: status }),
       setCurrentTeam: (team) => set({ currentTeam: team }),
       setTeamMembers: (members) => set({ teamMembers: members }),
+
+      createTeam: ({ teamId, teamName, teamDescription }) => {
+        // Create team and update membership
+        set({
+          currentTeam: {
+            team_id: teamId,
+            team_name: teamName,
+            created_at: new Date().toISOString(),
+            created_by: 'current_user',
+            member_count: 1
+          },
+          membershipStatus: 'member'
+        })
+      },
 
       // Computed getters
       isConnected: () => {
