@@ -16,6 +16,10 @@ export interface UserProfile {
   created_at: string
   avatar_color?: string
   bio?: string
+  role?: string
+  role_changed_at?: string
+  role_changed_by?: string
+  job_role?: string
 }
 
 interface UserStore {

@@ -79,6 +79,7 @@ class TeamManager:
                 team_id TEXT NOT NULL,
                 user_id TEXT NOT NULL,
                 role TEXT NOT NULL,
+                job_role TEXT DEFAULT 'unassigned',
                 joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (team_id) REFERENCES teams (team_id),
@@ -1167,6 +1168,89 @@ class TeamManager:
             logger.error(f"Failed to revert temp promotion: {e}")
             return False, str(e)
 
+    def update_job_role(self, team_id: str, user_id: str, job_role: str) -> tuple[bool, str]:
+        """
+        Update a team member's job role (Phase 5.1)
+
+        Job roles are used for workflow permissions and queue access control.
+        Valid roles: doctor, pastor, nurse, admin_staff, volunteer, custom, unassigned
+
+        Args:
+            team_id: Team ID
+            user_id: User ID to update
+            job_role: New job role
+
+        Returns:
+            Tuple of (success: bool, message: str)
+        """
+        valid_job_roles = ['doctor', 'pastor', 'nurse', 'admin_staff', 'volunteer', 'unassigned']
+
+        # Allow custom job roles (anything not in the predefined list that's not 'unassigned')
+        if job_role not in valid_job_roles and job_role != 'unassigned':
+            # Treat as custom role, validate it's reasonable
+            if len(job_role) > 50:
+                return False, "Custom job role must be 50 characters or less"
+            if not job_role.strip():
+                return False, "Job role cannot be empty"
+
+        try:
+            cursor = self.conn.cursor()
+
+            # Verify user exists in team
+            cursor.execute("""
+                SELECT role FROM team_members
+                WHERE team_id = ? AND user_id = ?
+            """, (team_id, user_id))
+
+            if not cursor.fetchone():
+                return False, f"User {user_id} not found in team"
+
+            # Update job role
+            cursor.execute("""
+                UPDATE team_members
+                SET job_role = ?
+                WHERE team_id = ? AND user_id = ?
+            """, (job_role, team_id, user_id))
+
+            self.conn.commit()
+
+            logger.info(f"Updated job role for {user_id} in team {team_id} to {job_role}")
+
+            return True, f"Job role updated to {job_role}"
+
+        except Exception as e:
+            logger.error(f"Failed to update job role: {e}")
+            return False, str(e)
+
+    def get_member_job_role(self, team_id: str, user_id: str) -> Optional[str]:
+        """
+        Get a team member's job role (Phase 5.1)
+
+        Args:
+            team_id: Team ID
+            user_id: User ID
+
+        Returns:
+            Job role string or None if not found
+        """
+        try:
+            cursor = self.conn.cursor()
+
+            cursor.execute("""
+                SELECT job_role FROM team_members
+                WHERE team_id = ? AND user_id = ?
+            """, (team_id, user_id))
+
+            row = cursor.fetchone()
+            if row:
+                return row['job_role']
+
+            return None
+
+        except Exception as e:
+            logger.error(f"Failed to get job role: {e}")
+            return None
+
     def close(self):
         """Close database connection"""
         if self.conn:
@@ -1842,4 +1926,98 @@ async def revert_temp_promotion(team_id: str, temp_promotion_id: int, request: R
         raise
     except Exception as e:
         logger.error(f"Failed to revert temp promotion: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============ Phase 5.1: Job Roles ============
+
+
+class UpdateJobRoleRequest(BaseModel):
+    job_role: str
+
+
+class UpdateJobRoleResponse(BaseModel):
+    success: bool
+    message: str
+    user_id: str
+    job_role: str
+
+
+@router.post("/{team_id}/members/{user_id}/job-role", response_model=UpdateJobRoleResponse)
+async def update_member_job_role(team_id: str, user_id: str, request: UpdateJobRoleRequest):
+    """
+    Update a team member's job role (Phase 5.1)
+
+    Job roles are used for workflow permissions and queue access control.
+
+    Predefined job roles:
+    - doctor: Medical professionals
+    - pastor: Pastoral care staff
+    - nurse: Nursing staff
+    - admin_staff: Administrative staff
+    - volunteer: Volunteers
+    - unassigned: No job role assigned
+
+    Custom job roles are also supported (any string up to 50 characters).
+    """
+    team_manager = get_team_manager()
+
+    try:
+        # Verify team exists
+        team = team_manager.get_team(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+
+        success, message = team_manager.update_job_role(
+            team_id=team_id,
+            user_id=user_id,
+            job_role=request.job_role
+        )
+
+        if not success:
+            raise HTTPException(status_code=400, detail=message)
+
+        return UpdateJobRoleResponse(
+            success=True,
+            message=message,
+            user_id=user_id,
+            job_role=request.job_role
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update job role: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class JobRoleResponse(BaseModel):
+    user_id: str
+    job_role: Optional[str]
+
+
+@router.get("/{team_id}/members/{user_id}/job-role", response_model=JobRoleResponse)
+async def get_member_job_role(team_id: str, user_id: str):
+    """
+    Get a team member's job role (Phase 5.1)
+    """
+    team_manager = get_team_manager()
+
+    try:
+        # Verify team exists
+        team = team_manager.get_team(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+
+        job_role = team_manager.get_member_job_role(team_id, user_id)
+
+        if job_role is None:
+            raise HTTPException(status_code=404, detail="User not found in team")
+
+        return JobRoleResponse(user_id=user_id, job_role=job_role)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get job role: {e}")
         raise HTTPException(status_code=500, detail=str(e))
