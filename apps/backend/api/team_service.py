@@ -562,6 +562,127 @@ class TeamManager:
             logger.error(f"Failed to update member role: {e}")
             return False, str(e)
 
+    def get_days_since_joined(self, team_id: str, user_id: str) -> Optional[int]:
+        """
+        Calculate days since user joined the team
+
+        Args:
+            team_id: Team ID
+            user_id: User ID
+
+        Returns:
+            Number of days since joining, or None if user not found
+        """
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                SELECT joined_at FROM team_members
+                WHERE team_id = ? AND user_id = ?
+            """, (team_id, user_id))
+
+            row = cursor.fetchone()
+            if not row:
+                return None
+
+            from datetime import datetime
+            joined_at = datetime.fromisoformat(row['joined_at'])
+            days_elapsed = (datetime.now() - joined_at).days
+
+            return days_elapsed
+
+        except Exception as e:
+            logger.error(f"Failed to calculate days since joined: {e}")
+            return None
+
+    def check_auto_promotion_eligibility(self, team_id: str, user_id: str, required_days: int = 7) -> tuple[bool, str, int]:
+        """
+        Check if a guest is eligible for auto-promotion to member
+
+        Args:
+            team_id: Team ID
+            user_id: User ID
+            required_days: Days required for auto-promotion (default: 7)
+
+        Returns:
+            Tuple of (is_eligible: bool, reason: str, days_elapsed: int)
+        """
+        try:
+            # Check current role
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                SELECT role, joined_at FROM team_members
+                WHERE team_id = ? AND user_id = ?
+            """, (team_id, user_id))
+
+            row = cursor.fetchone()
+            if not row:
+                return False, "User not found in team", 0
+
+            current_role = row['role']
+
+            # Only guests are eligible for auto-promotion
+            if current_role != 'guest':
+                return False, f"User is already {current_role}, not a guest", 0
+
+            # Calculate days
+            days_elapsed = self.get_days_since_joined(team_id, user_id)
+            if days_elapsed is None:
+                return False, "Failed to calculate days elapsed", 0
+
+            if days_elapsed >= required_days:
+                return True, f"Eligible after {days_elapsed} days (required: {required_days})", days_elapsed
+            else:
+                return False, f"Not eligible yet: {days_elapsed} days (required: {required_days})", days_elapsed
+
+        except Exception as e:
+            logger.error(f"Failed to check auto-promotion eligibility: {e}")
+            return False, str(e), 0
+
+    def auto_promote_guests(self, team_id: str, required_days: int = 7) -> List[Dict]:
+        """
+        Auto-promote all eligible guests in a team to members
+
+        Args:
+            team_id: Team ID
+            required_days: Days required for auto-promotion (default: 7)
+
+        Returns:
+            List of dictionaries with promotion results
+        """
+        try:
+            # Find all guests in team
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                SELECT user_id, joined_at FROM team_members
+                WHERE team_id = ? AND role = 'guest'
+            """, (team_id,))
+
+            guests = cursor.fetchall()
+            results = []
+
+            from datetime import datetime
+            for guest in guests:
+                user_id = guest['user_id']
+                joined_at = datetime.fromisoformat(guest['joined_at'])
+                days_elapsed = (datetime.now() - joined_at).days
+
+                if days_elapsed >= required_days:
+                    # Auto-promote to member
+                    success, message = self.update_member_role(team_id, user_id, 'member')
+                    results.append({
+                        'user_id': user_id,
+                        'days_elapsed': days_elapsed,
+                        'promoted': success,
+                        'message': message if success else f"Failed: {message}"
+                    })
+                    logger.info(f"Auto-promoted {user_id} to member after {days_elapsed} days")
+
+            return results
+
+        except Exception as e:
+            logger.error(f"Failed to auto-promote guests: {e}")
+            return []
+
     def close(self):
         """Close database connection"""
         if self.conn:
@@ -792,4 +913,44 @@ async def update_member_role(team_id: str, user_id: str, request: UpdateRoleRequ
         raise
     except Exception as e:
         logger.error(f"Failed to update member role: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class AutoPromoteResponse(BaseModel):
+    promoted_users: List[Dict]
+    total_promoted: int
+
+
+@router.post("/{team_id}/members/auto-promote", response_model=AutoPromoteResponse)
+async def auto_promote_guests(team_id: str, required_days: int = 7):
+    """
+    Auto-promote guests who have been members for X days (default: 7)
+
+    Checks all guests in the team and promotes those who have been
+    guests for the required number of days to member status.
+
+    This endpoint can be called manually or by a background job/cron.
+    """
+    team_manager = get_team_manager()
+
+    try:
+        # Verify team exists
+        team = team_manager.get_team(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+
+        # Auto-promote eligible guests
+        results = team_manager.auto_promote_guests(team_id, required_days)
+
+        promoted_count = sum(1 for r in results if r['promoted'])
+
+        return AutoPromoteResponse(
+            promoted_users=results,
+            total_promoted=promoted_count
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to auto-promote guests: {e}")
         raise HTTPException(status_code=500, detail=str(e))
