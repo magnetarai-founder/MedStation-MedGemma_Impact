@@ -11,9 +11,9 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
-# Storage path for favorites
-FAVORITES_FILE = Path(".neutron_data/model_favorites.json")
-FAVORITES_FILE.parent.mkdir(parents=True, exist_ok=True)
+# Storage path for hot slots
+HOT_SLOTS_FILE = Path(".neutron_data/model_hot_slots.json")
+HOT_SLOTS_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 # Model filtering patterns
 EMBEDDING_MODEL_PATTERNS = [
@@ -90,62 +90,74 @@ def get_model_unavailable_reason(model_name: str) -> Optional[str]:
 
 
 class ModelManager:
-    """Manages model favorites and status"""
+    """Manages model hot slots and status"""
 
     def __init__(self):
-        self.favorites: List[str] = []
-        self.load_favorites()
+        self.hot_slots: Dict[int, Optional[str]] = {1: None, 2: None, 3: None, 4: None}
+        self.load_hot_slots()
 
-    def load_favorites(self):
-        """Load favorites from disk"""
+    def load_hot_slots(self):
+        """Load hot slots from disk"""
         try:
-            if FAVORITES_FILE.exists():
-                with open(FAVORITES_FILE, 'r') as f:
+            if HOT_SLOTS_FILE.exists():
+                with open(HOT_SLOTS_FILE, 'r') as f:
                     data = json.load(f)
-                    self.favorites = data.get('favorites', [])
-                    logger.info(f"Loaded {len(self.favorites)} favorite models")
+                    slots = data.get('hot_slots', {})
+                    # Convert string keys to int
+                    self.hot_slots = {int(k): v for k, v in slots.items()}
+                    logger.info(f"Loaded hot slots: {self.hot_slots}")
         except Exception as e:
-            logger.error(f"Failed to load favorites: {e}")
-            self.favorites = []
+            logger.error(f"Failed to load hot slots: {e}")
+            self.hot_slots = {1: None, 2: None, 3: None, 4: None}
 
-    def save_favorites(self):
-        """Save favorites to disk"""
+    def save_hot_slots(self):
+        """Save hot slots to disk"""
         try:
             data = {
-                'favorites': self.favorites,
+                'hot_slots': self.hot_slots,
                 'updated_at': datetime.utcnow().isoformat()
             }
-            with open(FAVORITES_FILE, 'w') as f:
+            with open(HOT_SLOTS_FILE, 'w') as f:
                 json.dump(data, f, indent=2)
-            logger.info(f"Saved {len(self.favorites)} favorite models")
+            logger.info(f"Saved hot slots: {self.hot_slots}")
         except Exception as e:
-            logger.error(f"Failed to save favorites: {e}")
+            logger.error(f"Failed to save hot slots: {e}")
 
-    def add_favorite(self, model_name: str) -> bool:
-        """Add a model to favorites"""
-        if model_name not in self.favorites:
-            self.favorites.append(model_name)
-            self.save_favorites()
-            logger.info(f"Added '{model_name}' to favorites")
+    def assign_to_slot(self, slot_number: int, model_name: str) -> bool:
+        """Assign a model to a specific hot slot (1-4)"""
+        if slot_number not in [1, 2, 3, 4]:
+            logger.error(f"Invalid slot number: {slot_number}")
+            return False
+
+        self.hot_slots[slot_number] = model_name
+        self.save_hot_slots()
+        logger.info(f"Assigned '{model_name}' to slot {slot_number}")
+        return True
+
+    def remove_from_slot(self, slot_number: int) -> bool:
+        """Remove a model from a specific hot slot"""
+        if slot_number not in [1, 2, 3, 4]:
+            logger.error(f"Invalid slot number: {slot_number}")
+            return False
+
+        if self.hot_slots[slot_number] is not None:
+            model_name = self.hot_slots[slot_number]
+            self.hot_slots[slot_number] = None
+            self.save_hot_slots()
+            logger.info(f"Removed '{model_name}' from slot {slot_number}")
             return True
         return False
 
-    def remove_favorite(self, model_name: str) -> bool:
-        """Remove a model from favorites"""
-        if model_name in self.favorites:
-            self.favorites.remove(model_name)
-            self.save_favorites()
-            logger.info(f"Removed '{model_name}' from favorites")
-            return True
-        return False
+    def get_hot_slots(self) -> Dict[int, Optional[str]]:
+        """Get current hot slot assignments"""
+        return self.hot_slots.copy()
 
-    def get_favorites(self) -> List[str]:
-        """Get list of favorite models"""
-        return self.favorites.copy()
-
-    def is_favorite(self, model_name: str) -> bool:
-        """Check if a model is favorited"""
-        return model_name in self.favorites
+    def get_slot_for_model(self, model_name: str) -> Optional[int]:
+        """Get the slot number for a specific model (if assigned)"""
+        for slot_num, assigned_model in self.hot_slots.items():
+            if assigned_model == model_name:
+                return slot_num
+        return None
 
     async def get_model_status(self, ollama_client) -> Dict[str, Any]:
         """
@@ -160,7 +172,7 @@ class ModelManager:
         Each model entry contains:
         - name: model name
         - loaded: whether model is currently loaded
-        - is_favorite: whether model is in favorites
+        - slot_number: which hot slot (1-4) the model is assigned to, or null if not assigned
         - size: model size
         - modified_at: last modified timestamp
         - unavailable_reason: (for unavailable models only) reason why unavailable
@@ -190,7 +202,7 @@ class ModelManager:
                 model_info = {
                     "name": model.name,
                     "loaded": model.name in running_models,
-                    "is_favorite": self.is_favorite(model.name),
+                    "slot_number": self.get_slot_for_model(model.name),
                     "size": model.size,
                     "modified_at": model.modified_at
                 }

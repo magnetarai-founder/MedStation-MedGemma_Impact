@@ -137,10 +137,28 @@ export function ChatWindow() {
 
       clearStreamingContent()
       let fullResponse = ''
+      let pendingContent = ''
+      let animationFrameId: number | null = null
+
+      // Smooth streaming with requestAnimationFrame throttling
+      const flushPendingContent = () => {
+        if (pendingContent) {
+          appendStreamingContent(pendingContent)
+          pendingContent = ''
+        }
+        animationFrameId = null
+      }
 
       while (true) {
         const { done, value } = await reader.read()
-        if (done) break
+        if (done) {
+          // Flush any remaining content
+          if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId)
+          }
+          flushPendingContent()
+          break
+        }
 
         const chunk = decoder.decode(value)
         const lines = chunk.split('\n')
@@ -156,7 +174,12 @@ export function ChatWindow() {
 
             if (parsed.content) {
               fullResponse += parsed.content
-              appendStreamingContent(parsed.content)
+              pendingContent += parsed.content
+
+              // Throttle updates to 60fps using requestAnimationFrame
+              if (!animationFrameId) {
+                animationFrameId = requestAnimationFrame(flushPendingContent)
+              }
             }
 
             if (parsed.done) {

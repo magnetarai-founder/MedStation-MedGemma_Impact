@@ -11,7 +11,7 @@ interface ModelSelectorProps {
 interface ModelStatus {
   name: string
   loaded: boolean
-  is_favorite: boolean
+  slot_number: number | null
   size: string
 }
 
@@ -93,7 +93,7 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
           ) : (
             loadedModels.map((model) => (
               <option key={model.name} value={model.name}>
-                {model.is_favorite ? '⭐ ' : ''}{model.name}
+                {model.slot_number ? `[${model.slot_number}] ` : ''}{model.name}
               </option>
             ))
           )}

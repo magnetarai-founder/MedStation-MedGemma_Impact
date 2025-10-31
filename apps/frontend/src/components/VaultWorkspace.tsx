@@ -196,19 +196,27 @@ export function VaultWorkspace() {
       try {
         toast.loading('Decrypting document...', { id: 'decrypt' })
 
-        // Decrypt the document
-        const contentString = typeof doc.content === 'string'
-          ? doc.content
-          : JSON.stringify(doc.content)
+        // Prepare encrypted document structure
+        const encryptedDoc = {
+          id: doc.id,
+          title: doc.title,
+          encrypted_content: doc.content.encrypted_content,
+          salt: doc.content.salt,
+          iv: doc.content.iv,
+          created_at: doc.created_at,
+          modified_at: doc.updated_at,
+          metadata: doc.content.metadata
+        }
 
-        const decrypted = await decryptDocument(contentString, vaultPassphrase)
+        // Decrypt the document
+        const decryptedString = await decryptDocument(encryptedDoc, vaultPassphrase)
 
         // Parse decrypted content
         let decryptedContent
         try {
-          decryptedContent = JSON.parse(decrypted.content)
+          decryptedContent = JSON.parse(decryptedString)
         } catch {
-          decryptedContent = decrypted.content
+          decryptedContent = decryptedString
         }
 
         // Update document with decrypted content

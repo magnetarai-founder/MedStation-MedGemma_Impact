@@ -5,7 +5,7 @@
  */
 
 import { useState } from 'react'
-import { Workflow, Code, Database, Zap, GitBranch, Cpu, Save } from 'lucide-react'
+import { Workflow, Code, Database, Save } from 'lucide-react'
 import { showToast } from '@/lib/toast'
 
 export default function AutomationTab() {
@@ -22,11 +22,6 @@ export default function AutomationTab() {
     editor_word_wrap: true,
     editor_minimap: true,
     editor_line_numbers: true,
-
-    // Integration settings
-    enable_n8n: false,
-    n8n_webhook_url: '',
-    enable_mcp: false,
 
     // Database settings
     query_timeout: 30,
@@ -52,9 +47,6 @@ export default function AutomationTab() {
         editor_word_wrap: true,
         editor_minimap: true,
         editor_line_numbers: true,
-        enable_n8n: false,
-        n8n_webhook_url: '',
-        enable_mcp: false,
         query_timeout: 30,
         max_query_results: 1000,
         enable_query_cache: true,
@@ -217,64 +209,6 @@ export default function AutomationTab() {
             />
             <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
               Show line numbers
-            </div>
-          </label>
-        </div>
-      </div>
-
-      {/* Integration Settings */}
-      <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Zap className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Integrations
-          </h3>
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <label className="flex items-center gap-3 cursor-pointer mb-2">
-              <input
-                type="checkbox"
-                checked={settings.enable_n8n}
-                onChange={(e) => setSettings({ ...settings, enable_n8n: e.target.checked })}
-                className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
-              />
-              <div>
-                <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  Enable n8n integration
-                </div>
-                <div className="text-xs text-gray-600 dark:text-gray-400">
-                  Connect workflows to n8n automation platform
-                </div>
-              </div>
-            </label>
-
-            {settings.enable_n8n && (
-              <input
-                type="url"
-                placeholder="https://n8n.yourdomain.com/webhook/..."
-                value={settings.n8n_webhook_url}
-                onChange={(e) => setSettings({ ...settings, n8n_webhook_url: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
-              />
-            )}
-          </div>
-
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={settings.enable_mcp}
-              onChange={(e) => setSettings({ ...settings, enable_mcp: e.target.checked })}
-              className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
-            />
-            <div>
-              <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                Enable MCP (Model Context Protocol)
-              </div>
-              <div className="text-xs text-gray-600 dark:text-gray-400">
-                Connect to MCP servers for extended functionality
-              </div>
             </div>
           </label>
         </div>

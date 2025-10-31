@@ -6,7 +6,8 @@
 
 import { useState } from 'react'
 import { useDocsStore } from '@/stores/docsStore'
-import { Lock, Shield, AlertTriangle, Eye, EyeOff, Check } from 'lucide-react'
+import { Lock, Shield, AlertTriangle, Eye, EyeOff, Check, Loader2 } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 interface VaultSetupProps {
   onComplete: () => void
@@ -26,6 +27,7 @@ export function VaultSetup({ onComplete, onCancel }: VaultSetupProps) {
   const [confirmDecoy, setConfirmDecoy] = useState('')
   const [showPasswords, setShowPasswords] = useState(false)
   const [error, setError] = useState('')
+  const [isSettingUp, setIsSettingUp] = useState(false)
 
   const validatePasswords = (): boolean => {
     setError('')
@@ -84,8 +86,18 @@ export function VaultSetup({ onComplete, onCancel }: VaultSetupProps) {
   const handleSetup = async () => {
     if (!validatePasswords()) return
 
-    await setVaultPasswords(realPassword, decoyPassword, requireTouchID ? undefined : realPassword2)
-    onComplete()
+    setIsSettingUp(true)
+    toast.loading('Setting up secure vault...', { id: 'vault-setup' })
+
+    try {
+      await setVaultPasswords(realPassword, decoyPassword, requireTouchID ? undefined : realPassword2)
+      toast.success('Vault setup complete!', { id: 'vault-setup' })
+      onComplete()
+    } catch (error) {
+      console.error('Vault setup error:', error)
+      toast.error('Failed to setup vault. Please try again.', { id: 'vault-setup' })
+      setIsSettingUp(false)
+    }
   }
 
   return (
@@ -324,9 +336,17 @@ export function VaultSetup({ onComplete, onCancel }: VaultSetupProps) {
               </button>
               <button
                 onClick={handleSetup}
-                className="flex-1 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium transition-colors"
+                disabled={isSettingUp}
+                className="flex-1 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Create Vault
+                {isSettingUp ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Creating Vault...
+                  </>
+                ) : (
+                  'Create Vault'
+                )}
               </button>
             </div>
           </div>

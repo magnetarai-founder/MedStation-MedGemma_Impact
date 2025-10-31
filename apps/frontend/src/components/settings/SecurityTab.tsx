@@ -1,6 +1,9 @@
-import { Shield, User, Eye, EyeOff } from 'lucide-react'
+import { Shield, User, Eye, EyeOff, Fingerprint, CheckCircle, XCircle } from 'lucide-react'
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useDocsStore } from '@/stores/docsStore'
+import { authenticateBiometric, isBiometricAvailable, testTouchID } from '@/lib/biometricAuth'
+import toast from 'react-hot-toast'
 
 /**
  * Security Tab
@@ -46,6 +49,8 @@ const ROLE_DESCRIPTIONS: Record<string, { label: string; description: string; co
 export default function SecurityTab() {
   // Vault security settings
   const { securitySettings, updateSecuritySettings } = useDocsStore()
+  const [isTouchIDAvailable, setIsTouchIDAvailable] = useState<boolean | null>(null)
+  const [touchIDTestResult, setTouchIDTestResult] = useState<'success' | 'failed' | null>(null)
 
   // Fetch current user profile
   const { data: currentUser, isLoading } = useQuery({
@@ -74,6 +79,56 @@ export default function SecurityTab() {
   }
 
   const roleInfo = ROLE_DESCRIPTIONS[currentUser.role] || ROLE_DESCRIPTIONS.member
+
+  // Handle Touch ID toggle
+  const handleTouchIDToggle = async (enabled: boolean) => {
+    if (enabled) {
+      // User is trying to enable Touch ID - test if it's available
+      toast.loading('Checking Touch ID availability...', { id: 'touchid-check' })
+
+      const available = await isBiometricAvailable()
+      setIsTouchIDAvailable(available)
+
+      if (!available) {
+        toast.error('Touch ID not available on this device', { id: 'touchid-check' })
+        setTouchIDTestResult('failed')
+        return
+      }
+
+      // Touch ID is available, now test authentication
+      toast.loading('Testing Touch ID authentication...', { id: 'touchid-check' })
+
+      const authenticated = await authenticateBiometric()
+
+      if (authenticated) {
+        toast.success('Touch ID verified and enabled!', { id: 'touchid-check' })
+        setTouchIDTestResult('success')
+        updateSecuritySettings({ require_touch_id: true })
+      } else {
+        toast.error('Touch ID authentication failed', { id: 'touchid-check' })
+        setTouchIDTestResult('failed')
+      }
+    } else {
+      // User is disabling Touch ID
+      updateSecuritySettings({ require_touch_id: false })
+      setTouchIDTestResult(null)
+      toast.success('Touch ID disabled')
+    }
+  }
+
+  // Test Touch ID button
+  const handleTestTouchID = async () => {
+    toast.loading('Testing Touch ID...', { id: 'touchid-test' })
+
+    const result = await testTouchID()
+    if (result) {
+      toast.success('Touch ID is available and ready!', { id: 'touchid-test' })
+      setTouchIDTestResult('success')
+    } else {
+      toast.error('Touch ID not available on this device', { id: 'touchid-test' })
+      setTouchIDTestResult('failed')
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -255,16 +310,42 @@ export default function SecurityTab() {
               <input
                 type="checkbox"
                 checked={securitySettings.require_touch_id}
-                onChange={(e) => updateSecuritySettings({ require_touch_id: e.target.checked })}
+                onChange={(e) => handleTouchIDToggle(e.target.checked)}
                 className="mt-1 w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-amber-600 focus:ring-amber-500"
               />
               <div className="flex-1">
-                <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  Require Touch ID
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    Require Touch ID
+                  </span>
+                  {touchIDTestResult === 'success' && (
+                    <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
+                  )}
+                  {touchIDTestResult === 'failed' && (
+                    <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
+                  )}
                 </div>
                 <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                   Require biometric authentication (Touch ID/Face ID) before password entry when unlocking vault.
                 </p>
+                {securitySettings.require_touch_id && (
+                  <div className="mt-3">
+                    <button
+                      onClick={handleTestTouchID}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 text-xs bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-800 dark:text-amber-200 rounded-lg transition-colors"
+                    >
+                      <Fingerprint className="w-4 h-4" />
+                      Test Touch ID
+                    </button>
+                  </div>
+                )}
+                {isTouchIDAvailable === false && (
+                  <div className="mt-2 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                    <p className="text-xs text-red-800 dark:text-red-200">
+                      Touch ID is not available on this device. Make sure your Mac has Touch ID enabled in System Preferences.
+                    </p>
+                  </div>
+                )}
               </div>
             </label>
           </div>

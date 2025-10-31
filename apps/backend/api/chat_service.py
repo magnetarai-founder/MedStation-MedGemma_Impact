@@ -37,6 +37,7 @@ try:
     from api.jarvis_memory import JarvisMemory
     from api.learning_system import LearningSystem
     from api.ane_router import get_ane_router, ANERouter
+    from api.learning_engine import get_learning_engine
 except ImportError:
     # Fallback for standalone execution
     from chat_memory import get_memory, ConversationEvent
@@ -962,53 +963,110 @@ async def get_models_status():
     return await model_manager.get_model_status(ollama_client)
 
 
-@router.get("/models/favorites")
-async def get_favorite_models():
-    """Get list of favorite models"""
-    favorites = model_manager.get_favorites()
-    return {"favorites": favorites}
+@router.get("/models/hot-slots")
+async def get_hot_slots():
+    """Get current hot slot assignments (1-4)"""
+    slots = model_manager.get_hot_slots()
+    return {"hot_slots": slots}
 
 
-@router.post("/models/favorites/{model_name}")
-async def add_favorite_model(model_name: str):
-    """Add a model to favorites"""
-    success = model_manager.add_favorite(model_name)
+@router.post("/models/hot-slots/{slot_number}")
+async def assign_to_hot_slot(slot_number: int, model_name: str):
+    """
+    Assign a model to a specific hot slot (1-4)
+
+    Args:
+        slot_number: Slot number (1-4)
+        model_name: Model name to assign
+
+    Returns:
+        Success status and updated hot slots
+    """
+    if slot_number not in [1, 2, 3, 4]:
+        raise HTTPException(status_code=400, detail="Slot number must be between 1 and 4")
+
+    # Check if model already in another slot
+    existing_slot = model_manager.get_slot_for_model(model_name)
+    if existing_slot and existing_slot != slot_number:
+        # Remove from previous slot
+        model_manager.remove_from_slot(existing_slot)
+
+    # Check if slot already occupied
+    current_slots = model_manager.get_hot_slots()
+    if current_slots[slot_number] is not None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Slot {slot_number} is already occupied by {current_slots[slot_number]}"
+        )
+
+    # Assign to new slot
+    success = model_manager.assign_to_slot(slot_number, model_name)
+
+    # Preload the model
+    await ollama_client.preload_model(model_name, "1h")
+
     return {
         "success": success,
         "model": model_name,
-        "favorites": model_manager.get_favorites()
+        "slot_number": slot_number,
+        "hot_slots": model_manager.get_hot_slots()
     }
 
 
-@router.delete("/models/favorites/{model_name}")
-async def remove_favorite_model(model_name: str):
-    """Remove a model from favorites"""
-    success = model_manager.remove_favorite(model_name)
+@router.delete("/models/hot-slots/{slot_number}")
+async def remove_from_hot_slot(slot_number: int):
+    """
+    Remove a model from a specific hot slot
+
+    Args:
+        slot_number: Slot number (1-4) to clear
+
+    Returns:
+        Success status and updated hot slots
+    """
+    if slot_number not in [1, 2, 3, 4]:
+        raise HTTPException(status_code=400, detail="Slot number must be between 1 and 4")
+
+    current_slots = model_manager.get_hot_slots()
+    model_name = current_slots[slot_number]
+
+    if model_name is None:
+        raise HTTPException(status_code=400, detail=f"Slot {slot_number} is already empty")
+
+    # Unload the model
+    await ollama_client.preload_model(model_name, "0")  # keep_alive=0 unloads immediately
+
+    # Remove from slot
+    success = model_manager.remove_from_slot(slot_number)
+
     return {
         "success": success,
+        "slot_number": slot_number,
         "model": model_name,
-        "favorites": model_manager.get_favorites()
+        "hot_slots": model_manager.get_hot_slots()
     }
 
 
-@router.post("/models/load-favorites")
-async def load_favorite_models(keep_alive: str = "1h"):
+@router.post("/models/load-hot-slots")
+async def load_hot_slot_models(keep_alive: str = "1h"):
     """
-    Load all favorite models into memory
-    Useful for startup to pre-warm all favorites
+    Load all hot slot models into memory
+    Useful for startup to pre-warm all hot slots
     """
-    favorites = model_manager.get_favorites()
+    hot_slots = model_manager.get_hot_slots()
     results = []
 
-    for model in favorites:
-        success = await ollama_client.preload_model(model, keep_alive)
-        results.append({
-            "model": model,
-            "loaded": success
-        })
+    for slot_num, model_name in hot_slots.items():
+        if model_name:
+            success = await ollama_client.preload_model(model_name, keep_alive)
+            results.append({
+                "slot": slot_num,
+                "model": model_name,
+                "loaded": success
+            })
 
     return {
-        "total": len(favorites),
+        "total": len([m for m in hot_slots.values() if m is not None]),
         "results": results,
         "keep_alive": keep_alive
     }
@@ -1822,6 +1880,132 @@ async def reset_panic_mode():
         return {"status": "success", "message": "Panic mode reset"}
     except Exception as e:
         logger.error(f"Failed to reset panic mode: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# ADAPTIVE LEARNING ENDPOINTS
+# ============================================================================
+
+@router.get("/learning/patterns")
+async def get_learning_patterns(days: int = 30):
+    """
+    Get usage patterns and learning insights
+
+    Args:
+        days: Number of days to analyze (default: 30)
+
+    Returns:
+        Usage patterns, recommendations, and insights
+    """
+    try:
+        learning_engine = get_learning_engine()
+        patterns = learning_engine.analyze_patterns(days=days)
+        return patterns
+    except Exception as e:
+        logger.error(f"Failed to get learning patterns: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/learning/recommendations")
+async def get_recommendations():
+    """Get current classification recommendations"""
+    try:
+        learning_engine = get_learning_engine()
+        recommendations = learning_engine.get_recommendations()
+        return {"recommendations": recommendations}
+    except Exception as e:
+        logger.error(f"Failed to get recommendations: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/learning/recommendations/{recommendation_id}/accept")
+async def accept_recommendation(recommendation_id: int, feedback: Optional[str] = None):
+    """Accept a classification recommendation"""
+    try:
+        learning_engine = get_learning_engine()
+        success = learning_engine.accept_recommendation(recommendation_id, feedback)
+
+        if success:
+            return {"status": "success", "message": "Recommendation accepted"}
+        else:
+            raise HTTPException(status_code=400, detail="Failed to accept recommendation")
+    except Exception as e:
+        logger.error(f"Failed to accept recommendation: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/learning/recommendations/{recommendation_id}/reject")
+async def reject_recommendation(recommendation_id: int, feedback: Optional[str] = None):
+    """Reject a classification recommendation"""
+    try:
+        learning_engine = get_learning_engine()
+        success = learning_engine.reject_recommendation(recommendation_id, feedback)
+
+        if success:
+            return {"status": "success", "message": "Recommendation rejected"}
+        else:
+            raise HTTPException(status_code=400, detail="Failed to reject recommendation")
+    except Exception as e:
+        logger.error(f"Failed to reject recommendation: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/learning/optimal-model/{task_type}")
+async def get_optimal_model(task_type: str, top_n: int = 3):
+    """
+    Get the optimal models for a specific task type based on learning
+
+    Args:
+        task_type: Task classification (code, writing, reasoning, etc.)
+        top_n: Number of top models to return
+
+    Returns:
+        List of recommended models with confidence scores
+    """
+    try:
+        learning_engine = get_learning_engine()
+        models = learning_engine.get_optimal_model_for_task(task_type, top_n)
+
+        return {
+            "task_type": task_type,
+            "recommended_models": [
+                {"model": model, "confidence": confidence}
+                for model, confidence in models
+            ]
+        }
+    except Exception as e:
+        logger.error(f"Failed to get optimal model for task '{task_type}': {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/learning/track-usage")
+async def track_usage_manually(
+    model_name: str,
+    classification: Optional[str] = None,
+    session_id: Optional[str] = None,
+    message_count: int = 1,
+    tokens_used: int = 0,
+    task_detected: Optional[str] = None
+):
+    """
+    Manually track model usage (for testing or external integrations)
+
+    Normally usage is tracked automatically during chat sessions
+    """
+    try:
+        learning_engine = get_learning_engine()
+        learning_engine.track_usage(
+            model_name=model_name,
+            classification=classification,
+            session_id=session_id,
+            message_count=message_count,
+            tokens_used=tokens_used,
+            task_detected=task_detected
+        )
+        return {"status": "success", "message": "Usage tracked"}
+    except Exception as e:
+        logger.error(f"Failed to track usage: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

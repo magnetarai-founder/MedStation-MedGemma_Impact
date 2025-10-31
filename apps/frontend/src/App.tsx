@@ -25,8 +25,12 @@ import { ClearWorkspaceDialog } from './components/ClearWorkspaceDialog'
 import * as settingsApi from './lib/settingsApi'
 import { FolderOpen, Clock, FileJson } from 'lucide-react'
 import { initializeSecurityMonitor, cleanupSecurityMonitor } from './lib/securityMonitor'
+import { useModelSync } from './hooks/useModelSync'
 
 export default function App() {
+  // Enable global model syncing (polls every 5 seconds for model changes)
+  useModelSync()
+
   const { sessionId, setSessionId, clearSession } = useSessionStore()
   const { activeTab, setActiveTab } = useNavigationStore()
   const { setCode } = useEditorStore()
