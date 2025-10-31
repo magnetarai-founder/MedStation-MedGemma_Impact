@@ -329,6 +329,85 @@ class TeamManager:
             logger.error(f"Failed to regenerate invite code: {e}")
             raise
 
+    def validate_invite_code(self, invite_code: str) -> Optional[str]:
+        """
+        Validate invite code and return team_id if valid
+
+        Returns:
+            team_id if code is valid and not expired/used, None otherwise
+        """
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                SELECT team_id, expires_at, used
+                FROM invite_codes
+                WHERE code = ?
+            """, (invite_code,))
+
+            row = cursor.fetchone()
+
+            if not row:
+                logger.warning(f"Invite code not found: {invite_code}")
+                return None
+
+            # Check if already used
+            if row['used']:
+                logger.warning(f"Invite code already used: {invite_code}")
+                return None
+
+            # Check if expired
+            if row['expires_at']:
+                from datetime import datetime
+                expires_at = datetime.fromisoformat(row['expires_at'])
+                if datetime.now() > expires_at:
+                    logger.warning(f"Invite code expired: {invite_code}")
+                    return None
+
+            return row['team_id']
+
+        except Exception as e:
+            logger.error(f"Failed to validate invite code: {e}")
+            return None
+
+    def join_team(self, team_id: str, user_id: str, role: str = 'member') -> bool:
+        """
+        Add user to team
+
+        Args:
+            team_id: Team to join
+            user_id: User joining
+            role: Role to assign (default: member)
+
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            cursor = self.conn.cursor()
+
+            # Check if user is already a member
+            cursor.execute("""
+                SELECT id FROM team_members
+                WHERE team_id = ? AND user_id = ?
+            """, (team_id, user_id))
+
+            if cursor.fetchone():
+                logger.warning(f"User {user_id} already member of team {team_id}")
+                return False
+
+            # Add user as member
+            cursor.execute("""
+                INSERT INTO team_members (team_id, user_id, role)
+                VALUES (?, ?, ?)
+            """, (team_id, user_id, role))
+
+            self.conn.commit()
+            logger.info(f"User {user_id} joined team {team_id} as {role}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to join team: {e}")
+            return False
+
     def close(self):
         """Close database connection"""
         if self.conn:
@@ -435,4 +514,63 @@ async def regenerate_invite_code(team_id: str):
 
     except Exception as e:
         logger.error(f"Failed to regenerate invite code: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class JoinTeamRequest(BaseModel):
+    invite_code: str
+    user_id: str
+
+
+class JoinTeamResponse(BaseModel):
+    success: bool
+    team_id: str
+    team_name: str
+    user_role: str
+
+
+@router.post("/join", response_model=JoinTeamResponse)
+async def join_team(request: JoinTeamRequest):
+    """
+    Join a team using an invite code
+
+    Validates invite code and adds user as member
+    """
+    team_manager = get_team_manager()
+
+    try:
+        # Validate invite code
+        team_id = team_manager.validate_invite_code(request.invite_code)
+
+        if not team_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid, expired, or already used invite code"
+            )
+
+        # Get team details
+        team = team_manager.get_team(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+
+        # Join team as member
+        success = team_manager.join_team(team_id, request.user_id, role='member')
+
+        if not success:
+            raise HTTPException(
+                status_code=400,
+                detail="Failed to join team. You may already be a member."
+            )
+
+        return JoinTeamResponse(
+            success=True,
+            team_id=team_id,
+            team_name=team['name'],
+            user_role='member'
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to join team: {e}")
         raise HTTPException(status_code=500, detail=str(e))

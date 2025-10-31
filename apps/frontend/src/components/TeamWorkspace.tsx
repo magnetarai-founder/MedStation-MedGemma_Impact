@@ -16,7 +16,8 @@ import { VaultSetup } from './VaultSetup'
 import { VaultWorkspace } from './VaultWorkspace'
 import { NetworkSelector } from './NetworkSelector'
 import { CreateTeamModal } from './CreateTeamModal'
-import { MessageSquare, FileText, Lock, Plus } from 'lucide-react'
+import { JoinTeamModal } from './JoinTeamModal'
+import { MessageSquare, FileText, Lock, Plus, UserPlus } from 'lucide-react'
 
 export function TeamWorkspace() {
   const { workspaceView, setWorkspaceView, vaultSetupComplete, vaultUnlocked } = useDocsStore()
@@ -24,6 +25,7 @@ export function TeamWorkspace() {
   const permissions = usePermissions()
   const [showVaultSetup, setShowVaultSetup] = useState(false)
   const [showCreateTeam, setShowCreateTeam] = useState(false)
+  const [showJoinTeam, setShowJoinTeam] = useState(false)
 
   const handleVaultClick = () => {
     if (!vaultSetupComplete) {
@@ -93,15 +95,24 @@ export function TeamWorkspace() {
           )}
         </div>
 
-        {/* Create Team Button - Show when not on a team */}
+        {/* Team Action Buttons - Show when not on a team */}
         {!currentTeam && (
-          <button
-            onClick={() => setShowCreateTeam(true)}
-            className="ml-auto flex items-center gap-2 px-3 py-1.5 text-sm bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors font-medium"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Create Team</span>
-          </button>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={() => setShowJoinTeam(true)}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors font-medium"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>Join Team</span>
+            </button>
+            <button
+              onClick={() => setShowCreateTeam(true)}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors font-medium"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Create Team</span>
+            </button>
+          </div>
         )}
       </div>
 
@@ -129,6 +140,12 @@ export function TeamWorkspace() {
       <CreateTeamModal
         isOpen={showCreateTeam}
         onClose={() => setShowCreateTeam(false)}
+      />
+
+      {/* Join Team Modal */}
+      <JoinTeamModal
+        isOpen={showJoinTeam}
+        onClose={() => setShowJoinTeam(false)}
       />
     </div>
   )
