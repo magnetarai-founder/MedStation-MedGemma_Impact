@@ -4997,17 +4997,71 @@ async def toggle_rule(rule_id: str, enabled: bool = Form(...)):
 async def delete_rule(rule_id: str):
     """Delete an organization rule"""
     service = get_vault_service()
-    
+
     conn = sqlite3.connect(service.db_path)
     cursor = conn.cursor()
-    
+
     try:
         cursor.execute("DELETE FROM vault_organization_rules WHERE id = ?", (rule_id,))
         conn.commit()
-        
+
         if cursor.rowcount == 0:
             raise HTTPException(status_code=404, detail="Rule not found")
-        
+
         return {"success": True, "rule_id": rule_id}
     finally:
         conn.close()
+
+
+# ===== Decoy Vault Seeding =====
+
+@router.post("/seed-decoy-vault")
+async def seed_decoy_vault_endpoint(request: Request, user_id: str = Form("default_user")):
+    """
+    Seed decoy vault with realistic documents for plausible deniability
+
+    This populates the decoy vault with convincing documents like:
+    - Budget spreadsheets
+    - WiFi passwords
+    - Shopping lists
+    - Travel plans
+    - Meeting notes
+
+    Only seeds if decoy vault is empty.
+    """
+    try:
+        from vault_seed_data import get_seeder
+
+        seeder = get_seeder()
+        result = seeder.seed_decoy_vault(user_id)
+
+        logger.info(f"Decoy vault seeding result: {result['status']}")
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Failed to seed decoy vault: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/clear-decoy-vault")
+async def clear_decoy_vault_endpoint(request: Request, user_id: str = Form("default_user")):
+    """
+    Clear all decoy vault documents (for testing/re-seeding)
+
+    WARNING: This will delete all decoy vault documents!
+    Use this if you want to re-seed the decoy vault with fresh data.
+    """
+    try:
+        from vault_seed_data import get_seeder
+
+        seeder = get_seeder()
+        result = seeder.clear_decoy_vault(user_id)
+
+        logger.info(f"Decoy vault cleared: {result['deleted_count']} documents")
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Failed to clear decoy vault: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
