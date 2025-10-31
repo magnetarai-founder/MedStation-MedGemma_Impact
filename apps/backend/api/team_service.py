@@ -80,6 +80,7 @@ class TeamManager:
                 user_id TEXT NOT NULL,
                 role TEXT NOT NULL,
                 joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (team_id) REFERENCES teams (team_id),
                 UNIQUE(team_id, user_id)
             )
@@ -114,6 +115,23 @@ class TeamManager:
                 reason TEXT,
                 FOREIGN KEY (team_id) REFERENCES teams (team_id),
                 UNIQUE(team_id, user_id, executed)
+            )
+        """)
+
+        # Temporary promotions table (for offline Super Admin failsafe)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS temp_promotions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                team_id TEXT NOT NULL,
+                original_super_admin_id TEXT NOT NULL,
+                promoted_admin_id TEXT NOT NULL,
+                promoted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                reverted_at TIMESTAMP,
+                status TEXT NOT NULL DEFAULT 'active',
+                reason TEXT,
+                approved_by TEXT,
+                FOREIGN KEY (team_id) REFERENCES teams (team_id),
+                UNIQUE(team_id, promoted_admin_id, status)
             )
         """)
 
@@ -872,6 +890,283 @@ class TeamManager:
             logger.error(f"Failed to execute delayed promotions: {e}")
             return []
 
+    def update_last_seen(self, team_id: str, user_id: str) -> tuple[bool, str]:
+        """
+        Update last_seen timestamp for a team member (Phase 3.3)
+
+        Should be called on every user activity to track online status
+
+        Args:
+            team_id: Team ID
+            user_id: User ID to update
+
+        Returns:
+            Tuple of (success: bool, message: str)
+        """
+        try:
+            from datetime import datetime
+            cursor = self.conn.cursor()
+
+            cursor.execute("""
+                UPDATE team_members
+                SET last_seen = ?
+                WHERE team_id = ? AND user_id = ?
+            """, (datetime.now(), team_id, user_id))
+
+            self.conn.commit()
+
+            if cursor.rowcount == 0:
+                return False, "User not found in team"
+
+            return True, "Last seen updated"
+
+        except Exception as e:
+            logger.error(f"Failed to update last_seen: {e}")
+            return False, str(e)
+
+    def check_super_admin_offline(self, team_id: str, offline_threshold_minutes: int = 5) -> List[Dict]:
+        """
+        Check for offline Super Admins (Phase 3.3)
+
+        A Super Admin is considered offline if last_seen > threshold minutes
+
+        Args:
+            team_id: Team ID
+            offline_threshold_minutes: Minutes before considering offline (default: 5)
+
+        Returns:
+            List of offline super admins with details
+        """
+        try:
+            from datetime import datetime, timedelta
+            cursor = self.conn.cursor()
+
+            threshold_time = datetime.now() - timedelta(minutes=offline_threshold_minutes)
+
+            cursor.execute("""
+                SELECT user_id, role, last_seen, joined_at
+                FROM team_members
+                WHERE team_id = ? AND role = 'super_admin' AND last_seen < ?
+            """, (team_id, threshold_time))
+
+            offline_admins = []
+            for row in cursor.fetchall():
+                last_seen = datetime.fromisoformat(row['last_seen'])
+                minutes_offline = (datetime.now() - last_seen).total_seconds() / 60
+
+                offline_admins.append({
+                    'user_id': row['user_id'],
+                    'role': row['role'],
+                    'last_seen': row['last_seen'],
+                    'minutes_offline': int(minutes_offline)
+                })
+
+            return offline_admins
+
+        except Exception as e:
+            logger.error(f"Failed to check super admin offline: {e}")
+            return []
+
+    def promote_admin_temporarily(self, team_id: str, offline_super_admin_id: str, requesting_user_role: str = None) -> tuple[bool, str]:
+        """
+        Temporarily promote an admin to super_admin when original is offline (Phase 3.3)
+
+        Finds the most senior admin (earliest joined_at) and promotes them temporarily
+        Logs the promotion in temp_promotions table for later approval/revert
+
+        Args:
+            team_id: Team ID
+            offline_super_admin_id: The super_admin who went offline
+            requesting_user_role: Role of requester (for God Rights override)
+
+        Returns:
+            Tuple of (success: bool, message: str)
+        """
+        try:
+            from datetime import datetime
+            cursor = self.conn.cursor()
+
+            # Find most senior admin (earliest joined_at)
+            cursor.execute("""
+                SELECT user_id, joined_at FROM team_members
+                WHERE team_id = ? AND role = 'admin'
+                ORDER BY joined_at ASC
+                LIMIT 1
+            """, (team_id,))
+
+            admin = cursor.fetchone()
+            if not admin:
+                return False, "No admins available for temporary promotion"
+
+            promoted_admin_id = admin['user_id']
+
+            # Check if this admin already has an active temp promotion
+            cursor.execute("""
+                SELECT id FROM temp_promotions
+                WHERE team_id = ? AND promoted_admin_id = ? AND status = 'active'
+            """, (team_id, promoted_admin_id))
+
+            if cursor.fetchone():
+                return False, f"Admin {promoted_admin_id} already has active temp promotion"
+
+            # Promote admin to super_admin
+            success, message = self.update_member_role(team_id, promoted_admin_id, 'super_admin', requesting_user_role)
+
+            if not success:
+                return False, f"Failed to promote: {message}"
+
+            # Log in temp_promotions table
+            cursor.execute("""
+                INSERT INTO temp_promotions (team_id, original_super_admin_id, promoted_admin_id, reason, status)
+                VALUES (?, ?, ?, ?, 'active')
+            """, (team_id, offline_super_admin_id, promoted_admin_id, "Super Admin offline failsafe"))
+
+            self.conn.commit()
+
+            logger.info(f"Temporarily promoted {promoted_admin_id} to super_admin (original: {offline_super_admin_id})")
+
+            return True, f"Temporarily promoted {promoted_admin_id} to Super Admin"
+
+        except Exception as e:
+            logger.error(f"Failed temporary promotion: {e}")
+            return False, str(e)
+
+    def get_pending_temp_promotions(self, team_id: str) -> List[Dict]:
+        """
+        Get all pending temporary promotions for a team (Phase 3.3)
+
+        Args:
+            team_id: Team ID
+
+        Returns:
+            List of active temp promotions awaiting approval
+        """
+        try:
+            cursor = self.conn.cursor()
+
+            cursor.execute("""
+                SELECT id, original_super_admin_id, promoted_admin_id, promoted_at, reason, status
+                FROM temp_promotions
+                WHERE team_id = ? AND status = 'active'
+            """, (team_id,))
+
+            promotions = []
+            for row in cursor.fetchall():
+                promotions.append({
+                    'id': row['id'],
+                    'original_super_admin_id': row['original_super_admin_id'],
+                    'promoted_admin_id': row['promoted_admin_id'],
+                    'promoted_at': row['promoted_at'],
+                    'reason': row['reason'],
+                    'status': row['status']
+                })
+
+            return promotions
+
+        except Exception as e:
+            logger.error(f"Failed to get temp promotions: {e}")
+            return []
+
+    def approve_temp_promotion(self, team_id: str, temp_promotion_id: int, approved_by: str) -> tuple[bool, str]:
+        """
+        Approve a temporary promotion, making it permanent (Phase 3.3)
+
+        Args:
+            team_id: Team ID
+            temp_promotion_id: ID from temp_promotions table
+            approved_by: User ID who approved (typically the returning super admin)
+
+        Returns:
+            Tuple of (success: bool, message: str)
+        """
+        try:
+            from datetime import datetime
+            cursor = self.conn.cursor()
+
+            # Get promotion details
+            cursor.execute("""
+                SELECT promoted_admin_id, original_super_admin_id, status
+                FROM temp_promotions
+                WHERE id = ? AND team_id = ?
+            """, (temp_promotion_id, team_id))
+
+            promo = cursor.fetchone()
+            if not promo:
+                return False, "Temporary promotion not found"
+
+            if promo['status'] != 'active':
+                return False, f"Promotion already {promo['status']}"
+
+            # Mark as approved
+            cursor.execute("""
+                UPDATE temp_promotions
+                SET status = 'approved', approved_by = ?
+                WHERE id = ?
+            """, (approved_by, temp_promotion_id))
+
+            self.conn.commit()
+
+            logger.info(f"Approved temp promotion for {promo['promoted_admin_id']} (approved by {approved_by})")
+
+            return True, f"Temporary promotion approved. {promo['promoted_admin_id']} remains Super Admin."
+
+        except Exception as e:
+            logger.error(f"Failed to approve temp promotion: {e}")
+            return False, str(e)
+
+    def revert_temp_promotion(self, team_id: str, temp_promotion_id: int, reverted_by: str) -> tuple[bool, str]:
+        """
+        Revert a temporary promotion, demoting admin back to admin (Phase 3.3)
+
+        Args:
+            team_id: Team ID
+            temp_promotion_id: ID from temp_promotions table
+            reverted_by: User ID who reverted (typically the returning super admin)
+
+        Returns:
+            Tuple of (success: bool, message: str)
+        """
+        try:
+            from datetime import datetime
+            cursor = self.conn.cursor()
+
+            # Get promotion details
+            cursor.execute("""
+                SELECT promoted_admin_id, original_super_admin_id, status
+                FROM temp_promotions
+                WHERE id = ? AND team_id = ?
+            """, (temp_promotion_id, team_id))
+
+            promo = cursor.fetchone()
+            if not promo:
+                return False, "Temporary promotion not found"
+
+            if promo['status'] != 'active':
+                return False, f"Promotion already {promo['status']}"
+
+            # Demote back to admin
+            success, message = self.update_member_role(team_id, promo['promoted_admin_id'], 'admin')
+
+            if not success:
+                return False, f"Failed to demote: {message}"
+
+            # Mark as reverted
+            cursor.execute("""
+                UPDATE temp_promotions
+                SET status = 'reverted', reverted_at = ?, approved_by = ?
+                WHERE id = ?
+            """, (datetime.now(), reverted_by, temp_promotion_id))
+
+            self.conn.commit()
+
+            logger.info(f"Reverted temp promotion for {promo['promoted_admin_id']} (reverted by {reverted_by})")
+
+            return True, f"Temporary promotion reverted. {promo['promoted_admin_id']} demoted back to Admin."
+
+        except Exception as e:
+            logger.error(f"Failed to revert temp promotion: {e}")
+            return False, str(e)
+
     def close(self):
         """Close database connection"""
         if self.conn:
@@ -1303,4 +1598,248 @@ async def execute_delayed_promotions(team_id: Optional[str] = None):
 
     except Exception as e:
         logger.error(f"Failed to execute delayed promotions: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============ Phase 3.3: Offline Super Admin Failsafe ============
+
+
+class HeartbeatRequest(BaseModel):
+    user_id: str
+
+
+class HeartbeatResponse(BaseModel):
+    success: bool
+    message: str
+
+
+@router.post("/{team_id}/members/heartbeat", response_model=HeartbeatResponse)
+async def update_member_heartbeat(team_id: str, request: HeartbeatRequest):
+    """
+    Update last_seen timestamp for a team member (Phase 3.3)
+
+    Should be called periodically (every 30-60 seconds) by the frontend
+    to track member online status and detect offline Super Admins.
+    """
+    team_manager = get_team_manager()
+
+    try:
+        success, message = team_manager.update_last_seen(team_id, request.user_id)
+
+        if not success:
+            raise HTTPException(status_code=404, detail=message)
+
+        return HeartbeatResponse(success=True, message=message)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update heartbeat: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class OfflineSuperAdminsResponse(BaseModel):
+    offline_admins: List[Dict]
+    count: int
+    threshold_minutes: int
+
+
+@router.get("/{team_id}/super-admins/status", response_model=OfflineSuperAdminsResponse)
+async def check_super_admin_status(team_id: str, offline_threshold_minutes: int = 5):
+    """
+    Check for offline Super Admins (Phase 3.3)
+
+    Returns list of super admins who haven't been seen in X minutes.
+    Default threshold: 5 minutes
+
+    This endpoint can be polled by the frontend to detect when failsafe
+    should be triggered.
+    """
+    team_manager = get_team_manager()
+
+    try:
+        # Verify team exists
+        team = team_manager.get_team(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+
+        offline_admins = team_manager.check_super_admin_offline(team_id, offline_threshold_minutes)
+
+        return OfflineSuperAdminsResponse(
+            offline_admins=offline_admins,
+            count=len(offline_admins),
+            threshold_minutes=offline_threshold_minutes
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to check super admin status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class PromoteTempAdminRequest(BaseModel):
+    offline_super_admin_id: str
+    requesting_user_role: Optional[str] = None
+
+
+class PromoteTempAdminResponse(BaseModel):
+    success: bool
+    message: str
+    promoted_admin_id: Optional[str] = None
+
+
+@router.post("/{team_id}/promote-temp-admin", response_model=PromoteTempAdminResponse)
+async def promote_temp_admin(team_id: str, request: PromoteTempAdminRequest):
+    """
+    Manually trigger temporary admin promotion (Phase 3.3)
+
+    Promotes the most senior admin to super_admin when the original
+    super_admin is offline.
+
+    Typically called automatically when offline detection threshold is exceeded.
+    """
+    team_manager = get_team_manager()
+
+    try:
+        # Verify team exists
+        team = team_manager.get_team(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+
+        success, message = team_manager.promote_admin_temporarily(
+            team_id=team_id,
+            offline_super_admin_id=request.offline_super_admin_id,
+            requesting_user_role=request.requesting_user_role
+        )
+
+        if not success:
+            raise HTTPException(status_code=400, detail=message)
+
+        # Extract promoted admin ID from message
+        import re
+        match = re.search(r'promoted (\S+)', message)
+        promoted_admin_id = match.group(1) if match else None
+
+        return PromoteTempAdminResponse(
+            success=True,
+            message=message,
+            promoted_admin_id=promoted_admin_id
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to promote temp admin: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class TempPromotionsResponse(BaseModel):
+    temp_promotions: List[Dict]
+    count: int
+
+
+@router.get("/{team_id}/temp-promotions", response_model=TempPromotionsResponse)
+async def get_temp_promotions(team_id: str):
+    """
+    Get pending temporary promotions for a team (Phase 3.3)
+
+    Returns active temp promotions awaiting approval from the
+    returning super admin.
+    """
+    team_manager = get_team_manager()
+
+    try:
+        # Verify team exists
+        team = team_manager.get_team(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+
+        promotions = team_manager.get_pending_temp_promotions(team_id)
+
+        return TempPromotionsResponse(
+            temp_promotions=promotions,
+            count=len(promotions)
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get temp promotions: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class ApproveTempPromotionRequest(BaseModel):
+    approved_by: str
+
+
+class ApproveTempPromotionResponse(BaseModel):
+    success: bool
+    message: str
+
+
+@router.post("/{team_id}/temp-promotions/{temp_promotion_id}/approve", response_model=ApproveTempPromotionResponse)
+async def approve_temp_promotion(team_id: str, temp_promotion_id: int, request: ApproveTempPromotionRequest):
+    """
+    Approve a temporary promotion, making it permanent (Phase 3.3)
+
+    Called by the returning super admin to keep the temp promotion.
+    The promoted admin remains as super_admin.
+    """
+    team_manager = get_team_manager()
+
+    try:
+        success, message = team_manager.approve_temp_promotion(
+            team_id=team_id,
+            temp_promotion_id=temp_promotion_id,
+            approved_by=request.approved_by
+        )
+
+        if not success:
+            raise HTTPException(status_code=400, detail=message)
+
+        return ApproveTempPromotionResponse(success=True, message=message)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to approve temp promotion: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class RevertTempPromotionRequest(BaseModel):
+    reverted_by: str
+
+
+class RevertTempPromotionResponse(BaseModel):
+    success: bool
+    message: str
+
+
+@router.post("/{team_id}/temp-promotions/{temp_promotion_id}/revert", response_model=RevertTempPromotionResponse)
+async def revert_temp_promotion(team_id: str, temp_promotion_id: int, request: RevertTempPromotionRequest):
+    """
+    Revert a temporary promotion, demoting admin back to admin (Phase 3.3)
+
+    Called by the returning super admin to undo the temp promotion.
+    The promoted admin is demoted back to their original admin role.
+    """
+    team_manager = get_team_manager()
+
+    try:
+        success, message = team_manager.revert_temp_promotion(
+            team_id=team_id,
+            temp_promotion_id=temp_promotion_id,
+            reverted_by=request.reverted_by
+        )
+
+        if not success:
+            raise HTTPException(status_code=400, detail=message)
+
+        return RevertTempPromotionResponse(success=True, message=message)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to revert temp promotion: {e}")
         raise HTTPException(status_code=500, detail=str(e))
