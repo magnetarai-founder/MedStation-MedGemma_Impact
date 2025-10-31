@@ -539,6 +539,14 @@ class TeamManager:
                 if not can_promote:
                     return False, reason
 
+            # If demoting a Super Admin, check if they're the last one
+            if current_role == 'super_admin' and new_role != 'super_admin':
+                # God Rights can override
+                if requesting_user_role != 'god_rights':
+                    current_super_admins = self.count_super_admins(team_id)
+                    if current_super_admins <= 1:
+                        return False, "You're the last Super Admin. Promote an Admin first."
+
             # Update role
             cursor.execute("""
                 UPDATE team_members
