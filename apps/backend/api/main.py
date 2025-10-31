@@ -122,28 +122,8 @@ async def lifespan(app: FastAPI):
     (api_dir / "temp_uploads").mkdir(exist_ok=True)
     (api_dir / "temp_exports").mkdir(exist_ok=True)
 
-    # Auto-load favorite models (after chat service is loaded)
-    async def load_favorites():
-        await asyncio.sleep(3)  # Wait for Ollama to be ready
-        try:
-            from model_manager import get_model_manager
-            from chat_service import ollama_client
-
-            manager = get_model_manager()
-            favorites = manager.get_favorites()
-
-            if favorites:
-                logger.info(f"Auto-loading {len(favorites)} favorite models...")
-                for model in favorites:
-                    try:
-                        await ollama_client.preload_model(model, "1h")
-                        logger.info(f"✓ Loaded favorite model: {model}")
-                    except Exception as e:
-                        logger.warning(f"Failed to load {model}: {e}")
-        except Exception as e:
-            logger.debug(f"Model auto-load skipped: {e}")
-
-    asyncio.create_task(load_favorites())
+    # Note: Auto-load favorites feature removed - get_favorites() method not implemented
+    # Can be re-enabled when ModelManager.get_favorites() is added
 
     yield
     # Shutdown (clean shutdown via lifespan)
@@ -268,8 +248,8 @@ except Exception as e:
     logger.debug(f"Panic Mode not available: {e}")
 
 try:
-    from vault_service import router as vault_router
-    app.include_router(vault_router)
+    import vault_service
+    app.include_router(vault_service.router)
     services_loaded.append("Vault")
 except Exception as e:
     services_failed.append("Vault")
@@ -433,7 +413,7 @@ async def root():
     return {"message": "ElohimOS API", "version": "1.0.0"}
 
 @app.post("/api/sessions/create", response_model=SessionResponse)
-async def create_session():
+async def create_session(request: Request):
     """Create a new session with isolated engine"""
     session_id = str(uuid.uuid4())
     sessions[session_id] = {
@@ -446,7 +426,7 @@ async def create_session():
     return SessionResponse(session_id=session_id, created_at=sessions[session_id]["created_at"])
 
 @app.delete("/api/sessions/{session_id}")
-async def delete_session(session_id: str):
+async def delete_session(request: Request, session_id: str):
     """Clean up session and its resources"""
     if session_id not in sessions:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -549,17 +529,17 @@ async def upload_file(request: Request, session_id: str, file: UploadFile = File
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/sessions/{session_id}/validate", response_model=ValidationResponse)
-async def validate_sql(session_id: str, request: ValidationRequest):
+async def validate_sql(request: Request, session_id: str, body: ValidationRequest):
     """Validate SQL syntax before execution"""
     if session_id not in sessions:
         raise HTTPException(status_code=404, detail="Session not found")
     
     validator = SQLValidator()
     is_valid, errors, warnings = validator.validate_sql(
-        request.sql,
+        body.sql,
         expected_table="excel_file"
     )
-    
+
     return ValidationResponse(
         is_valid=is_valid,
         errors=errors,
@@ -866,7 +846,7 @@ class JsonConvertResponse(BaseModel):
     is_preview_only: bool = False
 
 @app.post("/api/sessions/{session_id}/json/upload", response_model=JsonUploadResponse)
-async def upload_json(session_id: str, file: UploadFile = File(...)):
+async def upload_json(request: Request, session_id: str, file: UploadFile = File(...)):
     """Upload and analyze JSON file"""
     if session_id not in sessions:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -953,7 +933,7 @@ async def upload_json(session_id: str, file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/sessions/{session_id}/json/convert", response_model=JsonConvertResponse)
-async def convert_json(session_id: str, request: JsonConvertRequest):
+async def convert_json(request: Request, session_id: str, body: JsonConvertRequest):
     """Convert JSON data to Excel format"""
     if session_id not in sessions:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -969,7 +949,7 @@ async def convert_json(session_id: str, request: JsonConvertRequest):
     try:
         # Write JSON data to temp file
         async with aiofiles.open(temp_json, 'w') as f:
-            await f.write(request.json_data)
+            await f.write(body.json_data)
 
         # Reuse engine from session if available, otherwise create new
         if 'json_file' in sessions[session_id] and 'engine' in sessions[session_id]['json_file']:
@@ -978,11 +958,11 @@ async def convert_json(session_id: str, request: JsonConvertRequest):
             engine = JsonToExcelEngine()
 
         # Check if preview_only mode
-        preview_only = request.options.get('preview_only', False)
+        preview_only = body.options.get('preview_only', False)
 
         if preview_only:
             # Only analyze structure, don't do full conversion
-            preview_limit = request.options.get('limit', 100)
+            preview_limit = body.options.get('limit', 100)
             logger.info(f"Analyzing JSON structure for preview (session {session_id}, limit {preview_limit})")
 
             load_result = engine.load_json(str(temp_json))
@@ -1211,16 +1191,16 @@ class SavedQueryUpdateRequest(BaseModel):
     tags: Optional[List[str]] = None
 
 @app.post("/api/saved-queries")
-async def save_query(request: SavedQueryRequest):
+async def save_query(request: Request, body: SavedQueryRequest):
     """Save a query for later use"""
     try:
         query_id = elohimos_memory.save_query(
-            name=request.name,
-            query=request.query,
-            query_type=request.query_type,
-            folder=request.folder,
-            description=request.description,
-            tags=request.tags
+            name=body.name,
+            query=body.query,
+            query_type=body.query_type,
+            folder=body.folder,
+            description=body.description,
+            tags=body.tags
         )
         return {"id": query_id, "success": True}
     except Exception as e:
@@ -1242,7 +1222,7 @@ async def get_saved_queries(
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.put("/api/saved-queries/{query_id}")
-async def update_saved_query(query_id: int, request: SavedQueryUpdateRequest):
+async def update_saved_query(request: Request, query_id: int, body: SavedQueryUpdateRequest):
     """Update a saved query (partial updates supported)"""
     try:
         # Get existing query
@@ -1255,12 +1235,12 @@ async def update_saved_query(query_id: int, request: SavedQueryUpdateRequest):
         # Merge updates with existing data
         elohimos_memory.update_saved_query(
             query_id=query_id,
-            name=request.name if request.name is not None else existing['name'],
-            query=request.query if request.query is not None else existing['query'],
-            query_type=request.query_type if request.query_type is not None else existing['query_type'],
-            folder=request.folder if request.folder is not None else existing.get('folder'),
-            description=request.description if request.description is not None else existing.get('description'),
-            tags=request.tags if request.tags is not None else (json.loads(existing.get('tags', '[]')) if existing.get('tags') else None)
+            name=body.name if body.name is not None else existing['name'],
+            query=body.query if body.query is not None else existing['query'],
+            query_type=body.query_type if body.query_type is not None else existing['query_type'],
+            folder=body.folder if body.folder is not None else existing.get('folder'),
+            description=body.description if body.description is not None else existing.get('description'),
+            tags=body.tags if body.tags is not None else (json.loads(existing.get('tags', '[]')) if existing.get('tags') else None)
         )
         return {"success": True}
     except HTTPException:
@@ -1269,7 +1249,7 @@ async def update_saved_query(query_id: int, request: SavedQueryUpdateRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/api/saved-queries/{query_id}")
-async def delete_saved_query(query_id: int):
+async def delete_saved_query(request: Request, query_id: int):
     """Delete a saved query"""
     try:
         elohimos_memory.delete_saved_query(query_id)
@@ -1355,7 +1335,7 @@ async def get_settings():
     return app_settings.dict()
 
 @app.post("/api/settings")
-async def update_settings(settings: AppSettings):
+async def update_settings(request: Request, settings: AppSettings):
     """Update app settings"""
     global app_settings
     app_settings = settings
@@ -1435,7 +1415,7 @@ async def reset_all_data(request: Request):
         raise HTTPException(status_code=500, detail=f"Reset failed: {str(e)}")
 
 @app.post("/api/admin/uninstall")
-async def uninstall_app():
+async def uninstall_app(request: Request):
     """Uninstall app - removes all data directories"""
     try:
         import shutil
@@ -1830,11 +1810,18 @@ async def rediscover_queries(dataset_id: str):
 
         table_name = metadata['table_name']
 
-        # Validate table name to prevent SQL injection
+        # Validate table name to prevent SQL injection (defense in depth)
+        # Step 1: Regex validation (blocks most attacks)
         if not re.match(r'^[a-zA-Z0-9_]+$', table_name):
             raise HTTPException(status_code=400, detail="Invalid table name")
 
-        # Get dataframe from table
+        # Step 2: Whitelist validation (ensures table exists in our metadata)
+        allowed_tables = await asyncio.to_thread(data_engine.get_all_table_names)
+        if table_name not in allowed_tables:
+            raise HTTPException(status_code=400, detail="Table not found in dataset metadata")
+
+        # Now safe to use f-string (SQLite doesn't support ? for table names)
+        # Both regex and whitelist validation passed
         cursor = data_engine.conn.execute(f"SELECT * FROM {table_name} LIMIT 1000")
         columns = [desc[0] for desc in cursor.description]
         rows = cursor.fetchall()

@@ -418,6 +418,13 @@ class DataEngine:
 
         return datasets
 
+    def get_all_table_names(self) -> List[str]:
+        """Get all valid table names from dataset metadata (for whitelist validation)"""
+        cursor = self.conn.execute("""
+            SELECT table_name FROM dataset_metadata
+        """)
+        return [row[0] for row in cursor.fetchall()]
+
     def delete_dataset(self, dataset_id: str) -> bool:
         """Delete a dataset and its table"""
         # Get table name

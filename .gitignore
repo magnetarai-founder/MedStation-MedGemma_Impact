@@ -28,6 +28,7 @@ apps/frontend/.vite/
 api/.neutron_data/
 api/temp_uploads/
 api/temp_exports/
+apps/backend/.neutron_data/
 apps/backend/api/.neutron_data/
 apps/backend/api/temp_uploads/
 apps/backend/api/temp_exports/

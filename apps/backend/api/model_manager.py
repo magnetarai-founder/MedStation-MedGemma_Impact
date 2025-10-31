@@ -53,13 +53,11 @@ def is_chat_model(model_name: str) -> bool:
     # Filter out embedding models
     for pattern in EMBEDDING_MODEL_PATTERNS:
         if pattern in name_lower:
-            logger.debug(f"Model '{model_name}' filtered as embedding model (pattern: {pattern})")
             return False
 
     # Filter out foundation models
     for pattern in FOUNDATION_MODEL_PATTERNS:
         if pattern in name_lower:
-            logger.debug(f"Model '{model_name}' filtered as foundation model (pattern: {pattern})")
             return False
 
     return True
