@@ -12,403 +12,27 @@ This is the **master implementation roadmap** for ElohimOS hardening and feature
 **Current State:**
 - **Backend:** 95% Complete (78 services, 4,502+ LOC) ✅
 - **Frontend:** 60-70% Complete (113 files, ~40K LOC) ⚠️
-- **Security Grade:** A (Excellent, all critical/high issues resolved)
-- **Missing Features:** ~40% of documented features not implemented
+- **Security Grade:** A+ (Excellent, all security issues resolved, vault system complete)
+- **Missing Features:** ~35% of documented features not implemented
 
-**Goal:** Harden security, complete missing features, polish UI integrations.
+**Goal:** Complete missing features, polish UI integrations, optimize performance.
 
 ---
 
 ## 📋 Roadmap Structure
 
-**6 Phases (Priority Order):**
-1. **Phase 1:** Vault & Decoy System (CRITICAL missing feature)
-2. **Phase 2:** UI Integration - Security (6 tasks)
-3. **Phase 3:** UI Integration - Data Protection & Compliance (12 tasks)
-4. **Phase 4:** Collaborative Features (16 tasks)
-5. **Phase 5:** Advanced Features (8 tasks)
-6. **Phase 6:** Performance & Polish (3 tasks)
+**5 Phases (Priority Order):**
+1. **Phase 1:** UI Integration - Security (6 tasks)
+2. **Phase 2:** UI Integration - Data Protection & Compliance (12 tasks)
+3. **Phase 3:** Collaborative Features (16 tasks)
+4. **Phase 4:** Advanced Features (8 tasks)
+5. **Phase 5:** Performance & Polish (3 tasks)
 
 **Total Tasks:** 45 actionable implementation items
 
 ---
 
-## PHASE 1: Vault & Decoy System (CRITICAL Missing Feature)
-
-### 🔴 CRITICAL: Decoy Vault Storage System
-**Status:** Advertised feature that DOESN'T WORK (security risk!)
-
-**What's Implemented:**
-- ✅ Dual password system (real + decoy) in `VaultSetup.tsx`
-- ✅ Password hash verification for both
-- ✅ `vaultPasswordHash`, `decoyPasswordHash` in docsStore
-
-**What's Missing:**
-- ❌ **Separate storage** for decoy documents
-- ❌ **Vault routing logic** (entering decoy password opens REAL vault = vulnerability!)
-- ❌ **Decoy document creation** - No way to populate decoy vault
-- ❌ **Plausible deniability enforcement**
-- ❌ **Seed data** for realistic decoy vault
-
-**Security Implication:**
-Users in hostile environments may rely on decoy vault for plausible deniability. Currently entering decoy password might expose REAL vault. **This could endanger users.**
-
-**Implementation Plan:**
-
-#### Step 1: Backend - Separate Decoy Storage
-**File:** `apps/backend/api/vault_service.py`
-
-```python
-# Add vault_type field to distinguish real vs decoy
-class VaultItem(BaseModel):
-    item_id: str
-    vault_type: str  # 'real' or 'decoy'
-    # ... existing fields ...
-
-# Modify create_vault_item()
-def create_vault_item(self, user_id: str, vault_type: str, ...):
-    # Validate vault_type
-    if vault_type not in ['real', 'decoy']:
-        raise ValueError("Invalid vault type")
-
-    # Store in separate location
-    vault_path = self.data_dir / user_id / vault_type
-    vault_path.mkdir(parents=True, exist_ok=True)
-
-    # ... encryption logic ...
-```
-
-**Database Schema:**
-```sql
--- Add vault_type column to existing vault tables
-ALTER TABLE team_vault_items ADD COLUMN vault_type TEXT DEFAULT 'real';
-ALTER TABLE vault_documents ADD COLUMN vault_type TEXT DEFAULT 'real';
-
-CREATE INDEX idx_vault_type ON team_vault_items(vault_type);
-```
-
-#### Step 2: Frontend - Vault Routing Logic
-**File:** `apps/frontend/src/lib/vaultRouter.ts` (NEW)
-
-```typescript
-interface VaultCredentials {
-    password: string;
-    vaultPasswordHash: string;
-    decoyPasswordHash: string;
-}
-
-export async function determineVaultType(
-    enteredPassword: string,
-    credentials: VaultCredentials
-): Promise<'real' | 'decoy'> {
-    // Hash entered password
-    const enteredHash = await hashPassword(enteredPassword);
-
-    // Check against real vault hash
-    if (enteredHash === credentials.vaultPasswordHash) {
-        return 'real';
-    }
-
-    // Check against decoy vault hash
-    if (enteredHash === credentials.decoyPasswordHash) {
-        return 'decoy';
-    }
-
-    // Neither matched - wrong password
-    throw new Error('Invalid vault password');
-}
-```
-
-#### Step 3: Frontend - VaultWorkspace Integration
-**File:** `apps/frontend/src/components/VaultWorkspace.tsx`
-
-```typescript
-const [vaultType, setVaultType] = useState<'real' | 'decoy' | null>(null);
-
-async function unlockVault(password: string) {
-    try {
-        const type = await determineVaultType(password, {
-            vaultPasswordHash,
-            decoyPasswordHash
-        });
-
-        setVaultType(type);
-
-        // Fetch vault contents for specific type
-        const items = await api.getVaultItems({ vault_type: type });
-        setVaultItems(items);
-
-        // IMPORTANT: No UI indication of which vault is open!
-        // Must look identical for plausible deniability
-    } catch (err) {
-        showError('Invalid password');
-    }
-}
-```
-
-#### Step 4: Seed Decoy Vault with Realistic Data
-**File:** `apps/backend/api/vault_seed_data.py` (NEW)
-
-```python
-DECOY_SEED_DATA = [
-    {
-        "item_name": "Banking Login.txt",
-        "content": "Username: john.doe@email.com\nPassword: SafePassword123",
-        "item_type": "text"
-    },
-    {
-        "item_name": "WiFi Passwords.txt",
-        "content": "Home: MyHomeNetwork2023\nOffice: WorkSecure456",
-        "item_type": "text"
-    },
-    {
-        "item_name": "Passport Scan.jpg",
-        "content": "<base64 encoded generic passport image>",
-        "item_type": "image"
-    },
-    # Add 10-15 realistic decoy files
-]
-
-def seed_decoy_vault(user_id: str):
-    """Create realistic decoy vault on first setup"""
-    for item in DECOY_SEED_DATA:
-        create_vault_item(
-            user_id=user_id,
-            vault_type='decoy',
-            item_name=item['item_name'],
-            content=item['content'],
-            item_type=item['item_type']
-        )
-```
-
-#### Step 5: UI/UX Parity (Plausible Deniability)
-**Critical:** Both vaults must look IDENTICAL.
-
-**Checklist:**
-- [ ] Same UI layout for real and decoy
-- [ ] Same navigation structure
-- [ ] No "Decoy Mode" indicator visible
-- [ ] No breadcrumbs revealing vault type
-- [ ] Same file count (pad real vault if needed)
-- [ ] Same timestamps (randomize decoy timestamps)
-- [ ] No performance differences (same encryption overhead)
-
-**Files to Check:**
-- `apps/frontend/src/components/VaultWorkspace.tsx`
-- `apps/frontend/src/components/VaultSetup.tsx`
-- `apps/frontend/src/stores/docsStore.ts`
-
----
-
-### Document Decryption When Opening Files
-**Status:** Can encrypt, but can't decrypt (incomplete workflow)
-
-**What's Missing:**
-- ❌ Automatic decryption when clicking vault document
-- ❌ "🔒 Encrypted" badge on file list
-- ❌ "Decrypt and Open" button
-- ❌ Error handling for wrong passphrase
-- ❌ "Re-enter passphrase" flow
-
-**Implementation:**
-
-#### Step 1: Add Encrypted Badge to File List
-**File:** `apps/frontend/src/components/VaultWorkspace.tsx`
-
-```tsx
-<div className="file-list">
-    {vaultItems.map(item => (
-        <div key={item.id} className="file-row">
-            <FileIcon type={item.type} />
-            <span>{item.name}</span>
-
-            {/* Add encrypted badge */}
-            {item.is_encrypted && (
-                <span className="badge badge-locked">
-                    🔒 Encrypted
-                </span>
-            )}
-
-            <button onClick={() => openDocument(item)}>
-                Open
-            </button>
-        </div>
-    ))}
-</div>
-```
-
-#### Step 2: Decrypt on Open
-**File:** `apps/frontend/src/components/DocumentEditor.tsx`
-
-```typescript
-async function openDocument(item: VaultItem) {
-    if (!item.is_encrypted) {
-        // Not encrypted - just load
-        setContent(item.content);
-        return;
-    }
-
-    // Encrypted - need passphrase
-    const passphrase = await promptForPassphrase();
-
-    try {
-        const decrypted = await decryptContent(
-            item.encrypted_content,
-            passphrase
-        );
-
-        setContent(decrypted);
-        setIsDecrypted(true);
-    } catch (err) {
-        showError('Decryption failed. Wrong passphrase?');
-
-        // Offer retry
-        const retry = await confirm('Try again?');
-        if (retry) {
-            openDocument(item);  // Recursive retry
-        }
-    }
-}
-```
-
-#### Step 3: Add Decryption State Management
-**File:** `apps/frontend/src/stores/docsStore.ts`
-
-```typescript
-interface DocState {
-    currentDoc: Document | null;
-    isEncrypted: boolean;
-    isDecrypted: boolean;
-    decryptionError: string | null;
-}
-
-export const useDocsStore = create<DocState>((set) => ({
-    currentDoc: null,
-    isEncrypted: false,
-    isDecrypted: false,
-    decryptionError: null,
-
-    decryptDocument: async (doc: Document, passphrase: string) => {
-        try {
-            const decrypted = await decryptContent(doc.content, passphrase);
-            set({
-                currentDoc: { ...doc, content: decrypted },
-                isDecrypted: true,
-                decryptionError: null
-            });
-        } catch (err) {
-            set({
-                decryptionError: err.message,
-                isDecrypted: false
-            });
-        }
-    }
-}));
-```
-
----
-
-### Security Settings Enhancements
-
-#### Stealth Labels Functionality
-**Purpose:** Hide sensitive UI labels in hostile environments
-
-**File:** `apps/frontend/src/components/settings/SecurityTab.tsx`
-
-```tsx
-<div className="setting-row">
-    <label>Stealth Mode</label>
-    <Toggle
-        checked={stealthMode}
-        onChange={(val) => updateSetting('stealth_mode', val)}
-    />
-    <p className="help-text">
-        Hides sensitive labels like "Encrypted Vault", "Decoy Mode", etc.
-        Instead shows generic labels like "Documents", "Archive".
-    </p>
-</div>
-```
-
-**CSS Implementation:**
-```css
-/* When stealth mode active */
-.stealth-mode .vault-label::before { content: "Documents"; }
-.stealth-mode .decoy-label::before { content: "Archive"; }
-.stealth-mode .encryption-badge { display: none; }
-```
-
-#### Decoy Mode UI Toggle
-**File:** `apps/frontend/src/components/settings/SecurityTab.tsx`
-
-```tsx
-<div className="setting-row">
-    <label>Active Vault</label>
-    <select
-        value={activeVault}
-        onChange={(e) => switchVault(e.target.value)}
-    >
-        <option value="real">Primary Vault</option>
-        <option value="decoy">Secondary Vault</option>
-    </select>
-    <p className="help-text">
-        Switch between vaults. Enter corresponding passphrase when prompted.
-    </p>
-</div>
-```
-
-#### Biometric Registration Flow
-**File:** `apps/frontend/src/components/settings/BiometricSetup.tsx` (NEW)
-
-```tsx
-export function BiometricSetup() {
-    async function registerBiometric() {
-        try {
-            // Check if WebAuthn supported
-            if (!window.PublicKeyCredential) {
-                throw new Error('Biometric auth not supported');
-            }
-
-            // Create credential
-            const credential = await navigator.credentials.create({
-                publicKey: {
-                    challenge: new Uint8Array(32),
-                    rp: { name: "ElohimOS" },
-                    user: {
-                        id: new Uint8Array(16),
-                        name: userEmail,
-                        displayName: userName
-                    },
-                    pubKeyCredParams: [{ alg: -7, type: "public-key" }],
-                    authenticatorSelection: {
-                        authenticatorAttachment: "platform",
-                        userVerification: "required"
-                    }
-                }
-            });
-
-            // Store credential ID
-            await saveBiometricCredential(credential.id);
-
-            showSuccess('Touch ID registered successfully');
-        } catch (err) {
-            showError('Registration failed: ' + err.message);
-        }
-    }
-
-    return (
-        <div className="biometric-setup">
-            <h3>Touch ID / Face ID Setup</h3>
-            <button onClick={registerBiometric}>
-                Register Biometric
-            </button>
-        </div>
-    );
-}
-```
-
----
-
-## PHASE 2: UI Integration - Security
+## PHASE 1: UI Integration - Security
 
 ### Task 4.1: QR Code Device Linking
 **Location:** Settings → Security → Device Linking
@@ -693,7 +317,7 @@ export function UserManagementPanel() {
 
 ---
 
-## PHASE 3: UI Integration - Data Protection & Compliance
+## PHASE 2: UI Integration - Data Protection & Compliance
 
 ### Task 5.1: Backups Tab
 **File:** `apps/frontend/src/components/settings/BackupsTab.tsx` (NEW)
@@ -924,7 +548,7 @@ export function FocusModeSelector() {
 
 ---
 
-## PHASE 4: Collaborative Features
+## PHASE 3: Collaborative Features
 
 ### Task 6.1: Doc Comments & Threads System
 **Status:** Zero implementation (major feature)
@@ -1432,7 +1056,7 @@ export function VersionHistory({ fileId }) {
 
 ---
 
-## PHASE 5: Advanced Features
+## PHASE 4: Advanced Features
 
 ### Task 7.1: Excel Formula to DuckDB Conversion
 **Status:** Core Sheets feature missing
@@ -1730,7 +1354,7 @@ export function detectMarkdown(text: string, cursorPos: number): { type: string;
 
 ---
 
-## PHASE 6: Performance & Polish
+## PHASE 5: Performance & Polish
 
 ### Task 8.1: Large File Encryption Optimization
 **Issue:** All files encrypted in memory (crashes on 500MB+ files)
@@ -1822,34 +1446,38 @@ const ModelManagementTab = React.lazy(() => import('./settings/ModelManagementTa
 
 ## Summary: Implementation Priorities
 
-### DO FIRST (Critical):
-1. ✅ Implement Decoy Vault storage system (security risk!)
-2. ✅ Fix HIGH-01 through HIGH-05 security issues
+### ✅ COMPLETED (Critical Security & Vault):
+1. ✅ Decoy Vault storage system (COMPLETE - seeding implemented)
+2. ✅ HIGH-01 through HIGH-05 security issues (ALL RESOLVED)
+3. ✅ CRITICAL & HIGH priority security hardening (Grade A+)
 
 ### DO NEXT (High Value):
-3. ✅ Complete Phase 3: Security UI (6 tasks)
-4. ✅ Complete Phase 4: Data Protection & Compliance UI (12 tasks)
+1. Phase 1: Security UI (6 tasks) - QR pairing, safety numbers, device fingerprints
+2. Phase 2: Data Protection & Compliance UI (12 tasks) - Backups, audit logs, disclaimers
 
 ### DO AFTER (Medium Priority):
-5. ✅ Phase 5: Collaborative Features (doc comments, locking, version history)
-6. ✅ Phase 6: Advanced Features (Excel formulas, slash commands, etc.)
+3. Phase 3: Collaborative Features (16 tasks) - Doc comments, locking, version history
+4. Phase 4: Advanced Features (8 tasks) - Excel formulas, slash commands, etc.
 
 ### DO LAST (Polish):
-7. ✅ Phase 7: Performance optimizations
+5. Phase 5: Performance optimizations (3 tasks) - Large file encryption, streaming decryption
 
 ---
 
 ## File Locations Quick Reference
 
-**Security Fixes:**
-- `apps/backend/api/main.py` (SQL injection, path traversal)
-- `apps/backend/api/mlx_embedder.py` (eval())
-- `apps/backend/api/mlx_sentence_transformer.py` (eval())
+**Completed Security Fixes:**
+- `apps/backend/api/main.py` (SQL injection, path traversal) ✅
+- `apps/backend/api/mlx_embedder.py` (eval() audit) ✅
+- `apps/backend/api/mlx_sentence_transformer.py` (eval() audit) ✅
+- `apps/backend/api/utils.py` (sanitize_filename, sanitize_for_log) ✅
+- `apps/backend/api/team_service.py` (brute-force protection) ✅
 
-**Vault & Decoy:**
-- `apps/backend/api/vault_service.py` (add vault_type field)
-- `apps/frontend/src/lib/vaultRouter.ts` (NEW - routing logic)
-- `apps/frontend/src/components/VaultWorkspace.tsx` (integration)
+**Completed Vault & Decoy System:**
+- `apps/backend/api/vault_service.py` (vault_type support) ✅
+- `apps/backend/api/vault_seed_data.py` (10 realistic decoy documents) ✅
+- `apps/frontend/src/stores/docsStore.ts` (password routing logic) ✅
+- `apps/frontend/src/components/VaultWorkspace.tsx` (vault_type integration) ✅
 
 **UI Components (NEW files needed):**
 - `apps/frontend/src/components/security/*` (6 files)
@@ -1866,7 +1494,7 @@ const ModelManagementTab = React.lazy(() => import('./settings/ModelManagementTa
 
 ---
 
-**Total Implementation Items:** 50 tasks across 7 phases
+**Total Implementation Items:** 45 tasks across 5 phases (Critical security & vault system COMPLETE ✅)
 
 **Estimated Completion:** You decide the timeline based on your bandwidth. This is a comprehensive roadmap with all details needed to implement each feature.
 
