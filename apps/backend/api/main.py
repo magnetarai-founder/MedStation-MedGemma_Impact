@@ -458,17 +458,11 @@ async def delete_session(request: Request, session_id: str):
     del sessions[session_id]
     return {"message": "Session deleted"}
 
-async def _get_request(request: Request):
-    """Dependency to get Request for rate limiting"""
-    return request
-
 @app.post("/api/sessions/{session_id}/upload", response_model=FileUploadResponse)
-@limiter.limit("10/minute")  # Limit file uploads to 10 per minute
 async def upload_file(
     session_id: str,
     file: UploadFile = File(...),
-    sheet_name: Optional[str] = Form(None),
-    request: Request = Depends(_get_request)
+    sheet_name: Optional[str] = Form(None)
 ):
     """Upload and load an Excel file"""
     if session_id not in sessions:
