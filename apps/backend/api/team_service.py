@@ -408,6 +408,152 @@ class TeamManager:
             logger.error(f"Failed to join team: {e}")
             return False
 
+    @staticmethod
+    def get_max_super_admins(team_size: int) -> int:
+        """
+        Calculate maximum allowed Super Admins based on team size
+
+        Args:
+            team_size: Total number of team members
+
+        Returns:
+            Maximum number of Super Admins allowed
+        """
+        if team_size <= 5:
+            return 1
+        elif team_size <= 15:
+            return 2
+        elif team_size <= 30:
+            return 3
+        elif team_size <= 50:
+            return 4
+        else:
+            return 5
+
+    def count_role(self, team_id: str, role: str) -> int:
+        """
+        Count members with a specific role in a team
+
+        Args:
+            team_id: Team ID
+            role: Role to count (e.g., 'super_admin', 'admin', 'member')
+
+        Returns:
+            Number of members with that role
+        """
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                SELECT COUNT(*) as count
+                FROM team_members
+                WHERE team_id = ? AND role = ?
+            """, (team_id, role))
+
+            row = cursor.fetchone()
+            return row['count'] if row else 0
+
+        except Exception as e:
+            logger.error(f"Failed to count role {role}: {e}")
+            return 0
+
+    def count_super_admins(self, team_id: str) -> int:
+        """Count current Super Admins in team"""
+        return self.count_role(team_id, 'super_admin')
+
+    def get_team_size(self, team_id: str) -> int:
+        """Get total number of members in team"""
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                SELECT COUNT(*) as count
+                FROM team_members
+                WHERE team_id = ?
+            """, (team_id,))
+
+            row = cursor.fetchone()
+            return row['count'] if row else 0
+
+        except Exception as e:
+            logger.error(f"Failed to get team size: {e}")
+            return 0
+
+    def can_promote_to_super_admin(self, team_id: str, requesting_user_role: str = None) -> tuple[bool, str]:
+        """
+        Check if team can have another Super Admin
+
+        Args:
+            team_id: Team to check
+            requesting_user_role: Role of user making the request (optional)
+
+        Returns:
+            Tuple of (can_promote: bool, reason: str)
+        """
+        try:
+            # God Rights can always override
+            if requesting_user_role == 'god_rights':
+                return True, "God Rights override"
+
+            team_size = self.get_team_size(team_id)
+            current_super_admins = self.count_super_admins(team_id)
+            max_super_admins = self.get_max_super_admins(team_size)
+
+            if current_super_admins >= max_super_admins:
+                return False, f"Team size {team_size} allows max {max_super_admins} Super Admin(s), currently have {current_super_admins}"
+
+            return True, "Promotion allowed"
+
+        except Exception as e:
+            logger.error(f"Failed to check Super Admin limit: {e}")
+            return False, str(e)
+
+    def update_member_role(self, team_id: str, user_id: str, new_role: str, requesting_user_role: str = None) -> tuple[bool, str]:
+        """
+        Update a team member's role with validation
+
+        Args:
+            team_id: Team ID
+            user_id: User whose role to update
+            new_role: New role to assign
+            requesting_user_role: Role of user making the request (for God Rights check)
+
+        Returns:
+            Tuple of (success: bool, message: str)
+        """
+        try:
+            # Check if user is member
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                SELECT role FROM team_members
+                WHERE team_id = ? AND user_id = ?
+            """, (team_id, user_id))
+
+            row = cursor.fetchone()
+            if not row:
+                return False, f"User {user_id} is not a member of team {team_id}"
+
+            current_role = row['role']
+
+            # If promoting to Super Admin, check limits
+            if new_role == 'super_admin' and current_role != 'super_admin':
+                can_promote, reason = self.can_promote_to_super_admin(team_id, requesting_user_role)
+                if not can_promote:
+                    return False, reason
+
+            # Update role
+            cursor.execute("""
+                UPDATE team_members
+                SET role = ?
+                WHERE team_id = ? AND user_id = ?
+            """, (new_role, team_id, user_id))
+
+            self.conn.commit()
+            logger.info(f"Updated {user_id} role from {current_role} to {new_role} in team {team_id}")
+            return True, f"Role updated to {new_role}"
+
+        except Exception as e:
+            logger.error(f"Failed to update member role: {e}")
+            return False, str(e)
+
     def close(self):
         """Close database connection"""
         if self.conn:
@@ -573,4 +719,69 @@ async def join_team(request: JoinTeamRequest):
         raise
     except Exception as e:
         logger.error(f"Failed to join team: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class UpdateRoleRequest(BaseModel):
+    new_role: str
+    requesting_user_role: Optional[str] = None  # For God Rights override
+
+
+class UpdateRoleResponse(BaseModel):
+    success: bool
+    message: str
+    user_id: str
+    team_id: str
+    new_role: str
+
+
+@router.post("/{team_id}/members/{user_id}/role", response_model=UpdateRoleResponse)
+async def update_member_role(team_id: str, user_id: str, request: UpdateRoleRequest):
+    """
+    Update a team member's role
+
+    Enforces Super Admin limits (team size determines max Super Admins).
+    God Rights can override limits.
+
+    Valid roles: god_rights, super_admin, admin, member, guest
+    """
+    team_manager = get_team_manager()
+
+    try:
+        # Verify team exists
+        team = team_manager.get_team(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+
+        # Validate role
+        valid_roles = ['god_rights', 'super_admin', 'admin', 'member', 'guest']
+        if request.new_role not in valid_roles:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid role. Must be one of: {', '.join(valid_roles)}"
+            )
+
+        # Update role with validation
+        success, message = team_manager.update_member_role(
+            team_id=team_id,
+            user_id=user_id,
+            new_role=request.new_role,
+            requesting_user_role=request.requesting_user_role
+        )
+
+        if not success:
+            raise HTTPException(status_code=400, detail=message)
+
+        return UpdateRoleResponse(
+            success=True,
+            message=message,
+            user_id=user_id,
+            team_id=team_id,
+            new_role=request.new_role
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update member role: {e}")
         raise HTTPException(status_code=500, detail=str(e))
