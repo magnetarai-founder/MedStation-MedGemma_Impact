@@ -99,6 +99,24 @@ class TeamManager:
             )
         """)
 
+        # Delayed promotions table (for decoy password 21-day delay)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS delayed_promotions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                team_id TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                from_role TEXT NOT NULL,
+                to_role TEXT NOT NULL,
+                scheduled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                execute_at TIMESTAMP NOT NULL,
+                executed BOOLEAN DEFAULT FALSE,
+                executed_at TIMESTAMP,
+                reason TEXT,
+                FOREIGN KEY (team_id) REFERENCES teams (team_id),
+                UNIQUE(team_id, user_id, executed)
+            )
+        """)
+
         self.conn.commit()
         logger.info("Team database initialized")
 
@@ -683,6 +701,177 @@ class TeamManager:
             logger.error(f"Failed to auto-promote guests: {e}")
             return []
 
+    def instant_promote_guest(self, team_id: str, user_id: str, approved_by_user_id: str, auth_type: str = 'real_password') -> tuple[bool, str]:
+        """
+        Instantly promote a guest to member (Phase 4.2)
+
+        Bypasses 7-day wait when Super Admin approves with real password + biometric
+        Access granted: Vault, Chat, Automation from now forward
+
+        Args:
+            team_id: Team ID
+            user_id: Guest user to promote
+            approved_by_user_id: Super Admin who approved
+            auth_type: 'real_password' or 'decoy_password' (for audit)
+
+        Returns:
+            Tuple of (success: bool, message: str)
+        """
+        try:
+            # Verify guest exists
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                SELECT role FROM team_members
+                WHERE team_id = ? AND user_id = ?
+            """, (team_id, user_id))
+
+            row = cursor.fetchone()
+            if not row:
+                return False, f"User {user_id} not found in team"
+
+            if row['role'] != 'guest':
+                return False, f"User is already {row['role']}, not a guest"
+
+            # Promote immediately
+            success, message = self.update_member_role(team_id, user_id, 'member')
+
+            if success:
+                logger.info(f"Instant-promoted {user_id} to member (approved by {approved_by_user_id}, auth: {auth_type})")
+                return True, f"Instantly promoted to member. Access granted from now forward."
+
+            return False, message
+
+        except Exception as e:
+            logger.error(f"Failed instant promotion: {e}")
+            return False, str(e)
+
+    def schedule_delayed_promotion(self, team_id: str, user_id: str, delay_days: int = 21, approved_by_user_id: str = None, reason: str = "Decoy password delay") -> tuple[bool, str]:
+        """
+        Schedule a delayed promotion (Phase 4.3)
+
+        Used when Super Admin approves with decoy password + biometric
+        Promotion delayed by X days (default 21) as safety mechanism
+        Access: Chat & Automation from now, Vault delayed
+
+        Args:
+            team_id: Team ID
+            user_id: Guest user to promote
+            delay_days: Days to delay promotion (default: 21)
+            approved_by_user_id: Super Admin who approved
+            reason: Reason for delay
+
+        Returns:
+            Tuple of (success: bool, message: str)
+        """
+        try:
+            # Verify guest exists
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                SELECT role FROM team_members
+                WHERE team_id = ? AND user_id = ?
+            """, (team_id, user_id))
+
+            row = cursor.fetchone()
+            if not row:
+                return False, f"User {user_id} not found in team"
+
+            if row['role'] != 'guest':
+                return False, f"User is already {row['role']}, not a guest"
+
+            # Check if already has pending delayed promotion
+            cursor.execute("""
+                SELECT id FROM delayed_promotions
+                WHERE team_id = ? AND user_id = ? AND executed = FALSE
+            """, (team_id, user_id))
+
+            if cursor.fetchone():
+                return False, f"User already has a pending delayed promotion"
+
+            # Schedule delayed promotion
+            from datetime import datetime, timedelta
+            execute_at = datetime.now() + timedelta(days=delay_days)
+
+            cursor.execute("""
+                INSERT INTO delayed_promotions (team_id, user_id, from_role, to_role, execute_at, reason)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (team_id, user_id, 'guest', 'member', execute_at, reason))
+
+            self.conn.commit()
+            logger.info(f"Scheduled delayed promotion for {user_id} (execute at {execute_at}, approved by {approved_by_user_id})")
+
+            return True, f"Promotion scheduled for {execute_at.strftime('%Y-%m-%d')} ({delay_days} days). Chat & Automation access granted now. Vault access on promotion date."
+
+        except Exception as e:
+            logger.error(f"Failed to schedule delayed promotion: {e}")
+            return False, str(e)
+
+    def execute_delayed_promotions(self, team_id: str = None) -> List[Dict]:
+        """
+        Execute all pending delayed promotions that are due
+
+        Can be called by cron job or manually
+
+        Args:
+            team_id: Optional team ID to limit execution to specific team
+
+        Returns:
+            List of execution results
+        """
+        try:
+            from datetime import datetime
+            cursor = self.conn.cursor()
+
+            # Find all pending promotions that are due
+            if team_id:
+                cursor.execute("""
+                    SELECT id, team_id, user_id, from_role, to_role, execute_at
+                    FROM delayed_promotions
+                    WHERE team_id = ? AND executed = FALSE AND execute_at <= ?
+                """, (team_id, datetime.now()))
+            else:
+                cursor.execute("""
+                    SELECT id, team_id, user_id, from_role, to_role, execute_at
+                    FROM delayed_promotions
+                    WHERE executed = FALSE AND execute_at <= ?
+                """, (datetime.now(),))
+
+            pending = cursor.fetchall()
+            results = []
+
+            for promo in pending:
+                # Execute promotion
+                success, message = self.update_member_role(
+                    promo['team_id'],
+                    promo['user_id'],
+                    promo['to_role']
+                )
+
+                if success:
+                    # Mark as executed
+                    cursor.execute("""
+                        UPDATE delayed_promotions
+                        SET executed = TRUE, executed_at = ?
+                        WHERE id = ?
+                    """, (datetime.now(), promo['id']))
+                    self.conn.commit()
+
+                results.append({
+                    'user_id': promo['user_id'],
+                    'team_id': promo['team_id'],
+                    'from_role': promo['from_role'],
+                    'to_role': promo['to_role'],
+                    'executed': success,
+                    'message': message
+                })
+
+                logger.info(f"Executed delayed promotion: {promo['user_id']} -> {promo['to_role']}")
+
+            return results
+
+        except Exception as e:
+            logger.error(f"Failed to execute delayed promotions: {e}")
+            return []
+
     def close(self):
         """Close database connection"""
         if self.conn:
@@ -953,4 +1142,165 @@ async def auto_promote_guests(team_id: str, required_days: int = 7):
         raise
     except Exception as e:
         logger.error(f"Failed to auto-promote guests: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class InstantPromoteRequest(BaseModel):
+    approved_by_user_id: str
+    auth_type: str = 'real_password'  # 'real_password' or 'decoy_password'
+
+
+class InstantPromoteResponse(BaseModel):
+    success: bool
+    message: str
+    user_id: str
+    new_role: str
+
+
+@router.post("/{team_id}/members/{user_id}/instant-promote", response_model=InstantPromoteResponse)
+async def instant_promote_guest(team_id: str, user_id: str, request: InstantPromoteRequest):
+    """
+    Instantly promote a guest to member (Phase 4.2)
+
+    Bypasses 7-day auto-promotion wait when Super Admin approves
+    with real password + biometric authentication.
+
+    Access granted immediately:
+    - Vault: From now forward
+    - Chat: From now forward
+    - Automation: From now forward
+
+    This endpoint simulates the real password + Touch ID flow.
+    Full biometric integration can be added later.
+    """
+    team_manager = get_team_manager()
+
+    try:
+        # Verify team exists
+        team = team_manager.get_team(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+
+        # Instant promote
+        success, message = team_manager.instant_promote_guest(
+            team_id=team_id,
+            user_id=user_id,
+            approved_by_user_id=request.approved_by_user_id,
+            auth_type=request.auth_type
+        )
+
+        if not success:
+            raise HTTPException(status_code=400, detail=message)
+
+        return InstantPromoteResponse(
+            success=True,
+            message=message,
+            user_id=user_id,
+            new_role='member'
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed instant promotion: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class DelayedPromoteRequest(BaseModel):
+    delay_days: int = 21
+    approved_by_user_id: str
+    reason: str = "Decoy password delay"
+
+
+class DelayedPromoteResponse(BaseModel):
+    success: bool
+    message: str
+    user_id: str
+    execute_date: str
+    delay_days: int
+
+
+@router.post("/{team_id}/members/{user_id}/delayed-promote", response_model=DelayedPromoteResponse)
+async def schedule_delayed_promotion(team_id: str, user_id: str, request: DelayedPromoteRequest):
+    """
+    Schedule delayed promotion with 21-day wait (Phase 4.3)
+
+    Used when Super Admin approves with decoy password + biometric
+    as safety mechanism if "feels iffy" about the guest.
+
+    Access:
+    - Chat: From now forward
+    - Automation: From now forward
+    - Vault: Delayed for X days (default 21)
+
+    This endpoint simulates the decoy password + Touch ID flow.
+    """
+    team_manager = get_team_manager()
+
+    try:
+        # Verify team exists
+        team = team_manager.get_team(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+
+        # Schedule delayed promotion
+        success, message = team_manager.schedule_delayed_promotion(
+            team_id=team_id,
+            user_id=user_id,
+            delay_days=request.delay_days,
+            approved_by_user_id=request.approved_by_user_id,
+            reason=request.reason
+        )
+
+        if not success:
+            raise HTTPException(status_code=400, detail=message)
+
+        from datetime import datetime, timedelta
+        execute_date = datetime.now() + timedelta(days=request.delay_days)
+
+        return DelayedPromoteResponse(
+            success=True,
+            message=message,
+            user_id=user_id,
+            execute_date=execute_date.strftime('%Y-%m-%d'),
+            delay_days=request.delay_days
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to schedule delayed promotion: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class ExecuteDelayedResponse(BaseModel):
+    executed_promotions: List[Dict]
+    total_executed: int
+
+
+@router.post("/delayed-promotions/execute", response_model=ExecuteDelayedResponse)
+async def execute_delayed_promotions(team_id: Optional[str] = None):
+    """
+    Execute all pending delayed promotions that are due
+
+    Can be called manually or by a cron job/background task.
+    Checks delayed_promotions table for promotions where execute_at <= now.
+
+    Optional query param: team_id to limit to specific team
+    """
+    team_manager = get_team_manager()
+
+    try:
+        # Execute pending promotions
+        results = team_manager.execute_delayed_promotions(team_id)
+
+        executed_count = sum(1 for r in results if r['executed'])
+
+        return ExecuteDelayedResponse(
+            executed_promotions=results,
+            total_executed=executed_count
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to execute delayed promotions: {e}")
         raise HTTPException(status_code=500, detail=str(e))
