@@ -44,6 +44,7 @@ class NeutronChatMemory:
     - Creates rolling summaries
     - Tracks model switches
     - Preserves context across sessions
+    - Thread-safe with connection-per-thread pattern
     """
 
     def __init__(self, db_path: Path = None):
@@ -53,31 +54,47 @@ class NeutronChatMemory:
         self.db_path = db_path
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Use WAL mode for better concurrent access
-        self.conn = sqlite3.connect(
-            str(self.db_path),
-            check_same_thread=False,
-            timeout=30.0,
-            isolation_level='DEFERRED'
-        )
-        self.conn.row_factory = sqlite3.Row
-
-        # Enable WAL mode and performance optimizations
-        self.conn.execute("PRAGMA journal_mode=WAL")
-        self.conn.execute("PRAGMA synchronous=NORMAL")
-        self.conn.execute("PRAGMA temp_store=MEMORY")
-        self.conn.execute("PRAGMA mmap_size=30000000000")
+        # Thread-local storage for connections
+        self._local = threading.local()
 
         # Thread lock for write operations
         self._write_lock = threading.Lock()
 
+        # Initialize main connection for setup
         self._setup_database()
+
+    def _get_connection(self) -> sqlite3.Connection:
+        """
+        Get or create a thread-local database connection.
+        This ensures each thread gets its own connection, preventing
+        SQLite threading errors when using asyncio.to_thread().
+        """
+        if not hasattr(self._local, 'conn') or self._local.conn is None:
+            # Create new connection for this thread
+            self._local.conn = sqlite3.connect(
+                str(self.db_path),
+                check_same_thread=True,  # Enforce single-thread usage per connection
+                timeout=30.0,
+                isolation_level='DEFERRED'
+            )
+            self._local.conn.row_factory = sqlite3.Row
+
+            # Enable WAL mode and performance optimizations
+            self._local.conn.execute("PRAGMA journal_mode=WAL")
+            self._local.conn.execute("PRAGMA synchronous=NORMAL")
+            self._local.conn.execute("PRAGMA temp_store=MEMORY")
+            self._local.conn.execute("PRAGMA mmap_size=30000000000")
+
+            logger.debug(f"Created new SQLite connection for thread {threading.current_thread().name}")
+
+        return self._local.conn
 
     def _setup_database(self):
         """Create memory tables"""
+        conn = self._get_connection()
 
         # Session metadata
-        self.conn.execute("""
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS chat_sessions (
                 id TEXT PRIMARY KEY,
                 title TEXT,
@@ -92,7 +109,7 @@ class NeutronChatMemory:
         """)
 
         # Full message history
-        self.conn.execute("""
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS chat_messages (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 session_id TEXT,
@@ -107,7 +124,7 @@ class NeutronChatMemory:
         """)
 
         # Conversation summaries (rolling window)
-        self.conn.execute("""
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS conversation_summaries (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 session_id TEXT,
@@ -121,7 +138,7 @@ class NeutronChatMemory:
         """)
 
         # Document chunks for RAG
-        self.conn.execute("""
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS document_chunks (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 session_id TEXT,
@@ -137,7 +154,7 @@ class NeutronChatMemory:
         """)
 
         # Embeddings for semantic search
-        self.conn.execute("""
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS message_embeddings (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 message_id INTEGER,
@@ -150,25 +167,26 @@ class NeutronChatMemory:
         """)
 
         # Create indexes
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_messages_session ON chat_messages(session_id)")
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON chat_messages(timestamp)")
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_summary_session ON conversation_summaries(session_id)")
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_chunks_session ON document_chunks(session_id)")
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_chunks_file ON document_chunks(file_id)")
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_embeddings_session ON message_embeddings(session_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_messages_session ON chat_messages(session_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON chat_messages(timestamp)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_summary_session ON conversation_summaries(session_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_chunks_session ON document_chunks(session_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_chunks_file ON document_chunks(file_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_embeddings_session ON message_embeddings(session_id)")
 
-        self.conn.commit()
+        conn.commit()
 
     def create_session(self, session_id: str, title: str, model: str) -> Dict[str, Any]:
         """Create a new chat session"""
         now = datetime.utcnow().isoformat()
+        conn = self._get_connection()
 
         with self._write_lock:
-            self.conn.execute("""
+            conn.execute("""
                 INSERT INTO chat_sessions (id, title, created_at, updated_at, default_model, message_count, models_used)
                 VALUES (?, ?, ?, ?, ?, 0, ?)
             """, (session_id, title, now, now, model, model))
-            self.conn.commit()
+            conn.commit()
 
         logger.info(f"Created chat session: {session_id}")
         return {
@@ -182,7 +200,8 @@ class NeutronChatMemory:
 
     def get_session(self, session_id: str) -> Optional[Dict[str, Any]]:
         """Get session metadata"""
-        cur = self.conn.execute("""
+        conn = self._get_connection()
+        cur = conn.execute("""
             SELECT id, title, created_at, updated_at, default_model, message_count, models_used, summary
             FROM chat_sessions WHERE id = ?
         """, (session_id,))
@@ -204,7 +223,8 @@ class NeutronChatMemory:
 
     def list_sessions(self) -> List[Dict[str, Any]]:
         """List all chat sessions"""
-        cur = self.conn.execute("""
+        conn = self._get_connection()
+        cur = conn.execute("""
             SELECT id, title, created_at, updated_at, default_model, message_count
             FROM chat_sessions
             ORDER BY updated_at DESC
@@ -225,28 +245,30 @@ class NeutronChatMemory:
 
     def delete_session(self, session_id: str):
         """Delete a chat session and all its messages"""
+        conn = self._get_connection()
         with self._write_lock:
-            self.conn.execute("DELETE FROM chat_messages WHERE session_id = ?", (session_id,))
-            self.conn.execute("DELETE FROM conversation_summaries WHERE session_id = ?", (session_id,))
-            self.conn.execute("DELETE FROM chat_sessions WHERE id = ?", (session_id,))
-            self.conn.commit()
+            conn.execute("DELETE FROM chat_messages WHERE session_id = ?", (session_id,))
+            conn.execute("DELETE FROM conversation_summaries WHERE session_id = ?", (session_id,))
+            conn.execute("DELETE FROM chat_sessions WHERE id = ?", (session_id,))
+            conn.commit()
 
         logger.info(f"Deleted chat session: {session_id}")
 
     def add_message(self, session_id: str, event: ConversationEvent):
         """Add a message to the session"""
         files_json = json.dumps(event.files) if event.files else None
+        conn = self._get_connection()
 
         with self._write_lock:
             # Insert message
-            self.conn.execute("""
+            conn.execute("""
                 INSERT INTO chat_messages (session_id, timestamp, role, content, model, tokens, files_json)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """, (session_id, event.timestamp, event.role, event.content, event.model, event.tokens, files_json))
 
             # Update session metadata
             now = datetime.utcnow().isoformat()
-            self.conn.execute("""
+            conn.execute("""
                 UPDATE chat_sessions
                 SET updated_at = ?, message_count = message_count + 1
                 WHERE id = ?
@@ -258,14 +280,15 @@ class NeutronChatMemory:
                 if session:
                     models_used = set(session.get("models_used", []))
                     models_used.add(event.model)
-                    self.conn.execute("""
+                    conn.execute("""
                         UPDATE chat_sessions SET models_used = ? WHERE id = ?
                     """, (",".join(sorted(models_used)), session_id))
 
-            self.conn.commit()
+            conn.commit()
 
     def get_messages(self, session_id: str, limit: Optional[int] = None) -> List[ConversationEvent]:
         """Get messages for a session"""
+        conn = self._get_connection()
         query = """
             SELECT timestamp, role, content, model, tokens, files_json
             FROM chat_messages
@@ -276,7 +299,7 @@ class NeutronChatMemory:
         if limit:
             query += f" LIMIT {limit}"
 
-        cur = self.conn.execute(query, (session_id,))
+        cur = conn.execute(query, (session_id,))
 
         messages = []
         for row in cur.fetchall():
@@ -294,7 +317,8 @@ class NeutronChatMemory:
 
     def get_recent_messages(self, session_id: str, limit: int = 50) -> List[ConversationEvent]:
         """Get recent messages for context window"""
-        cur = self.conn.execute("""
+        conn = self._get_connection()
+        cur = conn.execute("""
             SELECT timestamp, role, content, model, tokens, files_json
             FROM chat_messages
             WHERE session_id = ?
@@ -360,9 +384,10 @@ class NeutronChatMemory:
         now = datetime.utcnow().isoformat()
         events_json = json.dumps([asdict(ev) for ev in trimmed])
 
+        conn = self._get_connection()
         with self._write_lock:
             # Check if summary exists
-            cur = self.conn.execute(
+            cur = conn.execute(
                 "SELECT id FROM conversation_summaries WHERE session_id = ?",
                 (session_id,)
             )
@@ -370,29 +395,30 @@ class NeutronChatMemory:
 
             if row:
                 # Update existing summary
-                self.conn.execute("""
+                conn.execute("""
                     UPDATE conversation_summaries
                     SET updated_at = ?, summary = ?, events_json = ?, models_used = ?
                     WHERE session_id = ?
                 """, (now, summary, events_json, ",".join(sorted(models_used)), session_id))
             else:
                 # Insert new summary
-                self.conn.execute("""
+                conn.execute("""
                     INSERT INTO conversation_summaries
                     (session_id, created_at, updated_at, summary, events_json, models_used)
                     VALUES (?, ?, ?, ?, ?, ?)
                 """, (session_id, now, now, summary, events_json, ",".join(sorted(models_used))))
 
             # Also update session summary
-            self.conn.execute("""
+            conn.execute("""
                 UPDATE chat_sessions SET summary = ? WHERE id = ?
             """, (summary, session_id))
 
-            self.conn.commit()
+            conn.commit()
 
     def get_summary(self, session_id: str) -> Optional[Dict[str, Any]]:
         """Get conversation summary"""
-        cur = self.conn.execute("""
+        conn = self._get_connection()
+        cur = conn.execute("""
             SELECT session_id, created_at, updated_at, summary, models_used
             FROM conversation_summaries
             WHERE session_id = ?
@@ -412,32 +438,34 @@ class NeutronChatMemory:
 
     def update_session_title(self, session_id: str, title: str, auto_titled: bool = False):
         """Update session title"""
+        conn = self._get_connection()
         with self._write_lock:
             # Check if auto_titled column exists
             try:
-                self.conn.execute("""
+                conn.execute("""
                     UPDATE chat_sessions
                     SET title = ?, auto_titled = ?
                     WHERE id = ?
                 """, (title, 1 if auto_titled else 0, session_id))
             except sqlite3.OperationalError:
                 # Column doesn't exist yet, just update title
-                self.conn.execute("""
+                conn.execute("""
                     UPDATE chat_sessions
                     SET title = ?
                     WHERE id = ?
                 """, (title, session_id))
-            self.conn.commit()
+            conn.commit()
 
     def store_document_chunks(self, session_id: str, chunks: List[Dict[str, Any]]):
         """Store document chunks for RAG"""
         now = datetime.utcnow().isoformat()
+        conn = self._get_connection()
 
         with self._write_lock:
             for chunk in chunks:
                 embedding_json = json.dumps(chunk.get("embedding", []))
 
-                self.conn.execute("""
+                conn.execute("""
                     INSERT INTO document_chunks
                     (session_id, file_id, filename, chunk_index, total_chunks, content, embedding_json, created_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -452,11 +480,12 @@ class NeutronChatMemory:
                     now
                 ))
 
-            self.conn.commit()
+            conn.commit()
 
     def has_documents(self, session_id: str) -> bool:
         """Check if a session has any uploaded documents"""
-        cur = self.conn.execute("""
+        conn = self._get_connection()
+        cur = conn.execute("""
             SELECT COUNT(*) as count
             FROM document_chunks
             WHERE session_id = ?
@@ -468,7 +497,8 @@ class NeutronChatMemory:
 
     def search_document_chunks(self, session_id: str, query_embedding: List[float], top_k: int = 3) -> List[Dict[str, Any]]:
         """Search for relevant document chunks using semantic similarity"""
-        cur = self.conn.execute("""
+        conn = self._get_connection()
+        cur = conn.execute("""
             SELECT id, file_id, filename, chunk_index, content, embedding_json
             FROM document_chunks
             WHERE session_id = ?
@@ -500,9 +530,10 @@ class NeutronChatMemory:
         from api.chat_enhancements import SimpleEmbedding
 
         query_embedding = SimpleEmbedding.create_embedding(query)
+        conn = self._get_connection()
 
         # Get all messages with content
-        cur = self.conn.execute("""
+        cur = conn.execute("""
             SELECT m.id, m.session_id, m.role, m.content, m.timestamp, m.model, s.title
             FROM chat_messages m
             JOIN chat_sessions s ON m.session_id = s.id
@@ -534,9 +565,10 @@ class NeutronChatMemory:
 
     def get_analytics(self, session_id: Optional[str] = None) -> Dict[str, Any]:
         """Get analytics for a session or all sessions"""
+        conn = self._get_connection()
         if session_id:
             # Single session analytics
-            cur = self.conn.execute("""
+            cur = conn.execute("""
                 SELECT COUNT(*) as msg_count, SUM(tokens) as total_tokens
                 FROM chat_messages
                 WHERE session_id = ?
@@ -553,7 +585,7 @@ class NeutronChatMemory:
             }
         else:
             # Global analytics
-            cur = self.conn.execute("""
+            cur = conn.execute("""
                 SELECT
                     COUNT(DISTINCT session_id) as total_sessions,
                     COUNT(*) as total_messages,
@@ -563,7 +595,7 @@ class NeutronChatMemory:
             row = cur.fetchone()
 
             # Get model usage stats
-            cur = self.conn.execute("""
+            cur = conn.execute("""
                 SELECT model, COUNT(*) as count
                 FROM chat_messages
                 WHERE model IS NOT NULL
