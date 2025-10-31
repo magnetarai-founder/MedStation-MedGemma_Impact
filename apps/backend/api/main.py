@@ -566,16 +566,31 @@ async def validate_sql(request: Request, session_id: str, body: ValidationReques
 async def execute_query(req: Request, session_id: str, request: QueryRequest):
     """Execute SQL query"""
     logger.info(f"Executing query for session {session_id}: {request.sql[:100]}...")
-    
+
     if session_id not in sessions:
         raise HTTPException(status_code=404, detail="Session not found")
-    
+
     engine = sessions[session_id]['engine']
     logger.info(f"Engine found for session {session_id}")
-    
+
     # Clean SQL (strip comments/trailing semicolons) to avoid parsing issues when embedding in LIMIT wrapper
     cleaned_sql = SQLProcessor.clean_sql(request.sql)
     logger.info(f"Cleaned SQL: {cleaned_sql[:100]}...")
+
+    # Security: Validate query only accesses allowed tables (session's uploaded file)
+    from neutron_utils.sql_utils import SQLProcessor as SQLUtil
+    referenced_tables = SQLUtil.extract_table_names(cleaned_sql)
+
+    # Only allow queries to reference the excel_file table (or explicitly allowed tables)
+    allowed_tables = {'excel_file'}  # Default table for uploaded files
+    # TODO: Add support for multi-file sessions with explicit table names
+
+    unauthorized_tables = set(referenced_tables) - allowed_tables
+    if unauthorized_tables:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Query references unauthorized tables: {', '.join(unauthorized_tables)}. Only 'excel_file' is allowed."
+        )
 
     # Execute query
     try:

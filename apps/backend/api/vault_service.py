@@ -12,9 +12,10 @@ import hashlib
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from datetime import datetime
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form, WebSocket, WebSocketDisconnect, Request
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, WebSocket, WebSocketDisconnect, Request, Depends
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
+from auth_middleware import get_current_user
 from cryptography.fernet import Fernet
 
 logger = logging.getLogger(__name__)
@@ -2728,13 +2729,18 @@ def get_vault_service() -> VaultService:
 
 # ===== Router =====
 
-router = APIRouter(prefix="/api/v1/vault", tags=["Vault"])
+router = APIRouter(
+    prefix="/api/v1/vault",
+    tags=["Vault"],
+    dependencies=[Depends(get_current_user)]  # Require auth for ALL vault endpoints
+)
 
 
 @router.post("/documents", response_model=VaultDocument)
 async def create_vault_document(
     vault_type: str,
-    document: VaultDocumentCreate
+    document: VaultDocumentCreate,
+    current_user: Dict = Depends(get_current_user)
 ):
     """
     Store encrypted vault document
@@ -2742,8 +2748,7 @@ async def create_vault_document(
     Security: All encryption happens client-side
     Server only stores encrypted blobs
     """
-    # TODO: Get real user_id from auth middleware
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     if vault_type not in ('real', 'decoy'):
         raise HTTPException(status_code=400, detail="vault_type must be 'real' or 'decoy'")
@@ -2756,14 +2761,16 @@ async def create_vault_document(
 
 
 @router.get("/documents", response_model=VaultListResponse)
-async def list_vault_documents(vault_type: str):
+async def list_vault_documents(
+    vault_type: str,
+    current_user: Dict = Depends(get_current_user)
+):
     """
     List all vault documents
 
     Returns encrypted blobs that must be decrypted client-side
     """
-    # TODO: Get real user_id from auth middleware
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     if vault_type not in ('real', 'decoy'):
         raise HTTPException(status_code=400, detail="vault_type must be 'real' or 'decoy'")

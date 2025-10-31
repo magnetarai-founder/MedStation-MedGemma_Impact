@@ -185,6 +185,10 @@ PATHS = PathConfig()
 
 # ===== Backwards Compatibility Helpers =====
 
+def get_config_paths() -> PathConfig:
+    """Get the global PathConfig instance"""
+    return PATHS
+
 def get_memory_dir() -> Path:
     """Get memory directory (backwards compatibility)"""
     return PATHS.memory_dir

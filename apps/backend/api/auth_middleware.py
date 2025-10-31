@@ -20,7 +20,18 @@ from pydantic import BaseModel
 logger = logging.getLogger(__name__)
 
 # JWT configuration
-JWT_SECRET = os.getenv("ELOHIM_JWT_SECRET", secrets.token_urlsafe(32))
+# Require JWT_SECRET in production; fail fast if missing
+_jwt_secret_env = os.getenv("ELOHIM_JWT_SECRET")
+if not _jwt_secret_env:
+    # Only allow fallback in dev mode
+    if os.getenv("ELOHIM_ENV") == "development":
+        logger.warning("⚠️  Using ephemeral JWT secret - sessions will reset on restart! Set ELOHIM_JWT_SECRET in production.")
+        JWT_SECRET = secrets.token_urlsafe(32)
+    else:
+        raise RuntimeError("ELOHIM_JWT_SECRET environment variable is required in production. Sessions would reset on restart without it.")
+else:
+    JWT_SECRET = _jwt_secret_env
+
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24 * 7  # 7 days
 
