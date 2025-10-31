@@ -14,7 +14,7 @@ from datetime import datetime
 import json
 import logging
 
-from fastapi import FastAPI, File, UploadFile, HTTPException, WebSocket, WebSocketDisconnect, Form, Query, Request
+from fastapi import FastAPI, File, UploadFile, HTTPException, WebSocket, WebSocketDisconnect, Form, Query, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from starlette.background import BackgroundTask
@@ -458,9 +458,18 @@ async def delete_session(request: Request, session_id: str):
     del sessions[session_id]
     return {"message": "Session deleted"}
 
+async def _get_request(request: Request):
+    """Dependency to get Request for rate limiting"""
+    return request
+
 @app.post("/api/sessions/{session_id}/upload", response_model=FileUploadResponse)
 @limiter.limit("10/minute")  # Limit file uploads to 10 per minute
-async def upload_file(request: Request, session_id: str, file: UploadFile = File(...), sheet_name: Optional[str] = Form(None)):
+async def upload_file(
+    session_id: str,
+    file: UploadFile = File(...),
+    sheet_name: Optional[str] = Form(None),
+    request: Request = Depends(_get_request)
+):
     """Upload and load an Excel file"""
     if session_id not in sessions:
         raise HTTPException(status_code=404, detail="Session not found")
