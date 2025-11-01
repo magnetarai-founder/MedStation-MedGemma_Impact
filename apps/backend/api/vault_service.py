@@ -24,7 +24,12 @@ logger = logging.getLogger(__name__)
 from utils import sanitize_filename
 
 # Import WebSocket connection manager
-from .websocket_manager import manager
+try:
+    from websocket_manager import manager
+except ImportError:
+    # Fallback if module structure changes
+    manager = None
+    logger.warning("WebSocket manager not available for vault notifications")
 
 # Database path
 from config_paths import get_config_paths
