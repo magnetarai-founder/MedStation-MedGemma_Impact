@@ -234,14 +234,18 @@ async def connect_to_peer(request: Request, body: AddPeerRequest):
 
         connection_info = connection_codes[body.code]
 
-        # TODO: Actually connect to the peer using multiaddrs
-        # For now, just return success
-        logger.info(f"Connecting to peer {connection_info.peer_id} at {connection_info.multiaddrs}")
+        # STUB: P2P mesh connection not fully implemented
+        # This endpoint pretends success but does not establish real connections
+        # TODO: Implement actual libp2p connection using multiaddrs
+        # TODO: Validate peer identity and establish encrypted transport
+        # TODO: Add connection health checks and auto-reconnect
+        logger.warning(f"[STUB] Pretending to connect to peer {connection_info.peer_id} - not actually connecting")
 
         return {
             "status": "success",
-            "message": f"Connected to peer",
-            "peer_id": connection_info.peer_id
+            "message": f"Connected to peer (STUB - not real connection)",
+            "peer_id": connection_info.peer_id,
+            "_stub": True  # Flag indicating this is a stub response
         }
 
     except HTTPException:

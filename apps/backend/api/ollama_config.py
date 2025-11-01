@@ -130,7 +130,7 @@ class OllamaConfigManager:
 
         logger.info(f"🔧 Ollama mode set to: {mode}")
         logger.info(f"   GPU layers: {self.config.num_gpu_layers}")
-        logger.info(f"   Batch size: {self.config.num_batch_size}")
+        logger.info(f"   Batch size: {self.config.batch_size}")
 
     def detect_optimal_settings(self) -> OllamaConfig:
         """Auto-detect optimal settings for current hardware"""

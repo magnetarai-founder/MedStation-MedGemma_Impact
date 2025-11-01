@@ -882,11 +882,25 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                     "type": "progress",
                     "message": "Starting query execution..."
                 })
-                
+
+                # Security: Validate table access (same as REST endpoint)
+                sql_query = data.get("sql", "")
+                from neutron_utils.sql_utils import SQLProcessor as SQLUtil
+                referenced_tables = SQLUtil.extract_table_names(sql_query)
+                allowed_tables = {'excel_file'}
+
+                unauthorized_tables = set(referenced_tables) - allowed_tables
+                if unauthorized_tables:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": f"Query references unauthorized tables: {', '.join(unauthorized_tables)}"
+                    })
+                    continue
+
                 # TODO: Implement actual progress streaming
                 # For now, just execute and return result
                 engine = sessions[session_id]['engine']
-                result = engine.execute_sql(data.get("sql", ""))
+                result = engine.execute_sql(sql_query)
                 
                 if result.error:
                     await websocket.send_json({
