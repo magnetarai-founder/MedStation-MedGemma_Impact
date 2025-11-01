@@ -26,12 +26,12 @@ USER_DB_PATH = PATHS.data_dir / "users.db"
 USER_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 from fastapi import Depends
-from auth_middleware import get_current_user
+from auth_middleware import get_current_user_optional
 
+# Public router for offline-first user management (no auth required for single-user system)
 router = APIRouter(
     prefix="/api/v1/users",
-    tags=["Users"],
-    dependencies=[Depends(get_current_user)]  # Require auth
+    tags=["Users"]
 )
 
 
