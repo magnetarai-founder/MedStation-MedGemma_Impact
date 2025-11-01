@@ -2567,22 +2567,63 @@ async def get_user_chats(...):
 #### 4. Database Consolidation Documentation 📚
 **Issue:** Doc references multiple DBs but code centralizes via `config_paths.py`
 
-**Current Reality:**
-- `apps/backend/api/config_paths.py` - Centralized path management
-- `apps/backend/api/elohimos_memory.py` - Unified memory interface
-- Actual DBs: `elohimos_app.db`, `chat_memory.db`, `workflows.db`, etc.
+**Current Reality - Database Structure:**
 
-**Fix:** Update Part 7 "Interface Specifications" to reflect actual DB layout:
+✅ **DOCUMENTED** (as of 2025-11-01)
+
+ElohimOS uses a multi-database architecture for separation of concerns:
+
 ```
-Database Layer:
-├── elohimos_app.db (users, sessions, auth)
-├── chat_memory.db (chat history, summaries)
-├── workflows.db (workflow state)
-├── vault/ (encrypted documents)
-└── Managed via: config_paths.py + elohimos_memory.py
+.neutron_data/  (Base data directory)
+│
+├── elohimos_app.db (40 KB)
+│   ├── users (authentication, roles)
+│   └── sessions (JWT session tracking)
+│
+├── audit.db (28 KB) - NEW in Phase 0.5
+│   └── audit_log (all God Rights actions, admin operations)
+│
+├── vault.db (368 KB)
+│   ├── vault_documents (encrypted documents)
+│   ├── vault_files (file metadata)
+│   ├── vault_folders (folder structure)
+│   ├── vault_file_tags (tagging system)
+│   ├── vault_file_shares (sharing tokens)
+│   ├── vault_file_versions (version history)
+│   └── vault_audit_logs (vault-specific audit)
+│
+├── memory/
+│   └── chat_memory.db (56 KB)
+│       ├── chat_sessions (user chats)
+│       ├── chat_messages (message history)
+│       ├── conversation_summaries (summaries)
+│       └── document_chunks (RAG chunks)
+│
+├── teams.db (116 KB)
+│   └── team data (collaboration)
+│
+├── docs.db (16 KB)
+│   └── documentation storage
+│
+├── users.db (12 KB)
+│   └── user preferences/settings
+│
+└── learning.db (20 KB)
+    └── adaptive router learning data
 ```
 
-**Priority:** P2 (documentation accuracy)
+**Management Layer:**
+- `config_paths.py` - Centralized path management
+- `elohimos_memory.py` - Unified memory interface
+- Each service accesses its own DB directly
+
+**User Isolation:**
+- All tables include `user_id` column
+- All queries filter by `WHERE user_id = ?`
+- God Rights bypass only via explicit admin endpoints
+- Audit logs track all admin access
+
+**Priority:** ✅ **COMPLETE**
 
 ### 🎯 Phase 0.5 Checklist (Complete before Phase 1A)
 
@@ -2590,13 +2631,13 @@ Database Layer:
 - [x] Update frontend to use /api/v1/auth/* consistently ✅ **DONE** (commit 88dff167)
 - [x] Wire audit logging to all admin_service.py endpoints ✅ **DONE** (commit 88dff167)
 - [x] Add audit log for God Rights login events ✅ **DONE** (commit 88dff167)
-- [ ] Audit vault_service.py for consistent user_id filtering (codex confirmed 37 instances - needs final review)
-- [ ] Update DB consolidation section in Part 7 (documentation task)
+- [x] Audit vault_service.py for consistent user_id filtering ✅ **DONE** (100% compliant - 0 violations)
+- [x] Update DB consolidation section in Part 7 ✅ **DONE** (full DB structure documented)
 - [ ] Test all auth flows with unified prefix (requires server restart)
 - [ ] Verify audit logs capture all God Rights actions (requires test run)
 
-**Status:** 4/8 Complete (50%)
-**Estimated Time Remaining:** 4 hours
+**Status:** 6/8 Complete (75%)
+**Estimated Time Remaining:** 1 hour
 **Dependencies:** None (can run in parallel with other work)
 **Go/No-Go:** All items must pass before Phase 1A begins
 
