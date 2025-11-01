@@ -30,12 +30,84 @@ router = APIRouter(
 
 
 # ============================================================================
+# RESPONSE MODELS
+# ============================================================================
+
+class DiscoveryStartResponse(BaseModel):
+    status: str
+    peer_id: str
+    display_name: str
+    device_name: str
+
+class PeerInfo(BaseModel):
+    peer_id: str
+    display_name: str
+    device_name: str
+    ip_address: str
+    port: int
+    capabilities: List[str]
+    status: str
+    last_seen: str
+
+class PeersListResponse(BaseModel):
+    count: int
+    peers: List[PeerInfo]
+
+class StatusResponse(BaseModel):
+    status: str
+
+class FileShareResponse(BaseModel):
+    file_id: str
+    filename: str
+    size_bytes: int
+    sha256_hash: str
+    shared_at: str
+
+class RelayPeerResponse(BaseModel):
+    status: str
+    peer_id: str
+    latency_ms: float
+
+class SyncResponse(BaseModel):
+    status: str
+    peer_id: str
+    last_sync: str
+    operations_sent: int
+    operations_received: int
+    conflicts_resolved: int
+
+
+# ============================================================================
 # PEER DISCOVERY ENDPOINTS
 # ============================================================================
 
-@router.post("/discovery/start")
+@router.post("/discovery/start", response_model=DiscoveryStartResponse)
 async def start_discovery(request: Request, display_name: str, device_name: str):
-    """Start mDNS peer discovery on local network"""
+    """
+    Start mDNS peer discovery on local network
+
+    Initiates zero-config service discovery using Bonjour/mDNS to automatically
+    find other ElohimOS instances on the same LAN without manual IP configuration.
+
+    Flow:
+    1. Broadcasts service announcement on local network via mDNS
+    2. Listens for peer announcements from other instances
+    3. Maintains active peer list with automatic timeout/cleanup
+    4. Enables subsequent P2P operations (file sharing, sync, distributed compute)
+
+    Args:
+        display_name: Human-readable name shown to other peers (e.g., "John's MacBook")
+        device_name: Device identifier for technical logs (e.g., "macbook-pro-2023")
+
+    Returns:
+        peer_id: Unique UUID for this peer session
+        status: "started" on success
+
+    Notes:
+        - Requires network permissions for multicast DNS
+        - Peer list auto-refreshes; call GET /discovery/peers to retrieve
+        - Stop with POST /discovery/stop when disconnecting
+    """
     try:
         discovery = get_mesh_discovery(display_name, device_name)
         success = await discovery.start()
@@ -55,7 +127,7 @@ async def start_discovery(request: Request, display_name: str, device_name: str)
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/discovery/peers")
+@router.get("/discovery/peers", response_model=PeersListResponse)
 async def get_discovered_peers():
     """Get list of discovered peers on local network"""
     try:
@@ -96,7 +168,7 @@ async def get_discovery_stats():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/discovery/stop")
+@router.post("/discovery/stop", response_model=StatusResponse)
 async def stop_discovery(request: Request):
     """Stop peer discovery"""
     try:
@@ -122,9 +194,38 @@ class ShareFileRequest(BaseModel):
     tags: Optional[List[str]] = None
 
 
-@router.post("/files/share")
+@router.post("/files/share", response_model=FileShareResponse)
 async def share_file(request: Request, body: ShareFileRequest):
-    """Share a file on the local mesh network"""
+    """
+    Share a file on the local mesh network
+
+    Makes a local file available for direct P2P transfer to discovered peers.
+    No central server required - files transfer directly between devices.
+
+    Flow:
+    1. Validates file exists and is readable
+    2. Calculates SHA256 hash for integrity verification
+    3. Announces file availability to mesh network
+    4. Peers can discover via GET /files/shared
+    5. Download initiated with POST /files/download
+
+    Security:
+        - File path must be absolute and accessible to backend process
+        - Hash verification ensures transfer integrity
+        - Auth required (JWT) - only authenticated users can share
+
+    Args:
+        file_path: Absolute path to file on local filesystem
+        shared_by_peer_id: UUID of sharing peer (from /discovery/start)
+        shared_by_name: Display name of sharer
+        description: Optional human-readable description
+        tags: Optional categorization tags
+
+    Returns:
+        file_id: Unique identifier for this shared file
+        sha256_hash: Integrity verification hash
+        size_bytes: File size
+    """
     try:
         file_share = get_file_share()
 
@@ -284,7 +385,7 @@ async def get_file_sharing_stats():
 # MESH RELAY ENDPOINTS
 # ============================================================================
 
-@router.post("/relay/peer/add")
+@router.post("/relay/peer/add", response_model=RelayPeerResponse)
 async def add_relay_peer(request: Request, peer_id: str, latency_ms: float = 10.0):
     """Add a direct peer to relay network"""
     try:
@@ -400,9 +501,43 @@ class SyncRequest(BaseModel):
     tables: Optional[List[str]] = None
 
 
-@router.post("/sync/start")
+@router.post("/sync/start", response_model=SyncResponse)
 async def start_sync(request: Request, body: SyncRequest):
-    """Start data synchronization with peer"""
+    """
+    Start data synchronization with peer
+
+    Initiates bidirectional CRDT-based sync of specified database tables with
+    a discovered peer. Uses operation-based CRDTs for conflict-free replication.
+
+    Flow:
+    1. Establishes sync session with target peer
+    2. Exchanges vector clocks to determine divergence
+    3. Sends missing operations to peer (causal ordering preserved)
+    4. Receives peer's operations and applies them locally
+    5. Resolves any conflicts using CRDT merge semantics
+    6. Updates sync state and vector clock
+
+    Conflict Resolution:
+        - Last-write-wins (LWW) for simple values with Lamport timestamps
+        - Set union for collection types
+        - Custom merge functions for complex data types
+        - All conflicts auto-resolved; manual intervention never required
+
+    Args:
+        peer_id: Target peer UUID (from discovery)
+        tables: List of table names to sync (e.g., ["chat_sessions", "vault_files"])
+
+    Returns:
+        status: Sync completion status
+        operations_sent: Count of ops sent to peer
+        operations_received: Count of ops received from peer
+        conflicts_resolved: Count of auto-resolved conflicts
+
+    Notes:
+        - Requires active discovery session (POST /discovery/start)
+        - Sync is incremental; only sends operations since last sync
+        - Safe to call repeatedly; idempotent
+    """
     try:
         sync = get_data_sync()
 
