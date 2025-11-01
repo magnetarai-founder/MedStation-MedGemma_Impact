@@ -51,4 +51,26 @@ Thumbs.db
 *.log
 logs/
 Neutron-Star-master/
+
+# Environment variables and secrets
 .env
+.env.*
+!.env.example
+.envrc
+**/.env
+**/.env.*
+!**/.env.example
+
+# Secrets and credentials
+secrets/
+*.key
+*.pem
+*.p12
+*.pfx
+credentials.json
+service-account.json
+*-credentials.json
+
+# JWT secrets (if accidentally created as file)
+jwt_secret.txt
+.jwt_secret
