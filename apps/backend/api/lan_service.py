@@ -13,7 +13,14 @@ from .lan_discovery import lan_service
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/lan", tags=["LAN Discovery"])
+from fastapi import Depends
+from auth_middleware import get_current_user
+
+router = APIRouter(
+    prefix="/api/v1/lan",
+    tags=["LAN Discovery"],
+    dependencies=[Depends(get_current_user)]  # Require auth
+)
 
 
 class StartHubRequest(BaseModel):

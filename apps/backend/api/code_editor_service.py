@@ -18,7 +18,14 @@ from elohimos_memory import ElohimOSMemory
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/code-editor", tags=["code-editor"])
+from fastapi import Depends
+from auth_middleware import get_current_user
+
+router = APIRouter(
+    prefix="/api/v1/code-editor",
+    tags=["code-editor"],
+    dependencies=[Depends(get_current_user)]  # Require auth
+)
 
 # Initialize memory system
 memory = ElohimOSMemory()

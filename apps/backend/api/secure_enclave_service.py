@@ -24,7 +24,14 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/secure-enclave", tags=["secure-enclave"])
+from fastapi import Depends
+from auth_middleware import get_current_user
+
+router = APIRouter(
+    prefix="/api/v1/secure-enclave",
+    tags=["secure-enclave"],
+    dependencies=[Depends(get_current_user)]  # Require auth
+)
 
 # keyring automatically uses the best backend available (macOS Keychain on macOS)
 # No need to explicitly set it - it detects the platform

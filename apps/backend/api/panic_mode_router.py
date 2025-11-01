@@ -40,7 +40,14 @@ class PanicTriggerResponse(BaseModel):
 
 # ===== Router =====
 
-router = APIRouter(prefix="/api/v1/panic", tags=["Panic Mode"])
+from fastapi import Depends
+from auth_middleware import get_current_user
+
+router = APIRouter(
+    prefix="/api/v1/panic",
+    tags=["Panic Mode"],
+    dependencies=[Depends(get_current_user)]  # Require auth
+)
 panic_mode = get_panic_mode()
 
 

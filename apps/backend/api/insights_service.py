@@ -25,7 +25,14 @@ logger = logging.getLogger(__name__)
 INSIGHTS_UPLOADS_DIR = Path(".neutron_data/insights/audio")
 INSIGHTS_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
-router = APIRouter(prefix="/api/v1/insights", tags=["Insights"])
+from fastapi import Depends
+from auth_middleware import get_current_user
+
+router = APIRouter(
+    prefix="/api/v1/insights",
+    tags=["Insights"],
+    dependencies=[Depends(get_current_user)]  # Require auth
+)
 
 
 # ===== Models =====

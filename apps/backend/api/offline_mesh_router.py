@@ -18,7 +18,14 @@ from mlx_distributed import get_mlx_distributed, ComputeNode, DistributedJob
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/mesh", tags=["Offline Mesh"])
+from fastapi import Depends
+from auth_middleware import get_current_user
+
+router = APIRouter(
+    prefix="/api/v1/mesh",
+    tags=["Offline Mesh"],
+    dependencies=[Depends(get_current_user)]  # Require auth
+)
 
 
 # ============================================================================

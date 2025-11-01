@@ -27,7 +27,14 @@ TEAM_DB.parent.mkdir(parents=True, exist_ok=True)
 # Rate limiter for brute-force protection (HIGH-05)
 limiter = Limiter(key_func=get_remote_address)
 
-router = APIRouter(prefix="/api/v1/teams", tags=["teams"])
+from fastapi import Depends
+from auth_middleware import get_current_user
+
+router = APIRouter(
+    prefix="/api/v1/teams",
+    tags=["teams"],
+    dependencies=[Depends(get_current_user)]  # Require auth
+)
 
 
 # Pydantic models for API
