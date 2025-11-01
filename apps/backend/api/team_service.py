@@ -15,17 +15,15 @@ from typing import Dict, List, Optional
 from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
-from slowapi import Limiter
-from slowapi.util import get_remote_address
-
 logger = logging.getLogger(__name__)
 
 # Database path for team data
-TEAM_DB = Path(".neutron_data/teams.db")
-TEAM_DB.parent.mkdir(parents=True, exist_ok=True)
+from config_paths import get_config_paths
+PATHS = get_config_paths()
+TEAM_DB = PATHS.data_dir / "teams.db"
 
 # Rate limiter for brute-force protection (HIGH-05)
-limiter = Limiter(key_func=get_remote_address)
+from rate_limiter import rate_limiter, get_client_ip
 
 from fastapi import Depends
 from auth_middleware import get_current_user
@@ -2986,7 +2984,6 @@ class JoinTeamResponse(BaseModel):
 
 
 @router.post("/join", response_model=JoinTeamResponse)
-@limiter.limit("10/minute")  # HIGH-05: Brute-force protection for invite codes
 async def join_team(req: Request, request: JoinTeamRequest):
     """
     Join a team using an invite code
@@ -2994,11 +2991,16 @@ async def join_team(req: Request, request: JoinTeamRequest):
     Validates invite code and adds user as member
     Rate limited to 10 attempts per minute to prevent brute-force attacks
     """
+    # Rate limit: 10 join attempts per minute (brute-force protection)
+    client_ip = get_client_ip(req)
+    if not rate_limiter.check_rate_limit(f"team:join:{client_ip}", max_requests=10, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 10 join attempts per minute.")
+
     team_manager = get_team_manager()
 
     try:
         # Get IP address for brute-force tracking
-        ip_address = get_remote_address(req)
+        ip_address = client_ip
 
         # Validate invite code (with IP tracking for brute-force protection)
         team_id = team_manager.validate_invite_code(request.invite_code, ip_address)

@@ -12,8 +12,9 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 # Storage path for hot slots
-HOT_SLOTS_FILE = Path(".neutron_data/model_hot_slots.json")
-HOT_SLOTS_FILE.parent.mkdir(parents=True, exist_ok=True)
+from config_paths import get_config_paths
+PATHS = get_config_paths()
+HOT_SLOTS_FILE = PATHS.data_dir / "model_hot_slots.json"
 
 # Model filtering patterns
 EMBEDDING_MODEL_PATTERNS = [

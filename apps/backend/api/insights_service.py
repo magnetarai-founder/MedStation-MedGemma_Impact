@@ -22,7 +22,9 @@ import aiofiles
 logger = logging.getLogger(__name__)
 
 # Storage paths
-INSIGHTS_UPLOADS_DIR = Path(".neutron_data/insights/audio")
+from config_paths import get_config_paths
+PATHS = get_config_paths()
+INSIGHTS_UPLOADS_DIR = PATHS.data_dir / "insights" / "audio"
 INSIGHTS_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
 from fastapi import Depends

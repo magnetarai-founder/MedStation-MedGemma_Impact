@@ -29,7 +29,14 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/n8n", tags=["n8n"])
+from fastapi import Depends
+from auth_middleware import get_current_user
+
+router = APIRouter(
+    prefix="/api/v1/n8n",
+    tags=["n8n"],
+    dependencies=[Depends(get_current_user)]  # Require auth
+)
 
 # ============================================
 # REQUEST/RESPONSE MODELS

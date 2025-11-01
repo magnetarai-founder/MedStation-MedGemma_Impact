@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 
 from panic_mode import get_panic_mode
+from rate_limiter import rate_limiter, get_client_ip
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +66,10 @@ async def trigger_panic_mode(request: Request, body: PanicTriggerRequest):
 
     **This action is IRREVERSIBLE!**
     """
+    # Rate limit: 5 panic triggers per hour (prevent abuse)
+    client_ip = get_client_ip(request)
+    if not rate_limiter.check_rate_limit(f"panic:trigger:{client_ip}", max_requests=5, window_seconds=3600):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 5 panic triggers per hour.")
 
     # Require explicit confirmation
     if body.confirmation != "CONFIRM":

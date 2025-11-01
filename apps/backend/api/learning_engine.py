@@ -16,8 +16,9 @@ from collections import defaultdict, Counter
 logger = logging.getLogger(__name__)
 
 # Database path for learning data
-LEARNING_DB = Path(".neutron_data/learning.db")
-LEARNING_DB.parent.mkdir(parents=True, exist_ok=True)
+from config_paths import get_config_paths
+PATHS = get_config_paths()
+LEARNING_DB = PATHS.data_dir / "learning.db"
 
 
 class LearningEngine:

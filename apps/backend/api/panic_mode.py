@@ -108,11 +108,21 @@ class PanicMode:
 
     def _wipe_chat_cache(self):
         """Wipe all chat session cache"""
-        cache_paths = [
-            Path(".neutron_data/cache"),
-            Path(".neutron_data/uploads"),
-            Path("/tmp/omnistudio_cache"),
-        ]
+        try:
+            from config_paths import get_config_paths
+            paths = get_config_paths()
+            cache_paths = [
+                paths.data_dir / "cache",
+                paths.uploads_dir,
+                Path("/tmp/omnistudio_cache"),
+            ]
+        except Exception:
+            # Fallback to hardcoded paths
+            cache_paths = [
+                Path(".neutron_data/cache"),
+                Path(".neutron_data/uploads"),
+                Path("/tmp/omnistudio_cache"),
+            ]
 
         for cache_path in cache_paths:
             if cache_path.exists():
@@ -125,10 +135,19 @@ class PanicMode:
 
     def _wipe_uploads(self):
         """Wipe all uploaded files"""
-        upload_paths = [
-            Path(".neutron_data/uploads"),
-            Path("temp_uploads"),
-        ]
+        try:
+            from config_paths import get_config_paths
+            paths = get_config_paths()
+            upload_paths = [
+                paths.uploads_dir,
+                Path("temp_uploads"),
+            ]
+        except Exception:
+            # Fallback to hardcoded paths
+            upload_paths = [
+                Path(".neutron_data/uploads"),
+                Path("temp_uploads"),
+            ]
 
         for upload_path in upload_paths:
             if upload_path.exists():
@@ -176,9 +195,8 @@ class PanicMode:
             ])
         except Exception as e:
             logger.warning(f"Could not discover DBs via config_paths: {e}")
-            # Fallback to hardcoded paths
+            # Fallback to minimal hardcoded paths (only those outside .neutron_data)
             db_paths = [
-                Path(".neutron_data/neutron_chat.db"),
                 Path.home() / ".elohimos" / "elohimos_memory.db",
                 Path.home() / ".elohimos" / "learning.db",
             ]

@@ -27,8 +27,10 @@ from utils import sanitize_filename
 from .websocket_manager import manager
 
 # Database path
-VAULT_DB_PATH = Path(".neutron_data/vault.db")
-VAULT_FILES_PATH = Path(".neutron_data/vault_files")
+from config_paths import get_config_paths
+PATHS = get_config_paths()
+VAULT_DB_PATH = PATHS.data_dir / "vault.db"
+VAULT_FILES_PATH = PATHS.data_dir / "vault_files"
 
 
 # ===== Models =====

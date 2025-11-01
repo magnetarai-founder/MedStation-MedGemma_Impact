@@ -62,7 +62,11 @@ class OfflineFileShare:
     CHUNK_SIZE = 1024 * 1024  # 1MB chunks for reliable transfer
 
     def __init__(self, storage_dir: Path = None):
-        self.storage_dir = storage_dir or Path(".neutron_data/shared_files")
+        if storage_dir is None:
+            from config_paths import get_config_paths
+            PATHS = get_config_paths()
+            storage_dir = PATHS.data_dir / "shared_files"
+        self.storage_dir = storage_dir
         self.storage_dir.mkdir(parents=True, exist_ok=True)
 
         # In-memory state

@@ -7,22 +7,35 @@ Health checks, Metal 4 diagnostics, and system monitoring
 import logging
 import time
 import psutil
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from typing import Dict, Any, Optional
 from datetime import datetime
+from rate_limiter import rate_limiter, get_client_ip
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/monitoring", tags=["monitoring"])
+from fastapi import Depends
+from auth_middleware import get_current_user
+
+router = APIRouter(
+    prefix="/api/v1/monitoring",
+    tags=["monitoring"],
+    dependencies=[Depends(get_current_user)]  # Require auth
+)
 
 
 @router.get("/health")
-async def get_system_health():
+async def get_system_health(request: Request):
     """
     Comprehensive system health check
 
     Returns status for all services and system resources
     """
+    # Rate limit: 60 health checks per minute
+    client_ip = get_client_ip(request)
+    if not rate_limiter.check_rate_limit(f"monitoring:health:{client_ip}", max_requests=60, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 60 requests per minute.")
+
     start_time = time.time()
 
     health_status = {
@@ -197,12 +210,17 @@ async def get_system_health():
 
 
 @router.get("/metal4")
-async def get_metal4_stats():
+async def get_metal4_stats(request: Request):
     """
     Get Metal 4 GPU performance statistics
 
     Returns real-time metrics from Metal 4 diagnostics
     """
+    # Rate limit: 60 stats requests per minute
+    client_ip = get_client_ip(request)
+    if not rate_limiter.check_rate_limit(f"monitoring:metal4:{client_ip}", max_requests=60, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 60 requests per minute.")
+
     try:
         from metal4_diagnostics import get_diagnostics
 
