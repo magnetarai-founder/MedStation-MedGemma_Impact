@@ -1,6 +1,8 @@
 /**
  * Error Tracking Utility
  * Logs errors for monitoring and debugging
+ *
+ * Security: Automatically redacts sensitive data before localStorage persistence
  */
 
 interface ErrorLog {
@@ -11,6 +13,132 @@ interface ErrorLog {
   context?: Record<string, any>
   userAgent?: string
   url?: string
+}
+
+/**
+ * Patterns to detect and redact sensitive data
+ */
+const SENSITIVE_PATTERNS = [
+  // JWT tokens
+  /eyJ[A-Za-z0-9-_]+\.eyJ[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+/g,
+  // API keys (common formats)
+  /\b[A-Za-z0-9]{32,}\b/g,
+  // Bearer tokens
+  /Bearer\s+[A-Za-z0-9-._~+/]+/gi,
+  // Passwords in URLs or form data
+  /password[=:]\s*[^\s&]+/gi,
+  // Credit cards (basic pattern)
+  /\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b/g,
+  // SSN-like patterns
+  /\b\d{3}-\d{2}-\d{4}\b/g,
+  // Email addresses (optional - may be useful for debugging)
+  // /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g,
+]
+
+/**
+ * Keys that should be completely removed from logs
+ */
+const SENSITIVE_KEYS = [
+  'password',
+  'token',
+  'apiKey',
+  'api_key',
+  'secret',
+  'authorization',
+  'auth',
+  'bearer',
+  'jwt',
+  'session',
+  'cookie',
+  'credentials',
+  'privateKey',
+  'private_key',
+]
+
+/**
+ * Sanitize a string by redacting sensitive patterns
+ */
+function sanitizeString(str: string): string {
+  let sanitized = str
+
+  for (const pattern of SENSITIVE_PATTERNS) {
+    sanitized = sanitized.replace(pattern, '[REDACTED]')
+  }
+
+  return sanitized
+}
+
+/**
+ * Deep sanitize an object, removing sensitive keys and redacting patterns
+ */
+function sanitizeObject(obj: any): any {
+  if (obj === null || obj === undefined) {
+    return obj
+  }
+
+  if (typeof obj === 'string') {
+    return sanitizeString(obj)
+  }
+
+  if (typeof obj !== 'object') {
+    return obj
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map(item => sanitizeObject(item))
+  }
+
+  const sanitized: Record<string, any> = {}
+
+  for (const [key, value] of Object.entries(obj)) {
+    // Remove sensitive keys entirely
+    if (SENSITIVE_KEYS.some(sensitiveKey =>
+      key.toLowerCase().includes(sensitiveKey.toLowerCase())
+    )) {
+      sanitized[key] = '[REDACTED]'
+      continue
+    }
+
+    // Recursively sanitize nested objects
+    sanitized[key] = sanitizeObject(value)
+  }
+
+  return sanitized
+}
+
+/**
+ * Sanitize an entire error log before persistence
+ */
+function sanitizeErrorLog(log: ErrorLog): ErrorLog {
+  return {
+    ...log,
+    message: sanitizeString(log.message),
+    stack: log.stack ? sanitizeString(log.stack) : undefined,
+    context: log.context ? sanitizeObject(log.context) : undefined,
+    url: log.url ? sanitizeUrl(log.url) : undefined,
+  }
+}
+
+/**
+ * Sanitize URL by removing query parameters that may contain tokens
+ */
+function sanitizeUrl(url: string): string {
+  try {
+    const urlObj = new URL(url)
+
+    // Remove sensitive query parameters
+    const sensitiveParams = ['token', 'apiKey', 'api_key', 'key', 'secret', 'auth']
+    sensitiveParams.forEach(param => {
+      if (urlObj.searchParams.has(param)) {
+        urlObj.searchParams.set(param, '[REDACTED]')
+      }
+    })
+
+    return urlObj.toString()
+  } catch {
+    // If URL parsing fails, just sanitize as string
+    return sanitizeString(url)
+  }
 }
 
 class ErrorTracker {
@@ -113,9 +241,12 @@ class ErrorTracker {
 
   private persistToStorage(log: ErrorLog) {
     try {
+      // SECURITY: Sanitize log before localStorage to prevent secret leakage
+      const sanitizedLog = sanitizeErrorLog(log)
+
       const stored = localStorage.getItem('error_logs')
       const logs: ErrorLog[] = stored ? JSON.parse(stored) : []
-      logs.push(log)
+      logs.push(sanitizedLog)
 
       // Keep only last 50 in localStorage to avoid quota issues
       if (logs.length > 50) {

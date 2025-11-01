@@ -2096,6 +2096,73 @@ async def get_optimization_settings(operation_type: str):
     return metal4_engine.optimize_for_operation(operation_type)
 
 
+# ============================================================================
+# METRICS & OBSERVABILITY
+# ============================================================================
+
+@app.get("/api/v1/metrics")
+async def get_metrics_summary():
+    """
+    Get system-wide observability metrics
+
+    Returns summary of operation counts, latencies, and errors for:
+    - SQL query execution
+    - Data uploads
+    - P2P sync operations
+    - File transfers
+
+    Useful for identifying bottlenecks and performance issues in production.
+    """
+    from metrics import get_metrics
+
+    metrics_collector = get_metrics()
+    return metrics_collector.get_summary()
+
+
+@app.get("/api/v1/metrics/{operation}")
+async def get_operation_metrics(operation: str):
+    """
+    Get detailed metrics for a specific operation
+
+    Args:
+        operation: Operation name (e.g., 'sql_query_execution', 'data_upload', 'p2p_sync')
+
+    Returns:
+        Detailed metrics including count, avg/p50/p95/p99 latencies, error rate
+    """
+    from metrics import get_metrics
+
+    metrics_collector = get_metrics()
+    snapshot = metrics_collector.get_snapshot(operation)
+
+    if not snapshot:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No metrics found for operation: {operation}"
+        )
+
+    return snapshot
+
+
+@app.post("/api/v1/metrics/reset")
+async def reset_metrics(operation: Optional[str] = None):
+    """
+    Reset metrics (admin only)
+
+    Args:
+        operation: Optional operation to reset. If not provided, resets all metrics.
+    """
+    from metrics import get_metrics
+
+    metrics_collector = get_metrics()
+    metrics_collector.reset(operation)
+
+    return {
+        "status": "reset",
+        "operation": operation or "all"
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)

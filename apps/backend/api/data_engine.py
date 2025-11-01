@@ -23,8 +23,10 @@ import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 from utils import sanitize_for_log
+from metrics import get_metrics
 
 logger = logging.getLogger(__name__)
+metrics = get_metrics()
 
 # Metal 4 integration for parallel SQL operations
 try:
@@ -130,22 +132,25 @@ class DataEngine:
                 'query_suggestions': [...]
             }
         """
-        # 1. Read file based on type
-        file_ext = file_path.suffix.lower()
+        # METRICS: Track file upload operation
+        with metrics.track("data_upload"):
+            # 1. Read file based on type
+            file_ext = file_path.suffix.lower()
 
-        try:
-            if file_ext in ['.xlsx', '.xls']:
-                df = pd.read_excel(file_path)
-            elif file_ext == '.json':
-                df = pd.read_json(file_path)
-            elif file_ext == '.csv':
-                df = pd.read_csv(file_path)
-            else:
-                raise ValueError(f"Unsupported file type: {file_ext}")
-        except Exception as e:
-            safe_filename = sanitize_for_log(filename)
-            logger.error(f"Failed to read file {safe_filename}: {e}")
-            raise
+            try:
+                if file_ext in ['.xlsx', '.xls']:
+                    df = pd.read_excel(file_path)
+                elif file_ext == '.json':
+                    df = pd.read_json(file_path)
+                elif file_ext == '.csv':
+                    df = pd.read_csv(file_path)
+                else:
+                    raise ValueError(f"Unsupported file type: {file_ext}")
+            except Exception as e:
+                safe_filename = sanitize_for_log(filename)
+                logger.error(f"Failed to read file {safe_filename}: {e}")
+                metrics.increment_error("data_upload")
+                raise
 
         # 2. Auto-clean
         df = self._auto_clean(df)
@@ -330,47 +335,53 @@ class DataEngine:
         """
         import time
 
-        # ===== METAL 4 TICK FLOW =====
-        # Kick frame if Metal4 is available
-        if _metal4_engine and _metal4_engine.is_available():
-            _metal4_engine.kick_frame()
-            logger.debug(f"⚡ SQL query on Metal4 frame {_metal4_engine.frame_counter}")
-        # ===== END METAL 4 TICK FLOW =====
-
-        start = time.time()
-
-        try:
-            cursor = self.conn.execute(query)
-            columns = [desc[0] for desc in cursor.description]
-            rows = cursor.fetchall()
-
-            # Convert Row objects to dicts
-            results = [dict(row) for row in rows]
-
-            execution_time = time.time() - start
-
-            # ===== METAL 4 DIAGNOSTICS =====
-            # Record SQL operation in Metal4 diagnostics
+        # METRICS: Track SQL query execution
+        with metrics.track("sql_query_execution"):
+            # ===== METAL 4 TICK FLOW =====
+            # Kick frame if Metal4 is available
             if _metal4_engine and _metal4_engine.is_available():
-                try:
-                    from api.metal4_diagnostics import get_diagnostics
-                    diag = get_diagnostics()
-                    if diag:
-                        diag.record_operation('sql_queries', execution_time * 1000, 'ml')
-                        logger.info(f"⚡ SQL query executed: {execution_time * 1000:.2f}ms (Metal4 tracked)")
-                except:
-                    pass
-            # ===== END METAL 4 DIAGNOSTICS =====
+                _metal4_engine.kick_frame()
+                logger.debug(f"⚡ SQL query on Metal4 frame {_metal4_engine.frame_counter}")
+            # ===== END METAL 4 TICK FLOW =====
 
-            return {
-                'columns': columns,
-                'rows': results,
-                'row_count': len(results),
-                'execution_time': round(execution_time * 1000, 2)  # ms
-            }
-        except Exception as e:
-            logger.error(f"SQL execution failed: {e}")
-            raise
+            start = time.time()
+
+            try:
+                cursor = self.conn.execute(query)
+                columns = [desc[0] for desc in cursor.description]
+                rows = cursor.fetchall()
+
+                # Convert Row objects to dicts
+                results = [dict(row) for row in rows]
+
+                execution_time = time.time() - start
+
+                # ===== METAL 4 DIAGNOSTICS =====
+                # Record SQL operation in Metal4 diagnostics
+                if _metal4_engine and _metal4_engine.is_available():
+                    try:
+                        from api.metal4_diagnostics import get_diagnostics
+                        diag = get_diagnostics()
+                        if diag:
+                            diag.record_operation('sql_queries', execution_time * 1000, 'ml')
+                            logger.info(f"⚡ SQL query executed: {execution_time * 1000:.2f}ms (Metal4 tracked)")
+                    except:
+                        pass
+                # ===== END METAL 4 DIAGNOSTICS =====
+
+                # METRICS: Record row count for query size tracking
+                metrics.record("sql_rows_returned", len(results))
+
+                return {
+                    'columns': columns,
+                    'rows': results,
+                    'row_count': len(results),
+                    'execution_time': round(execution_time * 1000, 2)  # ms
+                }
+            except Exception as e:
+                logger.error(f"SQL execution failed: {e}")
+                metrics.increment_error("sql_query_execution")
+                raise
 
     def get_dataset_metadata(self, dataset_id: str) -> Optional[Dict[str, Any]]:
         """Get metadata for a dataset"""

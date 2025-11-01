@@ -21,12 +21,16 @@ logger = logging.getLogger(__name__)
 from fastapi import Depends
 from auth_middleware import get_current_user
 from utils import sanitize_for_log
+from metrics import get_metrics
 
 router = APIRouter(
     prefix="/api/v1/mesh",
     tags=["Offline Mesh"],
     dependencies=[Depends(get_current_user)]  # Require auth
 )
+
+# Initialize metrics
+metrics = get_metrics()
 
 
 # ============================================================================
@@ -538,26 +542,34 @@ async def start_sync(request: Request, body: SyncRequest):
         - Sync is incremental; only sends operations since last sync
         - Safe to call repeatedly; idempotent
     """
-    try:
-        sync = get_data_sync()
+    # METRICS: Track P2P sync operation
+    with metrics.track("p2p_sync"):
+        try:
+            sync = get_data_sync()
 
-        state = await sync.sync_with_peer(
-            peer_id=body.peer_id,
-            tables=body.tables
-        )
+            state = await sync.sync_with_peer(
+                peer_id=body.peer_id,
+                tables=body.tables
+            )
 
-        return {
-            "status": state.status,
-            "peer_id": state.peer_id,
-            "last_sync": state.last_sync,
-            "operations_sent": state.operations_sent,
-            "operations_received": state.operations_received,
-            "conflicts_resolved": state.conflicts_resolved
-        }
+            # METRICS: Record sync metrics
+            metrics.record("p2p_ops_sent", state.operations_sent)
+            metrics.record("p2p_ops_received", state.operations_received)
+            metrics.record("p2p_conflicts_resolved", state.conflicts_resolved)
 
-    except Exception as e:
-        logger.error(f"Failed to sync: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+            return {
+                "status": state.status,
+                "peer_id": state.peer_id,
+                "last_sync": state.last_sync,
+                "operations_sent": state.operations_sent,
+                "operations_received": state.operations_received,
+                "conflicts_resolved": state.conflicts_resolved
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to sync: {e}")
+            metrics.increment_error("p2p_sync")
+            raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/sync/state/{peer_id}")

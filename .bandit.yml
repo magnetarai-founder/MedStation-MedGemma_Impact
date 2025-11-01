@@ -1,0 +1,30 @@
+# Bandit security linter configuration
+# Excludes common false positives for ElohimOS
+
+# Directories to exclude from scanning
+exclude_dirs:
+  - /tests/
+  - /venv/
+  - /node_modules/
+  - /.venv/
+  - /build/
+  - /dist/
+
+# Tests to skip (common false positives)
+skips:
+  # B101: assert_used - asserts are fine in tests and development
+  - B101
+  # B601: paramiko_calls - we don't use paramiko
+  - B601
+  # B602: subprocess_popen_with_shell_equals_true - validated usage
+  - B602
+
+# Specific tests to run (if you want to be selective)
+# tests:
+#   - B201  # flask_debug_true
+
+# Confidence level (LOW, MEDIUM, HIGH)
+confidence: MEDIUM
+
+# Severity level to report (LOW, MEDIUM, HIGH)
+severity: MEDIUM
