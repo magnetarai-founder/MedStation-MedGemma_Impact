@@ -70,7 +70,8 @@ class VaultWebSocketClient {
     // Construct WebSocket URL with JWT token in query param
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.hostname
-    const port = '8742' // Backend port
+    // Use environment variable if set, otherwise fallback to 8742
+    const port = import.meta.env.VITE_WS_PORT || '8742'
     const wsUrl = `${protocol}//${host}:${port}/api/v1/vault/ws/${userId}?vault_type=${vaultType}&token=${encodeURIComponent(token)}`
 
     console.log(`Connecting to WebSocket: ${wsUrl}`)

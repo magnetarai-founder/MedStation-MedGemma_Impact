@@ -22,8 +22,6 @@ from pydantic import BaseModel, Field
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-from collections import defaultdict
-from time import time
 import uuid as uuid_lib
 from contextvars import ContextVar
 import pandas as pd
@@ -61,28 +59,8 @@ from utils import sanitize_filename, sanitize_for_log
 # Initialize rate limiter
 limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
-# Simple token bucket rate limiter (since slowapi has multipart issues)
-class SimpleRateLimiter:
-    def __init__(self):
-        self.buckets = defaultdict(lambda: {"tokens": 0, "last_update": time()})
-
-    def check_rate_limit(self, key: str, max_requests: int, window_seconds: int) -> bool:
-        """Check if request is within rate limit. Returns True if allowed."""
-        now = time()
-        bucket = self.buckets[key]
-
-        # Refill tokens based on time passed
-        time_passed = now - bucket["last_update"]
-        bucket["tokens"] = min(max_requests, bucket["tokens"] + (time_passed * max_requests / window_seconds))
-        bucket["last_update"] = now
-
-        # Check if we have tokens
-        if bucket["tokens"] >= 1:
-            bucket["tokens"] -= 1
-            return True
-        return False
-
-simple_limiter = SimpleRateLimiter()
+# Import shared rate limiter to avoid code duplication
+from rate_limiter import rate_limiter, get_client_ip
 
 # Import existing backend modules
 import sys
@@ -452,6 +430,24 @@ class ValidationResponse(BaseModel):
     errors: List[str]
     warnings: List[str]
 
+class QueryHistoryItem(BaseModel):
+    id: str
+    query: str
+    timestamp: str
+    executionTime: Optional[float] = None
+    rowCount: Optional[int] = None
+    status: str
+
+class QueryHistoryResponse(BaseModel):
+    history: List[QueryHistoryItem]
+
+class SuccessResponse(BaseModel):
+    success: bool
+    message: Optional[str] = None
+
+class DatasetListResponse(BaseModel):
+    datasets: List[Dict[str, Any]]
+
 # Helper functions
 async def save_upload(upload_file: UploadFile) -> Path:
     """Save uploaded file to temp directory"""
@@ -638,8 +634,8 @@ async def validate_sql(request: Request, session_id: str, body: ValidationReques
 async def execute_query(req: Request, session_id: str, request: QueryRequest):
     """Execute SQL query"""
     # Rate limit: 60 queries per minute
-    client_ip = req.client.host if req.client else "unknown"
-    if not simple_limiter.check_rate_limit(f"query:{client_ip}", max_requests=60, window_seconds=60):
+    client_ip = get_client_ip(req)
+    if not rate_limiter.check_rate_limit(f"query:{client_ip}", max_requests=60, window_seconds=60):
         raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 60 queries per minute.")
 
     # Sanitize SQL for logging (redact potential sensitive data)
@@ -718,7 +714,7 @@ async def execute_query(req: Request, session_id: str, request: QueryRequest):
         has_more=result.row_count > preview_limit
     )
 
-@app.get("/api/sessions/{session_id}/query-history")
+@app.get("/api/sessions/{session_id}/query-history", response_model=QueryHistoryResponse)
 async def get_query_history(session_id: str):
     """Get query history for a session"""
     if session_id not in sessions:
@@ -742,7 +738,7 @@ async def get_query_history(session_id: str):
 
     return {"history": history}
 
-@app.delete("/api/sessions/{session_id}/query-history/{query_id}")
+@app.delete("/api/sessions/{session_id}/query-history/{query_id}", response_model=SuccessResponse)
 async def delete_query_from_history(request: Request, session_id: str, query_id: str):
     """Delete a query from history"""
     if session_id not in sessions:
@@ -758,7 +754,7 @@ async def delete_query_from_history(request: Request, session_id: str, query_id:
     if query_id in query_results:
         del query_results[query_id]
 
-    return {"message": "Query deleted successfully"}
+    return SuccessResponse(success=True, message="Query deleted successfully")
 
 @app.post("/api/sessions/{session_id}/export")
 async def export_results(req: Request, session_id: str, request: ExportRequest):
@@ -973,8 +969,8 @@ class JsonConvertResponse(BaseModel):
 async def upload_json(request: Request, session_id: str, file: UploadFile = File(...)):
     """Upload and analyze JSON file"""
     # Rate limit: 10 uploads per minute
-    client_ip = request.client.host if request.client else "unknown"
-    if not simple_limiter.check_rate_limit(f"upload:{client_ip}", max_requests=10, window_seconds=60):
+    client_ip = get_client_ip(request)
+    if not rate_limiter.check_rate_limit(f"upload:{client_ip}", max_requests=10, window_seconds=60):
         raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 10 uploads per minute.")
 
     if session_id not in sessions:
@@ -1887,7 +1883,7 @@ async def upload_dataset(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/api/data/datasets")
+@app.get("/api/data/datasets", response_model=DatasetListResponse)
 async def list_datasets(session_id: Optional[str] = None):
     """List all datasets, optionally filtered by session"""
     try:
@@ -1895,7 +1891,7 @@ async def list_datasets(session_id: Optional[str] = None):
             data_engine.list_datasets,
             session_id
         )
-        return {"datasets": datasets}
+        return DatasetListResponse(datasets=datasets)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
