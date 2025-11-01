@@ -9,7 +9,7 @@ Provides God Rights (Founder Admin) with support capabilities:
 This follows the Salesforce model: Admins can manage accounts but cannot see user data.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from typing import Dict, List, Optional
 import sqlite3
 import logging
@@ -24,7 +24,13 @@ try:
 except ImportError:
     from chat_memory import get_memory
 
+try:
+    from .audit_logger import get_audit_logger, AuditAction
+except ImportError:
+    from audit_logger import get_audit_logger, AuditAction
+
 logger = logging.getLogger(__name__)
+audit_logger = get_audit_logger()
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
@@ -48,7 +54,7 @@ def get_admin_db_connection():
 
 
 @router.get("/users")
-async def list_all_users(current_user: Dict = Depends(require_god_rights)):
+async def list_all_users(request: Request, current_user: Dict = Depends(require_god_rights)):
     """List all users on the system (God Rights only)
 
     Returns user account metadata (username, user_id, email, created_at)
@@ -56,6 +62,14 @@ async def list_all_users(current_user: Dict = Depends(require_god_rights)):
 
     This is for support purposes - helping users who forget their user_id.
     """
+    # Audit log
+    audit_logger.log(
+        user_id=current_user["user_id"],
+        action=AuditAction.ADMIN_LIST_USERS,
+        ip_address=request.client.host if request.client else None,
+        details={"admin_username": current_user["username"]}
+    )
+
     conn = get_admin_db_connection()
     try:
         cursor = conn.execute("""
@@ -84,6 +98,7 @@ async def list_all_users(current_user: Dict = Depends(require_god_rights)):
 
 @router.get("/users/{target_user_id}")
 async def get_user_details(
+    request: Request,
     target_user_id: str,
     current_user: Dict = Depends(require_god_rights)
 ):
@@ -92,6 +107,16 @@ async def get_user_details(
     Returns user account metadata for support purposes.
     Does NOT return passwords, vault data, or personal content.
     """
+    # Audit log
+    audit_logger.log(
+        user_id=current_user["user_id"],
+        action=AuditAction.ADMIN_VIEW_USER,
+        resource="user",
+        resource_id=target_user_id,
+        ip_address=request.client.host if request.client else None,
+        details={"admin_username": current_user["username"]}
+    )
+
     conn = get_admin_db_connection()
     try:
         cursor = conn.execute("""
@@ -122,6 +147,7 @@ async def get_user_details(
 
 @router.get("/users/{target_user_id}/chats")
 async def get_user_chats(
+    request: Request,
     target_user_id: str,
     current_user: Dict = Depends(require_god_rights)
 ):
@@ -138,6 +164,19 @@ async def get_user_chats(
     # Use the new admin method that bypasses user filtering
     sessions = memory.list_user_sessions_admin(target_user_id)
 
+    # Audit log
+    audit_logger.log(
+        user_id=current_user["user_id"],
+        action=AuditAction.ADMIN_VIEW_USER_CHATS,
+        resource="chat_sessions",
+        resource_id=target_user_id,
+        ip_address=request.client.host if request.client else None,
+        details={
+            "admin_username": current_user["username"],
+            "chat_count": len(sessions)
+        }
+    )
+
     logger.info(
         f"God Rights {current_user['username']} viewed {len(sessions)} chats "
         f"for user {target_user_id}"
@@ -151,7 +190,7 @@ async def get_user_chats(
 
 
 @router.get("/chats")
-async def list_all_chats(current_user: Dict = Depends(require_god_rights)):
+async def list_all_chats(request: Request, current_user: Dict = Depends(require_god_rights)):
     """List ALL chat sessions across all users (God Rights only - for support)
 
     This is an ADMIN endpoint - explicitly for support access.
@@ -164,6 +203,17 @@ async def list_all_chats(current_user: Dict = Depends(require_god_rights)):
 
     # Use the new admin method that returns all sessions
     sessions = memory.list_all_sessions_admin()
+
+    # Audit log
+    audit_logger.log(
+        user_id=current_user["user_id"],
+        action=AuditAction.ADMIN_LIST_ALL_CHATS,
+        ip_address=request.client.host if request.client else None,
+        details={
+            "admin_username": current_user["username"],
+            "total_chats": len(sessions)
+        }
+    )
 
     logger.info(
         f"God Rights {current_user['username']} listed {len(sessions)} total chats "

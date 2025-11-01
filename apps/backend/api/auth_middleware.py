@@ -21,6 +21,11 @@ try:
 except ImportError:
     from utils import sanitize_for_log
 
+try:
+    from .audit_logger import get_audit_logger, AuditAction
+except ImportError:
+    from audit_logger import get_audit_logger, AuditAction
+
 logger = logging.getLogger(__name__)
 
 # JWT configuration
@@ -192,6 +197,20 @@ class AuthService:
                 # God Rights login successful
                 logger.info("🔐 God Rights (Founder) login")
 
+                # Audit log God Rights login
+                try:
+                    audit_logger = get_audit_logger()
+                    audit_logger.log(
+                        user_id="god_rights",
+                        action=AuditAction.GOD_RIGHTS_LOGIN,
+                        details={
+                            "username": GOD_RIGHTS_USERNAME,
+                            "device_fingerprint": device_fingerprint
+                        }
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to log God Rights login audit: {e}")
+
                 # Create JWT token with god_rights flag
                 expiration = datetime.utcnow() + timedelta(hours=JWT_EXPIRATION_HOURS)
                 token_payload = {
@@ -214,6 +233,19 @@ class AuthService:
                 }
             else:
                 logger.warning("❌ Failed God Rights login attempt")
+                # Audit log failed attempt
+                try:
+                    audit_logger = get_audit_logger()
+                    audit_logger.log(
+                        user_id="god_rights",
+                        action=AuditAction.USER_LOGIN_FAILED,
+                        details={
+                            "username": username,
+                            "reason": "invalid_password"
+                        }
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to log failed God Rights login audit: {e}")
                 return None
 
         # Regular user authentication

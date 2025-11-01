@@ -85,6 +85,16 @@ class AuditAction:
     # Settings
     SETTINGS_CHANGED = "settings.changed"
 
+    # Admin/God Rights Operations
+    ADMIN_LIST_USERS = "admin.list.users"
+    ADMIN_VIEW_USER = "admin.view.user"
+    ADMIN_VIEW_USER_CHATS = "admin.view.user_chats"
+    ADMIN_LIST_ALL_CHATS = "admin.list.all_chats"
+    ADMIN_RESET_PASSWORD = "admin.reset_password"
+    ADMIN_UNLOCK_ACCOUNT = "admin.unlock_account"
+    ADMIN_VIEW_VAULT_STATUS = "admin.view.vault_status"
+    GOD_RIGHTS_LOGIN = "god_rights.login"
+
 
 class AuditLogger:
     """

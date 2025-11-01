@@ -45,6 +45,23 @@ class UserResponse(BaseModel):
     device_id: str
 
 
+@router.get("/setup-needed")
+async def check_setup_needed():
+    """Check if initial setup is required (no users exist)"""
+    import sqlite3
+
+    try:
+        conn = sqlite3.connect(str(auth_service.db_path))
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM users")
+        count = cursor.fetchone()[0]
+        conn.close()
+
+        return {"setup_needed": count == 0}
+    except:
+        return {"setup_needed": True}
+
+
 @router.post("/register", response_model=UserResponse)
 async def register(request: Request, body: RegisterRequest):
     """
