@@ -770,9 +770,9 @@ async def upload_file_to_chat(
     return file_info
 
 
-@router.get("/models", response_model=List[OllamaModel])
+@public_router.get("/models", response_model=List[OllamaModel])
 async def list_ollama_models():
-    """List available Ollama models (excludes embedding and non-chat models)"""
+    """List available Ollama models (public endpoint - no auth required)"""
     models = await ollama_client.list_models()
 
     if not models:
@@ -968,10 +968,10 @@ async def check_health():
     return await ErrorHandler.check_ollama_health()
 
 
-@router.get("/models/status")
+@public_router.get("/models/status")
 async def get_models_status():
     """
-    Get status of all models (loaded/unloaded, favorites)
+    Get status of all models (loaded/unloaded, favorites) (public endpoint - no auth required)
 
     Returns:
     {
@@ -982,9 +982,9 @@ async def get_models_status():
     return await model_manager.get_model_status(ollama_client)
 
 
-@router.get("/models/hot-slots")
+@public_router.get("/models/hot-slots")
 async def get_hot_slots():
-    """Get current hot slot assignments (1-4)"""
+    """Get current hot slot assignments (1-4) (public endpoint - no auth required)"""
     slots = model_manager.get_hot_slots()
     return {"hot_slots": slots}
 
