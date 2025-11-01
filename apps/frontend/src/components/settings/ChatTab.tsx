@@ -21,8 +21,13 @@ export default function ChatTab() {
         const response = await fetch(`/api/v1/chat/models/status`)
         if (response.ok) {
           const data = await response.json()
-          // Only show available (chat) models
-          setAvailableModels(data.available || [])
+          // Show ALL models (both available and unavailable) for configuration
+          // Users should be able to configure settings for any model they have
+          const allModels = [
+            ...(data.available || []),
+            ...(data.unavailable || [])
+          ]
+          setAvailableModels(allModels)
         }
       } catch (error) {
         console.error('Failed to load models:', error)
