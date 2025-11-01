@@ -35,13 +35,14 @@ PATHS = get_config_paths()
 DOCS_DB_PATH = PATHS.data_dir / "docs.db"
 DOCS_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
+from typing import Dict
 from fastapi import Depends
 from auth_middleware import get_current_user
 
 router = APIRouter(
     prefix="/api/v1/docs",
-    tags=["Docs"],
-    dependencies=[Depends(get_current_user)]  # Require auth
+    tags=["Docs"]
+    # Auth handled per-endpoint to access user_id
 )
 
 
@@ -111,9 +112,17 @@ def init_db():
         )
     """)
 
-    # Index for faster queries
+    # Indexes for faster queries
     cursor.execute("""
         CREATE INDEX IF NOT EXISTS idx_updated_at ON documents(updated_at)
+    """)
+
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_created_by ON documents(created_by)
+    """)
+
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_created_by_updated ON documents(created_by, updated_at)
     """)
 
     conn.commit()
@@ -135,10 +144,15 @@ def get_db():
 # ===== CRUD Operations =====
 
 @router.post("/documents", response_model=Document)
-async def create_document(request: Request, doc: DocumentCreate):
+async def create_document(
+    request: Request,
+    doc: DocumentCreate,
+    current_user: Dict = Depends(get_current_user)
+):
     """Create a new document"""
     doc_id = f"doc_{datetime.utcnow().timestamp()}_{os.urandom(4).hex()}"
     now = datetime.utcnow().isoformat()
+    user_id = current_user["user_id"]
 
     conn = get_db()
     cursor = conn.cursor()
@@ -156,7 +170,7 @@ async def create_document(request: Request, doc: DocumentCreate):
             json.dumps(doc.content),
             now,
             now,
-            get_or_create_user().user_id,
+            user_id,
             1 if doc.is_private else 0,
             doc.security_level,
             json.dumps([])
@@ -164,8 +178,11 @@ async def create_document(request: Request, doc: DocumentCreate):
 
         conn.commit()
 
-        # Return the created document
-        cursor.execute("SELECT * FROM documents WHERE id = ?", (doc_id,))
+        # Return the created document (verify ownership)
+        cursor.execute("""
+            SELECT * FROM documents
+            WHERE id = ? AND created_by = ?
+        """, (doc_id, user_id))
         row = cursor.fetchone()
 
         return Document(
@@ -189,22 +206,31 @@ async def create_document(request: Request, doc: DocumentCreate):
 
 
 @router.get("/documents", response_model=List[Document])
-async def list_documents(since: Optional[str] = None):
+async def list_documents(
+    since: Optional[str] = None,
+    current_user: Dict = Depends(get_current_user)
+):
     """
-    List all documents, optionally filtered by timestamp
+    List user's documents, optionally filtered by timestamp
     Used for initial load and periodic sync
     """
     conn = get_db()
     cursor = conn.cursor()
+    user_id = current_user["user_id"]
 
     try:
         if since:
-            cursor.execute(
-                "SELECT * FROM documents WHERE updated_at > ? ORDER BY updated_at DESC",
-                (since,)
-            )
+            cursor.execute("""
+                SELECT * FROM documents
+                WHERE created_by = ? AND updated_at > ?
+                ORDER BY updated_at DESC
+            """, (user_id, since))
         else:
-            cursor.execute("SELECT * FROM documents ORDER BY updated_at DESC")
+            cursor.execute("""
+                SELECT * FROM documents
+                WHERE created_by = ?
+                ORDER BY updated_at DESC
+            """, (user_id,))
 
         rows = cursor.fetchall()
 
@@ -233,17 +259,21 @@ async def list_documents(since: Optional[str] = None):
 
 
 @router.get("/documents/{doc_id}", response_model=Document)
-async def get_document(doc_id: str):
-    """Get a specific document by ID"""
+async def get_document(doc_id: str, current_user: Dict = Depends(get_current_user)):
+    """Get a specific document by ID (user must own it)"""
     conn = get_db()
     cursor = conn.cursor()
+    user_id = current_user["user_id"]
 
     try:
-        cursor.execute("SELECT * FROM documents WHERE id = ?", (doc_id,))
+        cursor.execute("""
+            SELECT * FROM documents
+            WHERE id = ? AND created_by = ?
+        """, (doc_id, user_id))
         row = cursor.fetchone()
 
         if not row:
-            raise HTTPException(status_code=404, detail="Document not found")
+            raise HTTPException(status_code=404, detail="Document not found or access denied")
 
         return Document(
             id=row["id"],
@@ -268,18 +298,26 @@ async def get_document(doc_id: str):
 
 
 @router.patch("/documents/{doc_id}", response_model=Document)
-async def update_document(doc_id: str, updates: DocumentUpdate):
-    """Update a document (partial update)"""
+async def update_document(
+    doc_id: str,
+    updates: DocumentUpdate,
+    current_user: Dict = Depends(get_current_user)
+):
+    """Update a document (partial update - user must own it)"""
     conn = get_db()
     cursor = conn.cursor()
+    user_id = current_user["user_id"]
 
     try:
-        # Check if document exists
-        cursor.execute("SELECT * FROM documents WHERE id = ?", (doc_id,))
+        # Check if document exists and user owns it
+        cursor.execute("""
+            SELECT * FROM documents
+            WHERE id = ? AND created_by = ?
+        """, (doc_id, user_id))
         row = cursor.fetchone()
 
         if not row:
-            raise HTTPException(status_code=404, detail="Document not found")
+            raise HTTPException(status_code=404, detail="Document not found or access denied")
 
         # Build update query dynamically
         update_fields = []
@@ -311,16 +349,20 @@ async def update_document(doc_id: str, updates: DocumentUpdate):
         values.append(now)
 
         values.append(doc_id)
+        values.append(user_id)
 
         cursor.execute(
-            f"UPDATE documents SET {', '.join(update_fields)} WHERE id = ?",
+            f"UPDATE documents SET {', '.join(update_fields)} WHERE id = ? AND created_by = ?",
             values
         )
 
         conn.commit()
 
-        # Return updated document
-        cursor.execute("SELECT * FROM documents WHERE id = ?", (doc_id,))
+        # Return updated document (verify ownership)
+        cursor.execute("""
+            SELECT * FROM documents
+            WHERE id = ? AND created_by = ?
+        """, (doc_id, user_id))
         row = cursor.fetchone()
 
         return Document(
@@ -346,16 +388,24 @@ async def update_document(doc_id: str, updates: DocumentUpdate):
 
 
 @router.delete("/documents/{doc_id}")
-async def delete_document(request: Request, doc_id: str):
-    """Delete a document"""
+async def delete_document(
+    request: Request,
+    doc_id: str,
+    current_user: Dict = Depends(get_current_user)
+):
+    """Delete a document (user must own it)"""
     conn = get_db()
     cursor = conn.cursor()
+    user_id = current_user["user_id"]
 
     try:
-        cursor.execute("DELETE FROM documents WHERE id = ?", (doc_id,))
+        cursor.execute("""
+            DELETE FROM documents
+            WHERE id = ? AND created_by = ?
+        """, (doc_id, user_id))
 
         if cursor.rowcount == 0:
-            raise HTTPException(status_code=404, detail="Document not found")
+            raise HTTPException(status_code=404, detail="Document not found or access denied")
 
         conn.commit()
 
@@ -371,18 +421,23 @@ async def delete_document(request: Request, doc_id: str):
 
 
 @router.post("/sync", response_model=SyncResponse)
-async def sync_documents(request: Request, body: SyncRequest):
+async def sync_documents(
+    request: Request,
+    body: SyncRequest,
+    current_user: Dict = Depends(get_current_user)
+):
     """
     Batch sync endpoint (Notion-style)
 
     Client sends all changed documents since last sync.
-    Server responds with any documents that have been updated by others.
+    Server responds with any documents that have been updated by current user.
 
     Conflict resolution: Last-write-wins based on timestamps.
     """
     conn = get_db()
     cursor = conn.cursor()
     now = datetime.utcnow().isoformat()
+    user_id = current_user["user_id"]
     conflicts = []
     updated_documents = []
 
@@ -394,8 +449,11 @@ async def sync_documents(request: Request, body: SyncRequest):
             if not doc_id:
                 continue
 
-            # Check if document exists
-            cursor.execute("SELECT * FROM documents WHERE id = ?", (doc_id,))
+            # Check if document exists and user owns it
+            cursor.execute("""
+                SELECT * FROM documents
+                WHERE id = ? AND created_by = ?
+            """, (doc_id, user_id))
             row = cursor.fetchone()
 
             if row:
@@ -417,7 +475,7 @@ async def sync_documents(request: Request, body: SyncRequest):
                         UPDATE documents
                         SET title = ?, content = ?, updated_at = ?,
                             is_private = ?, security_level = ?, shared_with = ?
-                        WHERE id = ?
+                        WHERE id = ? AND created_by = ?
                     """, (
                         doc_data.get("title", row["title"]),
                         json.dumps(doc_data.get("content", json.loads(row["content"]))),
@@ -425,10 +483,11 @@ async def sync_documents(request: Request, body: SyncRequest):
                         1 if doc_data.get("is_private", bool(row["is_private"])) else 0,
                         doc_data.get("security_level", row["security_level"]),
                         json.dumps(doc_data.get("shared_with", json.loads(row["shared_with"]))),
-                        doc_id
+                        doc_id,
+                        user_id
                     ))
             else:
-                # Document doesn't exist - create it
+                # Document doesn't exist - create it for current user
                 cursor.execute("""
                     INSERT INTO documents (
                         id, type, title, content, created_at, updated_at,
@@ -441,7 +500,7 @@ async def sync_documents(request: Request, body: SyncRequest):
                     json.dumps(doc_data.get("content", "")),
                     doc_data.get("created_at", now),
                     now,
-                    doc_data.get("created_by", get_or_create_user().user_id),
+                    user_id,  # Always use current user
                     1 if doc_data.get("is_private", False) else 0,
                     doc_data.get("security_level"),
                     json.dumps(doc_data.get("shared_with", []))
@@ -449,14 +508,17 @@ async def sync_documents(request: Request, body: SyncRequest):
 
         conn.commit()
 
-        # Get all documents updated since last sync (or all if first sync)
+        # Get user's documents updated since last sync (or all if first sync)
         if body.last_sync:
-            cursor.execute(
-                "SELECT * FROM documents WHERE updated_at > ?",
-                (body.last_sync,)
-            )
+            cursor.execute("""
+                SELECT * FROM documents
+                WHERE created_by = ? AND updated_at > ?
+            """, (user_id, body.last_sync))
         else:
-            cursor.execute("SELECT * FROM documents")
+            cursor.execute("""
+                SELECT * FROM documents
+                WHERE created_by = ?
+            """, (user_id,))
 
         rows = cursor.fetchall()
 
