@@ -16,7 +16,14 @@ from api.p2p_chat_service import get_p2p_chat_service, init_p2p_chat_service
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/p2p", tags=["P2P Mesh"])
+from fastapi import Depends
+from auth_middleware import get_current_user
+
+router = APIRouter(
+    prefix="/api/v1/p2p",
+    tags=["P2P Mesh"],
+    dependencies=[Depends(get_current_user)]  # Require auth for all P2P mesh endpoints
+)
 
 
 class ConnectionCode(BaseModel):

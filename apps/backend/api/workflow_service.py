@@ -51,7 +51,14 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/workflow", tags=["workflow"])
+from fastapi import Depends
+from auth_middleware import get_current_user
+
+router = APIRouter(
+    prefix="/api/v1/workflow",
+    tags=["workflow"],
+    dependencies=[Depends(get_current_user)]  # Require auth for all workflow endpoints
+)
 
 # Initialize storage and orchestrator
 storage = WorkflowStorage()
