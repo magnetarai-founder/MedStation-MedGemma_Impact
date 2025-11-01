@@ -72,7 +72,10 @@ export function usePermissions(): Permissions {
   // In Solo Mode, user has full access to everything (no role restrictions)
   // In Team Mode, roles activate and permissions are enforced
   const rolesActive = shouldActivateRoles()
-  const role = rolesActive ? user?.role : undefined
+
+  // IMPORTANT: God Rights (super_admin) ALWAYS applies, even in Solo Mode
+  // Founder should maintain God Rights regardless of team/network status
+  const role = (user?.role === 'super_admin') ? 'super_admin' : (rolesActive ? user?.role : undefined)
 
   return useMemo(() => {
     // Role checks
