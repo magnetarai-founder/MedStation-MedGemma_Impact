@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 from fastapi import Depends
 from auth_middleware import get_current_user
+from utils import sanitize_for_log
 
 router = APIRouter(
     prefix="/api/v1/mesh",
@@ -524,7 +525,8 @@ async def exchange_sync_operations(request: Request, body: SyncExchangeRequest):
 
         # Apply incoming operations
         conflicts = await sync._apply_operations(incoming_ops)
-        logger.info(f"Applied {len(incoming_ops)} operations from {body.sender_peer_id} ({conflicts} conflicts)")
+        safe_peer_id = sanitize_for_log(body.sender_peer_id)
+        logger.info(f"Applied {len(incoming_ops)} operations from {safe_peer_id} ({conflicts} conflicts)")
 
         # Get our operations to send back
         ops_to_return = await sync._get_operations_since_last_sync(body.sender_peer_id, tables=None)

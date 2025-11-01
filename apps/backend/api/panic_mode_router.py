@@ -11,6 +11,7 @@ from typing import Optional, Dict, Any
 
 from panic_mode import get_panic_mode
 from rate_limiter import rate_limiter, get_client_ip
+from utils import sanitize_for_log
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +79,9 @@ async def trigger_panic_mode(request: Request, body: PanicTriggerRequest):
             detail="Must provide confirmation='CONFIRM' to trigger panic mode"
         )
 
-    logger.critical(f"🚨 PANIC MODE TRIGGERED: {body.reason}")
+    # Sanitize reason for logging (may contain sensitive context)
+    safe_reason = sanitize_for_log(body.reason)
+    logger.critical(f"🚨 PANIC MODE TRIGGERED: {safe_reason}")
 
     try:
         result = await panic_mode.trigger_panic(reason=body.reason)

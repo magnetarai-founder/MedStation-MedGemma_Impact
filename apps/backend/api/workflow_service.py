@@ -53,6 +53,7 @@ logger = logging.getLogger(__name__)
 
 from fastapi import Depends
 from auth_middleware import get_current_user
+from utils import sanitize_for_log
 
 router = APIRouter(
     prefix="/api/v1/workflow",
@@ -374,7 +375,8 @@ async def complete_stage(request: Request, body: CompleteStageRequest, user_id: 
         )
 
         if work_item.status == WorkItemStatus.COMPLETED:
-            logger.info(f"🎉 Work item {body.work_item_id} completed")
+            safe_work_item_id = sanitize_for_log(body.work_item_id)
+            logger.info(f"🎉 Work item {safe_work_item_id} completed")
         else:
             logger.info(f"✅ Stage completed, transitioned to: {work_item.current_stage_name}")
 

@@ -1,6 +1,45 @@
 """
 Simple Token Bucket Rate Limiter for ElohimOS
 Provides shared rate limiting across all routers
+
+USAGE PATTERN FOR NEW ENDPOINTS:
+================================
+
+1. Import the rate limiter and helper:
+   from rate_limiter import rate_limiter, get_client_ip
+
+2. Apply rate limiting in your endpoint:
+   @router.post("/sensitive-endpoint")
+   async def my_endpoint(request: Request, body: MyRequest):
+       # Rate limit check
+       client_ip = get_client_ip(request)
+       if not rate_limiter.check_rate_limit(
+           f"my_endpoint:{client_ip}",
+           max_requests=10,
+           window_seconds=60
+       ):
+           raise HTTPException(
+               status_code=429,
+               detail="Rate limit exceeded. Max 10 requests per minute."
+           )
+
+       # Your endpoint logic here
+       ...
+
+RECOMMENDED RATE LIMITS:
+========================
+- Admin/sensitive endpoints: 5-10 requests/minute
+- Panic/emergency endpoints: 5 requests/hour
+- Monitoring/stats endpoints: 60 requests/minute
+- Normal API endpoints: 100 requests/minute
+- File uploads: 10 requests/minute
+
+EXAMPLES IN CODEBASE:
+=====================
+- panic_mode_router.py:71 - 5 triggers/hour
+- monitoring_routes.py:36 - 60 health checks/minute
+- team_service.py:2996 - 10 join attempts/minute
+- main.py:642 - 60 SQL queries/minute
 """
 
 from collections import defaultdict
