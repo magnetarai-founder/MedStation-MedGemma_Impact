@@ -50,7 +50,10 @@ logging.getLogger("neutron_core.engine").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 # Import security utilities
-from utils import sanitize_filename, sanitize_for_log
+try:
+    from .utils import sanitize_filename, sanitize_for_log
+except ImportError:
+    from utils import sanitize_filename, sanitize_for_log
 
 # Security Note: sanitize_for_log is imported and should be used when logging
 # request bodies that may contain passwords, tokens, or API keys.
@@ -60,7 +63,10 @@ from utils import sanitize_filename, sanitize_for_log
 limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
 # Import shared rate limiter to avoid code duplication
-from rate_limiter import rate_limiter, get_client_ip
+try:
+    from .rate_limiter import rate_limiter, get_client_ip
+except ImportError:
+    from rate_limiter import rate_limiter, get_client_ip
 
 # Import existing backend modules
 import sys
@@ -75,9 +81,20 @@ from sql_validator import SQLValidator
 from neutron_utils.sql_utils import SQLProcessor
 from neutron_utils.config import config
 from neutron_utils.json_utils import df_to_jsonsafe_records as _df_to_jsonsafe_records
-from pulsar_core import JsonToExcelEngine
-from elohimos_memory import ElohimOSMemory
-from data_engine import get_data_engine
+try:
+    from .pulsar_core import JsonToExcelEngine
+except ImportError:
+    from pulsar_core import JsonToExcelEngine
+
+try:
+    from .elohimos_memory import ElohimOSMemory
+except ImportError:
+    from elohimos_memory import ElohimOSMemory
+
+try:
+    from .data_engine import get_data_engine
+except ImportError:
+    from data_engine import get_data_engine
 
 # Session storage
 sessions: Dict[str, dict] = {}
@@ -361,6 +378,15 @@ except Exception as e:
     services_failed.append("Authentication")
     logger.error(f"Authentication service failed to load: {e}")
 
+# Admin routes (God Rights support access)
+try:
+    from admin_service import router as admin_router
+    app.include_router(admin_router)
+    services_loaded.append("Admin")
+except Exception as e:
+    services_failed.append("Admin")
+    logger.error(f"Admin service failed to load: {e}")
+
 # Monitoring routes
 try:
     from monitoring_routes import router as monitoring_router
@@ -535,6 +561,102 @@ async def get_system_info():
         pass
 
     return info
+
+
+# Authentication endpoints
+@app.get("/api/auth/setup-needed")
+async def check_setup_needed():
+    """Check if initial setup is required (no users exist)"""
+    from auth_middleware import auth_service
+    import sqlite3
+
+    try:
+        conn = sqlite3.connect(str(auth_service.db_path))
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM users")
+        count = cursor.fetchone()[0]
+        conn.close()
+
+        return {"setup_needed": count == 0}
+    except:
+        return {"setup_needed": True}
+
+
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+    device_name: Optional[str] = None
+
+
+@app.post("/api/auth/register")
+async def register_user(req: RegisterRequest):
+    """Register a new user (allows multiple users per device)"""
+    from auth_middleware import auth_service
+    import platform
+
+    # Create user (multiple users allowed per device)
+    try:
+        device_name = req.device_name or platform.node() or "Unknown Device"
+        user = auth_service.create_user(
+            username=req.username,
+            password=req.password,
+            device_id=device_name
+        )
+
+        # Authenticate and return token
+        auth_result = auth_service.authenticate(req.username, req.password)
+
+        if not auth_result:
+            raise HTTPException(status_code=500, detail="Failed to authenticate after registration")
+
+        return {
+            "success": True,
+            "token": auth_result["token"],
+            "user": {
+                "user_id": auth_result["user_id"],
+                "username": auth_result["username"],
+                "device_id": auth_result["device_id"],
+                "role": auth_result.get("role", "member")
+            }
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Registration failed: {e}")
+        raise HTTPException(status_code=500, detail="Registration failed")
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+@app.post("/api/auth/login")
+async def login_user(req: LoginRequest):
+    """Login with username and password"""
+    from auth_middleware import auth_service
+
+    try:
+        auth_result = auth_service.authenticate(req.username, req.password)
+
+        if not auth_result:
+            raise HTTPException(status_code=401, detail="Invalid username or password")
+
+        return {
+            "success": True,
+            "token": auth_result["token"],
+            "user": {
+                "user_id": auth_result["user_id"],
+                "username": auth_result["username"],
+                "device_id": auth_result["device_id"],
+                "role": auth_result.get("role", "member")
+            }
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+    except Exception as e:
+        logger.error(f"Login failed: {e}")
+        raise HTTPException(status_code=500, detail="Login failed")
 
 
 @app.post("/api/sessions/create", response_model=SessionResponse)

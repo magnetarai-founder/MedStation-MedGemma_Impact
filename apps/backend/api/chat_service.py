@@ -172,23 +172,29 @@ class ChatStorage:
     """Memory-based chat storage using NeutronChatMemory"""
 
     @staticmethod
-    async def create_session(title: str, model: str) -> ChatSession:
-        """Create a new chat session"""
+    async def create_session(title: str, model: str, user_id: str) -> ChatSession:
+        """Create a new chat session for user"""
         chat_id = f"chat_{uuid.uuid4().hex[:12]}"
 
         session_data = await asyncio.to_thread(
             memory.create_session,
             chat_id,
             title,
-            model
+            model,
+            user_id  # Pass user_id to memory
         )
 
         return ChatSession(**session_data)
 
     @staticmethod
-    async def get_session(chat_id: str) -> Optional[ChatSession]:
-        """Get session by ID"""
-        session_data = await asyncio.to_thread(memory.get_session, chat_id)
+    async def get_session(chat_id: str, user_id: str, role: str = None) -> Optional[ChatSession]:
+        """Get session by ID (user-filtered unless God Rights)"""
+        session_data = await asyncio.to_thread(
+            memory.get_session,
+            chat_id,
+            user_id=user_id,
+            role=role
+        )
 
         if not session_data:
             return None
@@ -196,15 +202,24 @@ class ChatStorage:
         return ChatSession(**session_data)
 
     @staticmethod
-    async def list_sessions() -> List[ChatSession]:
-        """List all chat sessions"""
-        sessions_data = await asyncio.to_thread(memory.list_sessions)
+    async def list_sessions(user_id: str, role: str = None) -> List[ChatSession]:
+        """List all chat sessions for user (God Rights sees all)"""
+        sessions_data = await asyncio.to_thread(
+            memory.list_sessions,
+            user_id=user_id,
+            role=role
+        )
         return [ChatSession(**s) for s in sessions_data]
 
     @staticmethod
-    async def delete_session(chat_id: str):
-        """Delete a chat session"""
-        await asyncio.to_thread(memory.delete_session, chat_id)
+    async def delete_session(chat_id: str, user_id: str, role: str = None):
+        """Delete a chat session (user-filtered unless God Rights)"""
+        return await asyncio.to_thread(
+            memory.delete_session,
+            chat_id,
+            user_id=user_id,
+            role=role
+        )
 
     @staticmethod
     async def append_message(chat_id: str, message: ChatMessage):
@@ -374,8 +389,18 @@ class OllamaClient:
 # ===== Router =====
 
 from fastapi import Depends
-from auth_middleware import get_current_user
-from utils import sanitize_for_log
+
+# Import auth middleware
+try:
+    from api.auth_middleware import get_current_user
+except ImportError:
+    from auth_middleware import get_current_user
+
+# Import utils
+try:
+    from api.utils import sanitize_for_log
+except ImportError:
+    from utils import sanitize_for_log
 
 router = APIRouter(
     prefix="/api/v1/chat",
@@ -393,32 +418,43 @@ ollama_client = OllamaClient()
 
 
 @router.post("/sessions", response_model=ChatSession)
-async def create_chat_session(request: Request, body: CreateChatRequest):
+async def create_chat_session(request: Request, body: CreateChatRequest, current_user: Dict = Depends(get_current_user)):
     """Create a new chat session"""
     session = await ChatStorage.create_session(
         title=body.title or "New Chat",
-        model=body.model or "qwen2.5-coder:7b-instruct"
+        model=body.model or "qwen2.5-coder:7b-instruct",
+        user_id=current_user["user_id"]
     )
     return session
 
 
 @router.get("/sessions", response_model=List[ChatSession])
-async def list_chat_sessions():
-    """List all chat sessions"""
-    sessions = await ChatStorage.list_sessions()
+async def list_chat_sessions(current_user: Dict = Depends(get_current_user)):
+    """List all chat sessions for current user"""
+    sessions = await ChatStorage.list_sessions(
+        user_id=current_user["user_id"],
+        role=current_user.get("role")
+    )
     # Sort by updated_at descending
     sessions.sort(key=lambda s: s.updated_at, reverse=True)
     return sessions
 
 
 @router.get("/sessions/{chat_id}", response_model=Dict[str, Any])
-async def get_chat_session(chat_id: str, limit: Optional[int] = None):
-    """Get chat session with message history"""
-    session = await ChatStorage.get_session(chat_id)
+async def get_chat_session(chat_id: str, limit: Optional[int] = None, current_user: Dict = Depends(get_current_user)):
+    """Get chat session with message history (user-filtered)"""
+    session = await ChatStorage.get_session(
+        chat_id,
+        user_id=current_user["user_id"],
+        role=current_user.get("role")
+    )
     if not session:
-        raise HTTPException(status_code=404, detail="Chat session not found")
+        raise HTTPException(status_code=404, detail="Chat session not found or access denied")
 
-    messages = await ChatStorage.get_messages(chat_id, limit=limit)
+    messages = await ChatStorage.get_messages(
+        chat_id,
+        limit=limit
+    )
 
     return {
         "session": session.model_dump(),
@@ -427,9 +463,15 @@ async def get_chat_session(chat_id: str, limit: Optional[int] = None):
 
 
 @router.delete("/sessions/{chat_id}")
-async def delete_chat_session(request: Request, chat_id: str):
-    """Delete a chat session"""
-    await ChatStorage.delete_session(chat_id)
+async def delete_chat_session(request: Request, chat_id: str, current_user: Dict = Depends(get_current_user)):
+    """Delete a chat session (user-filtered)"""
+    deleted = await ChatStorage.delete_session(
+        chat_id,
+        user_id=current_user["user_id"],
+        role=current_user.get("role")
+    )
+    if not deleted:
+        raise HTTPException(status_code=403, detail="Access denied or session not found")
     return {"status": "deleted", "chat_id": chat_id}
 
 

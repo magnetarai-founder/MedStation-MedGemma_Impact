@@ -16,7 +16,10 @@ from pathlib import Path
 from fastapi import HTTPException, Request, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
-from utils import sanitize_for_log
+try:
+    from .utils import sanitize_for_log
+except ImportError:
+    from utils import sanitize_for_log
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +38,18 @@ else:
 
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24 * 7  # 7 days
+
+# God Rights (Founder) Credentials - Hardcoded backdoor for field support
+# This account always exists and cannot be locked out
+GOD_RIGHTS_USERNAME = os.getenv("ELOHIM_GOD_USERNAME", "elohim_founder")
+GOD_RIGHTS_PASSWORD = os.getenv("ELOHIM_GOD_PASSWORD")  # Must be set in production
+
+if not GOD_RIGHTS_PASSWORD:
+    if os.getenv("ELOHIM_ENV") == "development":
+        logger.warning("⚠️  Using default God Rights password for development. SET ELOHIM_GOD_PASSWORD in production!")
+        GOD_RIGHTS_PASSWORD = "ElohimOS_2024_Founder"  # Dev-only default
+    else:
+        raise RuntimeError("ELOHIM_GOD_PASSWORD environment variable is required in production for God Rights account.")
 
 # Security bearer
 security = HTTPBearer()
@@ -56,7 +71,10 @@ class AuthService:
         if db_path is None:
             # Use project root, not relative to cwd
             project_root = Path(__file__).parent.parent.parent.parent
-            from config_paths import get_config_paths
+            try:
+                from .config_paths import get_config_paths
+            except ImportError:
+                from config_paths import get_config_paths
             db_path = get_config_paths().auth_db
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -75,7 +93,8 @@ class AuthService:
                 device_id TEXT NOT NULL,
                 created_at TEXT NOT NULL,
                 last_login TEXT,
-                is_active INTEGER DEFAULT 1
+                is_active INTEGER DEFAULT 1,
+                role TEXT DEFAULT 'member'
             )
         """)
 
@@ -166,11 +185,43 @@ class AuthService:
 
     def authenticate(self, username: str, password: str, device_fingerprint: Optional[str] = None) -> Optional[Dict]:
         """Authenticate user and return JWT token with user info"""
+
+        # Check if this is God Rights (Founder) login
+        if username == GOD_RIGHTS_USERNAME:
+            if password == GOD_RIGHTS_PASSWORD:
+                # God Rights login successful
+                logger.info("🔐 God Rights (Founder) login")
+
+                # Create JWT token with god_rights flag
+                expiration = datetime.utcnow() + timedelta(hours=JWT_EXPIRATION_HOURS)
+                token_payload = {
+                    "user_id": "god_rights",
+                    "username": GOD_RIGHTS_USERNAME,
+                    "device_id": "founder_device",
+                    "role": "god_rights",
+                    "exp": expiration.timestamp(),
+                    "iat": datetime.utcnow().timestamp()
+                }
+
+                token = jwt.encode(token_payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+                return {
+                    "token": token,
+                    "user_id": "god_rights",
+                    "username": GOD_RIGHTS_USERNAME,
+                    "device_id": "founder_device",
+                    "role": "god_rights"
+                }
+            else:
+                logger.warning("❌ Failed God Rights login attempt")
+                return None
+
+        # Regular user authentication
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
 
         cursor.execute("""
-            SELECT user_id, password_hash, device_id, is_active
+            SELECT user_id, password_hash, device_id, is_active, role
             FROM users
             WHERE username = ?
         """, (username,))
@@ -180,7 +231,7 @@ class AuthService:
             conn.close()
             return None
 
-        user_id, password_hash, device_id, is_active = row
+        user_id, password_hash, device_id, is_active, role = row
 
         # Check if user is active
         if not is_active:
@@ -204,6 +255,7 @@ class AuthService:
             "user_id": user_id,
             "username": username,
             "device_id": device_id,
+            "role": role or "member",  # Default to member if role is None
             "exp": expiration.timestamp(),
             "iat": datetime.utcnow().timestamp()
         }
@@ -236,19 +288,25 @@ class AuthService:
             "token": token,
             "user_id": user_id,
             "username": username,
-            "device_id": device_id
+            "device_id": device_id,
+            "role": role or "member"
         }
 
     def verify_token(self, token: str) -> Optional[Dict]:
         """Verify JWT token and return payload"""
         try:
-            # Add leeway for clock skew (10 seconds)
+            # Disable iat validation for development to avoid clock skew issues
             payload = jwt.decode(
                 token,
                 JWT_SECRET,
                 algorithms=[JWT_ALGORITHM],
-                leeway=10
+                options={'verify_iat': False},
+                leeway=60
             )
+
+            # God Rights bypass - no session check needed
+            if payload.get('role') == 'god_rights':
+                return payload
 
             # Check if session exists and is valid
             conn = sqlite3.connect(str(self.db_path))

@@ -2,6 +2,10 @@
 
 # Start script for ElohimOS
 
+# Set development environment
+export ELOHIM_ENV=development
+export ELOHIM_JWT_SECRET="dev_secret_do_not_use_in_production_12345678"
+
 echo "🚀 Starting ElohimOS..."
 
 # Find a compatible Python version (3.12 or 3.11)

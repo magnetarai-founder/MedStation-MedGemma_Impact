@@ -105,7 +105,8 @@ class NeutronChatMemory:
                 message_count INTEGER DEFAULT 0,
                 models_used TEXT,
                 summary TEXT,
-                auto_titled INTEGER DEFAULT 0
+                auto_titled INTEGER DEFAULT 0,
+                user_id TEXT
             )
         """)
 
@@ -120,6 +121,7 @@ class NeutronChatMemory:
                 model TEXT,
                 tokens INTEGER,
                 files_json TEXT,
+                user_id TEXT,
                 FOREIGN KEY (session_id) REFERENCES chat_sessions(id)
             )
         """)
@@ -134,6 +136,7 @@ class NeutronChatMemory:
                 summary TEXT,
                 events_json TEXT,
                 models_used TEXT,
+                user_id TEXT,
                 FOREIGN KEY (session_id) REFERENCES chat_sessions(id)
             )
         """)
@@ -150,6 +153,7 @@ class NeutronChatMemory:
                 content TEXT,
                 embedding_json TEXT,
                 created_at TEXT,
+                user_id TEXT,
                 FOREIGN KEY (session_id) REFERENCES chat_sessions(id)
             )
         """)
@@ -177,19 +181,19 @@ class NeutronChatMemory:
 
         conn.commit()
 
-    def create_session(self, session_id: str, title: str, model: str) -> Dict[str, Any]:
-        """Create a new chat session"""
+    def create_session(self, session_id: str, title: str, model: str, user_id: str) -> Dict[str, Any]:
+        """Create a new chat session for user"""
         now = datetime.utcnow().isoformat()
         conn = self._get_connection()
 
         with self._write_lock:
             conn.execute("""
-                INSERT INTO chat_sessions (id, title, created_at, updated_at, default_model, message_count, models_used)
-                VALUES (?, ?, ?, ?, ?, 0, ?)
-            """, (session_id, title, now, now, model, model))
+                INSERT INTO chat_sessions (id, title, created_at, updated_at, default_model, message_count, models_used, user_id)
+                VALUES (?, ?, ?, ?, ?, 0, ?, ?)
+            """, (session_id, title, now, now, model, model, user_id))
             conn.commit()
 
-        logger.info(f"Created chat session: {session_id}")
+        logger.info(f"Created chat session: {session_id} for user: {user_id}")
         return {
             "id": session_id,
             "title": title,
@@ -199,13 +203,22 @@ class NeutronChatMemory:
             "message_count": 0
         }
 
-    def get_session(self, session_id: str) -> Optional[Dict[str, Any]]:
-        """Get session metadata"""
+    def get_session(self, session_id: str, user_id: str = None, role: str = None) -> Optional[Dict[str, Any]]:
+        """Get session metadata (user-filtered unless God Rights)"""
         conn = self._get_connection()
-        cur = conn.execute("""
-            SELECT id, title, created_at, updated_at, default_model, message_count, models_used, summary
-            FROM chat_sessions WHERE id = ?
-        """, (session_id,))
+
+        # God Rights bypasses user filtering
+        if role == "god_rights":
+            cur = conn.execute("""
+                SELECT id, title, created_at, updated_at, default_model, message_count, models_used, summary, user_id
+                FROM chat_sessions WHERE id = ?
+            """, (session_id,))
+        else:
+            # Regular users only see their own sessions
+            cur = conn.execute("""
+                SELECT id, title, created_at, updated_at, default_model, message_count, models_used, summary, user_id
+                FROM chat_sessions WHERE id = ? AND user_id = ?
+            """, (session_id, user_id))
 
         row = cur.fetchone()
         if not row:
@@ -222,14 +235,21 @@ class NeutronChatMemory:
             "summary": row["summary"]
         }
 
-    def list_sessions(self) -> List[Dict[str, Any]]:
-        """List all chat sessions"""
+    def list_sessions(self, user_id: str = None, role: str = None) -> List[Dict[str, Any]]:
+        """List chat sessions (user-filtered for ALL users, including God Rights)
+
+        This endpoint is for regular UI use - God Rights sees only their own chats here.
+        For admin access to view other users' chats, use admin endpoints.
+        """
         conn = self._get_connection()
+
+        # ALL users (including God Rights) only see their own sessions in regular UI
         cur = conn.execute("""
-            SELECT id, title, created_at, updated_at, default_model, message_count
+            SELECT id, title, created_at, updated_at, default_model, message_count, user_id
             FROM chat_sessions
+            WHERE user_id = ?
             ORDER BY updated_at DESC
-        """)
+        """, (user_id,))
 
         sessions = []
         for row in cur.fetchall():
@@ -244,16 +264,92 @@ class NeutronChatMemory:
 
         return sessions
 
-    def delete_session(self, session_id: str):
-        """Delete a chat session and all its messages"""
+    def list_all_sessions_admin(self) -> List[Dict[str, Any]]:
+        """List ALL chat sessions across all users (God Rights admin access only)
+
+        This method is for admin endpoints only - not for regular UI use.
+        Returns all sessions with user_id included for support purposes.
+        """
         conn = self._get_connection()
+
+        cur = conn.execute("""
+            SELECT id, title, created_at, updated_at, default_model, message_count, user_id
+            FROM chat_sessions
+            ORDER BY updated_at DESC
+        """)
+
+        sessions = []
+        for row in cur.fetchall():
+            sessions.append({
+                "id": row["id"],
+                "title": row["title"],
+                "created_at": row["created_at"],
+                "updated_at": row["updated_at"],
+                "model": row["default_model"],
+                "message_count": row["message_count"],
+                "user_id": row["user_id"]  # Include user_id for admin view
+            })
+
+        return sessions
+
+    def list_user_sessions_admin(self, target_user_id: str) -> List[Dict[str, Any]]:
+        """List specific user's chat sessions (God Rights admin access only)
+
+        This method is for admin endpoints only - not for regular UI use.
+        Allows God Rights to view a specific user's chats for support.
+
+        Args:
+            target_user_id: The user ID whose sessions to retrieve
+        """
+        conn = self._get_connection()
+
+        cur = conn.execute("""
+            SELECT id, title, created_at, updated_at, default_model, message_count, user_id
+            FROM chat_sessions
+            WHERE user_id = ?
+            ORDER BY updated_at DESC
+        """, (target_user_id,))
+
+        sessions = []
+        for row in cur.fetchall():
+            sessions.append({
+                "id": row["id"],
+                "title": row["title"],
+                "created_at": row["created_at"],
+                "updated_at": row["updated_at"],
+                "model": row["default_model"],
+                "message_count": row["message_count"],
+                "user_id": row["user_id"]
+            })
+
+        return sessions
+
+    def delete_session(self, session_id: str, user_id: str = None, role: str = None) -> bool:
+        """Delete a chat session (user-filtered unless God Rights)
+
+        Returns:
+            bool: True if deleted, False if access denied
+        """
+        conn = self._get_connection()
+
         with self._write_lock:
+            # Verify ownership before delete (unless God Rights)
+            if role != "god_rights":
+                cur = conn.execute("SELECT user_id FROM chat_sessions WHERE id = ?", (session_id,))
+                row = cur.fetchone()
+                if not row or row["user_id"] != user_id:
+                    logger.warning(f"User {user_id} attempted to delete session {session_id} they don't own")
+                    return False
+
+            # Delete session and related data
             conn.execute("DELETE FROM chat_messages WHERE session_id = ?", (session_id,))
             conn.execute("DELETE FROM conversation_summaries WHERE session_id = ?", (session_id,))
+            conn.execute("DELETE FROM document_chunks WHERE session_id = ?", (session_id,))
             conn.execute("DELETE FROM chat_sessions WHERE id = ?", (session_id,))
             conn.commit()
 
-        logger.info(f"Deleted chat session: {session_id}")
+        logger.info(f"Deleted chat session: {session_id} (user: {user_id}, role: {role})")
+        return True
 
     def add_message(self, session_id: str, event: ConversationEvent):
         """Add a message to the session"""

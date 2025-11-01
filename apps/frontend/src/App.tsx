@@ -15,6 +15,8 @@ import { QueryHistoryModal } from './components/QueryHistoryModal'
 import { ServerControlModal } from './components/ServerControlModal'
 import { AutomationTab } from './components/AutomationTab'
 import { TeamWorkspace } from './components/TeamWorkspace'
+import { SetupWizard } from './components/SetupWizard'
+import { Login } from './components/Login'
 import { useSessionStore } from './stores/sessionStore'
 import { useNavigationStore } from './stores/navigationStore'
 import { useEditorStore } from './stores/editorStore'
@@ -44,6 +46,7 @@ export default function App() {
   const [isQueryHistoryOpen, setIsQueryHistoryOpen] = useState(false)
   const [isServerControlsOpen, setIsServerControlsOpen] = useState(false)
   const [libraryInitialCode, setLibraryInitialCode] = useState<{ name: string; content: string } | null>(null)
+  const [authState, setAuthState] = useState<'checking' | 'login' | 'authenticated'>('checking')
 
   // Handle loading query from library into editor
   const handleLoadQuery = (query: settingsApi.SavedQuery) => {
@@ -51,8 +54,43 @@ export default function App() {
     setIsLibraryOpen(false)
   }
 
-  // Initialize user and session on mount
+  // Check authentication status on mount
   useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        // Check if we have a stored token
+        const token = localStorage.getItem('auth_token')
+
+        if (token) {
+          // Token exists - validate it by fetching user
+          try {
+            await fetchUser()
+            setAuthState('authenticated')
+          } catch (error) {
+            // Token invalid - clear and show login
+            localStorage.removeItem('auth_token')
+            localStorage.removeItem('user')
+            setAuthState('login')
+          }
+        } else {
+          // No token - show login
+          setAuthState('login')
+        }
+      } catch (error) {
+        console.error('Failed to check auth:', error)
+        setAuthState('login')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    checkAuth()
+  }, [])
+
+  // Initialize user and session after authentication
+  useEffect(() => {
+    if (authState !== 'authenticated') return
+
     const initApp = async () => {
       try {
         // Fetch or create user identity
@@ -63,8 +101,6 @@ export default function App() {
         setSessionId(response.session_id)
       } catch (error) {
         console.error('Failed to initialize app:', error)
-      } finally {
-        setIsLoading(false)
       }
     }
 
@@ -76,7 +112,7 @@ export default function App() {
         api.deleteSession(sessionId).catch(console.error)
       }
     }
-  }, [])
+  }, [authState])
 
   // Pre-load default AI model on mount
   useEffect(() => {
@@ -125,6 +161,7 @@ export default function App() {
     }
   }, [])
 
+  // Loading state
   if (isLoading) {
     return (
       <div className="h-screen flex items-center justify-center">
@@ -138,6 +175,16 @@ export default function App() {
         </div>
       </div>
     )
+  }
+
+  // Login screen (with "Create Account" button to show setup wizard)
+  if (authState === 'login') {
+    return <Login onLogin={(token) => setAuthState('authenticated')} />
+  }
+
+  // Main app (authenticated)
+  if (authState !== 'authenticated') {
+    return null
   }
 
   return (

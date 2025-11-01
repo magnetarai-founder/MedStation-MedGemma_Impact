@@ -2787,10 +2787,13 @@ async def list_vault_documents(
 
 
 @router.get("/documents/{doc_id}", response_model=VaultDocument)
-async def get_vault_document(doc_id: str, vault_type: str):
-    """Get single vault document"""
-    # TODO: Get real user_id from auth middleware
-    user_id = "default_user"
+async def get_vault_document(
+    doc_id: str,
+    vault_type: str,
+    current_user: Dict = Depends(get_current_user)
+):
+    """Get single vault document (user-filtered)"""
+    user_id = current_user["user_id"]
 
     if vault_type not in ('real', 'decoy'):
         raise HTTPException(status_code=400, detail="vault_type must be 'real' or 'decoy'")
@@ -2808,11 +2811,11 @@ async def get_vault_document(doc_id: str, vault_type: str):
 async def update_vault_document(
     doc_id: str,
     vault_type: str,
-    update: VaultDocumentUpdate
+    update: VaultDocumentUpdate,
+    current_user: Dict = Depends(get_current_user)
 ):
-    """Update vault document"""
-    # TODO: Get real user_id from auth middleware
-    user_id = "default_user"
+    """Update vault document (user-filtered)"""
+    user_id = current_user["user_id"]
 
     if vault_type not in ('real', 'decoy'):
         raise HTTPException(status_code=400, detail="vault_type must be 'real' or 'decoy'")
@@ -2822,10 +2825,13 @@ async def update_vault_document(
 
 
 @router.delete("/documents/{doc_id}")
-async def delete_vault_document(doc_id: str, vault_type: str):
-    """Delete vault document (soft delete)"""
-    # TODO: Get real user_id from auth middleware
-    user_id = "default_user"
+async def delete_vault_document(
+    doc_id: str,
+    vault_type: str,
+    current_user: Dict = Depends(get_current_user)
+):
+    """Delete vault document (soft delete, user-filtered)"""
+    user_id = current_user["user_id"]
 
     if vault_type not in ('real', 'decoy'):
         raise HTTPException(status_code=400, detail="vault_type must be 'real' or 'decoy'")
