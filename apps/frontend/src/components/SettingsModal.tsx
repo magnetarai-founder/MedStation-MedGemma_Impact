@@ -158,7 +158,7 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
               }`}
             >
               <Shield className="w-4 h-4" />
-              <span>Security</span>
+              <span>Security & Vault</span>
             </button>
 
             <button
@@ -170,7 +170,7 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
               }`}
             >
               <AlertTriangle className="w-4 h-4" />
-              <span>Danger Zone</span>
+              <span>System Management</span>
             </button>
           </nav>
         </div>
@@ -186,8 +186,8 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
               {activeTab === 'app' && 'App'}
               {activeTab === 'automation' && 'Automation'}
               {activeTab === 'advanced' && 'Advanced'}
-              {activeTab === 'security' && 'Security'}
-              {activeTab === 'danger' && 'Danger Zone'}
+              {activeTab === 'security' && 'Security & Vault'}
+              {activeTab === 'danger' && 'System Management'}
             </h3>
             <button
               onClick={onClose}
