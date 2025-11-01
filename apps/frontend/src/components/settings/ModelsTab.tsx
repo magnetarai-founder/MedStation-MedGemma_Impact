@@ -16,6 +16,8 @@ export default function ModelsTab({ activeNavTab }: ModelsTabProps = {}) {
     cache_memory_percent: 20,
   })
 
+  const [orchestratorModels, setOrchestratorModels] = useState<any[]>([])
+
   // Load available models on mount
   useEffect(() => {
     const loadModels = async () => {
@@ -32,6 +34,22 @@ export default function ModelsTab({ activeNavTab }: ModelsTabProps = {}) {
     }
     loadModels()
   }, [setAvailableModels])
+
+  // Load orchestrator-suitable models (includes small base models)
+  useEffect(() => {
+    const loadOrchestratorModels = async () => {
+      try {
+        const response = await fetch(`/api/v1/chat/models/orchestrator-suitable`)
+        if (response.ok) {
+          const data = await response.json()
+          setOrchestratorModels(data || [])
+        }
+      } catch (error) {
+        console.error('Failed to load orchestrator models:', error)
+      }
+    }
+    loadOrchestratorModels()
+  }, [])
 
   // Load settings on mount
   useEffect(() => {
@@ -119,10 +137,10 @@ export default function ModelsTab({ activeNavTab }: ModelsTabProps = {}) {
               className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             >
               <option value="">None (Disable orchestrator)</option>
-              {availableModels.length === 0 ? (
+              {orchestratorModels.length === 0 ? (
                 <option value="" disabled>Loading models...</option>
               ) : (
-                availableModels.map((model) => (
+                orchestratorModels.map((model) => (
                   <option key={model.name} value={model.name}>
                     {model.name} ({model.size})
                   </option>
@@ -130,7 +148,7 @@ export default function ModelsTab({ activeNavTab }: ModelsTabProps = {}) {
               )}
             </select>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Recommended: Small efficient models (1.5B-3B parameters) like llama3.2:1b or qwen2.5:0.5b
+              Only small models (&lt; 4GB) shown - Choose a small, efficient model (1.5B-3B params recommended)
             </p>
           </div>
 

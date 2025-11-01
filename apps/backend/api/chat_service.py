@@ -989,6 +989,30 @@ async def get_hot_slots():
     return {"hot_slots": slots}
 
 
+@public_router.get("/models/orchestrator-suitable")
+async def get_orchestrator_suitable_models():
+    """
+    Get models suitable for orchestrator use (public endpoint - no auth required)
+
+    Returns small, efficient models (< 4GB) that can handle routing/reasoning.
+    Includes small base models since orchestrator doesn't need perfect chat formatting.
+    """
+    from model_manager import is_orchestrator_suitable
+
+    models = await ollama_client.list_models()
+
+    suitable_models = []
+    for model in models:
+        if is_orchestrator_suitable(model.name, model.size):
+            suitable_models.append({
+                "name": model.name,
+                "size": model.size,
+                "modified_at": model.modified_at
+            })
+
+    return suitable_models
+
+
 @router.post("/models/hot-slots/{slot_number}")
 async def assign_to_hot_slot(request: Request, slot_number: int, model_name: str):
     """
