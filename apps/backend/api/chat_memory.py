@@ -22,8 +22,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Storage path
-MEMORY_DIR = Path(".neutron_data/memory")
-MEMORY_DIR.mkdir(parents=True, exist_ok=True)
+# Use centralized config_paths
+from config_paths import get_memory_dir
+MEMORY_DIR = get_memory_dir()
 
 
 @dataclass

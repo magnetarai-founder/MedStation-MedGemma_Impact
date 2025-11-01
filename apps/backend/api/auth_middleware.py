@@ -55,7 +55,8 @@ class AuthService:
         if db_path is None:
             # Use project root, not relative to cwd
             project_root = Path(__file__).parent.parent.parent.parent
-            db_path = project_root / ".neutron_data" / "auth.db"
+            from config_paths import get_config_paths
+            db_path = get_config_paths().auth_db
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()

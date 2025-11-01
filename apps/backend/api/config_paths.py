@@ -62,9 +62,16 @@ class PathConfig:
     # All these now point to the consolidated app database
 
     @property
+    def memory_dir(self) -> Path:
+        """Memory/chat storage directory"""
+        path = self.data_dir / "memory"
+        path.mkdir(exist_ok=True)
+        return path
+
+    @property
     def memory_db(self) -> Path:
-        """Chat memory database (now in app_db)"""
-        return self.app_db
+        """Chat memory database"""
+        return self.memory_dir / "chat_memory.db"
 
     @property
     def users_db(self) -> Path:
@@ -191,7 +198,7 @@ def get_config_paths() -> PathConfig:
 
 def get_memory_dir() -> Path:
     """Get memory directory (backwards compatibility)"""
-    return PATHS.memory_dir
+    return PATHS.memory_dir  # Now properly defined in PathConfig
 
 def get_data_dir() -> Path:
     """Get base data directory (backwards compatibility)"""

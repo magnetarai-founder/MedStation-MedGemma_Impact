@@ -61,7 +61,8 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 # Storage paths
-CHAT_UPLOADS_DIR = Path(".neutron_data/uploads")
+from config_paths import get_config_paths
+CHAT_UPLOADS_DIR = get_config_paths().uploads_dir
 
 # Ensure directories exist
 CHAT_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
@@ -372,7 +373,14 @@ class OllamaClient:
 
 # ===== Router =====
 
-router = APIRouter(prefix="/api/v1/chat", tags=["Chat"])
+from fastapi import Depends
+from auth_middleware import get_current_user
+
+router = APIRouter(
+    prefix="/api/v1/chat",
+    tags=["Chat"],
+    dependencies=[Depends(get_current_user)]  # Require auth for all chat endpoints
+)
 ollama_client = OllamaClient()
 
 

@@ -59,11 +59,19 @@ class VaultWebSocketClient {
     this.userId = userId
     this.vaultType = vaultType
 
-    // Construct WebSocket URL
+    // Get JWT token from localStorage
+    const token = localStorage.getItem('auth_token')
+    if (!token) {
+      console.error('No auth token found - WebSocket connection requires authentication')
+      this.isConnecting = false
+      return
+    }
+
+    // Construct WebSocket URL with JWT token in query param
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.hostname
     const port = '8742' // Backend port
-    const wsUrl = `${protocol}//${host}:${port}/api/v1/vault/ws/${userId}?vault_type=${vaultType}`
+    const wsUrl = `${protocol}//${host}:${port}/api/v1/vault/ws/${userId}?vault_type=${vaultType}&token=${encodeURIComponent(token)}`
 
     console.log(`Connecting to WebSocket: ${wsUrl}`)
 

@@ -36,7 +36,8 @@ except ImportError:
     logger.info("⚠️  Metal 4 not available - using CPU for SQL")
 
 # Storage path
-DATA_DIR = Path(".neutron_data/datasets")
+from config_paths import get_config_paths
+DATA_DIR = get_config_paths().datasets_dir
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 
