@@ -2586,16 +2586,17 @@ Database Layer:
 
 ### 🎯 Phase 0.5 Checklist (Complete before Phase 1A)
 
-- [ ] Remove duplicate auth endpoints from main.py
-- [ ] Update frontend to use /api/v1/auth/* consistently
-- [ ] Wire audit logging to all admin_service.py endpoints
-- [ ] Add audit log for God Rights login events
-- [ ] Audit vault_service.py for consistent user_id filtering
-- [ ] Update DB consolidation section in Part 7
-- [ ] Test all auth flows with unified prefix
-- [ ] Verify audit logs capture all God Rights actions
+- [x] Remove duplicate auth endpoints from main.py ✅ **DONE** (commit 88dff167)
+- [x] Update frontend to use /api/v1/auth/* consistently ✅ **DONE** (commit 88dff167)
+- [x] Wire audit logging to all admin_service.py endpoints ✅ **DONE** (commit 88dff167)
+- [x] Add audit log for God Rights login events ✅ **DONE** (commit 88dff167)
+- [ ] Audit vault_service.py for consistent user_id filtering (codex confirmed 37 instances - needs final review)
+- [ ] Update DB consolidation section in Part 7 (documentation task)
+- [ ] Test all auth flows with unified prefix (requires server restart)
+- [ ] Verify audit logs capture all God Rights actions (requires test run)
 
-**Estimated Time:** 1 day
+**Status:** 4/8 Complete (50%)
+**Estimated Time Remaining:** 4 hours
 **Dependencies:** None (can run in parallel with other work)
 **Go/No-Go:** All items must pass before Phase 1A begins
 
