@@ -31,6 +31,10 @@
 15. [God Rights Credentials](#god-rights-credentials)
 16. [Service Implementation Status](#service-implementation-status)
 
+### Part 12: Codebase Alignment & Quick Fixes
+17. [Codebase Alignment Notes](#part-12-codebase-alignment--quick-fixes)
+18. [Phase 0.5 Checklist](#-phase-05-checklist-complete-before-phase-1a)
+
 ---
 
 # Part 1: User Isolation (Phase 1 - In Progress)
@@ -2472,7 +2476,132 @@ This roadmap transforms ElohimOS from a single-user app to a **mission-critical,
 
 ---
 
-**Copyright (c) 2025 MagnetarAI, LLC**  
-**Built with conviction for mission-critical field operations.**  
+# Part 12: Codebase Alignment & Quick Fixes
+
+## Status: Phase 0 Complete ✅ → Phase 0.5 Cleanup
+
+**Last Validated:** 2025-11-01 (codex scan)
+
+### ✅ Confirmed Aligned with Roadmap
+
+1. **Roles/God Rights** - Fully implemented and consistent
+   - Location: `apps/backend/api/auth_middleware.py`
+   - Hardcoded founder account with env overrides
+   - JWT tokens include role field
+   - Documentation: `docs/dev/GOD_RIGHTS_LOGIN.md`
+
+2. **Phase 1 User Isolation** - Chat routes complete with tests
+   - Location: `apps/backend/api/chat_service.py:408`
+   - Auth enforcement ✅
+   - Per-user scoping ✅
+   - Test coverage: `apps/backend/api/test_user_isolation.py`
+
+3. **Saved Queries/Settings** - Already implemented
+   - Backend: `apps/backend/api/main.py:1480`
+   - Frontend: `apps/frontend/src/lib/settingsApi.ts`
+
+4. **Audit Logging** - Exists and ready to wire
+   - Location: `apps/backend/api/audit_logger.py`
+   - Status: Implemented but not yet wired to all God Rights actions
+
+### 🔧 Quick Fixes Needed (Phase 0.5 - 1 Day)
+
+#### 1. API Prefix Inconsistency ⚠️
+**Issue:** Duplicate auth endpoints with different prefixes
+- `auth_routes.py` uses `/api/v1/auth/*` (correct, includes logout)
+- `main.py` has duplicate endpoints at `/api/auth/*` (remove these)
+
+**Fix:**
+```python
+# Remove from main.py (lines 567, 591, 634):
+# @app.get("/api/auth/setup-needed")
+# @app.post("/api/auth/register")
+# @app.post("/api/auth/login")
+
+# Keep only auth_routes.py endpoints at /api/v1/auth/*
+```
+
+**Files to update:**
+- `apps/backend/api/main.py` - Remove duplicate endpoints
+- `apps/frontend/src/lib/api.ts` - Update to use `/api/v1/auth/*`
+- `apps/frontend/src/components/Login.tsx` - Update API calls
+
+**Priority:** P1 (prevents API confusion)
+
+#### 2. Wire Audit Logging to God Rights Actions 🔍
+**Issue:** Audit logger exists but not connected to admin endpoints
+
+**Fix:**
+```python
+# In admin_service.py, add:
+from audit_logger import log_admin_action
+
+@router.get("/users/{target_user_id}/chats")
+async def get_user_chats(...):
+    log_admin_action(
+        admin_user=current_user["username"],
+        action="view_user_chats",
+        target_user=target_user_id,
+        ip_address=request.client.host
+    )
+    # ... existing code
+```
+
+**Files to update:**
+- `apps/backend/api/admin_service.py` - Add logging to all endpoints
+- `apps/backend/api/auth_middleware.py` - Log God Rights logins
+
+**Priority:** P1 (compliance requirement)
+
+#### 3. Vault Query Consistency Audit 🔐
+**Issue:** Ensure ALL vault DB queries filter by user_id
+
+**Action:** Audit `apps/backend/api/vault_service.py:2739` and verify:
+- ✅ All SELECT queries include `WHERE user_id = ?`
+- ✅ All UPDATE queries include `WHERE user_id = ?`
+- ✅ All DELETE queries include `WHERE user_id = ?`
+- ✅ God Rights bypass only via explicit admin endpoints (not regular vault API)
+
+**Priority:** P0 (security critical)
+
+#### 4. Database Consolidation Documentation 📚
+**Issue:** Doc references multiple DBs but code centralizes via `config_paths.py`
+
+**Current Reality:**
+- `apps/backend/api/config_paths.py` - Centralized path management
+- `apps/backend/api/elohimos_memory.py` - Unified memory interface
+- Actual DBs: `elohimos_app.db`, `chat_memory.db`, `workflows.db`, etc.
+
+**Fix:** Update Part 7 "Interface Specifications" to reflect actual DB layout:
+```
+Database Layer:
+├── elohimos_app.db (users, sessions, auth)
+├── chat_memory.db (chat history, summaries)
+├── workflows.db (workflow state)
+├── vault/ (encrypted documents)
+└── Managed via: config_paths.py + elohimos_memory.py
+```
+
+**Priority:** P2 (documentation accuracy)
+
+### 🎯 Phase 0.5 Checklist (Complete before Phase 1A)
+
+- [ ] Remove duplicate auth endpoints from main.py
+- [ ] Update frontend to use /api/v1/auth/* consistently
+- [ ] Wire audit logging to all admin_service.py endpoints
+- [ ] Add audit log for God Rights login events
+- [ ] Audit vault_service.py for consistent user_id filtering
+- [ ] Update DB consolidation section in Part 7
+- [ ] Test all auth flows with unified prefix
+- [ ] Verify audit logs capture all God Rights actions
+
+**Estimated Time:** 1 day
+**Dependencies:** None (can run in parallel with other work)
+**Go/No-Go:** All items must pass before Phase 1A begins
+
+---
+
+**Copyright (c) 2025 MagnetarAI, LLC**
+**Built with conviction for mission-critical field operations.**
 **"Like a magnetar - rare, powerful, indestructible."**
 
