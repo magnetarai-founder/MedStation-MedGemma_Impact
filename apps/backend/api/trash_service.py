@@ -16,7 +16,9 @@ from fastapi import APIRouter, HTTPException
 logger = logging.getLogger(__name__)
 
 # Database path
-VAULT_DB_PATH = Path(".neutron_data/vault.db")
+from config_paths import get_config_paths
+PATHS = get_config_paths()
+VAULT_DB_PATH = PATHS.data_dir / "vault.db"
 
 
 # ===== Models =====

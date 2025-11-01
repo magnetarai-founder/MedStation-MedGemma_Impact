@@ -14,20 +14,24 @@ import shutil
 from pathlib import Path
 from datetime import datetime
 
+# Use centralized config paths
+from config_paths import get_config_paths
+PATHS = get_config_paths()
+
 # Old database paths
 OLD_DBS = {
-    "auth": Path(".neutron_data/auth.db"),
-    "users": Path(".neutron_data/users.db"),
-    "docs": Path(".neutron_data/docs.db"),
-    "chat": Path(".neutron_data/memory/chat_memory.db"),
-    "workflows": Path("data/workflows.db"),
+    "auth": PATHS.data_dir / "auth.db",
+    "users": PATHS.data_dir / "users.db",
+    "docs": PATHS.data_dir / "docs.db",
+    "chat": PATHS.memory_dir / "chat_memory.db",
+    "workflows": Path("data/workflows.db"),  # Legacy path
 }
 
 # New consolidated database
-NEW_APP_DB = Path(".neutron_data/elohimos_app.db")
+NEW_APP_DB = PATHS.data_dir / "elohimos_app.db"
 
 # Backup directory
-BACKUP_DIR = Path(".neutron_data/db_backup_" + datetime.now().strftime("%Y%m%d_%H%M%S"))
+BACKUP_DIR = PATHS.data_dir / f"db_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
 
 def backup_old_databases():

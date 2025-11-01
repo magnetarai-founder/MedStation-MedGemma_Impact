@@ -35,7 +35,14 @@ PATHS = get_config_paths()
 DOCS_DB_PATH = PATHS.data_dir / "docs.db"
 DOCS_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-router = APIRouter(prefix="/api/v1/docs", tags=["Docs"])
+from fastapi import Depends
+from auth_middleware import get_current_user
+
+router = APIRouter(
+    prefix="/api/v1/docs",
+    tags=["Docs"],
+    dependencies=[Depends(get_current_user)]  # Require auth
+)
 
 
 # ===== Models =====

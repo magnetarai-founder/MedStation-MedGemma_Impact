@@ -25,7 +25,14 @@ PATHS = get_config_paths()
 USER_DB_PATH = PATHS.data_dir / "users.db"
 USER_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-router = APIRouter(prefix="/api/v1/users", tags=["Users"])
+from fastapi import Depends
+from auth_middleware import get_current_user
+
+router = APIRouter(
+    prefix="/api/v1/users",
+    tags=["Users"],
+    dependencies=[Depends(get_current_user)]  # Require auth
+)
 
 
 # ===== Models =====
