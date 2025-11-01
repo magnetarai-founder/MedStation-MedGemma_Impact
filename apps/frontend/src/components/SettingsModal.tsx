@@ -36,6 +36,15 @@ function LoadingFallback() {
 export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalProps) {
   const permissions = usePermissions()
   const [activeTab, setActiveTab] = useState<'profile' | 'chat' | 'models' | 'app' | 'automation' | 'advanced' | 'security' | 'danger'>('app')
+  const [preloaded, setPreloaded] = useState(false)
+
+  // Preload all tabs when modal opens to avoid jerkiness
+  useEffect(() => {
+    if (isOpen && !preloaded) {
+      // Trigger lazy loading of all tabs by rendering them hidden
+      setPreloaded(true)
+    }
+  }, [isOpen, preloaded])
 
   // Handle ESC key to close modal
   useEffect(() => {
@@ -200,30 +209,88 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
           {/* Content */}
           <div className="flex-1 overflow-auto p-8">
             <Suspense fallback={<LoadingFallback />}>
+              {/* Always render ProfileSettings (not lazy loaded) */}
               <div className={activeTab === 'profile' ? '' : 'hidden'}>
                 <ProfileSettings />
               </div>
-              <div className={activeTab === 'chat' ? '' : 'hidden'}>
-                <ChatTab />
-              </div>
-              <div className={activeTab === 'models' ? '' : 'hidden'}>
-                <ModelsTab />
-              </div>
-              <div className={activeTab === 'app' ? '' : 'hidden'}>
-                <AppSettingsTab activeNavTab={activeNavTab} />
-              </div>
-              <div className={activeTab === 'automation' ? '' : 'hidden'}>
-                <AutomationTab />
-              </div>
-              <div className={activeTab === 'advanced' ? '' : 'hidden'}>
-                <AdvancedTab />
-              </div>
-              <div className={activeTab === 'security' ? '' : 'hidden'}>
-                <SecurityTab />
-              </div>
-              <div className={activeTab === 'danger' ? '' : 'hidden'}>
-                <DangerZoneTab />
-              </div>
+
+              {/* Render active tab immediately */}
+              {activeTab === 'chat' && (
+                <div>
+                  <ChatTab />
+                </div>
+              )}
+              {activeTab === 'models' && (
+                <div>
+                  <ModelsTab />
+                </div>
+              )}
+              {activeTab === 'app' && (
+                <div>
+                  <AppSettingsTab activeNavTab={activeNavTab} />
+                </div>
+              )}
+              {activeTab === 'automation' && (
+                <div>
+                  <AutomationTab />
+                </div>
+              )}
+              {activeTab === 'advanced' && (
+                <div>
+                  <AdvancedTab />
+                </div>
+              )}
+              {activeTab === 'security' && (
+                <div>
+                  <SecurityTab />
+                </div>
+              )}
+              {activeTab === 'danger' && (
+                <div>
+                  <DangerZoneTab />
+                </div>
+              )}
+
+              {/* Preload all other tabs in hidden state after first render */}
+              {preloaded && (
+                <>
+                  {activeTab !== 'chat' && (
+                    <div className="hidden">
+                      <ChatTab />
+                    </div>
+                  )}
+                  {activeTab !== 'models' && (
+                    <div className="hidden">
+                      <ModelsTab />
+                    </div>
+                  )}
+                  {activeTab !== 'app' && (
+                    <div className="hidden">
+                      <AppSettingsTab activeNavTab={activeNavTab} />
+                    </div>
+                  )}
+                  {activeTab !== 'automation' && (
+                    <div className="hidden">
+                      <AutomationTab />
+                    </div>
+                  )}
+                  {activeTab !== 'advanced' && (
+                    <div className="hidden">
+                      <AdvancedTab />
+                    </div>
+                  )}
+                  {activeTab !== 'security' && (
+                    <div className="hidden">
+                      <SecurityTab />
+                    </div>
+                  )}
+                  {activeTab !== 'danger' && (
+                    <div className="hidden">
+                      <DangerZoneTab />
+                    </div>
+                  )}
+                </>
+              )}
             </Suspense>
           </div>
         </div>
