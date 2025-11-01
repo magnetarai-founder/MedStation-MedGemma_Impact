@@ -1276,10 +1276,10 @@ async def get_system_memory():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/ollama/server/status")
+@public_router.get("/ollama/server/status")
 async def get_ollama_server_status():
     """
-    Check if Ollama server is running and get loaded models
+    Check if Ollama server is running and get loaded models (public endpoint - no auth required)
     """
     try:
         import httpx
