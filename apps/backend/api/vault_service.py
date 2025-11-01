@@ -4337,7 +4337,8 @@ async def get_activity_timeline(
 async def websocket_endpoint(
     websocket: WebSocket,
     user_id: str,
-    vault_type: str = "real"
+    vault_type: str = "real",
+    token: str = None  # Auth token from query param
 ):
     """
     WebSocket endpoint for real-time vault updates
@@ -4346,7 +4347,32 @@ async def websocket_endpoint(
     - Real-time file upload/delete/update notifications
     - User presence tracking
     - Activity broadcasting
+
+    Security: Requires valid JWT token for authentication
     """
+    # Verify authentication before accepting connection
+    if not token:
+        await websocket.close(code=1008, reason="Missing authentication token")
+        return
+
+    try:
+        # Verify JWT token
+        import jwt
+        from auth_middleware import JWT_SECRET, JWT_ALGORITHM
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        authenticated_user_id = payload.get("user_id")
+
+        # Verify user_id matches token
+        if authenticated_user_id != user_id:
+            await websocket.close(code=1008, reason="User ID mismatch")
+            return
+    except jwt.ExpiredSignatureError:
+        await websocket.close(code=1008, reason="Token expired")
+        return
+    except jwt.InvalidTokenError:
+        await websocket.close(code=1008, reason="Invalid token")
+        return
+
     await manager.connect(websocket, user_id, vault_type)
 
     try:

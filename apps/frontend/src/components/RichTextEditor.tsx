@@ -6,6 +6,7 @@
  */
 
 import { useRef, useEffect, useState } from 'react'
+import DOMPurify from 'dompurify'
 import {
   Bold,
   Italic,
@@ -38,10 +39,14 @@ export function RichTextEditor({
   const editorRef = useRef<HTMLDivElement>(null)
   const [isFocused, setIsFocused] = useState(false)
 
-  // Set initial content
+  // Set initial content (sanitized to prevent XSS)
   useEffect(() => {
     if (editorRef.current && editorRef.current.innerHTML !== value) {
-      editorRef.current.innerHTML = value || ''
+      const sanitized = DOMPurify.sanitize(value || '', {
+        ALLOWED_TAGS: ['b', 'i', 'u', 'strong', 'em', 'p', 'br', 'ul', 'ol', 'li', 'a', 'code', 'pre'],
+        ALLOWED_ATTR: ['href', 'target']
+      })
+      editorRef.current.innerHTML = sanitized
     }
   }, [value])
 

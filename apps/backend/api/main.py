@@ -139,6 +139,29 @@ def handle_shutdown_signal(signum, frame):
     os._exit(0)
 
 
+async def cleanup_old_temp_files():
+    """Background task to clean up old temporary files"""
+    import asyncio
+    from datetime import datetime, timedelta
+
+    while True:
+        try:
+            await asyncio.sleep(3600)  # Run every hour
+
+            api_dir = Path(__file__).parent
+            cutoff_time = datetime.now() - timedelta(hours=24)  # Delete files older than 24 hours
+
+            for temp_dir in [api_dir / "temp_uploads", api_dir / "temp_exports"]:
+                if temp_dir.exists():
+                    for file_path in temp_dir.glob("*"):
+                        if file_path.is_file():
+                            file_mtime = datetime.fromtimestamp(file_path.stat().st_mtime)
+                            if file_mtime < cutoff_time:
+                                file_path.unlink()
+                                logger.debug(f"Cleaned up old temp file: {file_path.name}")
+        except Exception as e:
+            logger.error(f"Temp file cleanup error: {e}")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
@@ -154,12 +177,17 @@ async def lifespan(app: FastAPI):
     (api_dir / "temp_uploads").mkdir(exist_ok=True)
     (api_dir / "temp_exports").mkdir(exist_ok=True)
 
+    # Start background cleanup task
+    cleanup_task = asyncio.create_task(cleanup_old_temp_files())
+    logger.info("Started background temp file cleanup task")
+
     # Note: Auto-load favorites feature removed - get_favorites() method not implemented
     # Can be re-enabled when ModelManager.get_favorites() is added
 
     yield
     # Shutdown (clean shutdown via lifespan)
     print("Shutting down...")
+    cleanup_task.cancel()
     cleanup_sessions()
 
 app = FastAPI(
@@ -1024,6 +1052,16 @@ async def convert_json(request: Request, session_id: str, body: JsonConvertReque
     """Convert JSON data to Excel format"""
     if session_id not in sessions:
         raise HTTPException(status_code=404, detail="Session not found")
+
+    # Security: Enforce JSON size limit (same as upload: 100MB)
+    MAX_JSON_SIZE = 100 * 1024 * 1024  # 100MB
+    json_size = len(body.json_data.encode('utf-8'))
+
+    if json_size > MAX_JSON_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=f"JSON payload too large ({json_size / 1024 / 1024:.1f}MB). Maximum size is {MAX_JSON_SIZE / 1024 / 1024}MB"
+        )
 
     api_dir = Path(__file__).parent
     temp_dir = api_dir / "temp_uploads"
