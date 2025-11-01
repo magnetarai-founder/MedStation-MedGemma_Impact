@@ -29,8 +29,10 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-# Storage paths
-DOCS_DB_PATH = Path(".neutron_data/docs.db")
+# Storage paths - use centralized config_paths
+from config_paths import get_config_paths
+PATHS = get_config_paths()
+DOCS_DB_PATH = PATHS.data_dir / "docs.db"
 DOCS_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 router = APIRouter(prefix="/api/v1/docs", tags=["Docs"])

@@ -24,6 +24,8 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from collections import defaultdict
 from time import time
+import uuid as uuid_lib
+from contextvars import ContextVar
 import pandas as pd
 import aiofiles
 from contextlib import asynccontextmanager
@@ -190,12 +192,26 @@ async def lifespan(app: FastAPI):
     cleanup_task.cancel()
     cleanup_sessions()
 
+# Request ID context for structured logging
+request_id_ctx: ContextVar[str] = ContextVar("request_id", default="")
+
 app = FastAPI(
     title="ElohimOS API",
     description="SQL query engine for Excel files",
     version="1.0.0",
     lifespan=lifespan
 )
+
+# Middleware to add request ID to all requests
+@app.middleware("http")
+async def add_request_id(request: Request, call_next):
+    """Add unique request ID for tracing and structured logging"""
+    request_id = request.headers.get("X-Request-ID", str(uuid_lib.uuid4()))
+    request_id_ctx.set(request_id)
+
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    return response
 
 # Add rate limiter to app state
 # Disabled slowapi due to compatibility issues with multipart file uploads

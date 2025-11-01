@@ -19,9 +19,10 @@ from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
-# Storage paths - use absolute path relative to this file
-API_DIR = Path(__file__).parent
-USER_DB_PATH = API_DIR / ".neutron_data" / "users.db"
+# Storage paths - use centralized config_paths
+from config_paths import get_config_paths
+PATHS = get_config_paths()
+USER_DB_PATH = PATHS.data_dir / "users.db"
 USER_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 router = APIRouter(prefix="/api/v1/users", tags=["Users"])

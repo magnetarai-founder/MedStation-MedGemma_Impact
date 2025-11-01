@@ -36,7 +36,11 @@ logger = logging.getLogger(__name__)
 PROTOCOL_ID = "/omnistudio/chat/1.0.0"
 FILE_PROTOCOL_ID = "/omnistudio/file/1.0.0"
 MDNS_SERVICE_NAME = "_omnistudio._udp.local"
-DB_PATH = Path(".neutron_data/p2p_chat.db")
+
+# Storage paths - use centralized config_paths
+from config_paths import get_config_paths
+PATHS = get_config_paths()
+DB_PATH = PATHS.data_dir / "p2p_chat.db"
 
 
 class P2PChatService:
