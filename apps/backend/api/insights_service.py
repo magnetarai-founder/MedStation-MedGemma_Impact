@@ -29,6 +29,7 @@ INSIGHTS_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
 from fastapi import Depends
 from auth_middleware import get_current_user
+from utils import sanitize_for_log
 
 router = APIRouter(
     prefix="/api/v1/insights",

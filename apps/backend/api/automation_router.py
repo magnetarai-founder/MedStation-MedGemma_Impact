@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 from fastapi import Depends
 from auth_middleware import get_current_user
+from utils import sanitize_for_log
 
 router = APIRouter(
     prefix="/api/v1/automation",
@@ -75,7 +76,10 @@ async def run_workflow(request: Request, body: WorkflowRunRequest):
     """
     start_time = datetime.now()
 
-    logger.info(f"🚀 Running workflow: {body.name} (ID: {body.workflow_id})")
+    # Sanitize workflow name for logging
+    safe_name = sanitize_for_log(body.name)
+    safe_id = sanitize_for_log(body.workflow_id)
+    logger.info(f"🚀 Running workflow: {safe_name} (ID: {safe_id})")
     logger.info(f"   Nodes: {len(body.nodes)}, Edges: {len(body.edges)}")
 
     # Simulate workflow execution
@@ -144,7 +148,9 @@ async def save_workflow(request: Request, body: WorkflowSaveRequest):
 
     In production, this would save to database or n8n
     """
-    logger.info(f"💾 Saving workflow: {body.name} (ID: {body.workflow_id})")
+    safe_name = sanitize_for_log(body.name)
+    safe_id = sanitize_for_log(body.workflow_id)
+    logger.info(f"💾 Saving workflow: {safe_name} (ID: {safe_id})")
 
     # TODO: Save to database
     # For now, just simulate success

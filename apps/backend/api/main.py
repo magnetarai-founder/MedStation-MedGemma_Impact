@@ -642,7 +642,9 @@ async def execute_query(req: Request, session_id: str, request: QueryRequest):
     if not simple_limiter.check_rate_limit(f"query:{client_ip}", max_requests=60, window_seconds=60):
         raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 60 queries per minute.")
 
-    logger.info(f"Executing query for session {session_id}: {request.sql[:100]}...")
+    # Sanitize SQL for logging (redact potential sensitive data)
+    sanitized_sql = sanitize_for_log(request.sql[:100])
+    logger.info(f"Executing query for session {session_id}: {sanitized_sql}...")
 
     if session_id not in sessions:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -652,7 +654,8 @@ async def execute_query(req: Request, session_id: str, request: QueryRequest):
 
     # Clean SQL (strip comments/trailing semicolons) to avoid parsing issues when embedding in LIMIT wrapper
     cleaned_sql = SQLProcessor.clean_sql(request.sql)
-    logger.info(f"Cleaned SQL: {cleaned_sql[:100]}...")
+    sanitized_cleaned = sanitize_for_log(cleaned_sql[:100])
+    logger.info(f"Cleaned SQL: {sanitized_cleaned}...")
 
     # Security: Validate query only accesses allowed tables (session's uploaded file)
     from neutron_utils.sql_utils import SQLProcessor as SQLUtil
