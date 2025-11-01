@@ -44,11 +44,18 @@ export async function registerBiometric(documentId: string, userId: string): Pro
     const challenge = new Uint8Array(32)
     crypto.getRandomValues(challenge)
 
+    // Get the relying party ID (must be valid for WebAuthn)
+    // For localhost, we need to use 'localhost' explicitly
+    // For production, use the actual hostname
+    const rpId = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+      ? 'localhost'
+      : window.location.hostname
+
     const publicKeyOptions: PublicKeyCredentialCreationOptions = {
       challenge,
       rp: {
         name: 'ElohimOS',
-        id: window.location.hostname,
+        id: rpId,
       },
       user: {
         id: new TextEncoder().encode(userId),
