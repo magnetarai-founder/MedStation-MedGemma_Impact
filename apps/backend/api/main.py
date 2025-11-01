@@ -221,8 +221,9 @@ services_loaded = []
 services_failed = []
 
 try:
-    from chat_service import router as chat_router
+    from chat_service import router as chat_router, public_router as chat_public_router
     app.include_router(chat_router)
+    app.include_router(chat_public_router)  # Public endpoints (health check)
     services_loaded.append("Chat")
 except Exception as e:
     services_failed.append("Chat")

@@ -382,6 +382,13 @@ router = APIRouter(
     tags=["Chat"],
     dependencies=[Depends(get_current_user)]  # Require auth for all chat endpoints
 )
+
+# Public router for health checks (no auth required)
+public_router = APIRouter(
+    prefix="/api/v1/chat",
+    tags=["Chat - Public"]
+)
+
 ollama_client = OllamaClient()
 
 
@@ -955,9 +962,9 @@ async def get_token_count(request: Request, chat_id: str):
     }
 
 
-@router.get("/health")
+@public_router.get("/health")
 async def check_health():
-    """Check Ollama health status"""
+    """Check Ollama health status (public endpoint - no auth required)"""
     return await ErrorHandler.check_ollama_health()
 
 
@@ -2022,5 +2029,5 @@ async def track_usage_manually(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# Export router
-__all__ = ["router"]
+# Export routers
+__all__ = ["router", "public_router"]
