@@ -458,6 +458,52 @@ export function ProfileSettings() {
             </div>
 
             <div className="space-y-4">
+              {/* Stealth Labels */}
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Eye className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                  <div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      Stealth Labels
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      Hide sensitive document titles in UI (shows generic labels)
+                    </div>
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={securitySettings.stealth_labels}
+                  onChange={(e) =>
+                    updateSecuritySettings({ stealth_labels: e.target.checked })
+                  }
+                  className="w-5 h-5 rounded text-primary-600"
+                />
+              </div>
+
+              {/* Decoy Mode */}
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Shield className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                  <div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      Decoy Vault Enabled
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      Dual vault system with plausible deniability
+                    </div>
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={securitySettings.decoy_mode_enabled}
+                  onChange={(e) =>
+                    updateSecuritySettings({ decoy_mode_enabled: e.target.checked })
+                  }
+                  className="w-5 h-5 rounded text-primary-600"
+                />
+              </div>
+
               {/* Touch ID */}
               <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
                 <div className="flex items-center gap-3">

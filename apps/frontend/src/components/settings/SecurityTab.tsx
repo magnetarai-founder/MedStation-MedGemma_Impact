@@ -1,9 +1,5 @@
-import { Shield, User, Eye, EyeOff, Fingerprint, CheckCircle, XCircle } from 'lucide-react'
-import { useState } from 'react'
+import { Shield, User } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { useDocsStore } from '@/stores/docsStore'
-import { authenticateBiometric, isBiometricAvailable, testTouchID } from '@/lib/biometricAuth'
-import toast from 'react-hot-toast'
 
 /**
  * Security Tab
@@ -47,11 +43,6 @@ const ROLE_DESCRIPTIONS: Record<string, { label: string; description: string; co
 }
 
 export default function SecurityTab() {
-  // Vault security settings
-  const { securitySettings, updateSecuritySettings } = useDocsStore()
-  const [isTouchIDAvailable, setIsTouchIDAvailable] = useState<boolean | null>(null)
-  const [touchIDTestResult, setTouchIDTestResult] = useState<'success' | 'failed' | null>(null)
-
   // Fetch current user profile
   const { data: currentUser, isLoading } = useQuery({
     queryKey: ['current-user'],
@@ -79,56 +70,6 @@ export default function SecurityTab() {
   }
 
   const roleInfo = ROLE_DESCRIPTIONS[currentUser.role] || ROLE_DESCRIPTIONS.member
-
-  // Handle Touch ID toggle
-  const handleTouchIDToggle = async (enabled: boolean) => {
-    if (enabled) {
-      // User is trying to enable Touch ID - test if it's available
-      toast.loading('Checking Touch ID availability...', { id: 'touchid-check' })
-
-      const available = await isBiometricAvailable()
-      setIsTouchIDAvailable(available)
-
-      if (!available) {
-        toast.error('Touch ID not available on this device', { id: 'touchid-check' })
-        setTouchIDTestResult('failed')
-        return
-      }
-
-      // Touch ID is available, now test authentication
-      toast.loading('Testing Touch ID authentication...', { id: 'touchid-check' })
-
-      const authenticated = await authenticateBiometric()
-
-      if (authenticated) {
-        toast.success('Touch ID verified and enabled!', { id: 'touchid-check' })
-        setTouchIDTestResult('success')
-        updateSecuritySettings({ require_touch_id: true })
-      } else {
-        toast.error('Touch ID authentication failed', { id: 'touchid-check' })
-        setTouchIDTestResult('failed')
-      }
-    } else {
-      // User is disabling Touch ID
-      updateSecuritySettings({ require_touch_id: false })
-      setTouchIDTestResult(null)
-      toast.success('Touch ID disabled')
-    }
-  }
-
-  // Test Touch ID button
-  const handleTestTouchID = async () => {
-    toast.loading('Testing Touch ID...', { id: 'touchid-test' })
-
-    const result = await testTouchID()
-    if (result) {
-      toast.success('Touch ID is available and ready!', { id: 'touchid-test' })
-      setTouchIDTestResult('success')
-    } else {
-      toast.error('Touch ID not available on this device', { id: 'touchid-test' })
-      setTouchIDTestResult('failed')
-    }
-  }
 
   return (
     <div className="space-y-6">
@@ -234,181 +175,15 @@ export default function SecurityTab() {
         </dl>
       </div>
 
-      {/* Vault Security Settings */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-        <div className="flex items-center gap-2 mb-4">
-          <Shield className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Vault Security
-          </h3>
-        </div>
-
-        <div className="space-y-4">
-          {/* Stealth Labels */}
-          <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={securitySettings.stealth_labels}
-                onChange={(e) => updateSecuritySettings({ stealth_labels: e.target.checked })}
-                className="mt-1 w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-amber-600 focus:ring-amber-500"
-              />
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    Stealth Labels
-                  </span>
-                  {securitySettings.stealth_labels ? (
-                    <EyeOff className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                  ) : (
-                    <Eye className="w-4 h-4 text-gray-400" />
-                  )}
-                </div>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                  Display innocuous cover names for sensitive vault documents. Actual titles are only visible when documents are opened.
-                </p>
-                <div className="mt-2 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
-                  <p className="text-xs text-amber-800 dark:text-amber-200">
-                    <strong>Example:</strong> "Project Budget 2024.xlsx" → "Grocery List.txt"
-                  </p>
-                  <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                    Provides plausible deniability if device is searched. Real title visible only after unlocking document.
-                  </p>
-                </div>
-              </div>
-            </label>
-          </div>
-
-          {/* Decoy Mode */}
-          <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={securitySettings.decoy_mode_enabled}
-                onChange={(e) => updateSecuritySettings({ decoy_mode_enabled: e.target.checked })}
-                className="mt-1 w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-amber-600 focus:ring-amber-500"
-              />
-              <div className="flex-1">
-                <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  Decoy Vault Mode
-                </div>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                  Enable dual vault storage: real vault (sensitive data) + decoy vault (innocuous data). Each unlocks with a different password.
-                </p>
-                <div className="mt-2 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
-                  <p className="text-xs text-amber-800 dark:text-amber-200">
-                    When enabled, you can configure a second password that unlocks a decoy vault containing non-sensitive documents.
-                  </p>
-                </div>
-              </div>
-            </label>
-          </div>
-
-          {/* Touch ID Requirement */}
-          <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={securitySettings.require_touch_id}
-                onChange={(e) => handleTouchIDToggle(e.target.checked)}
-                className="mt-1 w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-amber-600 focus:ring-amber-500"
-              />
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    Require Touch ID
-                  </span>
-                  {touchIDTestResult === 'success' && (
-                    <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
-                  )}
-                  {touchIDTestResult === 'failed' && (
-                    <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
-                  )}
-                </div>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                  Require biometric authentication (Touch ID/Face ID) before password entry when unlocking vault.
-                </p>
-                {securitySettings.require_touch_id && (
-                  <div className="mt-3">
-                    <button
-                      onClick={handleTestTouchID}
-                      className="inline-flex items-center gap-2 px-3 py-1.5 text-xs bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-800 dark:text-amber-200 rounded-lg transition-colors"
-                    >
-                      <Fingerprint className="w-4 h-4" />
-                      Test Touch ID
-                    </button>
-                  </div>
-                )}
-                {isTouchIDAvailable === false && (
-                  <div className="mt-2 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
-                    <p className="text-xs text-red-800 dark:text-red-200">
-                      Touch ID is not available on this device. Make sure your Mac has Touch ID enabled in System Preferences.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </label>
-          </div>
-
-          {/* Disable Screenshots */}
-          <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={securitySettings.disable_screenshots}
-                onChange={(e) => updateSecuritySettings({ disable_screenshots: e.target.checked })}
-                className="mt-1 w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-amber-600 focus:ring-amber-500"
-              />
-              <div className="flex-1">
-                <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  Disable Screenshots
-                </div>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                  Prevent screen captures of vault content for additional security.
-                </p>
-              </div>
-            </label>
-          </div>
-
-          {/* Auto-lock Settings */}
-          <div>
-            <div className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
-              Auto-lock Vault
-            </div>
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={securitySettings.lock_on_exit}
-                  onChange={(e) => updateSecuritySettings({ lock_on_exit: e.target.checked })}
-                  className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-amber-600 focus:ring-amber-500"
-                />
-                <span className="text-xs text-gray-900 dark:text-gray-100">
-                  Lock vault when closing app
-                </span>
-              </label>
-
-              <div>
-                <label className="block text-xs text-gray-900 dark:text-gray-100 mb-1">
-                  Lock after inactivity:
-                </label>
-                <select
-                  value={securitySettings.inactivity_lock}
-                  onChange={(e) => updateSecuritySettings({ inactivity_lock: e.target.value as any })}
-                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                >
-                  <option value="instant">Instantly</option>
-                  <option value="30s">30 seconds</option>
-                  <option value="1m">1 minute</option>
-                  <option value="2m">2 minutes</option>
-                  <option value="3m">3 minutes</option>
-                  <option value="4m">4 minutes</option>
-                  <option value="5m">5 minutes</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* Note about Vault Security */}
+      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-6 border border-blue-200 dark:border-blue-800">
+        <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">
+          💡 Configure Vault Security
+        </h3>
+        <p className="text-sm text-blue-800 dark:text-blue-200">
+          To configure vault security settings (Touch ID, stealth labels, decoy mode, auto-lock, screenshots),
+          go to <strong>Profile → Security</strong> tab.
+        </p>
       </div>
     </div>
   )
