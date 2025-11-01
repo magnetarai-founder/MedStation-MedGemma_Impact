@@ -108,21 +108,14 @@ class PanicMode:
 
     def _wipe_chat_cache(self):
         """Wipe all chat session cache"""
-        try:
-            from config_paths import get_config_paths
-            paths = get_config_paths()
-            cache_paths = [
-                paths.data_dir / "cache",
-                paths.uploads_dir,
-                Path("/tmp/omnistudio_cache"),
-            ]
-        except Exception:
-            # Fallback to hardcoded paths
-            cache_paths = [
-                Path(".neutron_data/cache"),
-                Path(".neutron_data/uploads"),
-                Path("/tmp/omnistudio_cache"),
-            ]
+        from config_paths import get_config_paths
+        paths = get_config_paths()
+
+        cache_paths = [
+            paths.data_dir / "cache",
+            paths.uploads_dir,
+            Path("/tmp/omnistudio_cache"),
+        ]
 
         for cache_path in cache_paths:
             if cache_path.exists():
@@ -135,19 +128,13 @@ class PanicMode:
 
     def _wipe_uploads(self):
         """Wipe all uploaded files"""
-        try:
-            from config_paths import get_config_paths
-            paths = get_config_paths()
-            upload_paths = [
-                paths.uploads_dir,
-                Path("temp_uploads"),
-            ]
-        except Exception:
-            # Fallback to hardcoded paths
-            upload_paths = [
-                Path(".neutron_data/uploads"),
-                Path("temp_uploads"),
-            ]
+        from config_paths import get_config_paths
+        paths = get_config_paths()
+
+        upload_paths = [
+            paths.uploads_dir,
+            Path("temp_uploads"),
+        ]
 
         for upload_path in upload_paths:
             if upload_path.exists():
@@ -175,31 +162,22 @@ class PanicMode:
 
     def _secure_databases(self):
         """Ensure databases are encrypted and discover all DBs via config_paths"""
-        # Import config paths to get all known database locations
-        try:
-            from config_paths import get_config_paths
-            paths = get_config_paths()
+        from config_paths import get_config_paths
+        paths = get_config_paths()
 
-            # Discover all .db files in data directory
-            db_paths = list(paths.data_dir.glob("**/*.db"))
+        # Discover all .db files in data directory
+        db_paths = list(paths.data_dir.glob("**/*.db"))
 
-            # Add known additional DBs
-            db_paths.extend([
-                Path.home() / ".elohimos" / "elohimos_memory.db",
-                Path.home() / ".elohimos" / "learning.db",
-                paths.data_dir / "memory" / "chat_memory.db",
-                paths.data_dir / "vault" / "vault.db",
-                paths.data_dir / "users.db",
-                paths.data_dir / "docs.db",
-                paths.data_dir / "p2p_chat.db",
-            ])
-        except Exception as e:
-            logger.warning(f"Could not discover DBs via config_paths: {e}")
-            # Fallback to minimal hardcoded paths (only those outside .neutron_data)
-            db_paths = [
-                Path.home() / ".elohimos" / "elohimos_memory.db",
-                Path.home() / ".elohimos" / "learning.db",
-            ]
+        # Add known additional DBs
+        db_paths.extend([
+            Path.home() / ".elohimos" / "elohimos_memory.db",
+            Path.home() / ".elohimos" / "learning.db",
+            paths.data_dir / "memory" / "chat_memory.db",
+            paths.data_dir / "vault" / "vault.db",
+            paths.data_dir / "users.db",
+            paths.data_dir / "docs.db",
+            paths.data_dir / "p2p_chat.db",
+        ])
 
         for db_path in db_paths:
             if db_path.exists():
