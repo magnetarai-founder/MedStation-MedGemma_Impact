@@ -16,6 +16,7 @@ from pathlib import Path
 from fastapi import HTTPException, Request, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
+from utils import sanitize_for_log
 
 logger = logging.getLogger(__name__)
 
@@ -265,14 +266,16 @@ class AuthService:
             conn.close()
 
             if not row:
-                logger.warning(f"Token not found in sessions: {payload.get('username')}")
+                safe_username = sanitize_for_log(payload.get('username', 'unknown'))
+                logger.warning(f"Token not found in sessions: {safe_username}")
                 return None
 
             session_id, expires_at = row
 
             # Check expiration
             if datetime.fromisoformat(expires_at) < datetime.utcnow():
-                logger.warning(f"Token expired: {payload.get('username')}")
+                safe_username = sanitize_for_log(payload.get('username', 'unknown'))
+                logger.warning(f"Token expired: {safe_username}")
                 return None
 
             return payload
@@ -302,7 +305,8 @@ class AuthService:
             conn.commit()
             conn.close()
 
-            logger.info(f"User logged out: {payload.get('username')}")
+            safe_username = sanitize_for_log(payload.get('username', 'unknown'))
+            logger.info(f"User logged out: {safe_username}")
 
         except Exception as e:
             logger.error(f"Logout failed: {e}")

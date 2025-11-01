@@ -22,6 +22,7 @@ from datetime import datetime
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
+from utils import sanitize_for_log
 
 logger = logging.getLogger(__name__)
 
@@ -142,7 +143,8 @@ class DataEngine:
             else:
                 raise ValueError(f"Unsupported file type: {file_ext}")
         except Exception as e:
-            logger.error(f"Failed to read file {filename}: {e}")
+            safe_filename = sanitize_for_log(filename)
+            logger.error(f"Failed to read file {safe_filename}: {e}")
             raise
 
         # 2. Auto-clean
@@ -180,7 +182,8 @@ class DataEngine:
             ))
             self.conn.commit()
 
-        logger.info(f"✅ Loaded {filename} → {table_name} ({len(df)} rows, {len(df.columns)} cols)")
+        safe_filename = sanitize_for_log(filename)
+        logger.info(f"✅ Loaded {safe_filename} → {table_name} ({len(df)} rows, {len(df.columns)} cols)")
 
         # 6. Generate query suggestions using brute-force discovery
         query_suggestions = self._brute_force_discover(table_name, df)

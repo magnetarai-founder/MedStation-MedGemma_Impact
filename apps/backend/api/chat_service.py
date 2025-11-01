@@ -375,6 +375,7 @@ class OllamaClient:
 
 from fastapi import Depends
 from auth_middleware import get_current_user
+from utils import sanitize_for_log
 
 router = APIRouter(
     prefix="/api/v1/chat",
@@ -446,7 +447,8 @@ async def send_message(request: Request, chat_id: str, body: SendMessageRequest)
             body.content
         )
         await asyncio.to_thread(memory.update_session_title, chat_id, title, auto_titled=True)
-        logger.info(f"Auto-generated title for {chat_id}: {title}")
+        safe_title = sanitize_for_log(title)
+        logger.info(f"Auto-generated title for {chat_id}: {safe_title}")
 
     # Save user message
     user_message = ChatMessage(
@@ -747,7 +749,8 @@ async def upload_file_to_chat(
             await asyncio.to_thread(memory.store_document_chunks, chat_id, chunks)
 
             file_info["chunks_created"] = len(chunks)
-            logger.info(f"Created {len(chunks)} chunks for file {file.filename}")
+            safe_filename = sanitize_for_log(file.filename)
+            logger.info(f"Created {len(chunks)} chunks for file {safe_filename}")
         else:
             file_info["text_preview"] = "[Text extraction not supported for this file type]"
             file_info["text_extracted"] = False
