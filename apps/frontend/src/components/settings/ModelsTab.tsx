@@ -17,6 +17,28 @@ export default function ModelsTab({ activeNavTab }: ModelsTabProps = {}) {
   })
 
   const [orchestratorModels, setOrchestratorModels] = useState<any[]>([])
+  const [systemInfo, setSystemInfo] = useState<{
+    total_memory_gb: number
+    metal_available_memory_gb: number
+    metal_device_name: string | null
+    metal_available: boolean
+  } | null>(null)
+
+  // Load system info on mount
+  useEffect(() => {
+    const loadSystemInfo = async () => {
+      try {
+        const response = await fetch('/api/system/info')
+        if (response.ok) {
+          const data = await response.json()
+          setSystemInfo(data)
+        }
+      } catch (error) {
+        console.error('Failed to load system info:', error)
+      }
+    }
+    loadSystemInfo()
+  }, [])
 
   // Load available models on mount
   useEffect(() => {
@@ -192,8 +214,18 @@ export default function ModelsTab({ activeNavTab }: ModelsTabProps = {}) {
               Memory Allocation
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Configure how system memory is allocated for model operations
+              Configure how Metal GPU memory is allocated for model operations
             </p>
+            {systemInfo && systemInfo.metal_available && (
+              <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                {systemInfo.metal_device_name}: {systemInfo.metal_available_memory_gb} GB available for models
+              </p>
+            )}
+            {systemInfo && !systemInfo.metal_available && (
+              <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
+                Metal GPU not available - using system memory ({systemInfo.total_memory_gb} GB)
+              </p>
+            )}
           </div>
         </div>
 
@@ -201,6 +233,11 @@ export default function ModelsTab({ activeNavTab }: ModelsTabProps = {}) {
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               App memory: {localSettings.app_memory_percent}%
+              {systemInfo && systemInfo.metal_available && (
+                <span className="text-xs font-normal text-gray-500 dark:text-gray-400 ml-2">
+                  ({(systemInfo.metal_available_memory_gb * localSettings.app_memory_percent / 100).toFixed(1)} GB)
+                </span>
+              )}
             </label>
             <input
               type="range"
@@ -216,13 +253,18 @@ export default function ModelsTab({ activeNavTab }: ModelsTabProps = {}) {
               className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary-600"
             />
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Percentage of system memory for app operations
+              Memory allocated for general app operations and UI
             </p>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Processing memory: {localSettings.processing_memory_percent}%
+              {systemInfo && systemInfo.metal_available && (
+                <span className="text-xs font-normal text-gray-500 dark:text-gray-400 ml-2">
+                  ({(systemInfo.metal_available_memory_gb * localSettings.processing_memory_percent / 100).toFixed(1)} GB)
+                </span>
+              )}
             </label>
             <input
               type="range"
@@ -238,13 +280,18 @@ export default function ModelsTab({ activeNavTab }: ModelsTabProps = {}) {
               className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary-600"
             />
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Percentage of system memory for data processing
+              Memory for loading and running AI models (this is what determines how many models you can load)
             </p>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Cache memory: {localSettings.cache_memory_percent}%
+              {systemInfo && systemInfo.metal_available && (
+                <span className="text-xs font-normal text-gray-500 dark:text-gray-400 ml-2">
+                  ({(systemInfo.metal_available_memory_gb * localSettings.cache_memory_percent / 100).toFixed(1)} GB)
+                </span>
+              )}
             </label>
             <input
               type="range"
@@ -260,7 +307,7 @@ export default function ModelsTab({ activeNavTab }: ModelsTabProps = {}) {
               className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary-600"
             />
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Percentage of system memory for caching
+              Memory for caching model layers and conversation context
             </p>
           </div>
 

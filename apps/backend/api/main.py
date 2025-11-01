@@ -494,6 +494,49 @@ def get_column_info(df: pd.DataFrame) -> List[ColumnInfo]:
 async def root():
     return {"message": "ElohimOS API", "version": "1.0.0"}
 
+
+@app.get("/api/system/info")
+async def get_system_info():
+    """
+    Get system information including Metal GPU capabilities and memory
+    """
+    import subprocess
+
+    info = {
+        "total_memory_gb": 0,
+        "metal_available_memory_gb": 0,
+        "metal_device_name": None,
+        "metal_available": False,
+    }
+
+    # Get total system memory using sysctl
+    try:
+        result = subprocess.run(['sysctl', 'hw.memsize'], capture_output=True, text=True)
+        if result.returncode == 0:
+            memsize = int(result.stdout.split(':')[1].strip())
+            info["total_memory_gb"] = round(memsize / (1024**3), 1)
+    except:
+        pass
+
+    # Get Metal device info and recommendedMaxWorkingSetSize
+    try:
+        from metal4_engine import get_metal4_engine
+        engine = get_metal4_engine()
+
+        if engine.is_available():
+            info["metal_available"] = True
+            info["metal_device_name"] = engine.device.name()
+
+            # This is the key value - Metal's recommended max working set size
+            # This is what should be used for calculating model loading capacity
+            recommended_max = engine.device.recommendedMaxWorkingSetSize()
+            info["metal_available_memory_gb"] = round(recommended_max / (1024**3), 1)
+    except:
+        pass
+
+    return info
+
+
 @app.post("/api/sessions/create", response_model=SessionResponse)
 async def create_session(request: Request):
     """Create a new session with isolated engine"""
