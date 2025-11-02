@@ -305,5 +305,226 @@ async def get_user_vault_status(
     )
 
 
+@router.get("/device/overview")
+async def get_device_overview(
+    request: Request,
+    current_user: Dict = Depends(require_god_rights)
+):
+    """Get device-wide overview statistics (God Rights only)
+
+    Returns high-level metrics about the device:
+    - Total users
+    - Total chat sessions
+    - Total workflows
+    - Total documents
+    - Storage usage
+    - Active users (last 7 days)
+
+    This is for administrative monitoring purposes.
+    """
+    # Audit log
+    audit_logger.log(
+        user_id=current_user["user_id"],
+        action=AuditAction.ADMIN_VIEW_DEVICE_OVERVIEW,
+        ip_address=request.client.host if request.client else None,
+        details={"admin_username": current_user["username"]}
+    )
+
+    overview = {}
+
+    # Get user statistics
+    conn = get_admin_db_connection()
+    try:
+        # Total users
+        cursor = conn.execute("SELECT COUNT(*) as total FROM users")
+        overview["total_users"] = cursor.fetchone()["total"]
+
+        # Active users (last 7 days)
+        cursor = conn.execute("""
+            SELECT COUNT(*) as active FROM users
+            WHERE last_login > datetime('now', '-7 days')
+        """)
+        overview["active_users_7d"] = cursor.fetchone()["active"]
+
+        # Users by role
+        cursor = conn.execute("""
+            SELECT role, COUNT(*) as count FROM users
+            GROUP BY role
+        """)
+        overview["users_by_role"] = {
+            row["role"] or "member": row["count"]
+            for row in cursor.fetchall()
+        }
+
+    finally:
+        conn.close()
+
+    # Get chat statistics
+    try:
+        memory = get_memory()
+        all_sessions = memory.list_all_sessions_admin()
+        overview["total_chat_sessions"] = len(all_sessions)
+    except Exception as e:
+        logger.warning(f"Could not get chat statistics: {e}")
+        overview["total_chat_sessions"] = None
+
+    # Get workflow statistics (if workflow service available)
+    try:
+        from pathlib import Path
+        workflow_db = Path(".") / "apps" / "backend" / "api" / "data" / "workflows.db"
+        if not workflow_db.exists():
+            workflow_db = Path("data") / "workflows.db"
+
+        if workflow_db.exists():
+            wf_conn = sqlite3.connect(str(workflow_db))
+            wf_conn.row_factory = sqlite3.Row
+
+            cursor = wf_conn.execute("SELECT COUNT(*) as total FROM workflows")
+            overview["total_workflows"] = cursor.fetchone()["total"]
+
+            cursor = wf_conn.execute("SELECT COUNT(*) as total FROM work_items")
+            overview["total_work_items"] = cursor.fetchone()["total"]
+
+            wf_conn.close()
+        else:
+            overview["total_workflows"] = None
+            overview["total_work_items"] = None
+    except Exception as e:
+        logger.warning(f"Could not get workflow statistics: {e}")
+        overview["total_workflows"] = None
+        overview["total_work_items"] = None
+
+    # Get document statistics (if docs service available)
+    try:
+        from pathlib import Path
+        docs_db = Path(".") / "apps" / "backend" / "api" / "data" / "docs.db"
+        if not docs_db.exists():
+            docs_db = Path("data") / "docs.db"
+
+        if docs_db.exists():
+            docs_conn = sqlite3.connect(str(docs_db))
+            docs_conn.row_factory = sqlite3.Row
+
+            cursor = docs_conn.execute("SELECT COUNT(*) as total FROM documents")
+            overview["total_documents"] = cursor.fetchone()["total"]
+
+            docs_conn.close()
+        else:
+            overview["total_documents"] = None
+    except Exception as e:
+        logger.warning(f"Could not get document statistics: {e}")
+        overview["total_documents"] = None
+
+    logger.info(f"God Rights {current_user['username']} viewed device overview")
+
+    return {
+        "device_overview": overview,
+        "timestamp": str(__import__('datetime').datetime.utcnow().isoformat())
+    }
+
+
+@router.get("/users/{target_user_id}/workflows")
+async def get_user_workflows(
+    request: Request,
+    target_user_id: str,
+    current_user: Dict = Depends(require_god_rights)
+):
+    """Get specific user's workflows (God Rights only - for support)
+
+    Returns the user's workflow definitions and work items.
+    This is for support purposes - helping users troubleshoot workflow issues.
+
+    Does NOT return workflow execution data or sensitive business logic.
+    """
+    # Audit log
+    audit_logger.log(
+        user_id=current_user["user_id"],
+        action=AuditAction.ADMIN_VIEW_USER_WORKFLOWS,
+        resource="workflows",
+        resource_id=target_user_id,
+        ip_address=request.client.host if request.client else None,
+        details={"admin_username": current_user["username"]}
+    )
+
+    try:
+        from pathlib import Path
+        workflow_db = Path(".") / "apps" / "backend" / "api" / "data" / "workflows.db"
+        if not workflow_db.exists():
+            workflow_db = Path("data") / "workflows.db"
+
+        if not workflow_db.exists():
+            raise HTTPException(
+                status_code=503,
+                detail="Workflow database not available"
+            )
+
+        wf_conn = sqlite3.connect(str(workflow_db))
+        wf_conn.row_factory = sqlite3.Row
+
+        # Get user's workflows
+        cursor = wf_conn.execute("""
+            SELECT id, name, description, category, enabled, created_at, updated_at
+            FROM workflows
+            WHERE user_id = ?
+            ORDER BY updated_at DESC
+        """, (target_user_id,))
+
+        workflows = []
+        for row in cursor.fetchall():
+            workflows.append({
+                "id": row["id"],
+                "name": row["name"],
+                "description": row["description"],
+                "category": row["category"],
+                "enabled": bool(row["enabled"]),
+                "created_at": row["created_at"],
+                "updated_at": row["updated_at"]
+            })
+
+        # Get user's work items
+        cursor = wf_conn.execute("""
+            SELECT id, workflow_id, status, priority, created_at, updated_at
+            FROM work_items
+            WHERE user_id = ?
+            ORDER BY updated_at DESC
+            LIMIT 100
+        """, (target_user_id,))
+
+        work_items = []
+        for row in cursor.fetchall():
+            work_items.append({
+                "id": row["id"],
+                "workflow_id": row["workflow_id"],
+                "status": row["status"],
+                "priority": row["priority"],
+                "created_at": row["created_at"],
+                "updated_at": row["updated_at"]
+            })
+
+        wf_conn.close()
+
+        logger.info(
+            f"God Rights {current_user['username']} viewed workflows "
+            f"for user {target_user_id}: {len(workflows)} workflows, {len(work_items)} items"
+        )
+
+        return {
+            "user_id": target_user_id,
+            "workflows": workflows,
+            "work_items": work_items,
+            "total_workflows": len(workflows),
+            "total_work_items": len(work_items)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get user workflows: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve user workflows: {str(e)}"
+        )
+
+
 # Export the router
 __all__ = ["router"]

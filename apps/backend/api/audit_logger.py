@@ -93,6 +93,8 @@ class AuditAction:
     ADMIN_RESET_PASSWORD = "admin.reset_password"
     ADMIN_UNLOCK_ACCOUNT = "admin.unlock_account"
     ADMIN_VIEW_VAULT_STATUS = "admin.view.vault_status"
+    ADMIN_VIEW_DEVICE_OVERVIEW = "admin.view.device_overview"
+    ADMIN_VIEW_USER_WORKFLOWS = "admin.view.user_workflows"
     GOD_RIGHTS_LOGIN = "god_rights.login"
 
 
