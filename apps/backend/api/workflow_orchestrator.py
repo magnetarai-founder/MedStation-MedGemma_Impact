@@ -153,6 +153,43 @@ class WorkflowOrchestrator:
 
         return None
 
+    def list_workflows(
+        self,
+        user_id: str,
+        category: Optional[str] = None,
+        enabled_only: bool = False
+    ) -> List[Workflow]:
+        """
+        List all workflows for a user with optional filters
+
+        Args:
+            user_id: User ID for isolation
+            category: Optional category filter
+            enabled_only: Only return enabled workflows
+
+        Returns:
+            List of workflows owned by user
+        """
+        # Always fetch from storage to ensure user isolation
+        if self.storage:
+            workflows = self.storage.list_workflows(
+                user_id=user_id,
+                category=category,
+                enabled_only=enabled_only
+            )
+            return workflows
+
+        # Fallback to in-memory (not recommended for multi-user)
+        workflows = list(self.workflows.values())
+
+        # Apply filters
+        if category:
+            workflows = [w for w in workflows if w.category == category]
+        if enabled_only:
+            workflows = [w for w in workflows if w.enabled]
+
+        return workflows
+
     # ============================================
     # WORK ITEM CREATION
     # ============================================
@@ -235,6 +272,64 @@ class WorkflowOrchestrator:
         logger.info(f"   Priority: {priority.value}")
 
         return work_item
+
+    def list_work_items(
+        self,
+        user_id: str,
+        workflow_id: Optional[str] = None,
+        status: Optional[WorkItemStatus] = None,
+        assigned_to: Optional[str] = None,
+        priority: Optional[WorkItemPriority] = None,
+        limit: int = 50
+    ) -> List[WorkItem]:
+        """
+        List work items for a user with optional filters
+
+        Args:
+            user_id: User ID for isolation
+            workflow_id: Optional workflow filter
+            status: Optional status filter
+            assigned_to: Optional assignment filter
+            priority: Optional priority filter
+            limit: Maximum number of items to return
+
+        Returns:
+            List of work items owned by user
+        """
+        # Always fetch from storage to ensure user isolation
+        if self.storage:
+            items = self.storage.list_work_items(
+                user_id=user_id,
+                workflow_id=workflow_id,
+                status=status,
+                limit=limit
+            )
+
+            # Apply additional filters not supported by storage
+            if assigned_to:
+                items = [w for w in items if w.assigned_to == assigned_to]
+            if priority:
+                items = [w for w in items if w.priority == priority]
+
+            return items[:limit]
+
+        # Fallback to in-memory (not recommended for multi-user)
+        items = list(self.active_work_items.values())
+
+        # Apply filters
+        if workflow_id:
+            items = [w for w in items if w.workflow_id == workflow_id]
+        if status:
+            items = [w for w in items if w.status == status]
+        if assigned_to:
+            items = [w for w in items if w.assigned_to == assigned_to]
+        if priority:
+            items = [w for w in items if w.priority == priority]
+
+        # Sort by created_at desc
+        items.sort(key=lambda w: w.created_at, reverse=True)
+
+        return items[:limit]
 
     # ============================================
     # WORK ITEM CLAIMING

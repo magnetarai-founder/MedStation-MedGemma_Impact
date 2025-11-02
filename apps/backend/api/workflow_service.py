@@ -140,13 +140,8 @@ async def list_workflows(
         List of workflows
     """
     user_id = current_user["user_id"]
-    workflows = list(orchestrator.workflows.values())
-
-    # Apply filters
-    if category:
-        workflows = [w for w in workflows if w.category == category]
-    if enabled_only:
-        workflows = [w for w in workflows if w.enabled]
+    # Use orchestrator method that filters by user_id
+    workflows = orchestrator.list_workflows(user_id=user_id, category=category, enabled_only=enabled_only)
 
     return workflows
 
@@ -284,22 +279,17 @@ async def list_work_items(
         List of work items
     """
     user_id = current_user["user_id"]
-    items = list(orchestrator.active_work_items.values())
+    # Use orchestrator method that filters by user_id
+    items = orchestrator.list_work_items(
+        user_id=user_id,
+        workflow_id=workflow_id,
+        status=status,
+        assigned_to=assigned_to,
+        priority=priority,
+        limit=limit
+    )
 
-    # Apply filters
-    if workflow_id:
-        items = [w for w in items if w.workflow_id == workflow_id]
-    if status:
-        items = [w for w in items if w.status == status]
-    if assigned_to:
-        items = [w for w in items if w.assigned_to == assigned_to]
-    if priority:
-        items = [w for w in items if w.priority == priority]
-
-    # Sort by created_at desc
-    items.sort(key=lambda w: w.created_at, reverse=True)
-
-    return items[:limit]
+    return items
 
 
 @router.get("/work-items/{work_item_id}", response_model=WorkItem)
@@ -321,7 +311,8 @@ async def get_work_item(
         HTTPException: If not found or access denied
     """
     user_id = current_user["user_id"]
-    work_item = orchestrator.active_work_items.get(work_item_id)
+    # Use storage to ensure user isolation
+    work_item = orchestrator.storage.get_work_item(work_item_id, user_id) if orchestrator.storage else None
     if not work_item:
         raise HTTPException(status_code=404, detail=f"Work item not found or access denied: {work_item_id}")
 
