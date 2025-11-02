@@ -1,8 +1,8 @@
 /**
- * God Rights Admin Dashboard
+ * Founder Rights Admin Dashboard
  *
  * Founder admin panel for system-wide monitoring and user support
- * Only accessible to users with god_rights role
+ * Only accessible to users with founder_rights role
  */
 
 import { useState, useEffect } from 'react'
@@ -64,7 +64,7 @@ export default function AdminTab() {
 
       if (!response.ok) {
         if (response.status === 403) {
-          throw new Error('Access Denied: God Rights (Founder Admin) role required')
+          throw new Error('Access Denied: Founder Rights (Founder Admin) role required')
         }
         throw new Error(`Failed to fetch device overview: ${response.statusText}`)
       }
@@ -144,7 +144,7 @@ export default function AdminTab() {
 
   const getRoleBadgeClass = (role: string) => {
     switch (role) {
-      case 'god_rights':
+      case 'founder_rights':
         return 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700'
       case 'admin':
         return 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-700'
@@ -155,7 +155,7 @@ export default function AdminTab() {
     }
   }
 
-  // Access Denied - Not God Rights
+  // Access Denied - Not Founder Rights
   if (error && error.includes('Access Denied')) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -164,7 +164,7 @@ export default function AdminTab() {
           Access Denied
         </h3>
         <p className="text-sm text-gray-600 dark:text-gray-400 max-w-md">
-          This admin dashboard is only accessible to users with God Rights (Founder Admin) role.
+          This admin dashboard is only accessible to users with Founder Rights (Founder Admin) role.
         </p>
       </div>
     )
@@ -179,7 +179,7 @@ export default function AdminTab() {
           <Shield className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
           <div>
             <h4 className="font-semibold text-purple-900 dark:text-purple-100 mb-1">
-              God Rights Admin Dashboard
+              Founder Rights Admin Dashboard
             </h4>
             <p className="text-sm text-purple-700 dark:text-purple-300">
               System-wide monitoring and user support tools. All actions are audit logged.

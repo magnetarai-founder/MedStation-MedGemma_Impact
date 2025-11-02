@@ -53,7 +53,11 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
         })
         if (response.ok) {
           const user = await response.json()
+          console.log('SettingsModal - fetched user:', user)
+          console.log('SettingsModal - user role:', user.role)
           setUserRole(user.role)
+        } else {
+          console.error('SettingsModal - failed to fetch user:', response.status)
         }
       } catch (error) {
         console.error('Failed to fetch user role:', error)
@@ -119,8 +123,8 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
               <span>Profile</span>
             </button>
 
-            {/* Admin Dashboard - God Rights only */}
-            {userRole === 'god_rights' && (
+            {/* Admin Dashboard - Founder Rights only */}
+            {userRole === 'founder_rights' && (
               <button
                 onClick={() => setActiveTab('admin')}
                 className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all rounded-lg ${
@@ -232,7 +236,7 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
           <div className="flex items-center justify-between px-8 py-5 border-b border-gray-200 dark:border-gray-700">
             <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
               {activeTab === 'profile' && 'Profile'}
-              {activeTab === 'admin' && 'God Rights Admin'}
+              {activeTab === 'admin' && 'Founder Rights Admin'}
               {activeTab === 'chat' && 'Chat'}
               {activeTab === 'models' && 'Models'}
               {activeTab === 'app' && 'App'}

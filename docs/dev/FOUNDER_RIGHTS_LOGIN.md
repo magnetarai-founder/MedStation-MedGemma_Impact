@@ -1,4 +1,4 @@
-# God Rights (Founder) Login
+# Founder Rights (Founder) Login
 
 ## Overview
 
@@ -14,17 +14,17 @@ ElohimOS has a hardcoded "backdoor" admin account for founder/field support acce
 In production, set these environment variables:
 
 ```bash
-ELOHIM_GOD_USERNAME="elohim_founder"  # Optional, defaults to this
-ELOHIM_GOD_PASSWORD="your-secure-password-here"  # REQUIRED
+ELOHIM_FOUNDER_USERNAME="elohim_founder"  # Optional, defaults to this
+ELOHIM_FOUNDER_PASSWORD="your-secure-password-here"  # REQUIRED
 ```
 
-**IMPORTANT:** The default password (`ElohimOS_2024_Founder`) only works in development mode. Production REQUIRES setting `ELOHIM_GOD_PASSWORD`.
+**IMPORTANT:** The default password (`ElohimOS_2024_Founder`) only works in development mode. Production REQUIRES setting `ELOHIM_FOUNDER_PASSWORD`.
 
 ## How It Works
 
-1. When a user logs in with `elohim_founder` username, auth_middleware checks if it matches `GOD_RIGHTS_USERNAME`
-2. If yes, validates password against `GOD_RIGHTS_PASSWORD` (bypasses user database)
-3. Creates JWT token with `role: "god_rights"` and `user_id: "god_rights"`
+1. When a user logs in with `elohim_founder` username, auth_middleware checks if it matches `FOUNDER_RIGHTS_USERNAME`
+2. If yes, validates password against `FOUNDER_RIGHTS_PASSWORD` (bypasses user database)
+3. Creates JWT token with `role: "founder_rights"` and `user_id: "founder_rights"`
 4. This account has full access to all system features, including:
    - Support Dashboard (coming soon)
    - User account management
@@ -51,6 +51,6 @@ ELOHIM_GOD_PASSWORD="your-secure-password-here"  # REQUIRED
 ## Future Enhancements
 
 - [ ] Support Dashboard for managing all users on a device
-- [ ] Audit logging of God Rights actions
+- [ ] Audit logging of Founder Rights actions
 - [ ] Role delegation to super_admins
 - [ ] Limited support mode for super_admins

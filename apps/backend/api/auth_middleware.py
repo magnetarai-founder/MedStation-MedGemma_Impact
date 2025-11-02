@@ -44,17 +44,17 @@ else:
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24 * 7  # 7 days
 
-# God Rights (Founder) Credentials - Hardcoded backdoor for field support
+# Founder Rights Credentials - Hardcoded backdoor for field support
 # This account always exists and cannot be locked out
-GOD_RIGHTS_USERNAME = os.getenv("ELOHIM_GOD_USERNAME", "elohim_founder")
-GOD_RIGHTS_PASSWORD = os.getenv("ELOHIM_GOD_PASSWORD")  # Must be set in production
+FOUNDER_RIGHTS_USERNAME = os.getenv("ELOHIM_FOUNDER_USERNAME", "elohim_founder")
+FOUNDER_RIGHTS_PASSWORD = os.getenv("ELOHIM_FOUNDER_PASSWORD")  # Must be set in production
 
-if not GOD_RIGHTS_PASSWORD:
+if not FOUNDER_RIGHTS_PASSWORD:
     if os.getenv("ELOHIM_ENV") == "development":
-        logger.warning("⚠️  Using default God Rights password for development. SET ELOHIM_GOD_PASSWORD in production!")
-        GOD_RIGHTS_PASSWORD = "ElohimOS_2024_Founder"  # Dev-only default
+        logger.warning("⚠️  Using default Founder Rights password for development. SET ELOHIM_FOUNDER_PASSWORD in production!")
+        FOUNDER_RIGHTS_PASSWORD = "ElohimOS_2024_Founder"  # Dev-only default
     else:
-        raise RuntimeError("ELOHIM_GOD_PASSWORD environment variable is required in production for God Rights account.")
+        raise RuntimeError("ELOHIM_FOUNDER_PASSWORD environment variable is required in production for Founder Rights account.")
 
 # Security bearer
 security = HTTPBearer()
@@ -191,33 +191,33 @@ class AuthService:
     def authenticate(self, username: str, password: str, device_fingerprint: Optional[str] = None) -> Optional[Dict]:
         """Authenticate user and return JWT token with user info"""
 
-        # Check if this is God Rights (Founder) login
-        if username == GOD_RIGHTS_USERNAME:
-            if password == GOD_RIGHTS_PASSWORD:
-                # God Rights login successful
-                logger.info("🔐 God Rights (Founder) login")
+        # Check if this is Founder Rights login
+        if username == FOUNDER_RIGHTS_USERNAME:
+            if password == FOUNDER_RIGHTS_PASSWORD:
+                # Founder Rights login successful
+                logger.info("🔐 Founder Rights login")
 
-                # Audit log God Rights login
+                # Audit log Founder Rights login
                 try:
                     audit_logger = get_audit_logger()
                     audit_logger.log(
-                        user_id="god_rights",
-                        action=AuditAction.GOD_RIGHTS_LOGIN,
+                        user_id="founder_rights",
+                        action=AuditAction.FOUNDER_RIGHTS_LOGIN,
                         details={
-                            "username": GOD_RIGHTS_USERNAME,
+                            "username": FOUNDER_RIGHTS_USERNAME,
                             "device_fingerprint": device_fingerprint
                         }
                     )
                 except Exception as e:
-                    logger.error(f"Failed to log God Rights login audit: {e}")
+                    logger.error(f"Failed to log Founder Rights login audit: {e}")
 
-                # Create JWT token with god_rights flag
+                # Create JWT token with founder_rights flag
                 expiration = datetime.utcnow() + timedelta(hours=JWT_EXPIRATION_HOURS)
                 token_payload = {
-                    "user_id": "god_rights",
-                    "username": GOD_RIGHTS_USERNAME,
+                    "user_id": "founder_rights",
+                    "username": FOUNDER_RIGHTS_USERNAME,
                     "device_id": "founder_device",
-                    "role": "god_rights",
+                    "role": "founder_rights",
                     "exp": expiration.timestamp(),
                     "iat": datetime.utcnow().timestamp()
                 }
@@ -226,18 +226,18 @@ class AuthService:
 
                 return {
                     "token": token,
-                    "user_id": "god_rights",
-                    "username": GOD_RIGHTS_USERNAME,
+                    "user_id": "founder_rights",
+                    "username": FOUNDER_RIGHTS_USERNAME,
                     "device_id": "founder_device",
-                    "role": "god_rights"
+                    "role": "founder_rights"
                 }
             else:
-                logger.warning("❌ Failed God Rights login attempt")
+                logger.warning("❌ Failed Founder Rights login attempt")
                 # Audit log failed attempt
                 try:
                     audit_logger = get_audit_logger()
                     audit_logger.log(
-                        user_id="god_rights",
+                        user_id="founder_rights",
                         action=AuditAction.USER_LOGIN_FAILED,
                         details={
                             "username": username,
@@ -245,7 +245,7 @@ class AuthService:
                         }
                     )
                 except Exception as e:
-                    logger.error(f"Failed to log failed God Rights login audit: {e}")
+                    logger.error(f"Failed to log failed Founder Rights login audit: {e}")
                 return None
 
         # Regular user authentication
@@ -336,8 +336,8 @@ class AuthService:
                 leeway=60
             )
 
-            # God Rights bypass - no session check needed
-            if payload.get('role') == 'god_rights':
+            # Founder Rights bypass - no session check needed
+            if payload.get('role') == 'founder_rights':
                 return payload
 
             # Check if session exists and is valid

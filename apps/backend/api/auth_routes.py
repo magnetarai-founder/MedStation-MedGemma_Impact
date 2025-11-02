@@ -43,6 +43,7 @@ class UserResponse(BaseModel):
     user_id: str
     username: str
     device_id: str
+    role: str = Field(default="member", description="User role (member, founder_rights)")
 
 
 @router.get("/setup-needed")
@@ -79,7 +80,8 @@ async def register(request: Request, body: RegisterRequest):
         return UserResponse(
             user_id=user.user_id,
             username=user.username,
-            device_id=user.device_id
+            device_id=user.device_id,
+            role='member'
         )
 
     except ValueError as e:
@@ -152,7 +154,8 @@ async def get_current_user_info(user: dict = Depends(get_current_user)):
     return UserResponse(
         user_id=user['user_id'],
         username=user['username'],
-        device_id=user['device_id']
+        device_id=user['device_id'],
+        role=user.get('role', 'member')
     )
 
 

@@ -85,7 +85,7 @@ class AuditAction:
     # Settings
     SETTINGS_CHANGED = "settings.changed"
 
-    # Admin/God Rights Operations
+    # Admin/Founder Rights Operations
     ADMIN_LIST_USERS = "admin.list.users"
     ADMIN_VIEW_USER = "admin.view.user"
     ADMIN_VIEW_USER_CHATS = "admin.view.user_chats"
@@ -95,7 +95,7 @@ class AuditAction:
     ADMIN_VIEW_VAULT_STATUS = "admin.view.vault_status"
     ADMIN_VIEW_DEVICE_OVERVIEW = "admin.view.device_overview"
     ADMIN_VIEW_USER_WORKFLOWS = "admin.view.user_workflows"
-    GOD_RIGHTS_LOGIN = "god_rights.login"
+    FOUNDER_RIGHTS_LOGIN = "founder_rights.login"
 
 
 class AuditLogger:

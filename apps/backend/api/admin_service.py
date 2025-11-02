@@ -2,7 +2,7 @@
 """
 Admin Service for ElohimOS
 
-Provides God Rights (Founder Admin) with support capabilities:
+Provides Founder Rights (Founder Admin) with support capabilities:
 ✅ CAN: View user account metadata, list users, view user chats (for support)
 ❌ CANNOT: Access personal vault encrypted data, see decrypted content
 
@@ -35,12 +35,12 @@ audit_logger = get_audit_logger()
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
 
-def require_god_rights(current_user: Dict = Depends(get_current_user)) -> Dict:
-    """Dependency to require God Rights (Founder Admin) role"""
-    if current_user.get("role") != "god_rights":
+def require_founder_rights(current_user: Dict = Depends(get_current_user)) -> Dict:
+    """Dependency to require Founder Rights (Founder Admin) role"""
+    if current_user.get("role") != "founder_rights":
         raise HTTPException(
             status_code=403,
-            detail="God Rights (Founder Admin) access required"
+            detail="Founder Rights (Founder Admin) access required"
         )
     return current_user
 
@@ -54,8 +54,8 @@ def get_admin_db_connection():
 
 
 @router.get("/users")
-async def list_all_users(request: Request, current_user: Dict = Depends(require_god_rights)):
-    """List all users on the system (God Rights only)
+async def list_all_users(request: Request, current_user: Dict = Depends(require_founder_rights)):
+    """List all users on the system (Founder Rights only)
 
     Returns user account metadata (username, user_id, email, created_at)
     Does NOT return passwords, vault data, or personal content.
@@ -90,7 +90,7 @@ async def list_all_users(request: Request, current_user: Dict = Depends(require_
                 "role": row["role"] or "member"
             })
 
-        logger.info(f"God Rights {current_user['username']} listed {len(users)} users")
+        logger.info(f"Founder Rights {current_user['username']} listed {len(users)} users")
         return {"users": users, "total": len(users)}
     finally:
         conn.close()
@@ -100,9 +100,9 @@ async def list_all_users(request: Request, current_user: Dict = Depends(require_
 async def get_user_details(
     request: Request,
     target_user_id: str,
-    current_user: Dict = Depends(require_god_rights)
+    current_user: Dict = Depends(require_founder_rights)
 ):
-    """Get specific user's account details (God Rights only)
+    """Get specific user's account details (Founder Rights only)
 
     Returns user account metadata for support purposes.
     Does NOT return passwords, vault data, or personal content.
@@ -139,7 +139,7 @@ async def get_user_details(
             "role": row["role"] or "member"
         }
 
-        logger.info(f"God Rights {current_user['username']} viewed user {target_user_id}")
+        logger.info(f"Founder Rights {current_user['username']} viewed user {target_user_id}")
         return user_data
     finally:
         conn.close()
@@ -149,9 +149,9 @@ async def get_user_details(
 async def get_user_chats(
     request: Request,
     target_user_id: str,
-    current_user: Dict = Depends(require_god_rights)
+    current_user: Dict = Depends(require_founder_rights)
 ):
-    """Get specific user's chat sessions (God Rights only - for support)
+    """Get specific user's chat sessions (Founder Rights only - for support)
 
     This is an ADMIN endpoint - explicitly for support access.
     Returns the user's chat sessions to help with troubleshooting.
@@ -178,7 +178,7 @@ async def get_user_chats(
     )
 
     logger.info(
-        f"God Rights {current_user['username']} viewed {len(sessions)} chats "
+        f"Founder Rights {current_user['username']} viewed {len(sessions)} chats "
         f"for user {target_user_id}"
     )
 
@@ -190,8 +190,8 @@ async def get_user_chats(
 
 
 @router.get("/chats")
-async def list_all_chats(request: Request, current_user: Dict = Depends(require_god_rights)):
-    """List ALL chat sessions across all users (God Rights only - for support)
+async def list_all_chats(request: Request, current_user: Dict = Depends(require_founder_rights)):
+    """List ALL chat sessions across all users (Founder Rights only - for support)
 
     This is an ADMIN endpoint - explicitly for support access.
     Returns all chat sessions with user_id included.
@@ -216,7 +216,7 @@ async def list_all_chats(request: Request, current_user: Dict = Depends(require_
     )
 
     logger.info(
-        f"God Rights {current_user['username']} listed {len(sessions)} total chats "
+        f"Founder Rights {current_user['username']} listed {len(sessions)} total chats "
         f"across all users"
     )
 
@@ -229,9 +229,9 @@ async def list_all_chats(request: Request, current_user: Dict = Depends(require_
 @router.post("/users/{target_user_id}/reset-password")
 async def reset_user_password(
     target_user_id: str,
-    current_user: Dict = Depends(require_god_rights)
+    current_user: Dict = Depends(require_founder_rights)
 ):
-    """Reset user's password (God Rights only - for support)
+    """Reset user's password (Founder Rights only - for support)
 
     TODO: Implement password reset functionality
     - Generate temporary password
@@ -240,7 +240,7 @@ async def reset_user_password(
     - NEVER see the user's current password
     """
     logger.warning(
-        f"God Rights {current_user['username']} attempted to reset password "
+        f"Founder Rights {current_user['username']} attempted to reset password "
         f"for user {target_user_id} - NOT YET IMPLEMENTED"
     )
 
@@ -253,9 +253,9 @@ async def reset_user_password(
 @router.post("/users/{target_user_id}/unlock")
 async def unlock_user_account(
     target_user_id: str,
-    current_user: Dict = Depends(require_god_rights)
+    current_user: Dict = Depends(require_founder_rights)
 ):
-    """Unlock user account after failed login attempts (God Rights only)
+    """Unlock user account after failed login attempts (Founder Rights only)
 
     TODO: Implement account unlock functionality
     - Clear failed login counter
@@ -263,7 +263,7 @@ async def unlock_user_account(
     - Notify user of unlock
     """
     logger.warning(
-        f"God Rights {current_user['username']} attempted to unlock "
+        f"Founder Rights {current_user['username']} attempted to unlock "
         f"user {target_user_id} - NOT YET IMPLEMENTED"
     )
 
@@ -276,9 +276,9 @@ async def unlock_user_account(
 @router.get("/users/{target_user_id}/vault-status")
 async def get_user_vault_status(
     target_user_id: str,
-    current_user: Dict = Depends(require_god_rights)
+    current_user: Dict = Depends(require_founder_rights)
 ):
-    """Get user's vault status (God Rights only - for support)
+    """Get user's vault status (Founder Rights only - for support)
 
     Returns vault METADATA only:
     - Number of documents
@@ -292,10 +292,10 @@ async def get_user_vault_status(
     - Decrypted data
 
     This is for support - helping users who are locked out of their vault.
-    God Rights can reset the lock counter but CANNOT decrypt vault data.
+    Founder Rights can reset the lock counter but CANNOT decrypt vault data.
     """
     logger.warning(
-        f"God Rights {current_user['username']} requested vault status "
+        f"Founder Rights {current_user['username']} requested vault status "
         f"for user {target_user_id} - NOT YET IMPLEMENTED"
     )
 
@@ -308,9 +308,9 @@ async def get_user_vault_status(
 @router.get("/device/overview")
 async def get_device_overview(
     request: Request,
-    current_user: Dict = Depends(require_god_rights)
+    current_user: Dict = Depends(require_founder_rights)
 ):
-    """Get device-wide overview statistics (God Rights only)
+    """Get device-wide overview statistics (Founder Rights only)
 
     Returns high-level metrics about the device:
     - Total users
@@ -415,7 +415,7 @@ async def get_device_overview(
         logger.warning(f"Could not get document statistics: {e}")
         overview["total_documents"] = None
 
-    logger.info(f"God Rights {current_user['username']} viewed device overview")
+    logger.info(f"Founder Rights {current_user['username']} viewed device overview")
 
     return {
         "device_overview": overview,
@@ -427,9 +427,9 @@ async def get_device_overview(
 async def get_user_workflows(
     request: Request,
     target_user_id: str,
-    current_user: Dict = Depends(require_god_rights)
+    current_user: Dict = Depends(require_founder_rights)
 ):
-    """Get specific user's workflows (God Rights only - for support)
+    """Get specific user's workflows (Founder Rights only - for support)
 
     Returns the user's workflow definitions and work items.
     This is for support purposes - helping users troubleshoot workflow issues.
@@ -504,7 +504,7 @@ async def get_user_workflows(
         wf_conn.close()
 
         logger.info(
-            f"God Rights {current_user['username']} viewed workflows "
+            f"Founder Rights {current_user['username']} viewed workflows "
             f"for user {target_user_id}: {len(workflows)} workflows, {len(work_items)} items"
         )
 
