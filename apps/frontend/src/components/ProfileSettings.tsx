@@ -949,6 +949,30 @@ export function ProfileSettings() {
             </div>
 
             <div className="space-y-3">
+              {/* Logout Button */}
+              <div className="p-4 border-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                <div className="flex items-start gap-3 mb-3">
+                  <User className="w-5 h-5 text-gray-600 dark:text-gray-400 mt-0.5" />
+                  <div className="flex-1">
+                    <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                      Logout
+                    </div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                      Sign out of your account and return to the login screen
+                    </div>
+                    <button
+                      onClick={() => {
+                        localStorage.removeItem('auth_token')
+                        localStorage.removeItem('user')
+                        window.location.reload()
+                      }}
+                      className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              </div>
               {/* Reset User Identity */}
               <div className="p-4 border-2 border-orange-200 dark:border-orange-900 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
                 <div className="flex items-start gap-3 mb-3">
