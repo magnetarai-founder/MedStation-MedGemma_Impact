@@ -57,24 +57,32 @@ class WorkflowOrchestrator:
         self.workflows: Dict[str, Workflow] = {}
         self.storage = storage  # Optional storage layer
 
-        # Load workflows from storage if available
-        if self.storage:
-            self._load_workflows_from_storage()
-            self._load_active_work_items_from_storage()
+        # Note: Workflows and work items are now loaded per-user on demand
+        # No longer loading all data at startup
 
-    def _load_workflows_from_storage(self) -> None:
-        """Load all workflows from storage on startup"""
+    def _load_workflows_from_storage(self, user_id: str) -> None:
+        """
+        Load workflows from storage for a specific user
+
+        Args:
+            user_id: User ID for isolation
+        """
         if not self.storage:
             return
 
-        workflows = self.storage.list_workflows()
+        workflows = self.storage.list_workflows(user_id=user_id)
         for workflow in workflows:
             self.workflows[workflow.id] = workflow
 
-        logger.info(f"📚 Loaded {len(workflows)} workflows from storage")
+        logger.info(f"📚 Loaded {len(workflows)} workflows from storage for user {user_id}")
 
-    def _load_active_work_items_from_storage(self) -> None:
-        """Load all active work items from storage on startup"""
+    def _load_active_work_items_from_storage(self, user_id: str) -> None:
+        """
+        Load active work items from storage for a specific user
+
+        Args:
+            user_id: User ID for isolation
+        """
         if not self.storage:
             return
 
@@ -83,7 +91,7 @@ class WorkflowOrchestrator:
             from .workflow_models import WorkItemStatus as WIS
         except ImportError:
             from workflow_models import WorkItemStatus as WIS
-        work_items = self.storage.list_work_items(limit=1000)
+        work_items = self.storage.list_work_items(user_id=user_id, limit=1000)
 
         active_items = [
             w for w in work_items
@@ -93,26 +101,57 @@ class WorkflowOrchestrator:
         for work_item in active_items:
             self.active_work_items[work_item.id] = work_item
 
-        logger.info(f"📚 Loaded {len(active_items)} active work items from storage")
+        logger.info(f"📚 Loaded {len(active_items)} active work items from storage for user {user_id}")
 
     # ============================================
     # WORKFLOW REGISTRATION
     # ============================================
 
-    def register_workflow(self, workflow: Workflow) -> None:
-        """Register a workflow definition"""
+    def register_workflow(self, workflow: Workflow, user_id: str) -> None:
+        """
+        Register a workflow definition
+
+        Args:
+            workflow: Workflow to register
+            user_id: User ID for isolation
+        """
         self.workflows[workflow.id] = workflow
 
         # Persist to storage
         if self.storage:
-            self.storage.save_workflow(workflow)
+            self.storage.save_workflow(workflow, user_id=user_id)
 
-        logger.info(f"📋 Registered workflow: {workflow.name} (ID: {workflow.id})")
+        logger.info(f"📋 Registered workflow: {workflow.name} (ID: {workflow.id}) for user {user_id}")
         logger.info(f"   Stages: {len(workflow.stages)}, Triggers: {len(workflow.triggers)}")
 
-    def get_workflow(self, workflow_id: str) -> Optional[Workflow]:
-        """Get workflow by ID"""
-        return self.workflows.get(workflow_id)
+    def get_workflow(self, workflow_id: str, user_id: str) -> Optional[Workflow]:
+        """
+        Get workflow by ID
+
+        Args:
+            workflow_id: Workflow ID
+            user_id: User ID for isolation
+
+        Returns:
+            Workflow or None if not found
+        """
+        # Check in-memory cache first
+        workflow = self.workflows.get(workflow_id)
+        if workflow:
+            # Verify ownership through storage if available
+            if self.storage:
+                stored = self.storage.get_workflow(workflow_id, user_id)
+                return stored
+            return workflow
+
+        # Fetch from storage
+        if self.storage:
+            workflow = self.storage.get_workflow(workflow_id, user_id)
+            if workflow:
+                self.workflows[workflow_id] = workflow
+            return workflow
+
+        return None
 
     # ============================================
     # WORK ITEM CREATION
@@ -121,6 +160,7 @@ class WorkflowOrchestrator:
     def create_work_item(
         self,
         workflow_id: str,
+        user_id: str,
         data: Dict[str, Any],
         created_by: str,
         priority: WorkItemPriority = WorkItemPriority.NORMAL,
@@ -131,6 +171,7 @@ class WorkflowOrchestrator:
 
         Args:
             workflow_id: Workflow template to use
+            user_id: User ID for isolation
             data: Initial data payload
             created_by: User ID who created this
             priority: Priority level
@@ -142,7 +183,7 @@ class WorkflowOrchestrator:
         Raises:
             ValueError: If workflow not found or has no stages
         """
-        workflow = self.get_workflow(workflow_id)
+        workflow = self.get_workflow(workflow_id, user_id)
         if not workflow:
             raise ValueError(f"Workflow not found: {workflow_id}")
 
@@ -186,9 +227,9 @@ class WorkflowOrchestrator:
 
         # Persist to storage
         if self.storage:
-            self.storage.save_work_item(work_item)
+            self.storage.save_work_item(work_item, user_id=user_id)
 
-        logger.info(f"✨ Created work item: {work_item.id}")
+        logger.info(f"✨ Created work item: {work_item.id} for user {user_id}")
         logger.info(f"   Workflow: {workflow.name}")
         logger.info(f"   Initial Stage: {first_stage.name}")
         logger.info(f"   Priority: {priority.value}")
@@ -205,16 +246,23 @@ class WorkflowOrchestrator:
 
         Args:
             work_item_id: ID of work item to claim
-            user_id: User claiming the item
+            user_id: User claiming the item (also used for ownership check)
 
         Returns:
             Updated work item
 
         Raises:
-            ValueError: If work item not found or already claimed
+            ValueError: If work item not found, not owned by user, or already claimed
         """
+        # Try in-memory first
         work_item = self.active_work_items.get(work_item_id)
-        if not work_item:
+
+        # Verify ownership via storage
+        if self.storage:
+            work_item = self.storage.get_work_item(work_item_id, user_id)
+            if not work_item:
+                raise ValueError(f"Work item not found or not accessible: {work_item_id}")
+        elif not work_item:
             raise ValueError(f"Work item not found: {work_item_id}")
 
         if work_item.status not in [WorkItemStatus.PENDING]:
@@ -226,9 +274,12 @@ class WorkflowOrchestrator:
         work_item.status = WorkItemStatus.CLAIMED
         work_item.updated_at = datetime.utcnow()
 
+        # Update in-memory cache
+        self.active_work_items[work_item_id] = work_item
+
         # Persist to storage
         if self.storage:
-            self.storage.save_work_item(work_item)
+            self.storage.save_work_item(work_item, user_id=user_id)
 
         logger.info(f"👤 Work item claimed: {work_item_id} by user {user_id}")
 
@@ -240,13 +291,23 @@ class WorkflowOrchestrator:
 
         Args:
             work_item_id: ID of work item
-            user_id: User starting work
+            user_id: User starting work (also used for ownership check)
 
         Returns:
             Updated work item
+
+        Raises:
+            ValueError: If work item not found, not owned by user, or not assigned to user
         """
+        # Try in-memory first
         work_item = self.active_work_items.get(work_item_id)
-        if not work_item:
+
+        # Verify ownership via storage
+        if self.storage:
+            work_item = self.storage.get_work_item(work_item_id, user_id)
+            if not work_item:
+                raise ValueError(f"Work item not found or not accessible: {work_item_id}")
+        elif not work_item:
             raise ValueError(f"Work item not found: {work_item_id}")
 
         if work_item.assigned_to != user_id:
@@ -255,11 +316,14 @@ class WorkflowOrchestrator:
         work_item.status = WorkItemStatus.IN_PROGRESS
         work_item.updated_at = datetime.utcnow()
 
+        # Update in-memory cache
+        self.active_work_items[work_item_id] = work_item
+
         # Persist to storage
         if self.storage:
-            self.storage.save_work_item(work_item)
+            self.storage.save_work_item(work_item, user_id=user_id)
 
-        logger.info(f"▶️  Work started: {work_item_id}")
+        logger.info(f"▶️  Work started: {work_item_id} by user {user_id}")
 
         return work_item
 
@@ -279,7 +343,7 @@ class WorkflowOrchestrator:
 
         Args:
             work_item_id: ID of work item
-            user_id: User completing the stage
+            user_id: User completing the stage (also used for ownership check)
             stage_data: Data collected at this stage
             notes: Optional notes about completion
 
@@ -287,13 +351,20 @@ class WorkflowOrchestrator:
             Updated work item (possibly in new stage)
 
         Raises:
-            ValueError: If work item not found or invalid state
+            ValueError: If work item not found, not owned by user, or invalid state
         """
+        # Try in-memory first
         work_item = self.active_work_items.get(work_item_id)
-        if not work_item:
+
+        # Verify ownership via storage
+        if self.storage:
+            work_item = self.storage.get_work_item(work_item_id, user_id)
+            if not work_item:
+                raise ValueError(f"Work item not found or not accessible: {work_item_id}")
+        elif not work_item:
             raise ValueError(f"Work item not found: {work_item_id}")
 
-        workflow = self.get_workflow(work_item.workflow_id)
+        workflow = self.get_workflow(work_item.workflow_id, user_id)
         if not workflow:
             raise ValueError(f"Workflow not found: {work_item.workflow_id}")
 
@@ -317,7 +388,7 @@ class WorkflowOrchestrator:
         logger.info(f"   Duration: {duration_seconds}s" if duration_seconds else "   Duration: N/A")
 
         # Determine next stage using conditional routing
-        next_stage = self._determine_next_stage(current_stage, work_item)
+        next_stage = self._determine_next_stage(current_stage, work_item, user_id)
 
         if next_stage:
             # Transition to next stage
@@ -345,9 +416,12 @@ class WorkflowOrchestrator:
 
             logger.info(f"🎉 Workflow completed: {work_item_id}")
 
+        # Update in-memory cache
+        self.active_work_items[work_item_id] = work_item
+
         # Persist to storage
         if self.storage:
-            self.storage.save_work_item(work_item)
+            self.storage.save_work_item(work_item, user_id=user_id)
 
         return work_item
 
@@ -358,7 +432,8 @@ class WorkflowOrchestrator:
     def _determine_next_stage(
         self,
         current_stage: Stage,
-        work_item: WorkItem
+        work_item: WorkItem,
+        user_id: str
     ) -> Optional[Stage]:
         """
         Determine next stage based on conditional routing
@@ -366,6 +441,7 @@ class WorkflowOrchestrator:
         Args:
             current_stage: Current stage definition
             work_item: Work item with data
+            user_id: User ID for isolation
 
         Returns:
             Next stage, or None if workflow complete
@@ -377,13 +453,13 @@ class WorkflowOrchestrator:
         for route in current_stage.next_stages:
             if not route.conditions:
                 # Default route (no conditions)
-                workflow = self.get_workflow(work_item.workflow_id)
+                workflow = self.get_workflow(work_item.workflow_id, user_id)
                 if workflow:
                     return self._find_stage(workflow, route.next_stage_id)
             else:
                 # Check all conditions
                 if self._evaluate_conditions(route.conditions, work_item.data):
-                    workflow = self.get_workflow(work_item.workflow_id)
+                    workflow = self.get_workflow(work_item.workflow_id, user_id)
                     if workflow:
                         logger.info(f"🔀 Conditional route matched: {route.description or route.next_stage_id}")
                         return self._find_stage(workflow, route.next_stage_id)
@@ -531,6 +607,7 @@ class WorkflowOrchestrator:
         self,
         workflow_id: str,
         role_name: str,
+        user_id: str,
         stage_id: Optional[str] = None
     ) -> List[WorkItem]:
         """
@@ -539,22 +616,31 @@ class WorkflowOrchestrator:
         Args:
             workflow_id: Filter by workflow
             role_name: Role name to filter by
+            user_id: User ID for isolation
             stage_id: Optional stage filter
 
         Returns:
-            List of work items available for this role
+            List of work items available for this role (filtered by user)
         """
         queue = []
 
-        workflow = self.get_workflow(workflow_id)
+        workflow = self.get_workflow(workflow_id, user_id)
         if not workflow:
             return queue
 
-        for work_item in self.active_work_items.values():
-            # Filter by workflow
-            if work_item.workflow_id != workflow_id:
-                continue
+        # Load work items for this user from storage if available
+        if self.storage:
+            work_items = self.storage.list_work_items(
+                user_id=user_id,
+                workflow_id=workflow_id,
+                status=WorkItemStatus.PENDING,
+                limit=1000
+            )
+        else:
+            # Use in-memory cache (already filtered by user during load)
+            work_items = [w for w in self.active_work_items.values() if w.workflow_id == workflow_id]
 
+        for work_item in work_items:
             # Filter by stage if specified
             if stage_id and work_item.current_stage_id != stage_id:
                 continue
@@ -581,17 +667,36 @@ class WorkflowOrchestrator:
         Get all work items assigned to or claimed by user
 
         Args:
-            user_id: User ID
+            user_id: User ID (also used for ownership filter)
 
         Returns:
-            List of work items for this user
+            List of work items for this user (filtered by ownership)
         """
         my_work = []
 
-        for work_item in self.active_work_items.values():
-            if work_item.assigned_to == user_id:
-                if work_item.status in [WorkItemStatus.CLAIMED, WorkItemStatus.IN_PROGRESS]:
-                    my_work.append(work_item)
+        # Load work items for this user from storage if available
+        if self.storage:
+            # Fetch all active work items for this user
+            claimed_items = self.storage.list_work_items(
+                user_id=user_id,
+                status=WorkItemStatus.CLAIMED,
+                limit=1000
+            )
+            in_progress_items = self.storage.list_work_items(
+                user_id=user_id,
+                status=WorkItemStatus.IN_PROGRESS,
+                limit=1000
+            )
+            my_work = claimed_items + in_progress_items
+
+            # Filter by assigned_to
+            my_work = [w for w in my_work if w.assigned_to == user_id]
+        else:
+            # Use in-memory cache (already filtered by user during load)
+            for work_item in self.active_work_items.values():
+                if work_item.assigned_to == user_id:
+                    if work_item.status in [WorkItemStatus.CLAIMED, WorkItemStatus.IN_PROGRESS]:
+                        my_work.append(work_item)
 
         # Sort by priority, then SLA
         my_work.sort(key=lambda w: (
@@ -605,24 +710,39 @@ class WorkflowOrchestrator:
     # SLA TRACKING
     # ============================================
 
-    def check_overdue_items(self) -> List[WorkItem]:
+    def check_overdue_items(self, user_id: str) -> List[WorkItem]:
         """
-        Check all active work items for SLA violations
+        Check active work items for SLA violations
+
+        Args:
+            user_id: User ID for isolation
 
         Returns:
-            List of overdue work items
+            List of overdue work items (filtered by user)
         """
         now = datetime.utcnow()
         overdue = []
 
-        for work_item in self.active_work_items.values():
+        # Load work items for this user from storage if available
+        if self.storage:
+            work_items = self.storage.list_work_items(user_id=user_id, limit=1000)
+        else:
+            # Use in-memory cache (already filtered by user during load)
+            work_items = self.active_work_items.values()
+
+        for work_item in work_items:
             if work_item.status == WorkItemStatus.COMPLETED:
                 continue
 
             if work_item.sla_due_at and now > work_item.sla_due_at:
                 if not work_item.is_overdue:
                     work_item.is_overdue = True
-                    logger.warning(f"⏰ Work item overdue: {work_item.id} ({work_item.workflow_name})")
+                    # Update in-memory cache
+                    self.active_work_items[work_item.id] = work_item
+                    # Persist to storage
+                    if self.storage:
+                        self.storage.save_work_item(work_item, user_id=user_id)
+                    logger.warning(f"⏰ Work item overdue: {work_item.id} ({work_item.workflow_name}) for user {user_id}")
                 overdue.append(work_item)
 
         return overdue
@@ -652,17 +772,27 @@ class WorkflowOrchestrator:
     # STATISTICS
     # ============================================
 
-    def get_workflow_statistics(self, workflow_id: str) -> Dict[str, Any]:
+    def get_workflow_statistics(self, workflow_id: str, user_id: str) -> Dict[str, Any]:
         """
         Get statistics for a workflow
 
         Args:
             workflow_id: Workflow ID
+            user_id: User ID for isolation
 
         Returns:
-            Dictionary of statistics
+            Dictionary of statistics (filtered by user)
         """
-        items = [w for w in self.active_work_items.values() if w.workflow_id == workflow_id]
+        # Load work items for this user from storage if available
+        if self.storage:
+            items = self.storage.list_work_items(
+                user_id=user_id,
+                workflow_id=workflow_id,
+                limit=10000
+            )
+        else:
+            # Use in-memory cache (already filtered by user during load)
+            items = [w for w in self.active_work_items.values() if w.workflow_id == workflow_id]
 
         total = len(items)
         completed = len([w for w in items if w.status == WorkItemStatus.COMPLETED])
