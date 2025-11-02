@@ -47,7 +47,16 @@ def require_founder_rights(current_user: Dict = Depends(get_current_user)) -> Di
 
 def get_admin_db_connection():
     """Get connection to admin database for user management"""
-    db_path = ".neutron_data/elohimos_app.db"
+    # Use the auth database which has the actual users table
+    db_path = ".neutron_data/auth.db"
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def get_user_profile_db_connection():
+    """Get connection to single-user profile database"""
+    db_path = ".neutron_data/users.db"
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
@@ -332,32 +341,34 @@ async def get_device_overview(
 
     overview = {}
 
-    # Get user statistics
-    conn = get_admin_db_connection()
+    # Get user statistics from single-user profile database
     try:
-        # Total users
-        cursor = conn.execute("SELECT COUNT(*) as total FROM users")
-        overview["total_users"] = cursor.fetchone()["total"]
+        conn = get_user_profile_db_connection()
+        try:
+            # Total users (should be 1 for single-user system)
+            cursor = conn.execute("SELECT COUNT(*) as total FROM users")
+            overview["total_users"] = cursor.fetchone()["total"]
 
-        # Active users (last 7 days)
-        cursor = conn.execute("""
-            SELECT COUNT(*) as active FROM users
-            WHERE last_login > datetime('now', '-7 days')
-        """)
-        overview["active_users_7d"] = cursor.fetchone()["active"]
+            # For single-user system, active users = total users
+            overview["active_users_7d"] = overview["total_users"]
 
-        # Users by role
-        cursor = conn.execute("""
-            SELECT role, COUNT(*) as count FROM users
-            GROUP BY role
-        """)
-        overview["users_by_role"] = {
-            row["role"] or "member": row["count"]
-            for row in cursor.fetchall()
-        }
+            # Users by role
+            cursor = conn.execute("""
+                SELECT role, COUNT(*) as count FROM users
+                GROUP BY role
+            """)
+            overview["users_by_role"] = {
+                row["role"] or "member": row["count"]
+                for row in cursor.fetchall()
+            }
 
-    finally:
-        conn.close()
+        finally:
+            conn.close()
+    except Exception as e:
+        logger.warning(f"Could not get user statistics: {e}")
+        overview["total_users"] = 1  # Fallback: founder account
+        overview["active_users_7d"] = 1
+        overview["users_by_role"] = {"founder_rights": 1}
 
     # Get chat statistics
     try:
