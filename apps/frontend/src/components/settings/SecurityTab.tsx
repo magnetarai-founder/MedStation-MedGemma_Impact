@@ -1,5 +1,5 @@
 import { Shield, User } from 'lucide-react'
-import { useQuery } from '@tanstack/react-query'
+import { useUserStore } from '@/stores/userStore'
 
 /**
  * Security Tab
@@ -7,19 +7,12 @@ import { useQuery } from '@tanstack/react-query'
  * Displays user role, security information, and vault security settings
  */
 
-interface UserProfile {
-  user_id: string
-  display_name: string
-  device_name: string
-  created_at: string
-  avatar_color: string | null
-  bio: string | null
-  role: string
-  role_changed_at: string | null
-  role_changed_by: string | null
-}
-
 const ROLE_DESCRIPTIONS: Record<string, { label: string; description: string; color: string }> = {
+  founder_rights: {
+    label: 'Founder Rights',
+    description: 'System founder with unrestricted access to all features and settings.',
+    color: 'text-purple-600 dark:text-purple-400'
+  },
   super_admin: {
     label: 'Super Admin',
     description: 'Full system access. Can manage all users, workflows, and settings.',
@@ -35,23 +28,16 @@ const ROLE_DESCRIPTIONS: Record<string, { label: string; description: string; co
     description: 'Can create and edit own workflows.',
     color: 'text-blue-600 dark:text-blue-400'
   },
-  viewer: {
-    label: 'Viewer',
-    description: 'Read-only access to workflows and data.',
+  guest: {
+    label: 'Guest',
+    description: 'Limited access to workflows and data.',
     color: 'text-gray-600 dark:text-gray-400'
   }
 }
 
 export default function SecurityTab() {
-  // Fetch current user profile
-  const { data: currentUser, isLoading } = useQuery({
-    queryKey: ['current-user'],
-    queryFn: async () => {
-      const response = await fetch('/api/v1/users/me')
-      if (!response.ok) throw new Error('Failed to load user profile')
-      return response.json() as Promise<UserProfile>
-    },
-  })
+  // Use userStore instead of separate API call
+  const { user: currentUser, isLoading } = useUserStore()
 
   if (isLoading) {
     return (
@@ -69,7 +55,7 @@ export default function SecurityTab() {
     )
   }
 
-  const roleInfo = ROLE_DESCRIPTIONS[currentUser.role] || ROLE_DESCRIPTIONS.member
+  const roleInfo = ROLE_DESCRIPTIONS[currentUser.role || 'member'] || ROLE_DESCRIPTIONS.member
 
   return (
     <div className="space-y-6">
