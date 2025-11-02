@@ -423,7 +423,6 @@ async def complete_stage(
             user_id=user_id,
             stage_data=body.data,
             notes=body.notes,
-            user_id=user_id,
         )
 
         if work_item.status == WorkItemStatus.COMPLETED:
