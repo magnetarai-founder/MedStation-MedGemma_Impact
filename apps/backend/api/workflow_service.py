@@ -81,18 +81,24 @@ def setup_p2p_sync(peer_id: str):
 # ============================================
 
 @router.post("/workflows", response_model=Workflow)
-async def create_workflow(request: Request, body: CreateWorkflowRequest, created_by: str = "system"):
+async def create_workflow(
+    request: Request,
+    body: CreateWorkflowRequest,
+    current_user: Dict = Depends(get_current_user)
+):
     """
     Create a new workflow definition
 
     Args:
         request: Workflow creation request
-        created_by: User ID creating the workflow
+        current_user: Authenticated user
 
     Returns:
         Created workflow
     """
     try:
+        user_id = current_user["user_id"]
+
         # Build workflow from request
         workflow = Workflow(
             name=body.name,
@@ -101,11 +107,11 @@ async def create_workflow(request: Request, body: CreateWorkflowRequest, created
             category=body.category,
             stages=[Stage(**stage) if isinstance(stage, dict) else Stage(**stage.model_dump()) for stage in body.stages],
             triggers=body.triggers,
-            created_by=created_by,
+            created_by=user_id,
         )
 
         # Register with orchestrator
-        orchestrator.register_workflow(workflow)
+        orchestrator.register_workflow(workflow, user_id=user_id)
 
         logger.info(f"✨ Created workflow: {workflow.name} (ID: {workflow.id})")
 
@@ -119,7 +125,8 @@ async def create_workflow(request: Request, body: CreateWorkflowRequest, created
 @router.get("/workflows", response_model=List[Workflow])
 async def list_workflows(
     category: Optional[str] = None,
-    enabled_only: bool = True
+    enabled_only: bool = True,
+    current_user: Dict = Depends(get_current_user)
 ):
     """
     List all workflows
@@ -127,10 +134,12 @@ async def list_workflows(
     Args:
         category: Filter by category
         enabled_only: Only return enabled workflows
+        current_user: Authenticated user
 
     Returns:
         List of workflows
     """
+    user_id = current_user["user_id"]
     workflows = list(orchestrator.workflows.values())
 
     # Apply filters
@@ -143,40 +152,51 @@ async def list_workflows(
 
 
 @router.get("/workflows/{workflow_id}", response_model=Workflow)
-async def get_workflow(workflow_id: str):
+async def get_workflow(
+    workflow_id: str,
+    current_user: Dict = Depends(get_current_user)
+):
     """
     Get workflow by ID
 
     Args:
         workflow_id: Workflow ID
+        current_user: Authenticated user
 
     Returns:
         Workflow definition
 
     Raises:
-        HTTPException: If workflow not found
+        HTTPException: If workflow not found or access denied
     """
-    workflow = orchestrator.get_workflow(workflow_id)
+    user_id = current_user["user_id"]
+    workflow = orchestrator.get_workflow(workflow_id, user_id=user_id)
     if not workflow:
-        raise HTTPException(status_code=404, detail=f"Workflow not found: {workflow_id}")
+        raise HTTPException(status_code=404, detail=f"Workflow not found or access denied: {workflow_id}")
 
     return workflow
 
 
 @router.delete("/workflows/{workflow_id}")
-async def delete_workflow(request: Request, workflow_id: str):
+async def delete_workflow(
+    request: Request,
+    workflow_id: str,
+    current_user: Dict = Depends(get_current_user)
+):
     """
     Delete workflow (soft delete - sets enabled=False)
 
     Args:
         workflow_id: Workflow ID
+        current_user: Authenticated user
 
     Returns:
         Success status
     """
-    workflow = orchestrator.get_workflow(workflow_id)
+    user_id = current_user["user_id"]
+    workflow = orchestrator.get_workflow(workflow_id, user_id=user_id)
     if not workflow:
-        raise HTTPException(status_code=404, detail=f"Workflow not found: {workflow_id}")
+        raise HTTPException(status_code=404, detail=f"Workflow not found or access denied: {workflow_id}")
 
     workflow.enabled = False
     workflow.updated_at = datetime.utcnow()
@@ -191,13 +211,17 @@ async def delete_workflow(request: Request, workflow_id: str):
 # ============================================
 
 @router.post("/work-items", response_model=WorkItem)
-async def create_work_item(request: Request, body: CreateWorkItemRequest, created_by: str = "system"):
+async def create_work_item(
+    request: Request,
+    body: CreateWorkItemRequest,
+    current_user: Dict = Depends(get_current_user)
+):
     """
     Create a new work item
 
     Args:
         request: Work item creation request
-        created_by: User ID creating the item
+        current_user: Authenticated user
 
     Returns:
         Created work item
@@ -206,12 +230,15 @@ async def create_work_item(request: Request, body: CreateWorkItemRequest, create
         HTTPException: If workflow not found
     """
     try:
+        user_id = current_user["user_id"]
+
         work_item = orchestrator.create_work_item(
             workflow_id=body.workflow_id,
             data=body.data,
-            created_by=created_by,
+            created_by=user_id,
             priority=body.priority or WorkItemPriority.NORMAL,
             tags=body.tags,
+            user_id=user_id,
         )
 
         logger.info(f"✨ Created work item: {work_item.id}")
@@ -240,6 +267,7 @@ async def list_work_items(
     assigned_to: Optional[str] = None,
     priority: Optional[WorkItemPriority] = None,
     limit: int = Query(default=50, le=100),
+    current_user: Dict = Depends(get_current_user)
 ):
     """
     List work items with filters
@@ -250,10 +278,12 @@ async def list_work_items(
         assigned_to: Filter by assigned user
         priority: Filter by priority
         limit: Max results
+        current_user: Authenticated user
 
     Returns:
         List of work items
     """
+    user_id = current_user["user_id"]
     items = list(orchestrator.active_work_items.values())
 
     # Apply filters
@@ -273,22 +303,27 @@ async def list_work_items(
 
 
 @router.get("/work-items/{work_item_id}", response_model=WorkItem)
-async def get_work_item(work_item_id: str):
+async def get_work_item(
+    work_item_id: str,
+    current_user: Dict = Depends(get_current_user)
+):
     """
     Get work item by ID
 
     Args:
         work_item_id: Work item ID
+        current_user: Authenticated user
 
     Returns:
         Work item
 
     Raises:
-        HTTPException: If not found
+        HTTPException: If not found or access denied
     """
+    user_id = current_user["user_id"]
     work_item = orchestrator.active_work_items.get(work_item_id)
     if not work_item:
-        raise HTTPException(status_code=404, detail=f"Work item not found: {work_item_id}")
+        raise HTTPException(status_code=404, detail=f"Work item not found or access denied: {work_item_id}")
 
     return work_item
 
@@ -298,13 +333,17 @@ async def get_work_item(work_item_id: str):
 # ============================================
 
 @router.post("/work-items/{work_item_id}/claim", response_model=WorkItem)
-async def claim_work_item(request: Request, work_item_id: str, user_id: str):
+async def claim_work_item(
+    request: Request,
+    work_item_id: str,
+    current_user: Dict = Depends(get_current_user)
+):
     """
     Claim a work item from queue
 
     Args:
         work_item_id: Work item ID
-        user_id: User claiming the item
+        current_user: Authenticated user
 
     Returns:
         Updated work item
@@ -313,7 +352,8 @@ async def claim_work_item(request: Request, work_item_id: str, user_id: str):
         HTTPException: If cannot be claimed
     """
     try:
-        work_item = orchestrator.claim_work_item(work_item_id, user_id)
+        user_id = current_user["user_id"]
+        work_item = orchestrator.claim_work_item(work_item_id, user_id, user_id=user_id)
         logger.info(f"👤 Work item {work_item_id} claimed by {user_id}")
 
         # Broadcast to P2P mesh
@@ -331,19 +371,24 @@ async def claim_work_item(request: Request, work_item_id: str, user_id: str):
 
 
 @router.post("/work-items/{work_item_id}/start", response_model=WorkItem)
-async def start_work(request: Request, work_item_id: str, user_id: str):
+async def start_work(
+    request: Request,
+    work_item_id: str,
+    current_user: Dict = Depends(get_current_user)
+):
     """
     Start work on claimed item
 
     Args:
         work_item_id: Work item ID
-        user_id: User starting work
+        current_user: Authenticated user
 
     Returns:
         Updated work item
     """
     try:
-        work_item = orchestrator.start_work(work_item_id, user_id)
+        user_id = current_user["user_id"]
+        work_item = orchestrator.start_work(work_item_id, user_id, user_id=user_id)
         logger.info(f"▶️  Work item {work_item_id} started by {user_id}")
         return work_item
 
@@ -352,13 +397,17 @@ async def start_work(request: Request, work_item_id: str, user_id: str):
 
 
 @router.post("/work-items/{work_item_id}/complete", response_model=WorkItem)
-async def complete_stage(request: Request, body: CompleteStageRequest, user_id: str = "system"):
+async def complete_stage(
+    request: Request,
+    body: CompleteStageRequest,
+    current_user: Dict = Depends(get_current_user)
+):
     """
     Complete current stage and transition to next
 
     Args:
         request: Stage completion request
-        user_id: User completing the stage
+        current_user: Authenticated user
 
     Returns:
         Updated work item (possibly in new stage)
@@ -367,11 +416,14 @@ async def complete_stage(request: Request, body: CompleteStageRequest, user_id: 
         HTTPException: If cannot complete
     """
     try:
+        user_id = current_user["user_id"]
+
         work_item = orchestrator.complete_stage(
             work_item_id=body.work_item_id,
             user_id=user_id,
             stage_data=body.data,
             notes=body.notes,
+            user_id=user_id,
         )
 
         if work_item.status == WorkItemStatus.COMPLETED:
@@ -398,21 +450,27 @@ async def complete_stage(request: Request, body: CompleteStageRequest, user_id: 
 
 
 @router.post("/work-items/{work_item_id}/cancel", response_model=WorkItem)
-async def cancel_work_item(request: Request, work_item_id: str, user_id: str, reason: Optional[str] = None):
+async def cancel_work_item(
+    request: Request,
+    work_item_id: str,
+    reason: Optional[str] = None,
+    current_user: Dict = Depends(get_current_user)
+):
     """
     Cancel a work item
 
     Args:
         work_item_id: Work item ID
-        user_id: User cancelling
         reason: Optional cancellation reason
+        current_user: Authenticated user
 
     Returns:
         Updated work item
     """
+    user_id = current_user["user_id"]
     work_item = orchestrator.active_work_items.get(work_item_id)
     if not work_item:
-        raise HTTPException(status_code=404, detail=f"Work item not found: {work_item_id}")
+        raise HTTPException(status_code=404, detail=f"Work item not found or access denied: {work_item_id}")
 
     work_item.status = WorkItemStatus.CANCELLED
     work_item.updated_at = datetime.utcnow()
@@ -445,6 +503,7 @@ async def get_queue_for_role(
     workflow_id: str,
     role_name: str,
     stage_id: Optional[str] = None,
+    current_user: Dict = Depends(get_current_user)
 ):
     """
     Get work items in queue for a role
@@ -453,14 +512,17 @@ async def get_queue_for_role(
         workflow_id: Workflow ID
         role_name: Role name
         stage_id: Optional stage filter
+        current_user: Authenticated user
 
     Returns:
         List of work items available for this role
     """
+    user_id = current_user["user_id"]
     queue = orchestrator.get_queue_for_role(
         workflow_id=workflow_id,
         role_name=role_name,
         stage_id=stage_id,
+        user_id=user_id,
     )
 
     logger.info(f"📋 Queue for {role_name}: {len(queue)} items")
@@ -469,17 +531,27 @@ async def get_queue_for_role(
 
 
 @router.get("/my-work/{user_id}", response_model=List[WorkItem])
-async def get_my_active_work(user_id: str):
+async def get_my_active_work(
+    user_id: str,
+    current_user: Dict = Depends(get_current_user)
+):
     """
     Get all work items assigned to user
 
     Args:
-        user_id: User ID
+        user_id: User ID (must match authenticated user)
+        current_user: Authenticated user
 
     Returns:
         List of user's active work items
     """
-    my_work = orchestrator.get_my_active_work(user_id)
+    authenticated_user_id = current_user["user_id"]
+
+    # Verify the user is requesting their own work
+    if user_id != authenticated_user_id:
+        raise HTTPException(status_code=403, detail="Access denied: Cannot view other users' work")
+
+    my_work = orchestrator.get_my_active_work(user_id, user_id=authenticated_user_id)
 
     logger.info(f"👤 My work for {user_id}: {len(my_work)} items")
 
@@ -491,14 +563,18 @@ async def get_my_active_work(user_id: str):
 # ============================================
 
 @router.get("/overdue", response_model=List[WorkItem])
-async def get_overdue_items():
+async def get_overdue_items(current_user: Dict = Depends(get_current_user)):
     """
     Get all overdue work items
+
+    Args:
+        current_user: Authenticated user
 
     Returns:
         List of overdue work items
     """
-    overdue = orchestrator.check_overdue_items()
+    user_id = current_user["user_id"]
+    overdue = orchestrator.check_overdue_items(user_id=user_id)
 
     logger.info(f"⏰ Overdue items: {len(overdue)}")
 
@@ -506,17 +582,22 @@ async def get_overdue_items():
 
 
 @router.get("/statistics/{workflow_id}")
-async def get_workflow_statistics(workflow_id: str):
+async def get_workflow_statistics(
+    workflow_id: str,
+    current_user: Dict = Depends(get_current_user)
+):
     """
     Get statistics for a workflow
 
     Args:
         workflow_id: Workflow ID
+        current_user: Authenticated user
 
     Returns:
         Dictionary of statistics
     """
-    stats = orchestrator.get_workflow_statistics(workflow_id)
+    user_id = current_user["user_id"]
+    stats = orchestrator.get_workflow_statistics(workflow_id, user_id=user_id)
 
     return stats
 
