@@ -80,7 +80,7 @@ export const useUserStore = create<UserStore>()(
                 role: authData.role,
                 avatar_color: '#8b5cf6', // Purple for founder
                 bio: 'System Founder Account',
-                job_role: 'unassigned' // Founder can assign their own job role
+                job_role: 'Founder' // HARDCODED - Founder job role cannot be changed
               },
               isLoading: false,
               error: null

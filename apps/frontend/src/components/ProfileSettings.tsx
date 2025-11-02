@@ -405,27 +405,35 @@ export function ProfileSettings() {
                       Job Role
                     </div>
                     <p className="text-xs text-green-700 dark:text-green-300 mb-3">
-                      Your job role is used for workflow permissions and queue access control
+                      {user?.role === 'founder_rights' || user?.role === 'super_admin'
+                        ? 'Your job role is automatically set based on your system role and cannot be changed'
+                        : 'Your job role is used for workflow permissions and queue access control'}
                     </p>
 
-                    <select
-                      value={jobRole}
-                      onChange={(e) => {
-                        setJobRole(e.target.value)
-                        setHasUnsavedChanges(true)
-                      }}
-                      className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-green-300 dark:border-green-700 rounded-lg text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                    >
-                      <option value="unassigned">Unassigned</option>
-                      <option value="doctor">Doctor</option>
-                      <option value="pastor">Pastor</option>
-                      <option value="nurse">Nurse</option>
-                      <option value="admin_staff">Admin Staff</option>
-                      <option value="volunteer">Volunteer</option>
-                    </select>
+                    {user?.role === 'founder_rights' || user?.role === 'super_admin' ? (
+                      <div className="px-3 py-2 bg-gray-100 dark:bg-gray-800/50 border border-green-300 dark:border-green-700 rounded-lg text-sm text-gray-700 dark:text-gray-300 font-medium">
+                        {user?.job_role || 'Unassigned'}
+                      </div>
+                    ) : (
+                      <select
+                        value={jobRole}
+                        onChange={(e) => {
+                          setJobRole(e.target.value)
+                          setHasUnsavedChanges(true)
+                        }}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-green-300 dark:border-green-700 rounded-lg text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      >
+                        <option value="unassigned">Unassigned</option>
+                        <option value="doctor">Doctor</option>
+                        <option value="pastor">Pastor</option>
+                        <option value="nurse">Nurse</option>
+                        <option value="admin_staff">Admin Staff</option>
+                        <option value="volunteer">Volunteer</option>
+                      </select>
+                    )}
 
                     <p className="text-xs text-green-600 dark:text-green-400 mt-2">
-                      Current: <span className="font-semibold">{jobRole === 'admin_staff' ? 'Admin Staff' : (jobRole?.charAt(0).toUpperCase() + jobRole?.slice(1)) || 'Unassigned'}</span>
+                      Current: <span className="font-semibold">{user?.job_role || jobRole === 'admin_staff' ? 'Admin Staff' : (jobRole?.charAt(0).toUpperCase() + jobRole?.slice(1)) || 'Unassigned'}</span>
                     </p>
                   </div>
                 </div>

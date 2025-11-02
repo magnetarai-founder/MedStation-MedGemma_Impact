@@ -155,7 +155,7 @@ def get_or_create_user() -> UserProfile:
 
     cursor.execute("""
         INSERT INTO users (user_id, display_name, device_name, created_at, avatar_color, role, job_role)
-        VALUES (?, ?, ?, ?, ?, 'super_admin', 'unassigned')
+        VALUES (?, ?, ?, ?, ?, 'super_admin', 'Super Admin')
     """, (user_id, display_name, device_name, created_at, avatar_color))
 
     conn.commit()
@@ -170,7 +170,7 @@ def get_or_create_user() -> UserProfile:
         created_at=created_at,
         avatar_color=avatar_color,
         role="super_admin",
-        job_role="unassigned"
+        job_role="Super Admin"  # HARDCODED - Super Admin job role
     )
 
 
