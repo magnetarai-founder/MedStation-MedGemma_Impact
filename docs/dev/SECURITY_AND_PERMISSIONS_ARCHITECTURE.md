@@ -7,7 +7,90 @@
 
 ---
 
+## 🚨 PHASE 0: DATABASE ARCHITECTURE CLEANUP (CRITICAL)
+
+**Status:** 🔴 BLOCKING ALL OTHER WORK
+**Priority:** P0 - Must be completed before any other development
+**Created:** 2025-11-02
+
+### Problem Statement
+
+The current database architecture is fundamentally broken and confusing:
+
+1. **Multiple conflicting user databases:**
+   - `.neutron_data/users.db` - Single-user profile system (currently 0 users after cleanup)
+   - `.neutron_data/auth.db` - Multi-user authentication system (2 users)
+   - `.neutron_data/elohimos_app.db` - Empty database with NO tables
+   - Founder account hardcoded in `auth_middleware.py` (not in any database)
+
+2. **Admin dashboard showing fake data:**
+   - Queries empty/wrong databases
+   - Shows phantom "29 users" from nowhere
+   - Chat sessions, workflows don't match reality
+   - No connection to actual user data
+
+3. **Inconsistent role/job_role architecture:**
+   - System roles (founder_rights, super_admin, admin, member, guest)
+   - Job roles (doctor, pastor, nurse, etc.)
+   - Missing columns in databases
+   - Migrations not running properly
+
+### Phase 0 Tasks
+
+#### 0.1 Database Architecture Decision
+- [ ] **Decision:** Choose ONE user database system:
+  - Option A: Single-user system (users.db) - Founder is the only user
+  - Option B: Multi-user system (auth.db) - Support multiple accounts
+  - Option C: Hybrid - Founder hardcoded + single regular user in users.db
+- [ ] Document the chosen architecture
+- [ ] Delete/deprecate unused databases
+
+#### 0.2 Database Schema Consolidation
+- [ ] Create master database schema document
+- [ ] Ensure all tables have proper columns (role, job_role, etc.)
+- [ ] Write proper migrations that actually run
+- [ ] Test migrations on fresh database
+
+#### 0.3 Founder Account Cleanup
+- [ ] **Decision:** Should Founder be:
+  - Option A: In database (like other users)
+  - Option B: Hardcoded backdoor (current state)
+  - Option C: Removed entirely (single-user mode)
+- [ ] Update auth_middleware.py accordingly
+- [ ] Update frontend userStore to handle chosen architecture
+
+#### 0.4 Admin Dashboard Rebuild
+- [ ] Remove fake user statistics
+- [ ] Show only real system metrics:
+  - Disk space usage
+  - Database sizes
+  - Ollama model status
+  - System health (CPU, memory)
+- [ ] OR remove Admin tab entirely if not needed for single-user
+
+#### 0.5 Testing & Validation
+- [ ] Fresh install test - verify databases created correctly
+- [ ] Migration test - verify existing data migrates properly
+- [ ] Founder login test - verify authentication works
+- [ ] Profile display test - verify correct user shown everywhere
+- [ ] Admin dashboard test - verify all stats are real
+
+### Success Criteria
+
+- ✅ Only ONE authoritative user database exists
+- ✅ All database queries return real, accurate data
+- ✅ Migrations run automatically on startup
+- ✅ Founder account works consistently across all tabs
+- ✅ Admin dashboard shows only real system data (or is removed)
+- ✅ No phantom users, chat sessions, or workflows
+- ✅ Clear documentation of database architecture
+
+---
+
 ## Table of Contents
+
+### Part 0: Database Architecture Cleanup (Phase 0 - BLOCKING)
+0. [Phase 0 Tasks](#-phase-0-database-architecture-cleanup-critical)
 
 ### Part 1: User Isolation (Phase 1 - In Progress)
 1. [Problem Statement](#problem-statement)
