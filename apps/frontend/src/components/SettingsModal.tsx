@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
-import { X, Settings as SettingsIcon, Zap, AlertTriangle, Cpu, User, Loader2, Shield, MessageSquare, Sparkles, Workflow } from 'lucide-react'
+import { X, Settings as SettingsIcon, Zap, AlertTriangle, Cpu, User, Loader2, Shield, MessageSquare, Sparkles, Workflow, Crown } from 'lucide-react'
 import { type NavTab } from '@/stores/navigationStore'
 import { usePermissions } from '@/hooks/usePermissions'
 import { ProfileSettings } from './ProfileSettings'
@@ -12,6 +12,7 @@ const AutomationTab = lazy(() => import('./settings/AutomationTab'))
 const AdvancedTab = lazy(() => import('./settings/AdvancedTab'))
 const SecurityTab = lazy(() => import('./settings/SecurityTab'))
 const DangerZoneTab = lazy(() => import('./settings/DangerZoneTab'))
+const AdminTab = lazy(() => import('./settings/AdminTab'))
 
 
 interface SettingsModalProps {
@@ -35,8 +36,34 @@ function LoadingFallback() {
 
 export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalProps) {
   const permissions = usePermissions()
-  const [activeTab, setActiveTab] = useState<'profile' | 'chat' | 'models' | 'app' | 'automation' | 'advanced' | 'security' | 'danger'>('app')
+  const [activeTab, setActiveTab] = useState<'profile' | 'admin' | 'chat' | 'models' | 'app' | 'automation' | 'advanced' | 'security' | 'danger'>('app')
   const [preloaded, setPreloaded] = useState(false)
+  const [userRole, setUserRole] = useState<string | null>(null)
+
+  // Fetch user role on mount
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      try {
+        const token = localStorage.getItem('auth_token')
+        const response = await fetch('/api/v1/users/me', {
+          headers: {
+            'Authorization': token ? `Bearer ${token}` : '',
+            'Content-Type': 'application/json'
+          }
+        })
+        if (response.ok) {
+          const user = await response.json()
+          setUserRole(user.role)
+        }
+      } catch (error) {
+        console.error('Failed to fetch user role:', error)
+      }
+    }
+
+    if (isOpen) {
+      fetchUserRole()
+    }
+  }, [isOpen])
 
   // Preload all tabs when modal opens to avoid jerkiness
   useEffect(() => {
@@ -91,6 +118,21 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
               <User className="w-4 h-4" />
               <span>Profile</span>
             </button>
+
+            {/* Admin Dashboard - God Rights only */}
+            {userRole === 'god_rights' && (
+              <button
+                onClick={() => setActiveTab('admin')}
+                className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all rounded-lg ${
+                  activeTab === 'admin'
+                    ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50'
+                }`}
+              >
+                <Crown className="w-4 h-4" />
+                <span>Admin</span>
+              </button>
+            )}
 
             <button
               onClick={() => setActiveTab('chat')}
@@ -190,6 +232,7 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
           <div className="flex items-center justify-between px-8 py-5 border-b border-gray-200 dark:border-gray-700">
             <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
               {activeTab === 'profile' && 'Profile'}
+              {activeTab === 'admin' && 'God Rights Admin'}
               {activeTab === 'chat' && 'Chat'}
               {activeTab === 'models' && 'Models'}
               {activeTab === 'app' && 'App'}
@@ -215,6 +258,11 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
               </div>
 
               {/* Render active tab immediately */}
+              {activeTab === 'admin' && (
+                <div>
+                  <AdminTab />
+                </div>
+              )}
               {activeTab === 'chat' && (
                 <div>
                   <ChatTab />
