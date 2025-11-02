@@ -1462,14 +1462,19 @@ async def start_ollama_server(request: Request):
         )
 
 
+class RestartServerRequest(BaseModel):
+    """Request body for server restart"""
+    models_to_load: Optional[List[str]] = None
+
+
 @router.post("/ollama/server/restart")
-async def restart_ollama_server(request: Request, reload_models: bool = False, models_to_load: List[str] = []):
+async def restart_ollama_server(request: Request, body: Optional[RestartServerRequest] = None, reload_models: bool = False):
     """
     Restart Ollama server and optionally reload specific models
 
     Args:
-        reload_models: Whether to reload models after restart
-        models_to_load: List of model names to load (if empty and reload_models=True, loads previous models)
+        reload_models: Whether to reload models after restart (query param)
+        body: Request body containing models_to_load list
     """
     try:
         # Get currently loaded models before shutdown
@@ -1506,9 +1511,9 @@ async def restart_ollama_server(request: Request, reload_models: bool = False, m
         # Reload models if requested
         loaded_results = []
         if reload_models:
-            models_to_reload = models_to_load if models_to_load else previous_models
+            models_to_load = body.models_to_load if body and body.models_to_load else previous_models
 
-            for model in models_to_reload:
+            for model in models_to_load:
                 try:
                     success = await ollama_client.preload_model(model, "1h")
                     loaded_results.append({
