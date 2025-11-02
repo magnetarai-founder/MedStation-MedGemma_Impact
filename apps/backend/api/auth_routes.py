@@ -35,6 +35,7 @@ class LoginResponse(BaseModel):
     user_id: str
     username: str
     device_id: str
+    role: str = Field(default="member", description="User role")
     expires_in: int = Field(default=7 * 24 * 60 * 60, description="Token expiration in seconds")
 
 
@@ -114,7 +115,8 @@ async def login(request: Request, body: LoginRequest):
             token=auth_result['token'],
             user_id=auth_result['user_id'],
             username=auth_result['username'],
-            device_id=auth_result['device_id']
+            device_id=auth_result['device_id'],
+            role=auth_result['role']
         )
 
     except ValueError as e:

@@ -36,7 +36,7 @@ function LoadingFallback() {
 
 export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalProps) {
   const permissions = usePermissions()
-  const [activeTab, setActiveTab] = useState<'profile' | 'admin' | 'chat' | 'models' | 'app' | 'automation' | 'advanced' | 'security' | 'danger'>('app')
+  const [activeTab, setActiveTab] = useState<'profile' | 'admin' | 'chat' | 'models' | 'app' | 'automation' | 'advanced' | 'security' | 'danger'>('profile')
   const [preloaded, setPreloaded] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
 
@@ -45,7 +45,7 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
     const fetchUserRole = async () => {
       try {
         const token = localStorage.getItem('auth_token')
-        const response = await fetch('/api/v1/users/me', {
+        const response = await fetch('/api/v1/auth/me', {
           headers: {
             'Authorization': token ? `Bearer ${token}` : '',
             'Content-Type': 'application/json'
@@ -98,7 +98,7 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-5xl max-h-[85vh] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl flex overflow-hidden">
+      <div className="relative w-full max-w-5xl h-[85vh] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl flex overflow-hidden">
         {/* Sidebar */}
         <div className="w-56 bg-gray-50 dark:bg-gray-800/30 flex flex-col border-r border-gray-200 dark:border-gray-700">
           {/* Header */}

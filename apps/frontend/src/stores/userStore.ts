@@ -46,7 +46,8 @@ export const useUserStore = create<UserStore>()(
       fetchUser: async () => {
         set({ isLoading: true, error: null })
         try {
-          const response = await axios.get('/api/v1/users/me')
+          // Use /api/v1/auth/me to get user from JWT token (works for both regular users and founder account)
+          const response = await axios.get('/api/v1/auth/me')
           set({ user: response.data, isLoading: false })
         } catch (error: any) {
           set({
