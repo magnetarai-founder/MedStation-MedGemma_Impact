@@ -47,9 +47,12 @@ export async function registerBiometric(documentId: string, userId: string): Pro
     // Get the relying party ID (must be valid for WebAuthn)
     // For localhost, we need to use 'localhost' explicitly
     // For production, use the actual hostname
-    const rpId = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    const hostname = window.location.hostname
+    const rpId = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.lan')
       ? 'localhost'
-      : window.location.hostname
+      : hostname
+
+    console.log('WebAuthn registration - hostname:', hostname, 'rpId:', rpId)
 
     const publicKeyOptions: PublicKeyCredentialCreationOptions = {
       challenge,
@@ -75,6 +78,8 @@ export async function registerBiometric(documentId: string, userId: string): Pro
       attestation: 'none',
     }
 
+    console.log('WebAuthn publicKeyOptions:', publicKeyOptions)
+
     // Create credential
     const credential = await navigator.credentials.create({
       publicKey: publicKeyOptions,
@@ -94,11 +99,17 @@ export async function registerBiometric(documentId: string, userId: string): Pro
     return true
   } catch (error: any) {
     console.error('Biometric registration failed:', error)
+    console.error('Error name:', error.name)
+    console.error('Error message:', error.message)
 
     if (error.name === 'NotAllowedError') {
       toast.error('Biometric authentication was cancelled')
+    } else if (error.name === 'SecurityError') {
+      toast.error('Security error - check if using HTTPS or localhost')
+    } else if (error.name === 'NotSupportedError') {
+      toast.error('Biometric authentication not supported on this device')
     } else {
-      toast.error('Failed to register biometric authentication')
+      toast.error(`Failed to register: ${error.message || 'Unknown error'}`)
     }
 
     return false
