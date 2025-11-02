@@ -156,12 +156,13 @@ class WorkflowStorage:
     # WORKFLOW CRUD
     # ============================================
 
-    def save_workflow(self, workflow: Workflow) -> None:
+    def save_workflow(self, workflow: Workflow, user_id: str) -> None:
         """
         Save workflow to database
 
         Args:
             workflow: Workflow to save
+            user_id: User ID for isolation
         """
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -170,8 +171,8 @@ class WorkflowStorage:
             INSERT OR REPLACE INTO workflows
             (id, name, description, icon, category, stages, triggers, enabled,
              allow_manual_creation, require_approval_to_start, created_by,
-             created_at, updated_at, version, tags)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             created_at, updated_at, version, tags, user_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             workflow.id,
             workflow.name,
@@ -188,6 +189,7 @@ class WorkflowStorage:
             workflow.updated_at.isoformat(),
             workflow.version,
             json.dumps(workflow.tags),
+            user_id,
         ))
 
         conn.commit()
@@ -195,12 +197,13 @@ class WorkflowStorage:
 
         logger.info(f"💾 Saved workflow: {workflow.name} (ID: {workflow.id})")
 
-    def get_workflow(self, workflow_id: str) -> Optional[Workflow]:
+    def get_workflow(self, workflow_id: str, user_id: str) -> Optional[Workflow]:
         """
         Get workflow by ID
 
         Args:
             workflow_id: Workflow ID
+            user_id: User ID for isolation
 
         Returns:
             Workflow or None if not found
@@ -209,7 +212,10 @@ class WorkflowStorage:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
-        cursor.execute("SELECT * FROM workflows WHERE id = ?", (workflow_id,))
+        cursor.execute("""
+            SELECT * FROM workflows
+            WHERE id = ? AND user_id = ?
+        """, (workflow_id, user_id))
         row = cursor.fetchone()
         conn.close()
 
@@ -220,6 +226,7 @@ class WorkflowStorage:
 
     def list_workflows(
         self,
+        user_id: str,
         category: Optional[str] = None,
         enabled_only: bool = True
     ) -> List[Workflow]:
@@ -227,6 +234,7 @@ class WorkflowStorage:
         List all workflows
 
         Args:
+            user_id: User ID for isolation
             category: Filter by category
             enabled_only: Only return enabled workflows
 
@@ -237,8 +245,8 @@ class WorkflowStorage:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
-        query = "SELECT * FROM workflows WHERE 1=1"
-        params = []
+        query = "SELECT * FROM workflows WHERE user_id = ?"
+        params = [user_id]
 
         if category:
             query += " AND category = ?"
@@ -255,12 +263,13 @@ class WorkflowStorage:
 
         return [self._row_to_workflow(row) for row in rows]
 
-    def delete_workflow(self, workflow_id: str) -> None:
+    def delete_workflow(self, workflow_id: str, user_id: str) -> None:
         """
         Delete workflow (soft delete)
 
         Args:
             workflow_id: Workflow ID
+            user_id: User ID for isolation
         """
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -268,8 +277,8 @@ class WorkflowStorage:
         cursor.execute("""
             UPDATE workflows
             SET enabled = 0, updated_at = ?
-            WHERE id = ?
-        """, (datetime.utcnow().isoformat(), workflow_id))
+            WHERE id = ? AND user_id = ?
+        """, (datetime.utcnow().isoformat(), workflow_id, user_id))
 
         conn.commit()
         conn.close()
@@ -280,12 +289,13 @@ class WorkflowStorage:
     # WORK ITEM CRUD
     # ============================================
 
-    def save_work_item(self, work_item: WorkItem) -> None:
+    def save_work_item(self, work_item: WorkItem, user_id: str) -> None:
         """
         Save work item to database
 
         Args:
             work_item: Work item to save
+            user_id: User ID for isolation
         """
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -295,8 +305,8 @@ class WorkflowStorage:
             (id, workflow_id, workflow_name, current_stage_id, current_stage_name,
              status, priority, assigned_to, claimed_at, data, created_by,
              created_at, updated_at, completed_at, sla_due_at, is_overdue,
-             tags, reference_number)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             tags, reference_number, user_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             work_item.id,
             work_item.workflow_id,
@@ -316,6 +326,7 @@ class WorkflowStorage:
             1 if work_item.is_overdue else 0,
             json.dumps(work_item.tags),
             work_item.reference_number,
+            user_id,
         ))
 
         # Save stage transitions
@@ -323,8 +334,8 @@ class WorkflowStorage:
             cursor.execute("""
                 INSERT INTO stage_transitions
                 (work_item_id, from_stage_id, to_stage_id, transitioned_at,
-                 transitioned_by, notes, duration_seconds)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                 transitioned_by, notes, duration_seconds, user_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 work_item.id,
                 transition.from_stage_id,
@@ -333,6 +344,7 @@ class WorkflowStorage:
                 transition.transitioned_by,
                 transition.notes,
                 transition.duration_seconds,
+                user_id,
             ))
 
         # Save attachments
@@ -340,8 +352,8 @@ class WorkflowStorage:
             cursor.execute("""
                 INSERT OR REPLACE INTO attachments
                 (id, work_item_id, filename, file_path, file_size, mime_type,
-                 uploaded_by, uploaded_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                 uploaded_by, uploaded_at, user_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 attachment.id,
                 work_item.id,
@@ -351,6 +363,7 @@ class WorkflowStorage:
                 attachment.mime_type,
                 attachment.uploaded_by,
                 attachment.uploaded_at.isoformat(),
+                user_id,
             ))
 
         conn.commit()
@@ -358,12 +371,13 @@ class WorkflowStorage:
 
         logger.debug(f"💾 Saved work item: {work_item.id}")
 
-    def get_work_item(self, work_item_id: str) -> Optional[WorkItem]:
+    def get_work_item(self, work_item_id: str, user_id: str) -> Optional[WorkItem]:
         """
         Get work item by ID
 
         Args:
             work_item_id: Work item ID
+            user_id: User ID for isolation
 
         Returns:
             Work item or None if not found
@@ -372,7 +386,10 @@ class WorkflowStorage:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
-        cursor.execute("SELECT * FROM work_items WHERE id = ?", (work_item_id,))
+        cursor.execute("""
+            SELECT * FROM work_items
+            WHERE id = ? AND user_id = ?
+        """, (work_item_id, user_id))
         row = cursor.fetchone()
 
         if not row:
@@ -384,18 +401,18 @@ class WorkflowStorage:
         # Load transitions
         cursor.execute("""
             SELECT * FROM stage_transitions
-            WHERE work_item_id = ?
+            WHERE work_item_id = ? AND user_id = ?
             ORDER BY transitioned_at ASC
-        """, (work_item_id,))
+        """, (work_item_id, user_id))
         transitions = cursor.fetchall()
         work_item.history = [self._row_to_transition(t) for t in transitions]
 
         # Load attachments
         cursor.execute("""
             SELECT * FROM attachments
-            WHERE work_item_id = ?
+            WHERE work_item_id = ? AND user_id = ?
             ORDER BY uploaded_at ASC
-        """, (work_item_id,))
+        """, (work_item_id, user_id))
         attachments = cursor.fetchall()
         work_item.attachments = [self._row_to_attachment(a) for a in attachments]
 
@@ -404,6 +421,7 @@ class WorkflowStorage:
 
     def list_work_items(
         self,
+        user_id: str,
         workflow_id: Optional[str] = None,
         status: Optional[WorkItemStatus] = None,
         assigned_to: Optional[str] = None,
@@ -413,6 +431,7 @@ class WorkflowStorage:
         List work items with filters
 
         Args:
+            user_id: User ID for isolation
             workflow_id: Filter by workflow
             status: Filter by status
             assigned_to: Filter by assigned user
@@ -425,8 +444,8 @@ class WorkflowStorage:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
-        query = "SELECT * FROM work_items WHERE 1=1"
-        params = []
+        query = "SELECT * FROM work_items WHERE user_id = ?"
+        params = [user_id]
 
         if workflow_id:
             query += " AND workflow_id = ?"
