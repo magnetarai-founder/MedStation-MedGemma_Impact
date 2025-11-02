@@ -19,7 +19,13 @@ export function ChatSidebar() {
 
   const loadSessions = async () => {
     try {
-      const response = await fetch(`/api/v1/chat/sessions`)
+      const token = localStorage.getItem('auth_token')
+      const response = await fetch(`/api/v1/chat/sessions`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json'
+        }
+      })
       if (response.ok) {
         const data = await response.json()
         setSessions(data)
@@ -44,9 +50,13 @@ export function ChatSidebar() {
 
   const createNewChat = async () => {
     try {
+      const token = localStorage.getItem('auth_token')
       const response = await fetch(`/api/v1/chat/sessions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({
           title: 'New Chat',
           model: 'qwen2.5-coder:7b-instruct'
@@ -57,6 +67,8 @@ export function ChatSidebar() {
         const newSession = await response.json()
         setSessions([newSession, ...sessions])
         selectChat(newSession.id)
+      } else {
+        console.error('Failed to create chat:', response.status, response.statusText)
       }
     } catch (error) {
       console.error('Failed to create chat:', error)
@@ -68,7 +80,13 @@ export function ChatSidebar() {
 
     // Load messages for this chat
     try {
-      const response = await fetch(`/api/v1/chat/sessions/${chatId}`)
+      const token = localStorage.getItem('auth_token')
+      const response = await fetch(`/api/v1/chat/sessions/${chatId}`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json'
+        }
+      })
       if (response.ok) {
         const data = await response.json()
         setMessages(data.messages || [])
@@ -84,8 +102,13 @@ export function ChatSidebar() {
     if (!confirm('Delete this chat?')) return
 
     try {
+      const token = localStorage.getItem('auth_token')
       const response = await fetch(`/api/v1/chat/sessions/${chatId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json'
+        }
       })
 
       if (response.ok) {
