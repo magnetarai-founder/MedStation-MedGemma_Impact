@@ -79,7 +79,8 @@ export const useUserStore = create<UserStore>()(
                 created_at: new Date().toISOString(),
                 role: authData.role,
                 avatar_color: '#8b5cf6', // Purple for founder
-                bio: 'System Founder Account'
+                bio: 'System Founder Account',
+                job_role: 'unassigned' // Founder can assign their own job role
               },
               isLoading: false,
               error: null

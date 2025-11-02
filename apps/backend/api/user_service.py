@@ -47,6 +47,7 @@ class UserProfile(BaseModel):
     role: Optional[str] = "member"
     role_changed_at: Optional[str] = None
     role_changed_by: Optional[str] = None
+    job_role: Optional[str] = "unassigned"
 
 
 class UserProfileUpdate(BaseModel):
@@ -54,6 +55,7 @@ class UserProfileUpdate(BaseModel):
     device_name: Optional[str] = None
     avatar_color: Optional[str] = None
     bio: Optional[str] = None
+    job_role: Optional[str] = None
 
 
 # ===== Database =====
@@ -73,7 +75,8 @@ def init_db():
             bio TEXT,
             role TEXT DEFAULT 'member',
             role_changed_at TEXT,
-            role_changed_by TEXT
+            role_changed_by TEXT,
+            job_role TEXT DEFAULT 'unassigned'
         )
     """)
 
@@ -96,6 +99,11 @@ def init_db():
                 WHERE user_id = ?
             """, (datetime.utcnow().isoformat(), first_user[0]))
             logger.info(f"Migrated first user to super_admin: {first_user[0]}")
+
+    # Migrate existing users table if job_role column doesn't exist
+    if 'job_role' not in columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN job_role TEXT DEFAULT 'unassigned'")
+        logger.info("Added job_role column to users table")
 
     conn.commit()
     conn.close()
@@ -134,7 +142,8 @@ def get_or_create_user() -> UserProfile:
             bio=row[5],
             role=row[6] if len(row) > 6 else "member",
             role_changed_at=row[7] if len(row) > 7 else None,
-            role_changed_by=row[8] if len(row) > 8 else None
+            role_changed_by=row[8] if len(row) > 8 else None,
+            job_role=row[9] if len(row) > 9 else "unassigned"
         )
 
     # Create new user
@@ -145,8 +154,8 @@ def get_or_create_user() -> UserProfile:
     avatar_color = "#3b82f6"  # Default blue
 
     cursor.execute("""
-        INSERT INTO users (user_id, display_name, device_name, created_at, avatar_color, role)
-        VALUES (?, ?, ?, ?, ?, 'super_admin')
+        INSERT INTO users (user_id, display_name, device_name, created_at, avatar_color, role, job_role)
+        VALUES (?, ?, ?, ?, ?, 'super_admin', 'unassigned')
     """, (user_id, display_name, device_name, created_at, avatar_color))
 
     conn.commit()
@@ -160,7 +169,8 @@ def get_or_create_user() -> UserProfile:
         device_name=device_name,
         created_at=created_at,
         avatar_color=avatar_color,
-        role="super_admin"
+        role="super_admin",
+        job_role="unassigned"
     )
 
 
@@ -190,6 +200,10 @@ def update_user_profile(updates: Dict[str, Any]) -> UserProfile:
     if 'bio' in updates:
         update_fields.append("bio = ?")
         values.append(updates['bio'])
+
+    if 'job_role' in updates:
+        update_fields.append("job_role = ?")
+        values.append(updates['job_role'])
 
     if update_fields:
         values.append(user.user_id)
