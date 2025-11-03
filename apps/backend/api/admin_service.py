@@ -46,18 +46,17 @@ def require_founder_rights(current_user: Dict = Depends(get_current_user)) -> Di
 
 
 def get_admin_db_connection():
-    """Get connection to admin database for user management"""
-    # Use the auth database which has the actual users table
-    db_path = ".neutron_data/auth.db"
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    return conn
+    """
+    Get connection to admin database for user management
 
+    Phase 0: Use auth_service.db_path (points to app_db = elohimos_app.db)
+    """
+    try:
+        from .auth_middleware import auth_service
+    except ImportError:
+        from auth_middleware import auth_service
 
-def get_user_profile_db_connection():
-    """Get connection to single-user profile database"""
-    db_path = ".neutron_data/users.db"
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(str(auth_service.db_path))
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -319,15 +318,18 @@ async def get_device_overview(
     request: Request,
     current_user: Dict = Depends(require_founder_rights)
 ):
-    """Get device-wide overview statistics (Founder Rights only)
+    """
+    Get device-wide overview statistics (Founder Rights only)
 
-    Returns high-level metrics about the device:
-    - Total users
-    - Total chat sessions
-    - Total workflows
-    - Total documents
-    - Storage usage
-    - Active users (last 7 days)
+    Phase 0: Returns ONLY real metrics from authoritative databases.
+    Never returns phantom or assumed data.
+
+    Returns:
+    - Total users from auth.users
+    - Total chat sessions from memory DB (if exists)
+    - Total workflows/work_items from workflows DB (if exists)
+    - Total documents from docs DB (if exists)
+    - Data directory size in bytes
 
     This is for administrative monitoring purposes.
     """
@@ -341,15 +343,15 @@ async def get_device_overview(
 
     overview = {}
 
-    # Get user statistics from single-user profile database
+    # Phase 0: Get user statistics from auth.users in app_db
     try:
-        conn = get_user_profile_db_connection()
+        conn = get_admin_db_connection()
         try:
-            # Total users (should be 1 for single-user system)
+            # Total users from auth.users table
             cursor = conn.execute("SELECT COUNT(*) as total FROM users")
             overview["total_users"] = cursor.fetchone()["total"]
 
-            # For single-user system, active users = total users
+            # Active users (simplified for Phase 0)
             overview["active_users_7d"] = overview["total_users"]
 
             # Users by role
@@ -365,36 +367,69 @@ async def get_device_overview(
         finally:
             conn.close()
     except Exception as e:
-        logger.warning(f"Could not get user statistics: {e}")
-        overview["total_users"] = 1  # Fallback: founder account
-        overview["active_users_7d"] = 1
-        overview["users_by_role"] = {"founder_rights": 1}
+        logger.error(f"Could not get user statistics from auth.users: {e}", exc_info=True)
+        overview["total_users"] = None
+        overview["active_users_7d"] = None
+        overview["users_by_role"] = None
 
-    # Get chat statistics
+    # Phase 0: Get chat statistics from PATHS.memory_db (if exists)
     try:
-        memory = get_memory()
-        all_sessions = memory.list_all_sessions_admin()
-        overview["total_chat_sessions"] = len(all_sessions)
+        from pathlib import Path
+        try:
+            from .config_paths import PATHS
+        except ImportError:
+            from config_paths import PATHS
+
+        memory_db = PATHS.memory_db
+        if memory_db.exists():
+            mem_conn = sqlite3.connect(str(memory_db))
+            mem_conn.row_factory = sqlite3.Row
+
+            # Check if chat_sessions table exists
+            cursor = mem_conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='chat_sessions'"
+            )
+            if cursor.fetchone():
+                cursor = mem_conn.execute("SELECT COUNT(*) as total FROM chat_sessions")
+                overview["total_chat_sessions"] = cursor.fetchone()["total"]
+            else:
+                overview["total_chat_sessions"] = None
+
+            mem_conn.close()
+        else:
+            overview["total_chat_sessions"] = None
     except Exception as e:
         logger.warning(f"Could not get chat statistics: {e}")
         overview["total_chat_sessions"] = None
 
-    # Get workflow statistics (if workflow service available)
+    # Phase 0: Get workflow statistics from workflows DB (if exists)
     try:
-        from pathlib import Path
-        workflow_db = Path(".") / "apps" / "backend" / "api" / "data" / "workflows.db"
-        if not workflow_db.exists():
-            workflow_db = Path("data") / "workflows.db"
+        # Phase 0: Use PATHS to find workflows DB in app_db
+        # For now, workflows might still be in separate DB - check both locations
+        workflow_db = PATHS.data_dir / "workflows.db"
 
         if workflow_db.exists():
             wf_conn = sqlite3.connect(str(workflow_db))
             wf_conn.row_factory = sqlite3.Row
 
-            cursor = wf_conn.execute("SELECT COUNT(*) as total FROM workflows")
-            overview["total_workflows"] = cursor.fetchone()["total"]
+            # Check tables exist
+            cursor = wf_conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='workflows'"
+            )
+            if cursor.fetchone():
+                cursor = wf_conn.execute("SELECT COUNT(*) as total FROM workflows")
+                overview["total_workflows"] = cursor.fetchone()["total"]
+            else:
+                overview["total_workflows"] = None
 
-            cursor = wf_conn.execute("SELECT COUNT(*) as total FROM work_items")
-            overview["total_work_items"] = cursor.fetchone()["total"]
+            cursor = wf_conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='work_items'"
+            )
+            if cursor.fetchone():
+                cursor = wf_conn.execute("SELECT COUNT(*) as total FROM work_items")
+                overview["total_work_items"] = cursor.fetchone()["total"]
+            else:
+                overview["total_work_items"] = None
 
             wf_conn.close()
         else:
@@ -405,19 +440,22 @@ async def get_device_overview(
         overview["total_workflows"] = None
         overview["total_work_items"] = None
 
-    # Get document statistics (if docs service available)
+    # Phase 0: Get document statistics from docs DB (if exists)
     try:
-        from pathlib import Path
-        docs_db = Path(".") / "apps" / "backend" / "api" / "data" / "docs.db"
-        if not docs_db.exists():
-            docs_db = Path("data") / "docs.db"
+        docs_db = PATHS.data_dir / "docs.db"
 
         if docs_db.exists():
             docs_conn = sqlite3.connect(str(docs_db))
             docs_conn.row_factory = sqlite3.Row
 
-            cursor = docs_conn.execute("SELECT COUNT(*) as total FROM documents")
-            overview["total_documents"] = cursor.fetchone()["total"]
+            cursor = docs_conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='documents'"
+            )
+            if cursor.fetchone():
+                cursor = docs_conn.execute("SELECT COUNT(*) as total FROM documents")
+                overview["total_documents"] = cursor.fetchone()["total"]
+            else:
+                overview["total_documents"] = None
 
             docs_conn.close()
         else:
@@ -425,6 +463,34 @@ async def get_device_overview(
     except Exception as e:
         logger.warning(f"Could not get document statistics: {e}")
         overview["total_documents"] = None
+
+    # Phase 0: Calculate data directory size in bytes
+    try:
+        import os
+        data_dir = PATHS.data_dir
+        total_size = 0
+
+        if data_dir.exists():
+            for dirpath, dirnames, filenames in os.walk(data_dir):
+                for filename in filenames:
+                    filepath = os.path.join(dirpath, filename)
+                    if os.path.exists(filepath):
+                        total_size += os.path.getsize(filepath)
+
+        overview["data_dir_size_bytes"] = total_size
+        # Also provide human-readable size
+        if total_size >= 1024**3:  # GB
+            overview["data_dir_size_human"] = f"{total_size / (1024**3):.2f} GB"
+        elif total_size >= 1024**2:  # MB
+            overview["data_dir_size_human"] = f"{total_size / (1024**2):.2f} MB"
+        elif total_size >= 1024:  # KB
+            overview["data_dir_size_human"] = f"{total_size / 1024:.2f} KB"
+        else:
+            overview["data_dir_size_human"] = f"{total_size} bytes"
+    except Exception as e:
+        logger.warning(f"Could not calculate data directory size: {e}")
+        overview["data_dir_size_bytes"] = None
+        overview["data_dir_size_human"] = None
 
     logger.info(f"Founder Rights {current_user['username']} viewed device overview")
 

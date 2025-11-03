@@ -2846,10 +2846,12 @@ async def delete_vault_document(
 
 
 @router.get("/stats")
-async def get_vault_stats(vault_type: str):
-    """Get vault statistics"""
-    # TODO: Get real user_id from auth middleware
-    user_id = "default_user"
+async def get_vault_stats(
+    vault_type: str,
+    current_user: Dict = Depends(get_current_user)
+):
+    """Get vault statistics (Phase 1: uses authenticated user_id)"""
+    user_id = current_user["user_id"]
 
     if vault_type not in ('real', 'decoy'):
         raise HTTPException(status_code=400, detail="vault_type must be 'real' or 'decoy'")
@@ -2864,7 +2866,8 @@ async def upload_vault_file(
     file: UploadFile = File(...),
     vault_passphrase: str = Form(...),
     vault_type: str = Form(default="real"),
-    folder_path: str = Form(default="/")
+    folder_path: str = Form(default="/"),
+    current_user: Dict = Depends(get_current_user)
 ):
     """
     Upload and encrypt file to vault
@@ -2879,7 +2882,7 @@ async def upload_vault_file(
         VaultFile metadata
     """
     # TODO: Get real user_id from auth middleware
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     if vault_type not in ('real', 'decoy'):
         raise HTTPException(status_code=400, detail="vault_type must be 'real' or 'decoy'")
@@ -2932,7 +2935,8 @@ async def upload_chunk(
     filename: str = Form(...),
     vault_passphrase: str = Form(...),
     vault_type: str = Form(default="real"),
-    folder_path: str = Form(default="/")
+    folder_path: str = Form(default="/"),
+    current_user: Dict = Depends(get_current_user)
 ):
     """
     Upload file in chunks for large files
@@ -2954,7 +2958,7 @@ async def upload_chunk(
     """
     import shutil
 
-    user_id = "default_user"
+    user_id = current_user["user_id"]
     service = get_vault_service()
 
     # Create temp directory for chunks
@@ -3019,10 +3023,10 @@ async def upload_chunk(
 
 
 @router.get("/files", response_model=List[VaultFile])
-async def list_vault_files(vault_type: str = "real", folder_path: str = None):
+async def list_vault_files(vault_type: str = "real", folder_path: str = None, current_user: Dict = Depends(get_current_user)):
     """List all uploaded vault files, optionally filtered by folder"""
     # TODO: Get real user_id from auth middleware
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     if vault_type not in ('real', 'decoy'):
         raise HTTPException(status_code=400, detail="vault_type must be 'real' or 'decoy'")
@@ -3037,7 +3041,8 @@ async def get_vault_files_paginated(
     folder_path: str = "/",
     page: int = 1,
     page_size: int = 50,
-    sort_by: str = "name"
+    sort_by: str = "name",
+    current_user: Dict = Depends(get_current_user)
 ):
     """
     Get vault files with pagination
@@ -3052,7 +3057,7 @@ async def get_vault_files_paginated(
     Returns:
         Paginated list of files with metadata
     """
-    user_id = "default_user"
+    user_id = current_user["user_id"]
     service = get_vault_service()
 
     if vault_type not in ('real', 'decoy'):
@@ -3126,7 +3131,8 @@ async def get_vault_files_paginated(
 async def get_file_thumbnail(
     file_id: str,
     vault_type: str = "real",
-    vault_passphrase: str = ""
+    vault_passphrase: str = "",
+    current_user: Dict = Depends(get_current_user)
 ):
     """
     Get thumbnail for image files
@@ -3136,7 +3142,7 @@ async def get_file_thumbnail(
     """
     from fastapi.responses import Response
 
-    user_id = "default_user"
+    user_id = current_user["user_id"]
     service = get_vault_service()
 
     if vault_type not in ('real', 'decoy'):
@@ -3198,11 +3204,12 @@ async def get_file_thumbnail(
 async def download_vault_file(
     file_id: str,
     vault_type: str = "real",
-    vault_passphrase: str = ""
+    vault_passphrase: str = "",
+    current_user: Dict = Depends(get_current_user)
 ):
     """Download and decrypt a vault file"""
     # TODO: Get real user_id from auth middleware
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     if vault_type not in ('real', 'decoy'):
         raise HTTPException(status_code=400, detail="vault_type must be 'real' or 'decoy'")
@@ -3265,11 +3272,12 @@ async def download_vault_file(
 async def create_vault_folder(
     folder_name: str = Form(...),
     vault_type: str = Form(default="real"),
-    parent_path: str = Form(default="/")
+    parent_path: str = Form(default="/"),
+    current_user: Dict = Depends(get_current_user)
 ):
     """Create a new folder in the vault"""
     # TODO: Get real user_id from auth middleware
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     if vault_type not in ('real', 'decoy'):
         raise HTTPException(status_code=400, detail="vault_type must be 'real' or 'decoy'")
@@ -3284,10 +3292,10 @@ async def create_vault_folder(
 
 
 @router.get("/folders", response_model=List[VaultFolder])
-async def list_vault_folders(vault_type: str = "real", parent_path: str = None):
+async def list_vault_folders(vault_type: str = "real", parent_path: str = None, current_user: Dict = Depends(get_current_user)):
     """List folders, optionally filtered by parent path"""
     # TODO: Get real user_id from auth middleware
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     if vault_type not in ('real', 'decoy'):
         raise HTTPException(status_code=400, detail="vault_type must be 'real' or 'decoy'")
@@ -3297,10 +3305,10 @@ async def list_vault_folders(vault_type: str = "real", parent_path: str = None):
 
 
 @router.delete("/folders")
-async def delete_vault_folder(folder_path: str, vault_type: str = "real"):
+async def delete_vault_folder(folder_path: str, vault_type: str = "real", current_user: Dict = Depends(get_current_user)):
     """Delete a folder (and all its contents)"""
     # TODO: Get real user_id from auth middleware
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     if vault_type not in ('real', 'decoy'):
         raise HTTPException(status_code=400, detail="vault_type must be 'real' or 'decoy'")
@@ -3315,10 +3323,10 @@ async def delete_vault_folder(folder_path: str, vault_type: str = "real"):
 
 
 @router.delete("/files/{file_id}")
-async def delete_vault_file(file_id: str, vault_type: str = "real"):
+async def delete_vault_file(file_id: str, vault_type: str = "real", current_user: Dict = Depends(get_current_user)):
     """Delete a file"""
     # TODO: Get real user_id from auth middleware
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     if vault_type not in ('real', 'decoy'):
         raise HTTPException(status_code=400, detail="vault_type must be 'real' or 'decoy'")
@@ -3341,10 +3349,10 @@ async def delete_vault_file(file_id: str, vault_type: str = "real"):
 
 
 @router.put("/files/{file_id}/rename")
-async def rename_vault_file(file_id: str, new_filename: str, vault_type: str = "real"):
+async def rename_vault_file(file_id: str, new_filename: str, vault_type: str = "real", current_user: Dict = Depends(get_current_user)):
     """Rename a file"""
     # TODO: Get real user_id from auth middleware
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     if vault_type not in ('real', 'decoy'):
         raise HTTPException(status_code=400, detail="vault_type must be 'real' or 'decoy'")
@@ -3370,10 +3378,10 @@ async def rename_vault_file(file_id: str, new_filename: str, vault_type: str = "
 
 
 @router.put("/files/{file_id}/move")
-async def move_vault_file(file_id: str, new_folder_path: str, vault_type: str = "real"):
+async def move_vault_file(file_id: str, new_folder_path: str, vault_type: str = "real", current_user: Dict = Depends(get_current_user)):
     """Move a file to a different folder"""
     # TODO: Get real user_id from auth middleware
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     if vault_type not in ('real', 'decoy'):
         raise HTTPException(status_code=400, detail="vault_type must be 'real' or 'decoy'")
@@ -3396,10 +3404,10 @@ async def move_vault_file(file_id: str, new_folder_path: str, vault_type: str = 
 
 
 @router.put("/folders/rename")
-async def rename_vault_folder(old_path: str, new_name: str, vault_type: str = "real"):
+async def rename_vault_folder(old_path: str, new_name: str, vault_type: str = "real", current_user: Dict = Depends(get_current_user)):
     """Rename a folder"""
     # TODO: Get real user_id from auth middleware
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     if vault_type not in ('real', 'decoy'):
         raise HTTPException(status_code=400, detail="vault_type must be 'real' or 'decoy'")
@@ -3438,11 +3446,12 @@ async def add_file_tag(
     file_id: str,
     tag_name: str = Form(...),
     tag_color: str = Form("#3B82F6"),
-    vault_type: str = Form("real")
+    vault_type: str = Form("real"),
+    current_user: Dict = Depends(get_current_user)
 ):
     """Add a tag to a file"""
     service = get_vault_service()
-    user_id = "default_user"  # TODO: Get from auth
+    user_id = current_user["user_id"]  # TODO: Get from auth
 
     try:
         result = service.add_tag_to_file(user_id, vault_type, file_id, tag_name, tag_color)
@@ -3456,11 +3465,12 @@ async def add_file_tag(
 async def remove_file_tag(
     file_id: str,
     tag_name: str,
-    vault_type: str = "real"
+    vault_type: str = "real",
+    current_user: Dict = Depends(get_current_user)
 ):
     """Remove a tag from a file"""
     service = get_vault_service()
-    user_id = "default_user"  # TODO: Get from auth
+    user_id = current_user["user_id"]  # TODO: Get from auth
 
     try:
         success = service.remove_tag_from_file(user_id, vault_type, file_id, tag_name)
@@ -3477,11 +3487,12 @@ async def remove_file_tag(
 @router.get("/files/{file_id}/tags")
 async def get_file_tags(
     file_id: str,
-    vault_type: str = "real"
+    vault_type: str = "real",
+    current_user: Dict = Depends(get_current_user)
 ):
     """Get all tags for a file"""
     service = get_vault_service()
-    user_id = "default_user"  # TODO: Get from auth
+    user_id = current_user["user_id"]  # TODO: Get from auth
 
     try:
         tags = service.get_file_tags(user_id, vault_type, file_id)
@@ -3496,11 +3507,12 @@ async def get_file_tags(
 @router.post("/files/{file_id}/favorite")
 async def add_favorite_file(
     file_id: str,
-    vault_type: str = Form("real")
+    vault_type: str = Form("real"),
+    current_user: Dict = Depends(get_current_user)
 ):
     """Add file to favorites"""
     service = get_vault_service()
-    user_id = "default_user"  # TODO: Get from auth
+    user_id = current_user["user_id"]  # TODO: Get from auth
 
     try:
         result = service.add_favorite(user_id, vault_type, file_id)
@@ -3513,11 +3525,12 @@ async def add_favorite_file(
 @router.delete("/files/{file_id}/favorite")
 async def remove_favorite_file(
     file_id: str,
-    vault_type: str = "real"
+    vault_type: str = "real",
+    current_user: Dict = Depends(get_current_user)
 ):
     """Remove file from favorites"""
     service = get_vault_service()
-    user_id = "default_user"  # TODO: Get from auth
+    user_id = current_user["user_id"]  # TODO: Get from auth
 
     try:
         success = service.remove_favorite(user_id, vault_type, file_id)
@@ -3532,10 +3545,10 @@ async def remove_favorite_file(
 
 
 @router.get("/favorites")
-async def get_favorite_files(vault_type: str = "real"):
+async def get_favorite_files(vault_type: str = "real", current_user: Dict = Depends(get_current_user)):
     """Get list of favorite file IDs"""
     service = get_vault_service()
-    user_id = "default_user"  # TODO: Get from auth
+    user_id = current_user["user_id"]  # TODO: Get from auth
 
     try:
         favorites = service.get_favorites(user_id, vault_type)
@@ -3551,11 +3564,12 @@ async def get_favorite_files(vault_type: str = "real"):
 async def log_file_access_endpoint(
     file_id: str,
     access_type: str = Form("view"),
-    vault_type: str = Form("real")
+    vault_type: str = Form("real"),
+    current_user: Dict = Depends(get_current_user)
 ):
     """Log file access (for recent files tracking)"""
     service = get_vault_service()
-    user_id = "default_user"  # TODO: Get from auth
+    user_id = current_user["user_id"]  # TODO: Get from auth
 
     try:
         service.log_file_access(user_id, vault_type, file_id, access_type)
@@ -3568,11 +3582,12 @@ async def log_file_access_endpoint(
 @router.get("/recent-files")
 async def get_recent_files_endpoint(
     vault_type: str = "real",
-    limit: int = 10
+    limit: int = 10,
+    current_user: Dict = Depends(get_current_user)
 ):
     """Get recently accessed files"""
     service = get_vault_service()
-    user_id = "default_user"  # TODO: Get from auth
+    user_id = current_user["user_id"]  # TODO: Get from auth
 
     try:
         recent = service.get_recent_files(user_id, vault_type, limit)
@@ -3585,10 +3600,10 @@ async def get_recent_files_endpoint(
 # ===== Storage Statistics Endpoint =====
 
 @router.get("/storage-stats")
-async def get_storage_statistics(vault_type: str = "real"):
+async def get_storage_statistics(vault_type: str = "real", current_user: Dict = Depends(get_current_user)):
     """Get storage statistics and analytics"""
     service = get_vault_service()
-    user_id = "default_user"  # TODO: Get from auth
+    user_id = current_user["user_id"]  # TODO: Get from auth
 
     try:
         stats = service.get_storage_stats(user_id, vault_type)
@@ -3603,11 +3618,12 @@ async def get_storage_statistics(vault_type: str = "real"):
 @router.delete("/files/{file_id}/secure")
 async def secure_delete_file_endpoint(
     file_id: str,
-    vault_type: str = "real"
+    vault_type: str = "real",
+    current_user: Dict = Depends(get_current_user)
 ):
     """Securely delete a file (overwrites with random data before deletion)"""
     service = get_vault_service()
-    user_id = "default_user"  # TODO: Get from auth
+    user_id = current_user["user_id"]  # TODO: Get from auth
 
     try:
         success = service.secure_delete_file(user_id, vault_type, file_id)
@@ -3626,11 +3642,12 @@ async def secure_delete_file_endpoint(
 @router.get("/files/{file_id}/versions")
 async def get_file_versions_endpoint(
     file_id: str,
-    vault_type: str = "real"
+    vault_type: str = "real",
+    current_user: Dict = Depends(get_current_user)
 ):
     """Get all versions of a file"""
     service = get_vault_service()
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     try:
         versions = service.get_file_versions(user_id, vault_type, file_id)
@@ -3644,11 +3661,12 @@ async def get_file_versions_endpoint(
 async def restore_file_version_endpoint(
     file_id: str,
     version_id: str,
-    vault_type: str = Form("real")
+    vault_type: str = Form("real"),
+    current_user: Dict = Depends(get_current_user)
 ):
     """Restore a file to a previous version"""
     service = get_vault_service()
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     try:
         result = service.restore_file_version(user_id, vault_type, file_id, version_id)
@@ -3664,11 +3682,12 @@ async def restore_file_version_endpoint(
 async def delete_file_version_endpoint(
     file_id: str,
     version_id: str,
-    vault_type: str = "real"
+    vault_type: str = "real",
+    current_user: Dict = Depends(get_current_user)
 ):
     """Delete a specific file version"""
     service = get_vault_service()
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     try:
         success = service.delete_file_version(user_id, vault_type, version_id)
@@ -3685,11 +3704,12 @@ async def delete_file_version_endpoint(
 @router.post("/files/{file_id}/trash")
 async def move_to_trash_endpoint(
     file_id: str,
-    vault_type: str = Form("real")
+    vault_type: str = Form("real"),
+    current_user: Dict = Depends(get_current_user)
 ):
     """Move a file to trash (soft delete)"""
     service = get_vault_service()
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     try:
         result = service.move_to_trash(user_id, vault_type, file_id)
@@ -3704,11 +3724,12 @@ async def move_to_trash_endpoint(
 @router.post("/files/{file_id}/restore")
 async def restore_from_trash_endpoint(
     file_id: str,
-    vault_type: str = Form("real")
+    vault_type: str = Form("real"),
+    current_user: Dict = Depends(get_current_user)
 ):
     """Restore a file from trash"""
     service = get_vault_service()
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     try:
         result = service.restore_from_trash(user_id, vault_type, file_id)
@@ -3721,10 +3742,10 @@ async def restore_from_trash_endpoint(
 
 
 @router.get("/trash")
-async def get_trash_files_endpoint(vault_type: str = "real"):
+async def get_trash_files_endpoint(vault_type: str = "real", current_user: Dict = Depends(get_current_user)):
     """Get all files in trash"""
     service = get_vault_service()
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     try:
         trash_files = service.get_trash_files(user_id, vault_type)
@@ -3735,10 +3756,10 @@ async def get_trash_files_endpoint(vault_type: str = "real"):
 
 
 @router.delete("/trash/empty")
-async def empty_trash_endpoint(vault_type: str = "real"):
+async def empty_trash_endpoint(vault_type: str = "real", current_user: Dict = Depends(get_current_user)):
     """Permanently delete all files in trash"""
     service = get_vault_service()
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     try:
         result = service.empty_trash(user_id, vault_type)
@@ -3760,11 +3781,12 @@ async def search_files_endpoint(
     date_to: str = None,
     min_size: int = None,
     max_size: int = None,
-    folder_path: str = None
+    folder_path: str = None,
+    current_user: Dict = Depends(get_current_user)
 ):
     """Advanced file search with multiple filters"""
     service = get_vault_service()
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     try:
         # Parse tags if provided
@@ -3789,11 +3811,12 @@ async def create_share_link_endpoint(
     password: str = Form(None),
     expires_at: str = Form(None),
     max_downloads: int = Form(None),
-    permissions: str = Form("download")
+    permissions: str = Form("download"),
+    current_user: Dict = Depends(get_current_user)
 ):
     """Create a shareable link for a file"""
     service = get_vault_service()
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     try:
         result = service.create_share_link(
@@ -3809,11 +3832,12 @@ async def create_share_link_endpoint(
 @router.get("/files/{file_id}/shares")
 async def get_file_shares_endpoint(
     file_id: str,
-    vault_type: str = "real"
+    vault_type: str = "real",
+    current_user: Dict = Depends(get_current_user)
 ):
     """Get all share links for a file"""
     service = get_vault_service()
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     try:
         shares = service.get_file_shares(user_id, vault_type, file_id)
@@ -3826,11 +3850,12 @@ async def get_file_shares_endpoint(
 @router.delete("/shares/{share_id}")
 async def revoke_share_link_endpoint(
     share_id: str,
-    vault_type: str = "real"
+    vault_type: str = "real",
+    current_user: Dict = Depends(get_current_user)
 ):
     """Revoke a share link"""
     service = get_vault_service()
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     try:
         success = service.revoke_share_link(user_id, vault_type, share_id)
@@ -3880,11 +3905,12 @@ async def get_audit_logs_endpoint(
     resource_type: str = None,
     date_from: str = None,
     date_to: str = None,
-    limit: int = 100
+    limit: int = 100,
+    current_user: Dict = Depends(get_current_user)
 ):
     """Get audit logs with filters"""
     service = get_vault_service()
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     try:
         logs = service.get_audit_logs(
@@ -3903,11 +3929,12 @@ async def get_audit_logs_endpoint(
 async def add_file_comment_endpoint(
     file_id: str,
     comment_text: str = Form(...),
-    vault_type: str = Form("real")
+    vault_type: str = Form("real"),
+    current_user: Dict = Depends(get_current_user)
 ):
     """Add a comment to a file"""
     service = get_vault_service()
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     try:
         result = service.add_file_comment(user_id, vault_type, file_id, comment_text)
@@ -3920,11 +3947,12 @@ async def add_file_comment_endpoint(
 @router.get("/files/{file_id}/comments")
 async def get_file_comments_endpoint(
     file_id: str,
-    vault_type: str = "real"
+    vault_type: str = "real",
+    current_user: Dict = Depends(get_current_user)
 ):
     """Get all comments for a file"""
     service = get_vault_service()
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     try:
         comments = service.get_file_comments(user_id, vault_type, file_id)
@@ -3938,11 +3966,12 @@ async def get_file_comments_endpoint(
 async def update_file_comment_endpoint(
     comment_id: str,
     comment_text: str = Form(...),
-    vault_type: str = Form("real")
+    vault_type: str = Form("real"),
+    current_user: Dict = Depends(get_current_user)
 ):
     """Update a comment"""
     service = get_vault_service()
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     try:
         result = service.update_file_comment(user_id, vault_type, comment_id, comment_text)
@@ -3957,11 +3986,12 @@ async def update_file_comment_endpoint(
 @router.delete("/comments/{comment_id}")
 async def delete_file_comment_endpoint(
     comment_id: str,
-    vault_type: str = "real"
+    vault_type: str = "real",
+    current_user: Dict = Depends(get_current_user)
 ):
     """Delete a comment"""
     service = get_vault_service()
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     try:
         success = service.delete_file_comment(user_id, vault_type, comment_id)
@@ -3980,11 +4010,12 @@ async def set_file_metadata_endpoint(
     file_id: str,
     key: str = Form(...),
     value: str = Form(...),
-    vault_type: str = Form("real")
+    vault_type: str = Form("real"),
+    current_user: Dict = Depends(get_current_user)
 ):
     """Set custom metadata for a file"""
     service = get_vault_service()
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     try:
         result = service.set_file_metadata(user_id, vault_type, file_id, key, value)
@@ -3997,11 +4028,12 @@ async def set_file_metadata_endpoint(
 @router.get("/files/{file_id}/metadata")
 async def get_file_metadata_endpoint(
     file_id: str,
-    vault_type: str = "real"
+    vault_type: str = "real",
+    current_user: Dict = Depends(get_current_user)
 ):
     """Get all metadata for a file"""
     service = get_vault_service()
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     try:
         metadata = service.get_file_metadata(user_id, vault_type, file_id)
@@ -4017,11 +4049,12 @@ async def get_file_metadata_endpoint(
 async def pin_file_endpoint(
     file_id: str,
     pin_order: int = Form(0),
-    vault_type: str = Form("real")
+    vault_type: str = Form("real"),
+    current_user: Dict = Depends(get_current_user)
 ):
     """Pin a file for quick access"""
     service = get_vault_service()
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     try:
         result = service.pin_file(user_id, vault_type, file_id, pin_order)
@@ -4034,11 +4067,12 @@ async def pin_file_endpoint(
 @router.delete("/files/{file_id}/pin")
 async def unpin_file_endpoint(
     file_id: str,
-    vault_type: str = "real"
+    vault_type: str = "real",
+    current_user: Dict = Depends(get_current_user)
 ):
     """Unpin a file"""
     service = get_vault_service()
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     try:
         success = service.unpin_file(user_id, vault_type, file_id)
@@ -4051,10 +4085,10 @@ async def unpin_file_endpoint(
 
 
 @router.get("/pinned-files")
-async def get_pinned_files_endpoint(vault_type: str = "real"):
+async def get_pinned_files_endpoint(vault_type: str = "real", current_user: Dict = Depends(get_current_user)):
     """Get all pinned files"""
     service = get_vault_service()
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     try:
         pinned = service.get_pinned_files(user_id, vault_type)
@@ -4068,11 +4102,12 @@ async def get_pinned_files_endpoint(vault_type: str = "real"):
 async def set_folder_color_endpoint(
     folder_id: str,
     color: str = Form(...),
-    vault_type: str = Form("real")
+    vault_type: str = Form("real"),
+    current_user: Dict = Depends(get_current_user)
 ):
     """Set color for a folder"""
     service = get_vault_service()
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     try:
         result = service.set_folder_color(user_id, vault_type, folder_id, color)
@@ -4083,10 +4118,10 @@ async def set_folder_color_endpoint(
 
 
 @router.get("/folder-colors")
-async def get_folder_colors_endpoint(vault_type: str = "real"):
+async def get_folder_colors_endpoint(vault_type: str = "real", current_user: Dict = Depends(get_current_user)):
     """Get all folder colors"""
     service = get_vault_service()
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     try:
         colors = service.get_folder_colors(user_id, vault_type)
@@ -4099,10 +4134,10 @@ async def get_folder_colors_endpoint(vault_type: str = "real"):
 # ===== Day 4: Backup & Export Endpoints =====
 
 @router.get("/export")
-async def export_vault_data_endpoint(vault_type: str = "real"):
+async def export_vault_data_endpoint(vault_type: str = "real", current_user: Dict = Depends(get_current_user)):
     """Export vault metadata for backup"""
     service = get_vault_service()
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     try:
         export_data = service.export_vault_data(user_id, vault_type)
@@ -4117,7 +4152,8 @@ async def export_vault_data_endpoint(vault_type: str = "real"):
 @router.get("/analytics/storage-trends")
 async def get_storage_trends(
     vault_type: str = "real",
-    days: int = 30
+    days: int = 30,
+    current_user: Dict = Depends(get_current_user)
 ):
     """
     Get storage usage trends over time
@@ -4129,7 +4165,7 @@ async def get_storage_trends(
     Returns:
         Daily storage growth data
     """
-    user_id = "default_user"
+    user_id = current_user["user_id"]
     service = get_vault_service()
 
     if vault_type not in ('real', 'decoy'):
@@ -4185,7 +4221,7 @@ async def get_storage_trends(
 
 
 @router.get("/analytics/access-patterns")
-async def get_access_patterns(vault_type: str = "real", limit: int = 10):
+async def get_access_patterns(vault_type: str = "real", limit: int = 10, current_user: Dict = Depends(get_current_user)):
     """
     Get file access patterns and most accessed files
 
@@ -4196,7 +4232,7 @@ async def get_access_patterns(vault_type: str = "real", limit: int = 10):
     Returns:
         Most accessed files and access statistics
     """
-    user_id = "default_user"
+    user_id = current_user["user_id"]
     service = get_vault_service()
 
     if vault_type not in ('real', 'decoy'):
@@ -4271,7 +4307,8 @@ async def get_access_patterns(vault_type: str = "real", limit: int = 10):
 async def get_activity_timeline(
     vault_type: str = "real",
     hours: int = 24,
-    limit: int = 50
+    limit: int = 50,
+    current_user: Dict = Depends(get_current_user)
 ):
     """
     Get recent activity timeline
@@ -4284,7 +4321,7 @@ async def get_activity_timeline(
     Returns:
         Recent activity events
     """
-    user_id = "default_user"
+    user_id = current_user["user_id"]
     service = get_vault_service()
 
     if vault_type not in ('real', 'decoy'):
@@ -5062,7 +5099,7 @@ async def delete_rule(rule_id: str):
 # ===== Decoy Vault Seeding =====
 
 @router.post("/seed-decoy-vault")
-async def seed_decoy_vault_endpoint(request: Request, user_id: str = Form("default_user")):
+async def seed_decoy_vault_endpoint(request: Request, current_user: Dict = Depends(get_current_user)):
     """
     Seed decoy vault with realistic documents for plausible deniability
 
@@ -5075,6 +5112,8 @@ async def seed_decoy_vault_endpoint(request: Request, user_id: str = Form("defau
 
     Only seeds if decoy vault is empty.
     """
+    user_id = current_user["user_id"]
+
     try:
         from vault_seed_data import get_seeder
 
@@ -5091,13 +5130,15 @@ async def seed_decoy_vault_endpoint(request: Request, user_id: str = Form("defau
 
 
 @router.delete("/clear-decoy-vault")
-async def clear_decoy_vault_endpoint(request: Request, user_id: str = Form("default_user")):
+async def clear_decoy_vault_endpoint(request: Request, current_user: Dict = Depends(get_current_user)):
     """
     Clear all decoy vault documents (for testing/re-seeding)
 
     WARNING: This will delete all decoy vault documents!
     Use this if you want to re-seed the decoy vault with fresh data.
     """
+    user_id = current_user["user_id"]
+
     try:
         from vault_seed_data import get_seeder
 

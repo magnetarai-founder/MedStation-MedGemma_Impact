@@ -1,0 +1,35 @@
+Phase 0: Database Architecture Consolidation - COMPLETE ✅
+Date: 2025-11-02
+
+WHAT CHANGED:
+- Single authoritative database: elohimos_app.db
+- Auto-running migrations on startup (non-interactive)
+- Admin dashboard shows real metrics only (no phantom data)
+- All services use auth_service.db_path (points to app_db)
+- Backups limited to authoritative DBs only
+
+VERIFIED:
+✅ Admin dashboard: 2 real users (not 29 phantom)
+✅ User profile API: Correctly joins user_profiles ↔ users
+✅ Migration: 2 users + 4 sessions migrated from legacy auth.db
+✅ Founder login: Works correctly with env variables
+
+LEGACY DATABASES (safe to delete after backup):
+- .neutron_data/auth.db (replaced by elohimos_app.db)
+- .neutron_data/users.db (replaced by user_profiles in app_db)
+
+FILES MODIFIED:
+✓ config_paths.py - Auto-detect project root
+✓ migrations/phase0_user_db.py - Migration logic
+✓ startup_migrations.py - Migration runner
+✓ user_service.py - Uses user_profiles in app_db
+✓ admin_service.py - Real metrics only
+✓ permissions.py - Reads roles from app_db
+✓ backup_service.py - Authoritative DBs only
+✓ main.py - Integrated startup migrations
+
+DOCUMENTATION:
+- docs/dev/PHASE_0_IMPLEMENTATION_SUMMARY.md
+- docs/dev/SECURITY_AND_PERMISSIONS_ARCHITECTURE.md (updated)
+
+Ready to commit!

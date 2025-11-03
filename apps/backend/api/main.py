@@ -174,6 +174,16 @@ async def lifespan(app: FastAPI):
     (api_dir / "temp_uploads").mkdir(exist_ok=True)
     (api_dir / "temp_exports").mkdir(exist_ok=True)
 
+    # Phase 0: Run startup migrations (database consolidation)
+    try:
+        from startup_migrations import run_startup_migrations
+        await run_startup_migrations()
+        logger.info("✓ Startup migrations completed")
+    except Exception as e:
+        logger.error(f"✗ Startup migrations failed: {e}", exc_info=True)
+        # Re-raise to prevent app from starting with broken DB state
+        raise
+
     # Start background cleanup task
     cleanup_task = asyncio.create_task(cleanup_old_temp_files())
     logger.info("Started background temp file cleanup task")

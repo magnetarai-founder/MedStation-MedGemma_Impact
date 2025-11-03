@@ -27,11 +27,23 @@ class PathConfig:
     """
 
     def __init__(self, base_dir: Optional[str] = None):
-        # Base data directory (configurable via env var)
-        self.data_dir = Path(base_dir or os.getenv("ELOHIMOS_DATA_DIR", ".neutron_data"))
+        # Base data directory (configurable via env var or auto-detected project root)
+        if base_dir:
+            self.data_dir = Path(base_dir)
+        elif os.getenv("ELOHIMOS_DATA_DIR"):
+            self.data_dir = Path(os.getenv("ELOHIMOS_DATA_DIR"))
+        else:
+            # Auto-detect project root: go up from api/ to project root
+            # This file is in: ElohimOS/apps/backend/api/config_paths.py
+            # Project root is: ElohimOS/
+            api_dir = Path(__file__).parent  # api/
+            backend_dir = api_dir.parent  # backend/
+            apps_dir = backend_dir.parent  # apps/
+            project_root = apps_dir.parent  # ElohimOS/
+            self.data_dir = project_root / ".neutron_data"
 
         # Ensure base directory exists
-        self.data_dir.mkdir(exist_ok=True)
+        self.data_dir.mkdir(exist_ok=True, parents=True)
 
     # ===== Database Paths =====
     # Consolidated: 3 databases total (was 7+)

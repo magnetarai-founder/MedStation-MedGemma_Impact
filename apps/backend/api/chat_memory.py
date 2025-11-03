@@ -357,11 +357,16 @@ class NeutronChatMemory:
         conn = self._get_connection()
 
         with self._write_lock:
-            # Insert message
+            # Phase 1: Get session owner to populate user_id on messages
+            cur = conn.execute("SELECT user_id FROM chat_sessions WHERE id = ?", (session_id,))
+            owner = cur.fetchone()
+            owner_id = owner['user_id'] if owner else None
+
+            # Insert message with user_id
             conn.execute("""
-                INSERT INTO chat_messages (session_id, timestamp, role, content, model, tokens, files_json)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (session_id, event.timestamp, event.role, event.content, event.model, event.tokens, files_json))
+                INSERT INTO chat_messages (session_id, timestamp, role, content, model, tokens, files_json, user_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (session_id, event.timestamp, event.role, event.content, event.model, event.tokens, files_json, owner_id))
 
             # Update session metadata
             now = datetime.utcnow().isoformat()

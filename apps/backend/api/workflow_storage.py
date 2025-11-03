@@ -83,7 +83,8 @@ class WorkflowStorage:
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
                 version INTEGER DEFAULT 1,
-                tags TEXT  -- JSON array
+                tags TEXT,  -- JSON array
+                user_id TEXT  -- Phase 1: User isolation
             )
         """)
 
@@ -108,6 +109,7 @@ class WorkflowStorage:
                 is_overdue INTEGER DEFAULT 0,
                 tags TEXT,  -- JSON array
                 reference_number TEXT,
+                user_id TEXT,  -- Phase 1: User isolation
                 FOREIGN KEY (workflow_id) REFERENCES workflows(id)
             )
         """)
@@ -123,6 +125,7 @@ class WorkflowStorage:
                 transitioned_by TEXT,
                 notes TEXT,
                 duration_seconds INTEGER,
+                user_id TEXT,  -- Phase 1: User isolation
                 FOREIGN KEY (work_item_id) REFERENCES work_items(id)
             )
         """)
@@ -138,6 +141,7 @@ class WorkflowStorage:
                 mime_type TEXT NOT NULL,
                 uploaded_by TEXT NOT NULL,
                 uploaded_at TEXT NOT NULL,
+                user_id TEXT,  -- Phase 1: User isolation
                 FOREIGN KEY (work_item_id) REFERENCES work_items(id)
             )
         """)
@@ -147,6 +151,12 @@ class WorkflowStorage:
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_work_items_status ON work_items(status)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_work_items_assigned ON work_items(assigned_to)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_work_items_overdue ON work_items(is_overdue)")
+
+        # Phase 1: User isolation indexes
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_workflows_user ON workflows(user_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_work_items_user ON work_items(user_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_transitions_user ON stage_transitions(user_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_attachments_user ON attachments(user_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_transitions_work_item ON stage_transitions(work_item_id)")
 
         conn.commit()

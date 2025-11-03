@@ -113,15 +113,24 @@ PERMISSIONS_MAP = {
 
 
 def get_user_db_path() -> Path:
-    """Get path to users database"""
-    from config_paths import get_config_paths
-    config = get_config_paths()
-    return config.data_dir / "users.db"
+    """
+    Get path to auth database (Phase 0: use app_db for users)
+
+    Phase 0: Returns auth_service.db_path which points to elohimos_app.db
+    """
+    try:
+        from .auth_middleware import auth_service
+    except ImportError:
+        from auth_middleware import auth_service
+
+    return auth_service.db_path
 
 
 def get_user_role(user_id: str) -> Optional[Role]:
     """
-    Get role for a user
+    Get role for a user from auth.users table
+
+    Phase 0: Reads from auth.users in app_db, not legacy users.db
 
     Args:
         user_id: User identifier
@@ -133,6 +142,7 @@ def get_user_role(user_id: str) -> Optional[Role]:
         conn = sqlite3.connect(str(get_user_db_path()))
         cursor = conn.cursor()
 
+        # Phase 0: Read from auth.users table
         cursor.execute("SELECT role FROM users WHERE user_id = ?", (user_id,))
         row = cursor.fetchone()
         conn.close()

@@ -1,0 +1,75 @@
+Phase 1: User Isolation - COMPLETE ✅
+Date: 2025-11-03
+
+WHAT CHANGED:
+- Added user_id columns to all workflow tables (workflows, work_items, stage_transitions, attachments)
+- Created Phase 1 migration with non-interactive backfill logic
+- Updated chat_memory to populate user_id on messages from session owner
+- Updated vault /stats endpoint to use authenticated user (not "default_user")
+- Created indexes on user_id columns for query performance
+- Migration recorded in app_db: 2025_11_03_phase1_workflows_user_id
+
+VERIFIED:
+✅ Phase 0 migration: Already applied (2025_11_02_phase0_user_db)
+✅ Phase 1 migration: Successfully applied (2025_11_03_phase1_workflows_user_id)
+✅ Migrations table: Both phases recorded in elohimos_app.db
+✅ Startup migrations: Non-interactive, idempotent, safe
+
+SCHEMA UPDATES:
+
+1. Workflows Database (workflows.db)
+   - workflows table: added user_id TEXT column
+   - work_items table: added user_id TEXT column
+   - stage_transitions table: added user_id TEXT column
+   - attachments table: added user_id TEXT column
+   - Created indexes: idx_workflows_user, idx_work_items_user, idx_transitions_user, idx_attachments_user
+
+2. Chat Memory Database (chat_memory.db)
+   - chat_messages table: now populates user_id from session owner
+   - Ensures messages are linked to user for future audit trails
+
+SERVICE UPDATES:
+
+1. workflow_storage.py
+   - CREATE TABLE statements include user_id columns natively
+   - Added user isolation indexes for performance
+
+2. chat_memory.py (add_message)
+   - Looks up session owner: SELECT user_id FROM chat_sessions WHERE id = ?
+   - Inserts message with owner_id populated
+
+3. vault_service.py (ALL 58 ENDPOINTS - COMPLETE FIX)
+   - Replaced ALL instances of user_id = "default_user" with user_id = current_user["user_id"]
+   - Added current_user: Dict = Depends(get_current_user) to all 58 endpoints
+   - Endpoints now use authenticated user for ALL vault operations
+   - Zero remaining "default_user" references
+   - Syntax verified: ✓ PASSED
+
+4. startup_migrations.py
+   - Added Phase 1 migration import and execution
+   - Checks if already applied before running
+   - Logs success/failure clearly
+
+FILES MODIFIED:
+✓ migrations/phase1_workflows_user_id.py - Created
+✓ workflow_storage.py - Added user_id columns to schema
+✓ startup_migrations.py - Added Phase 1 migration call
+✓ chat_memory.py - Populate user_id on messages
+✓ vault_service.py - ALL 58 endpoints updated (zero "default_user" remaining)
+
+MIGRATION LOGIC:
+- Adds user_id columns if missing (ALTER TABLE)
+- Backfills from created_by/transitioned_by/uploaded_by
+- Uses username→user_id mapping from app_db users table
+- Falls back to using created_by as user_id if no mapping
+- Creates indexes for query performance
+- Records completion in app_db migrations table
+
+NEXT STEPS (Remaining from Phase 1):
+- Run test_user_isolation.py to verify user data separation
+- Run test_workflow_isolation.py to verify workflow isolation
+- Add/run vault privacy tests (ensure User A can't access User B's files)
+- Verify all UI endpoints filter by authenticated user_id
+- Confirm God Rights bypass only exists in admin endpoints
+
+Ready for testing!

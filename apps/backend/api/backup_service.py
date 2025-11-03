@@ -98,29 +98,39 @@ class BackupService:
 
     def _get_databases(self) -> Dict[str, Path]:
         """
-        Get paths to all databases that need backup
+        Get paths to all authoritative databases that need backup
+
+        Phase 0: Only backup the authoritative databases:
+        - elohimos_app.db (consolidated auth, users, docs, workflows)
+        - vault.db (secure storage)
+        - datasets.db (data analysis datasets)
+        - chat_memory.db (optional, in memory/ subdirectory)
 
         Returns:
             Dict mapping database names to paths
         """
-        from config_paths import get_data_dir
+        from config_paths import get_config_paths
 
-        data_dir = get_data_dir()
-
+        config = get_config_paths()
         databases = {}
 
-        # Check for standard databases
-        for db_name in ['elohimos_app.db', 'vault.db', 'datasets.db', 'users.db',
-                       'auth.db', 'docs.db', 'p2p_chat.db']:
-            db_path = data_dir / db_name
+        # Phase 0: Backup only authoritative databases
+        authoritative_dbs = [
+            ('elohimos_app.db', config.app_db),
+            ('vault.db', config.vault_db),
+            ('datasets.db', config.datasets_db),
+            ('chat_memory.db', config.memory_db),  # Optional
+        ]
 
-            # Also check for encrypted versions
+        for db_name, db_path in authoritative_dbs:
+            # Check for encrypted versions first
             encrypted_path = db_path.with_suffix('.db.encrypted')
 
             if encrypted_path.exists():
                 databases[db_name] = encrypted_path
             elif db_path.exists():
                 databases[db_name] = db_path
+            # If neither exists, skip (e.g., chat_memory.db might not exist yet)
 
         return databases
 

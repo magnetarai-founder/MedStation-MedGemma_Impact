@@ -22,7 +22,8 @@ logger = logging.getLogger(__name__)
 # Storage paths - use centralized config_paths
 from config_paths import get_config_paths
 PATHS = get_config_paths()
-USER_DB_PATH = PATHS.data_dir / "users.db"
+# Phase 0: Use app_db for user_profiles (consolidated from legacy users.db)
+USER_DB_PATH = PATHS.app_db
 USER_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 from fastapi import Depends
@@ -61,49 +62,29 @@ class UserProfileUpdate(BaseModel):
 # ===== Database =====
 
 def init_db():
-    """Initialize the users database"""
+    """
+    Initialize the user_profiles table in app_db
+
+    Phase 0: user_profiles table stores profile data, separate from auth.users
+    which stores authentication credentials and roles.
+    """
     conn = sqlite3.connect(USER_DB_PATH)
     cursor = conn.cursor()
 
+    # Create user_profiles table (not 'users' - that's for auth)
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS users (
+        CREATE TABLE IF NOT EXISTS user_profiles (
             user_id TEXT PRIMARY KEY,
             display_name TEXT NOT NULL,
             device_name TEXT NOT NULL,
             created_at TEXT NOT NULL,
             avatar_color TEXT,
             bio TEXT,
-            role TEXT DEFAULT 'member',
             role_changed_at TEXT,
             role_changed_by TEXT,
-            job_role TEXT DEFAULT 'unassigned'
+            FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
         )
     """)
-
-    # Migrate existing users table if role column doesn't exist
-    cursor.execute("PRAGMA table_info(users)")
-    columns = [row[1] for row in cursor.fetchall()]
-
-    if 'role' not in columns:
-        cursor.execute("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'member'")
-        cursor.execute("ALTER TABLE users ADD COLUMN role_changed_at TEXT")
-        cursor.execute("ALTER TABLE users ADD COLUMN role_changed_by TEXT")
-
-        # Set first user as super_admin
-        cursor.execute("SELECT user_id FROM users LIMIT 1")
-        first_user = cursor.fetchone()
-        if first_user:
-            cursor.execute("""
-                UPDATE users
-                SET role = 'super_admin', role_changed_at = ?
-                WHERE user_id = ?
-            """, (datetime.utcnow().isoformat(), first_user[0]))
-            logger.info(f"Migrated first user to super_admin: {first_user[0]}")
-
-    # Migrate existing users table if job_role column doesn't exist
-    if 'job_role' not in columns:
-        cursor.execute("ALTER TABLE users ADD COLUMN job_role TEXT DEFAULT 'unassigned'")
-        logger.info("Added job_role column to users table")
 
     conn.commit()
     conn.close()
@@ -122,31 +103,51 @@ init_db()
 
 def get_or_create_user() -> UserProfile:
     """
-    Get the current user or create one if none exists.
-    ElohimOS is single-user per device, so we store one user profile.
+    Get the current user profile or create one if none exists.
+
+    Phase 0: Reads profile from user_profiles table, role/job_role from auth.users
     """
     conn = get_conn()
+    conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
-    cursor.execute("SELECT * FROM users LIMIT 1")
+    # Join user_profiles with auth.users to get role and job_role
+    cursor.execute("""
+        SELECT
+            p.user_id,
+            p.display_name,
+            p.device_name,
+            p.created_at,
+            p.avatar_color,
+            p.bio,
+            u.role,
+            p.role_changed_at,
+            p.role_changed_by,
+            u.job_role
+        FROM user_profiles p
+        LEFT JOIN users u ON p.user_id = u.user_id
+        LIMIT 1
+    """)
     row = cursor.fetchone()
 
     if row:
         conn.close()
         return UserProfile(
-            user_id=row[0],
-            display_name=row[1],
-            device_name=row[2],
-            created_at=row[3],
-            avatar_color=row[4],
-            bio=row[5],
-            role=row[6] if len(row) > 6 else "member",
-            role_changed_at=row[7] if len(row) > 7 else None,
-            role_changed_by=row[8] if len(row) > 8 else None,
-            job_role=row[9] if len(row) > 9 else "unassigned"
+            user_id=row['user_id'],
+            display_name=row['display_name'],
+            device_name=row['device_name'],
+            created_at=row['created_at'],
+            avatar_color=row['avatar_color'],
+            bio=row['bio'],
+            role=row['role'] or "member",
+            role_changed_at=row['role_changed_at'],
+            role_changed_by=row['role_changed_by'],
+            job_role=row['job_role'] or "unassigned"
         )
 
-    # Create new user
+    # No profile exists - create a default one
+    # Note: This should typically not happen in Phase 0 multi-user system
+    # as profiles should be created during registration
     user_id = str(uuid.uuid4())
     display_name = "Field Worker"
     device_name = os.uname().nodename if hasattr(os, 'uname') else "ElohimOS Device"
@@ -154,14 +155,14 @@ def get_or_create_user() -> UserProfile:
     avatar_color = "#3b82f6"  # Default blue
 
     cursor.execute("""
-        INSERT INTO users (user_id, display_name, device_name, created_at, avatar_color, role, job_role)
-        VALUES (?, ?, ?, ?, ?, 'super_admin', 'Super Admin')
+        INSERT INTO user_profiles (user_id, display_name, device_name, created_at, avatar_color)
+        VALUES (?, ?, ?, ?, ?)
     """, (user_id, display_name, device_name, created_at, avatar_color))
 
     conn.commit()
     conn.close()
 
-    logger.info(f"Created new user: {user_id} ({display_name})")
+    logger.info(f"Created new user profile: {user_id} ({display_name})")
 
     return UserProfile(
         user_id=user_id,
@@ -169,48 +170,54 @@ def get_or_create_user() -> UserProfile:
         device_name=device_name,
         created_at=created_at,
         avatar_color=avatar_color,
-        role="super_admin",
-        job_role="Super Admin"  # HARDCODED - Super Admin job role
+        role="member",
+        job_role="unassigned"
     )
 
 
 def update_user_profile(updates: Dict[str, Any]) -> UserProfile:
-    """Update the user profile"""
+    """
+    Update the user profile
+
+    Phase 0: Updates user_profiles table for profile fields, auth.users for job_role
+    """
     user = get_or_create_user()
 
     conn = get_conn()
     cursor = conn.cursor()
 
-    # Build UPDATE query dynamically
-    update_fields = []
-    values = []
+    # Build UPDATE query for user_profiles table
+    profile_fields = []
+    profile_values = []
 
     if 'display_name' in updates:
-        update_fields.append("display_name = ?")
-        values.append(updates['display_name'])
+        profile_fields.append("display_name = ?")
+        profile_values.append(updates['display_name'])
 
     if 'device_name' in updates:
-        update_fields.append("device_name = ?")
-        values.append(updates['device_name'])
+        profile_fields.append("device_name = ?")
+        profile_values.append(updates['device_name'])
 
     if 'avatar_color' in updates:
-        update_fields.append("avatar_color = ?")
-        values.append(updates['avatar_color'])
+        profile_fields.append("avatar_color = ?")
+        profile_values.append(updates['avatar_color'])
 
     if 'bio' in updates:
-        update_fields.append("bio = ?")
-        values.append(updates['bio'])
+        profile_fields.append("bio = ?")
+        profile_values.append(updates['bio'])
 
+    if profile_fields:
+        profile_values.append(user.user_id)
+        query = f"UPDATE user_profiles SET {', '.join(profile_fields)} WHERE user_id = ?"
+        cursor.execute(query, profile_values)
+
+    # Update job_role in auth.users table
     if 'job_role' in updates:
-        update_fields.append("job_role = ?")
-        values.append(updates['job_role'])
+        cursor.execute("""
+            UPDATE users SET job_role = ? WHERE user_id = ?
+        """, (updates['job_role'], user.user_id))
 
-    if update_fields:
-        values.append(user.user_id)
-        query = f"UPDATE users SET {', '.join(update_fields)} WHERE user_id = ?"
-        cursor.execute(query, values)
-        conn.commit()
-
+    conn.commit()
     conn.close()
 
     # Return updated user
@@ -233,13 +240,13 @@ async def update_current_user(request: Request, updates: UserProfileUpdate):
 
 @router.post("/reset")
 async def reset_user(request: Request):
-    """Reset user identity (for testing/dev)"""
+    """Reset user profile (for testing/dev) - Phase 0: only clears profiles, not auth"""
     conn = get_conn()
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM users")
+    cursor.execute("DELETE FROM user_profiles")
     conn.commit()
     conn.close()
 
-    # Create new user
+    # Create new user profile
     new_user = get_or_create_user()
-    return {"message": "User identity reset", "user": new_user}
+    return {"message": "User profile reset", "user": new_user}
