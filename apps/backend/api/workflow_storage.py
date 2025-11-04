@@ -84,6 +84,7 @@ class WorkflowStorage:
                 description TEXT,
                 icon TEXT,
                 category TEXT,
+                workflow_type TEXT DEFAULT 'team',  -- 'local' or 'team'
                 stages TEXT NOT NULL,  -- JSON
                 triggers TEXT NOT NULL,  -- JSON
                 enabled INTEGER DEFAULT 1,
@@ -207,16 +208,17 @@ class WorkflowStorage:
 
         cursor.execute("""
             INSERT OR REPLACE INTO workflows
-            (id, name, description, icon, category, stages, triggers, enabled,
+            (id, name, description, icon, category, workflow_type, stages, triggers, enabled,
              allow_manual_creation, require_approval_to_start, created_by,
              created_at, updated_at, version, tags, user_id, team_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             workflow.id,
             workflow.name,
             workflow.description,
             workflow.icon,
             workflow.category,
+            workflow.workflow_type.value,  # 'local' or 'team'
             json.dumps([s.model_dump() for s in workflow.stages]),
             json.dumps([t.model_dump() for t in workflow.triggers]),
             1 if workflow.enabled else 0,
@@ -280,7 +282,8 @@ class WorkflowStorage:
         user_id: str,
         category: Optional[str] = None,
         enabled_only: bool = True,
-        team_id: Optional[str] = None
+        team_id: Optional[str] = None,
+        workflow_type: Optional[str] = None
     ) -> List[Workflow]:
         """
         List all workflows (Phase 3: team-aware)
@@ -290,6 +293,7 @@ class WorkflowStorage:
             category: Filter by category
             enabled_only: Only return enabled workflows
             team_id: Optional team ID (None for personal workflows)
+            workflow_type: Filter by workflow type ('local' or 'team')
 
         Returns:
             List of workflows
@@ -314,6 +318,10 @@ class WorkflowStorage:
 
         if enabled_only:
             query += " AND enabled = 1"
+
+        if workflow_type:
+            query += " AND workflow_type = ?"
+            params.append(workflow_type)
 
         query += " ORDER BY created_at DESC"
 
@@ -534,8 +542,13 @@ class WorkflowStorage:
 
     def _row_to_workflow(self, row: sqlite3.Row) -> Workflow:
         """Convert database row to Workflow object"""
+        from .workflow_models import WorkflowType
         stages_data = json.loads(row['stages'])
         triggers_data = json.loads(row['triggers'])
+
+        # Handle workflow_type with backward compatibility
+        workflow_type_value = row.get('workflow_type', 'team')
+        workflow_type = WorkflowType.LOCAL_AUTOMATION if workflow_type_value == 'local' else WorkflowType.TEAM_WORKFLOW
 
         return Workflow(
             id=row['id'],
@@ -543,6 +556,7 @@ class WorkflowStorage:
             description=row['description'],
             icon=row['icon'],
             category=row['category'],
+            workflow_type=workflow_type,
             stages=[Stage(**s) for s in stages_data],
             triggers=[WorkflowTrigger(**t) for t in triggers_data],
             enabled=bool(row['enabled']),

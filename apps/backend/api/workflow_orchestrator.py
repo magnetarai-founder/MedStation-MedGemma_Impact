@@ -160,7 +160,8 @@ class WorkflowOrchestrator:
         user_id: str,
         category: Optional[str] = None,
         enabled_only: bool = False,
-        team_id: Optional[str] = None
+        team_id: Optional[str] = None,
+        workflow_type: Optional[str] = None
     ) -> List[Workflow]:
         """
         List all workflows for a user with optional filters (Phase 3: team-aware)
@@ -170,6 +171,7 @@ class WorkflowOrchestrator:
             category: Optional category filter
             enabled_only: Only return enabled workflows
             team_id: Optional team ID for team workflows
+            workflow_type: Filter by workflow type ('local' or 'team')
 
         Returns:
             List of workflows (team or personal based on team_id)
@@ -180,7 +182,8 @@ class WorkflowOrchestrator:
                 user_id=user_id,
                 category=category,
                 enabled_only=enabled_only,
-                team_id=team_id
+                team_id=team_id,
+                workflow_type=workflow_type
             )
             return workflows
 
@@ -192,6 +195,10 @@ class WorkflowOrchestrator:
             workflows = [w for w in workflows if w.category == category]
         if enabled_only:
             workflows = [w for w in workflows if w.enabled]
+        if workflow_type:
+            from .workflow_models import WorkflowType
+            workflow_type_enum = WorkflowType.LOCAL_AUTOMATION if workflow_type == 'local' else WorkflowType.TEAM_WORKFLOW
+            workflows = [w for w in workflows if w.workflow_type == workflow_type_enum]
 
         return workflows
 

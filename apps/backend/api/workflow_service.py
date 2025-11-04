@@ -30,6 +30,7 @@ try:
         StageType,
         AssignmentType,
         WorkflowTriggerType,
+        WorkflowType,
         CreateWorkItemRequest,
         ClaimWorkItemRequest,
         CompleteStageRequest,
@@ -47,6 +48,7 @@ except ImportError:
         StageType,
         AssignmentType,
         WorkflowTriggerType,
+        WorkflowType,
         CreateWorkItemRequest,
         ClaimWorkItemRequest,
         CompleteStageRequest,
@@ -127,6 +129,7 @@ async def create_workflow(
             description=body.description,
             icon=body.icon,
             category=body.category,
+            workflow_type=body.workflow_type or WorkflowType.TEAM_WORKFLOW,
             stages=[Stage(**stage) if isinstance(stage, dict) else Stage(**stage.model_dump()) for stage in body.stages],
             triggers=body.triggers,
             created_by=user_id,
@@ -151,6 +154,7 @@ async def list_workflows(
     category: Optional[str] = None,
     enabled_only: bool = True,
     team_id: Optional[str] = None,
+    workflow_type: Optional[str] = None,
     current_user: Dict = Depends(get_current_user)
 ):
     """
@@ -162,6 +166,8 @@ async def list_workflows(
     Args:
         category: Filter by category
         enabled_only: Only return enabled workflows
+        team_id: Optional team ID for team workflows
+        workflow_type: Filter by workflow type ('local' or 'team')
         current_user: Authenticated user
 
     Returns:
@@ -179,7 +185,8 @@ async def list_workflows(
         user_id=user_id,
         category=category,
         enabled_only=enabled_only,
-        team_id=team_id
+        team_id=team_id,
+        workflow_type=workflow_type
     )
 
     return workflows

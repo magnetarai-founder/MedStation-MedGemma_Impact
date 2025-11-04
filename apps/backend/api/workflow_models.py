@@ -92,6 +92,12 @@ class FieldType(str, Enum):
     URL = "url"
 
 
+class WorkflowType(str, Enum):
+    """Type of workflow"""
+    LOCAL_AUTOMATION = "local"  # n8n-style background automation
+    TEAM_WORKFLOW = "team"      # Stage-based human task routing
+
+
 # ============================================
 # FORM DEFINITIONS
 # ============================================
@@ -257,6 +263,9 @@ class Workflow(BaseModel):
     description: Optional[str] = None
     icon: Optional[str] = None         # Emoji or icon name
     category: Optional[str] = None     # "Healthcare", "Legal", "Marketing"
+
+    # Workflow type - determines UI and behavior
+    workflow_type: WorkflowType = WorkflowType.TEAM_WORKFLOW
 
     # Workflow structure
     stages: List[Stage]
@@ -570,5 +579,6 @@ class CreateWorkflowRequest(BaseModel):
     description: Optional[str] = None
     icon: Optional[str] = None
     category: Optional[str] = None
+    workflow_type: Optional[WorkflowType] = None  # Defaults to TEAM_WORKFLOW if not provided
     stages: List[Any]  # Will be converted to Stage objects
     triggers: List[Any]  # Will be converted to WorkflowTrigger objects
