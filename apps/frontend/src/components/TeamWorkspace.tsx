@@ -14,10 +14,11 @@ import { TeamChat } from './TeamChat'
 import { DocsWorkspace } from './DocsWorkspace'
 import { VaultSetup } from './VaultSetup'
 import { VaultWorkspace } from './VaultWorkspace'
+import { AutomationWorkspace } from './AutomationWorkspace'
 import { NetworkSelector } from './NetworkSelector'
 import { CreateTeamModal } from './CreateTeamModal'
 import { JoinTeamModal } from './JoinTeamModal'
-import { MessageSquare, FileText, Lock, Plus, UserPlus } from 'lucide-react'
+import { MessageSquare, FileText, Lock, Workflow, Plus, UserPlus } from 'lucide-react'
 
 export function TeamWorkspace() {
   const { workspaceView, setWorkspaceView, vaultSetupComplete, vaultUnlocked } = useDocsStore()
@@ -74,8 +75,23 @@ export function TeamWorkspace() {
             </button>
           )}
 
-          {/* Vertical Divider - only show if Docs or Vault are visible */}
-          {(permissions.canAccessDocuments || permissions.canAccessVault) && (
+          {/* Workflows Tab - Members and above only */}
+          {permissions.canAccessAutomation && (
+            <button
+              onClick={() => setWorkspaceView('workflows')}
+              className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-md transition-all ${
+                workspaceView === 'workflows'
+                  ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 font-medium'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+              }`}
+            >
+              <Workflow className="w-4 h-4" />
+              <span>Workflows</span>
+            </button>
+          )}
+
+          {/* Vertical Divider - only show if Vault is visible */}
+          {permissions.canAccessVault && (
             <div className="h-6 w-px bg-gray-300 dark:bg-gray-600 mx-2"></div>
           )}
 
@@ -120,6 +136,7 @@ export function TeamWorkspace() {
       <div className="flex-1 min-h-0">
         {workspaceView === 'chat' && <TeamChat mode={networkMode} />}
         {workspaceView === 'docs' && <DocsWorkspace />}
+        {workspaceView === 'workflows' && <AutomationWorkspace />}
         {workspaceView === 'vault' && <VaultWorkspace />}
       </div>
 

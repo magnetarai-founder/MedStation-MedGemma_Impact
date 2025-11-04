@@ -56,8 +56,8 @@ export interface SecuritySettings {
 
 interface DocsStore {
   // Current workspace view
-  workspaceView: 'chat' | 'docs' | 'vault'
-  setWorkspaceView: (view: 'chat' | 'docs' | 'vault') => void
+  workspaceView: 'chat' | 'docs' | 'workflows' | 'vault'
+  setWorkspaceView: (view: 'chat' | 'docs' | 'workflows' | 'vault') => void
 
   // Documents
   documents: Document[]
