@@ -239,6 +239,13 @@ async def delete_workflow(
 
     logger.info(f"🗑️  Deleted workflow: {workflow.name}")
 
+    # Persist change if storage is available
+    try:
+        if orchestrator.storage:
+            orchestrator.storage.save_workflow(workflow, user_id=user_id)
+    except Exception as e:
+        logger.error(f"Failed to persist workflow deletion: {e}")
+
     return {"status": "deleted", "workflow_id": workflow_id}
 
 
@@ -388,7 +395,8 @@ async def claim_work_item(
     """
     try:
         user_id = current_user["user_id"]
-        work_item = orchestrator.claim_work_item(work_item_id, user_id, user_id=user_id)
+        # Correct call signature (positional only)
+        work_item = orchestrator.claim_work_item(work_item_id, user_id)
         logger.info(f"👤 Work item {work_item_id} claimed by {user_id}")
 
         # Broadcast to P2P mesh
@@ -424,7 +432,8 @@ async def start_work(
     """
     try:
         user_id = current_user["user_id"]
-        work_item = orchestrator.start_work(work_item_id, user_id, user_id=user_id)
+        # Correct call signature (positional only)
+        work_item = orchestrator.start_work(work_item_id, user_id)
         logger.info(f"▶️  Work item {work_item_id} started by {user_id}")
         return work_item
 
@@ -528,6 +537,13 @@ async def cancel_work_item(
 
     logger.info(f"❌ Work item {work_item_id} cancelled by {user_id}")
 
+    # Persist cancellation
+    try:
+        if orchestrator.storage:
+            orchestrator.storage.save_work_item(work_item, user_id=user_id)
+    except Exception as e:
+        logger.error(f"Failed to persist work item cancellation: {e}")
+
     return work_item
 
 
@@ -588,7 +604,8 @@ async def get_my_active_work(
     if user_id != authenticated_user_id:
         raise HTTPException(status_code=403, detail="Access denied: Cannot view other users' work")
 
-    my_work = orchestrator.get_my_active_work(user_id, user_id=authenticated_user_id)
+    # Correct call signature
+    my_work = orchestrator.get_my_active_work(authenticated_user_id)
 
     logger.info(f"👤 My work for {user_id}: {len(my_work)} items")
 

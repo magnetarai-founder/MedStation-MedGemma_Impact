@@ -47,14 +47,24 @@ class WorkflowStorage:
     - attachments: File attachments
     """
 
-    def __init__(self, db_path: str = "data/workflows.db"):
+    def __init__(self, db_path: str | None = None):
         """
         Initialize storage
 
         Args:
             db_path: Path to SQLite database file
         """
-        self.db_path = Path(db_path)
+        # Prefer centralized data directory to keep consistency with the rest of the app
+        if db_path is None:
+            try:
+                from .config_paths import get_config_paths  # type: ignore
+            except Exception:
+                from config_paths import get_config_paths  # type: ignore
+            paths = get_config_paths()
+            # Use a dedicated workflows.db under the shared data dir to align with admin metrics
+            self.db_path = Path(paths.data_dir) / "workflows.db"
+        else:
+            self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Initialize database

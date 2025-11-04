@@ -8,6 +8,7 @@ import { WorkflowDesigner } from './WorkflowDesigner'
 import { ReactFlowProvider } from 'reactflow'
 import type { WorkItem, Workflow } from '../types/workflow'
 import { showToast, showUndoToast, showWorkflowNotification } from '@/lib/toast'
+import { useUserStore } from '@/stores/userStore'
 
 interface WorkflowTemplate {
   id: string
@@ -172,11 +173,12 @@ export function AutomationTab() {
   const [customCategory, setCustomCategory] = useState('')
   const [showCustomInput, setShowCustomInput] = useState(false)
 
-  // Mock user data (in production, get from auth context)
+  // Get real user from store
+  const { user } = useUserStore()
   const currentUser = {
-    id: 'user_1',
-    name: 'Current User',
-    role: 'intake_worker',
+    id: user?.user_id || 'unknown',
+    name: user?.display_name || 'User',
+    role: user?.job_role || user?.role || 'member',
   }
 
   // Auto-delete workflows older than 30 days
@@ -368,7 +370,10 @@ export function AutomationTab() {
       <WorkflowDesigner
         onSave={(workflow: Workflow) => {
           console.log('Workflow saved:', workflow)
-          setCurrentView('library')
+          // Set the saved workflow as selected for queue and switch to queue view
+          setSelectedWorkflowForQueue(workflow.id)
+          showToast.success(`Workflow "${workflow.name}" saved! Switching to queue view...`)
+          setCurrentView('queue')
         }}
         onCancel={() => {
           setCurrentView('library')
@@ -696,6 +701,19 @@ export function AutomationTab() {
                         className="p-1.5 bg-white dark:bg-gray-700 rounded-lg shadow-lg hover:scale-110 transition-transform"
                       >
                         <Pencil className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                      </button>
+
+                      {/* Use in Queue */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSelectedWorkflowForQueue(workflow.id)
+                          setCurrentView('queue')
+                          showToast.success(`Using "${workflow.name}" in queue view`)
+                        }}
+                        className="p-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-lg hover:scale-110 transition-transform"
+                      >
+                        <Briefcase className="w-4 h-4" />
                       </button>
                     </div>
                   )}

@@ -13,7 +13,13 @@ import type {
   CompleteStageRequest,
 } from '../types/workflow';
 
-const API_BASE = 'http://localhost:8000/api/v1/workflow';
+// Use relative base so it works with any backend port and in production
+const API_BASE = '/api/v1/workflow';
+
+function authHeaders(): HeadersInit {
+  const token = localStorage.getItem('auth_token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 // ============================================
 // WORKFLOW QUERIES
@@ -26,7 +32,7 @@ export function useWorkflows(category?: string) {
       const params = new URLSearchParams();
       if (category) params.append('category', category);
 
-      const res = await fetch(`${API_BASE}/workflows?${params}`);
+      const res = await fetch(`${API_BASE}/workflows?${params}` , { headers: { ...authHeaders() } });
       if (!res.ok) throw new Error('Failed to fetch workflows');
       return res.json() as Promise<Workflow[]>;
     },
@@ -37,7 +43,7 @@ export function useWorkflow(workflowId: string) {
   return useQuery({
     queryKey: ['workflow', workflowId],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/workflows/${workflowId}`);
+      const res = await fetch(`${API_BASE}/workflows/${workflowId}`, { headers: { ...authHeaders() } });
       if (!res.ok) throw new Error('Failed to fetch workflow');
       return res.json() as Promise<Workflow>;
     },
@@ -52,7 +58,7 @@ export function useCreateWorkflow() {
     mutationFn: async (workflow: Partial<Workflow> & { created_by: string }) => {
       const res = await fetch(`${API_BASE}/workflows?created_by=${workflow.created_by}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({
           name: workflow.name,
           description: workflow.description,
@@ -97,7 +103,7 @@ export function useWorkItems(filters?: {
       if (filters?.priority) params.append('priority', filters.priority);
       if (filters?.limit) params.append('limit', filters.limit.toString());
 
-      const res = await fetch(`${API_BASE}/work-items?${params}`);
+      const res = await fetch(`${API_BASE}/work-items?${params}`, { headers: { ...authHeaders() } });
       if (!res.ok) throw new Error('Failed to fetch work items');
       return res.json() as Promise<WorkItem[]>;
     },
@@ -109,7 +115,7 @@ export function useWorkItem(workItemId: string) {
   return useQuery({
     queryKey: ['workItem', workItemId],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/work-items/${workItemId}`);
+      const res = await fetch(`${API_BASE}/work-items/${workItemId}`, { headers: { ...authHeaders() } });
       if (!res.ok) throw new Error('Failed to fetch work item');
       return res.json() as Promise<WorkItem>;
     },
@@ -129,7 +135,7 @@ export function useQueueForRole(workflowId: string, roleName: string, stageId?: 
       const params = new URLSearchParams();
       if (stageId) params.append('stage_id', stageId);
 
-      const res = await fetch(`${API_BASE}/queues/${workflowId}/role/${roleName}?${params}`);
+      const res = await fetch(`${API_BASE}/queues/${workflowId}/role/${roleName}?${params}`, { headers: { ...authHeaders() } });
       if (!res.ok) throw new Error('Failed to fetch queue');
       return res.json() as Promise<WorkItem[]>;
     },
@@ -142,7 +148,7 @@ export function useMyActiveWork(userId: string) {
   return useQuery({
     queryKey: ['myWork', userId],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/my-work/${userId}`);
+      const res = await fetch(`${API_BASE}/my-work/${userId}`, { headers: { ...authHeaders() } });
       if (!res.ok) throw new Error('Failed to fetch my work');
       return res.json() as Promise<WorkItem[]>;
     },
@@ -155,7 +161,7 @@ export function useOverdueItems() {
   return useQuery({
     queryKey: ['overdueItems'],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/overdue`);
+      const res = await fetch(`${API_BASE}/overdue`, { headers: { ...authHeaders() } });
       if (!res.ok) throw new Error('Failed to fetch overdue items');
       return res.json() as Promise<WorkItem[]>;
     },
@@ -167,7 +173,7 @@ export function useWorkflowStatistics(workflowId: string) {
   return useQuery({
     queryKey: ['workflowStats', workflowId],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/statistics/${workflowId}`);
+      const res = await fetch(`${API_BASE}/statistics/${workflowId}`, { headers: { ...authHeaders() } });
       if (!res.ok) throw new Error('Failed to fetch statistics');
       return res.json();
     },
@@ -187,7 +193,7 @@ export function useCreateWorkItem() {
     mutationFn: async (request: CreateWorkItemRequest & { createdBy: string }) => {
       const res = await fetch(`${API_BASE}/work-items?created_by=${request.createdBy}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({
           workflow_id: request.workflow_id,
           data: request.data,
@@ -217,6 +223,7 @@ export function useClaimWorkItem() {
     mutationFn: async ({ workItemId, userId }: { workItemId: string; userId: string }) => {
       const res = await fetch(`${API_BASE}/work-items/${workItemId}/claim?user_id=${userId}`, {
         method: 'POST',
+        headers: { ...authHeaders() },
       });
 
       if (!res.ok) {
@@ -241,6 +248,7 @@ export function useStartWork() {
     mutationFn: async ({ workItemId, userId }: { workItemId: string; userId: string }) => {
       const res = await fetch(`${API_BASE}/work-items/${workItemId}/start?user_id=${userId}`, {
         method: 'POST',
+        headers: { ...authHeaders() },
       });
 
       if (!res.ok) {
@@ -264,7 +272,7 @@ export function useCompleteStage() {
     mutationFn: async (request: CompleteStageRequest & { userId: string }) => {
       const res = await fetch(`${API_BASE}/work-items/${request.work_item_id}/complete?user_id=${request.userId}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({
           work_item_id: request.work_item_id,
           stage_id: request.stage_id,
@@ -304,6 +312,7 @@ export function useCancelWorkItem() {
 
       const res = await fetch(`${API_BASE}/work-items/${workItemId}/cancel?${params}`, {
         method: 'POST',
+        headers: { ...authHeaders() },
       });
 
       if (!res.ok) {
