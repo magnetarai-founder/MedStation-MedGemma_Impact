@@ -111,6 +111,12 @@ class NeutronChatMemory:
             )
         """)
 
+        # Phase 5: Add team_id column if it doesn't exist (migration for existing DBs)
+        try:
+            conn.execute("ALTER TABLE chat_sessions ADD COLUMN team_id TEXT")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
         # Full message history
         conn.execute("""
             CREATE TABLE IF NOT EXISTS chat_messages (
@@ -128,6 +134,12 @@ class NeutronChatMemory:
             )
         """)
 
+        # Phase 5: Add team_id column if it doesn't exist
+        try:
+            conn.execute("ALTER TABLE chat_messages ADD COLUMN team_id TEXT")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
         # Conversation summaries (rolling window)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS conversation_summaries (
@@ -143,6 +155,12 @@ class NeutronChatMemory:
                 FOREIGN KEY (session_id) REFERENCES chat_sessions(id)
             )
         """)
+
+        # Phase 5: Add team_id column if it doesn't exist
+        try:
+            conn.execute("ALTER TABLE conversation_summaries ADD COLUMN team_id TEXT")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
 
         # Document chunks for RAG
         conn.execute("""
@@ -162,6 +180,12 @@ class NeutronChatMemory:
             )
         """)
 
+        # Phase 5: Add team_id column if it doesn't exist
+        try:
+            conn.execute("ALTER TABLE document_chunks ADD COLUMN team_id TEXT")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
         # Embeddings for semantic search
         conn.execute("""
             CREATE TABLE IF NOT EXISTS message_embeddings (
@@ -175,6 +199,12 @@ class NeutronChatMemory:
                 FOREIGN KEY (session_id) REFERENCES chat_sessions(id)
             )
         """)
+
+        # Phase 5: Add team_id column if it doesn't exist
+        try:
+            conn.execute("ALTER TABLE message_embeddings ADD COLUMN team_id TEXT")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
 
         # Create indexes
         conn.execute("CREATE INDEX IF NOT EXISTS idx_messages_session ON chat_messages(session_id)")
@@ -311,7 +341,7 @@ class NeutronChatMemory:
                 "updated_at": row["updated_at"],
                 "model": row["default_model"],
                 "message_count": row["message_count"],
-                "team_id": row.get("team_id")  # Phase 5
+                "team_id": row["team_id"] if "team_id" in row.keys() else None  # Phase 5
             })
 
         return sessions

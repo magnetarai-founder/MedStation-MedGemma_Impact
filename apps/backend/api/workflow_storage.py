@@ -163,6 +163,13 @@ class WorkflowStorage:
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_attachments_user ON attachments(user_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_transitions_work_item ON stage_transitions(work_item_id)")
 
+        # Phase 3.5: Add team_id columns if they don't exist (migration for existing DBs)
+        for table in ["workflows", "work_items", "stage_transitions", "attachments"]:
+            try:
+                cursor.execute(f"ALTER TABLE {table} ADD COLUMN team_id TEXT")
+            except sqlite3.OperationalError:
+                pass  # Column already exists
+
         # Phase 3: Team isolation indexes
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_workflows_team ON workflows(team_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_work_items_team ON work_items(team_id)")
