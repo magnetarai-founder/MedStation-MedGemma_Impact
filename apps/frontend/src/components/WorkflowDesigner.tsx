@@ -365,7 +365,7 @@ export function WorkflowDesigner({ workflowId, onSave, onCancel }: WorkflowDesig
       </div>
 
       {/* Main Canvas - Stage Editor */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden min-w-0">
         {selectedStage ? (
           <StageEditor
             stage={selectedStage}
@@ -456,9 +456,9 @@ function StageEditor({ stage, allStages, onUpdate, onDelete, onAddRoute, onRemov
       </div>
 
       {/* Tab Content */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden">
         {activeTab === 'basic' && (
-          <div className="p-6 max-w-4xl">
+          <div className="p-6 max-w-4xl mx-auto w-full">
             <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
               <h3 className="font-semibold mb-4">Basic Information</h3>
 
