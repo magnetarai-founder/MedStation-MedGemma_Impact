@@ -16,6 +16,7 @@ import type { AutomationType } from './AutomationWorkspace'
 
 interface WorkflowTreeSidebarProps {
   automationType: AutomationType
+  onAutomationTypeChange: (type: AutomationType) => void
   selectedWorkflowId?: string
   onWorkflowSelect: (workflow: Workflow) => void
   onViewQueue: () => void
@@ -23,6 +24,7 @@ interface WorkflowTreeSidebarProps {
 
 export function WorkflowTreeSidebar({
   automationType,
+  onAutomationTypeChange,
   selectedWorkflowId,
   onWorkflowSelect,
   onViewQueue
@@ -49,6 +51,45 @@ export function WorkflowTreeSidebar({
 
   return (
     <div className="w-64 border-r border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30 flex flex-col">
+      {/* Tabs - Local vs Team */}
+      <div className="border-b border-gray-200 dark:border-gray-700">
+        <div className="flex">
+          <button
+            onClick={() => onAutomationTypeChange('local')}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors relative ${
+              automationType === 'local'
+                ? 'text-blue-600 dark:text-blue-400'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+            }`}
+          >
+            <div className="flex items-center justify-center gap-2">
+              <Zap className="w-4 h-4" />
+              <span>Local</span>
+            </div>
+            {automationType === 'local' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
+            )}
+          </button>
+          <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 self-center" />
+          <button
+            onClick={() => onAutomationTypeChange('team')}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors relative ${
+              automationType === 'team'
+                ? 'text-purple-600 dark:text-purple-400'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+            }`}
+          >
+            <div className="flex items-center justify-center gap-2">
+              <Users className="w-4 h-4" />
+              <span>Team</span>
+            </div>
+            {automationType === 'team' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600 dark:bg-purple-400" />
+            )}
+          </button>
+        </div>
+      </div>
+
       {/* Workflows Section */}
       <div className="flex-1 overflow-y-auto p-2">
         <div className="mb-2">

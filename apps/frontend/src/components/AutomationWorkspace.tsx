@@ -149,37 +149,9 @@ export function AutomationWorkspace() {
 
   return (
     <div className="h-full w-full flex flex-col">
-      {/* Automation Type Selector */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30">
-        {/* Type Selector */}
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
-          <button
-            onClick={() => handleTypeChange('local')}
-            className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-md transition-all ${
-              automationType === 'local'
-                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-medium'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'
-            }`}
-          >
-            <Zap className="w-4 h-4" />
-            <span>Local Automation</span>
-          </button>
-          <div className="h-6 w-px bg-gray-300 dark:bg-gray-600"></div>
-          <button
-            onClick={() => handleTypeChange('team')}
-            className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-md transition-all ${
-              automationType === 'team'
-                ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 font-medium'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            <span>Team Workflow</span>
-          </button>
-        </div>
-
-        {/* View Actions - Only show for Team Workflow */}
-        {automationType === 'team' && currentView !== 'dashboard' && (
+      {/* View Actions - Only show for Team Workflow when not on dashboard */}
+      {automationType === 'team' && currentView !== 'dashboard' && (
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30">
           <div className="ml-auto flex items-center gap-2">
             <button
               onClick={() => setCurrentView('dashboard')}
@@ -202,14 +174,15 @@ export function AutomationWorkspace() {
               </button>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Two-pane layout */}
       <div className="flex-1 flex min-h-0">
         {/* Left Pane - Workflow Tree */}
         <WorkflowTreeSidebar
           automationType={automationType}
+          onAutomationTypeChange={handleTypeChange}
           selectedWorkflowId={selectedWorkflow?.id}
           onWorkflowSelect={handleWorkflowSelect}
           onViewQueue={() => setCurrentView('queue')}
