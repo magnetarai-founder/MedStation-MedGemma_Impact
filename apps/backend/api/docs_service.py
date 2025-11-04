@@ -377,23 +377,44 @@ async def get_document(
 
 
 @router.patch("/documents/{doc_id}", response_model=Document)
-@require_perm("docs.update", level="write")
+@require_perm_team("docs.update", level="write")
 async def update_document(
     doc_id: str,
     updates: DocumentUpdate,
+    team_id: Optional[str] = None,
     current_user: Dict = Depends(get_current_user)
 ):
-    """Update a document (partial update - user must own it)"""
-    conn = get_db()
-    cursor = conn.cursor()
+    """
+    Update a document (partial update, Phase 3: team-aware)
+
+    - For personal documents: user must own it
+    - For team documents: user must be team member
+    """
     user_id = current_user["user_id"]
 
+    # Phase 3: Check team membership if updating team document
+    if team_id:
+        if not is_team_member(team_id, user_id):
+            raise HTTPException(status_code=403, detail="Not a member of this team")
+
+    conn = get_db()
+    cursor = conn.cursor()
+
     try:
-        # Check if document exists and user owns it
-        cursor.execute("""
-            SELECT * FROM documents
-            WHERE id = ? AND created_by = ?
-        """, (doc_id, user_id))
+        # Phase 3: Check if document exists with team context
+        if team_id:
+            # Team document: verify team_id matches
+            cursor.execute("""
+                SELECT * FROM documents
+                WHERE id = ? AND team_id = ?
+            """, (doc_id, team_id))
+        else:
+            # Personal document: verify ownership and team_id IS NULL
+            cursor.execute("""
+                SELECT * FROM documents
+                WHERE id = ? AND created_by = ? AND team_id IS NULL
+            """, (doc_id, user_id))
+
         row = cursor.fetchone()
 
         if not row:
@@ -429,20 +450,34 @@ async def update_document(
         values.append(now)
 
         values.append(doc_id)
-        values.append(user_id)
 
-        cursor.execute(
-            f"UPDATE documents SET {', '.join(update_fields)} WHERE id = ? AND created_by = ?",
-            values
-        )
+        # Phase 3: Update with team context
+        if team_id:
+            cursor.execute(
+                f"UPDATE documents SET {', '.join(update_fields)} WHERE id = ? AND team_id = ?",
+                values + [team_id]
+            )
+        else:
+            values.append(user_id)
+            cursor.execute(
+                f"UPDATE documents SET {', '.join(update_fields)} WHERE id = ? AND created_by = ? AND team_id IS NULL",
+                values
+            )
 
         conn.commit()
 
-        # Return updated document (verify ownership)
-        cursor.execute("""
-            SELECT * FROM documents
-            WHERE id = ? AND created_by = ?
-        """, (doc_id, user_id))
+        # Return updated document (verify context)
+        if team_id:
+            cursor.execute("""
+                SELECT * FROM documents
+                WHERE id = ? AND team_id = ?
+            """, (doc_id, team_id))
+        else:
+            cursor.execute("""
+                SELECT * FROM documents
+                WHERE id = ? AND created_by = ? AND team_id IS NULL
+            """, (doc_id, user_id))
+
         row = cursor.fetchone()
 
         return Document(

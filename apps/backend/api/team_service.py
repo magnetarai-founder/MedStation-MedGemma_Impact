@@ -2918,6 +2918,169 @@ def get_team_manager() -> TeamManager:
 
 # API Routes
 
+# ---- Phase 3 endpoints using app_db ----
+
+class InviteRequest(BaseModel):
+    email_or_username: str
+    role: str = "member"
+
+
+@router.post("/", response_model=TeamResponse)
+@require_perm("system.manage_users")
+async def create_team_v3(
+    request: Request,
+    body: CreateTeamRequest,
+    current_user: Dict = Depends(get_current_user)
+):
+    """Create a new team in app_db; creator becomes super_admin."""
+    import uuid
+    team_id = f"team_{uuid.uuid4().hex[:12]}"
+    now = datetime.utcnow().isoformat()
+
+    conn = _get_app_conn()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            INSERT INTO teams (team_id, name, created_by, created_at, is_active)
+            VALUES (?, ?, ?, ?, 1)
+            """,
+            (team_id, body.name, current_user["user_id"], now),
+        )
+        cur.execute(
+            """
+            INSERT INTO team_members (team_id, user_id, role, job_role, joined_at, is_active)
+            VALUES (?, ?, 'super_admin', ?, ?, 1)
+            """,
+            (team_id, current_user["user_id"], body.description or None, now),
+        )
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to create team: {e}")
+    finally:
+        conn.close()
+
+    audit_log_sync(
+        user_id=current_user["user_id"],
+        action=AuditAction.USER_CREATED,
+        resource="team",
+        resource_id=team_id,
+        details={"name": body.name},
+    )
+
+    return TeamResponse(
+        team_id=team_id,
+        name=body.name,
+        description=body.description,
+        created_at=now,
+        created_by=current_user["user_id"],
+        invite_code="",
+    )
+
+
+@router.post("/{team_id}/invites")
+@require_perm("team.use")
+async def invite_to_team_v3(
+    request: Request,
+    team_id: str,
+    body: InviteRequest,
+    current_user: Dict = Depends(get_current_user)
+):
+    """Create a pending invite in app_db.team_invites (7 day expiry)."""
+    require_team_admin(team_id, current_user["user_id"])
+    import uuid
+    invite_id = f"invite_{uuid.uuid4().hex[:12]}"
+    now = datetime.utcnow().isoformat()
+    expires = (datetime.utcnow() + timedelta(days=7)).isoformat()
+
+    conn = _get_app_conn()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            INSERT INTO team_invites (
+                invite_id, team_id, email_or_username, role,
+                invited_by, invited_at, expires_at, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+            """,
+            (invite_id, team_id, body.email_or_username, body.role, current_user["user_id"], now, expires),
+        )
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to create invite: {e}")
+    finally:
+        conn.close()
+
+    audit_log_sync(
+        user_id=current_user["user_id"],
+        action="team.invite.created",
+        resource="team",
+        resource_id=team_id,
+        details={"invite_id": invite_id, "role": body.role, "target": body.email_or_username},
+    )
+
+    return {"invite_id": invite_id, "team_id": team_id, "expires_at": expires}
+
+
+@router.post("/invites/{invite_id}/accept")
+async def accept_invite_v3(
+    request: Request,
+    invite_id: str,
+    current_user: Dict = Depends(get_current_user)
+):
+    """Accept an invite; add to team_members and mark invite accepted."""
+    now = datetime.utcnow().isoformat()
+    conn = _get_app_conn()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            SELECT invite_id, team_id, role, expires_at, status
+            FROM team_invites WHERE invite_id = ?
+            """,
+            (invite_id,),
+        )
+        inv = cur.fetchone()
+        if not inv:
+            raise HTTPException(status_code=404, detail="Invite not found")
+        if inv["status"] != "pending":
+            raise HTTPException(status_code=400, detail="Invite not pending")
+        if inv["expires_at"] <= datetime.utcnow().isoformat():
+            raise HTTPException(status_code=400, detail="Invite expired")
+
+        # Add member if not exists
+        cur.execute(
+            """
+            INSERT OR IGNORE INTO team_members (team_id, user_id, role, joined_at, is_active)
+            VALUES (?, ?, ?, ?, 1)
+            """,
+            (inv["team_id"], current_user["user_id"], inv["role"], now),
+        )
+        # Update invite status
+        cur.execute("UPDATE team_invites SET status='accepted' WHERE invite_id = ?", (invite_id,))
+        conn.commit()
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to accept invite: {e}")
+    finally:
+        conn.close()
+
+    # Invalidate permission cache for user across contexts
+    get_permission_engine().invalidate_user_permissions(current_user["user_id"])
+    audit_log_sync(
+        user_id=current_user["user_id"],
+        action="team.invite.accepted",
+        resource="team",
+        resource_id=inv["team_id"],
+        details={"invite_id": invite_id, "role": inv["role"]},
+    )
+    return {"team_id": inv["team_id"], "role": inv["role"]}
+
 @router.post("/create", response_model=TeamResponse)
 async def create_team(request: CreateTeamRequest):
     """
@@ -2952,17 +3115,129 @@ async def get_team(team_id: str):
 
 
 @router.get("/{team_id}/members")
-async def get_team_members(team_id: str):
-    """Get all members of a team"""
-    team_manager = get_team_manager()
+@require_perm("team.use")
+async def get_team_members_v3(
+    team_id: str,
+    current_user: Dict = Depends(get_current_user)
+):
+    """Get team members from app_db (requires team admin or founder)."""
+    # Allow founder regardless of membership; else require admin/super_admin
+    if current_user.get("role") != "founder_rights":
+        require_team_admin(team_id, current_user["user_id"])
 
-    # Verify team exists
-    team = team_manager.get_team(team_id)
-    if not team:
-        raise HTTPException(status_code=404, detail="Team not found")
+    conn = _get_app_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT tm.user_id, u.username, tm.role, tm.joined_at
+        FROM team_members tm
+        LEFT JOIN users u ON tm.user_id = u.user_id
+        WHERE tm.team_id = ? AND tm.is_active = 1
+        ORDER BY tm.joined_at DESC
+        """,
+        (team_id,),
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return [
+        {
+            "user_id": r["user_id"],
+            "username": r["username"] or r["user_id"],
+            "role": r["role"],
+            "joined_at": r["joined_at"],
+        }
+        for r in rows
+    ]
 
-    members = team_manager.get_team_members(team_id)
-    return {"team_id": team_id, "members": members}
+
+class ChangeRoleBody(BaseModel):
+    role: str
+
+
+@router.put("/{team_id}/members/{user_id}/role")
+@require_perm("team.use")
+async def change_member_role_v3(
+    request: Request,
+    team_id: str,
+    user_id: str,
+    body: ChangeRoleBody,
+    current_user: Dict = Depends(get_current_user)
+):
+    """Change a member's role (team super_admin or founder)."""
+    if current_user.get("role") != "founder_rights":
+        # Only team super_admin can change roles
+        caller_role = is_team_member(team_id, current_user["user_id"])
+        if caller_role != "super_admin":
+            raise HTTPException(status_code=403, detail="Team super_admin required")
+
+    conn = _get_app_conn()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            UPDATE team_members SET role = ?
+            WHERE team_id = ? AND user_id = ? AND is_active = 1
+            """,
+            (body.role, team_id, user_id),
+        )
+        if cur.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Member not found")
+        conn.commit()
+    except HTTPException:
+        conn.rollback(); raise
+    except Exception as e:
+        conn.rollback(); raise HTTPException(status_code=500, detail=f"Failed to update role: {e}")
+    finally:
+        conn.close()
+
+    get_permission_engine().invalidate_user_permissions(user_id)
+    audit_log_sync(
+        user_id=current_user["user_id"],
+        action="team.member.role.changed",
+        resource="team",
+        resource_id=team_id,
+        details={"member": user_id, "new_role": body.role},
+    )
+    return {"user_id": user_id, "new_role": body.role}
+
+
+@router.delete("/{team_id}/members/{user_id}")
+@require_perm("team.use")
+async def remove_member_v3(
+    request: Request,
+    team_id: str,
+    user_id: str,
+    current_user: Dict = Depends(get_current_user)
+):
+    """Remove a team member (team super_admin or founder)."""
+    if current_user.get("role") != "founder_rights":
+        caller_role = is_team_member(team_id, current_user["user_id"])
+        if caller_role != "super_admin":
+            raise HTTPException(status_code=403, detail="Team super_admin required")
+
+    conn = _get_app_conn()
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM team_members WHERE team_id = ? AND user_id = ?", (team_id, user_id))
+        if cur.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Member not found")
+        conn.commit()
+    except HTTPException:
+        conn.rollback(); raise
+    except Exception as e:
+        conn.rollback(); raise HTTPException(status_code=500, detail=f"Failed to remove member: {e}")
+    finally:
+        conn.close()
+
+    get_permission_engine().invalidate_user_permissions(user_id)
+    audit_log_sync(
+        user_id=current_user["user_id"],
+        action="team.member.removed",
+        resource="team",
+        resource_id=team_id,
+        details={"member": user_id},
+    )
+    return {"status": "removed"}
 
 
 @router.get("/user/{user_id}/teams")
