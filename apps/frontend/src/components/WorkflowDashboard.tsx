@@ -8,7 +8,7 @@
  */
 
 import { Plus, Star, Clock, Zap, Users } from 'lucide-react'
-import { useWorkflows } from '@/hooks/useWorkflowQueue'
+import { useWorkflows, useStarredWorkflows, useStarWorkflow, useUnstarWorkflow } from '@/hooks/useWorkflowQueue'
 import type { Workflow } from '@/types/workflow'
 import type { AutomationType } from './AutomationWorkspace'
 
@@ -25,10 +25,30 @@ export function WorkflowDashboard({
 }: WorkflowDashboardProps) {
   // Fetch workflows from backend filtered by type
   const { data: workflows = [], isLoading } = useWorkflows({ workflow_type: automationType })
+  const { data: starredIds = [] } = useStarredWorkflows(automationType)
+  const starMutation = useStarWorkflow()
+  const unstarMutation = useUnstarWorkflow()
 
-  // TODO: Add starred filtering once starring functionality is implemented
-  const starredWorkflows: Workflow[] = []
-  const recentWorkflows: Workflow[] = workflows.slice(0, 10) // Show most recent 10
+  // Filter starred and recent workflows
+  const starredWorkflows: Workflow[] = workflows.filter(w => starredIds.includes(w.id))
+  const recentWorkflows: Workflow[] = workflows.filter(w => !starredIds.includes(w.id)).slice(0, 10)
+
+  const handleToggleStar = async (e: React.MouseEvent, workflowId: string) => {
+    e.stopPropagation()
+
+    const isStarred = starredIds.includes(workflowId)
+
+    try {
+      if (isStarred) {
+        await unstarMutation.mutateAsync(workflowId)
+      } else {
+        await starMutation.mutateAsync(workflowId)
+      }
+    } catch (error) {
+      console.error('Failed to toggle star:', error)
+      alert(error instanceof Error ? error.message : 'Failed to update star status')
+    }
+  }
 
   const typeColor = automationType === 'local'
     ? 'blue'
@@ -69,7 +89,7 @@ export function WorkflowDashboard({
                 <button
                   key={workflow.id}
                   onClick={() => onWorkflowSelect(workflow)}
-                  className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-lg hover:border-primary-300 dark:hover:border-primary-600 transition-all text-left"
+                  className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-lg hover:border-primary-300 dark:hover:border-primary-600 transition-all text-left relative group"
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className={`p-2 bg-${typeColor}-100 dark:bg-${typeColor}-900/30 rounded-lg`}>
@@ -79,7 +99,13 @@ export function WorkflowDashboard({
                         <Users className={`w-4 h-4 text-${typeColor}-600 dark:text-${typeColor}-400`} />
                       )}
                     </div>
-                    <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                    <button
+                      onClick={(e) => handleToggleStar(e, workflow.id)}
+                      className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                      disabled={starMutation.isPending || unstarMutation.isPending}
+                    >
+                      <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                    </button>
                   </div>
                   <h3 className="font-medium text-sm text-gray-900 dark:text-gray-100 mb-1 truncate">
                     {workflow.name}
@@ -105,14 +131,23 @@ export function WorkflowDashboard({
                 <button
                   key={workflow.id}
                   onClick={() => onWorkflowSelect(workflow)}
-                  className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-lg hover:border-primary-300 dark:hover:border-primary-600 transition-all text-left"
+                  className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-lg hover:border-primary-300 dark:hover:border-primary-600 transition-all text-left relative group"
                 >
-                  <div className={`p-2 bg-${typeColor}-100 dark:bg-${typeColor}-900/30 rounded-lg mb-2`}>
-                    {automationType === 'local' ? (
-                      <Zap className={`w-4 h-4 text-${typeColor}-600 dark:text-${typeColor}-400`} />
-                    ) : (
-                      <Users className={`w-4 h-4 text-${typeColor}-600 dark:text-${typeColor}-400`} />
-                    )}
+                  <div className="flex items-start justify-between mb-2">
+                    <div className={`p-2 bg-${typeColor}-100 dark:bg-${typeColor}-900/30 rounded-lg`}>
+                      {automationType === 'local' ? (
+                        <Zap className={`w-4 h-4 text-${typeColor}-600 dark:text-${typeColor}-400`} />
+                      ) : (
+                        <Users className={`w-4 h-4 text-${typeColor}-600 dark:text-${typeColor}-400`} />
+                      )}
+                    </div>
+                    <button
+                      onClick={(e) => handleToggleStar(e, workflow.id)}
+                      className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors opacity-0 group-hover:opacity-100"
+                      disabled={starMutation.isPending || unstarMutation.isPending}
+                    >
+                      <Star className="w-4 h-4 text-gray-400 hover:text-yellow-400" />
+                    </button>
                   </div>
                   <h3 className="font-medium text-sm text-gray-900 dark:text-gray-100 mb-1 truncate">
                     {workflow.name}

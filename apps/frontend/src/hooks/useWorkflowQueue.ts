@@ -331,3 +331,70 @@ export function useCancelWorkItem() {
     },
   });
 }
+
+// ============================================
+// STARRING FUNCTIONALITY
+// ============================================
+
+export function useStarredWorkflows(workflow_type?: 'local' | 'team') {
+  return useQuery({
+    queryKey: ['starredWorkflows', workflow_type],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (workflow_type) params.append('workflow_type', workflow_type);
+
+      const res = await fetch(`${API_BASE}/workflows/starred/list?${params}`, { headers: { ...authHeaders() } });
+      if (!res.ok) throw new Error('Failed to fetch starred workflows');
+      const data = await res.json();
+      return data.starred_workflows as string[];
+    },
+  });
+}
+
+export function useStarWorkflow() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (workflowId: string) => {
+      const res = await fetch(`${API_BASE}/workflows/${workflowId}/star`, {
+        method: 'POST',
+        headers: { ...authHeaders() },
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.detail || 'Failed to star workflow');
+      }
+
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['starredWorkflows'] });
+      queryClient.invalidateQueries({ queryKey: ['workflows'] });
+    },
+  });
+}
+
+export function useUnstarWorkflow() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (workflowId: string) => {
+      const res = await fetch(`${API_BASE}/workflows/${workflowId}/star`, {
+        method: 'DELETE',
+        headers: { ...authHeaders() },
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.detail || 'Failed to unstar workflow');
+      }
+
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['starredWorkflows'] });
+      queryClient.invalidateQueries({ queryKey: ['workflows'] });
+    },
+  });
+}
