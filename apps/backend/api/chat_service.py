@@ -172,7 +172,7 @@ class ChatStorage:
     """Memory-based chat storage using NeutronChatMemory"""
 
     @staticmethod
-    async def create_session(title: str, model: str, user_id: str) -> ChatSession:
+    async def create_session(title: str, model: str, user_id: str, team_id: Optional[str] = None) -> ChatSession:
         """Create a new chat session for user"""
         chat_id = f"chat_{uuid.uuid4().hex[:12]}"
 
@@ -181,19 +181,21 @@ class ChatStorage:
             chat_id,
             title,
             model,
-            user_id  # Pass user_id to memory
+            user_id,  # Pass user_id to memory
+            team_id
         )
 
         return ChatSession(**session_data)
 
     @staticmethod
-    async def get_session(chat_id: str, user_id: str, role: str = None) -> Optional[ChatSession]:
+    async def get_session(chat_id: str, user_id: str, role: str = None, team_id: Optional[str] = None) -> Optional[ChatSession]:
         """Get session by ID (user-filtered unless God Rights)"""
         session_data = await asyncio.to_thread(
             memory.get_session,
             chat_id,
             user_id=user_id,
-            role=role
+            role=role,
+            team_id=team_id
         )
 
         if not session_data:
@@ -202,12 +204,13 @@ class ChatStorage:
         return ChatSession(**session_data)
 
     @staticmethod
-    async def list_sessions(user_id: str, role: str = None) -> List[ChatSession]:
+    async def list_sessions(user_id: str, role: str = None, team_id: Optional[str] = None) -> List[ChatSession]:
         """List all chat sessions for user (God Rights sees all)"""
         sessions_data = await asyncio.to_thread(
             memory.list_sessions,
             user_id=user_id,
-            role=role
+            role=role,
+            team_id=team_id
         )
         return [ChatSession(**s) for s in sessions_data]
 
@@ -395,6 +398,10 @@ try:
     from api.auth_middleware import get_current_user
 except ImportError:
     from auth_middleware import get_current_user
+try:
+    from api.permission_engine import require_perm_team
+except ImportError:
+    from permission_engine import require_perm_team
 
 # Import utils
 try:
@@ -418,22 +425,26 @@ ollama_client = OllamaClient()
 
 
 @router.post("/sessions", response_model=ChatSession)
-async def create_chat_session(request: Request, body: CreateChatRequest, current_user: Dict = Depends(get_current_user)):
+@require_perm_team("chat.use")
+async def create_chat_session(request: Request, body: CreateChatRequest, team_id: Optional[str] = None, current_user: Dict = Depends(get_current_user)):
     """Create a new chat session"""
     session = await ChatStorage.create_session(
         title=body.title or "New Chat",
         model=body.model or "qwen2.5-coder:7b-instruct",
-        user_id=current_user["user_id"]
+        user_id=current_user["user_id"],
+        team_id=team_id
     )
     return session
 
 
 @router.get("/sessions", response_model=List[ChatSession])
-async def list_chat_sessions(current_user: Dict = Depends(get_current_user)):
+@require_perm_team("chat.use")
+async def list_chat_sessions(team_id: Optional[str] = None, current_user: Dict = Depends(get_current_user)):
     """List all chat sessions for current user"""
     sessions = await ChatStorage.list_sessions(
         user_id=current_user["user_id"],
-        role=current_user.get("role")
+        role=current_user.get("role"),
+        team_id=team_id
     )
     # Sort by updated_at descending
     sessions.sort(key=lambda s: s.updated_at, reverse=True)
@@ -441,12 +452,14 @@ async def list_chat_sessions(current_user: Dict = Depends(get_current_user)):
 
 
 @router.get("/sessions/{chat_id}", response_model=Dict[str, Any])
-async def get_chat_session(chat_id: str, limit: Optional[int] = None, current_user: Dict = Depends(get_current_user)):
+@require_perm_team("chat.use")
+async def get_chat_session(chat_id: str, limit: Optional[int] = None, team_id: Optional[str] = None, current_user: Dict = Depends(get_current_user)):
     """Get chat session with message history (user-filtered)"""
     session = await ChatStorage.get_session(
         chat_id,
         user_id=current_user["user_id"],
-        role=current_user.get("role")
+        role=current_user.get("role"),
+        team_id=team_id
     )
     if not session:
         raise HTTPException(status_code=404, detail="Chat session not found or access denied")
@@ -476,11 +489,12 @@ async def delete_chat_session(request: Request, chat_id: str, current_user: Dict
 
 
 @router.post("/sessions/{chat_id}/messages")
-async def send_message(request: Request, chat_id: str, body: SendMessageRequest):
+@require_perm_team("chat.use")
+async def send_message(request: Request, chat_id: str, body: SendMessageRequest, team_id: Optional[str] = None, current_user: Dict = Depends(get_current_user)):
     """Send a message and get streaming response"""
 
     # Verify session exists
-    session = await ChatStorage.get_session(chat_id)
+    session = await ChatStorage.get_session(chat_id, user_id=current_user["user_id"], role=current_user.get("role"), team_id=team_id)
     if not session:
         raise HTTPException(status_code=404, detail="Chat session not found")
 
@@ -876,33 +890,83 @@ async def preload_model(request: Request, model: str, keep_alive: str = "1h"):
 
 
 @router.get("/search")
-async def semantic_search(query: str, limit: int = 10):
-    """Search across all conversations using semantic similarity"""
+@require_perm_team("chat.use")
+async def semantic_search(
+    query: str,
+    limit: int = 10,
+    team_id: Optional[str] = None,
+    current_user: dict = None
+):
+    """
+    Search across conversations using semantic similarity
+
+    Phase 5: Team-aware - searches within user's personal chats or team chats
+    """
     if not query or len(query) < 3:
         raise HTTPException(status_code=400, detail="Query must be at least 3 characters")
 
-    results = await asyncio.to_thread(memory.search_messages_semantic, query, limit)
+    user_id = current_user.get("user_id")
+
+    # Phase 5: Team-scoped search
+    results = await asyncio.to_thread(
+        memory.search_messages_semantic,
+        query,
+        limit,
+        user_id=user_id,
+        team_id=team_id
+    )
 
     return {
         "query": query,
         "results": results,
-        "count": len(results)
+        "count": len(results),
+        "team_id": team_id  # Phase 5
     }
 
 
 @router.get("/analytics")
-async def get_analytics(session_id: Optional[str] = None):
-    """Get analytics for a session or global analytics"""
-    analytics = await asyncio.to_thread(memory.get_analytics, session_id)
+@require_perm_team("chat.use")
+async def get_analytics(
+    session_id: Optional[str] = None,
+    team_id: Optional[str] = None,
+    current_user: dict = None
+):
+    """
+    Get analytics for a session or scoped analytics
+
+    Phase 5: Team-aware - returns analytics for user's personal or team sessions
+    """
+    user_id = current_user.get("user_id")
+
+    # Phase 5: Pass team_id for scoped analytics
+    analytics = await asyncio.to_thread(
+        memory.get_analytics,
+        session_id,
+        user_id=user_id,
+        team_id=team_id
+    )
     return analytics
 
 
 @router.get("/sessions/{chat_id}/analytics")
-async def get_session_analytics(chat_id: str):
-    """Get detailed analytics for a specific session"""
-    session = await ChatStorage.get_session(chat_id)
+@require_perm_team("chat.use")
+async def get_session_analytics(
+    chat_id: str,
+    team_id: Optional[str] = None,
+    current_user: dict = None
+):
+    """
+    Get detailed analytics for a specific session
+
+    Phase 5: Team-aware - verifies session access via team membership
+    """
+    user_id = current_user.get("user_id")
+    role = current_user.get("role")
+
+    # Phase 5: Get session with team context
+    session = await ChatStorage.get_session(chat_id, user_id, role, team_id)
     if not session:
-        raise HTTPException(status_code=404, detail="Chat session not found")
+        raise HTTPException(status_code=404, detail="Chat session not found or access denied")
 
     # Get messages for analysis
     messages = await ChatStorage.get_messages(chat_id)
@@ -922,7 +986,8 @@ async def get_session_analytics(chat_id: str):
         "session_id": chat_id,
         "title": session.title,
         "stats": stats,
-        "topics": topics
+        "topics": topics,
+        "team_id": team_id  # Phase 5
     }
 
 

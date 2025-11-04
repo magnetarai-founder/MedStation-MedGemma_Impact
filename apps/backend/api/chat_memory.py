@@ -219,22 +219,44 @@ class NeutronChatMemory:
             "message_count": 0
         }
 
-    def get_session(self, session_id: str, user_id: str = None, role: str = None) -> Optional[Dict[str, Any]]:
-        """Get session metadata (user-filtered unless God Rights)"""
+    def get_session(self, session_id: str, user_id: str = None, role: str = None, team_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """
+        Get session metadata (user-filtered or team-filtered)
+
+        Phase 5: If team_id is provided, return session when it matches that team_id.
+        Otherwise, only return if owned by user_id (personal session).
+        God Rights may bypass user filter (admin endpoints should use admin methods).
+        """
         conn = self._get_connection()
 
-        # God Rights bypasses user filtering
-        if role == "god_rights":
-            cur = conn.execute("""
+        # Team-scoped access
+        if team_id:
+            cur = conn.execute(
+                """
                 SELECT id, title, created_at, updated_at, default_model, message_count, models_used, summary, user_id
-                FROM chat_sessions WHERE id = ?
-            """, (session_id,))
+                FROM chat_sessions WHERE id = ? AND team_id = ?
+                """,
+                (session_id, team_id),
+            )
         else:
-            # Regular users only see their own sessions
-            cur = conn.execute("""
-                SELECT id, title, created_at, updated_at, default_model, message_count, models_used, summary, user_id
-                FROM chat_sessions WHERE id = ? AND user_id = ?
-            """, (session_id, user_id))
+            # God Rights bypasses user filtering
+            if role == "god_rights":
+                cur = conn.execute(
+                    """
+                    SELECT id, title, created_at, updated_at, default_model, message_count, models_used, summary, user_id
+                    FROM chat_sessions WHERE id = ?
+                    """,
+                    (session_id,),
+                )
+            else:
+                # Regular users only see their own sessions
+                cur = conn.execute(
+                    """
+                    SELECT id, title, created_at, updated_at, default_model, message_count, models_used, summary, user_id
+                    FROM chat_sessions WHERE id = ? AND user_id = ? AND team_id IS NULL
+                    """,
+                    (session_id, user_id),
+                )
 
         row = cur.fetchone()
         if not row:
@@ -662,22 +684,40 @@ class NeutronChatMemory:
         chunks.sort(key=lambda x: x["similarity"], reverse=True)
         return chunks[:top_k]
 
-    def search_messages_semantic(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
-        """Search across all messages using semantic similarity"""
+    def search_messages_semantic(self, query: str, limit: int = 10, user_id: Optional[str] = None, team_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Search across messages using semantic similarity
+
+        Phase 5: Team-aware - filters by user_id/team_id
+        """
         from api.chat_enhancements import SimpleEmbedding
 
         query_embedding = SimpleEmbedding.create_embedding(query)
         conn = self._get_connection()
 
-        # Get all messages with content
-        cur = conn.execute("""
-            SELECT m.id, m.session_id, m.role, m.content, m.timestamp, m.model, s.title
-            FROM chat_messages m
-            JOIN chat_sessions s ON m.session_id = s.id
-            WHERE length(m.content) > 20
-            ORDER BY m.timestamp DESC
-            LIMIT 200
-        """)
+        # Phase 5: Team-scoped search query
+        if team_id:
+            # Team sessions
+            query_sql = """
+                SELECT m.id, m.session_id, m.role, m.content, m.timestamp, m.model, s.title, m.team_id
+                FROM chat_messages m
+                JOIN chat_sessions s ON m.session_id = s.id
+                WHERE length(m.content) > 20 AND m.team_id = ?
+                ORDER BY m.timestamp DESC
+                LIMIT 200
+            """
+            cur = conn.execute(query_sql, (team_id,))
+        else:
+            # Personal sessions
+            query_sql = """
+                SELECT m.id, m.session_id, m.role, m.content, m.timestamp, m.model, s.title, m.team_id
+                FROM chat_messages m
+                JOIN chat_sessions s ON m.session_id = s.id
+                WHERE length(m.content) > 20 AND m.user_id = ? AND m.team_id IS NULL
+                ORDER BY m.timestamp DESC
+                LIMIT 200
+            """
+            cur = conn.execute(query_sql, (user_id,))
 
         results = []
         for row in cur.fetchall():
@@ -700,8 +740,12 @@ class NeutronChatMemory:
         results.sort(key=lambda x: x["similarity"], reverse=True)
         return results[:limit]
 
-    def get_analytics(self, session_id: Optional[str] = None) -> Dict[str, Any]:
-        """Get analytics for a session or all sessions"""
+    def get_analytics(self, session_id: Optional[str] = None, user_id: Optional[str] = None, team_id: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Get analytics for a session or scoped analytics
+
+        Phase 5: Team-aware - filters by user_id/team_id
+        """
         conn = self._get_connection()
         if session_id:
             # Single session analytics
@@ -712,33 +756,57 @@ class NeutronChatMemory:
             """, (session_id,))
             row = cur.fetchone()
 
-            session = self.get_session(session_id)
+            session = self.get_session(session_id, user_id=user_id, team_id=team_id)
 
             return {
                 "session_id": session_id,
                 "message_count": row["msg_count"],
                 "total_tokens": row["total_tokens"] or 0,
-                "models_used": session.get("models_used", []) if session else []
+                "models_used": session.get("models_used", []) if session else [],
+                "team_id": team_id  # Phase 5
             }
         else:
-            # Global analytics
-            cur = conn.execute("""
-                SELECT
-                    COUNT(DISTINCT session_id) as total_sessions,
-                    COUNT(*) as total_messages,
-                    SUM(tokens) as total_tokens
-                FROM chat_messages
-            """)
-            row = cur.fetchone()
+            # Phase 5: Scoped analytics (personal or team)
+            if team_id:
+                # Team analytics
+                cur = conn.execute("""
+                    SELECT
+                        COUNT(DISTINCT session_id) as total_sessions,
+                        COUNT(*) as total_messages,
+                        SUM(tokens) as total_tokens
+                    FROM chat_messages
+                    WHERE team_id = ?
+                """, (team_id,))
+                row = cur.fetchone()
 
-            # Get model usage stats
-            cur = conn.execute("""
-                SELECT model, COUNT(*) as count
-                FROM chat_messages
-                WHERE model IS NOT NULL
-                GROUP BY model
-                ORDER BY count DESC
-            """)
+                # Get model usage stats for team
+                cur = conn.execute("""
+                    SELECT model, COUNT(*) as count
+                    FROM chat_messages
+                    WHERE model IS NOT NULL AND team_id = ?
+                    GROUP BY model
+                    ORDER BY count DESC
+                """, (team_id,))
+            else:
+                # Personal analytics
+                cur = conn.execute("""
+                    SELECT
+                        COUNT(DISTINCT session_id) as total_sessions,
+                        COUNT(*) as total_messages,
+                        SUM(tokens) as total_tokens
+                    FROM chat_messages
+                    WHERE user_id = ? AND team_id IS NULL
+                """, (user_id,))
+                row = cur.fetchone()
+
+                # Get model usage stats for user
+                cur = conn.execute("""
+                    SELECT model, COUNT(*) as count
+                    FROM chat_messages
+                    WHERE model IS NOT NULL AND user_id = ? AND team_id IS NULL
+                    GROUP BY model
+                    ORDER BY count DESC
+                """, (user_id,))
 
             model_stats = [{"model": r["model"], "count": r["count"]} for r in cur.fetchall()]
 
@@ -746,7 +814,8 @@ class NeutronChatMemory:
                 "total_sessions": row["total_sessions"],
                 "total_messages": row["total_messages"],
                 "total_tokens": row["total_tokens"] or 0,
-                "model_usage": model_stats
+                "model_usage": model_stats,
+                "team_id": team_id  # Phase 5
             }
 
 
