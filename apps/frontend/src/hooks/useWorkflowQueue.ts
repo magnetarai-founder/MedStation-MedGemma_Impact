@@ -25,12 +25,13 @@ function authHeaders(): HeadersInit {
 // WORKFLOW QUERIES
 // ============================================
 
-export function useWorkflows(category?: string) {
+export function useWorkflows(filters?: { category?: string; workflow_type?: 'local' | 'team' }) {
   return useQuery({
-    queryKey: ['workflows', category],
+    queryKey: ['workflows', filters],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (category) params.append('category', category);
+      if (filters?.category) params.append('category', filters.category);
+      if (filters?.workflow_type) params.append('workflow_type', filters.workflow_type);
 
       const res = await fetch(`${API_BASE}/workflows?${params}` , { headers: { ...authHeaders() } });
       if (!res.ok) throw new Error('Failed to fetch workflows');
@@ -64,6 +65,7 @@ export function useCreateWorkflow() {
           description: workflow.description,
           icon: workflow.icon,
           category: workflow.category,
+          workflow_type: workflow.workflow_type || 'team',
           stages: workflow.stages,
           triggers: workflow.triggers,
         }),

@@ -10,6 +10,7 @@
 
 import { useState } from 'react'
 import { ChevronDown, ChevronRight, Folder, Star, Plus, Briefcase, Zap, Users, ListChecks } from 'lucide-react'
+import { useWorkflows } from '@/hooks/useWorkflowQueue'
 import type { Workflow } from '@/types/workflow'
 import type { AutomationType } from './AutomationWorkspace'
 
@@ -28,9 +29,9 @@ export function WorkflowTreeSidebar({
 }: WorkflowTreeSidebarProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['workflows', 'queue']))
 
-  // Mock data - TODO: Replace with real data from backend
-  const mockWorkflows: Workflow[] = []
-  const queueCount = 0
+  // Fetch workflows from backend filtered by type
+  const { data: workflows = [], isLoading } = useWorkflows({ workflow_type: automationType })
+  const queueCount = 0 // TODO: Fetch from backend
 
   const toggleFolder = (folderId: string) => {
     setExpandedFolders(prev => {
@@ -72,12 +73,16 @@ export function WorkflowTreeSidebar({
 
           {isExpanded('workflows') && (
             <div className="ml-6 mt-1 space-y-1">
-              {mockWorkflows.length === 0 ? (
+              {isLoading ? (
+                <div className="px-2 py-2 text-xs text-gray-500 dark:text-gray-400">
+                  Loading workflows...
+                </div>
+              ) : workflows.length === 0 ? (
                 <div className="px-2 py-2 text-xs text-gray-500 dark:text-gray-400">
                   No workflows yet
                 </div>
               ) : (
-                mockWorkflows.map(workflow => (
+                workflows.map(workflow => (
                   <button
                     key={workflow.id}
                     onClick={() => onWorkflowSelect(workflow)}

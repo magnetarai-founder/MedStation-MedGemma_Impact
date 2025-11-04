@@ -239,6 +239,9 @@ export interface Workflow {
   icon?: string
   category?: string
 
+  // Workflow type - determines UI and behavior
+  workflow_type?: 'local' | 'team'
+
   // Structure
   stages: Stage[]
   triggers: WorkflowTrigger[]

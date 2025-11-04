@@ -8,6 +8,7 @@
  */
 
 import { Plus, Star, Clock, Zap, Users } from 'lucide-react'
+import { useWorkflows } from '@/hooks/useWorkflowQueue'
 import type { Workflow } from '@/types/workflow'
 import type { AutomationType } from './AutomationWorkspace'
 
@@ -22,15 +23,36 @@ export function WorkflowDashboard({
   onWorkflowSelect,
   onCreateWorkflow
 }: WorkflowDashboardProps) {
-  // Mock data - TODO: Replace with real data from backend
+  // Fetch workflows from backend filtered by type
+  const { data: workflows = [], isLoading } = useWorkflows({ workflow_type: automationType })
+
+  // TODO: Add starred filtering once starring functionality is implemented
   const starredWorkflows: Workflow[] = []
-  const recentWorkflows: Workflow[] = []
+  const recentWorkflows: Workflow[] = workflows.slice(0, 10) // Show most recent 10
 
   const typeColor = automationType === 'local'
     ? 'blue'
     : 'purple'
 
   const typeIcon = automationType === 'local' ? Zap : Users
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="h-full w-full flex items-center justify-center bg-gray-50/30 dark:bg-gray-900/30">
+        <div className="text-center">
+          <div className="inline-flex p-4 bg-gray-100 dark:bg-gray-800 rounded-full mb-4">
+            {automationType === 'local' ? (
+              <Zap className="w-8 h-8 text-blue-600 dark:text-blue-400 animate-pulse" />
+            ) : (
+              <Users className="w-8 h-8 text-purple-600 dark:text-purple-400 animate-pulse" />
+            )}
+          </div>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Loading workflows...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="h-full w-full flex flex-col items-center justify-center p-8 bg-gray-50/30 dark:bg-gray-900/30">
