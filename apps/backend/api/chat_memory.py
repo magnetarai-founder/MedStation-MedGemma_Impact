@@ -106,7 +106,8 @@ class NeutronChatMemory:
                 models_used TEXT,
                 summary TEXT,
                 auto_titled INTEGER DEFAULT 0,
-                user_id TEXT
+                user_id TEXT,
+                team_id TEXT
             )
         """)
 
@@ -122,6 +123,7 @@ class NeutronChatMemory:
                 tokens INTEGER,
                 files_json TEXT,
                 user_id TEXT,
+                team_id TEXT,
                 FOREIGN KEY (session_id) REFERENCES chat_sessions(id)
             )
         """)
@@ -137,6 +139,7 @@ class NeutronChatMemory:
                 events_json TEXT,
                 models_used TEXT,
                 user_id TEXT,
+                team_id TEXT,
                 FOREIGN KEY (session_id) REFERENCES chat_sessions(id)
             )
         """)
@@ -154,6 +157,7 @@ class NeutronChatMemory:
                 embedding_json TEXT,
                 created_at TEXT,
                 user_id TEXT,
+                team_id TEXT,
                 FOREIGN KEY (session_id) REFERENCES chat_sessions(id)
             )
         """)
@@ -166,6 +170,7 @@ class NeutronChatMemory:
                 session_id TEXT,
                 embedding_json TEXT,
                 created_at TEXT,
+                team_id TEXT,
                 FOREIGN KEY (message_id) REFERENCES chat_messages(id),
                 FOREIGN KEY (session_id) REFERENCES chat_sessions(id)
             )
@@ -179,18 +184,29 @@ class NeutronChatMemory:
         conn.execute("CREATE INDEX IF NOT EXISTS idx_chunks_file ON document_chunks(file_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_embeddings_session ON message_embeddings(session_id)")
 
+        # Phase 5: Team isolation indexes
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_sessions_team ON chat_sessions(team_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_messages_team ON chat_messages(team_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_summaries_team ON conversation_summaries(team_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_chunks_team ON document_chunks(team_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_embeddings_team ON message_embeddings(team_id)")
+
         conn.commit()
 
-    def create_session(self, session_id: str, title: str, model: str, user_id: str) -> Dict[str, Any]:
-        """Create a new chat session for user"""
+    def create_session(self, session_id: str, title: str, model: str, user_id: str, team_id: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Create a new chat session for user
+
+        Phase 5: Accepts team_id for team-scoped chat sessions
+        """
         now = datetime.utcnow().isoformat()
         conn = self._get_connection()
 
         with self._write_lock:
             conn.execute("""
-                INSERT INTO chat_sessions (id, title, created_at, updated_at, default_model, message_count, models_used, user_id)
-                VALUES (?, ?, ?, ?, ?, 0, ?, ?)
-            """, (session_id, title, now, now, model, model, user_id))
+                INSERT INTO chat_sessions (id, title, created_at, updated_at, default_model, message_count, models_used, user_id, team_id)
+                VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?)
+            """, (session_id, title, now, now, model, model, user_id, team_id))
             conn.commit()
 
         logger.info(f"Created chat session: {session_id} for user: {user_id}")
@@ -235,21 +251,34 @@ class NeutronChatMemory:
             "summary": row["summary"]
         }
 
-    def list_sessions(self, user_id: str = None, role: str = None) -> List[Dict[str, Any]]:
-        """List chat sessions (user-filtered for ALL users, including God Rights)
+    def list_sessions(self, user_id: str = None, role: str = None, team_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        List chat sessions (user-filtered for ALL users, including God Rights)
+
+        Phase 5: Supports team_id filtering for team-scoped sessions
 
         This endpoint is for regular UI use - God Rights sees only their own chats here.
         For admin access to view other users' chats, use admin endpoints.
         """
         conn = self._get_connection()
 
-        # ALL users (including God Rights) only see their own sessions in regular UI
-        cur = conn.execute("""
-            SELECT id, title, created_at, updated_at, default_model, message_count, user_id
-            FROM chat_sessions
-            WHERE user_id = ?
-            ORDER BY updated_at DESC
-        """, (user_id,))
+        # Phase 5: Filter by both user_id and team_id
+        if team_id:
+            # Team sessions: user must be in team AND session is for that team
+            cur = conn.execute("""
+                SELECT id, title, created_at, updated_at, default_model, message_count, user_id, team_id
+                FROM chat_sessions
+                WHERE team_id = ?
+                ORDER BY updated_at DESC
+            """, (team_id,))
+        else:
+            # Personal sessions: team_id IS NULL AND user owns it
+            cur = conn.execute("""
+                SELECT id, title, created_at, updated_at, default_model, message_count, user_id, team_id
+                FROM chat_sessions
+                WHERE user_id = ? AND team_id IS NULL
+                ORDER BY updated_at DESC
+            """, (user_id,))
 
         sessions = []
         for row in cur.fetchall():
@@ -259,7 +288,8 @@ class NeutronChatMemory:
                 "created_at": row["created_at"],
                 "updated_at": row["updated_at"],
                 "model": row["default_model"],
-                "message_count": row["message_count"]
+                "message_count": row["message_count"],
+                "team_id": row.get("team_id")  # Phase 5
             })
 
         return sessions
@@ -352,21 +382,26 @@ class NeutronChatMemory:
         return True
 
     def add_message(self, session_id: str, event: ConversationEvent):
-        """Add a message to the session"""
+        """
+        Add a message to the session
+
+        Phase 5: Inherits team_id from session
+        """
         files_json = json.dumps(event.files) if event.files else None
         conn = self._get_connection()
 
         with self._write_lock:
-            # Phase 1: Get session owner to populate user_id on messages
-            cur = conn.execute("SELECT user_id FROM chat_sessions WHERE id = ?", (session_id,))
+            # Phase 5: Get session owner AND team_id to populate on messages
+            cur = conn.execute("SELECT user_id, team_id FROM chat_sessions WHERE id = ?", (session_id,))
             owner = cur.fetchone()
             owner_id = owner['user_id'] if owner else None
+            team_id = owner['team_id'] if owner else None
 
-            # Insert message with user_id
+            # Insert message with user_id and team_id
             conn.execute("""
-                INSERT INTO chat_messages (session_id, timestamp, role, content, model, tokens, files_json, user_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (session_id, event.timestamp, event.role, event.content, event.model, event.tokens, files_json, owner_id))
+                INSERT INTO chat_messages (session_id, timestamp, role, content, model, tokens, files_json, user_id, team_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (session_id, event.timestamp, event.role, event.content, event.model, event.tokens, files_json, owner_id, team_id))
 
             # Update session metadata
             now = datetime.utcnow().isoformat()
