@@ -17,7 +17,7 @@ import json
 import tempfile
 import os
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Optional
 from fastapi.testclient import TestClient
 
@@ -121,7 +121,6 @@ class TestTeamLifecycle:
     def test_create_team(self):
         """Test team creation"""
         import uuid
-        from datetime import datetime
 
         team_id = "test_team_001"
         cursor = self.conn.cursor()
@@ -130,13 +129,13 @@ class TestTeamLifecycle:
         cursor.execute("""
             INSERT INTO teams (team_id, name, created_by, created_at)
             VALUES (?, ?, ?, ?)
-        """, (team_id, "Test Team 001", self.admin_user_id, datetime.utcnow().isoformat()))
+        """, (team_id, "Test Team 001", self.admin_user_id, datetime.now(UTC).isoformat()))
 
         # Add creator as admin
         cursor.execute("""
             INSERT INTO team_members (team_id, user_id, role, is_active, joined_at)
             VALUES (?, ?, ?, 1, ?)
-        """, (team_id, self.admin_user_id, "admin", datetime.utcnow().isoformat()))
+        """, (team_id, self.admin_user_id, "admin", datetime.now(UTC).isoformat()))
 
         self.conn.commit()
 
@@ -160,13 +159,13 @@ class TestTeamLifecycle:
         cursor.execute("""
             INSERT INTO teams (team_id, name, created_by, created_at)
             VALUES (?, ?, ?, ?)
-        """, (team_id, "Test Team 002", self.admin_user_id, datetime.utcnow().isoformat()))
+        """, (team_id, "Test Team 002", self.admin_user_id, datetime.now(UTC).isoformat()))
 
         # Add creator as admin
         cursor.execute("""
             INSERT INTO team_members (team_id, user_id, role, is_active, joined_at)
             VALUES (?, ?, ?, 1, ?)
-        """, (team_id, self.admin_user_id, "admin", datetime.utcnow().isoformat()))
+        """, (team_id, self.admin_user_id, "admin", datetime.now(UTC).isoformat()))
 
         self.conn.commit()
 
@@ -205,13 +204,13 @@ class TestTeamLifecycle:
         cursor.execute("""
             INSERT INTO teams (team_id, name, created_by, created_at)
             VALUES (?, ?, ?, ?)
-        """, (team_id, "Test Team 003", self.admin_user_id, datetime.utcnow().isoformat()))
+        """, (team_id, "Test Team 003", self.admin_user_id, datetime.now(UTC).isoformat()))
 
         # Add creator as admin
         cursor.execute("""
             INSERT INTO team_members (team_id, user_id, role, is_active, joined_at)
             VALUES (?, ?, ?, 1, ?)
-        """, (team_id, self.admin_user_id, "admin", datetime.utcnow().isoformat()))
+        """, (team_id, self.admin_user_id, "admin", datetime.now(UTC).isoformat()))
 
         self.conn.commit()
 
@@ -265,13 +264,13 @@ class TestTeamLifecycle:
         cursor.execute("""
             INSERT INTO teams (team_id, name, created_by, created_at)
             VALUES (?, ?, ?, ?)
-        """, (team_id, "Test Team 004", self.admin_user_id, datetime.utcnow().isoformat()))
+        """, (team_id, "Test Team 004", self.admin_user_id, datetime.now(UTC).isoformat()))
 
         # Add creator as admin
         cursor.execute("""
             INSERT INTO team_members (team_id, user_id, role, is_active, joined_at)
             VALUES (?, ?, ?, 1, ?)
-        """, (team_id, self.admin_user_id, "admin", datetime.utcnow().isoformat()))
+        """, (team_id, self.admin_user_id, "admin", datetime.now(UTC).isoformat()))
 
         self.conn.commit()
 
@@ -407,7 +406,7 @@ class TestChatTeamIsolation:
 
         # Add message
         event = ConversationEvent(
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             role="user",
             content="Test team message",
             model="llama3"
@@ -435,7 +434,7 @@ class TestChatTeamIsolation:
             self.user1_id, self.team_id
         )
         team_event = ConversationEvent(
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             role="user",
             content="This is a unique team message about quantum computing",
             model="llama3"
@@ -449,7 +448,7 @@ class TestChatTeamIsolation:
             self.outsider_id, None
         )
         personal_event = ConversationEvent(
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             role="user",
             content="This is a unique personal message about quantum computing",
             model="llama3"
@@ -516,7 +515,7 @@ class TestChatTeamIsolation:
         )
         for i in range(3):
             event = ConversationEvent(
-                timestamp=datetime.utcnow().isoformat(),
+                timestamp=datetime.now(UTC).isoformat(),
                 role="user",
                 content=f"Team message {i}",
                 model="llama3",
@@ -532,7 +531,7 @@ class TestChatTeamIsolation:
         )
         for i in range(5):
             event = ConversationEvent(
-                timestamp=datetime.utcnow().isoformat(),
+                timestamp=datetime.now(UTC).isoformat(),
                 role="user",
                 content=f"Personal message {i}",
                 model="llama3",
@@ -583,7 +582,7 @@ class TestP2PHMACSecurity:
             operation="insert",
             row_id="row_001",
             data={"field": "value"},
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             peer_id=self.peer_id,
             version=1,
             team_id=self.team_id
@@ -763,7 +762,7 @@ class TestCrossTeamDenial:
             self.team1_user, self.team1_id
         )
         event1 = ConversationEvent(
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             role="user",
             content="Secret team1 information about project alpha",
             model="llama3"
