@@ -863,6 +863,11 @@ def require_perm(permission_key: str, level: Optional[str] = None):
                     detail="Invalid authentication: user_id missing"
                 )
 
+            # God Rights bypass: founder_rights users always allowed
+            if current_user.get('role') == 'founder_rights':
+                logger.debug(f"God Rights bypass in decorator: {current_user.get('username')} allowed {permission_key}")
+                return await func(*args, **kwargs)
+
             # Load user context
             engine = get_permission_engine()
             try:
@@ -937,6 +942,11 @@ def require_perm_team(permission_key: str, level: Optional[str] = None, team_kw:
                     status_code=401,
                     detail="Invalid authentication: user_id missing"
                 )
+
+            # God Rights bypass: founder_rights users always allowed
+            if current_user.get('role') == 'founder_rights':
+                logger.debug(f"God Rights bypass in decorator: {current_user.get('username')} allowed {permission_key}")
+                return await func(*args, **kwargs)
 
             # Extract team_id from kwargs (may be None for solo mode)
             team_id = kwargs.get(team_kw) or None
