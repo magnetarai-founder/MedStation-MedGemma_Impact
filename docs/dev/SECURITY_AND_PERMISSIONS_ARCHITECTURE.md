@@ -2756,3 +2756,115 @@ ElohimOS uses a multi-database architecture for separation of concerns:
 **Built with conviction for mission-critical field operations.**
 **"Like a magnetar - rare, powerful, indestructible."**
 
+
+---
+
+# Phase 2.5: RBAC Hardening & Developer UX
+
+Status: Ready to implement (builds on Phase 2)
+
+Goal: Make the RBAC system production‑grade with clear diagnostics, better performance, full permission‑set support, and developer/admin tooling — without weakening Phase 1 user isolation or vault E2E privacy.
+
+## Objectives
+- Add permission‑set grants (not just assignments) and merge them with profiles during evaluation.
+- Add a lightweight effective‑permissions cache (in‑memory + optional DB) with explicit invalidation hooks.
+- Expose a safe, read‑only “current user permissions” endpoint for the frontend.
+- Add “why denied” diagnostics for developers (opt‑in, non‑production default).
+- Expand enforcement coverage and finalize audit logging for permission changes.
+
+## Scope
+- Backend only (engine, migrations, admin APIs, enforcement, tests). Frontend can consume the new endpoint and admin APIs later.
+
+## Schema Changes (app_db = `PATHS.app_db`)
+- New: `permission_set_permissions` (permission‑set grants)
+  - `permission_set_id TEXT NOT NULL`
+  - `permission_id TEXT NOT NULL`
+  - `is_granted INTEGER DEFAULT 1`
+  - `permission_level TEXT CHECK(permission_level IN ('none','read','write','admin'))`
+  - `permission_scope TEXT` (JSON; reserved for future scope enforcement)
+  - PK(`permission_set_id`,`permission_id`)
+  - FKs → `permission_sets(permission_set_id)`, `permissions(permission_id)`
+- New (optional): `user_permissions_cache`
+  - `user_id TEXT PRIMARY KEY`
+  - `permissions_json TEXT NOT NULL` (compressed JSON of effective permissions)
+  - `updated_at TEXT NOT NULL`
+  - Use for cold‑start caching only; in‑process LRU covers hot path.
+- Index hardening: ensure `CREATE INDEX IF NOT EXISTS idx_permissions_key ON permissions(permission_key)` exists.
+
+## Migration
+- Create: `apps/backend/api/migrations/phase25_rbac_hardening.py`
+  - Idempotent creation of the two tables and the index.
+  - Record in `migrations` as `2025_11_05_phase25_rbac_hardening`.
+- Wire into `apps/backend/api/startup_migrations.py` after Phase 2.
+
+## Backend Changes
+- File: `apps/backend/api/permission_engine.py`
+  - Add loading of permission‑set grants:
+    - New `_load_set_grants(conn, set_ids)` that returns dict(permission_key → value) similar to profile grants.
+    - In `_resolve_permissions(...)`, after profile grants, merge set grants (later wins; sets override profiles).
+  - Add simple in‑process cache on effective permissions:
+    - Either `functools.lru_cache(maxsize=1024)` on `get_effective_permissions(user_id)` or a tiny TTL cache.
+    - Add `invalidate_user_permissions(user_id: str)` (clear LRU entry and delete from DB cache if present).
+  - Add developer diagnostics:
+    - `explain_permission(user_ctx, permission_key) -> dict` returning evaluation inputs (role baseline, profiles, sets) and final decision.
+    - Guard diagnostics behind env var `ELOHIMOS_PERMS_EXPLAIN=1` and never include secrets.
+- File: `apps/backend/api/permissions_admin.py`
+  - Audit admin actions using `audit_logger` (create/update profile, assign/unassign profile/set, upsert grants, create set).
+  - New endpoints for permission‑set grants:
+    - `POST /permission-sets/{set_id}/grants` (body: list of grants like profile grants)
+    - `GET /permission-sets/{set_id}/grants`
+    - `DELETE /permission-sets/{set_id}/grants/{permission_id}`
+  - New helper endpoint for cache invalidation:
+    - `POST /users/{user_id}/permissions/invalidate` (requires `system.manage_permissions`).
+- File: `apps/backend/api/auth_routes.py` (or a new lightweight router)
+  - `GET /api/v1/auth/permissions` → returns current user’s effective permissions (boolean/level keys). Guard: authenticated users only; never returns internal evaluation details.
+
+## Enforcement Expansion (confirm already added in Phase 2)
+- Docs: ensure `PATCH /documents/{doc_id}` has `@require_perm("docs.update", level="write")`.
+- Workflows actions: add `@require_perm("workflows.edit", level="write")` to claim/start/complete/cancel.
+- Data Engine: `@require_perm("data.run_sql")` for query endpoints; `@require_perm("data.export")` for export endpoints.
+- Admin Overview: `@require_perm("system.view_admin_dashboard")` in addition to Founder bypass.
+
+## Frontend (defer if not needed now)
+- Add `Settings > Permissions` tab to manage profiles, sets, and assignments via `/api/v1/permissions/*`:
+  - List profiles, view/edit grants, assign to users.
+  - List sets, manage grants, assign to users with optional `expires_at`.
+- Add “My Permissions” viewer using `/api/v1/auth/permissions` for transparency.
+
+## Testing
+- Add `apps/backend/api/test_permissions_phase25.py`:
+  - Seed two members (Alice/Bob); verify baseline denies `data.export`, then allow after assigning a permission set grant.
+  - Verify profile vs. set precedence (set overrides profile).
+  - Verify diagnostics (dev only) returns structured reasons.
+  - Verify cache behavior: after changing grants, requests reflect changes only after invalidation or TTL expiry; admin invalidate endpoint works.
+  - Founder bypass remains intact; personal vault E2E privacy unaffected.
+
+## Rollout Steps
+- Restart backend to apply Phase 2.5 migration automatically.
+- Verify DB tables:
+  - `permission_set_permissions`, `user_permissions_cache` (optional), index on `permissions(permission_key)`.
+- Exercise admin APIs to add grants to a permission set and assign to a user.
+- Call `/api/v1/auth/permissions` as that user and confirm the effective permission keys.
+
+## Acceptance Criteria
+- Permission‑set grants are honored and override profile grants.
+- Effective permissions are cached and can be invalidated on demand.
+- Admin actions (grants/assignments) are audit‑logged.
+- All critical endpoints are permission‑guarded in addition to Phase 1 isolation.
+- A safe endpoint returns current user’s effective permissions for UI.
+
+## Reference Files
+- `apps/backend/api/permission_engine.py`
+- `apps/backend/api/permissions_admin.py`
+- `apps/backend/api/startup_migrations.py`
+- `apps/backend/api/migrations/phase25_rbac_hardening.py` (new)
+- `apps/backend/api/auth_routes.py` (or a new router for `/api/v1/auth/permissions`)
+
+## Verification Snippets
+- DB (replace path with `PATHS.app_db` if needed):
+  - `sqlite3 .neutron_data/elohimos_app.db "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('permission_set_permissions','user_permissions_cache');"`
+  - `sqlite3 .neutron_data/elohimos_app.db "SELECT COUNT(*) FROM profile_permissions; SELECT COUNT(*) FROM permission_set_permissions;"`
+- API (as Admin):
+  - `GET /api/v1/permissions/profiles`, `POST /api/v1/permissions/permission-sets/{set_id}/grants`
+- Current user:
+  - `GET /api/v1/auth/permissions`

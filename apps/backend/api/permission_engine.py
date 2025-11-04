@@ -1,5 +1,6 @@
 """
 Phase 2: Salesforce-style RBAC Permission Engine
+Phase 2.5: Added caching, diagnostics, and permission-set grants
 
 Central permission evaluation system with:
 - Permission registry (permissions table)
@@ -7,6 +8,8 @@ Central permission evaluation system with:
 - Permission sets (ad-hoc grants for specific users)
 - User assignments (profiles + sets)
 - Evaluation engine with God Rights bypass
+- In-memory caching with invalidation (Phase 2.5)
+- Developer diagnostics for permission decisions (Phase 2.5)
 
 Design:
 - Founder Rights (founder_rights): Full bypass, always allowed
@@ -14,16 +17,21 @@ Design:
 - Admin/Member/Guest: Controlled by profiles + permission sets
 """
 
+import os
+import json
 import sqlite3
 import logging
 from enum import Enum
-from typing import Optional, Dict, List, Set, Callable
-from functools import wraps
+from typing import Optional, Dict, List, Set, Callable, Any
+from functools import wraps, lru_cache
 from fastapi import HTTPException, Depends
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+# Phase 2.5: Enable diagnostics with environment variable
+DIAGNOSTICS_ENABLED = os.getenv('ELOHIMOS_PERMS_EXPLAIN', '0') == '1'
 
 
 class PermissionLevel(str, Enum):
@@ -101,6 +109,8 @@ class PermissionEngine:
             db_path: Path to app_db (elohimos_app.db)
         """
         self.db_path = db_path
+        # Phase 2.5: In-memory cache for effective permissions
+        self._permission_cache: Dict[str, Dict[str, Any]] = {}
 
     def _get_connection(self) -> sqlite3.Connection:
         """Get database connection with row factory"""
@@ -111,6 +121,8 @@ class PermissionEngine:
     def load_user_context(self, user_id: str) -> UserPermissionContext:
         """
         Load complete permission context for a user
+
+        Phase 2.5: Now with caching support
 
         Process:
         1. Load user data (role, job_role, team_id from users table)
@@ -127,6 +139,13 @@ class PermissionEngine:
         Returns:
             UserPermissionContext with resolved permissions
         """
+        # Phase 2.5: Check cache first
+        if user_id in self._permission_cache:
+            cached_perms = self._permission_cache[user_id]
+            logger.debug(f"Cache hit for user {user_id}")
+        else:
+            cached_perms = None
+
         conn = self._get_connection()
         cur = conn.cursor()
 
@@ -195,9 +214,17 @@ class PermissionEngine:
         ctx.permission_sets = [row['permission_set_id'] for row in cur.fetchall()]
 
         # Step 4: Resolve effective permissions
-        ctx.effective_permissions = self._resolve_permissions(
-            conn, ctx.role, ctx.profiles, ctx.permission_sets
-        )
+        if cached_perms is not None:
+            # Use cached permissions
+            ctx.effective_permissions = cached_perms
+        else:
+            # Resolve from DB and cache
+            ctx.effective_permissions = self._resolve_permissions(
+                conn, ctx.role, ctx.profiles, ctx.permission_sets
+            )
+            # Phase 2.5: Store in cache
+            self._permission_cache[user_id] = ctx.effective_permissions
+            logger.debug(f"Cached permissions for user {user_id}")
 
         conn.close()
         return ctx
@@ -275,11 +302,67 @@ class PermissionEngine:
                     else:
                         permissions[perm_key] = {}
 
-        # Step 3: Apply permission set grants
-        # For Phase 2 v1, permission sets are simplified - they could have their own grants table
-        # For now, we just track assignment; expand this later if needed
+        # Step 3: Apply permission set grants (Phase 2.5)
+        # Permission sets override profiles (later wins)
+        if permission_set_ids:
+            set_grants = self._load_set_grants(conn, permission_set_ids)
+            permissions.update(set_grants)
 
         return permissions
+
+    def _load_set_grants(self, conn: sqlite3.Connection, set_ids: List[str]) -> Dict[str, Any]:
+        """
+        Load permission grants from permission sets (Phase 2.5)
+
+        Args:
+            conn: Database connection
+            set_ids: List of permission set IDs
+
+        Returns:
+            Dict mapping permission_key -> value
+        """
+        grants = {}
+
+        if not set_ids:
+            return grants
+
+        cur = conn.cursor()
+        placeholders = ','.join('?' for _ in set_ids)
+
+        cur.execute(f"""
+            SELECT psp.permission_id, psp.is_granted, psp.permission_level, psp.permission_scope,
+                   p.permission_key, p.permission_type
+            FROM permission_set_permissions psp
+            JOIN permissions p ON psp.permission_id = p.permission_id
+            WHERE psp.permission_set_id IN ({placeholders})
+        """, set_ids)
+
+        for row in cur.fetchall():
+            perm_key = row['permission_key']
+            perm_type = row['permission_type']
+
+            if perm_type == 'boolean':
+                grants[perm_key] = bool(row['is_granted'])
+            elif perm_type == 'level':
+                level_str = row['permission_level']
+                if level_str:
+                    try:
+                        grants[perm_key] = PermissionLevel(level_str)
+                    except ValueError:
+                        grants[perm_key] = PermissionLevel.NONE
+                else:
+                    grants[perm_key] = PermissionLevel.NONE
+            elif perm_type == 'scope':
+                scope_data = row['permission_scope']
+                if scope_data:
+                    try:
+                        grants[perm_key] = json.loads(scope_data)
+                    except:
+                        grants[perm_key] = {}
+                else:
+                    grants[perm_key] = {}
+
+        return grants
 
     def _get_role_baseline(self, role: str) -> Dict[str, any]:
         """
@@ -561,6 +644,108 @@ class PermissionEngine:
 
         # Unknown type: deny
         return False
+
+    def invalidate_user_permissions(self, user_id: str) -> None:
+        """
+        Invalidate cached permissions for a user (Phase 2.5)
+
+        Call this when:
+        - User's role changes
+        - User is assigned/unassigned a profile
+        - User is assigned/unassigned a permission set
+        - Profile or permission set grants are modified
+
+        Args:
+            user_id: User identifier
+        """
+        if user_id in self._permission_cache:
+            del self._permission_cache[user_id]
+            logger.info(f"Invalidated permission cache for user {user_id}")
+
+        # Also clear from DB cache if present
+        try:
+            conn = self._get_connection()
+            cur = conn.cursor()
+            cur.execute("DELETE FROM user_permissions_cache WHERE user_id = ?", (user_id,))
+            conn.commit()
+            conn.close()
+            logger.debug(f"Cleared DB cache for user {user_id}")
+        except sqlite3.OperationalError:
+            # Table doesn't exist yet; skip
+            pass
+
+    def explain_permission(
+        self,
+        user_ctx: UserPermissionContext,
+        permission_key: str,
+        required_level: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Explain why a permission was granted or denied (Phase 2.5)
+
+        Only enabled when ELOHIMOS_PERMS_EXPLAIN=1 environment variable is set.
+        Never includes secrets or sensitive data.
+
+        Args:
+            user_ctx: User permission context
+            permission_key: Permission to explain
+            required_level: Required level (if applicable)
+
+        Returns:
+            Dict with explanation:
+            - decision: "allow" or "deny"
+            - reason: Human-readable explanation
+            - role: User's role
+            - profiles: List of assigned profiles
+            - permission_sets: List of assigned permission sets
+            - effective_value: The resolved permission value
+            - required_level: Required level (if applicable)
+        """
+        if not DIAGNOSTICS_ENABLED:
+            return {
+                "error": "Diagnostics disabled. Set ELOHIMOS_PERMS_EXPLAIN=1 to enable."
+            }
+
+        decision = self.has_permission(user_ctx, permission_key, required_level)
+        effective_value = user_ctx.effective_permissions.get(permission_key)
+
+        explanation = {
+            "decision": "allow" if decision else "deny",
+            "permission_key": permission_key,
+            "user_id": user_ctx.user_id,
+            "username": user_ctx.username,
+            "role": user_ctx.role,
+            "profiles": user_ctx.profiles,
+            "permission_sets": user_ctx.permission_sets,
+            "effective_value": str(effective_value) if effective_value is not None else None,
+            "required_level": required_level,
+        }
+
+        # Add reason based on decision logic
+        if user_ctx.role == 'founder_rights':
+            explanation["reason"] = "God Rights bypass - Founder Rights always allowed"
+        elif user_ctx.role == 'super_admin':
+            if decision:
+                explanation["reason"] = "Super Admin allowed (not explicitly denied)"
+            else:
+                explanation["reason"] = "Super Admin explicitly denied"
+        elif effective_value is None:
+            explanation["reason"] = "Permission not defined in role/profiles/sets"
+        elif isinstance(effective_value, bool):
+            explanation["reason"] = f"Boolean permission: {effective_value}"
+        elif isinstance(effective_value, PermissionLevel):
+            if required_level:
+                user_level = LEVEL_HIERARCHY.get(effective_value, 0)
+                req_level = LEVEL_HIERARCHY.get(PermissionLevel(required_level), 0)
+                explanation["reason"] = f"Level permission: user has {effective_value} (level {user_level}), required {required_level} (level {req_level})"
+            else:
+                explanation["reason"] = f"Level permission: user has {effective_value}"
+        elif isinstance(effective_value, dict):
+            explanation["reason"] = "Scope permission: granted with scope data"
+        else:
+            explanation["reason"] = "Unknown permission type"
+
+        return explanation
 
 
 # Global permission engine instance

@@ -7,6 +7,8 @@ Admin endpoints for managing RBAC system:
 - Permission sets
 - User assignments
 
+Phase 2.5: Added permission-set grants, audit logging, cache invalidation
+
 All endpoints require system.manage_permissions permission (Super Admin/Founder only by default).
 """
 
@@ -16,15 +18,17 @@ import json
 from typing import List, Optional, Dict
 from datetime import datetime
 from pathlib import Path
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
 
 try:
-    from .permission_engine import require_perm
+    from .permission_engine import require_perm, get_permission_engine
     from .auth_middleware import get_current_user
+    from .audit_logger import log_admin_action
 except ImportError:
-    from permission_engine import require_perm
+    from permission_engine import require_perm, get_permission_engine
     from auth_middleware import get_current_user
+    from audit_logger import log_admin_action
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +113,14 @@ class AssignPermissionSetRequest(BaseModel):
     """Request to assign a permission set to a user"""
     user_id: str
     expires_at: Optional[str] = None
+
+
+class PermissionSetGrant(BaseModel):
+    """Permission set grant model (Phase 2.5)"""
+    permission_id: str
+    is_granted: bool = True
+    permission_level: Optional[str] = None  # "none", "read", "write", "admin"
+    permission_scope: Optional[str] = None  # JSON string
 
 
 # ===== Helper Functions =====
@@ -754,3 +766,208 @@ async def unassign_permission_set_from_user(
         conn.close()
         logger.error(f"Failed to unassign permission set: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to unassign permission set: {str(e)}")
+
+
+# ===== Phase 2.5: Permission Set Grants =====
+
+@router.post("/permission-sets/{set_id}/grants")
+@require_perm("system.manage_permissions")
+async def upsert_permission_set_grants(
+    request: Request,
+    set_id: str,
+    grants: List[PermissionSetGrant],
+    current_user: Dict = Depends(get_current_user)
+):
+    """
+    Upsert permission grants for a permission set (Phase 2.5)
+
+    Similar to profile grants, but for permission sets.
+    Permission sets override profiles in the resolution order.
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    try:
+        # Verify permission set exists
+        cur.execute("SELECT permission_set_id FROM permission_sets WHERE permission_set_id = ?", (set_id,))
+        if not cur.fetchone():
+            conn.close()
+            raise HTTPException(status_code=404, detail="Permission set not found")
+
+        # Upsert grants
+        now = datetime.utcnow().isoformat()
+        for grant in grants:
+            cur.execute("""
+                INSERT INTO permission_set_permissions (
+                    permission_set_id, permission_id, is_granted, permission_level, permission_scope, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(permission_set_id, permission_id) DO UPDATE SET
+                    is_granted = excluded.is_granted,
+                    permission_level = excluded.permission_level,
+                    permission_scope = excluded.permission_scope
+            """, (set_id, grant.permission_id, grant.is_granted, grant.permission_level, grant.permission_scope, now))
+
+        conn.commit()
+
+        # Audit log
+        log_admin_action(
+            admin_user=current_user.get("username", "unknown"),
+            action="upsert_permission_set_grants",
+            target_resource=f"permission_set:{set_id}",
+            details=f"Updated {len(grants)} grants",
+            ip_address=request.client.host if request.client else None
+        )
+
+        # Invalidate cache for all users with this set
+        engine = get_permission_engine()
+        cur.execute("SELECT user_id FROM user_permission_sets WHERE permission_set_id = ?", (set_id,))
+        for row in cur.fetchall():
+            engine.invalidate_user_permissions(row[0])
+
+        conn.close()
+
+        return {"status": "success", "permission_set_id": set_id, "grants_updated": len(grants)}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.close()
+        logger.error(f"Failed to upsert permission set grants: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to upsert grants: {str(e)}")
+
+
+@router.get("/permission-sets/{set_id}/grants")
+@require_perm("system.manage_permissions")
+async def get_permission_set_grants(
+    set_id: str,
+    current_user: Dict = Depends(get_current_user)
+):
+    """Get all permission grants for a permission set (Phase 2.5)"""
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    try:
+        # Verify permission set exists
+        cur.execute("SELECT permission_set_id FROM permission_sets WHERE permission_set_id = ?", (set_id,))
+        if not cur.fetchone():
+            conn.close()
+            raise HTTPException(status_code=404, detail="Permission set not found")
+
+        # Get grants
+        cur.execute("""
+            SELECT psp.permission_id, psp.is_granted, psp.permission_level, psp.permission_scope,
+                   p.permission_key, p.permission_name, p.permission_type
+            FROM permission_set_permissions psp
+            JOIN permissions p ON psp.permission_id = p.permission_id
+            WHERE psp.permission_set_id = ?
+            ORDER BY p.category, p.permission_key
+        """, (set_id,))
+
+        grants = []
+        for row in cur.fetchall():
+            grants.append({
+                "permission_id": row[0],
+                "is_granted": bool(row[1]),
+                "permission_level": row[2],
+                "permission_scope": row[3],
+                "permission_key": row[4],
+                "permission_name": row[5],
+                "permission_type": row[6]
+            })
+
+        conn.close()
+        return {"permission_set_id": set_id, "grants": grants}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.close()
+        logger.error(f"Failed to get permission set grants: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get grants: {str(e)}")
+
+
+@router.delete("/permission-sets/{set_id}/grants/{permission_id}")
+@require_perm("system.manage_permissions")
+async def delete_permission_set_grant(
+    request: Request,
+    set_id: str,
+    permission_id: str,
+    current_user: Dict = Depends(get_current_user)
+):
+    """Delete a specific permission grant from a permission set (Phase 2.5)"""
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+            DELETE FROM permission_set_permissions
+            WHERE permission_set_id = ? AND permission_id = ?
+        """, (set_id, permission_id))
+
+        conn.commit()
+        deleted = cur.rowcount
+
+        if deleted == 0:
+            conn.close()
+            raise HTTPException(status_code=404, detail="Grant not found")
+
+        # Audit log
+        log_admin_action(
+            admin_user=current_user.get("username", "unknown"),
+            action="delete_permission_set_grant",
+            target_resource=f"permission_set:{set_id}",
+            details=f"Removed permission {permission_id}",
+            ip_address=request.client.host if request.client else None
+        )
+
+        # Invalidate cache for users with this set
+        engine = get_permission_engine()
+        cur.execute("SELECT user_id FROM user_permission_sets WHERE permission_set_id = ?", (set_id,))
+        for row in cur.fetchall():
+            engine.invalidate_user_permissions(row[0])
+
+        conn.close()
+
+        return {"status": "success", "permission_set_id": set_id, "permission_id": permission_id}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.close()
+        logger.error(f"Failed to delete permission set grant: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete grant: {str(e)}")
+
+
+# ===== Phase 2.5: Cache Invalidation =====
+
+@router.post("/users/{user_id}/permissions/invalidate")
+@require_perm("system.manage_permissions")
+async def invalidate_user_permissions_cache(
+    request: Request,
+    user_id: str,
+    current_user: Dict = Depends(get_current_user)
+):
+    """
+    Invalidate permission cache for a specific user (Phase 2.5)
+
+    Forces the permission engine to reload user permissions from database on next check.
+    Useful after manually modifying permissions or troubleshooting permission issues.
+    """
+    try:
+        engine = get_permission_engine()
+        engine.invalidate_user_permissions(user_id)
+
+        # Audit log
+        log_admin_action(
+            admin_user=current_user.get("username", "unknown"),
+            action="invalidate_permission_cache",
+            target_user=user_id,
+            details="Forced permission cache invalidation",
+            ip_address=request.client.host if request.client else None
+        )
+
+        return {"status": "success", "user_id": user_id, "cache_invalidated": True}
+
+    except Exception as e:
+        logger.error(f"Failed to invalidate permission cache: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to invalidate cache: {str(e)}")

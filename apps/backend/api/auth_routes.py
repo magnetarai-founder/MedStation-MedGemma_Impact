@@ -184,3 +184,47 @@ async def cleanup_expired_sessions(request: Request):
     except Exception as e:
         logger.error(f"Session cleanup failed: {e}")
         raise HTTPException(status_code=500, detail="Cleanup failed")
+
+
+@router.get("/permissions")
+async def get_current_user_permissions(user: dict = Depends(get_current_user)):
+    """
+    Get current user's effective permissions (Phase 2.5)
+
+    Returns a safe, read-only view of the user's effective permissions.
+    This endpoint is designed for frontend use to show/hide UI elements
+    based on permissions.
+
+    Never returns internal evaluation details or sensitive data.
+    """
+    try:
+        from permission_engine import get_permission_engine
+
+        engine = get_permission_engine()
+        user_ctx = engine.load_user_context(user['user_id'])
+
+        # Convert permissions to JSON-serializable format
+        permissions = {}
+        for key, value in user_ctx.effective_permissions.items():
+            # Convert enum values to strings
+            if hasattr(value, 'value'):
+                permissions[key] = value.value
+            elif isinstance(value, bool):
+                permissions[key] = value
+            elif isinstance(value, dict):
+                permissions[key] = value
+            else:
+                permissions[key] = str(value)
+
+        return {
+            "user_id": user_ctx.user_id,
+            "username": user_ctx.username,
+            "role": user_ctx.role,
+            "permissions": permissions,
+            "profiles": user_ctx.profiles,
+            "permission_sets": user_ctx.permission_sets
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to get user permissions: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve permissions")

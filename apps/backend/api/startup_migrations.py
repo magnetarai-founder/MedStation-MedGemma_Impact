@@ -42,10 +42,12 @@ async def run_startup_migrations() -> None:
             from .migrations import phase0_user_db as phase0_migration
             from .migrations import phase1_workflows_user_id as phase1_migration
             from .migrations import phase2_permissions_rbac as phase2_migration
+            from .migrations import phase25_rbac_hardening as phase25_migration
         except ImportError:
             from migrations import phase0_user_db as phase0_migration
             from migrations import phase1_workflows_user_id as phase1_migration
             from migrations import phase2_permissions_rbac as phase2_migration
+            from migrations import phase25_rbac_hardening as phase25_migration
 
         # ===== Phase 0: Database Architecture Consolidation =====
         app_db = PATHS.app_db
@@ -87,6 +89,18 @@ async def run_startup_migrations() -> None:
                 raise Exception("Phase 2 migration failed - see logs above")
 
             logger.info("✓ Phase 2 migration completed successfully")
+
+        # ===== Phase 2.5: RBAC Hardening =====
+        if phase25_migration.check_migration_applied(app_db):
+            logger.info("✓ Phase 2.5 migration already applied, skipping")
+        else:
+            logger.info("Running Phase 2.5 migration: RBAC Hardening & Developer UX")
+            success = phase25_migration.migrate_phase25_rbac_hardening(app_db)
+
+            if not success:
+                raise Exception("Phase 2.5 migration failed - see logs above")
+
+            logger.info("✓ Phase 2.5 migration completed successfully")
 
         logger.info("=" * 60)
         logger.info("✓ All migrations completed successfully")
