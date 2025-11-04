@@ -118,31 +118,36 @@ class PermissionEngine:
         conn.row_factory = sqlite3.Row
         return conn
 
-    def load_user_context(self, user_id: str) -> UserPermissionContext:
+    def load_user_context(self, user_id: str, team_id: Optional[str] = None) -> UserPermissionContext:
         """
         Load complete permission context for a user
 
         Phase 2.5: Now with caching support
+        Phase 3: Now with team-aware context
 
         Process:
         1. Load user data (role, job_role, team_id from users table)
-        2. Load assigned profiles (user_permission_profiles)
-        3. Load assigned permission sets (user_permission_sets)
+        2. Load assigned profiles (user_permission_profiles) - filtered by team scope
+        3. Load assigned permission sets (user_permission_sets) - filtered by team scope
         4. Resolve effective permissions:
            - Start with default role baseline
-           - Apply profile grants (override)
-           - Apply permission set grants (override)
+           - Apply profile grants (team-scoped or system-wide)
+           - Apply permission set grants (team-scoped or system-wide)
 
         Args:
             user_id: User identifier
+            team_id: Optional team context (Phase 3). If provided, includes team-scoped permissions.
 
         Returns:
             UserPermissionContext with resolved permissions
         """
+        # Phase 3: Include team_id in cache key
+        cache_key = f"{user_id}:{team_id or 'system'}"
+
         # Phase 2.5: Check cache first
-        if user_id in self._permission_cache:
-            cached_perms = self._permission_cache[user_id]
-            logger.debug(f"Cache hit for user {user_id}")
+        if cache_key in self._permission_cache:
+            cached_perms = self._permission_cache[cache_key]
+            logger.debug(f"Cache hit for {cache_key}")
         else:
             cached_perms = None
 
@@ -194,22 +199,48 @@ class PermissionEngine:
                 is_solo_mode=True,
             )
 
-        # Step 2: Load assigned profiles
-        cur.execute("""
-            SELECT profile_id
-            FROM user_permission_profiles
-            WHERE user_id = ?
-        """, (user_id,))
+        # Step 2: Load assigned profiles (Phase 3: team-aware)
+        # Load profiles that are either system-wide (team_id IS NULL) or team-scoped
+        if team_id:
+            cur.execute("""
+                SELECT upp.profile_id
+                FROM user_permission_profiles upp
+                JOIN permission_profiles pp ON upp.profile_id = pp.profile_id
+                WHERE upp.user_id = ?
+                AND (pp.team_id IS NULL OR pp.team_id = ?)
+            """, (user_id, team_id))
+        else:
+            # Solo mode: only system-wide profiles (team_id IS NULL)
+            cur.execute("""
+                SELECT upp.profile_id
+                FROM user_permission_profiles upp
+                JOIN permission_profiles pp ON upp.profile_id = pp.profile_id
+                WHERE upp.user_id = ?
+                AND pp.team_id IS NULL
+            """, (user_id,))
 
         ctx.profiles = [row['profile_id'] for row in cur.fetchall()]
 
-        # Step 3: Load assigned permission sets (that haven't expired)
-        cur.execute("""
-            SELECT permission_set_id
-            FROM user_permission_sets
-            WHERE user_id = ?
-            AND (expires_at IS NULL OR expires_at > datetime('now'))
-        """, (user_id,))
+        # Step 3: Load assigned permission sets (Phase 3: team-aware, not expired)
+        if team_id:
+            cur.execute("""
+                SELECT ups.permission_set_id
+                FROM user_permission_sets ups
+                JOIN permission_sets ps ON ups.permission_set_id = ps.permission_set_id
+                WHERE ups.user_id = ?
+                AND (ps.team_id IS NULL OR ps.team_id = ?)
+                AND (ups.expires_at IS NULL OR ups.expires_at > datetime('now'))
+            """, (user_id, team_id))
+        else:
+            # Solo mode: only system-wide sets (team_id IS NULL)
+            cur.execute("""
+                SELECT ups.permission_set_id
+                FROM user_permission_sets ups
+                JOIN permission_sets ps ON ups.permission_set_id = ps.permission_set_id
+                WHERE ups.user_id = ?
+                AND ps.team_id IS NULL
+                AND (ups.expires_at IS NULL OR ups.expires_at > datetime('now'))
+            """, (user_id,))
 
         ctx.permission_sets = [row['permission_set_id'] for row in cur.fetchall()]
 
@@ -222,9 +253,9 @@ class PermissionEngine:
             ctx.effective_permissions = self._resolve_permissions(
                 conn, ctx.role, ctx.profiles, ctx.permission_sets
             )
-            # Phase 2.5: Store in cache
-            self._permission_cache[user_id] = ctx.effective_permissions
-            logger.debug(f"Cached permissions for user {user_id}")
+            # Phase 3: Store in cache with team-aware key
+            self._permission_cache[cache_key] = ctx.effective_permissions
+            logger.debug(f"Cached permissions for {cache_key}")
 
         conn.close()
         return ctx
@@ -765,6 +796,22 @@ def get_permission_engine() -> PermissionEngine:
         _permission_engine = PermissionEngine(auth_service.db_path)
 
     return _permission_engine
+
+
+def get_effective_permissions(user_id: str, team_id: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Helper function to get effective permissions for a user (Phase 3)
+
+    Args:
+        user_id: User identifier
+        team_id: Optional team context
+
+    Returns:
+        Dict mapping permission_key -> value (bool, PermissionLevel, or scope dict)
+    """
+    engine = get_permission_engine()
+    user_ctx = engine.load_user_context(user_id, team_id=team_id)
+    return user_ctx.effective_permissions
 
 
 # ===== FastAPI Decorators =====
