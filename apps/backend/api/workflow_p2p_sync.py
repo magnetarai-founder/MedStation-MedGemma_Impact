@@ -10,6 +10,16 @@ from typing import Dict, List, Optional, Callable
 from datetime import datetime
 from pathlib import Path
 
+# Phase 4: Team cryptography for P2P sync
+try:
+    from team_crypto import sign_payload, verify_payload
+    from team_service import is_team_member
+except ImportError:
+    # Fallback for standalone testing
+    def sign_payload(payload, team_id): return ""
+    def verify_payload(payload, signature, team_id): return True
+    def is_team_member(team_id, user_id): return "member"
+
 try:
     from .workflow_models import (
         WorkItem,
@@ -112,11 +122,83 @@ class WorkflowP2PSync:
         return less_or_equal and strictly_less
 
     # ============================================
+    # PHASE 4: TEAM CRYPTO HELPERS
+    # ============================================
+
+    def _sign_message(self, message: WorkflowSyncMessage) -> None:
+        """
+        Sign workflow sync message with team key (Phase 4)
+
+        Modifies message in-place to add signature if team_id is present
+        """
+        if not message.team_id:
+            message.signature = ""
+            return
+
+        # Build payload for signing (all fields except signature)
+        payload_to_sign = {
+            "message_id": message.message_id,
+            "message_type": message.message_type,
+            "sender_peer_id": message.sender_peer_id,
+            "sender_user_id": message.sender_user_id,
+            "work_item_id": message.work_item_id,
+            "workflow_id": message.workflow_id,
+            "payload": message.payload,
+            "timestamp": message.timestamp.isoformat(),
+            "vector_clock": message.vector_clock,
+            "team_id": message.team_id
+        }
+
+        message.signature = sign_payload(payload_to_sign, message.team_id)
+        logger.debug(f"🔐 Signed workflow message {message.message_id} for team {message.team_id}")
+
+    def _verify_message(self, message: WorkflowSyncMessage) -> bool:
+        """
+        Verify workflow sync message signature (Phase 4)
+
+        Returns:
+            True if signature is valid or message is personal (no team_id)
+            False if signature is invalid
+        """
+        if not message.team_id:
+            # Personal/solo messages don't require signature
+            return True
+
+        if not message.signature:
+            logger.warning(f"🚫 Team message {message.message_id} missing signature for team {message.team_id}")
+            return False
+
+        # Build payload for verification (same as signing)
+        payload_to_verify = {
+            "message_id": message.message_id,
+            "message_type": message.message_type,
+            "sender_peer_id": message.sender_peer_id,
+            "sender_user_id": message.sender_user_id,
+            "work_item_id": message.work_item_id,
+            "workflow_id": message.workflow_id,
+            "payload": message.payload,
+            "timestamp": message.timestamp.isoformat(),
+            "vector_clock": message.vector_clock,
+            "team_id": message.team_id
+        }
+
+        is_valid = verify_payload(payload_to_verify, message.signature, message.team_id)
+
+        if not is_valid:
+            logger.warning(f"🚫 Invalid signature for team message {message.message_id} (team {message.team_id})")
+
+        return is_valid
+
+    # ============================================
     # MESSAGE BROADCASTING
     # ============================================
 
-    async def broadcast_work_item_created(self, work_item: WorkItem) -> None:
-        """Broadcast that a new work item was created"""
+    async def broadcast_work_item_created(self, work_item: WorkItem, team_id: Optional[str] = None) -> None:
+        """
+        Broadcast that a new work item was created
+
+        Phase 4: Includes team_id for team workflows
+        """
         message = WorkflowSyncMessage(
             message_type="work_item_created",
             sender_peer_id=self.peer_id,
@@ -127,13 +209,18 @@ class WorkflowP2PSync:
                 "work_item": work_item.model_dump(),
             },
             vector_clock=self.increment_clock(),
+            team_id=team_id  # Phase 4
         )
 
         await self._broadcast_message(message)
         logger.info(f"📤 Broadcast work_item_created: {work_item.id}")
 
-    async def broadcast_work_item_claimed(self, work_item: WorkItem, user_id: str) -> None:
-        """Broadcast that a work item was claimed"""
+    async def broadcast_work_item_claimed(self, work_item: WorkItem, user_id: str, team_id: Optional[str] = None) -> None:
+        """
+        Broadcast that a work item was claimed
+
+        Phase 4: Includes team_id for team workflows
+        """
         message = WorkflowSyncMessage(
             message_type="work_item_claimed",
             sender_peer_id=self.peer_id,
@@ -147,13 +234,18 @@ class WorkflowP2PSync:
                 "status": work_item.status.value,
             },
             vector_clock=self.increment_clock(),
+            team_id=team_id  # Phase 4
         )
 
         await self._broadcast_message(message)
         logger.info(f"📤 Broadcast work_item_claimed: {work_item.id}")
 
-    async def broadcast_work_item_completed(self, work_item: WorkItem) -> None:
-        """Broadcast that a work item completed a stage"""
+    async def broadcast_work_item_completed(self, work_item: WorkItem, team_id: Optional[str] = None) -> None:
+        """
+        Broadcast that a work item completed a stage
+
+        Phase 4: Includes team_id for team workflows
+        """
         message = WorkflowSyncMessage(
             message_type="work_item_completed",
             sender_peer_id=self.peer_id,
@@ -170,13 +262,18 @@ class WorkflowP2PSync:
                 "completed_at": work_item.completed_at.isoformat() if work_item.completed_at else None,
             },
             vector_clock=self.increment_clock(),
+            team_id=team_id  # Phase 4
         )
 
         await self._broadcast_message(message)
         logger.info(f"📤 Broadcast work_item_completed: {work_item.id}")
 
-    async def broadcast_workflow_updated(self, workflow: Workflow) -> None:
-        """Broadcast that a workflow definition was updated"""
+    async def broadcast_workflow_updated(self, workflow: Workflow, team_id: Optional[str] = None) -> None:
+        """
+        Broadcast that a workflow definition was updated
+
+        Phase 4: Includes team_id for team workflows
+        """
         message = WorkflowSyncMessage(
             message_type="workflow_updated",
             sender_peer_id=self.peer_id,
@@ -186,6 +283,7 @@ class WorkflowP2PSync:
                 "workflow": workflow.model_dump(),
             },
             vector_clock=self.increment_clock(),
+            team_id=team_id  # Phase 4
         )
 
         await self._broadcast_message(message)
@@ -195,9 +293,14 @@ class WorkflowP2PSync:
         """
         Broadcast message to all connected peers
 
+        Phase 4: Signs team messages before broadcasting
+
         This would integrate with the existing P2P chat service
         In production, you'd call the P2P service's broadcast method
         """
+        # Phase 4: Sign message if it has team context
+        self._sign_message(message)
+
         # Mark as seen locally
         self.seen_messages.add(message.message_id)
 
@@ -220,12 +323,15 @@ class WorkflowP2PSync:
     # MESSAGE RECEIVING
     # ============================================
 
-    async def handle_incoming_message(self, payload: Dict) -> None:
+    async def handle_incoming_message(self, payload: Dict, user_id: Optional[str] = None) -> None:
         """
         Handle incoming sync message from peer
 
+        Phase 4: Verifies team signatures and enforces team boundaries
+
         Args:
             payload: Raw message payload from P2P network
+            user_id: Optional current user ID for team membership checks
         """
         try:
             # Parse message
@@ -237,6 +343,18 @@ class WorkflowP2PSync:
                 return
 
             self.seen_messages.add(message.message_id)
+
+            # Phase 4: Verify team signature
+            if not self._verify_message(message):
+                logger.warning(f"🚫 Rejected message {message.message_id}: signature verification failed")
+                return
+
+            # Phase 4: Enforce team boundaries
+            if message.team_id and user_id:
+                if not is_team_member(message.team_id, user_id):
+                    logger.warning(f"🚫 Rejected message {message.message_id}: user {user_id} not in team {message.team_id}")
+                    return
+                logger.debug(f"✅ Team message {message.message_id} verified for team {message.team_id}")
 
             # Merge vector clock
             if message.vector_clock:

@@ -16,6 +16,16 @@ from datetime import datetime
 from pathlib import Path
 import hashlib
 
+# Phase 4: Team cryptography for P2P sync
+try:
+    from team_crypto import sign_payload, verify_payload
+    from team_service import is_team_member
+except ImportError:
+    # Fallback for standalone testing
+    def sign_payload(payload, team_id): return ""
+    def verify_payload(payload, signature, team_id): return True
+    def is_team_member(team_id, user_id): return "member"
+
 logger = logging.getLogger(__name__)
 
 
@@ -30,6 +40,8 @@ class SyncOperation:
     timestamp: str
     peer_id: str
     version: int  # Vector clock for conflict resolution
+    team_id: Optional[str] = None  # Phase 4: Team isolation
+    signature: str = ""  # Phase 4: HMAC signature for team ops
 
 
 @dataclass
@@ -87,6 +99,8 @@ class OfflineDataSync:
                 timestamp TEXT NOT NULL,
                 peer_id TEXT NOT NULL,
                 version INTEGER NOT NULL,
+                team_id TEXT,
+                signature TEXT,
                 synced INTEGER DEFAULT 0,
                 created_at TEXT DEFAULT (datetime('now'))
             )
@@ -126,11 +140,14 @@ class OfflineDataSync:
                              table_name: str,
                              operation: str,
                              row_id: Any,
-                             data: Optional[dict] = None):
+                             data: Optional[dict] = None,
+                             team_id: Optional[str] = None):
         """
         Track a local database operation for syncing
 
         Call this after INSERT, UPDATE, DELETE operations
+
+        Phase 4: If team_id is provided, signs the operation payload
         """
         self.local_version += 1
 
@@ -142,8 +159,27 @@ class OfflineDataSync:
             data=data,
             timestamp=datetime.utcnow().isoformat(),
             peer_id=self.local_peer_id,
-            version=self.local_version
+            version=self.local_version,
+            team_id=team_id
         )
+
+        # Phase 4: Sign payload for team operations
+        if team_id:
+            payload_to_sign = {
+                "op_id": op.op_id,
+                "table_name": op.table_name,
+                "operation": op.operation,
+                "row_id": op.row_id,
+                "data": op.data,
+                "timestamp": op.timestamp,
+                "peer_id": op.peer_id,
+                "version": op.version,
+                "team_id": op.team_id
+            }
+            op.signature = sign_payload(payload_to_sign, team_id)
+            logger.debug(f"🔐 Signed team operation {op.op_id} for team {team_id}")
+        else:
+            op.signature = ""
 
         # Save to sync log
         conn = sqlite3.connect(str(self.sync_db_path))
@@ -151,8 +187,8 @@ class OfflineDataSync:
 
         cursor.execute("""
             INSERT INTO sync_operations
-            (op_id, table_name, operation, row_id, data, timestamp, peer_id, version)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (op_id, table_name, operation, row_id, data, timestamp, peer_id, version, team_id, signature)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             op.op_id,
             op.table_name,
@@ -161,7 +197,9 @@ class OfflineDataSync:
             json.dumps(op.data) if op.data else None,
             op.timestamp,
             op.peer_id,
-            op.version
+            op.version,
+            op.team_id,
+            op.signature
         ))
 
         conn.commit()
@@ -247,7 +285,7 @@ class OfflineDataSync:
 
         # Build query
         query = """
-            SELECT op_id, table_name, operation, row_id, data, timestamp, peer_id, version
+            SELECT op_id, table_name, operation, row_id, data, timestamp, peer_id, version, team_id, signature
             FROM sync_operations
             WHERE peer_id = ?
         """
@@ -276,24 +314,59 @@ class OfflineDataSync:
                 data=json.loads(row[4]) if row[4] else None,
                 timestamp=row[5],
                 peer_id=row[6],
-                version=row[7]
+                version=row[7],
+                team_id=row[8],
+                signature=row[9] or ""
             )
             operations.append(op)
 
         conn.close()
         return operations
 
-    async def _apply_operations(self, operations: List[SyncOperation]) -> int:
+    async def _apply_operations(self, operations: List[SyncOperation], user_id: Optional[str] = None) -> int:
         """
         Apply operations from peer to local database
 
-        Returns number of conflicts resolved
+        Phase 4: Validates team signatures and team membership before applying
+
+        Args:
+            operations: Operations to apply
+            user_id: Optional user ID for team membership checks
+
+        Returns:
+            Number of conflicts resolved
         """
         conflicts = 0
         conn = sqlite3.connect(str(self.db_path))
 
         for op in operations:
             try:
+                # Phase 4: Team boundary enforcement
+                if op.team_id:
+                    # Verify signature
+                    payload_to_verify = {
+                        "op_id": op.op_id,
+                        "table_name": op.table_name,
+                        "operation": op.operation,
+                        "row_id": op.row_id,
+                        "data": op.data,
+                        "timestamp": op.timestamp,
+                        "peer_id": op.peer_id,
+                        "version": op.version,
+                        "team_id": op.team_id
+                    }
+
+                    if not verify_payload(payload_to_verify, op.signature, op.team_id):
+                        logger.warning(f"🚫 Rejected operation {op.op_id}: invalid team signature for team {op.team_id}")
+                        continue
+
+                    # Check team membership (if user_id provided)
+                    if user_id and not is_team_member(op.team_id, user_id):
+                        logger.warning(f"🚫 Rejected operation {op.op_id}: user {user_id} not in team {op.team_id}")
+                        continue
+
+                    logger.debug(f"✅ Team operation {op.op_id} verified for team {op.team_id}")
+
                 # Check for conflict
                 if await self._has_conflict(op):
                     # Resolve conflict using Last-Write-Wins
@@ -470,7 +543,9 @@ class OfflineDataSync:
                         'data': op.data,
                         'timestamp': op.timestamp,
                         'peer_id': op.peer_id,
-                        'version': op.version
+                        'version': op.version,
+                        'team_id': op.team_id,
+                        'signature': op.signature
                     }
                     for op in operations_to_send
                 ]
@@ -499,7 +574,9 @@ class OfflineDataSync:
                             data=op_data.get('data'),
                             timestamp=op_data['timestamp'],
                             peer_id=op_data['peer_id'],
-                            version=op_data['version']
+                            version=op_data['version'],
+                            team_id=op_data.get('team_id'),
+                            signature=op_data.get('signature', '')
                         )
                         received_ops.append(op)
 

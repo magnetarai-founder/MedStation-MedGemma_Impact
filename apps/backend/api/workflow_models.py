@@ -521,6 +521,10 @@ class WorkflowSyncMessage(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     vector_clock: Optional[Dict[str, int]] = None  # For CRDT
 
+    # Phase 4: Team isolation and security
+    team_id: Optional[str] = None  # Team context for this message
+    signature: str = ""  # HMAC signature for team messages
+
 
 class WorkItemConflict(BaseModel):
     """Conflict detected during P2P sync"""
