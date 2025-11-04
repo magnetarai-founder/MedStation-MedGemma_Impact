@@ -1,16 +1,23 @@
 """
 Role-Based Access Control (RBAC) System
 
+Phase 2: Now uses permission_engine for Salesforce-style RBAC
+with permission profiles and permission sets.
+
+Legacy support maintained for role-based checks.
+
 4 Roles:
+- Founder Rights: God Rights bypass (always allowed)
 - Super Admin: Full control, can create Admins, transfer super admin status
 - Admin: Manage users/workflows/settings (cannot create other Admins)
 - Member: Default role, create/edit own workflows, access vault
-- Viewer: Read-only access, cannot modify anything
+- Viewer/Guest: Read-only access, cannot modify anything
 
 Security Rules:
 - Last Admin cannot be deleted/downgraded
 - Super Admin cannot delete themselves (must transfer first)
 - Only Super Admin can create/manage Admins
+- Founder Rights always bypasses all permission checks
 """
 
 from enum import Enum
@@ -26,18 +33,22 @@ logger = logging.getLogger(__name__)
 
 class Role(str, Enum):
     """User roles in order of privilege"""
+    FOUNDER_RIGHTS = "founder_rights"  # Phase 2: God Rights
     SUPER_ADMIN = "super_admin"
     ADMIN = "admin"
     MEMBER = "member"
     VIEWER = "viewer"
+    GUEST = "guest"  # Phase 2: Alias for viewer
 
 
 # Role hierarchy (higher number = more privileges)
 ROLE_HIERARCHY = {
+    Role.FOUNDER_RIGHTS: 5,  # Phase 2: Highest
     Role.SUPER_ADMIN: 4,
     Role.ADMIN: 3,
     Role.MEMBER: 2,
-    Role.VIEWER: 1
+    Role.VIEWER: 1,
+    Role.GUEST: 1,  # Same as viewer
 }
 
 
@@ -347,21 +358,60 @@ def require_role(required_role: Role):
     return decorator
 
 
-def require_permission(permission: str):
+def require_permission(permission: str, level: Optional[str] = None):
     """
     Decorator to require a specific permission for an endpoint
+
+    Phase 2: Now uses permission_engine for evaluation with fallback to legacy PERMISSIONS_MAP
 
     Usage:
         @router.delete("/workflows/{workflow_id}")
         @require_permission(Permission.DELETE_WORKFLOW)
-        async def delete_workflow(workflow_id: str):
+        async def delete_workflow(workflow_id: str, current_user: dict = Depends(get_current_user)):
             ...
+
+    Args:
+        permission: Permission key to check
+        level: Optional permission level ("read", "write", "admin") for level-based permissions
     """
     def decorator(func: Callable):
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            # Extract user_id from kwargs or request
+            # Phase 2: Try to use permission engine if current_user is available
+            current_user = kwargs.get('current_user')
+
+            if current_user and isinstance(current_user, dict):
+                user_id = current_user.get('user_id')
+
+                if user_id:
+                    try:
+                        # Use Phase 2 permission engine
+                        from permission_engine import get_permission_engine
+
+                        engine = get_permission_engine()
+                        user_ctx = engine.load_user_context(user_id)
+
+                        if not engine.has_permission(user_ctx, permission, required_level=level):
+                            raise HTTPException(
+                                status_code=403,
+                                detail=f"Missing required permission: {permission}" +
+                                       (f" (level: {level})" if level else "")
+                            )
+
+                        return await func(*args, **kwargs)
+                    except ImportError:
+                        # Permission engine not available, fall back to legacy
+                        logger.warning("Permission engine not available, using legacy check")
+                        pass
+                    except ValueError:
+                        # User context not found, fall back to legacy
+                        pass
+
+            # Legacy fallback: Extract user_id from kwargs or request
             user_id = kwargs.get('user_id') or kwargs.get('current_user_id')
+
+            if not user_id and current_user:
+                user_id = current_user.get('user_id')
 
             if not user_id:
                 # Try to get from request
@@ -372,6 +422,7 @@ def require_permission(permission: str):
             if not user_id:
                 raise HTTPException(status_code=401, detail="User ID not provided")
 
+            # Legacy permission check
             if not has_permission(user_id, permission):
                 raise HTTPException(
                     status_code=403,

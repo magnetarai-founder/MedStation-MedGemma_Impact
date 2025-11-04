@@ -23,6 +23,9 @@ logger = logging.getLogger(__name__)
 # Import security utilities
 from utils import sanitize_filename
 
+# Phase 2: Import permission decorators
+from permission_engine import require_perm
+
 # Import WebSocket connection manager
 try:
     from websocket_manager import manager
@@ -2744,6 +2747,7 @@ router = APIRouter(
 
 
 @router.post("/documents", response_model=VaultDocument)
+@require_perm("vault.documents.create", level="write")
 async def create_vault_document(
     vault_type: str,
     document: VaultDocumentCreate,
@@ -2768,6 +2772,7 @@ async def create_vault_document(
 
 
 @router.get("/documents", response_model=VaultListResponse)
+@require_perm("vault.documents.read", level="read")
 async def list_vault_documents(
     vault_type: str,
     current_user: Dict = Depends(get_current_user)
@@ -2787,6 +2792,7 @@ async def list_vault_documents(
 
 
 @router.get("/documents/{doc_id}", response_model=VaultDocument)
+@require_perm("vault.documents.read", level="read")
 async def get_vault_document(
     doc_id: str,
     vault_type: str,
@@ -2808,6 +2814,7 @@ async def get_vault_document(
 
 
 @router.put("/documents/{doc_id}", response_model=VaultDocument)
+@require_perm("vault.documents.update", level="write")
 async def update_vault_document(
     doc_id: str,
     vault_type: str,
@@ -2825,6 +2832,7 @@ async def update_vault_document(
 
 
 @router.delete("/documents/{doc_id}")
+@require_perm("vault.documents.delete", level="write")
 async def delete_vault_document(
     doc_id: str,
     vault_type: str,
@@ -2846,6 +2854,7 @@ async def delete_vault_document(
 
 
 @router.get("/stats")
+@require_perm("vault.use")
 async def get_vault_stats(
     vault_type: str,
     current_user: Dict = Depends(get_current_user)

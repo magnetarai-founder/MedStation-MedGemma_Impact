@@ -41,9 +41,11 @@ async def run_startup_migrations() -> None:
         try:
             from .migrations import phase0_user_db as phase0_migration
             from .migrations import phase1_workflows_user_id as phase1_migration
+            from .migrations import phase2_permissions_rbac as phase2_migration
         except ImportError:
             from migrations import phase0_user_db as phase0_migration
             from migrations import phase1_workflows_user_id as phase1_migration
+            from migrations import phase2_permissions_rbac as phase2_migration
 
         # ===== Phase 0: Database Architecture Consolidation =====
         app_db = PATHS.app_db
@@ -73,6 +75,18 @@ async def run_startup_migrations() -> None:
                 raise Exception("Phase 1 migration failed - see logs above")
 
             logger.info("✓ Phase 1 migration completed successfully")
+
+        # ===== Phase 2: Salesforce-style RBAC =====
+        if phase2_migration.check_migration_applied(app_db):
+            logger.info("✓ Phase 2 migration already applied, skipping")
+        else:
+            logger.info("Running Phase 2 migration: Salesforce-style RBAC")
+            success = phase2_migration.migrate_phase2_permissions_rbac(app_db)
+
+            if not success:
+                raise Exception("Phase 2 migration failed - see logs above")
+
+            logger.info("✓ Phase 2 migration completed successfully")
 
         logger.info("=" * 60)
         logger.info("✓ All migrations completed successfully")
