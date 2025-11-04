@@ -24,11 +24,11 @@ from pydantic import BaseModel
 try:
     from .permission_engine import require_perm, get_permission_engine
     from .auth_middleware import get_current_user
-    from .audit_logger import log_admin_action
+    from .audit_logger import audit_log_sync as log_admin_action
 except ImportError:
     from permission_engine import require_perm, get_permission_engine
     from auth_middleware import get_current_user
-    from audit_logger import log_admin_action
+    from audit_logger import audit_log_sync as log_admin_action
 
 logger = logging.getLogger(__name__)
 

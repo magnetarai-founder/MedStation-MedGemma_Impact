@@ -19,6 +19,7 @@ import os
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
+from fastapi.testclient import TestClient
 
 # Set required environment variables for testing
 os.environ.setdefault("ELOHIM_FOUNDER_PASSWORD", "test_founder_password_12345")
@@ -26,21 +27,80 @@ os.environ.setdefault("ELOHIMOS_DEVICE_SECRET", "test_device_secret_" + os.urand
 
 # Test fixtures and helpers
 from config_paths import PATHS
+from auth_middleware import AuthService
 
 
 class TestTeamLifecycle:
     """Test team creation, invites, and membership"""
 
     def setup_method(self):
-        """Setup test database"""
+        """Setup test database and test client"""
         self.test_db = PATHS.app_db
         self.conn = sqlite3.connect(str(self.test_db))
         self.conn.row_factory = sqlite3.Row
 
-        # Test users
+        # Clean up any leftover test data from previous runs
+        cursor = self.conn.cursor()
+        try:
+            cursor.execute("DELETE FROM team_members WHERE team_id LIKE 'test_team_%' OR user_id LIKE 'test_%'")
+            cursor.execute("DELETE FROM team_invites WHERE team_id LIKE 'test_team_%' OR email_or_username LIKE 'test_%'")
+            cursor.execute("DELETE FROM teams WHERE team_id LIKE 'test_team_%'")
+            self.conn.commit()
+        except sqlite3.Error as e:
+            print(f"Warning: Could not clean up leftover test data: {e}")
+
+        # Setup FastAPI test client
+        from main import app
+        self.client = TestClient(app)
+
+        # Setup auth service for creating test users
+        self.auth_service = AuthService()
+
+        # Create test users
         self.admin_user_id = "test_admin_001"
         self.member_user_id = "test_member_001"
         self.outsider_user_id = "test_outsider_001"
+
+        # Create test users in auth database
+        auth_conn = sqlite3.connect(str(self.auth_service.db_path))
+        auth_conn.row_factory = sqlite3.Row
+        auth_cursor = auth_conn.cursor()
+
+        try:
+            admin_user = self.auth_service.create_user("test_admin_001", "test_password_123", "test_device_admin")
+            self.admin_user_id = admin_user.user_id
+        except ValueError:
+            # User already exists, get existing user_id
+            auth_cursor.execute("SELECT user_id FROM users WHERE username = ?", ("test_admin_001",))
+            row = auth_cursor.fetchone()
+            if row:
+                self.admin_user_id = row["user_id"]
+
+        try:
+            member_user = self.auth_service.create_user("test_member_001", "test_password_123", "test_device_member")
+            self.member_user_id = member_user.user_id
+        except ValueError:
+            auth_cursor.execute("SELECT user_id FROM users WHERE username = ?", ("test_member_001",))
+            row = auth_cursor.fetchone()
+            if row:
+                self.member_user_id = row["user_id"]
+
+        # Update test_admin_001 to super_admin role in auth database before authentication
+        auth_cursor.execute("UPDATE users SET role = ? WHERE user_id = ?", ("super_admin", self.admin_user_id))
+        auth_conn.commit()
+        auth_conn.close()
+
+        # Get auth tokens for test users (admin now has super_admin role)
+        admin_auth = self.auth_service.authenticate("test_admin_001", "test_password_123")
+        if not admin_auth:
+            raise RuntimeError("Failed to authenticate test_admin_001")
+
+        member_auth = self.auth_service.authenticate("test_member_001", "test_password_123")
+        if not member_auth:
+            raise RuntimeError("Failed to authenticate test_member_001")
+
+        self.admin_token = admin_auth["token"]
+        self.member_token = member_auth["token"]
 
     def teardown_method(self):
         """Cleanup test data"""
@@ -91,73 +151,171 @@ class TestTeamLifecycle:
         role = is_team_member(team_id, self.admin_user_id)
         assert role in ("super_admin", "admin")
 
-    @pytest.mark.skip(reason="Requires API endpoint - would need HTTP client test")
     def test_invite_member(self):
-        """Test team invitation"""
-        # This test requires the FastAPI endpoints
-        pass
-
+        """Test team invitation via HTTP API"""
         team_id = "test_team_002"
-        create_team(team_id, "Test Team 002", self.admin_user_id)
+        cursor = self.conn.cursor()
 
-        # Invite member
-        invite = invite_member(
-            team_id=team_id,
-            inviter_user_id=self.admin_user_id,
-            invitee_email="test_member_001@example.com",
-            role="member"
+        # Create team directly
+        cursor.execute("""
+            INSERT INTO teams (team_id, name, created_by, created_at)
+            VALUES (?, ?, ?, ?)
+        """, (team_id, "Test Team 002", self.admin_user_id, datetime.utcnow().isoformat()))
+
+        # Add creator as admin
+        cursor.execute("""
+            INSERT INTO team_members (team_id, user_id, role, is_active, joined_at)
+            VALUES (?, ?, ?, 1, ?)
+        """, (team_id, self.admin_user_id, "admin", datetime.utcnow().isoformat()))
+
+        self.conn.commit()
+
+        # Invite member via API
+        response = self.client.post(
+            f"/api/v1/teams/{team_id}/invites",
+            headers={"Authorization": f"Bearer {self.admin_token}"},
+            json={
+                "email_or_username": "test_member_001",
+                "role": "member"
+            }
         )
 
+        assert response.status_code == 200, f"Failed to create invite: {response.text}"
+        invite_data = response.json()
+        assert invite_data["team_id"] == team_id
+        assert "invite_id" in invite_data
+
+        # Verify invite in database
+        cursor.execute("""
+            SELECT * FROM team_invites WHERE invite_id = ?
+        """, (invite_data["invite_id"],))
+        invite = cursor.fetchone()
+        assert invite is not None
         assert invite["team_id"] == team_id
-        assert invite["invitee_email"] == "test_member_001@example.com"
+        assert invite["email_or_username"] == "test_member_001"
         assert invite["role"] == "member"
         assert invite["status"] == "pending"
 
-    @pytest.mark.skip(reason="Requires API endpoint - would need HTTP client test")
     def test_accept_invite(self):
-        """Test accepting team invitation"""
-        # This test requires the FastAPI endpoints
-        pass
-
+        """Test accepting team invitation via HTTP API"""
         team_id = "test_team_003"
-        create_team(team_id, "Test Team 003", self.admin_user_id)
+        cursor = self.conn.cursor()
 
-        invite = invite_member(
-            team_id,
-            self.admin_user_id,
-            "test_member_001@example.com",
-            "member"
+        # Create team directly
+        cursor.execute("""
+            INSERT INTO teams (team_id, name, created_by, created_at)
+            VALUES (?, ?, ?, ?)
+        """, (team_id, "Test Team 003", self.admin_user_id, datetime.utcnow().isoformat()))
+
+        # Add creator as admin
+        cursor.execute("""
+            INSERT INTO team_members (team_id, user_id, role, is_active, joined_at)
+            VALUES (?, ?, ?, 1, ?)
+        """, (team_id, self.admin_user_id, "admin", datetime.utcnow().isoformat()))
+
+        self.conn.commit()
+
+        # Create invite via API
+        response = self.client.post(
+            f"/api/v1/teams/{team_id}/invites",
+            headers={"Authorization": f"Bearer {self.admin_token}"},
+            json={
+                "email_or_username": "test_member_001",
+                "role": "member"
+            }
         )
 
-        # Accept invite
-        result = accept_invite(invite["id"], self.member_user_id)
-        assert result is True
+        assert response.status_code == 200
+        invite_data = response.json()
+        invite_id = invite_data["invite_id"]
 
-        # Verify membership
-        from team_service import is_team_member
-        role = is_team_member(team_id, self.member_user_id)
-        assert role == "member"
+        # Accept invite via API as member
+        response = self.client.post(
+            f"/api/v1/teams/invites/{invite_id}/accept",
+            headers={"Authorization": f"Bearer {self.member_token}"}
+        )
 
-    @pytest.mark.skip(reason="Requires API endpoint - would need HTTP client test")
+        assert response.status_code == 200, f"Failed to accept invite: {response.text}"
+        accept_data = response.json()
+        assert accept_data["team_id"] == team_id
+
+        # Verify membership in database
+        cursor.execute("""
+            SELECT * FROM team_members WHERE team_id = ? AND user_id = ?
+        """, (team_id, self.member_user_id))
+        member = cursor.fetchone()
+        assert member is not None
+        assert member["role"] == "member"
+        assert member["is_active"] == 1
+
+        # Verify invite status updated
+        cursor.execute("""
+            SELECT status FROM team_invites WHERE invite_id = ?
+        """, (invite_id,))
+        invite = cursor.fetchone()
+        assert invite is not None
+        assert invite["status"] == "accepted"
+
     def test_list_team_members(self):
-        """Test listing team members"""
-        # This test requires the FastAPI endpoints
-        pass
-
+        """Test listing team members via HTTP API"""
         team_id = "test_team_004"
-        create_team(team_id, "Test Team 004", self.admin_user_id)
+        cursor = self.conn.cursor()
 
-        # Invite and accept
-        invite = invite_member(team_id, self.admin_user_id, "test_member_001@example.com", "member")
-        accept_invite(invite["id"], self.member_user_id)
+        # Create team directly
+        cursor.execute("""
+            INSERT INTO teams (team_id, name, created_by, created_at)
+            VALUES (?, ?, ?, ?)
+        """, (team_id, "Test Team 004", self.admin_user_id, datetime.utcnow().isoformat()))
 
-        # List members
-        members = list_team_members(team_id)
-        assert len(members) >= 2  # admin + member
+        # Add creator as admin
+        cursor.execute("""
+            INSERT INTO team_members (team_id, user_id, role, is_active, joined_at)
+            VALUES (?, ?, ?, 1, ?)
+        """, (team_id, self.admin_user_id, "admin", datetime.utcnow().isoformat()))
 
+        self.conn.commit()
+
+        # Invite and accept member
+        response = self.client.post(
+            f"/api/v1/teams/{team_id}/invites",
+            headers={"Authorization": f"Bearer {self.admin_token}"},
+            json={
+                "email_or_username": "test_member_001",
+                "role": "member"
+            }
+        )
+        assert response.status_code == 200
+        invite_id = response.json()["invite_id"]
+
+        # Accept invite
+        response = self.client.post(
+            f"/api/v1/teams/invites/{invite_id}/accept",
+            headers={"Authorization": f"Bearer {self.member_token}"}
+        )
+        assert response.status_code == 200
+
+        # List members via API
+        response = self.client.get(
+            f"/api/v1/teams/{team_id}/members",
+            headers={"Authorization": f"Bearer {self.admin_token}"}
+        )
+
+        assert response.status_code == 200, f"Failed to list members: {response.text}"
+        members = response.json()
+        assert isinstance(members, list)
+        assert len(members) == 2  # Admin + member
+
+        # Verify both members are in the list
         user_ids = [m["user_id"] for m in members]
         assert self.admin_user_id in user_ids
         assert self.member_user_id in user_ids
+
+        # Verify roles
+        admin_member = next(m for m in members if m["user_id"] == self.admin_user_id)
+        assert admin_member["role"] == "admin"
+
+        regular_member = next(m for m in members if m["user_id"] == self.member_user_id)
+        assert regular_member["role"] == "member"
 
 
 class TestChatTeamIsolation:
