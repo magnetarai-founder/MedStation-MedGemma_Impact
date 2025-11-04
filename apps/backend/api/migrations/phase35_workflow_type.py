@@ -12,8 +12,11 @@ Migration Changes:
 import sqlite3
 import logging
 from pathlib import Path
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
+
+MIGRATION_NAME = "phase_3.5_workflow_type"
 
 
 def check_migration_applied(app_db_path: Path) -> bool:
@@ -29,17 +32,13 @@ def check_migration_applied(app_db_path: Path) -> bool:
 
         # Check if migration tracking entry exists
         cursor.execute("""
-            SELECT applied
-            FROM schema_migrations
-            WHERE phase = 'phase_3.5'
-        """)
+            SELECT 1 FROM migrations WHERE migration_name = ?
+        """, (MIGRATION_NAME,))
 
         result = cursor.fetchone()
         conn.close()
 
-        if result:
-            return bool(result[0])
-        return False
+        return result is not None
 
     except sqlite3.OperationalError:
         # Table doesn't exist or other DB error
@@ -86,10 +85,11 @@ def migrate_phase35_workflow_type(app_db_path: Path, workflows_db_path: Path) ->
         app_cursor = app_conn.cursor()
 
         # Record migration as applied
+        now = datetime.utcnow().isoformat()
         app_cursor.execute("""
-            INSERT OR REPLACE INTO schema_migrations (phase, applied_at, applied)
-            VALUES ('phase_3.5', datetime('now'), 1)
-        """)
+            INSERT INTO migrations (migration_name, applied_at, description)
+            VALUES (?, ?, ?)
+        """, (MIGRATION_NAME, now, "Add workflow_type column to workflows table"))
 
         app_conn.commit()
         app_conn.close()
