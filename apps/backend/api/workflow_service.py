@@ -338,6 +338,7 @@ async def get_work_item(
 # ============================================
 
 @router.post("/work-items/{work_item_id}/claim", response_model=WorkItem)
+@require_perm("workflows.edit", level="write")
 async def claim_work_item(
     request: Request,
     work_item_id: str,
@@ -376,6 +377,7 @@ async def claim_work_item(
 
 
 @router.post("/work-items/{work_item_id}/start", response_model=WorkItem)
+@require_perm("workflows.edit", level="write")
 async def start_work(
     request: Request,
     work_item_id: str,
@@ -402,6 +404,7 @@ async def start_work(
 
 
 @router.post("/work-items/{work_item_id}/complete", response_model=WorkItem)
+@require_perm("workflows.edit", level="write")
 async def complete_stage(
     request: Request,
     body: CompleteStageRequest,
@@ -454,6 +457,7 @@ async def complete_stage(
 
 
 @router.post("/work-items/{work_item_id}/cancel", response_model=WorkItem)
+@require_perm("workflows.edit", level="write")
 async def cancel_work_item(
     request: Request,
     work_item_id: str,

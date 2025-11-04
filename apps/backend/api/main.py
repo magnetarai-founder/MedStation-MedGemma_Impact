@@ -81,6 +81,14 @@ from sql_validator import SQLValidator
 from neutron_utils.sql_utils import SQLProcessor
 from neutron_utils.config import config
 from neutron_utils.json_utils import df_to_jsonsafe_records as _df_to_jsonsafe_records
+
+# Phase 2: Import permission decorator
+try:
+    from permission_engine import require_perm
+    from auth_middleware import get_current_user
+except ImportError:
+    from api.permission_engine import require_perm
+    from api.auth_middleware import get_current_user
 try:
     from .pulsar_core import JsonToExcelEngine
 except ImportError:
@@ -851,7 +859,8 @@ async def delete_query_from_history(request: Request, session_id: str, query_id:
     return SuccessResponse(success=True, message="Query deleted successfully")
 
 @app.post("/api/sessions/{session_id}/export")
-async def export_results(req: Request, session_id: str, request: ExportRequest):
+@require_perm("data.export")
+async def export_results(req: Request, session_id: str, request: ExportRequest, current_user: Dict = Depends(get_current_user)):
     """Export query results"""
     if session_id not in sessions:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -1828,7 +1837,8 @@ async def reset_data(request: Request):
         raise HTTPException(status_code=500, detail=f"Reset data failed: {str(e)}")
 
 @app.post("/api/admin/export-all")
-async def export_all(request: Request):
+@require_perm("data.export")
+async def export_all(request: Request, current_user: Dict = Depends(get_current_user)):
     """Export complete backup as ZIP"""
     try:
         import shutil
@@ -2033,7 +2043,8 @@ class QueryRequest(BaseModel):
 
 
 @app.post("/api/data/query")
-async def execute_data_query(req: Request, request: QueryRequest):
+@require_perm("data.run_sql")
+async def execute_data_query(req: Request, request: QueryRequest, current_user: Dict = Depends(get_current_user)):
     """Execute SQL query on loaded datasets"""
     try:
         result = await asyncio.to_thread(

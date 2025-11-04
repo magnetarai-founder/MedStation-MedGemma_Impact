@@ -309,6 +309,7 @@ async def get_document(doc_id: str, current_user: Dict = Depends(get_current_use
 
 
 @router.patch("/documents/{doc_id}", response_model=Document)
+@require_perm("docs.update", level="write")
 async def update_document(
     doc_id: str,
     updates: DocumentUpdate,
