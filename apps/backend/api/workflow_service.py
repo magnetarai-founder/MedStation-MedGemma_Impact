@@ -10,12 +10,15 @@ from datetime import datetime
 import logging
 
 # Phase 2: Import permission decorators
+# Phase 3: Import team-aware decorators and membership helpers
 try:
-    from .permission_engine import require_perm
+    from .permission_engine import require_perm, require_perm_team
     from .auth_middleware import get_current_user
+    from .team_service import is_team_member
 except ImportError:
-    from permission_engine import require_perm
+    from permission_engine import require_perm, require_perm_team
     from auth_middleware import get_current_user
+    from team_service import is_team_member
 
 try:
     from .workflow_models import (
@@ -89,24 +92,34 @@ def setup_p2p_sync(peer_id: str):
 # ============================================
 
 @router.post("/workflows", response_model=Workflow)
-@require_perm("workflows.create", level="write")
+@require_perm_team("workflows.create", level="write")
 async def create_workflow(
     request: Request,
     body: CreateWorkflowRequest,
+    team_id: Optional[str] = None,
     current_user: Dict = Depends(get_current_user)
 ):
     """
-    Create a new workflow definition
+    Create a new workflow definition (Phase 3: team-aware)
 
     Args:
         request: Workflow creation request
+        team_id: Optional team ID (if creating team workflow)
         current_user: Authenticated user
 
     Returns:
         Created workflow
+
+    Phase 3: If team_id is provided, creates a team workflow.
+    User must be a team member to create team workflows.
     """
     try:
         user_id = current_user["user_id"]
+
+        # Phase 3: Check team membership if creating team workflow
+        if team_id:
+            if not is_team_member(team_id, user_id):
+                raise HTTPException(status_code=403, detail="Not a member of this team")
 
         # Build workflow from request
         workflow = Workflow(
@@ -119,10 +132,10 @@ async def create_workflow(
             created_by=user_id,
         )
 
-        # Register with orchestrator
-        orchestrator.register_workflow(workflow, user_id=user_id)
+        # Register with orchestrator (pass team_id)
+        orchestrator.register_workflow(workflow, user_id=user_id, team_id=team_id)
 
-        logger.info(f"✨ Created workflow: {workflow.name} (ID: {workflow.id})")
+        logger.info(f"✨ Created workflow: {workflow.name} (ID: {workflow.id}) [team={team_id}]")
 
         return workflow
 
@@ -132,14 +145,18 @@ async def create_workflow(
 
 
 @router.get("/workflows", response_model=List[Workflow])
-@require_perm("workflows.view", level="read")
+@require_perm_team("workflows.view", level="read")
 async def list_workflows(
     category: Optional[str] = None,
     enabled_only: bool = True,
+    team_id: Optional[str] = None,
     current_user: Dict = Depends(get_current_user)
 ):
     """
-    List all workflows
+    List all workflows (Phase 3: team-aware)
+
+    Phase 3: If team_id is provided, lists team workflows.
+    Otherwise lists personal workflows.
 
     Args:
         category: Filter by category
@@ -150,8 +167,19 @@ async def list_workflows(
         List of workflows
     """
     user_id = current_user["user_id"]
-    # Use orchestrator method that filters by user_id
-    workflows = orchestrator.list_workflows(user_id=user_id, category=category, enabled_only=enabled_only)
+
+    # Phase 3: Check team membership if listing team workflows
+    if team_id:
+        if not is_team_member(team_id, user_id):
+            raise HTTPException(status_code=403, detail="Not a member of this team")
+
+    # Use orchestrator method that filters by user_id and team_id
+    workflows = orchestrator.list_workflows(
+        user_id=user_id,
+        category=category,
+        enabled_only=enabled_only,
+        team_id=team_id
+    )
 
     return workflows
 

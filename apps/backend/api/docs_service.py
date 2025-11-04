@@ -28,12 +28,15 @@ except ImportError:
     from api.user_service import get_or_create_user
 
 # Phase 2: Import permission decorators
+# Phase 3: Import team-aware decorators and membership helpers
 try:
-    from permission_engine import require_perm
+    from permission_engine import require_perm, require_perm_team
     from auth_middleware import get_current_user
+    from team_service import is_team_member
 except ImportError:
-    from api.permission_engine import require_perm
+    from api.permission_engine import require_perm, require_perm_team
     from api.auth_middleware import get_current_user
+    from api.team_service import is_team_member
 
 logger = logging.getLogger(__name__)
 
@@ -152,26 +155,40 @@ def get_db():
 # ===== CRUD Operations =====
 
 @router.post("/documents", response_model=Document)
-@require_perm("docs.create", level="write")
+@require_perm_team("docs.create", level="write")
 async def create_document(
     request: Request,
     doc: DocumentCreate,
+    team_id: Optional[str] = None,
     current_user: Dict = Depends(get_current_user)
 ):
-    """Create a new document"""
+    """
+    Create a new document (Phase 3: team-aware)
+
+    - If team_id is provided, creates a team document
+    - If team_id is None, creates a personal document
+    - Checks team membership before allowing team document creation
+    """
+    user_id = current_user["user_id"]
+
+    # Phase 3: Check team membership if creating team document
+    if team_id:
+        if not is_team_member(team_id, user_id):
+            raise HTTPException(status_code=403, detail="Not a member of this team")
+
     doc_id = f"doc_{datetime.utcnow().timestamp()}_{os.urandom(4).hex()}"
     now = datetime.utcnow().isoformat()
-    user_id = current_user["user_id"]
 
     conn = get_db()
     cursor = conn.cursor()
 
     try:
+        # Phase 3: Include team_id in insert
         cursor.execute("""
             INSERT INTO documents (
                 id, type, title, content, created_at, updated_at,
-                created_by, is_private, security_level, shared_with
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                created_by, is_private, security_level, shared_with, team_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             doc_id,
             doc.type,
@@ -182,7 +199,8 @@ async def create_document(
             user_id,
             1 if doc.is_private else 0,
             doc.security_level,
-            json.dumps([])
+            json.dumps([]),
+            team_id  # Phase 3: team_id
         ))
 
         conn.commit()
@@ -215,32 +233,59 @@ async def create_document(
 
 
 @router.get("/documents", response_model=List[Document])
-@require_perm("docs.read", level="read")
+@require_perm_team("docs.read", level="read")
 async def list_documents(
     since: Optional[str] = None,
+    team_id: Optional[str] = None,
     current_user: Dict = Depends(get_current_user)
 ):
     """
-    List user's documents, optionally filtered by timestamp
+    List user's documents, optionally filtered by timestamp (Phase 3: team-aware)
     Used for initial load and periodic sync
+
+    - If team_id is provided, lists team documents (if member)
+    - If team_id is None, lists personal documents
     """
-    conn = get_db()
-    cursor = conn.cursor()
     user_id = current_user["user_id"]
 
+    # Phase 3: Check team membership if listing team documents
+    if team_id:
+        if not is_team_member(team_id, user_id):
+            raise HTTPException(status_code=403, detail="Not a member of this team")
+
+    conn = get_db()
+    cursor = conn.cursor()
+
     try:
-        if since:
-            cursor.execute("""
-                SELECT * FROM documents
-                WHERE created_by = ? AND updated_at > ?
-                ORDER BY updated_at DESC
-            """, (user_id, since))
+        # Phase 3: Filter by team_id
+        if team_id:
+            # Team documents: filter by team_id
+            if since:
+                cursor.execute("""
+                    SELECT * FROM documents
+                    WHERE team_id = ? AND updated_at > ?
+                    ORDER BY updated_at DESC
+                """, (team_id, since))
+            else:
+                cursor.execute("""
+                    SELECT * FROM documents
+                    WHERE team_id = ?
+                    ORDER BY updated_at DESC
+                """, (team_id,))
         else:
-            cursor.execute("""
-                SELECT * FROM documents
-                WHERE created_by = ?
-                ORDER BY updated_at DESC
-            """, (user_id,))
+            # Personal documents: team_id IS NULL and created_by = user_id
+            if since:
+                cursor.execute("""
+                    SELECT * FROM documents
+                    WHERE created_by = ? AND team_id IS NULL AND updated_at > ?
+                    ORDER BY updated_at DESC
+                """, (user_id, since))
+            else:
+                cursor.execute("""
+                    SELECT * FROM documents
+                    WHERE created_by = ? AND team_id IS NULL
+                    ORDER BY updated_at DESC
+                """, (user_id,))
 
         rows = cursor.fetchall()
 
@@ -269,18 +314,41 @@ async def list_documents(
 
 
 @router.get("/documents/{doc_id}", response_model=Document)
-@require_perm("docs.read", level="read")
-async def get_document(doc_id: str, current_user: Dict = Depends(get_current_user)):
-    """Get a specific document by ID (user must own it)"""
-    conn = get_db()
-    cursor = conn.cursor()
+@require_perm_team("docs.read", level="read")
+async def get_document(
+    doc_id: str,
+    team_id: Optional[str] = None,
+    current_user: Dict = Depends(get_current_user)
+):
+    """
+    Get a specific document by ID (Phase 3: team-aware)
+
+    - For personal documents: user must own it
+    - For team documents: user must be team member
+    """
     user_id = current_user["user_id"]
 
+    conn = get_db()
+    cursor = conn.cursor()
+
     try:
-        cursor.execute("""
-            SELECT * FROM documents
-            WHERE id = ? AND created_by = ?
-        """, (doc_id, user_id))
+        # Phase 3: Check team membership if accessing team document
+        if team_id:
+            if not is_team_member(team_id, user_id):
+                raise HTTPException(status_code=403, detail="Not a member of this team")
+
+            # Team document: verify team_id matches
+            cursor.execute("""
+                SELECT * FROM documents
+                WHERE id = ? AND team_id = ?
+            """, (doc_id, team_id))
+        else:
+            # Personal document: verify ownership and team_id IS NULL
+            cursor.execute("""
+                SELECT * FROM documents
+                WHERE id = ? AND created_by = ? AND team_id IS NULL
+            """, (doc_id, user_id))
+
         row = cursor.fetchone()
 
         if not row:
@@ -400,22 +468,42 @@ async def update_document(
 
 
 @router.delete("/documents/{doc_id}")
-@require_perm("docs.delete", level="write")
+@require_perm_team("docs.delete", level="write")
 async def delete_document(
     request: Request,
     doc_id: str,
+    team_id: Optional[str] = None,
     current_user: Dict = Depends(get_current_user)
 ):
-    """Delete a document (user must own it)"""
-    conn = get_db()
-    cursor = conn.cursor()
+    """
+    Delete a document (Phase 3: team-aware)
+
+    - For personal documents: user must own it
+    - For team documents: user must be team member (permissions checked via decorator)
+    """
     user_id = current_user["user_id"]
 
+    # Phase 3: Check team membership if deleting team document
+    if team_id:
+        if not is_team_member(team_id, user_id):
+            raise HTTPException(status_code=403, detail="Not a member of this team")
+
+    conn = get_db()
+    cursor = conn.cursor()
+
     try:
-        cursor.execute("""
-            DELETE FROM documents
-            WHERE id = ? AND created_by = ?
-        """, (doc_id, user_id))
+        if team_id:
+            # Team document: verify team_id matches
+            cursor.execute("""
+                DELETE FROM documents
+                WHERE id = ? AND team_id = ?
+            """, (doc_id, team_id))
+        else:
+            # Personal document: verify ownership and team_id IS NULL
+            cursor.execute("""
+                DELETE FROM documents
+                WHERE id = ? AND created_by = ? AND team_id IS NULL
+            """, (doc_id, user_id))
 
         if cursor.rowcount == 0:
             raise HTTPException(status_code=404, detail="Document not found or access denied")

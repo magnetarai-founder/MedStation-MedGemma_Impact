@@ -17,16 +17,26 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 logger = logging.getLogger(__name__)
 
-# Database path for team data
+# Database path for team data (Phase 3: use app_db)
 from config_paths import get_config_paths
 PATHS = get_config_paths()
-TEAM_DB = PATHS.data_dir / "teams.db"
+APP_DB = PATHS.app_db
+
+def _get_app_conn() -> sqlite3.Connection:
+    """Get connection to app_db with row factory"""
+    conn = sqlite3.connect(str(APP_DB))
+    conn.row_factory = sqlite3.Row
+    return conn
 
 # Rate limiter for brute-force protection (HIGH-05)
 from rate_limiter import rate_limiter, get_client_ip
 
 from fastapi import Depends
 from auth_middleware import get_current_user
+
+# Phase 3: Import permission engine and audit logger
+from permission_engine import require_perm, get_permission_engine
+from audit_logger import audit_log_sync, AuditAction
 
 router = APIRouter(
     prefix="/api/v1/teams",
@@ -57,15 +67,44 @@ class InviteCodeResponse(BaseModel):
     expires_at: Optional[str]
 
 
+# ===== Team membership helpers (Phase 3) =====
+
+def is_team_member(team_id: str, user_id: str) -> Optional[str]:
+    """
+    Check if user is a member of the team.
+    Returns the user's role if they are a member, None otherwise.
+    """
+    conn = _get_app_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT role FROM team_members
+        WHERE team_id = ? AND user_id = ? AND is_active = 1
+    """, (team_id, user_id))
+    row = cur.fetchone()
+    conn.close()
+    return row["role"] if row else None
+
+
+def require_team_admin(team_id: str, user_id: str) -> None:
+    """
+    Raise HTTPException(403) if user is not a team admin (super_admin or admin).
+    """
+    role = is_team_member(team_id, user_id)
+    if role not in ("super_admin", "admin"):
+        raise HTTPException(status_code=403, detail="Team admin required")
+
+
 class TeamManager:
     """
     Manages team creation, member management, and invite codes
     """
 
     def __init__(self):
-        self.conn = sqlite3.connect(str(TEAM_DB), check_same_thread=False)
-        self.conn.row_factory = sqlite3.Row
-        self._init_database()
+        # Phase 3: No longer maintain persistent connection, use _get_app_conn() per operation
+        # self.conn is kept for backward compatibility but should not be used
+        self.conn = None
+        # Database is initialized via Phase 3 migration, not here
+        # self._init_database()
 
     def _init_database(self):
         """Initialize team database tables"""

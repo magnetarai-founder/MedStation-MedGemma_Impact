@@ -24,7 +24,9 @@ logger = logging.getLogger(__name__)
 from utils import sanitize_filename
 
 # Phase 2: Import permission decorators
-from permission_engine import require_perm
+# Phase 3: Import team-aware decorators and membership helpers
+from permission_engine import require_perm, require_perm_team
+from team_service import is_team_member
 
 # Import WebSocket connection manager
 try:
@@ -2747,48 +2749,84 @@ router = APIRouter(
 
 
 @router.post("/documents", response_model=VaultDocument)
-@require_perm("vault.documents.create", level="write")
+@require_perm_team("vault.documents.create", level="write")
 async def create_vault_document(
     vault_type: str,
     document: VaultDocumentCreate,
+    team_id: Optional[str] = None,
     current_user: Dict = Depends(get_current_user)
 ):
     """
-    Store encrypted vault document
+    Store encrypted vault document (Phase 3: team-aware)
 
     Security: All encryption happens client-side
     Server only stores encrypted blobs
+
+    vault_type options:
+    - "personal": Personal vault (E2E encrypted, God Rights cannot decrypt)
+    - "decoy": Decoy vault (plausible deniability)
+    - "team": Team vault (requires team_id, God Rights can decrypt metadata)
     """
     user_id = current_user["user_id"]
 
-    if vault_type not in ('real', 'decoy'):
-        raise HTTPException(status_code=400, detail="vault_type must be 'real' or 'decoy'")
+    # Phase 3: Support team vault type
+    if vault_type not in ('personal', 'decoy', 'team'):
+        raise HTTPException(status_code=400, detail="vault_type must be 'personal', 'decoy', or 'team'")
+
+    # Phase 3: Team vault requires team_id and membership
+    if vault_type == 'team':
+        if not team_id:
+            raise HTTPException(status_code=400, detail="team_id required for team vault")
+        if not is_team_member(team_id, user_id):
+            raise HTTPException(status_code=403, detail="Not a member of this team")
+
+    # Legacy compatibility: 'real' -> 'personal'
+    if vault_type == 'real':
+        vault_type = 'personal'
 
     if document.vault_type != vault_type:
         raise HTTPException(status_code=400, detail="Vault type mismatch")
 
     service = get_vault_service()
-    return service.store_document(user_id, document)
+    return service.store_document(user_id, document, team_id=team_id)
 
 
 @router.get("/documents", response_model=VaultListResponse)
-@require_perm("vault.documents.read", level="read")
+@require_perm_team("vault.documents.read", level="read")
 async def list_vault_documents(
     vault_type: str,
+    team_id: Optional[str] = None,
     current_user: Dict = Depends(get_current_user)
 ):
     """
-    List all vault documents
+    List all vault documents (Phase 3: team-aware)
 
     Returns encrypted blobs that must be decrypted client-side
+
+    vault_type options:
+    - "personal": Personal vault documents
+    - "decoy": Decoy vault documents
+    - "team": Team vault documents (requires team_id and membership)
     """
     user_id = current_user["user_id"]
 
-    if vault_type not in ('real', 'decoy'):
-        raise HTTPException(status_code=400, detail="vault_type must be 'real' or 'decoy'")
+    # Phase 3: Support team vault type
+    if vault_type not in ('personal', 'decoy', 'team'):
+        raise HTTPException(status_code=400, detail="vault_type must be 'personal', 'decoy', or 'team'")
+
+    # Phase 3: Team vault requires team_id and membership
+    if vault_type == 'team':
+        if not team_id:
+            raise HTTPException(status_code=400, detail="team_id required for team vault")
+        if not is_team_member(team_id, user_id):
+            raise HTTPException(status_code=403, detail="Not a member of this team")
+
+    # Legacy compatibility: 'real' -> 'personal'
+    if vault_type == 'real':
+        vault_type = 'personal'
 
     service = get_vault_service()
-    return service.list_documents(user_id, vault_type)
+    return service.list_documents(user_id, vault_type, team_id=team_id)
 
 
 @router.get("/documents/{doc_id}", response_model=VaultDocument)
