@@ -132,8 +132,9 @@ async def create_workflow(
             created_by=user_id,
         )
 
-        # Register with orchestrator (pass team_id)
-        orchestrator.register_workflow(workflow, user_id=user_id, team_id=team_id)
+        # Register with orchestrator
+        # Note: Orchestrator/storage are not yet team-aware; full scoping comes in Phase 3.5
+        orchestrator.register_workflow(workflow, user_id=user_id)
 
         logger.info(f"✨ Created workflow: {workflow.name} (ID: {workflow.id}) [team={team_id}]")
 
@@ -173,12 +174,11 @@ async def list_workflows(
         if not is_team_member(team_id, user_id):
             raise HTTPException(status_code=403, detail="Not a member of this team")
 
-    # Use orchestrator method that filters by user_id and team_id
+    # Use orchestrator method that filters by user_id (team scoping in 3.5)
     workflows = orchestrator.list_workflows(
         user_id=user_id,
         category=category,
-        enabled_only=enabled_only,
-        team_id=team_id
+        enabled_only=enabled_only
     )
 
     return workflows

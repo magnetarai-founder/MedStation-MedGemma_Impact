@@ -616,7 +616,7 @@ class VaultService:
         conn.commit()
         conn.close()
 
-    def store_document(self, user_id: str, doc: VaultDocumentCreate) -> VaultDocument:
+    def store_document(self, user_id: str, doc: VaultDocumentCreate, team_id: Optional[str] = None) -> VaultDocument:
         """
         Store encrypted vault document
 
@@ -634,21 +634,50 @@ class VaultService:
         cursor = conn.cursor()
 
         try:
-            cursor.execute("""
-                INSERT OR REPLACE INTO vault_documents
-                (id, user_id, vault_type, encrypted_blob, encrypted_metadata,
-                 created_at, updated_at, size_bytes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                doc.id,
-                user_id,
-                doc.vault_type,
-                doc.encrypted_blob,
-                doc.encrypted_metadata,
-                now,
-                now,
-                size_bytes
-            ))
+            # Phase 3: include team_id if column exists (added by migration)
+            cursor.execute("PRAGMA table_info(vault_documents)")
+            cols = [r[1] for r in cursor.fetchall()]
+            has_team_id = "team_id" in cols
+
+            if has_team_id:
+                cursor.execute(
+                    """
+                    INSERT OR REPLACE INTO vault_documents
+                    (id, user_id, vault_type, encrypted_blob, encrypted_metadata,
+                     created_at, updated_at, size_bytes, team_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        doc.id,
+                        user_id,
+                        doc.vault_type,
+                        doc.encrypted_blob,
+                        doc.encrypted_metadata,
+                        now,
+                        now,
+                        size_bytes,
+                        team_id,
+                    ),
+                )
+            else:
+                cursor.execute(
+                    """
+                    INSERT OR REPLACE INTO vault_documents
+                    (id, user_id, vault_type, encrypted_blob, encrypted_metadata,
+                     created_at, updated_at, size_bytes)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        doc.id,
+                        user_id,
+                        doc.vault_type,
+                        doc.encrypted_blob,
+                        doc.encrypted_metadata,
+                        now,
+                        now,
+                        size_bytes,
+                    ),
+                )
 
             conn.commit()
 
@@ -699,18 +728,43 @@ class VaultService:
             size_bytes=row[7]
         )
 
-    def list_documents(self, user_id: str, vault_type: str) -> VaultListResponse:
-        """List all vault documents for a user and vault type"""
+    def list_documents(self, user_id: str, vault_type: str, team_id: Optional[str] = None) -> VaultListResponse:
+        """
+        List all vault documents for a user and vault type
+
+        Phase 3: if team_id is provided, return team-scoped documents.
+        """
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
+        # Map API vault_type to DB vault_type
+        db_vault_type = vault_type
+        if vault_type in ("personal", "team"):
+            db_vault_type = "real"
 
-        cursor.execute("""
-            SELECT id, user_id, vault_type, encrypted_blob, encrypted_metadata,
-                   created_at, updated_at, size_bytes
-            FROM vault_documents
-            WHERE user_id = ? AND vault_type = ? AND is_deleted = 0
-            ORDER BY updated_at DESC
-        """, (user_id, vault_type))
+        if team_id:
+            # Team documents: filter by team_id and 'real'
+            cursor.execute(
+                """
+                SELECT id, user_id, vault_type, encrypted_blob, encrypted_metadata,
+                       created_at, updated_at, size_bytes
+                FROM vault_documents
+                WHERE team_id = ? AND vault_type = ? AND is_deleted = 0
+                ORDER BY updated_at DESC
+                """,
+                (team_id, db_vault_type),
+            )
+        else:
+            # Personal/decoy: filter by user_id and team_id IS NULL
+            cursor.execute(
+                """
+                SELECT id, user_id, vault_type, encrypted_blob, encrypted_metadata,
+                       created_at, updated_at, size_bytes
+                FROM vault_documents
+                WHERE user_id = ? AND vault_type = ? AND is_deleted = 0 AND (team_id IS NULL OR team_id = '')
+                ORDER BY updated_at DESC
+                """,
+                (user_id, db_vault_type),
+            )
 
         rows = cursor.fetchall()
         conn.close()
@@ -2780,12 +2834,12 @@ async def create_vault_document(
         if not is_team_member(team_id, user_id):
             raise HTTPException(status_code=403, detail="Not a member of this team")
 
-    # Legacy compatibility: 'real' -> 'personal'
-    if vault_type == 'real':
-        vault_type = 'personal'
-
-    if document.vault_type != vault_type:
-        raise HTTPException(status_code=400, detail="Vault type mismatch")
+    # Map API vault_type to DB vault_type for payload validation
+    db_vault_type = 'real' if vault_type in ('personal', 'team') else 'decoy'
+    if document.vault_type not in ('real', 'decoy'):
+        raise HTTPException(status_code=400, detail="document.vault_type must be 'real' or 'decoy'")
+    if document.vault_type != db_vault_type:
+        raise HTTPException(status_code=400, detail="Vault type mismatch between route and payload")
 
     service = get_vault_service()
     return service.store_document(user_id, document, team_id=team_id)
@@ -2830,20 +2884,39 @@ async def list_vault_documents(
 
 
 @router.get("/documents/{doc_id}", response_model=VaultDocument)
-@require_perm("vault.documents.read", level="read")
+@require_perm_team("vault.documents.read", level="read")
 async def get_vault_document(
     doc_id: str,
     vault_type: str,
+    team_id: Optional[str] = None,
     current_user: Dict = Depends(get_current_user)
 ):
-    """Get single vault document (user-filtered)"""
+    """
+    Get single vault document (Phase 3: team-aware)
+
+    vault_type options:
+    - "personal": Personal vault document
+    - "decoy": Decoy vault document
+    - "team": Team vault document (requires team_id and membership)
+    """
     user_id = current_user["user_id"]
 
-    if vault_type not in ('real', 'decoy'):
-        raise HTTPException(status_code=400, detail="vault_type must be 'real' or 'decoy'")
+    # Phase 3: Support team vault type
+    if vault_type not in ('personal', 'decoy', 'team'):
+        raise HTTPException(status_code=400, detail="vault_type must be 'personal', 'decoy', or 'team'")
+
+    # Phase 3: Team vault requires team_id and membership
+    if vault_type == 'team':
+        if not team_id:
+            raise HTTPException(status_code=400, detail="team_id required for team vault")
+        if not is_team_member(team_id, user_id):
+            raise HTTPException(status_code=403, detail="Not a member of this team")
+
+    # Legacy compatibility: 'real' -> 'personal'
+    db_vault_type = 'real' if vault_type in ('personal', 'team') else 'decoy'
 
     service = get_vault_service()
-    doc = service.get_document(user_id, doc_id, vault_type)
+    doc = service.get_document(user_id, doc_id, db_vault_type, team_id=team_id)
 
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -2852,38 +2925,76 @@ async def get_vault_document(
 
 
 @router.put("/documents/{doc_id}", response_model=VaultDocument)
-@require_perm("vault.documents.update", level="write")
+@require_perm_team("vault.documents.update", level="write")
 async def update_vault_document(
     doc_id: str,
     vault_type: str,
     update: VaultDocumentUpdate,
+    team_id: Optional[str] = None,
     current_user: Dict = Depends(get_current_user)
 ):
-    """Update vault document (user-filtered)"""
+    """
+    Update vault document (Phase 3: team-aware)
+
+    vault_type options:
+    - "personal": Personal vault document
+    - "decoy": Decoy vault document
+    - "team": Team vault document (requires team_id and membership)
+    """
     user_id = current_user["user_id"]
 
-    if vault_type not in ('real', 'decoy'):
-        raise HTTPException(status_code=400, detail="vault_type must be 'real' or 'decoy'")
+    # Phase 3: Support team vault type
+    if vault_type not in ('personal', 'decoy', 'team'):
+        raise HTTPException(status_code=400, detail="vault_type must be 'personal', 'decoy', or 'team'")
+
+    # Phase 3: Team vault requires team_id and membership
+    if vault_type == 'team':
+        if not team_id:
+            raise HTTPException(status_code=400, detail="team_id required for team vault")
+        if not is_team_member(team_id, user_id):
+            raise HTTPException(status_code=403, detail="Not a member of this team")
+
+    # Legacy compatibility: 'real' -> 'personal'
+    db_vault_type = 'real' if vault_type in ('personal', 'team') else 'decoy'
 
     service = get_vault_service()
-    return service.update_document(user_id, doc_id, vault_type, update)
+    return service.update_document(user_id, doc_id, db_vault_type, update, team_id=team_id)
 
 
 @router.delete("/documents/{doc_id}")
-@require_perm("vault.documents.delete", level="write")
+@require_perm_team("vault.documents.delete", level="write")
 async def delete_vault_document(
     doc_id: str,
     vault_type: str,
+    team_id: Optional[str] = None,
     current_user: Dict = Depends(get_current_user)
 ):
-    """Delete vault document (soft delete, user-filtered)"""
+    """
+    Delete vault document (soft delete, Phase 3: team-aware)
+
+    vault_type options:
+    - "personal": Personal vault document
+    - "decoy": Decoy vault document
+    - "team": Team vault document (requires team_id and membership)
+    """
     user_id = current_user["user_id"]
 
-    if vault_type not in ('real', 'decoy'):
-        raise HTTPException(status_code=400, detail="vault_type must be 'real' or 'decoy'")
+    # Phase 3: Support team vault type
+    if vault_type not in ('personal', 'decoy', 'team'):
+        raise HTTPException(status_code=400, detail="vault_type must be 'personal', 'decoy', or 'team'")
+
+    # Phase 3: Team vault requires team_id and membership
+    if vault_type == 'team':
+        if not team_id:
+            raise HTTPException(status_code=400, detail="team_id required for team vault")
+        if not is_team_member(team_id, user_id):
+            raise HTTPException(status_code=403, detail="Not a member of this team")
+
+    # Legacy compatibility: 'real' -> 'personal'
+    db_vault_type = 'real' if vault_type in ('personal', 'team') else 'decoy'
 
     service = get_vault_service()
-    success = service.delete_document(user_id, doc_id, vault_type)
+    success = service.delete_document(user_id, doc_id, db_vault_type, team_id=team_id)
 
     if not success:
         raise HTTPException(status_code=404, detail="Document not found")
