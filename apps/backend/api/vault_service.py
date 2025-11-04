@@ -699,17 +699,31 @@ class VaultService:
         finally:
             conn.close()
 
-    def get_document(self, user_id: str, doc_id: str, vault_type: str) -> Optional[VaultDocument]:
-        """Get encrypted vault document by ID"""
+    def get_document(self, user_id: str, doc_id: str, vault_type: str, team_id: Optional[str] = None) -> Optional[VaultDocument]:
+        """Get encrypted vault document by ID (Phase 3: optional team scope)"""
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
 
-        cursor.execute("""
-            SELECT id, user_id, vault_type, encrypted_blob, encrypted_metadata,
-                   created_at, updated_at, size_bytes
-            FROM vault_documents
-            WHERE id = ? AND user_id = ? AND vault_type = ? AND is_deleted = 0
-        """, (doc_id, user_id, vault_type))
+        if team_id:
+            cursor.execute(
+                """
+                SELECT id, user_id, vault_type, encrypted_blob, encrypted_metadata,
+                       created_at, updated_at, size_bytes
+                FROM vault_documents
+                WHERE id = ? AND team_id = ? AND vault_type = ? AND is_deleted = 0
+                """,
+                (doc_id, team_id, vault_type),
+            )
+        else:
+            cursor.execute(
+                """
+                SELECT id, user_id, vault_type, encrypted_blob, encrypted_metadata,
+                       created_at, updated_at, size_bytes
+                FROM vault_documents
+                WHERE id = ? AND user_id = ? AND vault_type = ? AND is_deleted = 0 AND (team_id IS NULL OR team_id = '')
+                """,
+                (doc_id, user_id, vault_type),
+            )
 
         row = cursor.fetchone()
         conn.close()
@@ -788,8 +802,8 @@ class VaultService:
             total_count=len(documents)
         )
 
-    def update_document(self, user_id: str, doc_id: str, vault_type: str, update: VaultDocumentUpdate) -> VaultDocument:
-        """Update encrypted vault document"""
+    def update_document(self, user_id: str, doc_id: str, vault_type: str, update: VaultDocumentUpdate, team_id: Optional[str] = None) -> VaultDocument:
+        """Update encrypted vault document (Phase 3: optional team scope)"""
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
 
@@ -797,22 +811,46 @@ class VaultService:
         size_bytes = len(update.encrypted_blob) + len(update.encrypted_metadata)
 
         try:
-            cursor.execute("""
-                UPDATE vault_documents
-                SET encrypted_blob = ?,
-                    encrypted_metadata = ?,
-                    updated_at = ?,
-                    size_bytes = ?
-                WHERE id = ? AND user_id = ? AND vault_type = ? AND is_deleted = 0
-            """, (
-                update.encrypted_blob,
-                update.encrypted_metadata,
-                now,
-                size_bytes,
-                doc_id,
-                user_id,
-                vault_type
-            ))
+            if team_id:
+                cursor.execute(
+                    """
+                    UPDATE vault_documents
+                    SET encrypted_blob = ?,
+                        encrypted_metadata = ?,
+                        updated_at = ?,
+                        size_bytes = ?
+                    WHERE id = ? AND team_id = ? AND vault_type = ? AND is_deleted = 0
+                    """,
+                    (
+                        update.encrypted_blob,
+                        update.encrypted_metadata,
+                        now,
+                        size_bytes,
+                        doc_id,
+                        team_id,
+                        vault_type,
+                    ),
+                )
+            else:
+                cursor.execute(
+                    """
+                    UPDATE vault_documents
+                    SET encrypted_blob = ?,
+                        encrypted_metadata = ?,
+                        updated_at = ?,
+                        size_bytes = ?
+                    WHERE id = ? AND user_id = ? AND vault_type = ? AND is_deleted = 0 AND (team_id IS NULL OR team_id = '')
+                    """,
+                    (
+                        update.encrypted_blob,
+                        update.encrypted_metadata,
+                        now,
+                        size_bytes,
+                        doc_id,
+                        user_id,
+                        vault_type,
+                    ),
+                )
 
             if cursor.rowcount == 0:
                 raise HTTPException(status_code=404, detail="Document not found")
@@ -820,7 +858,7 @@ class VaultService:
             conn.commit()
 
             # Fetch updated document
-            updated_doc = self.get_document(user_id, doc_id, vault_type)
+            updated_doc = self.get_document(user_id, doc_id, vault_type, team_id=team_id)
             if not updated_doc:
                 raise HTTPException(status_code=500, detail="Failed to retrieve updated document")
 
@@ -835,20 +873,34 @@ class VaultService:
         finally:
             conn.close()
 
-    def delete_document(self, user_id: str, doc_id: str, vault_type: str) -> bool:
-        """Soft-delete vault document"""
+    def delete_document(self, user_id: str, doc_id: str, vault_type: str, team_id: Optional[str] = None) -> bool:
+        """Soft-delete vault document (Phase 3: optional team scope)"""
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
 
         now = datetime.utcnow().isoformat()
 
         try:
-            cursor.execute("""
-                UPDATE vault_documents
-                SET is_deleted = 1,
-                    deleted_at = ?
-                WHERE id = ? AND user_id = ? AND vault_type = ? AND is_deleted = 0
-            """, (now, doc_id, user_id, vault_type))
+            if team_id:
+                cursor.execute(
+                    """
+                    UPDATE vault_documents
+                    SET is_deleted = 1,
+                        deleted_at = ?
+                    WHERE id = ? AND team_id = ? AND vault_type = ? AND is_deleted = 0
+                    """,
+                    (now, doc_id, team_id, vault_type),
+                )
+            else:
+                cursor.execute(
+                    """
+                    UPDATE vault_documents
+                    SET is_deleted = 1,
+                        deleted_at = ?
+                    WHERE id = ? AND user_id = ? AND vault_type = ? AND is_deleted = 0 AND (team_id IS NULL OR team_id = '')
+                    """,
+                    (now, doc_id, user_id, vault_type),
+                )
 
             conn.commit()
             return cursor.rowcount > 0

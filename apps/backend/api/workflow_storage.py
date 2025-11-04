@@ -84,7 +84,8 @@ class WorkflowStorage:
                 updated_at TEXT NOT NULL,
                 version INTEGER DEFAULT 1,
                 tags TEXT,  -- JSON array
-                user_id TEXT  -- Phase 1: User isolation
+                user_id TEXT,  -- Phase 1: User isolation
+                team_id TEXT   -- Phase 3: Team isolation (NULL for personal workflows)
             )
         """)
 
@@ -110,6 +111,7 @@ class WorkflowStorage:
                 tags TEXT,  -- JSON array
                 reference_number TEXT,
                 user_id TEXT,  -- Phase 1: User isolation
+                team_id TEXT,  -- Phase 3: Team isolation (NULL for personal work items)
                 FOREIGN KEY (workflow_id) REFERENCES workflows(id)
             )
         """)
@@ -126,6 +128,7 @@ class WorkflowStorage:
                 notes TEXT,
                 duration_seconds INTEGER,
                 user_id TEXT,  -- Phase 1: User isolation
+                team_id TEXT,  -- Phase 3: Team isolation
                 FOREIGN KEY (work_item_id) REFERENCES work_items(id)
             )
         """)
@@ -142,6 +145,7 @@ class WorkflowStorage:
                 uploaded_by TEXT NOT NULL,
                 uploaded_at TEXT NOT NULL,
                 user_id TEXT,  -- Phase 1: User isolation
+                team_id TEXT,  -- Phase 3: Team isolation
                 FOREIGN KEY (work_item_id) REFERENCES work_items(id)
             )
         """)
@@ -159,6 +163,12 @@ class WorkflowStorage:
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_attachments_user ON attachments(user_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_transitions_work_item ON stage_transitions(work_item_id)")
 
+        # Phase 3: Team isolation indexes
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_workflows_team ON workflows(team_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_work_items_team ON work_items(team_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_transitions_team ON stage_transitions(team_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_attachments_team ON attachments(team_id)")
+
         conn.commit()
         conn.close()
 
@@ -166,13 +176,14 @@ class WorkflowStorage:
     # WORKFLOW CRUD
     # ============================================
 
-    def save_workflow(self, workflow: Workflow, user_id: str) -> None:
+    def save_workflow(self, workflow: Workflow, user_id: str, team_id: Optional[str] = None) -> None:
         """
-        Save workflow to database
+        Save workflow to database (Phase 3: team-aware)
 
         Args:
             workflow: Workflow to save
             user_id: User ID for isolation
+            team_id: Optional team ID for team workflows (None for personal)
         """
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -181,8 +192,8 @@ class WorkflowStorage:
             INSERT OR REPLACE INTO workflows
             (id, name, description, icon, category, stages, triggers, enabled,
              allow_manual_creation, require_approval_to_start, created_by,
-             created_at, updated_at, version, tags, user_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             created_at, updated_at, version, tags, user_id, team_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             workflow.id,
             workflow.name,
@@ -200,20 +211,23 @@ class WorkflowStorage:
             workflow.version,
             json.dumps(workflow.tags),
             user_id,
+            team_id,  # Phase 3: team_id
         ))
 
         conn.commit()
         conn.close()
 
-        logger.info(f"💾 Saved workflow: {workflow.name} (ID: {workflow.id})")
+        team_context = f"team={team_id}" if team_id else "personal"
+        logger.info(f"💾 Saved workflow: {workflow.name} (ID: {workflow.id}) [{team_context}]")
 
-    def get_workflow(self, workflow_id: str, user_id: str) -> Optional[Workflow]:
+    def get_workflow(self, workflow_id: str, user_id: str, team_id: Optional[str] = None) -> Optional[Workflow]:
         """
-        Get workflow by ID
+        Get workflow by ID (Phase 3: team-aware)
 
         Args:
             workflow_id: Workflow ID
             user_id: User ID for isolation
+            team_id: Optional team ID (None for personal workflows)
 
         Returns:
             Workflow or None if not found
@@ -222,10 +236,20 @@ class WorkflowStorage:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
-        cursor.execute("""
-            SELECT * FROM workflows
-            WHERE id = ? AND user_id = ?
-        """, (workflow_id, user_id))
+        # Phase 3: Filter by team_id
+        if team_id:
+            # Team workflow: filter by team_id
+            cursor.execute("""
+                SELECT * FROM workflows
+                WHERE id = ? AND team_id = ?
+            """, (workflow_id, team_id))
+        else:
+            # Personal workflow: filter by user_id and team_id IS NULL
+            cursor.execute("""
+                SELECT * FROM workflows
+                WHERE id = ? AND user_id = ? AND team_id IS NULL
+            """, (workflow_id, user_id))
+
         row = cursor.fetchone()
         conn.close()
 
@@ -238,15 +262,17 @@ class WorkflowStorage:
         self,
         user_id: str,
         category: Optional[str] = None,
-        enabled_only: bool = True
+        enabled_only: bool = True,
+        team_id: Optional[str] = None
     ) -> List[Workflow]:
         """
-        List all workflows
+        List all workflows (Phase 3: team-aware)
 
         Args:
             user_id: User ID for isolation
             category: Filter by category
             enabled_only: Only return enabled workflows
+            team_id: Optional team ID (None for personal workflows)
 
         Returns:
             List of workflows
@@ -255,8 +281,15 @@ class WorkflowStorage:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
-        query = "SELECT * FROM workflows WHERE user_id = ?"
-        params = [user_id]
+        # Phase 3: Filter by team_id
+        if team_id:
+            # Team workflows: filter by team_id
+            query = "SELECT * FROM workflows WHERE team_id = ?"
+            params = [team_id]
+        else:
+            # Personal workflows: filter by user_id and team_id IS NULL
+            query = "SELECT * FROM workflows WHERE user_id = ? AND team_id IS NULL"
+            params = [user_id]
 
         if category:
             query += " AND category = ?"

@@ -107,21 +107,23 @@ class WorkflowOrchestrator:
     # WORKFLOW REGISTRATION
     # ============================================
 
-    def register_workflow(self, workflow: Workflow, user_id: str) -> None:
+    def register_workflow(self, workflow: Workflow, user_id: str, team_id: Optional[str] = None) -> None:
         """
-        Register a workflow definition
+        Register a workflow definition (Phase 3: team-aware)
 
         Args:
             workflow: Workflow to register
             user_id: User ID for isolation
+            team_id: Optional team ID for team workflows
         """
         self.workflows[workflow.id] = workflow
 
         # Persist to storage
         if self.storage:
-            self.storage.save_workflow(workflow, user_id=user_id)
+            self.storage.save_workflow(workflow, user_id=user_id, team_id=team_id)
 
-        logger.info(f"📋 Registered workflow: {workflow.name} (ID: {workflow.id}) for user {user_id}")
+        team_context = f"team={team_id}" if team_id else f"user={user_id}"
+        logger.info(f"📋 Registered workflow: {workflow.name} (ID: {workflow.id}) [{team_context}]")
         logger.info(f"   Stages: {len(workflow.stages)}, Triggers: {len(workflow.triggers)}")
 
     def get_workflow(self, workflow_id: str, user_id: str) -> Optional[Workflow]:
@@ -157,25 +159,28 @@ class WorkflowOrchestrator:
         self,
         user_id: str,
         category: Optional[str] = None,
-        enabled_only: bool = False
+        enabled_only: bool = False,
+        team_id: Optional[str] = None
     ) -> List[Workflow]:
         """
-        List all workflows for a user with optional filters
+        List all workflows for a user with optional filters (Phase 3: team-aware)
 
         Args:
             user_id: User ID for isolation
             category: Optional category filter
             enabled_only: Only return enabled workflows
+            team_id: Optional team ID for team workflows
 
         Returns:
-            List of workflows owned by user
+            List of workflows (team or personal based on team_id)
         """
         # Always fetch from storage to ensure user isolation
         if self.storage:
             workflows = self.storage.list_workflows(
                 user_id=user_id,
                 category=category,
-                enabled_only=enabled_only
+                enabled_only=enabled_only,
+                team_id=team_id
             )
             return workflows
 
