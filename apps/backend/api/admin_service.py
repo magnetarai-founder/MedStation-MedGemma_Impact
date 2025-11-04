@@ -29,6 +29,12 @@ try:
 except ImportError:
     from audit_logger import get_audit_logger, AuditAction
 
+# Phase 2: Import permission decorator
+try:
+    from .permission_engine import require_perm
+except ImportError:
+    from permission_engine import require_perm
+
 logger = logging.getLogger(__name__)
 audit_logger = get_audit_logger()
 
@@ -314,6 +320,7 @@ async def get_user_vault_status(
 
 
 @router.get("/device/overview")
+@require_perm("system.view_admin_dashboard")
 async def get_device_overview(
     request: Request,
     current_user: Dict = Depends(require_founder_rights)

@@ -131,25 +131,49 @@ class PermissionEngine:
         cur = conn.cursor()
 
         # Step 1: Load user data
-        cur.execute("""
-            SELECT user_id, username, role, job_role, team_id
-            FROM users
-            WHERE user_id = ?
-        """, (user_id,))
+        # Note: team_id and job_role may not exist yet; handle gracefully
+        try:
+            cur.execute("""
+                SELECT user_id, username, role, job_role, team_id
+                FROM users
+                WHERE user_id = ?
+            """, (user_id,))
+            user_row = cur.fetchone()
 
-        user_row = cur.fetchone()
-        if not user_row:
-            conn.close()
-            raise ValueError(f"User not found: {user_id}")
+            if not user_row:
+                conn.close()
+                raise ValueError(f"User not found: {user_id}")
 
-        ctx = UserPermissionContext(
-            user_id=user_row['user_id'],
-            username=user_row['username'],
-            role=user_row['role'] or 'member',
-            job_role=user_row['job_role'],
-            team_id=user_row['team_id'],
-            is_solo_mode=(user_row['team_id'] is None),
-        )
+            ctx = UserPermissionContext(
+                user_id=user_row['user_id'],
+                username=user_row['username'],
+                role=user_row['role'] or 'member',
+                job_role=user_row['job_role'] if 'job_role' in user_row.keys() else None,
+                team_id=user_row['team_id'] if 'team_id' in user_row.keys() else None,
+                is_solo_mode=(user_row['team_id'] if 'team_id' in user_row.keys() else None) is None,
+            )
+        except sqlite3.OperationalError as e:
+            # Columns don't exist yet; load minimal user data
+            logger.warning(f"Loading user context with minimal schema (team_id/job_role missing): {e}")
+            cur.execute("""
+                SELECT user_id, username, role
+                FROM users
+                WHERE user_id = ?
+            """, (user_id,))
+            user_row = cur.fetchone()
+
+            if not user_row:
+                conn.close()
+                raise ValueError(f"User not found: {user_id}")
+
+            ctx = UserPermissionContext(
+                user_id=user_row['user_id'],
+                username=user_row['username'],
+                role=user_row['role'] or 'member',
+                job_role=None,
+                team_id=None,
+                is_solo_mode=True,
+            )
 
         # Step 2: Load assigned profiles
         cur.execute("""

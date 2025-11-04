@@ -3,11 +3,19 @@ Workflow Service Layer
 REST API and business logic for workflow operations
 """
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request, Depends
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import logging
+
+# Phase 2: Import permission decorators
+try:
+    from .permission_engine import require_perm
+    from .auth_middleware import get_current_user
+except ImportError:
+    from permission_engine import require_perm
+    from auth_middleware import get_current_user
 
 try:
     from .workflow_models import (
@@ -81,6 +89,7 @@ def setup_p2p_sync(peer_id: str):
 # ============================================
 
 @router.post("/workflows", response_model=Workflow)
+@require_perm("workflows.create", level="write")
 async def create_workflow(
     request: Request,
     body: CreateWorkflowRequest,
@@ -123,6 +132,7 @@ async def create_workflow(
 
 
 @router.get("/workflows", response_model=List[Workflow])
+@require_perm("workflows.view", level="read")
 async def list_workflows(
     category: Optional[str] = None,
     enabled_only: bool = True,
@@ -147,6 +157,7 @@ async def list_workflows(
 
 
 @router.get("/workflows/{workflow_id}", response_model=Workflow)
+@require_perm("workflows.view", level="read")
 async def get_workflow(
     workflow_id: str,
     current_user: Dict = Depends(get_current_user)
@@ -173,6 +184,7 @@ async def get_workflow(
 
 
 @router.delete("/workflows/{workflow_id}")
+@require_perm("workflows.delete", level="write")
 async def delete_workflow(
     request: Request,
     workflow_id: str,
@@ -206,6 +218,7 @@ async def delete_workflow(
 # ============================================
 
 @router.post("/work-items", response_model=WorkItem)
+@require_perm("workflows.create", level="write")
 async def create_work_item(
     request: Request,
     body: CreateWorkItemRequest,
@@ -256,6 +269,7 @@ async def create_work_item(
 
 
 @router.get("/work-items", response_model=List[WorkItem])
+@require_perm("workflows.view", level="read")
 async def list_work_items(
     workflow_id: Optional[str] = None,
     status: Optional[WorkItemStatus] = None,

@@ -18,7 +18,7 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 import logging
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
 from pydantic import BaseModel, Field
 
 # Import user service
@@ -26,6 +26,14 @@ try:
     from user_service import get_or_create_user
 except ImportError:
     from api.user_service import get_or_create_user
+
+# Phase 2: Import permission decorators
+try:
+    from permission_engine import require_perm
+    from auth_middleware import get_current_user
+except ImportError:
+    from api.permission_engine import require_perm
+    from api.auth_middleware import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -144,6 +152,7 @@ def get_db():
 # ===== CRUD Operations =====
 
 @router.post("/documents", response_model=Document)
+@require_perm("docs.create", level="write")
 async def create_document(
     request: Request,
     doc: DocumentCreate,
@@ -206,6 +215,7 @@ async def create_document(
 
 
 @router.get("/documents", response_model=List[Document])
+@require_perm("docs.read", level="read")
 async def list_documents(
     since: Optional[str] = None,
     current_user: Dict = Depends(get_current_user)
@@ -259,6 +269,7 @@ async def list_documents(
 
 
 @router.get("/documents/{doc_id}", response_model=Document)
+@require_perm("docs.read", level="read")
 async def get_document(doc_id: str, current_user: Dict = Depends(get_current_user)):
     """Get a specific document by ID (user must own it)"""
     conn = get_db()
@@ -388,6 +399,7 @@ async def update_document(
 
 
 @router.delete("/documents/{doc_id}")
+@require_perm("docs.delete", level="write")
 async def delete_document(
     request: Request,
     doc_id: str,
