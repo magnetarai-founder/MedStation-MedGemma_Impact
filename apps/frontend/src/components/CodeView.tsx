@@ -167,6 +167,7 @@ export function CodeView() {
   }
 
   return (
+    <>
     <ResizableSidebar
       initialWidth={280}
       minWidth={200}
