@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Cloud, Send, Share2, Zap, X, ChevronDown } from 'lucide-react'
 import { useSessionStore } from '@/stores/sessionStore'
 import { useOllamaStore } from '@/stores/ollamaStore'
+import { env } from '@/config/env'
 
 interface Message {
   id: string
@@ -118,7 +119,7 @@ export function QuickChatDropdown({ isOpen: controlledIsOpen, onToggle }: QuickC
       })
 
       // Stream response from Ollama (direct call for performance - intentional)
-      const response = await fetch('http://localhost:11434/api/chat', {
+      const response = await fetch(`${env.ollamaBaseUrl}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
