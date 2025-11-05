@@ -5,7 +5,6 @@ import { WorkflowQueue } from './WorkflowQueue'
 import { ActiveWorkItem } from './ActiveWorkItem'
 import { WorkflowStatusTracker } from './WorkflowStatusTracker'
 import { WorkflowDesigner } from './WorkflowDesigner'
-import { ReactFlowProvider } from 'reactflow'
 import type { WorkItem, Workflow } from '../types/workflow'
 import { showToast, showUndoToast, showWorkflowNotification } from '@/lib/toast'
 import { useUserStore } from '@/stores/userStore'
@@ -384,15 +383,13 @@ export function AutomationTab() {
 
   if (currentView === 'builder' && selectedTemplate) {
     return (
-      <ReactFlowProvider>
-        <WorkflowBuilder
-          templateId={selectedTemplate}
-          onBack={() => {
-            setCurrentView('library')
-            setSelectedTemplate(null)
-          }}
-        />
-      </ReactFlowProvider>
+      <WorkflowBuilder
+        templateId={selectedTemplate}
+        onBack={() => {
+          setCurrentView('library')
+          setSelectedTemplate(null)
+        }}
+      />
     )
   }
 

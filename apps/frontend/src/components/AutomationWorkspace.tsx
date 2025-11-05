@@ -2,15 +2,13 @@
  * Automation Workspace - Unified workflow and automation management
  *
  * Provides two automation types:
- * - Local Automation: n8n-style visual workflow builder for background processes
+ * - Local Automation: Background processes and automations
  * - Team Workflow: Stage-based workflows with queue system for human tasks
  */
 
 import { useState } from 'react'
-import { Zap, Users } from 'lucide-react'
 import { WorkflowTreeSidebar } from './WorkflowTreeSidebar'
 import { WorkflowDashboard } from './WorkflowDashboard'
-import { WorkflowBuilder } from './WorkflowBuilder'
 import { WorkflowDesigner } from './WorkflowDesigner'
 import { WorkflowQueue } from './WorkflowQueue'
 import { ActiveWorkItem } from './ActiveWorkItem'
@@ -28,7 +26,7 @@ export function AutomationWorkspace() {
   })
 
   // Current view state
-  const [currentView, setCurrentView] = useState<'dashboard' | 'builder' | 'designer' | 'queue' | 'tracker'>('dashboard')
+  const [currentView, setCurrentView] = useState<'dashboard' | 'designer' | 'queue' | 'tracker'>('dashboard')
   const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null)
   const [selectedWorkItem, setSelectedWorkItem] = useState<WorkItem | null>(null)
 
@@ -46,21 +44,13 @@ export function AutomationWorkspace() {
   // Handle workflow selection from tree
   const handleWorkflowSelect = (workflow: Workflow) => {
     setSelectedWorkflow(workflow)
-    if (workflow.workflow_type === 'local') {
-      setCurrentView('builder')
-    } else {
-      setCurrentView('designer')
-    }
+    setCurrentView('designer')
   }
 
   // Handle new workflow creation
   const handleCreateWorkflow = () => {
     setSelectedWorkflow(null)
-    if (automationType === 'local') {
-      setCurrentView('builder')
-    } else {
-      setCurrentView('designer')
-    }
+    setCurrentView('designer')
   }
 
   // Render builder based on view
@@ -76,20 +66,7 @@ export function AutomationWorkspace() {
       )
     }
 
-    // Local Automation Builder (n8n-style)
-    if (currentView === 'builder') {
-      return (
-        <WorkflowBuilder
-          templateId={selectedWorkflow?.id}
-          onBack={() => {
-            setCurrentView('dashboard')
-            setSelectedWorkflow(null)
-          }}
-        />
-      )
-    }
-
-    // Team Workflow Designer (stage-based)
+    // Workflow Designer (unified for both Local and Team)
     if (currentView === 'designer') {
       return (
         <WorkflowDesigner

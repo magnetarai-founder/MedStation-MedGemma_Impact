@@ -11,6 +11,7 @@ import ReactFlow, {
   Node,
   BackgroundVariant,
   useReactFlow,
+  ReactFlowProvider,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
 import { ArrowLeft, Play, Save, HelpCircle, Info, ZoomIn, ZoomOut, Maximize2, Edit2 } from 'lucide-react'
@@ -589,7 +590,8 @@ const TEMPLATE_DATA: Record<string, { nodes: Node[], edges: Edge[], name: string
   'trip-planner': TRIP_PLANNER,
 }
 
-export function WorkflowBuilder({ templateId, onBack }: WorkflowBuilderProps) {
+// Inner component that uses React Flow hooks
+function WorkflowBuilderInner({ templateId, onBack }: WorkflowBuilderProps) {
   const template = TEMPLATE_DATA[templateId] || TEMPLATE_DATA['clinic-intake']
   const { zoomIn, zoomOut, fitView } = useReactFlow()
 
@@ -878,5 +880,14 @@ export function WorkflowBuilder({ templateId, onBack }: WorkflowBuilderProps) {
         </div>
       </div>
     </div>
+  )
+}
+
+// Wrapper component that provides React Flow context
+export function WorkflowBuilder(props: WorkflowBuilderProps) {
+  return (
+    <ReactFlowProvider>
+      <WorkflowBuilderInner {...props} />
+    </ReactFlowProvider>
   )
 }
