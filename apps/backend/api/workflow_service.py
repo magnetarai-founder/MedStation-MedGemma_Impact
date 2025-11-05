@@ -15,10 +15,12 @@ try:
     from .permission_engine import require_perm, require_perm_team
     from .auth_middleware import get_current_user
     from .team_service import is_team_member
+    from .rate_limiter import rate_limiter, get_client_ip
 except ImportError:
     from permission_engine import require_perm, require_perm_team
     from auth_middleware import get_current_user
     from team_service import is_team_member
+    from rate_limiter import rate_limiter, get_client_ip
 
 try:
     from .workflow_models import (
@@ -115,6 +117,10 @@ async def create_workflow(
     Phase 3: If team_id is provided, creates a team workflow.
     User must be a team member to create team workflows.
     """
+    # Rate limit: 5 workflow creations per minute per user
+    user_id = current_user.get("user_id", "unknown")
+    if not rate_limiter.check_rate_limit(f"create_workflow:{user_id}", max_requests=5, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 5 workflow creations per minute.")
     try:
         user_id = current_user["user_id"]
 
@@ -280,6 +286,11 @@ async def create_work_item(
     Raises:
         HTTPException: If workflow not found
     """
+    # Rate limit: 30 work item creations per minute per user
+    user_id = current_user.get("user_id", "unknown")
+    if not rate_limiter.check_rate_limit(f"create_work_item:{user_id}", max_requests=30, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 30 work item creations per minute.")
+
     try:
         user_id = current_user["user_id"]
 
@@ -400,6 +411,11 @@ async def claim_work_item(
     Raises:
         HTTPException: If cannot be claimed
     """
+    # Rate limit: 60 claims per minute per user
+    user_id = current_user.get("user_id", "unknown")
+    if not rate_limiter.check_rate_limit(f"claim_work_item:{user_id}", max_requests=60, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 60 claims per minute.")
+
     try:
         user_id = current_user["user_id"]
         # Correct call signature (positional only)
@@ -437,6 +453,11 @@ async def start_work(
     Returns:
         Updated work item
     """
+    # Rate limit: 60 starts per minute per user
+    user_id = current_user.get("user_id", "unknown")
+    if not rate_limiter.check_rate_limit(f"start_work_item:{user_id}", max_requests=60, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 60 starts per minute.")
+
     try:
         user_id = current_user["user_id"]
         # Correct call signature (positional only)

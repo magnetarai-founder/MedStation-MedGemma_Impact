@@ -29,6 +29,11 @@ try:
 except ImportError:
     from audit_logger import get_audit_logger, AuditAction
 
+try:
+    from .rate_limiter import rate_limiter, get_client_ip
+except ImportError:
+    from rate_limiter import rate_limiter, get_client_ip
+
 # Phase 2: Import permission decorator
 try:
     from .permission_engine import require_perm
@@ -340,6 +345,11 @@ async def get_device_overview(
 
     This is for administrative monitoring purposes.
     """
+    # Rate limit: 20 device overview requests per minute per device
+    client_ip = get_client_ip(request)
+    if not rate_limiter.check_rate_limit(f"device_overview:{client_ip}", max_requests=20, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 20 requests per minute.")
+
     # Audit log
     audit_logger.log(
         user_id=current_user["user_id"],
