@@ -327,3 +327,232 @@ async def get_workspace_info(
     except Exception as e:
         logger.error(f"Error getting workspace info: {e}")
         raise HTTPException(500, f"Failed to get workspace info: {str(e)}")
+
+
+# ============================================================================
+# PHASE 3: WRITE OPERATIONS (with Diff Preview)
+# ============================================================================
+
+from pydantic import BaseModel
+import difflib
+
+
+class WriteFileRequest(BaseModel):
+    path: str
+    content: str
+    create_if_missing: bool = False
+
+
+class DiffPreviewRequest(BaseModel):
+    path: str
+    new_content: str
+
+
+def generate_unified_diff(original: str, modified: str, filepath: str) -> str:
+    """
+    Generate unified diff (Continue's streamDiff pattern)
+    """
+    original_lines = original.splitlines(keepends=True)
+    modified_lines = modified.splitlines(keepends=True)
+
+    diff = difflib.unified_diff(
+        original_lines,
+        modified_lines,
+        fromfile=f"a/{filepath}",
+        tofile=f"b/{filepath}",
+        lineterm=''
+    )
+
+    return ''.join(diff)
+
+
+@router.post("/diff/preview")
+async def preview_diff(
+    request: DiffPreviewRequest,
+    user_id: str = Depends(require_permission("code.write"))
+):
+    """
+    Preview changes before saving (Continue's diff pattern)
+    Shows unified diff of changes
+    """
+    try:
+        user_workspace = get_user_workspace(user_id)
+        file_path = user_workspace / request.path
+
+        # Security check
+        if not is_safe_path(file_path, user_workspace):
+            raise HTTPException(400, "Invalid path")
+
+        # Read original content
+        if file_path.exists():
+            with open(file_path, 'r', encoding='utf-8') as f:
+                original_content = f.read()
+        else:
+            original_content = ""
+
+        # Generate diff
+        diff_text = generate_unified_diff(
+            original_content,
+            request.new_content,
+            request.path
+        )
+
+        # Count changes
+        lines = diff_text.split('\n')
+        additions = sum(1 for line in lines if line.startswith('+') and not line.startswith('+++'))
+        deletions = sum(1 for line in lines if line.startswith('-') and not line.startswith('---'))
+
+        return {
+            'path': request.path,
+            'diff': diff_text,
+            'stats': {
+                'additions': additions,
+                'deletions': deletions,
+                'total_changes': additions + deletions
+            },
+            'exists': file_path.exists()
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating diff: {e}")
+        raise HTTPException(500, f"Failed to generate diff: {str(e)}")
+
+
+@router.post("/write")
+async def write_file(
+    request: WriteFileRequest,
+    user_id: str = Depends(require_permission("code.write"))
+):
+    """
+    Write file with permission checking (Jarvis pattern)
+    Phase 3: Full write operations
+    """
+    try:
+        user_workspace = get_user_workspace(user_id)
+        file_path = user_workspace / request.path
+
+        # Security check
+        if not is_safe_path(file_path, user_workspace):
+            raise HTTPException(400, "Invalid path")
+
+        # Check if creating new file
+        is_new_file = not file_path.exists()
+
+        if is_new_file and not request.create_if_missing:
+            raise HTTPException(404, "File does not exist. Set create_if_missing=true to create.")
+
+        # Jarvis permission check with risk assessment
+        operation = "create file" if is_new_file else "modify file"
+        risk_level, risk_reason = permission_layer.assess_risk(
+            f"{operation} {file_path}",
+            "file_write"
+        )
+
+        if risk_level == RiskLevel.CRITICAL:
+            raise HTTPException(403, f"Write operation denied: {risk_reason}")
+
+        # High risk operations require explicit approval
+        if risk_level in [RiskLevel.HIGH, RiskLevel.MEDIUM]:
+            logger.warning(f"High/medium risk write operation: {file_path} - {risk_reason}")
+
+        # Create parent directories if needed
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Write file
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(request.content)
+
+        # Audit log
+        await log_action(
+            user_id=user_id,
+            action="code.file.write",
+            resource=str(file_path),
+            details={
+                'operation': operation,
+                'size': len(request.content),
+                'risk_level': risk_level.label,
+                'risk_reason': risk_reason
+            }
+        )
+
+        return {
+            'success': True,
+            'path': request.path,
+            'operation': operation,
+            'size': len(request.content),
+            'risk_assessment': {
+                'level': risk_level.label,
+                'reason': risk_reason
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error writing file: {e}")
+        raise HTTPException(500, f"Failed to write file: {str(e)}")
+
+
+@router.delete("/delete")
+async def delete_file(
+    path: str,
+    user_id: str = Depends(require_permission("code.write"))
+):
+    """
+    Delete file with Jarvis permission checking
+    Phase 3: Destructive operations
+    """
+    try:
+        user_workspace = get_user_workspace(user_id)
+        file_path = user_workspace / path
+
+        # Security check
+        if not is_safe_path(file_path, user_workspace):
+            raise HTTPException(400, "Invalid path")
+
+        if not file_path.exists():
+            raise HTTPException(404, "File not found")
+
+        # Jarvis permission check - DELETE is HIGH risk
+        risk_level, risk_reason = permission_layer.assess_risk(
+            f"rm {file_path}",
+            "file_delete"
+        )
+
+        if risk_level == RiskLevel.CRITICAL:
+            raise HTTPException(403, f"Delete operation denied: {risk_reason}")
+
+        # Delete file
+        if file_path.is_file():
+            file_path.unlink()
+        else:
+            raise HTTPException(400, "Path is not a file")
+
+        # Audit log
+        await log_action(
+            user_id=user_id,
+            action="code.file.delete",
+            resource=str(file_path),
+            details={
+                'risk_level': risk_level.label,
+                'risk_reason': risk_reason
+            }
+        )
+
+        return {
+            'success': True,
+            'path': path,
+            'operation': 'delete',
+            'risk_assessment': {
+                'level': risk_level.label,
+                'reason': risk_reason
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting file: {e}")
+        raise HTTPException(500, f"Failed to delete file: {str(e)}")

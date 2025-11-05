@@ -7,17 +7,24 @@
  */
 
 import { useState, useEffect } from 'react'
-import { FolderTree, MessageSquare, FileCode } from 'lucide-react'
+import { FolderTree, MessageSquare, FileCode, Save, Edit3 } from 'lucide-react'
 import { ResizableSidebar } from './ResizableSidebar'
 import { FileBrowser } from './FileBrowser'
 import { MonacoEditor } from './MonacoEditor'
+import { DiffPreviewModal } from './DiffPreviewModal'
+import toast from 'react-hot-toast'
 
 export function CodeView() {
   const [leftView, setLeftView] = useState<'files' | 'chats'>('files')
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
   const [fileContent, setFileContent] = useState<string>('')
+  const [originalContent, setOriginalContent] = useState<string>('')
   const [fileLanguage, setFileLanguage] = useState<string>('typescript')
   const [loading, setLoading] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [hasChanges, setHasChanges] = useState(false)
+  const [showDiffPreview, setShowDiffPreview] = useState(false)
+  const [diffData, setDiffData] = useState<any>(null)
 
   const loadFile = async (path: string) => {
     setLoading(true)
@@ -31,7 +38,11 @@ export function CodeView() {
       }
 
       const data = await res.json()
-      setFileContent(data.content || '')
+      const content = data.content || ''
+      setFileContent(content)
+      setOriginalContent(content)
+      setIsEditing(false)
+      setHasChanges(false)
 
       // Detect language from file extension
       const ext = path.split('.').pop()?.toLowerCase()
@@ -72,6 +83,87 @@ export function CodeView() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleContentChange = (newContent: string) => {
+    setFileContent(newContent)
+    setHasChanges(newContent !== originalContent)
+  }
+
+  const handleSaveClick = async () => {
+    if (!selectedFile || !hasChanges) return
+
+    try {
+      // Get diff preview
+      const res = await fetch('/api/v1/code/diff/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          path: selectedFile,
+          new_content: fileContent
+        })
+      })
+
+      if (!res.ok) {
+        throw new Error('Failed to generate diff')
+      }
+
+      const diff = await res.json()
+      setDiffData(diff)
+      setShowDiffPreview(true)
+    } catch (err) {
+      console.error('Error generating diff:', err)
+      toast.error('Failed to preview changes')
+    }
+  }
+
+  const handleConfirmSave = async () => {
+    if (!selectedFile) return
+
+    try {
+      const res = await fetch('/api/v1/code/write', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          path: selectedFile,
+          content: fileContent,
+          create_if_missing: false
+        })
+      })
+
+      if (!res.ok) {
+        throw new Error('Failed to save file')
+      }
+
+      const result = await res.json()
+
+      // Update original content
+      setOriginalContent(fileContent)
+      setHasChanges(false)
+      setShowDiffPreview(false)
+
+      toast.success(`Saved ${selectedFile}`)
+
+      // Show risk assessment if present
+      if (result.risk_assessment) {
+        console.log('Risk assessment:', result.risk_assessment)
+      }
+    } catch (err) {
+      console.error('Error saving file:', err)
+      toast.error('Failed to save file')
+    }
+  }
+
+  const toggleEditMode = () => {
+    if (isEditing && hasChanges) {
+      // Warn about unsaved changes
+      if (!confirm('You have unsaved changes. Discard them?')) {
+        return
+      }
+      setFileContent(originalContent)
+      setHasChanges(false)
+    }
+    setIsEditing(!isEditing)
   }
 
   return (
@@ -144,10 +236,44 @@ export function CodeView() {
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       {selectedFile}
                     </span>
+                    {hasChanges && (
+                      <span className="text-xs text-orange-600 dark:text-orange-400">
+                        • Modified
+                      </span>
+                    )}
                   </div>
-                  <span className="text-xs text-gray-500 px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded">
-                    Read-only
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {isEditing ? (
+                      <>
+                        <button
+                          onClick={handleSaveClick}
+                          disabled={!hasChanges}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                            hasChanges
+                              ? 'bg-primary-600 hover:bg-primary-700 text-white'
+                              : 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
+                          }`}
+                        >
+                          <Save className="w-3.5 h-3.5" />
+                          Save
+                        </button>
+                        <button
+                          onClick={toggleEditMode}
+                          className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={toggleEditMode}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        Edit
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -161,7 +287,8 @@ export function CodeView() {
                   <MonacoEditor
                     value={fileContent}
                     language={fileLanguage}
-                    readOnly={true}
+                    readOnly={!isEditing}
+                    onValueChange={handleContentChange}
                     theme="vs-dark"
                   />
                 )}
@@ -188,5 +315,18 @@ export function CodeView() {
         </div>
       }
     />
+
+    {/* Diff Preview Modal */}
+    {showDiffPreview && diffData && (
+      <DiffPreviewModal
+        isOpen={showDiffPreview}
+        onClose={() => setShowDiffPreview(false)}
+        onConfirm={handleConfirmSave}
+        diffText={diffData.diff}
+        stats={diffData.stats}
+        filePath={selectedFile || ''}
+      />
+    )}
+  </>
   )
 }
