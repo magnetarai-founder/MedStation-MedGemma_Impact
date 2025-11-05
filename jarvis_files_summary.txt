@@ -1,0 +1,358 @@
+JARVIS AGENT - KEY FILES & PATTERNS SUMMARY
+=============================================
+
+ABSOLUTE FILE PATHS
+====================
+
+1. ADAPTIVE ROUTER
+   Location: /Users/indiedevhipps/Library/CloudStorage/ProtonDrive-josh.hipps@pm.me-folder/Developer/Jarvis Agent/Agent/adaptive_router.py
+   
+   Key Classes:
+   - AdaptiveRouteResult: Extended route result with learning insights
+   - AdaptiveRouter: Main router that combines EnhancedRouter + LearningSystem
+   
+   Key Methods:
+   - route_task(command, context): Route with adaptive learning
+   - _adjust_confidence(): Blend base confidence with historical success (60/40 split)
+   - _check_preference_override(): Override routing based on user preferences
+   - record_execution_result(): Feedback loop for learning
+   - record_feedback(): Record execution outcome
+   - get_routing_stats(): Get routing statistics
+   - explain_routing(): Human-readable explanation of routing decision
+
+2. ENHANCED ROUTER
+   Location: /Users/indiedevhipps/Library/CloudStorage/ProtonDrive-josh.hipps@pm.me-folder/Developer/Jarvis Agent/Agent/enhanced_router.py
+   
+   Key Classes:
+   - RoutePattern: Pattern definition with confidence scoring
+   - RouteResult: Routing result with fallback options
+   - EnhancedRouter: Advanced pattern matching with 3 types (keyword, regex, fuzzy)
+   
+   Key Methods:
+   - _initialize_patterns(): Load comprehensive routing patterns
+   - _calculate_pattern_confidence(): Compute confidence with context hints & negative patterns
+   - route_task(): Route with confidence scoring
+   - _generate_reasoning(): Human-readable reasoning
+   - suggest_rephrase(): Suggest rephrasing low-confidence commands
+   
+   Pattern Types:
+   - System Commands: ls, dir, pwd
+   - Git Operations: git add, commit, push, pull, branch, merge
+   - Code Writing: write, create, implement
+   - Code Editing: edit, modify, refactor, add type hints
+   - Bug Fixing: fix bugs, debug
+   - Code Review: review code, analyze
+   - Testing: write tests, generate tests
+   - Documentation: document code, write docs
+   - Explanations: what, why, how, when, where questions
+   - Math: calculate, solve equations
+
+3. LEARNING SYSTEM
+   Location: /Users/indiedevhipps/Library/CloudStorage/ProtonDrive-josh.hipps@pm.me-folder/Developer/Jarvis Agent/Agent/learning_system.py
+   
+   Key Classes:
+   - UserPreference: Learned user preference with confidence
+   - CodingStyle: Detected coding style patterns per language
+   - ProjectContext: Project-specific context and settings
+   - Recommendation: Learning-based recommendation with evidence
+   
+   Key Methods - Success Tracking:
+   - track_execution(): Record command execution for learning
+   - get_success_rate(): Get historical success rate
+   - _learn_from_execution(): Extract preferences from outcomes
+   
+   Key Methods - Preference Learning:
+   - _update_preference(): Update preference with signals
+   - get_preferences(): Retrieve learned preferences
+   
+   Key Methods - Style Detection:
+   - detect_coding_style(): Detect style from file content
+   - _detect_python_style(): Detect Python patterns (indent, quotes, type hints, docstrings, naming)
+   - _detect_js_style(): Detect JavaScript patterns (semicolons, quotes, const vs let, arrow functions)
+   - _detect_java_style(): Detect Java patterns (brace style, access modifiers)
+   
+   Key Methods - Project Context:
+   - detect_project_context(): Detect and store project context
+   - _analyze_project(): Analyze project structure
+   - switch_context(): Switch to different project
+   - get_active_projects(): Get recently active projects
+   
+   Key Methods - Recommendations:
+   - get_recommendations(): Get learning-based recommendations
+   - _recommend_tool(): Recommend tool based on success patterns
+   - _recommend_workflow(): Recommend workflow based on preferences
+   - _recommend_style(): Recommend coding style
+   
+   Database Tables:
+   - success_patterns: Track command/tool success rates
+   - user_preferences: Store learned user preferences
+   - coding_styles: Store detected coding styles per language
+   - project_contexts: Store project context and metadata
+   - recommendations: Log recommendations and feedback
+   - learning_feedback: Store execution feedback and metadata
+
+4. RAG PIPELINE
+   Location: /Users/indiedevhipps/Library/CloudStorage/ProtonDrive-josh.hipps@pm.me-folder/Developer/Jarvis Agent/Agent/rag_pipeline.py
+   
+   Key Functions:
+   - retrieve_context_for_command(): Retrieve relevant context for command
+   - ingest_paths(): Ingest files and create embeddings
+   - _retrieve_by_embedding(): Retrieve chunks by similarity
+   - _embed_text(): Unified embedding with intelligent fallback
+   - _mlx_embed(): MLX-based embeddings
+   - _ollama_embed(): Ollama API embeddings
+   - _hash_embed(): CPU-based fallback embeddings
+   - _cosine(): Cosine similarity calculation
+   
+   Embedding Backends (in order of preference):
+   1. Unified embedder (if available)
+   2. Primary backend (config: ollama or mlx)
+   3. Secondary backend (fallback)
+   4. Hash-based embedding (CPU fallback)
+   
+   Configuration:
+   - JARVIS_EMBED_BACKEND: Primary backend (default: mlx)
+   - JARVIS_EMBEDDING_MODEL: Embedding model (default: nomic-embed-text)
+
+5. TASK PLANNER
+   Location: /Users/indiedevhipps/Library/CloudStorage/ProtonDrive-josh.hipps@pm.me-folder/Developer/Jarvis Agent/Agent/planner.py
+   
+   Key Classes:
+   - Step: Individual execution step
+   - Plan: Collection of steps with metadata
+   
+   Key Methods:
+   - plan(): Main planning method
+   - _is_heavy(): Determine if task is heavy (complex)
+   - _repo_wide(): Determine if task affects entire repo
+   - _detect_rename(): Detect simple rename patterns
+   - _llm_plan(): Use LLM to generate micro-plans
+   - _pick_code_model(): Select model based on task heaviness
+   
+   Execution Engines:
+   - aider: File-scoped changes
+   - continue: Repo-wide/refactor tasks
+   - codex: Codemod/rename operations
+   - verify: Verification and testing
+   
+   Configuration:
+   - JARVIS_PLAN_MODEL: Planning model (default: phi3:mini)
+
+6. PERMISSION LAYER
+   Location: /Users/indiedevhipps/Library/CloudStorage/ProtonDrive-josh.hipps@pm.me-folder/Developer/Jarvis Agent/Agent/permission_layer.py
+   
+   Key Classes:
+   - RiskLevel: Risk assessment enum (SAFE, LOW, MEDIUM, HIGH, CRITICAL)
+   - PermissionResponse: User response enum
+   - PermissionRequest: Permission request object
+   - PermissionRule: Saved permission rule
+   - PermissionLayer: Main permission system
+   
+   Key Methods:
+   - assess_risk(): Assess command risk level
+   - check_existing_rules(): Check if rule exists for command
+   - request_permission(): Request and process permission
+   - _prompt_user(): Interactive prompting with color support
+   - _non_interactive_decision(): Non-interactive mode decisions
+   - _explain_command(): Explain what command does
+   - _save_permanent_rule(): Save persistent rules
+   - show_rules(): Display current rules
+   - get_statistics(): Get permission statistics
+   
+   Risk Categories:
+   - CRITICAL: rm -rf /, format, mkfs
+   - HIGH: sudo, rm -rf, chmod 777, kill -9
+   - MEDIUM: rm, delete, drop, truncate, git push --force
+   - LOW: mkdir, touch, echo >, pip install, git commit
+   - SAFE: Read-only or safe operations
+   
+   Interactive Options:
+   - y: Yes, allow
+   - n: No, block
+   - a: Yes to all (session)
+   - x: No to all (session)
+   - s: Yes to similar commands
+   - e: Explain command
+   - m: Modify command
+   - p: Save permanent rule
+   
+   Non-Interactive Policies:
+   - strict: Only allow SAFE operations
+   - conservative (default): Allow SAFE and LOW risk
+   - permissive: Allow all except CRITICAL
+   
+   Configuration:
+   - JARVIS_NON_INTERACTIVE: Enable non-interactive mode
+   - JARVIS_BYPASS_PERMISSIONS: Bypass permission checks
+   - JARVIS_PERMISSIONS_CONFIG: Config file location
+
+7. CLI ORCHESTRATOR
+   Location: /Users/indiedevhipps/Library/CloudStorage/ProtonDrive-josh.hipps@pm.me-folder/Developer/Jarvis Agent/Agent/external/Agent/jarvis_pkg/core/cli_orchestrator.py
+   
+   Key Classes:
+   - CLIRoute: Route definition for CLI execution
+   - MetalCLIOrchestrator: Main orchestrator class
+   
+   Key Methods:
+   - route_and_execute(): Route task and execute via chosen CLI
+   - _get_routing_decision(): Heuristic-based routing
+   - _resolve_command(): Build command string for tool
+   - _run_command(): Run command asynchronously
+   - _run_with_retry(): Run with exponential backoff retry
+   - _execute_codex/claude_code/warp(): Execute via specific tool
+   - _execute_parallel(): Run tools in parallel
+   - _is_command_allowed(): Check command policy
+   
+   Routing Heuristics:
+   - Codex: refactor, rename, imports, move, diff, organize imports
+   - Claude Code: general coding queries (default)
+   - Warp: shell commands (generic)
+   
+   Retry Strategy:
+   - Exponential backoff: base * (2^i) + random
+   - Non-retryable codes: 124 (timeout), 126 (policy), 127 (not found)
+   
+   Configuration:
+   - ORCH_SANDBOX_CMD: Sandbox wrapper command
+   - ORCH_RETRIES: Number of retries (default: 2)
+   - ORCH_BACKOFF_BASE: Backoff base (default: 0.35)
+   - ORCH_DENY_CMDS_REGEX: Deny pattern
+   - ORCH_ALLOW_CMDS_REGEX: Allow pattern
+   - ORCH_CMD_CLAUDE_CODE: Claude Code command
+   - ORCH_CMD_WARP: Warp command
+
+
+INTEGRATION FLOW
+================
+
+Command Input
+    |
+    v
+Adaptive Router (route_task)
+    | Uses:
+    +-- Enhanced Router (pattern matching)
+    +-- Learning System (success rates & preferences)
+    +-- Memory (similar commands)
+    |
+    +-- Adjusts confidence (60% base, 40% historical)
+    +-- Checks preference overrides
+    +-- Gets recommendations
+    |
+    v
+Task Planner (plan)
+    | Uses:
+    +-- Task classification (heavy vs light)
+    +-- Pattern detection (rename, etc.)
+    +-- LLM micro-planning (phi3:mini)
+    |
+    +-- Generates execution steps
+    +-- Selects engines (aider, continue, codex, verify)
+    +-- Sets timeouts and models
+    |
+    v
+Permission Layer (request_permission)
+    | Uses:
+    +-- Risk assessment (5 levels)
+    +-- Existing rules (session/permanent)
+    +-- User interaction (interactive or policy-based)
+    |
+    +-- Interactive: color-coded prompting with options
+    +-- Non-interactive: policy-based auto-decision
+    |
+    v
+CLI Orchestrator (route_and_execute)
+    | Uses:
+    +-- Heuristic routing
+    +-- Command resolution
+    +-- Parallel execution option
+    +-- Retry with backoff
+    |
+    +-- Policy-based filtering
+    +-- Timeout and capture
+    |
+    v
+Execution Result
+    |
+    v
+Learning System (record_execution_result)
+    | Updates:
+    +-- Success patterns
+    +-- User preferences
+    +-- Execution feedback
+    +-- Statistics
+    |
+    v
+Next Iteration (Better Routing)
+
+
+KEY DESIGN PATTERNS
+===================
+
+1. Confidence Blending (Adaptive Router)
+   - Base confidence from pattern matching: 60%
+   - Historical success rate: 40%
+   - Formula: adjusted = (base * 0.6) + (success_rate * 0.4)
+
+2. Pattern Matching with Modifiers (Enhanced Router)
+   - Base confidence from keyword/regex match
+   - Context hints: +0.1 confidence
+   - Negative patterns: -0.3 confidence
+   - Pattern weight: multiply final confidence
+
+3. Preference Learning (Learning System)
+   - Track positive and negative signals
+   - Confidence = positive / (positive + negative)
+   - Minimum evidence threshold before recommendation
+
+4. Embedding with Fallback (RAG Pipeline)
+   - Try unified embedder
+   - Try primary backend
+   - Try secondary backend
+   - Fall back to hash-based CPU embedding
+
+5. Risk Assessment (Permission Layer)
+   - Pattern-based risk classification
+   - Multi-level risk with color indicators
+   - Non-interactive policies for automation
+
+6. Retry Strategy (CLI Orchestrator)
+   - Exponential backoff: base * (2^attempt)
+   - Add jitter: + random(0, base)
+   - Non-retryable codes: timeout, policy, not found
+
+7. Rule Matching (Permission Layer)
+   - Session rules (temporary)
+   - Permanent rules (saved to JSON)
+   - Regex pattern support
+   - Expiration support
+
+
+COPYING KEY PATTERNS
+====================
+
+For Adaptive Routing:
+- Copy: adaptive_router.py
+- Dependencies: enhanced_router.py, learning_system.py
+- Use pattern: Create router with Learning + Memory components
+
+For Learning System:
+- Copy: learning_system.py
+- Database setup is automatic in __init__
+- Use pattern: Track executions, query preferences/styles
+
+For RAG Context:
+- Copy: rag_pipeline.py
+- Configure embedding backend via env vars
+- Use pattern: ingest_paths(), retrieve_context_for_command()
+
+For Permission Control:
+- Copy: permission_layer.py
+- Configure via env vars for non-interactive mode
+- Use pattern: request_permission(command, operation_type)
+
+For CLI Execution:
+- Copy: cli_orchestrator.py
+- Implement custom tool handlers as needed
+- Use pattern: route_and_execute(task, context)
+
+
