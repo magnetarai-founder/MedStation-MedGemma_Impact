@@ -8,6 +8,7 @@ import { WorkflowDesigner } from './WorkflowDesigner'
 import type { WorkItem, Workflow } from '../types/workflow'
 import { showToast, showUndoToast, showWorkflowNotification } from '@/lib/toast'
 import { useUserStore } from '@/stores/userStore'
+import { env } from '@/config/env'
 
 interface WorkflowTemplate {
   id: string
@@ -435,11 +436,22 @@ export function AutomationTab() {
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Automation</h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              Equipping the global church to do more with less
-            </p>
+          <div className="flex items-center gap-3">
+            <div>
+              <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Automation</h1>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                Equipping the global church to do more with less
+              </p>
+            </div>
+            {/* Dev Mode Status Pill - Only shown in development */}
+            {env.isDev && (
+              <div className="flex items-center gap-2 px-2 py-1 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded text-xs">
+                <span className="text-blue-700 dark:text-blue-300 font-medium">
+                  {user?.user_id || 'No User'} | {user?.role || 'No Role'}
+                  {selectedWorkflowForQueue && ` | Workflow: ${selectedWorkflowForQueue.id?.slice(0, 8)}`}
+                </span>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <button
