@@ -34,6 +34,11 @@ try:
 except ImportError:
     from rate_limiter import rate_limiter, get_client_ip
 
+try:
+    from .utils import sanitize_for_log
+except ImportError:
+    from utils import sanitize_for_log
+
 # Phase 2: Import permission decorator
 try:
     from .permission_engine import require_perm
