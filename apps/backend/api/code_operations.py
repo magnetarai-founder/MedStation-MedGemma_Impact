@@ -115,12 +115,17 @@ def walk_directory(
     directory: Path,
     recursive: bool = True,
     include_files: bool = True,
-    include_dirs: bool = False
+    include_dirs: bool = False,
+    base_path: Path = None
 ) -> List[Dict[str, Any]]:
     """
     Walk directory and return file tree (adapted from Continue's walkDir)
     """
     items = []
+
+    # Use provided base_path or default to workspace base
+    if base_path is None:
+        base_path = directory
 
     try:
         for entry in directory.iterdir():
@@ -137,20 +142,21 @@ def walk_directory(
             item = {
                 'name': entry.name,
                 'type': 'directory' if is_dir else 'file',
-                'path': str(entry.relative_to(get_code_workspace_base())),
+                'path': str(entry.relative_to(base_path)),
             }
 
             if is_dir:
-                if include_dirs:
-                    # Recursively get children
-                    if recursive:
-                        item['children'] = walk_directory(
-                            entry,
-                            recursive=True,
-                            include_files=include_files,
-                            include_dirs=include_dirs
-                        )
-                    items.append(item)
+                # Recursively get children if recursive mode
+                if recursive:
+                    item['children'] = walk_directory(
+                        entry,
+                        recursive=True,
+                        include_files=include_files,
+                        include_dirs=True,  # Always include dirs in children
+                        base_path=base_path
+                    )
+                # Always add directories to items
+                items.append(item)
             else:
                 if include_files:
                     # Add file metadata
@@ -213,7 +219,8 @@ async def get_file_tree(
             target_path,
             recursive=recursive,
             include_files=True,
-            include_dirs=True
+            include_dirs=True,
+            base_path=target_path  # Use target as base for relative paths
         )
 
         # Audit log
