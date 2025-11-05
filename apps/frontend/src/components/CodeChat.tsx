@@ -211,7 +211,7 @@ export function CodeChat({ currentFile, fileContent, onClose }: CodeChatProps) {
       </div>
 
       {/* Input */}
-      <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+      <div className="border-t border-gray-200 dark:border-gray-700 p-3">
         <div className="flex items-center gap-2">
           <input
             type="text"
@@ -239,8 +239,8 @@ export function CodeChat({ currentFile, fileContent, onClose }: CodeChatProps) {
             )}
           </button>
         </div>
-        <p className="text-xs text-gray-500 mt-2">
-          Press Enter to send, Shift+Enter for new line
+        <p className="text-xs text-gray-500 mt-1">
+          Enter to send • Shift+Enter for new line
         </p>
       </div>
     </div>

@@ -284,7 +284,7 @@ export function CodeView() {
               </div>
 
               {/* Monaco Editor */}
-              <div className="flex-1">
+              <div className="flex-1 min-h-0">
                 {loading ? (
                   <div className="h-full flex items-center justify-center">
                     <div className="text-sm text-gray-500">Loading...</div>
@@ -300,8 +300,10 @@ export function CodeView() {
                 )}
               </div>
 
-              {/* Chat - Always visible below Monaco */}
-              <CodeChat currentFile={selectedFile} fileContent={fileContent} />
+              {/* Chat - Fixed height at bottom */}
+              <div className="h-80 border-t border-gray-200 dark:border-gray-700">
+                <CodeChat currentFile={selectedFile} fileContent={fileContent} />
+              </div>
             </>
           ) : (
             <>
@@ -322,8 +324,10 @@ export function CodeView() {
                 </div>
               </div>
 
-              {/* Chat - Always visible even without file */}
-              <CodeChat currentFile={null} fileContent="" />
+              {/* Chat - Fixed height at bottom */}
+              <div className="h-80 border-t border-gray-200 dark:border-gray-700">
+                <CodeChat currentFile={null} fileContent="" />
+              </div>
             </>
           )}
         </div>
