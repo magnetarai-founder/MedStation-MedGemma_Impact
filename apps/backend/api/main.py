@@ -238,14 +238,23 @@ async def add_request_id(request: Request, call_next):
 # 1. JWT tokens in Authorization header (not cookies - no automatic sending)
 # 2. CORS restricts origins to trusted dev servers
 # 3. Browsers enforce SOP - malicious sites can't read responses
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
+# Parse CORS origins from environment or use defaults
+cors_origins_env = os.getenv('ELOHIM_CORS_ORIGINS', '')
+if cors_origins_env:
+    # Parse comma-separated list from environment
+    allowed_origins = [origin.strip() for origin in cors_origins_env.split(',') if origin.strip()]
+else:
+    # Default dev origins
+    allowed_origins = [
         "http://localhost:4200",
         "http://127.0.0.1:4200",
         "http://localhost:5173",
         "http://localhost:3000"
-    ],  # Vite/React dev servers
+    ]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
