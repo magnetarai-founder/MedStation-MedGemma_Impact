@@ -6,9 +6,14 @@ Authentication Routes for ElohimOS API
 import logging
 from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Dict, Any
 
 from auth_middleware import auth_service, get_current_user, get_current_user_optional
+
+try:
+    from .permission_engine import get_permission_engine
+except ImportError:
+    from permission_engine import get_permission_engine
 
 logger = logging.getLogger(__name__)
 
@@ -171,6 +176,45 @@ async def verify_token(user: dict = Depends(get_current_user)):
         "user_id": user['user_id'],
         "username": user['username']
     }
+
+
+@router.get("/permissions")
+async def get_user_permissions(
+    team_id: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """
+    Get effective permissions snapshot for current user
+
+    Useful for:
+    - Frontend permission introspection
+    - UI gating decisions
+    - Diagnostics
+    - Operators checking user capabilities
+
+    Returns:
+        Flat permission map (permission_key -> value)
+        - For boolean perms: True/False
+        - For level perms: permission level value
+
+    Note: Does not include sensitive data or secrets
+    """
+    try:
+        permission_engine = get_permission_engine()
+        user_ctx = permission_engine.load_user_context(
+            user_id=user['user_id'],
+            team_id=team_id
+        )
+
+        return {
+            "user_id": user['user_id'],
+            "role": user_ctx.role,
+            "team_id": user_ctx.team_id,
+            "permissions": user_ctx.effective_permissions
+        }
+    except Exception as e:
+        logger.error(f"Failed to load permissions for user {user['user_id']}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to load permissions")
 
 
 @router.post("/cleanup-sessions")
