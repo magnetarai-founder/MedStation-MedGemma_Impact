@@ -9,12 +9,13 @@
  */
 
 import { useState } from 'react'
-import { Code, FileText, MessageSquare } from 'lucide-react'
+import { Code, FileText } from 'lucide-react'
+import { CodeView } from './CodeView'
 
-type CodeView = 'editor' | 'admin'
+type WorkspaceView = 'editor' | 'admin'
 
 export function CodeWorkspace() {
-  const [activeView, setActiveView] = useState<CodeView>('editor')
+  const [activeView, setActiveView] = useState<WorkspaceView>('editor')
 
   return (
     <div className="h-full w-full flex flex-col">
@@ -50,25 +51,7 @@ export function CodeWorkspace() {
 
       {/* Content area */}
       <div className="flex-1 min-h-0">
-        {activeView === 'editor' && (
-          <div className="h-full flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-            <div className="text-center space-y-4">
-              <Code className="w-16 h-16 mx-auto text-gray-400 dark:text-gray-600" />
-              <div className="space-y-2">
-                <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200">
-                  Code Tab
-                </h2>
-                <p className="text-gray-600 dark:text-gray-400 max-w-md">
-                  AI-powered code editing environment with file browser, Monaco editor,
-                  and intelligent terminal integration.
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-500">
-                  Phase 1 in progress...
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
+        {activeView === 'editor' && <CodeView />}
 
         {activeView === 'admin' && (
           <div className="h-full flex items-center justify-center bg-gray-50 dark:bg-gray-900">

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { AlertTriangle, Activity } from 'lucide-react'
+import { AlertTriangle, Activity, Terminal } from 'lucide-react'
 import { QuickChatDropdown } from './QuickChatDropdown'
 import { PerformanceMonitorDropdown } from './PerformanceMonitorDropdown'
 import { ControlCenterModal } from './ControlCenterModal'
@@ -152,6 +152,18 @@ export function Header({ onOpenServerControls }: HeaderProps) {
               isOpen={activeDropdown === 'chat'}
               onToggle={() => setActiveDropdown(activeDropdown === 'chat' ? null : 'chat')}
             />
+
+            {/* Terminal Button (Global) - Placeholder for Phase 5 */}
+            <button
+              onClick={() => {
+                // Placeholder: Will open system terminal in Phase 5
+                alert('Terminal integration coming in Phase 5!\n\nThis button will open your system terminal (iTerm/Terminal.app) with intelligent AI assistance.')
+              }}
+              className="p-2 hover:bg-purple-100 dark:hover:bg-purple-900/20 rounded-lg transition-colors text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400"
+              title="Open Terminal (Coming in Phase 5)"
+            >
+              <Terminal size={20} />
+            </button>
 
             {/* Control Center (includes Performance Monitor) */}
             <button
