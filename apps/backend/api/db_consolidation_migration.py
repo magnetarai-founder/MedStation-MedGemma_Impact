@@ -24,7 +24,7 @@ OLD_DBS = {
     "users": PATHS.data_dir / "users.db",
     "docs": PATHS.data_dir / "docs.db",
     "chat": PATHS.memory_dir / "chat_memory.db",
-    "workflows": Path("data/workflows.db"),  # Legacy path
+    "workflows": PATHS.data_dir / "workflows.db",  # Now stored in .neutron_data/
 }
 
 # New consolidated database
