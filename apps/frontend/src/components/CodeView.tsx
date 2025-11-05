@@ -178,16 +178,16 @@ export function CodeView() {
       minWidth={200}
       storageKey="ns.codeViewSidebarWidth"
       left={
-        <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
+        <div className="h-full flex flex-col bg-white dark:bg-gray-900">
           {/* Left Pane Header */}
-          <div className="p-3 border-b border-gray-200 dark:border-gray-700">
+          <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setLeftView('files')}
-                className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-md transition-all ${
+                className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg transition-all ${
                   leftView === 'files'
                     ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 font-medium'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50'
                 }`}
               >
                 <FolderTree className="w-4 h-4" />
@@ -196,10 +196,10 @@ export function CodeView() {
 
               <button
                 onClick={() => setLeftView('chats')}
-                className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-md transition-all ${
+                className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg transition-all ${
                   leftView === 'chats'
                     ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 font-medium'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50'
                 }`}
               >
                 <MessageSquare className="w-4 h-4" />
@@ -231,7 +231,7 @@ export function CodeView() {
         </div>
       }
       right={
-        <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
+        <div className="h-full flex flex-col bg-white dark:bg-gray-900">
           {selectedFile ? (
             <>
               {/* File header */}
@@ -251,36 +251,36 @@ export function CodeView() {
                   <div className="flex items-center gap-2">
                     {isEditing ? (
                       <>
-                        <button
-                          onClick={handleSaveClick}
-                          disabled={!hasChanges}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                            hasChanges
-                              ? 'bg-primary-600 hover:bg-primary-700 text-white'
-                              : 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
+                      <button
+                        onClick={handleSaveClick}
+                        disabled={!hasChanges}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                          hasChanges
+                            ? 'bg-primary-600 hover:bg-primary-700 text-white'
+                            : 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
                           }`}
-                        >
-                          <Save className="w-3.5 h-3.5" />
-                          Save
-                        </button>
-                        <button
-                          onClick={toggleEditMode}
-                          className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
-                        >
-                          Cancel
-                        </button>
-                      </>
-                    ) : (
+                      >
+                        <Save className="w-3.5 h-3.5" />
+                        Save
+                      </button>
                       <button
                         onClick={toggleEditMode}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                        className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
                       >
-                        <Edit3 className="w-3.5 h-3.5" />
-                        Edit
+                        Cancel
                       </button>
-                    )}
-                  </div>
+                    </>
+                  ) : (
+                    <button
+                      onClick={toggleEditMode}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      Edit
+                    </button>
+                  )}
                 </div>
+              </div>
               </div>
 
               {/* Monaco Editor */}
@@ -301,7 +301,7 @@ export function CodeView() {
               </div>
 
               {/* Chat - Fixed height at bottom */}
-              <div className="h-80 border-t border-gray-200 dark:border-gray-700">
+              <div className="h-80 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
                 <CodeChat currentFile={selectedFile} fileContent={fileContent} />
               </div>
             </>
@@ -325,7 +325,7 @@ export function CodeView() {
               </div>
 
               {/* Chat - Fixed height at bottom */}
-              <div className="h-80 border-t border-gray-200 dark:border-gray-700">
+              <div className="h-80 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
                 <CodeChat currentFile={null} fileContent="" />
               </div>
             </>

@@ -60,9 +60,12 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
   }
 
   const handleOpenFolder = async () => {
-    const projectPath = '/Users/indiedevhipps/Documents/ElohimOS'
-    await loadFileTree(projectPath)
-    toast.success('Opened ElohimOS project')
+    const defaultVal = localStorage.getItem('ns.code.workspaceRoot') || ''
+    const input = prompt('Enter absolute folder path to browse', defaultVal)
+    if (!input) return
+    localStorage.setItem('ns.code.workspaceRoot', input)
+    await loadFileTree(input)
+    toast.success('Opened folder')
   }
 
   const handleCreateFile = async () => {
@@ -144,7 +147,7 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
         <div key={node.path}>
           <button
             onClick={() => toggleExpand(node.path)}
-            className={`flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-700/50 w-full text-left transition-colors ${
+            className={`flex items-center gap-2 py-1.5 px-2 hover:bg-gray-50 dark:hover:bg-gray-800/50 w-full text-left transition-colors ${
               isExpanded ? 'bg-gray-50 dark:bg-gray-800/30' : ''
             }`}
             style={{ paddingLeft: `${paddingLeft + 8}px` }}
@@ -172,7 +175,7 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
       <button
         key={node.path}
         onClick={() => handleFileClick(node.path)}
-        className={`flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-700/50 w-full text-left transition-colors ${
+        className={`flex items-center gap-2 py-1.5 px-2 hover:bg-gray-50 dark:hover:bg-gray-800/50 w-full text-left transition-colors ${
           isSelected ? 'bg-primary-100 dark:bg-primary-900/30' : ''
         }`}
         style={{ paddingLeft: `${paddingLeft + 28}px` }}
@@ -239,7 +242,7 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
   return (
     <div className="h-full overflow-auto">
       {/* Header */}
-      <div className="sticky top-0 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-3 py-2">
+      <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
             Files
@@ -247,21 +250,21 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
           <div className="flex items-center gap-1">
             <button
               onClick={() => setShowNewFileModal(true)}
-              className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+              className="p-1 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors"
               title="New File"
             >
               <FilePlus className="w-3.5 h-3.5 text-gray-500" />
             </button>
             <button
               onClick={handleOpenFolder}
-              className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+              className="p-1 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors"
               title="Open Folder"
             >
               <FolderOpen className="w-3.5 h-3.5 text-gray-500" />
             </button>
             <button
               onClick={() => loadFileTree(currentPath || undefined)}
-              className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+              className="p-1 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors"
               title="Refresh"
             >
               <RefreshCw className="w-3.5 h-3.5 text-gray-500" />
