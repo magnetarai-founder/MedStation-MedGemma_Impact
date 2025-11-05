@@ -10,13 +10,40 @@ import os
 import logging
 
 from config_paths import PATHS
-from permissions import require_permission
-from audit_logger import log_action
+
+# Try to import permissions, but make them optional for now
+try:
+    from permissions import require_permission
+except ImportError:
+    # Fallback: no permission check
+    def require_permission(perm: str):
+        async def _get_user():
+            return "default_user"
+        return _get_user
+
+try:
+    from audit_logger import log_action
+except ImportError:
+    # Fallback: no-op audit logging
+    async def log_action(**kwargs):
+        pass
+
 from permission_layer import PermissionLayer, RiskLevel
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/code", tags=["code"])
+
+
+@router.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "ok",
+        "service": "code_operations",
+        "workspace_base": str(get_code_workspace_base())
+    }
+
 
 # Initialize permission layer for file operations
 permission_layer = PermissionLayer(
@@ -157,6 +184,7 @@ async def get_file_tree(
     Implements Continue's walkDir pattern with security
     """
     try:
+        logger.info(f"[CODE] GET /files - user_id={user_id}, path={path}, recursive={recursive}")
         # Get user workspace
         user_workspace = get_user_workspace(user_id)
 

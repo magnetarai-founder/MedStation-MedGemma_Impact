@@ -30,13 +30,21 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
     setError(null)
 
     try {
+      // First check if API is available
+      const healthRes = await fetch('/api/v1/code/health')
+      if (!healthRes.ok) {
+        throw new Error('Code operations API is not available')
+      }
+
       const res = await fetch('/api/v1/code/files?recursive=true')
 
       if (!res.ok) {
-        throw new Error('Failed to load file tree')
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.detail || `Failed to load file tree (${res.status})`)
       }
 
       const data = await res.json()
+      console.log('File tree loaded:', data)
       setTree(data.items || [])
     } catch (err) {
       console.error('Error loading file tree:', err)
