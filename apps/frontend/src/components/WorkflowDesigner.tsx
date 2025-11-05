@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Plus, Save, Settings, Trash2, FileText, GitBranch, Loader2 } from 'lucide-react';
+import { Plus, Save, Settings, Trash2, FileText, GitBranch, Loader2, X } from 'lucide-react';
 import type {
   Workflow,
   Stage,
@@ -202,7 +202,18 @@ export function WorkflowDesigner({ workflowId, onSave, onCancel }: WorkflowDesig
       {/* Left Sidebar - Workflow Properties */}
       <div className="w-80 border-r border-gray-800 flex flex-col">
         <div className="p-4 border-b border-gray-800">
-          <h2 className="text-lg font-semibold mb-4">Workflow Properties</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">Workflow Properties</h2>
+            {onCancel && (
+              <button
+                onClick={onCancel}
+                className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                title="Close workflow designer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
+          </div>
 
           <div className="space-y-4">
             <div>
