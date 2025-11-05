@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect } from 'react'
+import { ROLES } from '@/lib/roles'
 import {
   User,
   Shield,
@@ -405,12 +406,12 @@ export function ProfileSettings() {
                       Job Role
                     </div>
                     <p className="text-xs text-green-700 dark:text-green-300 mb-3">
-                      {user?.role === 'founder_rights' || user?.role === 'super_admin'
+                      {user?.role === ROLES.GOD_RIGHTS || user?.role === ROLES.SUPER_ADMIN
                         ? 'Your job role is automatically set based on your system role and cannot be changed'
                         : 'Your job role is used for workflow permissions and queue access control'}
                     </p>
 
-                    {user?.role === 'founder_rights' || user?.role === 'super_admin' ? (
+                    {user?.role === ROLES.GOD_RIGHTS || user?.role === ROLES.SUPER_ADMIN ? (
                       <div className="px-3 py-2 bg-gray-100 dark:bg-gray-800/50 border border-green-300 dark:border-green-700 rounded-lg text-sm text-gray-700 dark:text-gray-300 font-medium">
                         {user?.job_role || 'Unassigned'}
                       </div>

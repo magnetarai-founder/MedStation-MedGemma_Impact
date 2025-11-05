@@ -3,6 +3,7 @@ import { X, Settings as SettingsIcon, Zap, AlertTriangle, Cpu, User, Loader2, Sh
 import { type NavTab } from '@/stores/navigationStore'
 import { usePermissions } from '@/hooks/usePermissions'
 import { ProfileSettings } from './ProfileSettings'
+import { ROLES } from '@/lib/roles'
 
 // Lazy load heavy tab components for better performance
 const ChatTab = lazy(() => import('./settings/ChatTab'))
@@ -124,7 +125,7 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
             </button>
 
             {/* Admin Dashboard - Founder Rights only */}
-            {userRole === 'founder_rights' && (
+            {userRole === ROLES.GOD_RIGHTS && (
               <button
                 onClick={() => setActiveTab('admin')}
                 className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all rounded-lg ${

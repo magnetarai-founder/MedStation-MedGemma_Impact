@@ -9,7 +9,7 @@
 // ============================================
 
 export const ROLES = {
-  GOD_RIGHTS: 'god_rights',
+  GOD_RIGHTS: 'founder_rights', // Matches backend role name
   SUPER_ADMIN: 'super_admin',
   ADMIN: 'admin',
   MEMBER: 'member',
@@ -71,7 +71,8 @@ export const ROLE_INFO: Record<Role, {
 // ============================================
 
 export function isGodRights(role?: string): boolean {
-  return role === ROLES.GOD_RIGHTS
+  // Accept both 'founder_rights' (current) and 'god_rights' (legacy) for safety
+  return role === ROLES.GOD_RIGHTS || role === 'god_rights'
 }
 
 export function isSuperAdmin(role?: string): boolean {

@@ -8,6 +8,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import axios from 'axios'
+import { ROLES } from '@/lib/roles'
 
 // Create axios instance with auth interceptor
 const apiClient = axios.create({
@@ -70,7 +71,7 @@ export const useUserStore = create<UserStore>()(
           console.log('userStore.fetchUser - authData:', authData)
 
           // If this is the founder account, create a minimal profile from auth data
-          if (authData.role === 'founder_rights') {
+          if (authData.role === ROLES.GOD_RIGHTS) {
             set({
               user: {
                 user_id: authData.user_id,

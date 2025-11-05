@@ -1,5 +1,6 @@
 import { Shield, User } from 'lucide-react'
 import { useUserStore } from '@/stores/userStore'
+import { ROLES, ROLE_INFO } from '@/lib/roles'
 
 /**
  * Security Tab
@@ -8,27 +9,27 @@ import { useUserStore } from '@/stores/userStore'
  */
 
 const ROLE_DESCRIPTIONS: Record<string, { label: string; description: string; color: string }> = {
-  founder_rights: {
+  [ROLES.GOD_RIGHTS]: {
     label: 'Founder Rights',
     description: 'System founder with unrestricted access to all features and settings.',
     color: 'text-purple-600 dark:text-purple-400'
   },
-  super_admin: {
+  [ROLES.SUPER_ADMIN]: {
     label: 'Super Admin',
     description: 'Full system access. Can manage all users, workflows, and settings.',
     color: 'text-red-600 dark:text-red-400'
   },
-  admin: {
+  [ROLES.ADMIN]: {
     label: 'Admin',
     description: 'Can manage users and workflows, but cannot create other admins.',
     color: 'text-orange-600 dark:text-orange-400'
   },
-  member: {
+  [ROLES.MEMBER]: {
     label: 'Member',
     description: 'Can create and edit own workflows.',
     color: 'text-blue-600 dark:text-blue-400'
   },
-  guest: {
+  [ROLES.GUEST]: {
     label: 'Guest',
     description: 'Limited access to workflows and data.',
     color: 'text-gray-600 dark:text-gray-400'

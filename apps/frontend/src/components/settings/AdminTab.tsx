@@ -7,6 +7,7 @@
 
 import { useState, useEffect } from 'react'
 import { Shield, Users, MessageSquare, Workflow, Activity, TrendingUp, AlertCircle, Eye, ChevronRight } from 'lucide-react'
+import { ROLES } from '@/lib/roles'
 
 interface DeviceOverview {
   total_users: number
@@ -144,11 +145,11 @@ export default function AdminTab() {
 
   const getRoleBadgeClass = (role: string) => {
     switch (role) {
-      case 'founder_rights':
+      case ROLES.GOD_RIGHTS:
         return 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700'
-      case 'admin':
+      case ROLES.ADMIN:
         return 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-700'
-      case 'member':
+      case ROLES.MEMBER:
         return 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700'
       default:
         return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600'
