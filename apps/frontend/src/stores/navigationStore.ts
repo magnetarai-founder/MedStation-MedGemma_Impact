@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-export type NavTab = 'team' | 'chat' | 'editor' | 'database'
+export type NavTab = 'team' | 'chat' | 'code' | 'database'
 
 export interface NavItem {
   id: NavTab
@@ -22,7 +22,7 @@ interface NavigationStore {
 const defaultNavOrder: Array<NavItem['id']> = [
   'team',      // Workspace first
   'chat',      // AI Chat second
-  'editor',    // Automation third
+  'code',      // Code third
   'database'   // Database last
 ]
 
@@ -53,7 +53,7 @@ export const useNavigationStore = create<NavigationStore>()(
       onRehydrateStorage: () => (state) => {
         if (state) {
           // Check if navOrder has all required tabs
-          const requiredTabs: NavTab[] = ['team', 'chat', 'editor', 'database']
+          const requiredTabs: NavTab[] = ['team', 'chat', 'code', 'database']
           const missingTabs = requiredTabs.filter(tab => !state.navOrder.includes(tab))
 
           if (missingTabs.length > 0) {

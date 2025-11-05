@@ -13,7 +13,7 @@ import { LibraryModal } from './components/LibraryModal'
 import { JsonConverterModal } from './components/JsonConverterModal'
 import { QueryHistoryModal } from './components/QueryHistoryModal'
 import { ServerControlModal } from './components/ServerControlModal'
-import { AutomationTab } from './components/AutomationTab'
+import { CodeWorkspace } from './components/CodeWorkspace'
 import { TeamWorkspace } from './components/TeamWorkspace'
 import { SetupWizard } from './components/SetupWizard'
 import { Login } from './components/Login'
@@ -226,14 +226,14 @@ export default function App() {
             />
           </div>
 
-          {/* Automation Tab */}
+          {/* Code Tab */}
           <div
             className="absolute inset-0 flex"
             style={{
-              display: activeTab === 'editor' ? 'flex' : 'none'
+              display: activeTab === 'code' ? 'flex' : 'none'
             }}
           >
-            <AutomationTab />
+            <CodeWorkspace />
           </div>
 
           {/* Database Tab */}

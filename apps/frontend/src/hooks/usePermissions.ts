@@ -47,6 +47,7 @@ export interface Permissions {
   canAccessDocuments: boolean
   canAccessVault: boolean
   canAccessAutomation: boolean
+  canAccessCode: boolean
   canAccessChat: boolean
   canAccessTeamChat: boolean
   canAccessFileShare: boolean
@@ -106,6 +107,7 @@ export function usePermissions(): Permissions {
     const _canAccessDocuments = !_effectivelyGuest
     const _canAccessVault = !_effectivelyGuest
     const _canAccessAutomation = !_effectivelyGuest
+    const _canAccessCode = !_effectivelyGuest // Code tab: Members and above only
     const _canAccessChat = true // Everyone can use AI chat
     const _canAccessTeamChat = true // Everyone can use team chat
     const _canAccessFileShare = true // Everyone can share files
@@ -130,6 +132,7 @@ export function usePermissions(): Permissions {
       canAccessDocuments: _canAccessDocuments,
       canAccessVault: _canAccessVault,
       canAccessAutomation: _canAccessAutomation,
+      canAccessCode: _canAccessCode,
       canAccessChat: _canAccessChat,
       canAccessTeamChat: _canAccessTeamChat,
       canAccessFileShare: _canAccessFileShare,
@@ -155,6 +158,7 @@ export function useFeatureAccess(feature: keyof Pick<Permissions,
   'canAccessDocuments' |
   'canAccessVault' |
   'canAccessAutomation' |
+  'canAccessCode' |
   'canAccessChat' |
   'canAccessTeamChat' |
   'canAccessFileShare'
