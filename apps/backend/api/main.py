@@ -427,6 +427,13 @@ except Exception as e:
 try:
     from monitoring_routes import router as monitoring_router
     app.include_router(monitoring_router)
+
+    # Code Tab Operations (Phase 2)
+    try:
+        from code_operations import router as code_router
+        app.include_router(code_router)
+    except ImportError as e:
+        logger.warning(f"Could not import code_operations router: {e}")
     services_loaded.append("Monitoring")
 except Exception as e:
     services_failed.append("Monitoring")
