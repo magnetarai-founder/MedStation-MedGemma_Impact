@@ -26,6 +26,9 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [currentPath, setCurrentPath] = useState<string | null>(null)
+  const [showNewFileModal, setShowNewFileModal] = useState(false)
+  const [newFileName, setNewFileName] = useState('')
+  const [creating, setCreating] = useState(false)
 
   const loadFileTree = async (absolutePath?: string) => {
     setLoading(true)
@@ -60,6 +63,50 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
     const projectPath = '/Users/indiedevhipps/Documents/ElohimOS'
     await loadFileTree(projectPath)
     toast.success('Opened ElohimOS project')
+  }
+
+  const handleCreateFile = async () => {
+    if (!newFileName.trim()) {
+      toast.error('Please enter a file name')
+      return
+    }
+
+    setCreating(true)
+    try {
+      const res = await fetch('/api/v1/code/write', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          path: newFileName,
+          content: '',
+          create_if_missing: true
+        })
+      })
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}))
+        throw new Error(error.detail || 'Failed to create file')
+      }
+
+      toast.success(`Created ${newFileName}`)
+      setShowNewFileModal(false)
+      setNewFileName('')
+
+      // Reload file tree
+      await loadFileTree(currentPath || undefined)
+
+      // Open the new file
+      if (currentPath) {
+        onFileSelect(`${currentPath}/${newFileName}`, true)
+      } else {
+        onFileSelect(newFileName, false)
+      }
+    } catch (err) {
+      console.error('Error creating file:', err)
+      toast.error(err instanceof Error ? err.message : 'Failed to create file')
+    } finally {
+      setCreating(false)
+    }
   }
 
   useEffect(() => {
@@ -199,6 +246,13 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
           </span>
           <div className="flex items-center gap-1">
             <button
+              onClick={() => setShowNewFileModal(true)}
+              className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+              title="New File"
+            >
+              <FilePlus className="w-3.5 h-3.5 text-gray-500" />
+            </button>
+            <button
               onClick={handleOpenFolder}
               className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
               title="Open Folder"
@@ -225,6 +279,68 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
       <div className="py-1">
         {tree.map(node => renderNode(node))}
       </div>
+
+      {/* New File Modal */}
+      {showNewFileModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl w-full max-w-md">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                Create New File
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">
+                {currentPath ? `In ${currentPath}` : 'In workspace'}
+              </p>
+            </div>
+
+            <div className="px-6 py-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                File Name
+              </label>
+              <input
+                type="text"
+                value={newFileName}
+                onChange={(e) => setNewFileName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleCreateFile()
+                  } else if (e.key === 'Escape') {
+                    setShowNewFileModal(false)
+                    setNewFileName('')
+                  }
+                }}
+                placeholder="example.ts"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                autoFocus
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                Press Enter to create, Escape to cancel
+              </p>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowNewFileModal(false)
+                  setNewFileName('')
+                }}
+                disabled={creating}
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateFile}
+                disabled={creating || !newFileName.trim()}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <FilePlus className="w-4 h-4" />
+                {creating ? 'Creating...' : 'Create File'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
