@@ -26,12 +26,16 @@ export function CodeView() {
   const [showDiffPreview, setShowDiffPreview] = useState(false)
   const [diffData, setDiffData] = useState<any>(null)
 
-  const loadFile = async (path: string) => {
+  const loadFile = async (path: string, isAbsolute: boolean = false) => {
     setLoading(true)
     setSelectedFile(path)
 
     try {
-      const res = await fetch(`/api/v1/code/read?path=${encodeURIComponent(path)}`)
+      const url = isAbsolute
+        ? `/api/v1/code/read?path=${encodeURIComponent(path)}&absolute_path=true`
+        : `/api/v1/code/read?path=${encodeURIComponent(path)}`
+
+      const res = await fetch(url)
 
       if (!res.ok) {
         throw new Error('Failed to load file')

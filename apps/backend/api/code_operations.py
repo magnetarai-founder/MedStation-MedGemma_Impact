@@ -176,28 +176,34 @@ def walk_directory(
 @router.get("/files")
 async def get_file_tree(
     path: str = ".",
-    recursive: bool = True
+    recursive: bool = True,
+    absolute_path: str = None  # NEW: Allow browsing any path
 ):
     """
-    Get file tree for user's code workspace
+    Get file tree for user's code workspace OR any absolute path
     Implements Continue's walkDir pattern with security
     """
     try:
         # For now, use default user until auth is fully wired
         user_id = "default_user"
-        logger.info(f"[CODE] GET /files - user_id={user_id}, path={path}, recursive={recursive}")
-        # Get user workspace
-        user_workspace = get_user_workspace(user_id)
+        logger.info(f"[CODE] GET /files - user_id={user_id}, path={path}, absolute_path={absolute_path}, recursive={recursive}")
 
-        # Resolve requested path
-        if path == ".":
-            target_path = user_workspace
+        # If absolute_path provided, use it instead of workspace
+        if absolute_path:
+            target_path = Path(absolute_path)
+            if not target_path.exists():
+                raise HTTPException(404, "Path not found")
+            if not target_path.is_dir():
+                raise HTTPException(400, "Path is not a directory")
         else:
-            target_path = user_workspace / path
+            # Get user workspace
+            user_workspace = get_user_workspace(user_id)
+            target_path = user_workspace if path == "." else user_workspace / path
 
-        # Security: validate path
-        if not is_safe_path(target_path, user_workspace):
-            raise HTTPException(400, "Invalid path")
+        # Security: validate path (only if using workspace, not absolute)
+        if not absolute_path:
+            if not is_safe_path(target_path, user_workspace):
+                raise HTTPException(400, "Invalid path")
 
         if not target_path.exists():
             raise HTTPException(404, "Path not found")
@@ -234,7 +240,8 @@ async def get_file_tree(
 async def read_file(
     path: str,
     offset: int = 1,
-    limit: int = 2000
+    limit: int = 2000,
+    absolute_path: bool = False  # NEW: Allow reading absolute paths
 ):
     """
     Read file content (adapted from Codex's read_file with line numbers)
@@ -243,15 +250,18 @@ async def read_file(
     try:
         # For now, use default user until auth is fully wired
         user_id = "default_user"
-        # Get user workspace
-        user_workspace = get_user_workspace(user_id)
 
         # Resolve file path
-        file_path = user_workspace / path
+        if absolute_path or path.startswith('/'):
+            file_path = Path(path)
+        else:
+            # Get user workspace
+            user_workspace = get_user_workspace(user_id)
+            file_path = user_workspace / path
 
-        # Security: validate path
-        if not is_safe_path(file_path, user_workspace):
-            raise HTTPException(400, "Invalid path")
+            # Security: validate path (only for workspace files)
+            if not is_safe_path(file_path, user_workspace):
+                raise HTTPException(400, "Invalid path")
 
         if not file_path.exists():
             raise HTTPException(404, "File not found")

@@ -4,7 +4,8 @@
  */
 
 import { useState, useEffect } from 'react'
-import { Folder, File, ChevronRight, ChevronDown, RefreshCw } from 'lucide-react'
+import { Folder, File, ChevronRight, ChevronDown, RefreshCw, FolderOpen, FilePlus } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 interface FileNode {
   name: string
@@ -15,7 +16,7 @@ interface FileNode {
 }
 
 interface FileBrowserProps {
-  onFileSelect: (path: string) => void
+  onFileSelect: (path: string, isAbsolute?: boolean) => void
   selectedFile: string | null
 }
 
@@ -24,19 +25,18 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [currentPath, setCurrentPath] = useState<string | null>(null)
 
-  const loadFileTree = async () => {
+  const loadFileTree = async (absolutePath?: string) => {
     setLoading(true)
     setError(null)
 
     try {
-      // First check if API is available
-      const healthRes = await fetch('/api/v1/code/health')
-      if (!healthRes.ok) {
-        throw new Error('Code operations API is not available')
-      }
+      const url = absolutePath
+        ? `/api/v1/code/files?recursive=true&absolute_path=${encodeURIComponent(absolutePath)}`
+        : '/api/v1/code/files?recursive=true'
 
-      const res = await fetch('/api/v1/code/files?recursive=true')
+      const res = await fetch(url)
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}))
@@ -44,14 +44,22 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
       }
 
       const data = await res.json()
-      console.log('File tree loaded:', data)
       setTree(data.items || [])
+      if (absolutePath) {
+        setCurrentPath(absolutePath)
+      }
     } catch (err) {
       console.error('Error loading file tree:', err)
       setError(err instanceof Error ? err.message : 'Failed to load files')
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleOpenFolder = async () => {
+    const projectPath = '/Users/indiedevhipps/Documents/ElohimOS'
+    await loadFileTree(projectPath)
+    toast.success('Opened ElohimOS project')
   }
 
   useEffect(() => {
@@ -70,9 +78,18 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
     })
   }
 
+  const handleFileClick = (path: string) => {
+    if (currentPath) {
+      // If browsing absolute path, send full path
+      onFileSelect(`${currentPath}/${path}`, true)
+    } else {
+      onFileSelect(path, false)
+    }
+  }
+
   const renderNode = (node: FileNode, depth: number = 0): JSX.Element => {
     const isExpanded = expanded.has(node.path)
-    const isSelected = selectedFile === node.path
+    const isSelected = selectedFile === node.path || selectedFile === `${currentPath}/${node.path}`
     const paddingLeft = depth * 16
 
     if (node.type === 'directory') {
@@ -107,7 +124,7 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
     return (
       <button
         key={node.path}
-        onClick={() => onFileSelect(node.path)}
+        onClick={() => handleFileClick(node.path)}
         className={`flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-700/50 w-full text-left transition-colors ${
           isSelected ? 'bg-primary-100 dark:bg-primary-900/30' : ''
         }`}
@@ -139,7 +156,7 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
           {error}
         </div>
         <button
-          onClick={loadFileTree}
+          onClick={() => loadFileTree()}
           className="flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400"
         >
           <RefreshCw className="w-4 h-4" />
@@ -158,9 +175,16 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
             No files yet
           </p>
           <p className="text-xs text-gray-500">
-            Your code workspace is empty
+            Click "Open Folder" to browse files
           </p>
         </div>
+        <button
+          onClick={handleOpenFolder}
+          className="flex items-center gap-2 mx-auto px-3 py-1.5 text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400"
+        >
+          <FolderOpen className="w-4 h-4" />
+          Open Folder
+        </button>
       </div>
     )
   }
@@ -168,17 +192,33 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
   return (
     <div className="h-full overflow-auto">
       {/* Header */}
-      <div className="sticky top-0 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-3 py-2 flex items-center justify-between">
-        <span className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-          Files
-        </span>
-        <button
-          onClick={loadFileTree}
-          className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
-          title="Refresh"
-        >
-          <RefreshCw className="w-3.5 h-3.5 text-gray-500" />
-        </button>
+      <div className="sticky top-0 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-3 py-2">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+            Files
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handleOpenFolder}
+              className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+              title="Open Folder"
+            >
+              <FolderOpen className="w-3.5 h-3.5 text-gray-500" />
+            </button>
+            <button
+              onClick={() => loadFileTree(currentPath || undefined)}
+              className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+              title="Refresh"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-gray-500" />
+            </button>
+          </div>
+        </div>
+        {currentPath && (
+          <div className="text-xs text-gray-500 truncate" title={currentPath}>
+            {currentPath}
+          </div>
+        )}
       </div>
 
       {/* File tree */}
