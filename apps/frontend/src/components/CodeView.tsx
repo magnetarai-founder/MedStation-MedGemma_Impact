@@ -12,6 +12,7 @@ import { ResizableSidebar } from './ResizableSidebar'
 import { FileBrowser } from './FileBrowser'
 import { MonacoEditor } from './MonacoEditor'
 import { DiffPreviewModal } from './DiffPreviewModal'
+import { CodeChat } from './CodeChat'
 import toast from 'react-hot-toast'
 
 export function CodeView() {
@@ -298,24 +299,32 @@ export function CodeView() {
                   />
                 )}
               </div>
+
+              {/* Chat - Always visible below Monaco */}
+              <CodeChat currentFile={selectedFile} fileContent={fileContent} />
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="text-center space-y-4">
-                <FileCode className="w-16 h-16 mx-auto text-gray-400 dark:text-gray-600" />
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
-                    Monaco Editor
-                  </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Select a file to view
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-500">
-                    Phase 2: Read-Only File Viewing
-                  </p>
+            <>
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center space-y-4">
+                  <FileCode className="w-16 h-16 mx-auto text-gray-400 dark:text-gray-600" />
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                      Monaco Editor
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Select a file to view
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-500">
+                      Phase 2: Read-Only File Viewing
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+
+              {/* Chat - Always visible even without file */}
+              <CodeChat currentFile={null} fileContent="" />
+            </>
           )}
         </div>
       }
