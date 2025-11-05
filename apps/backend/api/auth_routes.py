@@ -192,13 +192,25 @@ async def cleanup_expired_sessions(request: Request):
 
 
 @router.get("/permissions")
-async def get_current_user_permissions(user: dict = Depends(get_current_user)):
+async def get_current_user_permissions(
+    team_id: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
     """
-    Get current user's effective permissions (Phase 2.5)
+    Get current user's effective permissions
 
     Returns a safe, read-only view of the user's effective permissions.
     This endpoint is designed for frontend use to show/hide UI elements
     based on permissions.
+
+    Args:
+        team_id: Optional team context for team-specific permissions
+        user: Current authenticated user (from token)
+
+    Returns:
+        - user_id, username, role
+        - permissions: Flat map with enum values converted to JSON-serializable strings
+        - profiles, permission_sets
 
     Never returns internal evaluation details or sensitive data.
     """
@@ -206,7 +218,10 @@ async def get_current_user_permissions(user: dict = Depends(get_current_user)):
         from permission_engine import get_permission_engine
 
         engine = get_permission_engine()
-        user_ctx = engine.load_user_context(user['user_id'])
+        user_ctx = engine.load_user_context(
+            user_id=user['user_id'],
+            team_id=team_id
+        )
 
         # Convert permissions to JSON-serializable format
         permissions = {}
