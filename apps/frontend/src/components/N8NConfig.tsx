@@ -71,6 +71,11 @@ export function N8NConfig() {
   const fetchWorkflows = async () => {
     try {
       const response = await fetch('/api/v1/n8n/workflows');
+      if (response.status === 404) {
+        // n8n not configured - hide workflows UI
+        setWorkflows([]);
+        return;
+      }
       if (response.ok) {
         const data = await response.json();
         setWorkflows(data.workflows || []);

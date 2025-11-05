@@ -32,6 +32,17 @@ logger = logging.getLogger(__name__)
 from fastapi import Depends
 from auth_middleware import get_current_user
 
+# Dependency to check if n8n is enabled
+def require_n8n_enabled():
+    """Dependency that raises 404 if n8n is not configured/enabled"""
+    service = get_n8n_service()
+    if not service or not service.config.enabled:
+        raise HTTPException(
+            status_code=404,
+            detail="n8n integration not configured or disabled"
+        )
+    return service
+
 router = APIRouter(
     prefix="/api/v1/n8n",
     tags=["n8n"],
@@ -132,13 +143,8 @@ async def get_n8n_config():
 # ============================================
 
 @router.get("/workflows")
-async def list_n8n_workflows():
+async def list_n8n_workflows(service: N8NIntegrationService = Depends(require_n8n_enabled)):
     """List all n8n workflows"""
-    service = get_n8n_service()
-
-    if not service:
-        raise HTTPException(status_code=400, detail="n8n not configured")
-
     try:
         workflows = await service.client.list_workflows()
         return {"workflows": workflows}
@@ -148,7 +154,7 @@ async def list_n8n_workflows():
 
 
 @router.post("/export-stage")
-async def export_stage_to_n8n(request: ExportStageRequest):
+async def export_stage_to_n8n(request: ExportStageRequest, service: N8NIntegrationService = Depends(require_n8n_enabled)):
     """
     Export ElohimOS workflow stage to n8n
 
@@ -158,10 +164,6 @@ async def export_stage_to_n8n(request: ExportStageRequest):
     Returns:
         n8n workflow ID and webhook URL
     """
-    service = get_n8n_service()
-
-    if not service:
-        raise HTTPException(status_code=400, detail="n8n not configured")
 
     # Get workflow (TODO: inject orchestrator properly)
     # For now, we'll accept workflow data in request
@@ -246,7 +248,8 @@ async def handle_n8n_webhook(webhook_data: N8NWebhookRequest):
 @router.post("/execute/{n8n_workflow_id}")
 async def execute_n8n_workflow(
     n8n_workflow_id: str,
-    data: Dict[str, Any] = Body(...)
+    data: Dict[str, Any] = Body(...),
+    service: N8NIntegrationService = Depends(require_n8n_enabled)
 ):
     """
     Execute n8n workflow programmatically
@@ -258,11 +261,6 @@ async def execute_n8n_workflow(
     Returns:
         Execution results
     """
-    service = get_n8n_service()
-
-    if not service:
-        raise HTTPException(status_code=400, detail="n8n not configured")
-
     try:
         result = await service.client.execute_workflow(n8n_workflow_id, data)
 
@@ -281,13 +279,8 @@ async def execute_n8n_workflow(
 # ============================================
 
 @router.get("/mappings")
-async def get_stage_mappings():
+async def get_stage_mappings(service: N8NIntegrationService = Depends(require_n8n_enabled)):
     """Get all ElohimOS <-> n8n stage mappings"""
-    service = get_n8n_service()
-
-    if not service:
-        return {"mappings": []}
-
     mappings = [
         {
             "elohim_workflow_id": m.elohim_workflow_id,
