@@ -602,3 +602,221 @@ async def delete_file(
     except Exception as e:
         logger.error(f"Error deleting file: {e}")
         raise HTTPException(500, f"Failed to delete file: {str(e)}")
+
+
+# ============================================================================
+# PROJECT LIBRARY: Knowledge Base for Code Projects
+# ============================================================================
+
+import sqlite3
+from datetime import datetime
+
+class ProjectLibraryDocument(BaseModel):
+    name: str
+    content: str
+    tags: List[str] = []
+    file_type: str = "markdown"  # "markdown" or "text"
+
+
+class UpdateDocumentRequest(BaseModel):
+    name: Optional[str] = None
+    content: Optional[str] = None
+    tags: Optional[List[str]] = None
+
+
+def get_library_db_path() -> Path:
+    """Get path to project library database"""
+    db_path = PATHS.data_dir / "project_library.db"
+    return db_path
+
+
+def init_library_db():
+    """Initialize project library database"""
+    db_path = get_library_db_path()
+    conn = sqlite3.connect(str(db_path))
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS documents (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            content TEXT NOT NULL,
+            tags TEXT NOT NULL,  -- JSON array
+            file_type TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    conn.commit()
+    conn.close()
+
+
+# Initialize on module load
+init_library_db()
+
+
+@router.get("/library")
+async def get_library_documents():
+    """Get all project library documents"""
+    try:
+        user_id = "default_user"
+        db_path = get_library_db_path()
+        conn = sqlite3.connect(str(db_path))
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT id, name, content, tags, file_type, created_at, updated_at
+            FROM documents
+            WHERE user_id = ?
+            ORDER BY updated_at DESC
+        """, (user_id,))
+
+        documents = []
+        for row in cursor.fetchall():
+            import json
+            documents.append({
+                'id': row[0],
+                'name': row[1],
+                'content': row[2],
+                'tags': json.loads(row[3]),
+                'file_type': row[4],
+                'created_at': row[5],
+                'updated_at': row[6]
+            })
+
+        conn.close()
+        return documents
+
+    except Exception as e:
+        logger.error(f"Error getting library documents: {e}")
+        raise HTTPException(500, f"Failed to get library documents: {str(e)}")
+
+
+@router.post("/library")
+async def create_library_document(doc: ProjectLibraryDocument):
+    """Create new project library document"""
+    try:
+        user_id = "default_user"
+        db_path = get_library_db_path()
+        conn = sqlite3.connect(str(db_path))
+        cursor = conn.cursor()
+
+        import json
+        cursor.execute("""
+            INSERT INTO documents (user_id, name, content, tags, file_type, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            user_id,
+            doc.name,
+            doc.content,
+            json.dumps(doc.tags),
+            doc.file_type,
+            datetime.now().isoformat(),
+            datetime.now().isoformat()
+        ))
+
+        doc_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+
+        # Audit log
+        await log_action(
+            user_id=user_id,
+            action="code.library.create",
+            resource=doc.name,
+            details={'id': doc_id, 'tags': doc.tags}
+        )
+
+        return {'id': doc_id, 'success': True}
+
+    except Exception as e:
+        logger.error(f"Error creating library document: {e}")
+        raise HTTPException(500, f"Failed to create library document: {str(e)}")
+
+
+@router.patch("/library/{doc_id}")
+async def update_library_document(doc_id: int, update: UpdateDocumentRequest):
+    """Update project library document"""
+    try:
+        user_id = "default_user"
+        db_path = get_library_db_path()
+        conn = sqlite3.connect(str(db_path))
+        cursor = conn.cursor()
+
+        # Build update query
+        updates = []
+        params = []
+
+        if update.name is not None:
+            updates.append("name = ?")
+            params.append(update.name)
+
+        if update.content is not None:
+            updates.append("content = ?")
+            params.append(update.content)
+
+        if update.tags is not None:
+            import json
+            updates.append("tags = ?")
+            params.append(json.dumps(update.tags))
+
+        updates.append("updated_at = ?")
+        params.append(datetime.now().isoformat())
+
+        params.extend([user_id, doc_id])
+
+        cursor.execute(f"""
+            UPDATE documents
+            SET {', '.join(updates)}
+            WHERE user_id = ? AND id = ?
+        """, params)
+
+        conn.commit()
+        conn.close()
+
+        # Audit log
+        await log_action(
+            user_id=user_id,
+            action="code.library.update",
+            resource=str(doc_id),
+            details=update.dict(exclude_none=True)
+        )
+
+        return {'success': True}
+
+    except Exception as e:
+        logger.error(f"Error updating library document: {e}")
+        raise HTTPException(500, f"Failed to update library document: {str(e)}")
+
+
+@router.delete("/library/{doc_id}")
+async def delete_library_document(doc_id: int):
+    """Delete project library document"""
+    try:
+        user_id = "default_user"
+        db_path = get_library_db_path()
+        conn = sqlite3.connect(str(db_path))
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            DELETE FROM documents
+            WHERE user_id = ? AND id = ?
+        """, (user_id, doc_id))
+
+        conn.commit()
+        conn.close()
+
+        # Audit log
+        await log_action(
+            user_id=user_id,
+            action="code.library.delete",
+            resource=str(doc_id)
+        )
+
+        return {'success': True}
+
+    except Exception as e:
+        logger.error(f"Error deleting library document: {e}")
+        raise HTTPException(500, f"Failed to delete library document: {str(e)}")

@@ -9,7 +9,8 @@
 
 import { useState, useEffect } from 'react'
 import { FileBrowser } from './FileBrowser'
-import { FolderOpen, MessageSquarePlus, FolderPlus, FilePlus, Trash2, Package } from 'lucide-react'
+import { ProjectLibraryModal } from './ProjectLibraryModal'
+import { FolderOpen, MessageSquarePlus, FolderPlus, FilePlus, Trash2, Package, Folder } from 'lucide-react'
 
 interface CodeSidebarProps {
   onFileSelect: (path: string, isAbsolute?: boolean) => void
@@ -19,6 +20,7 @@ interface CodeSidebarProps {
 export function CodeSidebar({ onFileSelect, selectedFile }: CodeSidebarProps) {
   const [activeTab, setActiveTab] = useState<'files' | 'chat'>('files')
   const [projectName, setProjectName] = useState<string | null>(null)
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false)
 
   const sanitizeName = (name: string): string => {
     // Same logic as _sanitize_column_name in data_engine.py
@@ -119,36 +121,52 @@ export function CodeSidebar({ onFileSelect, selectedFile }: CodeSidebarProps) {
         )}
       </div>
 
-      {/* Icon Row - Create Project, Folder, File, Delete */}
+      {/* Icon Row - Tab-dependent buttons */}
       <div className="flex items-center justify-center gap-2 py-2 border-b border-gray-200 dark:border-gray-700">
-        <button
-          onClick={() => console.log('Create project clicked')}
-          className="p-2 hover:bg-white/60 dark:hover:bg-gray-700/60 rounded-lg transition-all text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400"
-          title="Create Project"
-        >
-          <Package size={18} />
-        </button>
-        <button
-          onClick={() => console.log('Create folder clicked')}
-          className="p-2 hover:bg-white/60 dark:hover:bg-gray-700/60 rounded-lg transition-all text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400"
-          title="Create Folder"
-        >
-          <FolderPlus size={18} />
-        </button>
-        <button
-          onClick={() => console.log('Create file clicked')}
-          className="p-2 hover:bg-white/60 dark:hover:bg-gray-700/60 rounded-lg transition-all text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400"
-          title="Create File"
-        >
-          <FilePlus size={18} />
-        </button>
-        <button
-          onClick={() => console.log('Delete clicked')}
-          className="p-2 hover:bg-white/60 dark:hover:bg-gray-700/60 rounded-lg transition-all text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400"
-          title="Delete"
-        >
-          <Trash2 size={18} />
-        </button>
+        {activeTab === 'files' ? (
+          <>
+            {/* Code Tab: 4 buttons */}
+            <button
+              onClick={() => console.log('Create project clicked')}
+              className="p-2 hover:bg-white/60 dark:hover:bg-gray-700/60 rounded-lg transition-all text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400"
+              title="Create Project"
+            >
+              <Package size={18} />
+            </button>
+            <button
+              onClick={() => console.log('Create folder clicked')}
+              className="p-2 hover:bg-white/60 dark:hover:bg-gray-700/60 rounded-lg transition-all text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400"
+              title="Create Folder"
+            >
+              <FolderPlus size={18} />
+            </button>
+            <button
+              onClick={() => console.log('Create file clicked')}
+              className="p-2 hover:bg-white/60 dark:hover:bg-gray-700/60 rounded-lg transition-all text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400"
+              title="Create File"
+            >
+              <FilePlus size={18} />
+            </button>
+            <button
+              onClick={() => console.log('Delete clicked')}
+              className="p-2 hover:bg-white/60 dark:hover:bg-gray-700/60 rounded-lg transition-all text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+              title="Delete"
+            >
+              <Trash2 size={18} />
+            </button>
+          </>
+        ) : (
+          <>
+            {/* Chat Tab: 1 button (Project Library) */}
+            <button
+              onClick={() => setIsLibraryOpen(true)}
+              className="p-2 hover:bg-white/60 dark:hover:bg-gray-700/60 rounded-lg transition-all text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400"
+              title="Project Library"
+            >
+              <Folder size={18} />
+            </button>
+          </>
+        )}
       </div>
 
       {/* Tab Content */}
@@ -165,6 +183,12 @@ export function CodeSidebar({ onFileSelect, selectedFile }: CodeSidebarProps) {
           </div>
         )}
       </div>
+
+      {/* Project Library Modal */}
+      <ProjectLibraryModal
+        isOpen={isLibraryOpen}
+        onClose={() => setIsLibraryOpen(false)}
+      />
     </div>
   )
 }
