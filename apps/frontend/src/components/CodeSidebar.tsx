@@ -9,16 +9,18 @@
 
 import { useState, useEffect } from 'react'
 import { FileBrowser } from './FileBrowser'
-import { FolderOpen, MessageSquarePlus, FolderPlus, FilePlus, Trash2, Package, Folder } from 'lucide-react'
+import { FolderOpen, MessageSquarePlus, FolderPlus, FilePlus, Trash2, Package, Folder, MessageCircle, Clock, Settings } from 'lucide-react'
 
 interface CodeSidebarProps {
   onFileSelect: (path: string, isAbsolute?: boolean) => void
   selectedFile: string | null
   onOpenLibrary: () => void
+  onOpenSettings: () => void
 }
 
-export function CodeSidebar({ onFileSelect, selectedFile, onOpenLibrary }: CodeSidebarProps) {
+export function CodeSidebar({ onFileSelect, selectedFile, onOpenLibrary, onOpenSettings }: CodeSidebarProps) {
   const [activeTab, setActiveTab] = useState<'files' | 'chat'>('files')
+  const [chatView, setChatView] = useState<'history' | 'git'>('history') // Toggle between chat history and git view
   const [projectName, setProjectName] = useState<string | null>(null)
 
   const sanitizeName = (name: string): string => {
@@ -156,13 +158,42 @@ export function CodeSidebar({ onFileSelect, selectedFile, onOpenLibrary }: CodeS
           </>
         ) : (
           <>
-            {/* Chat Tab: 1 button (Project Library) */}
+            {/* Chat Tab: 4 buttons (Library, Chat History, Git, Settings) */}
             <button
               onClick={onOpenLibrary}
               className="p-2 hover:bg-white/60 dark:hover:bg-gray-700/60 rounded-lg transition-all text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400"
               title="Project Library"
             >
               <Folder size={18} />
+            </button>
+            <button
+              onClick={() => setChatView('history')}
+              className={`p-2 hover:bg-white/60 dark:hover:bg-gray-700/60 rounded-lg transition-all ${
+                chatView === 'history'
+                  ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400'
+              }`}
+              title="Chat History"
+            >
+              <MessageCircle size={18} />
+            </button>
+            <button
+              onClick={() => setChatView('git')}
+              className={`p-2 hover:bg-white/60 dark:hover:bg-gray-700/60 rounded-lg transition-all ${
+                chatView === 'git'
+                  ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400'
+              }`}
+              title="Git Repository"
+            >
+              <Clock size={18} />
+            </button>
+            <button
+              onClick={onOpenSettings}
+              className="p-2 hover:bg-white/60 dark:hover:bg-gray-700/60 rounded-lg transition-all text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400"
+              title="Code Chat Settings"
+            >
+              <Settings size={18} />
             </button>
           </>
         )}
@@ -177,8 +208,146 @@ export function CodeSidebar({ onFileSelect, selectedFile, onOpenLibrary }: CodeS
           />
         )}
         {activeTab === 'chat' && (
-          <div className="p-4 text-center text-sm text-gray-500">
-            Chat interface will appear here
+          <>
+            {chatView === 'history' ? (
+              <ChatHistory />
+            ) : (
+              <GitRepository />
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Chat History Component (Placeholder)
+function ChatHistory() {
+  return (
+    <div className="h-full flex flex-col">
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Chat History</h3>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Code Tab conversations</p>
+      </div>
+      <div className="flex-1 overflow-auto p-4">
+        <div className="text-center text-sm text-gray-500 py-8">
+          <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
+          <p>No chat history yet</p>
+          <p className="text-xs mt-1">Start a conversation in the chat panel</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Git Repository Component
+function GitRepository() {
+  const [commits, setCommits] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    loadGitCommits()
+  }, [])
+
+  const loadGitCommits = async () => {
+    try {
+      // TODO: Wire up to backend git log API
+      // const res = await fetch('/api/v1/code/git/log')
+      // const data = await res.json()
+      // setCommits(data.commits)
+
+      // Mock data for now
+      setCommits([
+        {
+          hash: '1539a964',
+          message: 'fix(code-tab): Move ProjectLibraryModal to App level for full-page overlay',
+          author: 'Claude',
+          date: '2 minutes ago',
+          branch: 'main'
+        },
+        {
+          hash: '708931b1',
+          message: 'feat(code-tab): Add Project Library for knowledge management',
+          author: 'Claude',
+          date: '15 minutes ago',
+          branch: 'main'
+        },
+        {
+          hash: '3dd44299',
+          message: 'feat(code-tab): Integrate AI chat with code-aware context in bottom panel',
+          author: 'Claude',
+          date: '1 hour ago',
+          branch: 'main'
+        }
+      ])
+      setLoading(false)
+    } catch (error) {
+      console.error('Error loading git commits:', error)
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-3"></div>
+          <p className="text-sm text-gray-500">Loading commits...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="h-full flex flex-col bg-white dark:bg-gray-900">
+      {/* Header */}
+      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Repository</h3>
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
+            main
+          </span>
+        </div>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{commits.length} commits</p>
+      </div>
+
+      {/* Commit List */}
+      <div className="flex-1 overflow-auto">
+        {commits.length === 0 ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center text-sm text-gray-500">
+              <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <p>No commits yet</p>
+              <p className="text-xs mt-1">Initialize a git repository</p>
+            </div>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100 dark:divide-gray-800">
+            {commits.map((commit) => (
+              <div
+                key={commit.hash}
+                className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer group"
+              >
+                {/* Commit Message */}
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-2 h-2 mt-2 rounded-full bg-primary-600"></div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate group-hover:text-primary-600 dark:group-hover:text-primary-400">
+                      {commit.message}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                      <span className="font-mono bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
+                        {commit.hash}
+                      </span>
+                      <span>•</span>
+                      <span>{commit.author}</span>
+                      <span>•</span>
+                      <span>{commit.date}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

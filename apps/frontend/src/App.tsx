@@ -11,6 +11,7 @@ import { ChatWindow } from './components/ChatWindow'
 import { SettingsModal } from './components/SettingsModal'
 import { LibraryModal } from './components/LibraryModal'
 import { ProjectLibraryModal } from './components/ProjectLibraryModal'
+import { CodeChatSettingsModal } from './components/CodeChatSettingsModal'
 import { JsonConverterModal } from './components/JsonConverterModal'
 import { QueryHistoryModal } from './components/QueryHistoryModal'
 import { ServerControlModal } from './components/ServerControlModal'
@@ -44,6 +45,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true)
   const [isLibraryOpen, setIsLibraryOpen] = useState(false)
   const [isProjectLibraryOpen, setIsProjectLibraryOpen] = useState(false)
+  const [isCodeChatSettingsOpen, setIsCodeChatSettingsOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isJsonConverterOpen, setIsJsonConverterOpen] = useState(false)
   const [isQueryHistoryOpen, setIsQueryHistoryOpen] = useState(false)
@@ -253,6 +255,7 @@ export default function App() {
                   onFileSelect={handleFileSelect}
                   selectedFile={selectedFile}
                   onOpenLibrary={() => setIsProjectLibraryOpen(true)}
+                  onOpenSettings={() => setIsCodeChatSettingsOpen(true)}
                 />
               }
               right={<CodeWorkspace />}
@@ -325,6 +328,10 @@ export default function App() {
       <ProjectLibraryModal
         isOpen={isProjectLibraryOpen}
         onClose={() => setIsProjectLibraryOpen(false)}
+      />
+      <CodeChatSettingsModal
+        isOpen={isCodeChatSettingsOpen}
+        onClose={() => setIsCodeChatSettingsOpen(false)}
       />
       <QueryHistoryModal
         isOpen={isQueryHistoryOpen}
