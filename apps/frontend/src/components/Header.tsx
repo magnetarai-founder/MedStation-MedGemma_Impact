@@ -1,13 +1,10 @@
 import { useState, useEffect } from 'react'
 import { AlertTriangle, Activity, Terminal } from 'lucide-react'
-import { QuickChatDropdown } from './QuickChatDropdown'
-import { PerformanceMonitorDropdown } from './PerformanceMonitorDropdown'
 import { ControlCenterModal } from './ControlCenterModal'
 import { ModelManagementSidebar } from './ModelManagementSidebar'
 import { useOllamaStore } from '../stores/ollamaStore'
 import { ShutdownModal, RestartModal } from './OllamaServerModals'
 import { PanicModeModal } from './PanicModeModal'
-import { TerminalModal } from './TerminalModal'
 
 interface HeaderProps {
   onOpenServerControls: () => void
@@ -21,8 +18,8 @@ export function Header({ onOpenServerControls }: HeaderProps) {
   const [previousModels, setPreviousModels] = useState<string[]>([])
   const [showPanicConfirm, setShowPanicConfirm] = useState(false)
   const [showControlCenter, setShowControlCenter] = useState(false)
-  const [showTerminal, setShowTerminal] = useState(false)
-  const [activeDropdown, setActiveDropdown] = useState<'chat' | 'performance' | null>(null)
+  const [activeTerminals, setActiveTerminals] = useState(0)
+  const MAX_TERMINALS = 3
 
   // Fetch server status on mount and periodically
   useEffect(() => {
@@ -34,6 +31,25 @@ export function Header({ onOpenServerControls }: HeaderProps) {
   const handleLogoClick = () => {
     // Toggle Model Management sidebar
     setShowModelSidebar(!showModelSidebar)
+  }
+
+  const handleSpawnTerminal = async () => {
+    try {
+      const response = await fetch('/api/v1/terminal/spawn-system', {
+        method: 'POST',
+        credentials: 'include'
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to spawn terminal')
+      }
+
+      const data = await response.json()
+      setActiveTerminals(data.active_terminals)
+    } catch (error) {
+      console.error('Error spawning terminal:', error)
+      alert('Failed to spawn terminal')
+    }
   }
 
   const handleShutdownConfirm = async () => {
@@ -149,20 +165,21 @@ export function Header({ onOpenServerControls }: HeaderProps) {
 
           {/* Right: Controls */}
           <div className="flex items-center gap-3">
-            {/* Quick Chat */}
-            <QuickChatDropdown
-              isOpen={activeDropdown === 'chat'}
-              onToggle={() => setActiveDropdown(activeDropdown === 'chat' ? null : 'chat')}
-            />
+            {/* Terminal Button + Counter */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleSpawnTerminal}
+                className="p-2 hover:bg-purple-100 dark:hover:bg-purple-900/20 rounded-lg transition-colors text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400"
+                title="Open System Terminal"
+              >
+                <Terminal size={20} />
+              </button>
 
-            {/* Terminal Button (Global) - Phase 5 */}
-            <button
-              onClick={() => setShowTerminal(true)}
-              className="p-2 hover:bg-purple-100 dark:hover:bg-purple-900/20 rounded-lg transition-colors text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400"
-              title="Open Terminal"
-            >
-              <Terminal size={20} />
-            </button>
+              {/* Terminal Counter */}
+              <div className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[2.5rem]">
+                {activeTerminals}/{MAX_TERMINALS}
+              </div>
+            </div>
 
             {/* Control Center (includes Performance Monitor) */}
             <button
@@ -216,12 +233,6 @@ export function Header({ onOpenServerControls }: HeaderProps) {
       <ControlCenterModal
         isOpen={showControlCenter}
         onClose={() => setShowControlCenter(false)}
-      />
-
-      {/* Terminal Modal (Phase 5) */}
-      <TerminalModal
-        isOpen={showTerminal}
-        onClose={() => setShowTerminal(false)}
       />
     </>
   )

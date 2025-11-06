@@ -7,6 +7,8 @@ Provides real-time terminal access via WebSocket for the Code Tab.
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, Query
 from typing import Optional
 import json
+import os
+import subprocess
 
 import sys
 from pathlib import Path
@@ -75,6 +77,144 @@ async def spawn_terminal(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to spawn terminal: {str(e)}")
+
+
+@router.post("/spawn-system")
+async def spawn_system_terminal():
+    """
+    Spawn a system terminal (Warp, iTerm2, Terminal.app) with bridge script
+
+    This endpoint:
+    1. Detects user's preferred terminal application
+    2. Creates wrapper script (.elohim_bridge.sh) for I/O capture
+    3. Spawns system terminal with bridge
+    4. Tracks active terminal count (max 3)
+
+    Returns:
+        Active terminal count and session info
+    """
+    user_id = "default_user"
+
+    try:
+        # Check current session count (max 3) - use system terminal list
+        active_sessions = terminal_bridge.list_system_terminals(user_id=user_id)
+        active_count = len([s for s in active_sessions if s.get('active', False)])
+
+        if active_count >= 3:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Maximum terminal limit reached (3/3). Please close a terminal before opening a new one."
+            )
+
+        # Detect terminal application (Warp > iTerm2 > Terminal.app)
+        terminal_app = None
+        if os.path.exists('/Applications/Warp.app'):
+            terminal_app = 'warp'
+        elif os.path.exists('/Applications/iTerm.app'):
+            terminal_app = 'iterm'
+        else:
+            terminal_app = 'terminal'  # Default macOS Terminal
+
+        # Create bridge script in user's home directory
+        home_dir = os.path.expanduser('~')
+        bridge_script_path = os.path.join(home_dir, '.elohim_bridge.sh')
+
+        # Get workspace root from marker file if exists
+        from config_paths import PATHS
+        marker_file = PATHS.data_dir / "current_workspace.txt"
+        workspace_root = home_dir  # default
+        if marker_file.exists():
+            workspace_root = marker_file.read_text().strip()
+
+        # Create bridge wrapper script
+        bridge_script_content = f"""#!/bin/bash
+# ElohimOS Terminal Bridge
+# This script transparently captures terminal I/O while maintaining normal shell behavior
+
+# Source user's shell config
+if [ -f "$HOME/.zshrc" ]; then
+    source "$HOME/.zshrc"
+elif [ -f "$HOME/.bashrc" ]; then
+    source "$HOME/.bashrc"
+fi
+
+# Change to workspace directory
+cd "{workspace_root}"
+
+# TODO: Set up socket connection to ElohimOS backend
+# For now, just spawn shell normally
+exec $SHELL
+"""
+
+        # Write bridge script
+        with open(bridge_script_path, 'w') as f:
+            f.write(bridge_script_content)
+
+        # Make executable
+        os.chmod(bridge_script_path, 0o755)
+
+        # Register system terminal session
+        terminal_id = terminal_bridge.register_system_terminal(
+            user_id=user_id,
+            terminal_app=terminal_app,
+            workspace_root=workspace_root
+        )
+
+        # Spawn terminal with bridge script
+        if terminal_app == 'warp':
+            # Warp CLI: warp-cli open <path>
+            subprocess.Popen([
+                'open', '-a', 'Warp',
+                bridge_script_path
+            ])
+        elif terminal_app == 'iterm':
+            # iTerm2 via AppleScript
+            applescript = f'''
+            tell application "iTerm"
+                activate
+                create window with default profile
+                tell current session of current window
+                    write text "{bridge_script_path}"
+                end tell
+            end tell
+            '''
+            subprocess.Popen(['osascript', '-e', applescript])
+        else:
+            # Terminal.app via AppleScript
+            applescript = f'''
+            tell application "Terminal"
+                activate
+                do script "{bridge_script_path}"
+            end tell
+            '''
+            subprocess.Popen(['osascript', '-e', applescript])
+
+        # Update active count
+        active_count += 1
+
+        await log_action(
+            user_id,
+            'terminal.spawn_system',
+            {
+                'terminal_app': terminal_app,
+                'workspace_root': workspace_root,
+                'active_terminals': active_count
+            }
+        )
+
+        return {
+            'success': True,
+            'terminal_id': terminal_id,
+            'terminal_app': terminal_app,
+            'active_terminals': active_count,
+            'max_terminals': 3,
+            'bridge_script': bridge_script_path
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to spawn system terminal: {str(e)}")
 
 
 @router.get("/sessions")

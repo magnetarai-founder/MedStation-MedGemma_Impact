@@ -66,6 +66,7 @@ class TerminalBridge:
         self.sessions: Dict[str, TerminalSession] = {}
         self.context_store = TerminalContextStore()
         self._broadcast_callbacks: Dict[str, list] = {}
+        self.system_terminals: Dict[str, dict] = {}  # Track system terminal sessions
 
     def _generate_id(self) -> str:
         """Generate unique terminal ID"""
@@ -337,6 +338,129 @@ class TerminalBridge:
     def get_context(self, terminal_id: str, lines: int = 100) -> str:
         """Get terminal context for AI/LLM"""
         return self.context_store.get_context(terminal_id, lines)
+
+    # System Terminal Management Methods
+
+    def register_system_terminal(self, user_id: str, terminal_app: str, workspace_root: str) -> str:
+        """
+        Register a system terminal session
+
+        Args:
+            user_id: User ID owning this terminal
+            terminal_app: Terminal app used (warp, iterm, terminal)
+            workspace_root: Working directory for terminal
+
+        Returns:
+            Terminal session ID
+        """
+        terminal_id = self._generate_id()
+
+        self.system_terminals[terminal_id] = {
+            'id': terminal_id,
+            'user_id': user_id,
+            'terminal_app': terminal_app,
+            'workspace_root': workspace_root,
+            'created_at': datetime.now(),
+            'active': True,
+            'socket_path': None  # Will be set when socket connects
+        }
+
+        return terminal_id
+
+    def get_system_terminal(self, terminal_id: str) -> Optional[dict]:
+        """Get system terminal session info"""
+        return self.system_terminals.get(terminal_id)
+
+    def list_system_terminals(self, user_id: str = None) -> list:
+        """
+        List system terminal sessions
+
+        Args:
+            user_id: Filter by user ID (optional)
+
+        Returns:
+            List of system terminal session info dicts
+        """
+        terminals = self.system_terminals.values()
+
+        if user_id:
+            terminals = [t for t in terminals if t['user_id'] == user_id]
+
+        return [
+            {
+                'id': t['id'],
+                'user_id': t['user_id'],
+                'terminal_app': t['terminal_app'],
+                'workspace_root': t['workspace_root'],
+                'active': t['active'],
+                'created_at': t['created_at'].isoformat()
+            }
+            for t in terminals
+        ]
+
+    def close_system_terminal(self, terminal_id: str):
+        """
+        Close/remove system terminal session
+
+        Args:
+            terminal_id: Terminal session ID
+        """
+        if terminal_id in self.system_terminals:
+            self.system_terminals[terminal_id]['active'] = False
+            # Keep in dict for history, or remove completely
+            # del self.system_terminals[terminal_id]
+
+    async def start_socket_listener(self, socket_path: str, terminal_id: str):
+        """
+        Start Unix socket listener for terminal I/O capture
+
+        Args:
+            socket_path: Path to Unix socket
+            terminal_id: Terminal session ID to associate output with
+
+        This will be called by the bridge script to establish communication
+        """
+        import socket as sock_module
+
+        # Remove existing socket if present
+        if os.path.exists(socket_path):
+            os.remove(socket_path)
+
+        # Create Unix socket
+        server = sock_module.socket(sock_module.AF_UNIX, sock_module.SOCK_STREAM)
+        server.bind(socket_path)
+        server.listen(1)
+
+        print(f"Socket listener started at {socket_path} for terminal {terminal_id}")
+
+        # Accept connection from bridge script
+        loop = asyncio.get_event_loop()
+        conn, _ = await loop.run_in_executor(None, server.accept)
+
+        # Read data from socket in background task
+        async def capture_socket_output():
+            while True:
+                try:
+                    data = await loop.run_in_executor(None, conn.recv, 4096)
+                    if not data:
+                        break
+
+                    decoded = data.decode('utf-8', errors='replace')
+
+                    # Store in context
+                    await self.context_store.store_terminal_output(
+                        terminal_id=terminal_id,
+                        output=decoded
+                    )
+
+                    # Broadcast to any listeners
+                    await self._broadcast(terminal_id, decoded)
+
+                except Exception as e:
+                    print(f"Error capturing socket output: {e}")
+                    break
+
+        asyncio.create_task(capture_socket_output())
 
 
 # Global instance
