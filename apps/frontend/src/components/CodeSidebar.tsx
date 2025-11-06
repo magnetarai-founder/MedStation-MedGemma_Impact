@@ -239,10 +239,6 @@ export function CodeSidebar({ onFileSelect, selectedFile, onOpenLibrary, onOpenS
 function ChatHistory() {
   return (
     <div className="h-full flex flex-col">
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Chat History</h3>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Code Tab conversations</p>
-      </div>
       <div className="flex-1 overflow-auto p-4">
         <div className="text-center text-sm text-gray-500 py-8">
           <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
@@ -312,44 +308,28 @@ function GitRepository() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-gray-900">
-      {/* Header */}
-      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Repository</h3>
-          {!error && branch && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
-              {branch}
-            </span>
-          )}
-        </div>
-        {!error && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{commits.length} commits</p>}
-        {error && <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">{error}</p>}
-      </div>
-
+    <div className="h-full flex flex-col">
       {/* Commit List */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto p-4">
         {commits.length === 0 ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center text-sm text-gray-500 px-4">
-              <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              {error === 'No workspace opened' ? (
-                <>
-                  <p>No workspace opened</p>
-                  <p className="text-xs mt-1">Open a project folder to view git history</p>
-                </>
-              ) : error === 'Not a git repository' ? (
-                <>
-                  <p>Not a git repository</p>
-                  <p className="text-xs mt-1">Initialize git in your project folder</p>
-                </>
-              ) : (
-                <>
-                  <p>No commits yet</p>
-                  <p className="text-xs mt-1">Make your first commit</p>
-                </>
-              )}
-            </div>
+          <div className="text-center text-sm text-gray-500 py-8">
+            <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
+            {error === 'No workspace opened' ? (
+              <>
+                <p>No workspace opened</p>
+                <p className="text-xs mt-1">Open a project folder to view git history</p>
+              </>
+            ) : error === 'Not a git repository' ? (
+              <>
+                <p>Not a git repository</p>
+                <p className="text-xs mt-1">Initialize git in your project folder</p>
+              </>
+            ) : (
+              <>
+                <p>No commits yet</p>
+                <p className="text-xs mt-1">Make your first commit</p>
+              </>
+            )}
           </div>
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-gray-800">

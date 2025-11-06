@@ -362,7 +362,7 @@ export function CodeEditorPanel() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-center px-2 py-2 border-b-2 border-gray-600 dark:border-gray-400">
+      <div className="flex items-center px-2 py-1.5 border-b-2 border-gray-600 dark:border-gray-400">
         {/* Grouped pills design - tighter spacing, smaller icons */}
         <div className="flex items-center gap-3">
           {/* Group 1: Undo + Redo (always visible, grayed when disabled) */}
@@ -377,7 +377,7 @@ export function CodeEditorPanel() {
               }`}
               title={canUndo ? "Undo (Cmd+Z)" : "Nothing to undo"}
             >
-              <Undo className="w-4 h-4" />
+              <Undo className="w-3.5 h-3.5" />
             </button>
 
             <button
@@ -390,7 +390,7 @@ export function CodeEditorPanel() {
               }`}
               title={canRedo ? "Redo (Cmd+Shift+Z)" : "Nothing to redo"}
             >
-              <Redo className="w-4 h-4" />
+              <Redo className="w-3.5 h-3.5" />
             </button>
           </div>
 
@@ -404,7 +404,7 @@ export function CodeEditorPanel() {
                   className="flex items-center space-x-1 px-2 py-1 rounded-md bg-gray-100/50 dark:bg-gray-800/50 hover:bg-gray-200 dark:hover:bg-gray-700"
                   title={matchedQuery ? `Matched: ${matchedQuery.name}` : 'Browse Library'}
                 >
-                  <BookOpen className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+                  <BookOpen className="w-3.5 h-3.5 text-gray-700 dark:text-gray-300" />
                   <span className="text-xs text-gray-700 dark:text-gray-300 max-w-[120px] truncate">
                     {matchedQuery ? matchedQuery.name : 'Library'}
                   </span>
@@ -428,7 +428,7 @@ export function CodeEditorPanel() {
                         }}
                         className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center space-x-2 border-b border-gray-200 dark:border-gray-700"
                       >
-                        <BookOpen className="w-4 h-4" />
+                        <BookOpen className="w-3.5 h-3.5" />
                         <span>Browse Full Library</span>
                       </button>
 
@@ -465,7 +465,7 @@ export function CodeEditorPanel() {
                 className="flex items-center space-x-1 px-2 py-1 rounded-md bg-gray-100/50 dark:bg-gray-800/50 hover:bg-gray-200 dark:hover:bg-gray-700"
                 title="Save to Library"
               >
-                <Save className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+                <Save className="w-3.5 h-3.5 text-gray-700 dark:text-gray-300" />
                 <span className="text-xs text-gray-700 dark:text-gray-300">
                   Save to Library
                 </span>
@@ -486,7 +486,7 @@ export function CodeEditorPanel() {
               }`}
               title={hasUnsavedChanges ? "Revert to last save" : "No unsaved changes"}
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5" />
             </button>
 
             {/* Save button - only enabled if there are unsaved changes */}
@@ -500,7 +500,7 @@ export function CodeEditorPanel() {
               }`}
               title={hasUnsavedChanges ? "Save changes" : "No changes to save"}
             >
-              <Save className="w-4 h-4" />
+              <Save className="w-3.5 h-3.5" />
             </button>
           </div>
 
@@ -523,7 +523,7 @@ export function CodeEditorPanel() {
                     : 'Clear editor'
               }
             >
-              <Eraser className="w-4 h-4" />
+              <Eraser className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
