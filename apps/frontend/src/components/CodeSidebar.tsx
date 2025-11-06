@@ -9,18 +9,17 @@
 
 import { useState, useEffect } from 'react'
 import { FileBrowser } from './FileBrowser'
-import { ProjectLibraryModal } from './ProjectLibraryModal'
 import { FolderOpen, MessageSquarePlus, FolderPlus, FilePlus, Trash2, Package, Folder } from 'lucide-react'
 
 interface CodeSidebarProps {
   onFileSelect: (path: string, isAbsolute?: boolean) => void
   selectedFile: string | null
+  onOpenLibrary: () => void
 }
 
-export function CodeSidebar({ onFileSelect, selectedFile }: CodeSidebarProps) {
+export function CodeSidebar({ onFileSelect, selectedFile, onOpenLibrary }: CodeSidebarProps) {
   const [activeTab, setActiveTab] = useState<'files' | 'chat'>('files')
   const [projectName, setProjectName] = useState<string | null>(null)
-  const [isLibraryOpen, setIsLibraryOpen] = useState(false)
 
   const sanitizeName = (name: string): string => {
     // Same logic as _sanitize_column_name in data_engine.py
@@ -159,7 +158,7 @@ export function CodeSidebar({ onFileSelect, selectedFile }: CodeSidebarProps) {
           <>
             {/* Chat Tab: 1 button (Project Library) */}
             <button
-              onClick={() => setIsLibraryOpen(true)}
+              onClick={onOpenLibrary}
               className="p-2 hover:bg-white/60 dark:hover:bg-gray-700/60 rounded-lg transition-all text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400"
               title="Project Library"
             >
@@ -183,12 +182,6 @@ export function CodeSidebar({ onFileSelect, selectedFile }: CodeSidebarProps) {
           </div>
         )}
       </div>
-
-      {/* Project Library Modal */}
-      <ProjectLibraryModal
-        isOpen={isLibraryOpen}
-        onClose={() => setIsLibraryOpen(false)}
-      />
     </div>
   )
 }

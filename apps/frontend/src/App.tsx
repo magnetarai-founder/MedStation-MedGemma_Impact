@@ -10,6 +10,7 @@ import { ChatSidebar } from './components/ChatSidebar'
 import { ChatWindow } from './components/ChatWindow'
 import { SettingsModal } from './components/SettingsModal'
 import { LibraryModal } from './components/LibraryModal'
+import { ProjectLibraryModal } from './components/ProjectLibraryModal'
 import { JsonConverterModal } from './components/JsonConverterModal'
 import { QueryHistoryModal } from './components/QueryHistoryModal'
 import { ServerControlModal } from './components/ServerControlModal'
@@ -42,6 +43,7 @@ export default function App() {
   const { fetchUser } = useUserStore()
   const [isLoading, setIsLoading] = useState(true)
   const [isLibraryOpen, setIsLibraryOpen] = useState(false)
+  const [isProjectLibraryOpen, setIsProjectLibraryOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isJsonConverterOpen, setIsJsonConverterOpen] = useState(false)
   const [isQueryHistoryOpen, setIsQueryHistoryOpen] = useState(false)
@@ -250,6 +252,7 @@ export default function App() {
                 <CodeSidebar
                   onFileSelect={handleFileSelect}
                   selectedFile={selectedFile}
+                  onOpenLibrary={() => setIsProjectLibraryOpen(true)}
                 />
               }
               right={<CodeWorkspace />}
@@ -318,6 +321,10 @@ export default function App() {
         }}
         initialCodeData={libraryInitialCode}
         onLoadQuery={handleLoadQuery}
+      />
+      <ProjectLibraryModal
+        isOpen={isProjectLibraryOpen}
+        onClose={() => setIsProjectLibraryOpen(false)}
       />
       <QueryHistoryModal
         isOpen={isQueryHistoryOpen}
