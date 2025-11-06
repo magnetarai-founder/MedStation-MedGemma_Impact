@@ -114,6 +114,25 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
 
   useEffect(() => {
     loadFileTree()
+
+    // Listen for 'open-folder' event from CodeSidebar
+    const handleOpenFolderEvent = () => {
+      handleOpenFolder()
+    }
+    window.addEventListener('open-folder', handleOpenFolderEvent)
+
+    // Auto-refresh every 500ms when a workspace is open (like VS Code)
+    const refreshInterval = setInterval(() => {
+      const storedPath = localStorage.getItem('ns.code.workspaceRoot')
+      if (storedPath && !loading) {
+        loadFileTree(storedPath)
+      }
+    }, 500)
+
+    return () => {
+      window.removeEventListener('open-folder', handleOpenFolderEvent)
+      clearInterval(refreshInterval)
+    }
   }, [])
 
   const toggleExpand = (path: string) => {
@@ -225,16 +244,9 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
             No files yet
           </p>
           <p className="text-xs text-gray-500">
-            Click "Open Folder" to browse files
+            Click "Open Project or Folder" above to browse files
           </p>
         </div>
-        <button
-          onClick={handleOpenFolder}
-          className="flex items-center gap-2 mx-auto px-3 py-1.5 text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400"
-        >
-          <FolderOpen className="w-4 h-4" />
-          Open Folder
-        </button>
       </div>
     )
   }
@@ -254,13 +266,6 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
               title="New File"
             >
               <FilePlus className="w-3.5 h-3.5 text-gray-500" />
-            </button>
-            <button
-              onClick={handleOpenFolder}
-              className="p-1 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors"
-              title="Open Folder"
-            >
-              <FolderOpen className="w-3.5 h-3.5 text-gray-500" />
             </button>
             <button
               onClick={() => loadFileTree(currentPath || undefined)}

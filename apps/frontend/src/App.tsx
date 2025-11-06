@@ -14,6 +14,7 @@ import { JsonConverterModal } from './components/JsonConverterModal'
 import { QueryHistoryModal } from './components/QueryHistoryModal'
 import { ServerControlModal } from './components/ServerControlModal'
 import { CodeWorkspace } from './components/CodeWorkspace'
+import { CodeSidebar } from './components/CodeSidebar'
 import { TeamWorkspace } from './components/TeamWorkspace'
 import { SetupWizard } from './components/SetupWizard'
 import { Login } from './components/Login'
@@ -47,11 +48,19 @@ export default function App() {
   const [isServerControlsOpen, setIsServerControlsOpen] = useState(false)
   const [libraryInitialCode, setLibraryInitialCode] = useState<{ name: string; content: string } | null>(null)
   const [authState, setAuthState] = useState<'checking' | 'login' | 'authenticated'>('checking')
+  const [selectedFile, setSelectedFile] = useState<string | null>(null)
 
   // Handle loading query from library into editor
   const handleLoadQuery = (query: settingsApi.SavedQuery) => {
     setCode(query.query)
     setIsLibraryOpen(false)
+  }
+
+  // Handle file selection from Code Tab file browser
+  const handleFileSelect = (path: string, isAbsolute?: boolean) => {
+    setSelectedFile(path)
+    // TODO: Load file content into editor
+    console.log('Selected file:', path, 'isAbsolute:', isAbsolute)
   }
 
   // Check authentication status on mount
@@ -233,7 +242,18 @@ export default function App() {
               display: activeTab === 'code' ? 'flex' : 'none'
             }}
           >
-            <CodeWorkspace />
+            <ResizableSidebar
+              initialWidth={320}
+              minWidth={320}
+              storageKey="ns.codeSidebarWidth"
+              left={
+                <CodeSidebar
+                  onFileSelect={handleFileSelect}
+                  selectedFile={selectedFile}
+                />
+              }
+              right={<CodeWorkspace />}
+            />
           </div>
 
           {/* Database Tab */}

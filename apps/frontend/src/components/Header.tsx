@@ -7,6 +7,7 @@ import { ModelManagementSidebar } from './ModelManagementSidebar'
 import { useOllamaStore } from '../stores/ollamaStore'
 import { ShutdownModal, RestartModal } from './OllamaServerModals'
 import { PanicModeModal } from './PanicModeModal'
+import { TerminalModal } from './TerminalModal'
 
 interface HeaderProps {
   onOpenServerControls: () => void
@@ -20,6 +21,7 @@ export function Header({ onOpenServerControls }: HeaderProps) {
   const [previousModels, setPreviousModels] = useState<string[]>([])
   const [showPanicConfirm, setShowPanicConfirm] = useState(false)
   const [showControlCenter, setShowControlCenter] = useState(false)
+  const [showTerminal, setShowTerminal] = useState(false)
   const [activeDropdown, setActiveDropdown] = useState<'chat' | 'performance' | null>(null)
 
   // Fetch server status on mount and periodically
@@ -153,14 +155,11 @@ export function Header({ onOpenServerControls }: HeaderProps) {
               onToggle={() => setActiveDropdown(activeDropdown === 'chat' ? null : 'chat')}
             />
 
-            {/* Terminal Button (Global) - Placeholder for Phase 5 */}
+            {/* Terminal Button (Global) - Phase 5 */}
             <button
-              onClick={() => {
-                // Placeholder: Will open system terminal in Phase 5
-                alert('Terminal integration coming in Phase 5!\n\nThis button will open your system terminal (iTerm/Terminal.app) with intelligent AI assistance.')
-              }}
+              onClick={() => setShowTerminal(true)}
               className="p-2 hover:bg-purple-100 dark:hover:bg-purple-900/20 rounded-lg transition-colors text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400"
-              title="Open Terminal (Coming in Phase 5)"
+              title="Open Terminal"
             >
               <Terminal size={20} />
             </button>
@@ -217,6 +216,12 @@ export function Header({ onOpenServerControls }: HeaderProps) {
       <ControlCenterModal
         isOpen={showControlCenter}
         onClose={() => setShowControlCenter(false)}
+      />
+
+      {/* Terminal Modal (Phase 5) */}
+      <TerminalModal
+        isOpen={showTerminal}
+        onClose={() => setShowTerminal(false)}
       />
     </>
   )
