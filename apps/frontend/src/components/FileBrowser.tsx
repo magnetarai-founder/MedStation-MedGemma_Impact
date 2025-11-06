@@ -63,9 +63,28 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
     const defaultVal = localStorage.getItem('ns.code.workspaceRoot') || ''
     const input = prompt('Enter absolute folder path to browse', defaultVal)
     if (!input) return
-    localStorage.setItem('ns.code.workspaceRoot', input)
-    await loadFileTree(input)
-    toast.success('Opened folder')
+
+    try {
+      // Save to localStorage
+      localStorage.setItem('ns.code.workspaceRoot', input)
+
+      // Notify backend of workspace root for git operations
+      await fetch('/api/v1/code/workspace/set', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workspace_root: input })
+      })
+
+      // Load file tree
+      await loadFileTree(input)
+      toast.success('Opened folder')
+
+      // Dispatch event to update project name in sidebar
+      window.dispatchEvent(new CustomEvent('workspace-changed', { detail: { path: input } }))
+    } catch (err) {
+      console.error('Error opening folder:', err)
+      toast.error('Failed to open folder')
+    }
   }
 
   const handleCreateFile = async () => {

@@ -820,3 +820,152 @@ async def delete_library_document(doc_id: int):
     except Exception as e:
         logger.error(f"Error deleting library document: {e}")
         raise HTTPException(500, f"Failed to delete library document: {str(e)}")
+
+
+# ============================================================================
+# GIT OPERATIONS: Repository info for opened project folders
+# ============================================================================
+
+import subprocess
+from datetime import datetime as dt
+
+
+class WorkspaceRootRequest(BaseModel):
+    workspace_root: str
+
+
+@router.post("/workspace/set")
+async def set_workspace_root(request: WorkspaceRootRequest):
+    """
+    Set the current workspace root path
+    Frontend calls this when user opens a folder
+    """
+    try:
+        workspace_path = Path(request.workspace_root)
+
+        # Validate path exists
+        if not workspace_path.exists():
+            raise HTTPException(400, "Workspace path does not exist")
+
+        if not workspace_path.is_dir():
+            raise HTTPException(400, "Workspace path must be a directory")
+
+        # Write to marker file
+        marker_file = PATHS.data_dir / "current_workspace.txt"
+        marker_file.write_text(str(workspace_path.resolve()))
+
+        return {
+            'success': True,
+            'workspace_root': str(workspace_path.resolve())
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error setting workspace root: {e}")
+        raise HTTPException(500, f"Failed to set workspace root: {str(e)}")
+
+
+@router.get("/git/log")
+async def get_git_log():
+    """
+    Get git commit history from the currently opened project folder
+    Returns commits from the workspace root stored in localStorage
+    """
+    try:
+        # In a real implementation, we'd get the workspace root from localStorage
+        # For now, we'll check if there's a .git directory in the default workspace
+        user_id = "default_user"
+
+        # Try to get workspace root from environment or use default
+        # The frontend stores this in localStorage as 'ns.code.workspaceRoot'
+        # For backend, we'll look for a git repo in the user's workspace
+
+        # Try common locations or use a marker file
+        workspace_root = None
+
+        # Option 1: Check for a marker file that frontend writes
+        marker_file = PATHS.data_dir / "current_workspace.txt"
+        if marker_file.exists():
+            workspace_root = marker_file.read_text().strip()
+
+        if not workspace_root:
+            # No workspace opened yet
+            return {
+                'commits': [],
+                'branch': None,
+                'error': 'No workspace opened'
+            }
+
+        workspace_path = Path(workspace_root)
+
+        # Check if it's a git repository
+        git_dir = workspace_path / '.git'
+        if not git_dir.exists():
+            return {
+                'commits': [],
+                'branch': None,
+                'error': 'Not a git repository'
+            }
+
+        # Get current branch
+        branch_result = subprocess.run(
+            ['git', 'branch', '--show-current'],
+            cwd=str(workspace_path),
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        current_branch = branch_result.stdout.strip() or 'main'
+
+        # Get git log (last 50 commits)
+        log_result = subprocess.run(
+            [
+                'git', 'log',
+                '--pretty=format:%H|%h|%s|%an|%ae|%ar|%at',
+                '-n', '50'
+            ],
+            cwd=str(workspace_path),
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+
+        if log_result.returncode != 0:
+            raise Exception(f"Git log failed: {log_result.stderr}")
+
+        # Parse commits
+        commits = []
+        for line in log_result.stdout.strip().split('\n'):
+            if not line:
+                continue
+
+            parts = line.split('|')
+            if len(parts) >= 7:
+                commits.append({
+                    'hash': parts[0],
+                    'short_hash': parts[1],
+                    'message': parts[2],
+                    'author': parts[3],
+                    'author_email': parts[4],
+                    'date': parts[5],  # relative (e.g., "2 hours ago")
+                    'timestamp': int(parts[6]),  # unix timestamp
+                    'branch': current_branch
+                })
+
+        return {
+            'commits': commits,
+            'branch': current_branch,
+            'workspace_root': str(workspace_path)
+        }
+
+    except subprocess.TimeoutExpired:
+        logger.error("Git command timed out")
+        raise HTTPException(500, "Git operation timed out")
+    except Exception as e:
+        logger.error(f"Error getting git log: {e}")
+        return {
+            'commits': [],
+            'branch': None,
+            'error': str(e)
+        }

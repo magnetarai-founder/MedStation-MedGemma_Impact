@@ -61,6 +61,20 @@ export function CodeSidebar({ onFileSelect, selectedFile, onOpenLibrary, onOpenS
       const folderName = storedPath.split('/').pop() || storedPath
       setProjectName(sanitizeName(folderName))
     }
+
+    // Listen for workspace changes
+    const handleWorkspaceChange = (event: CustomEvent) => {
+      const path = event.detail?.path
+      if (path) {
+        const folderName = path.split('/').pop() || path
+        setProjectName(sanitizeName(folderName))
+      }
+    }
+
+    window.addEventListener('workspace-changed', handleWorkspaceChange as EventListener)
+    return () => {
+      window.removeEventListener('workspace-changed', handleWorkspaceChange as EventListener)
+    }
   }, [])
 
   return (
@@ -244,45 +258,44 @@ function ChatHistory() {
 function GitRepository() {
   const [commits, setCommits] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [branch, setBranch] = useState<string>('main')
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     loadGitCommits()
+
+    // Listen for workspace changes to reload commits
+    const handleWorkspaceChange = () => {
+      loadGitCommits()
+    }
+    window.addEventListener('workspace-changed', handleWorkspaceChange)
+
+    return () => {
+      window.removeEventListener('workspace-changed', handleWorkspaceChange)
+    }
   }, [])
 
   const loadGitCommits = async () => {
     try {
-      // TODO: Wire up to backend git log API
-      // const res = await fetch('/api/v1/code/git/log')
-      // const data = await res.json()
-      // setCommits(data.commits)
+      setLoading(true)
+      setError(null)
 
-      // Mock data for now
-      setCommits([
-        {
-          hash: '1539a964',
-          message: 'fix(code-tab): Move ProjectLibraryModal to App level for full-page overlay',
-          author: 'Claude',
-          date: '2 minutes ago',
-          branch: 'main'
-        },
-        {
-          hash: '708931b1',
-          message: 'feat(code-tab): Add Project Library for knowledge management',
-          author: 'Claude',
-          date: '15 minutes ago',
-          branch: 'main'
-        },
-        {
-          hash: '3dd44299',
-          message: 'feat(code-tab): Integrate AI chat with code-aware context in bottom panel',
-          author: 'Claude',
-          date: '1 hour ago',
-          branch: 'main'
-        }
-      ])
+      const res = await fetch('/api/v1/code/git/log')
+      const data = await res.json()
+
+      if (data.error) {
+        setError(data.error)
+        setCommits([])
+        setBranch('main')
+      } else {
+        setCommits(data.commits || [])
+        setBranch(data.branch || 'main')
+      }
+
       setLoading(false)
     } catch (error) {
       console.error('Error loading git commits:', error)
+      setError('Failed to load git commits')
       setLoading(false)
     }
   }
@@ -304,21 +317,38 @@ function GitRepository() {
       <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Repository</h3>
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
-            main
-          </span>
+          {!error && branch && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
+              {branch}
+            </span>
+          )}
         </div>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{commits.length} commits</p>
+        {!error && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{commits.length} commits</p>}
+        {error && <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">{error}</p>}
       </div>
 
       {/* Commit List */}
       <div className="flex-1 overflow-auto">
         {commits.length === 0 ? (
           <div className="flex items-center justify-center h-full">
-            <div className="text-center text-sm text-gray-500">
+            <div className="text-center text-sm text-gray-500 px-4">
               <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>No commits yet</p>
-              <p className="text-xs mt-1">Initialize a git repository</p>
+              {error === 'No workspace opened' ? (
+                <>
+                  <p>No workspace opened</p>
+                  <p className="text-xs mt-1">Open a project folder to view git history</p>
+                </>
+              ) : error === 'Not a git repository' ? (
+                <>
+                  <p>Not a git repository</p>
+                  <p className="text-xs mt-1">Initialize git in your project folder</p>
+                </>
+              ) : (
+                <>
+                  <p>No commits yet</p>
+                  <p className="text-xs mt-1">Make your first commit</p>
+                </>
+              )}
             </div>
           </div>
         ) : (
@@ -337,7 +367,7 @@ function GitRepository() {
                     </p>
                     <div className="flex items-center gap-2 mt-1.5 text-xs text-gray-500 dark:text-gray-400">
                       <span className="font-mono bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
-                        {commit.hash}
+                        {commit.short_hash || commit.hash.substring(0, 8)}
                       </span>
                       <span>•</span>
                       <span>{commit.author}</span>
