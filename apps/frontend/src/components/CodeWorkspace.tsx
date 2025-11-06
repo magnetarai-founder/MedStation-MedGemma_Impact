@@ -10,7 +10,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { GripVertical } from 'lucide-react'
 import { CodeEditorPanel } from './CodeEditorPanel'
-import { TerminalPanel } from './TerminalPanel'
+import { CodeChatPanel } from './CodeChatPanel'
 
 export function CodeWorkspace() {
   const [topHeight, setTopHeight] = useState(33) // percentage
@@ -84,9 +84,9 @@ export function CodeWorkspace() {
         </div>
       </div>
 
-      {/* Terminal Panel (Bottom Panel) */}
+      {/* Chat Panel (Bottom Panel) */}
       <div style={{ height: `${100 - topHeight}%` }} className="min-h-[150px] overflow-hidden">
-        <TerminalPanel />
+        <CodeChatPanel />
       </div>
     </div>
   )
