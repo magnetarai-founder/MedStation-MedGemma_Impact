@@ -154,13 +154,11 @@ export function CodeChatPanel() {
       {/* Toolbar - Modified from Database tab's ResultsTable */}
       <div className="flex items-center px-2 py-2 border-b-2 border-gray-600 dark:border-gray-400">
         <div className="flex items-center gap-3">
-          {/* Group 1: Model Selector */}
-          <div className="flex items-center px-1.5 py-0.5 rounded-md bg-gray-100/50 dark:bg-gray-800/50">
-            <ModelSelector
-              value={selectedModel}
-              onChange={setSelectedModel}
-            />
-          </div>
+          {/* Model Selector */}
+          <ModelSelector
+            value={selectedModel}
+            onChange={setSelectedModel}
+          />
 
           {/* Group 2: Eject - only enabled if model is loaded */}
           <div className="flex items-center px-1.5 py-0.5 rounded-md bg-gray-100/50 dark:bg-gray-800/50">
