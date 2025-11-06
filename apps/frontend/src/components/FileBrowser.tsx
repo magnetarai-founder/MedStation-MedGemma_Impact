@@ -256,15 +256,15 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
 
   if (tree.length === 0) {
     return (
-      <div className="p-8 text-center space-y-3">
-        <Folder className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600" />
-        <div className="space-y-1">
-          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            No files yet
-          </p>
-          <p className="text-xs text-gray-500">
-            Click "Open Project or Folder" above to browse files
-          </p>
+      <div className="h-full flex flex-col">
+        <div className="flex-1 overflow-auto p-4">
+          <div className="text-center text-sm text-gray-500 py-8">
+            <div className="w-12 h-12 mx-auto mb-3 flex items-center justify-center">
+              <Folder size={43} strokeWidth={1.5} className="opacity-50" />
+            </div>
+            <p>No files yet</p>
+            <p className="text-xs mt-1">Click "Open Project or Folder" above to browse files</p>
+          </div>
         </div>
       </div>
     )

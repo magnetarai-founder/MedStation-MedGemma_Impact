@@ -215,21 +215,20 @@ export function CodeSidebar({ onFileSelect, selectedFile, onOpenLibrary, onOpenS
 
       {/* Tab Content */}
       <div className="flex-1 overflow-hidden">
-        {activeTab === 'files' && (
+        <div className={activeTab === 'files' ? '' : 'hidden'}>
           <FileBrowser
             onFileSelect={onFileSelect}
             selectedFile={selectedFile}
           />
-        )}
-        {activeTab === 'chat' && (
-          <>
-            {chatView === 'history' ? (
-              <ChatHistory />
-            ) : (
-              <GitRepository />
-            )}
-          </>
-        )}
+        </div>
+        <div className={activeTab === 'chat' ? '' : 'hidden'}>
+          <div className={chatView === 'history' ? '' : 'hidden'}>
+            <ChatHistory />
+          </div>
+          <div className={chatView === 'git' ? '' : 'hidden'}>
+            <GitRepository />
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -241,7 +240,9 @@ function ChatHistory() {
     <div className="h-full flex flex-col">
       <div className="flex-1 overflow-auto p-4">
         <div className="text-center text-sm text-gray-500 py-8">
-          <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
+          <div className="w-12 h-12 mx-auto mb-3 flex items-center justify-center">
+            <MessageCircle size={43} strokeWidth={1.5} className="opacity-50" />
+          </div>
           <p>No chat history yet</p>
           <p className="text-xs mt-1">Start a conversation in the chat panel</p>
         </div>
@@ -313,7 +314,9 @@ function GitRepository() {
       <div className="flex-1 overflow-auto p-4">
         {commits.length === 0 ? (
           <div className="text-center text-sm text-gray-500 py-8">
-            <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
+            <div className="w-12 h-12 mx-auto mb-3 flex items-center justify-center">
+              <Clock size={39} strokeWidth={1.5} className="opacity-50" />
+            </div>
             {error === 'No workspace opened' ? (
               <>
                 <p>No workspace opened</p>
