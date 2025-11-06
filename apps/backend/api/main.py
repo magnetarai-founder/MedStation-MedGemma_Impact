@@ -434,6 +434,14 @@ try:
         app.include_router(code_router)
     except ImportError as e:
         logger.warning(f"Could not import code_operations router: {e}")
+
+    # Terminal Bridge API (Phase 5)
+    try:
+        from terminal_api import router as terminal_router
+        app.include_router(terminal_router)
+        services_loaded.append("Terminal Bridge")
+    except ImportError as e:
+        logger.warning(f"Could not import terminal_api router: {e}")
     services_loaded.append("Monitoring")
 except Exception as e:
     services_failed.append("Monitoring")

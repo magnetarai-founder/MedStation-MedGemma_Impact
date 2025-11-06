@@ -76,6 +76,12 @@ class Permission:
     VIEW_AUDIT_LOGS = "view_audit_logs"
     MANAGE_SETTINGS = "manage_settings"
 
+    # Code Tab (Phase 5)
+    CODE_TERMINAL = "code.terminal"
+    CODE_USE = "code.use"
+    CODE_WRITE = "code.write"
+    CODE_ADMIN = "code.admin"
+
 
 # Permissions matrix
 PERMISSIONS_MAP = {
@@ -93,6 +99,10 @@ PERMISSIONS_MAP = {
         Permission.TRIGGER_PANIC_MODE,
         Permission.VIEW_AUDIT_LOGS,
         Permission.MANAGE_SETTINGS,
+        Permission.CODE_USE,
+        Permission.CODE_WRITE,
+        Permission.CODE_TERMINAL,
+        Permission.CODE_ADMIN,
     },
     Role.ADMIN: {
         Permission.MANAGE_USERS,
@@ -107,6 +117,9 @@ PERMISSIONS_MAP = {
         Permission.TRIGGER_PANIC_MODE,
         Permission.VIEW_AUDIT_LOGS,
         Permission.MANAGE_SETTINGS,
+        Permission.CODE_USE,
+        Permission.CODE_WRITE,
+        Permission.CODE_TERMINAL,
     },
     Role.MEMBER: {
         Permission.CREATE_WORKFLOW,
@@ -116,6 +129,8 @@ PERMISSIONS_MAP = {
         Permission.ACCESS_VAULT,
         Permission.EXPORT_DATA,
         Permission.RUN_SQL,
+        Permission.CODE_USE,
+        Permission.CODE_TERMINAL,
     },
     Role.VIEWER: {
         Permission.VIEW_WORKFLOW,
