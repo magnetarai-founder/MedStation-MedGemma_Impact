@@ -366,6 +366,87 @@ class NeutronAPI {
   async deleteQueryFromHistory(sessionId: string, queryId: string): Promise<void> {
     await this.client.delete(`/sessions/${sessionId}/query-history/${queryId}`)
   }
+
+  // Agent Orchestrator endpoints
+  async agentRoute(input: string, cwd?: string, repoRoot?: string): Promise<{
+    intent: string
+    confidence: number
+    model_hint?: string
+    next_action: string
+  }> {
+    const { data } = await this.client.post('/v1/agent/route', {
+      input,
+      cwd,
+      repo_root: repoRoot
+    })
+    return data
+  }
+
+  async agentPlan(input: string, contextBundle?: any, model?: string): Promise<{
+    steps: Array<{
+      description: string
+      risk_level: string
+      estimated_files: number
+    }>
+    risks: string[]
+    requires_confirmation: boolean
+    estimated_time_min: number
+    model_used: string
+  }> {
+    const { data } = await this.client.post('/v1/agent/plan', {
+      input,
+      context_bundle: contextBundle,
+      model
+    })
+    return data
+  }
+
+  async agentContext(params: {
+    sessionId?: string
+    cwd?: string
+    repoRoot?: string
+    openFiles?: string[]
+  }): Promise<{
+    file_tree_slice: string[]
+    recent_diffs: any[]
+    embeddings_hits: string[]
+    chat_snippets: string[]
+    active_models: string[]
+  }> {
+    const { data } = await this.client.post('/v1/agent/context', {
+      session_id: params.sessionId,
+      cwd: params.cwd,
+      repo_root: params.repoRoot,
+      open_files: params.openFiles || []
+    })
+    return data
+  }
+
+  async agentApply(params: {
+    input: string
+    planId?: string
+    repoRoot?: string
+    model?: string
+    dryRun?: boolean
+  }): Promise<{
+    success: boolean
+    patches: Array<{
+      path: string
+      patch_text: string
+      summary: string
+    }>
+    summary: string
+    patch_id?: string
+  }> {
+    const { data } = await this.client.post('/v1/agent/apply', {
+      plan_id: params.planId,
+      input: params.input,
+      repo_root: params.repoRoot,
+      model: params.model,
+      dry_run: params.dryRun || false
+    })
+    return data
+  }
 }
 
 export const api = new NeutronAPI()

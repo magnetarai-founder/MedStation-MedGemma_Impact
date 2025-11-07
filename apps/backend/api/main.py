@@ -417,6 +417,15 @@ except Exception as e:
     services_failed.append("Admin")
     logger.error(f"Admin service failed to load: {e}")
 
+# Agent Orchestrator (Aider + Continue + Codex integration)
+try:
+    from agent import router as agent_router
+    app.include_router(agent_router)
+    services_loaded.append("Agent Orchestrator")
+except Exception as e:
+    services_failed.append("Agent Orchestrator")
+    logger.error(f"Agent Orchestrator service failed to load: {e}")
+
 # Permissions Administration (Phase 2: RBAC management)
 try:
     from permissions_admin import router as permissions_admin_router

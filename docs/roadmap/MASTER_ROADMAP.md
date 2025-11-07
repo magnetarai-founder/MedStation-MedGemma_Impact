@@ -102,10 +102,10 @@ Every terminal can have its own specialized model, chosen automatically based on
         │  Terminal Bridge │  │  Backend API   │
         │   (Python PTY)   │  │  (FastAPI)     │
         │                  │  │                │
-        │ • PTY spawn      │  │ • File ops     │
-        │ • WebSocket I/O  │  │ • RBAC checks  │
-        │ • Resize/echo    │  │ • Audit log    │
-        │ • Output buffer  │  │ • Rate limit   │
+        │ • System terminal spawn (current)    │
+        │ • Session tracking + audit (current) │
+        │ • WS I/O (future, optional)          │
+        │ • Resize/echo (future)               │
         └──────────────────┘  └────────────────┘
                     │
         ┌───────────┴────────────┐
@@ -135,7 +135,7 @@ Every terminal can have its own specialized model, chosen automatically based on
 ### Key Changes from Original Plans
 
 1. **No ChromaDB initially** - Use existing ElohimOS context/embeddings
-2. **Simpler Terminal Bridge** - PTY + WebSocket only (no native app integration yet)
+2. **Terminal Launcher First** - Spawn native OS terminals via authenticated API (current); defer WebSocket I/O + in‑browser terminal to a later optional phase
 3. **One LLM spine** - Continue Core first, defer JARVIS/Codex to later phases
 4. **Existing RBAC** - Use ElohimOS permission system
 5. **Existing paths** - Everything under `.neutron_data/`
@@ -846,18 +846,18 @@ export function CodeChat({ fileContext }) {
 
 ---
 
-### Phase 5: Terminal Bridge MVP (4-5 days)
+### Phase 5: System Terminal Launcher (MVP) (4-5 days)
 
 #### Objectives
-- Create Terminal Bridge service
-- Spawn PTY processes
-- Capture terminal I/O
-- WebSocket connection
-- Terminal session management
+- Spawn native OS terminals (Warp/iTerm2/Terminal.app) via authenticated API
+- Enforce JWT + RBAC on spawn/close/list endpoints
+- Add audit logging for spawn/close; cap concurrent sessions per user
+- Add gentle rate limiting for spawn operations
+- Track sessions for audit/UX (no in-browser I/O yet)
 
 #### Backend Tasks
 
-**Task 5.1: Terminal Bridge Service**
+**Task 5.1: Terminal Bridge Service (spawn + audit, no WS I/O)**
 ```python
 # File: apps/backend/services/terminal_bridge.py (new)
 import pty
@@ -880,7 +880,7 @@ class TerminalBridge:
         self.context_store = TerminalContextStore()
 
     async def spawn_terminal(self, user_id: str) -> TerminalSession:
-        """Spawn new PTY"""
+        """Spawn new terminal (system shell)"""
         master, slave = pty.openpty()
 
         process = subprocess.Popen(
@@ -899,62 +899,29 @@ class TerminalBridge:
         )
 
         self.sessions[session.id] = session
-        asyncio.create_task(self.capture_output(session))
-
+        # No WS capture yet; session tracked for audit/UX only
         await log_action(user_id, "code.terminal.spawn", session.id)
 
         return session
 
-    async def capture_output(self, session: TerminalSession):
-        """Capture terminal output in background"""
-        while session.active:
-            try:
-                output = os.read(session.master, 1024)
-                if output:
-                    decoded = output.decode('utf-8', errors='ignore')
-
-                    # Store in context
-                    await self.context_store.store_terminal_output(
-                        terminal_id=session.id,
-                        output=decoded
-                    )
-
-                    # Broadcast to WebSocket
-                    await self.broadcast(session.id, decoded)
-            except OSError:
-                break
+    # (Defer PTY I/O and WS broadcasting to optional Socket Bridge phase)
 ```
 
-**Task 5.2: WebSocket Endpoint**
+**Task 5.2: HTTP Endpoints (JWT-protected)**
 ```python
-# File: apps/backend/api/terminal_api.py (new)
-from fastapi import WebSocket, WebSocketDisconnect
-
-@router.websocket("/ws/terminal/{terminal_id}")
-async def terminal_websocket(websocket: WebSocket, terminal_id: str):
-    """WebSocket for terminal I/O"""
-    await websocket.accept()
-
-    session = terminal_bridge.sessions.get(terminal_id)
-
-    try:
-        while True:
-            # Receive input from frontend
-            data = await websocket.receive_text()
-
-            # Write to terminal
-            await terminal_bridge.write_to_terminal(terminal_id, data)
-
-    except WebSocketDisconnect:
-        await terminal_bridge.close_terminal(terminal_id)
+# File: apps/backend/api/terminal_api.py
+@router.post("/spawn")  # Auth: get_current_user
+@router.post("/spawn-system")  # Auth: get_current_user
+@router.get("/sessions")      # Auth: get_current_user (own sessions)
+@router.delete("/{terminal_id}")  # Auth + ownership check
 ```
 
 #### Acceptance Criteria
-- [ ] Click `</>` spawns terminal
-- [ ] Can type commands
-- [ ] See output in real-time
-- [ ] Terminal I/O captured to context
-- [ ] Can close terminal
+- [ ] `</>` spawns native OS terminal for the user
+- [ ] Spawn/close/list endpoints require valid JWT and enforce ownership
+- [ ] Audit log entries for spawn/close with session IDs
+- [ ] Basic rate limiting on spawn requests
+- [ ] Max concurrent sessions per user enforced (e.g., 3)
 
 ---
 
@@ -1561,6 +1528,7 @@ def is_safe_path(path: Path, base: Path) -> bool:
 **Rate Limiting:**
 ```python
 await check_rate_limit(user_id, 'terminal_spawn', max_per_hour=10)
+# Also apply per-IP limiter on /spawn endpoints
 ```
 
 **Risk Assessment (from JARVIS):**
@@ -1605,6 +1573,7 @@ class RiskLevel(Enum):
 ## Future Enhancements
 
 ### Phase 12+: Advanced Features
+- **Socket Bridge (Optional):** Enable PTY I/O over WebSocket for in‑browser terminal; require JWT on query param, enforce session ownership, and use xterm.js on the frontend
 - **Collaborative Terminals:** Multiple users in same session
 - **Terminal Playback:** Record and replay sessions
 - **Advanced Code Intelligence:** Deeper AST analysis
