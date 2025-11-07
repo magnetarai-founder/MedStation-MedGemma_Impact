@@ -4,6 +4,7 @@ AiderEngine: uses aider CLI to propose changes but never writes files.
 Returns a ChangeProposal (UCPF) containing a unified diff.
 """
 
+import os
 import subprocess
 from pathlib import Path
 from typing import List
@@ -35,17 +36,37 @@ class AiderEngine:
         context_block = build_context_block(context_snippets) if context_snippets else ""
         full_msg = preamble + context_block + "\n[Change]\n" + description
 
-        escaped = full_msg.replace("'", "'\"'\"'")
+        # SECURITY FIX: Use direct subprocess without shell=True to avoid injection
+        # Construct aider command directly with proper arguments
+        aider_bin = self.venv_path / "bin" / "aider"
+
         cmd = [
-            "bash",
-            "-c",
-            f"cd {self.repo_root} && source {self.venv_path}/bin/activate && export AIDER_NO_BROWSER=1 && export NO_COLOR=1 && "
-            f"aider --yes --no-auto-commits --no-git --model ollama/{self.model} --message '{escaped}'"
-            + (" " + " ".join(files) if files else "")
+            str(aider_bin),
+            "--yes",
+            "--no-auto-commits",
+            "--no-git",
+            f"--model=ollama/{self.model}",
+            f"--message={full_msg}"
         ]
 
+        # Add file arguments if provided
+        if files:
+            cmd.extend(files)
+
+        # Set environment variables
+        env = os.environ.copy()
+        env['AIDER_NO_BROWSER'] = '1'
+        env['NO_COLOR'] = '1'
+
         try:
-            p = subprocess.run(cmd, capture_output=True, text=True, timeout=300, cwd=str(self.repo_root))
+            p = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=300,
+                cwd=str(self.repo_root),
+                env=env
+            )
             out = p.stdout + p.stderr
         except Exception as e:
             out = str(e)

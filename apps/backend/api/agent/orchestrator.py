@@ -337,8 +337,9 @@ async def route_input(
         )
 
     except Exception as e:
-        logger.error(f"Route failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Routing failed: {str(e)}")
+        # Log full error server-side, return generic message to client
+        logger.error(f"Route failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to route request. Please try again.")
 
 
 @router.post("/plan", response_model=PlanResponse)
@@ -406,8 +407,9 @@ async def generate_plan(
         )
 
     except Exception as e:
-        logger.error(f"Planning failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Planning failed: {str(e)}")
+        # Log full error server-side, return generic message to client
+        logger.error(f"Planning failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to generate plan. Please try again.")
 
 
 @router.post("/context", response_model=ContextResponse)
@@ -539,8 +541,9 @@ async def get_context_bundle(
         )
 
     except Exception as e:
-        logger.error(f"Context building failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Context failed: {str(e)}")
+        # Log full error server-side, return generic message to client
+        logger.error(f"Context building failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to build context. Please check repository path.")
 
 
 @router.post("/apply", response_model=ApplyResponse)
@@ -684,5 +687,6 @@ async def apply_plan(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Apply failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Apply failed: {str(e)}")
+        # Log full error server-side, return generic message to client
+        logger.error(f"Apply failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to apply changes. Please check logs for details.")

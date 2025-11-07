@@ -9,6 +9,8 @@ import re
 import shutil
 import subprocess
 import tempfile
+import time
+import fcntl
 from pathlib import Path
 from typing import Tuple, List, Dict, Any, Optional
 import difflib
@@ -26,17 +28,35 @@ class CodexEngine:
         if not diff_text.strip():
             return False, "Empty diff"
 
-        # Write diff to temp file for patch command
-        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".diff")
-        tmp.write(diff_text.encode())
-        tmp.close()
+        # SECURITY: Pre-scan diff for path traversal attacks
+        is_safe, safety_msg = self._validate_diff_paths(diff_text)
+        if not is_safe:
+            return False, f"Security: {safety_msg}"
 
-        # Prepare backup dir
-        backup_dir = self._patch_log_dir / patch_id
+        # CONCURRENCY: Acquire file lock to prevent concurrent applies
+        lock_file = self.repo_root / ".ai_agent" / "apply.lock"
+        lock_file.parent.mkdir(exist_ok=True)
+        lock_fd = None
+
         try:
-            backup_dir.mkdir(parents=True, exist_ok=True)
-        except Exception:
-            pass
+            lock_fd = open(lock_file, 'w')
+            # Try to acquire exclusive lock (non-blocking)
+            try:
+                fcntl.flock(lock_fd.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                return False, "Another patch is being applied. Please wait and try again."
+
+            # Write diff to temp file for patch command
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".diff")
+            tmp.write(diff_text.encode())
+            tmp.close()
+
+            # Prepare backup dir
+            backup_dir = self._patch_log_dir / patch_id
+            try:
+                backup_dir.mkdir(parents=True, exist_ok=True)
+            except Exception:
+                pass
 
         # Backup target files mentioned in diff (best-effort)
         targets = self._extract_targets(diff_text)
@@ -112,12 +132,21 @@ class CodexEngine:
                 if not ok2:
                     os.unlink(tmp.name)
                     return False, f"Apply failed: {e}; per-file: {msg}; fallback: {msg2}"
-        os.unlink(tmp.name)
+            os.unlink(tmp.name)
 
-        # Save patch to log for potential rollback
-        patch_file = self._patch_log_dir / f"{patch_id}.diff"
-        patch_file.write_text(diff_text)
-        return True, "Applied"
+            # Save patch to log for potential rollback
+            patch_file = self._patch_log_dir / f"{patch_id}.diff"
+            patch_file.write_text(diff_text)
+            return True, "Applied"
+
+        finally:
+            # CONCURRENCY: Release lock
+            if lock_fd:
+                try:
+                    fcntl.flock(lock_fd.fileno(), fcntl.LOCK_UN)
+                    lock_fd.close()
+                except Exception:
+                    pass
 
     def rollback(self, patch_id: str) -> Tuple[bool, str]:
         # Prefer exact backup restore if available
@@ -181,6 +210,54 @@ class CodexEngine:
 
         # Default to -p1 for git-style diffs
         return 1
+
+    def _validate_diff_paths(self, diff: str) -> Tuple[bool, str]:
+        """
+        Validate diff paths to prevent path traversal attacks
+
+        Security checks:
+        - Rejects absolute paths (starting with /)
+        - Rejects parent directory traversal (../)
+        - Rejects paths outside repo_root after resolution
+        - Allows /dev/null (standard for new/deleted files)
+
+        Returns:
+            (is_safe, error_message)
+        """
+        for ln in diff.splitlines():
+            if not (ln.startswith('--- ') or ln.startswith('+++ ')):
+                continue
+
+            # Extract path from diff header
+            path = ln.split(' ', 1)[1].strip()
+            if '\t' in path:
+                path = path.split('\t', 1)[0]
+
+            # Strip a/ b/ prefixes if present
+            if path.startswith('a/') or path.startswith('b/'):
+                path = path[2:]
+
+            # Allow /dev/null (standard for new/deleted files)
+            if path == '/dev/null':
+                continue
+
+            # REJECT: Absolute paths
+            if path.startswith('/'):
+                return False, f"Absolute path not allowed: {path}"
+
+            # REJECT: Parent directory traversal
+            if '../' in path or path.startswith('..'):
+                return False, f"Path traversal not allowed: {path}"
+
+            # REJECT: Paths that resolve outside repo_root
+            try:
+                resolved = (self.repo_root / path).resolve()
+                if not resolved.is_relative_to(self.repo_root.resolve()):
+                    return False, f"Path escapes repo root: {path}"
+            except (ValueError, RuntimeError):
+                return False, f"Invalid path: {path}"
+
+        return True, ""
 
     def _reverse_unified_diff(self, diff: str) -> str:
         lines = []

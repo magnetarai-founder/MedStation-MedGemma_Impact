@@ -51,7 +51,12 @@ FOUNDER_RIGHTS_PASSWORD = os.getenv("ELOHIM_FOUNDER_PASSWORD")  # Must be set in
 
 if not FOUNDER_RIGHTS_PASSWORD:
     if os.getenv("ELOHIM_ENV") == "development":
-        logger.warning("⚠️  Using default Founder Rights password for development. SET ELOHIM_FOUNDER_PASSWORD in production!")
+        logger.warning("="*80)
+        logger.warning("⚠️  SECURITY WARNING: Development Mode Active")
+        logger.warning("⚠️  Using default Founder Rights password for development.")
+        logger.warning("⚠️  This is INSECURE and should ONLY be used on localhost!")
+        logger.warning("⚠️  SET ELOHIM_FOUNDER_PASSWORD in production!")
+        logger.warning("="*80)
         FOUNDER_RIGHTS_PASSWORD = "ElohimOS_2024_Founder"  # Dev-only default
     else:
         raise RuntimeError("ELOHIM_FOUNDER_PASSWORD environment variable is required in production for Founder Rights account.")
