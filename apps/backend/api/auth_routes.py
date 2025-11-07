@@ -119,9 +119,34 @@ async def login(request: Request, body: LoginRequest):
     - 10 attempts per minute per IP
     """
     # Rate limit login attempts (prevent brute force)
-    client_ip = get_client_ip(request)
-    if not rate_limiter.check_rate_limit(f"auth:login:{client_ip}", max_requests=10, window_seconds=60):
-        raise HTTPException(status_code=429, detail="Too many login attempts. Please try again later.")
+    # BUT: Skip rate limiting for privileged accounts (Founder Rights, Super Admin)
+    # These accounts need guaranteed access for emergency/administrative purposes
+    from auth_middleware import FOUNDER_RIGHTS_USERNAME
+
+    # First check if this is a privileged login attempt
+    is_privileged = body.username == FOUNDER_RIGHTS_USERNAME
+
+    # If not founder, check if user exists and is super_admin
+    if not is_privileged:
+        try:
+            import sqlite3
+            from auth_middleware import auth_service
+            conn = sqlite3.connect(str(auth_service.db_path))
+            cursor = conn.cursor()
+            cursor.execute("SELECT role FROM users WHERE username = ?", (body.username,))
+            row = cursor.fetchone()
+            conn.close()
+            if row and row[0] == 'super_admin':
+                is_privileged = True
+        except:
+            pass  # If check fails, apply rate limiting as normal
+
+    # Apply rate limiting only to non-privileged accounts
+    if not is_privileged:
+        client_ip = get_client_ip(request)
+        max_login_attempts = 30 if os.getenv("ELOHIM_ENV") == "development" else 10
+        if not rate_limiter.check_rate_limit(f"auth:login:{client_ip}", max_requests=max_login_attempts, window_seconds=60):
+            raise HTTPException(status_code=429, detail="Too many login attempts. Please try again later.")
 
     try:
         auth_result = auth_service.authenticate(
