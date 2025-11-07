@@ -38,6 +38,7 @@ try:
     from api.learning_system import LearningSystem
     from api.ane_router import get_ane_router, ANERouter
     from api.learning_engine import get_learning_engine
+    from api.unified_context import get_unified_context
 except ImportError:
     # Fallback for standalone execution
     from chat_memory import get_memory, ConversationEvent
@@ -520,6 +521,21 @@ async def send_message(request: Request, chat_id: str, body: SendMessageRequest,
         timestamp=datetime.utcnow().isoformat()
     )
     await ChatStorage.append_message(chat_id, user_message)
+
+    # Add to unified context for cross-component persistence
+    try:
+        unified_ctx = get_unified_context()
+        await asyncio.to_thread(
+            unified_ctx.add_entry,
+            user_id=current_user["user_id"],
+            session_id=chat_id,
+            source='chat',
+            entry_type='message',
+            content=body.content,
+            metadata={'role': 'user', 'model': model}
+        )
+    except Exception as e:
+        logger.warning(f"Failed to add message to unified context: {e}")
 
     # ===== ADAPTIVE ROUTING WITH LEARNING =====
     # Use adaptive router (GPU, learns) or ANE router (ultra-low power)

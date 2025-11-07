@@ -497,3 +497,94 @@ async def resize_terminal(
         'rows': rows,
         'cols': cols
     }
+
+
+# ==================== Bash Assist Mode ====================
+
+from bash_intelligence import get_bash_intelligence
+from unified_context import get_unified_context
+from pydantic import BaseModel
+
+
+class BashAssistRequest(BaseModel):
+    """Request for bash assist"""
+    input: str
+    session_id: Optional[str] = None
+    cwd: Optional[str] = None
+
+
+class BashAssistResponse(BaseModel):
+    """Response from bash assist"""
+    input_type: str  # 'nl', 'bash', 'ambiguous'
+    confidence: float
+    suggested_command: Optional[str]
+    is_safe: bool
+    safety_warning: Optional[str]
+    improvements: list[str]
+
+
+@router.post("/assist", response_model=BashAssistResponse)
+async def bash_assist(
+    body: BashAssistRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Intelligent bash assist - translate NL to bash, check safety
+
+    Features:
+    - Natural language → bash translation
+    - Command safety checking
+    - Context-aware suggestions
+    - Integrated with unified context
+
+    Rate limited: 30/min per user
+    """
+    user_id = current_user["user_id"]
+
+    # Get bash intelligence
+    bash_intel = get_bash_intelligence()
+
+    # Classify input
+    classification = bash_intel.classify_input(body.input)
+
+    # Get suggested command
+    suggested_cmd = classification.get('suggestion')
+    if not suggested_cmd and classification['type'] == 'bash':
+        suggested_cmd = body.input
+
+    # Check safety
+    is_safe = True
+    safety_warning = None
+    if suggested_cmd:
+        is_safe, safety_warning = bash_intel.check_safety(suggested_cmd)
+
+    # Get improvements
+    improvements = []
+    if suggested_cmd:
+        improvements = bash_intel.suggest_improvements(suggested_cmd)
+
+    # Add to unified context
+    if body.session_id:
+        context_mgr = get_unified_context()
+        context_mgr.add_entry(
+            user_id=user_id,
+            session_id=body.session_id,
+            source='terminal',
+            entry_type='command',
+            content=suggested_cmd or body.input,
+            metadata={
+                'original_input': body.input,
+                'input_type': classification['type'],
+                'is_safe': is_safe,
+                'cwd': body.cwd
+            }
+        )
+
+    return BashAssistResponse(
+        input_type=classification['type'],
+        confidence=classification['confidence'],
+        suggested_command=suggested_cmd,
+        is_safe=is_safe,
+        safety_warning=safety_warning,
+        improvements=improvements
+    )
