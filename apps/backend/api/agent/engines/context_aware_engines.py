@@ -94,7 +94,10 @@ class ContextAwareAiderEngine:
     """Aider engine that properly uses context snippets"""
     
     def __init__(self, model: str, venv_path: Path):
-        from engines.aider_engine import AiderEngine
+        try:
+            from .aider_engine import AiderEngine
+        except ImportError:
+            from engines.aider_engine import AiderEngine
         self.base_engine = AiderEngine(model, venv_path)
         
     def propose(self, description: str, files: List[str], context_snippets: List[str]) -> ChangeProposal:

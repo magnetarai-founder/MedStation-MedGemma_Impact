@@ -118,7 +118,157 @@ class ApplyResponse(BaseModel):
     patch_id: Optional[str] = None
 
 
+class EngineCapability(BaseModel):
+    """Single engine capability"""
+    name: str
+    available: bool
+    version: Optional[str] = None
+    error: Optional[str] = None
+    remediation: Optional[str] = None
+
+
+class CapabilitiesResponse(BaseModel):
+    """Agent capabilities response"""
+    engines: List[EngineCapability]
+    features: Dict[str, bool]
+
+
 # ==================== Endpoints ====================
+
+@router.get("/capabilities", response_model=CapabilitiesResponse)
+async def get_capabilities(current_user: Dict = Depends(get_current_user)):
+    """
+    Get agent system capabilities and engine availability
+
+    Returns information about which engines are available and
+    provides helpful remediation messages for missing dependencies.
+
+    No special permissions required - just authentication.
+    """
+    import shutil
+    import subprocess
+
+    engines = []
+
+    # Check Aider
+    aider_available = False
+    aider_error = None
+    aider_version = None
+    aider_remediation = None
+
+    try:
+        # Check if aider is available
+        venv_path = Path(os.getcwd()) / "venv"
+        aider_path = venv_path / "bin" / "aider"
+
+        if aider_path.exists():
+            result = subprocess.run(
+                [str(aider_path), "--version"],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            if result.returncode == 0:
+                aider_available = True
+                aider_version = result.stdout.strip()
+        else:
+            aider_error = "Aider not found in venv"
+            aider_remediation = f"Install Aider: source {venv_path}/bin/activate && pip install aider-chat"
+    except Exception as e:
+        aider_error = str(e)
+        aider_remediation = "Check Aider installation and ensure venv is properly configured"
+
+    engines.append(EngineCapability(
+        name="aider",
+        available=aider_available,
+        version=aider_version,
+        error=aider_error,
+        remediation=aider_remediation
+    ))
+
+    # Check Continue
+    continue_available = False
+    continue_error = None
+    continue_version = None
+    continue_remediation = None
+
+    try:
+        cn_path = shutil.which("cn") or shutil.which("continue")
+        if cn_path:
+            result = subprocess.run(
+                [cn_path, "--version"],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            if result.returncode == 0:
+                continue_available = True
+                continue_version = result.stdout.strip()
+        else:
+            continue_error = "Continue CLI not found on PATH"
+            continue_remediation = "Install Continue: npm install -g @continuedev/continue"
+    except Exception as e:
+        continue_error = str(e)
+        continue_remediation = "Install Continue CLI or add it to PATH"
+
+    engines.append(EngineCapability(
+        name="continue",
+        available=continue_available,
+        version=continue_version,
+        error=continue_error,
+        remediation=continue_remediation
+    ))
+
+    # Check Codex (always available - uses subprocess/patch)
+    engines.append(EngineCapability(
+        name="codex",
+        available=True,
+        version="builtin"
+    ))
+
+    # Check Ollama (for bash intelligence)
+    ollama_available = False
+    ollama_error = None
+    ollama_remediation = None
+
+    try:
+        if shutil.which("ollama"):
+            result = subprocess.run(
+                ["ollama", "list"],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            ollama_available = result.returncode == 0
+        else:
+            ollama_error = "Ollama not found on PATH"
+            ollama_remediation = "Install Ollama from https://ollama.ai"
+    except Exception as e:
+        ollama_error = str(e)
+        ollama_remediation = "Ensure Ollama is running and accessible"
+
+    engines.append(EngineCapability(
+        name="ollama",
+        available=ollama_available,
+        error=ollama_error,
+        remediation=ollama_remediation
+    ))
+
+    # Feature flags
+    features = {
+        "unified_context": True,
+        "bash_intelligence": ollama_available,
+        "patch_apply": True,
+        "dry_run": True,
+        "rollback": True,
+        "git_integration": shutil.which("git") is not None
+    }
+
+    return CapabilitiesResponse(
+        engines=engines,
+        features=features
+    )
+
 
 @router.post("/route", response_model=RouteResponse)
 @require_perm("code.use")
@@ -280,10 +430,14 @@ async def get_context_bundle(
         if body.repo_root:
             repo_path = Path(body.repo_root).resolve()
 
-            # Security: Validate repo_root is within allowed workspace
-            # Allow paths under user's home directory or PATHS.data_dir
+            # Security: Validate repo_root is within user's code_workspaces
+            # This matches the pattern used in code_operations.py for consistent security
+            user_id = current_user['user_id']
+            user_workspace_root = PATHS.data_dir / "code_workspaces" / user_id
+
+            # Also allow user's home directory for convenience
             user_home = Path.home()
-            allowed_roots = [user_home, PATHS.data_dir]
+            allowed_roots = [user_workspace_root, user_home]
 
             is_allowed = False
             for allowed_root in allowed_roots:
@@ -297,7 +451,7 @@ async def get_context_bundle(
             if not is_allowed:
                 raise HTTPException(
                     status_code=403,
-                    detail=f"Access denied: repo_root must be within user home directory"
+                    detail=f"Access denied: repo_root must be within your workspace ({user_workspace_root}) or home directory"
                 )
 
             if repo_path.exists():
@@ -308,14 +462,61 @@ async def get_context_bundle(
                     if p.is_file() and not any(part.startswith('.') for part in p.parts)
                 ][:50]  # Limit to 50 files
 
-        # TODO: Get recent diffs from git
+        # Get recent git diffs if repo has git
         recent_diffs = []
+        if body.repo_root and Path(body.repo_root).exists():
+            repo_path = Path(body.repo_root).resolve()
+            git_dir = repo_path / ".git"
 
-        # TODO: Get embeddings hits
+            if git_dir.exists():
+                import subprocess
+                try:
+                    # Get recent commits (last 5)
+                    result = subprocess.run(
+                        ["git", "-C", str(repo_path), "log", "--oneline", "-5"],
+                        capture_output=True,
+                        text=True,
+                        timeout=5
+                    )
+                    if result.returncode == 0:
+                        commits = result.stdout.strip().split('\n')
+                        for commit in commits[:3]:  # Limit to 3 most recent
+                            if commit:
+                                commit_hash = commit.split()[0]
+                                # Get diff for this commit
+                                diff_result = subprocess.run(
+                                    ["git", "-C", str(repo_path), "show", "--stat", commit_hash],
+                                    capture_output=True,
+                                    text=True,
+                                    timeout=5
+                                )
+                                if diff_result.returncode == 0:
+                                    recent_diffs.append({
+                                        "commit": commit,
+                                        "diff_stat": diff_result.stdout[:500]  # Truncate
+                                    })
+                except Exception as e:
+                    logger.warning(f"Failed to get git diffs: {e}")
+
+        # TODO: Get embeddings hits (future: integrate with UnifiedEmbedder)
         embeddings_hits = []
 
-        # TODO: Get recent chat snippets
+        # Get recent chat snippets from unified context
         chat_snippets = []
+        if body.session_id:
+            try:
+                from ..unified_context import get_unified_context
+                context_mgr = get_unified_context()
+                recent_entries = context_mgr.get_recent_context(
+                    user_id=current_user['user_id'],
+                    max_entries=10,
+                    sources=['chat']
+                )
+                chat_snippets = [
+                    f"{entry.content[:100]}..." for entry in recent_entries
+                ]
+            except Exception as e:
+                logger.warning(f"Failed to get chat snippets: {e}")
 
         # Get active models
         active_models = ['qwen2.5-coder:32b', 'deepseek-r1:32b', 'codestral:22b']

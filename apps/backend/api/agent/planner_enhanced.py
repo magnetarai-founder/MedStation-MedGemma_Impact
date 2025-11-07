@@ -23,7 +23,38 @@ except Exception:
     ModelSelector = None
     TaskType = None  # type: ignore
 
-from planner import Plan, Step, Planner as BasePlanner
+# Provide local Plan/Step/BasePlanner if upstream planner module is unavailable
+try:
+    from planner import Plan, Step, Planner as BasePlanner  # type: ignore
+except Exception:
+    from dataclasses import dataclass, field
+    from typing import List, Dict, Any
+
+    @dataclass
+    class Step:
+        name: str
+        engine: str
+        description: str
+        files: List[str] = field(default_factory=list)
+        model: str = ""
+        timeout_s: int = 60
+        risk: str = "low"
+
+    @dataclass
+    class Plan:
+        steps: List[Step]
+        heavy: bool = False
+        rationale: str = ""
+        metadata: Dict[str, Any] = field(default_factory=dict)
+
+    class BasePlanner:
+        def plan(self, description: str, files: List[str] | None = None) -> Plan:
+            files = files or []
+            steps = [
+                Step(name="propose", engine="aider", description=description, files=files, timeout_s=300),
+                Step(name="verify", engine="verify", description="quick_checks", files=files, timeout_s=90),
+            ]
+            return Plan(steps=steps, heavy=False, rationale="base", metadata={})
 
 logger = logging.getLogger(__name__)
 

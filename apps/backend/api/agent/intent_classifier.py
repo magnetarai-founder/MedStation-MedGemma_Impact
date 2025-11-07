@@ -1,31 +1,16 @@
 #!/usr/bin/env python3
 """
-Phi-3 based intent classifier (stub).
-Uses Ollama (phi3:mini-instruct) to classify a free-text command into a
-structured intent Jarvis can use. Falls back to a heuristic classifier when
-Ollama or the model are unavailable.
+Lightweight intent classifier.
+Classifies free-text input into one of: 'shell', 'code_edit', 'question'.
+Uses Ollama (phi3:mini-instruct) if available; otherwise falls back to
+fast heuristics. Returns a plain dict suitable for API responses.
 """
 
 import json
 import re
 import shutil
 import subprocess
-from dataclasses import dataclass
-from typing import Dict, List, Optional
-
-try:
-    from agent_simple import TaskType  # type: ignore
-except Exception:
-    # Local fallback to avoid tight coupling during early wiring
-    from models import TaskType  # reuse enum stub
-
-
-@dataclass
-class Intent:
-    task_type: TaskType
-    files: List[str]
-    heavy: bool
-    confidence: float
+from typing import Dict, Optional
 
 
 PROMPT = (
@@ -50,31 +35,24 @@ def _run_ollama(model: str, prompt: str, timeout: int = 20) -> Optional[str]:
     return None
 
 
-def _heuristic(command: str) -> Intent:
-    c = command.lower()
-    files = re.findall(r"\b[\w/\\.-]+\.(py|js|ts|java|c|cpp|go|rs)\b", command)
-    def any_kw(words):
-        return any(w in c for w in words)
+def _heuristic(command: str) -> Dict[str, object]:
+    txt = command.strip()
+    c = txt.lower()
 
-    if any_kw(["fix", "bug", "error", "traceback", "stack trace"]):
-        return Intent(TaskType.BUG_FIX, files, heavy=len(files) > 2, confidence=0.55)
-    if any_kw(["refactor", "rewrite", "modify", "change", "update"]):
-        return Intent(TaskType.CODE_EDIT, files, heavy=len(files) > 3, confidence=0.5)
-    if any_kw(["create", "implement", "build", "write"]) and files:
-        return Intent(TaskType.CODE_WRITE, files, heavy=len(files) > 2, confidence=0.55)
-    if any_kw(["test", "unit test", "pytest"]):
-        return Intent(TaskType.TEST_GENERATION, files, heavy=False, confidence=0.5)
-    if any_kw(["document", "readme", "docs"]):
-        return Intent(TaskType.DOCUMENTATION, files, heavy=False, confidence=0.5)
-    if any_kw(["git ", "commit", "push", "pull", "status", "branch"]):
-        return Intent(TaskType.GIT_OPERATION, files, heavy=False, confidence=0.5)
-    if any_kw(["ls", "pwd", "mkdir", "rm ", "chmod", "chown"]):
-        return Intent(TaskType.SYSTEM_COMMAND, files, heavy=False, confidence=0.5)
-    if any_kw(["what", "why", "how", "explain", "describe"]):
-        return Intent(TaskType.EXPLANATION, files, heavy=False, confidence=0.45)
-    if any_kw(["research", "investigate", "look up", "find information"]):
-        return Intent(TaskType.RESEARCH, files, heavy=False, confidence=0.45)
-    return Intent(TaskType.EXPLANATION, files, heavy=False, confidence=0.4)
+    # Shell-like indicators
+    shell_markers = [c.startswith(p) for p in ("$", "./", "../")]
+    shell_markers += ["|" in c, "&&" in c or "||" in c, c.endswith(";")]
+    common_shell_cmds = ["ls ", "cd ", "cat ", "grep ", "find ", "git ", "rm ", "mkdir ", "chmod ", "chown "]
+    if any(shell_markers) or any(cmd in c for cmd in common_shell_cmds):
+        return {"type": "shell", "confidence": 0.7}
+
+    # Code-edit verbs
+    edit_kws = ["fix", "bug", "error", "traceback", "refactor", "rewrite", "modify", "change", "update", "implement", "add", "remove", "rename"]
+    if any(kw in c for kw in edit_kws):
+        return {"type": "code_edit", "confidence": 0.6}
+
+    # Default to question/explanation
+    return {"type": "question", "confidence": 0.5}
 
 
 class Phi3IntentClassifier:
@@ -82,9 +60,9 @@ class Phi3IntentClassifier:
         # Accept either bare name or with provider prefix
         self.model = model.split("/")[-1]
 
-    def classify(self, command: str) -> Intent:
+    def classify(self, command: str) -> Dict[str, object]:
         if not command.strip():
-            return Intent(TaskType.EXPLANATION, [], False, 0.0)
+            return {"type": "question", "confidence": 0.0}
 
         if _ollama_available():
             prompt = PROMPT.format(command=command.strip())
@@ -98,16 +76,29 @@ class Phi3IntentClassifier:
                     json_text = json_text[start : end + 1]
                 try:
                     data = json.loads(json_text)
-                    task = TaskType(data.get("task_type", "explanation"))
-                    files = data.get("files", []) or []
-                    heavy = bool(data.get("heavy", False))
-                    conf = float(data.get("confidence", 0.5))
-                    return Intent(task, files, heavy, conf)
+                    task = str(data.get("task_type", "explanation")).lower()
+                    mapping = {
+                        "system_command": "shell",
+                        "git_operation": "shell",
+                        "code_edit": "code_edit",
+                        "code_write": "code_edit",
+                        "bug_fix": "code_edit",
+                        "documentation": "question",
+                        "test_generation": "code_edit",
+                        "research": "question",
+                        "explanation": "question",
+                    }
+                    intent_type = mapping.get(task, "question")
+                    conf = float(data.get("confidence", 0.6))
+                    return {"type": intent_type, "confidence": conf}
                 except Exception:
                     pass
 
         # Fallback
         return _heuristic(command)
+
+# Backward-compatible alias
+IntentClassifier = Phi3IntentClassifier
 
 
 if __name__ == "__main__":
@@ -115,10 +106,4 @@ if __name__ == "__main__":
     text = " ".join(sys.argv[1:]) if len(sys.argv) > 1 else "create tests for utils.py"
     clf = Phi3IntentClassifier()
     intent = clf.classify(text)
-    print(json.dumps({
-        "task_type": intent.task_type.value,
-        "files": intent.files,
-        "heavy": intent.heavy,
-        "confidence": intent.confidence,
-    }, indent=2))
-
+    print(json.dumps(intent, indent=2))

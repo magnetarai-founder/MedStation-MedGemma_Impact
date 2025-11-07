@@ -57,7 +57,10 @@ class PatchBus:
     @staticmethod
     def apply(proposal: ChangeProposal) -> Dict[str, object]:
         """Apply a change proposal via CodexEngine with validation and rollback."""
-        from engines.codex_engine import CodexEngine
+        try:
+            from .engines.codex_engine import CodexEngine
+        except ImportError:
+            from engines.codex_engine import CodexEngine
         patch_id = f"P{int(time.time())}_{hashlib.md5(proposal.diff.encode()).hexdigest()[:8]}"
         engine = CodexEngine()
         # Dry-run: do not apply, just summarize
@@ -233,6 +236,9 @@ class PatchBus:
     
     @staticmethod
     def rollback(patch_id: str) -> Tuple[bool, str]:
-        from engines.codex_engine import CodexEngine
+        try:
+            from .engines.codex_engine import CodexEngine
+        except ImportError:
+            from engines.codex_engine import CodexEngine
         engine = CodexEngine()
         return engine.rollback(patch_id)

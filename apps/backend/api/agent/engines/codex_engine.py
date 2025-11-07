@@ -12,8 +12,8 @@ import tempfile
 from pathlib import Path
 from typing import Tuple, List, Dict, Any, Optional
 import difflib
-from engines.codex_deterministic_ops import DeterministicOps
-from engines.codex_codemods import CodemodOperations
+from .codex_deterministic_ops import DeterministicOps
+from .codex_codemods import CodemodOperations
 
 
 class CodexEngine:
@@ -50,11 +50,16 @@ class CodexEngine:
                 except Exception:
                     continue
 
+        # Detect patch strip level (-p0 vs -p1)
+        # Check if headers have a/ b/ prefixes (typical git diff format)
+        patch_level = self._detect_patch_level(diff_text)
+
         try:
             # Try system patch if available
             if shutil.which('patch'):
+                # Try with detected patch level
                 dry = subprocess.run(
-                    f"patch -p0 --dry-run < '{tmp.name}'",
+                    f"patch -p{patch_level} --dry-run < '{tmp.name}'",
                     shell=True,
                     cwd=self.repo_root,
                     capture_output=True,
@@ -62,9 +67,22 @@ class CodexEngine:
                     timeout=10,
                 )
                 if dry.returncode != 0:
-                    raise RuntimeError(dry.stderr.strip() or dry.stdout.strip())
+                    # If detected level fails, try the opposite
+                    alternate_level = 1 if patch_level == 0 else 0
+                    dry = subprocess.run(
+                        f"patch -p{alternate_level} --dry-run < '{tmp.name}'",
+                        shell=True,
+                        cwd=self.repo_root,
+                        capture_output=True,
+                        text=True,
+                        timeout=10,
+                    )
+                    if dry.returncode != 0:
+                        raise RuntimeError(dry.stderr.strip() or dry.stdout.strip())
+                    patch_level = alternate_level
+
                 applied = subprocess.run(
-                    f"patch -p0 < '{tmp.name}'",
+                    f"patch -p{patch_level} < '{tmp.name}'",
                     shell=True,
                     cwd=self.repo_root,
                     capture_output=True,
@@ -139,6 +157,30 @@ class CodexEngine:
         if applied.returncode != 0:
             return False, f"Rollback failed: {applied.stderr.strip() or applied.stdout.strip()}"
         return True, "Rolled back"
+
+    def _detect_patch_level(self, diff: str) -> int:
+        """
+        Detect whether diff uses -p0 or -p1 format by checking path prefixes.
+
+        Returns:
+            0 for -p0 (no prefix), 1 for -p1 (a/ b/ prefix)
+        """
+        for ln in diff.splitlines():
+            if ln.startswith('--- ') or ln.startswith('+++ '):
+                path = ln.split(' ', 1)[1].strip()
+                if '\t' in path:
+                    path = path.split('\t', 1)[0]
+
+                # Check for a/ or b/ prefix (git format)
+                if path.startswith('a/') or path.startswith('b/'):
+                    return 1
+
+                # If no prefix and not /dev/null, assume -p0
+                if path != '/dev/null':
+                    return 0
+
+        # Default to -p1 for git-style diffs
+        return 1
 
     def _reverse_unified_diff(self, diff: str) -> str:
         lines = []
