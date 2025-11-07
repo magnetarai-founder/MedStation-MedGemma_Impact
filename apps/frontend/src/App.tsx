@@ -140,19 +140,9 @@ export default function App() {
 
   // Pre-load default AI model after session is created
   useEffect(() => {
-    console.log('[DEBUG] Preload effect - sessionId:', sessionId, 'token:', !!localStorage.getItem('auth_token'))
-
     // Only preload if we have a valid session
-    if (!sessionId) {
-      console.log('[DEBUG] Preload skipped - no sessionId')
-      return
-    }
-    if (!localStorage.getItem('auth_token')) {
-      console.log('[DEBUG] Preload skipped - no auth token')
-      return
-    }
-
-    console.log('[DEBUG] Preload will run in 3s')
+    if (!sessionId) return
+    if (!localStorage.getItem('auth_token')) return
 
     const preloadDefaultModel = async () => {
       try {
@@ -160,12 +150,8 @@ export default function App() {
         await api.preloadModel(settings.defaultModel, '1h')
         console.log(`✓ Model '${settings.defaultModel}' pre-loaded successfully`)
       } catch (error: any) {
-        // Silently ignore auth errors during startup
-        if (error?.response?.status === 401) {
-          console.log('[DEBUG] Preload got 401 - auth not ready yet')
-          return
-        }
-        console.warn('Failed to pre-load model:', error)
+        // Non-critical - models load on first use anyway
+        console.debug('Model preload failed:', error?.response?.status || error.message)
       }
     }
 

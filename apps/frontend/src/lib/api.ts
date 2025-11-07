@@ -119,9 +119,6 @@ class NeutronAPI {
         const token = localStorage.getItem('auth_token')
         if (token) {
           config.headers.Authorization = `Bearer ${token}`
-          console.log('[DEBUG] Request interceptor - added auth header to:', config.url)
-        } else {
-          console.warn('[DEBUG] Request interceptor - NO TOKEN for:', config.url)
         }
         return config
       },

@@ -891,7 +891,12 @@ async def list_ollama_models():
 
 @router.post("/models/preload")
 @require_perm_team("chat.use")
-async def preload_model(request: Request, model: str, keep_alive: str = "1h"):
+async def preload_model(
+    request: Request,
+    model: str,
+    keep_alive: str = "1h",
+    current_user: dict = Depends(get_current_user)
+):
     """
     Pre-load a model into memory for instant responses
 
