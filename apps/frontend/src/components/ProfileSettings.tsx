@@ -5,7 +5,7 @@
  * Includes: Identity, Security, Cloud/SaaS, Privacy, Danger Zone
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ROLES } from '@/lib/roles'
 import {
   User,
@@ -43,10 +43,7 @@ type LicenseType = 'none' | 'mission' | 'church' | 'business'
 export function ProfileSettings() {
   const { user, fetchUser, updateUser, resetUser, isLoading } = useUserStore()
   const { securitySettings, updateSecuritySettings } = useDocsStore()
-
-  // Debug logging
-  console.log('ProfileSettings - user:', user)
-  console.log('ProfileSettings - isLoading:', isLoading)
+  const hasFetchedRef = useRef(false)
 
   const [activeTab, setActiveTab] = useState<ProfileTab>('identity')
   const [displayName, setDisplayName] = useState(user?.display_name || '')
@@ -66,12 +63,13 @@ export function ProfileSettings() {
   const [biometricRegistered, setBiometricRegistered] = useState(false)
   const [checkingBiometric, setCheckingBiometric] = useState(true)
 
-  // Auto-fetch user on mount if not loaded
+  // Auto-fetch user on mount if not loaded (run only once)
   useEffect(() => {
-    if (!user && !isLoading) {
+    if (!user && !isLoading && !hasFetchedRef.current) {
+      hasFetchedRef.current = true
       fetchUser()
     }
-  }, [])
+  }, [user, isLoading, fetchUser])
 
   // Check biometric availability on mount
   useEffect(() => {

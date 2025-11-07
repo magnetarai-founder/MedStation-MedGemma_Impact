@@ -39,7 +39,7 @@ export function ChatWindow() {
   useEffect(() => {
     const checkHealth = async () => {
       try {
-        const response = await api.get('/api/v1/chat/health')
+        const response = await api.get('/v1/chat/health')
         setOllamaHealth(response.data)
       } catch (error) {
         // Don't show error banner - Ollama is managed by startup script
