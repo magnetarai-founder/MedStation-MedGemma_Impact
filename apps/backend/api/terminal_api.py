@@ -39,6 +39,7 @@ router = APIRouter(prefix="/api/v1/terminal", tags=["terminal"])
 
 
 @router.post("/spawn")
+@require_perm("code.terminal")
 async def spawn_terminal(
     shell: Optional[str] = None,
     cwd: Optional[str] = None,
@@ -81,6 +82,7 @@ async def spawn_terminal(
 
 
 @router.post("/spawn-system")
+@require_perm("code.terminal")
 async def spawn_system_terminal(current_user: dict = Depends(get_current_user)):
     """
     Spawn a system terminal (Warp, iTerm2, Terminal.app) with bridge script

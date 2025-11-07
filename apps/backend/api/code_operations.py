@@ -184,31 +184,59 @@ def walk_directory(
 async def get_file_tree(
     path: str = ".",
     recursive: bool = True,
-    absolute_path: str = None,  # NEW: Allow browsing any path
+    absolute_path: str = None,  # Allow absolute path only within allowed roots
     current_user: Dict = Depends(get_current_user)
 ):
     """
-    Get file tree for user's code workspace OR any absolute path
-    Implements Continue's walkDir pattern with security
+    Get file tree for user's code workspace or validated absolute path
+
+    Security: absolute_path is restricted to code_workspaces and home directory
     """
     try:
         user_id = current_user["user_id"]
         logger.info(f"[CODE] GET /files - user_id={user_id}, path={path}, absolute_path={absolute_path}, recursive={recursive}")
 
-        # If absolute_path provided, use it instead of workspace
+        # Get user workspace for validation
+        user_workspace = get_user_workspace(user_id)
+
+        # If absolute_path provided, validate it's within allowed roots
         if absolute_path:
-            target_path = Path(absolute_path)
+            target_path = Path(absolute_path).resolve()
+
+            # Security: Validate absolute_path is within allowed roots
+            try:
+                from .config_paths import get_config_paths
+            except ImportError:
+                from config_paths import get_config_paths
+
+            PATHS = get_config_paths()
+            user_workspace_root = PATHS.data_dir / "code_workspaces" / user_id
+            allowed_roots = [user_workspace_root, Path.home()]
+
+            is_allowed = False
+            for allowed_root in allowed_roots:
+                try:
+                    target_path.relative_to(allowed_root)
+                    is_allowed = True
+                    break
+                except ValueError:
+                    continue
+
+            if not is_allowed:
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Access denied: absolute_path must be within workspace ({user_workspace_root}) or home directory"
+                )
+
             if not target_path.exists():
                 raise HTTPException(404, "Path not found")
             if not target_path.is_dir():
                 raise HTTPException(400, "Path is not a directory")
         else:
-            # Get user workspace
-            user_workspace = get_user_workspace(user_id)
+            # Use workspace-relative path
             target_path = user_workspace if path == "." else user_workspace / path
 
-        # Security: validate path (only if using workspace, not absolute)
-        if not absolute_path:
+            # Security: validate path within workspace
             if not is_safe_path(target_path, user_workspace):
                 raise HTTPException(400, "Invalid path")
 
@@ -249,25 +277,52 @@ async def read_file(
     path: str,
     offset: int = 1,
     limit: int = 2000,
-    absolute_path: bool = False,  # NEW: Allow reading absolute paths
+    absolute_path: bool = False,  # Allow absolute path only within allowed roots
     current_user: Dict = Depends(get_current_user)
 ):
     """
     Read file content (adapted from Codex's read_file with line numbers)
     Supports offset and limit for large files
+
+    Security: absolute_path is restricted to code_workspaces and home directory
     """
     try:
         user_id = current_user["user_id"]
+        user_workspace = get_user_workspace(user_id)
 
         # Resolve file path
         if absolute_path or path.startswith('/'):
-            file_path = Path(path)
+            file_path = Path(path).resolve()
+
+            # Security: Validate absolute path is within allowed roots
+            try:
+                from .config_paths import get_config_paths
+            except ImportError:
+                from config_paths import get_config_paths
+
+            PATHS = get_config_paths()
+            user_workspace_root = PATHS.data_dir / "code_workspaces" / user_id
+            allowed_roots = [user_workspace_root, Path.home()]
+
+            is_allowed = False
+            for allowed_root in allowed_roots:
+                try:
+                    file_path.relative_to(allowed_root)
+                    is_allowed = True
+                    break
+                except ValueError:
+                    continue
+
+            if not is_allowed:
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Access denied: file must be within workspace ({user_workspace_root}) or home directory"
+                )
         else:
-            # Get user workspace
-            user_workspace = get_user_workspace(user_id)
+            # Use workspace-relative path
             file_path = user_workspace / path
 
-            # Security: validate path (only for workspace files)
+            # Security: validate path within workspace
             if not is_safe_path(file_path, user_workspace):
                 raise HTTPException(400, "Invalid path")
 
