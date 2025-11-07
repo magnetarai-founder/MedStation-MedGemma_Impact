@@ -211,21 +211,14 @@ async def get_file_tree(
 
             PATHS = get_config_paths()
             user_workspace_root = PATHS.data_dir / "code_workspaces" / user_id
-            allowed_roots = [user_workspace_root, Path.home()]
 
-            is_allowed = False
-            for allowed_root in allowed_roots:
-                try:
-                    target_path.relative_to(allowed_root)
-                    is_allowed = True
-                    break
-                except ValueError:
-                    continue
-
-            if not is_allowed:
+            # Security: Restrict to workspace only (stricter than workspace + home)
+            try:
+                target_path.relative_to(user_workspace_root)
+            except ValueError:
                 raise HTTPException(
                     status_code=403,
-                    detail=f"Access denied: absolute_path must be within workspace ({user_workspace_root}) or home directory"
+                    detail=f"Access denied: absolute_path must be within workspace ({user_workspace_root})"
                 )
 
             if not target_path.exists():
@@ -302,21 +295,14 @@ async def read_file(
 
             PATHS = get_config_paths()
             user_workspace_root = PATHS.data_dir / "code_workspaces" / user_id
-            allowed_roots = [user_workspace_root, Path.home()]
 
-            is_allowed = False
-            for allowed_root in allowed_roots:
-                try:
-                    file_path.relative_to(allowed_root)
-                    is_allowed = True
-                    break
-                except ValueError:
-                    continue
-
-            if not is_allowed:
+            # Security: Restrict to workspace only (stricter than workspace + home)
+            try:
+                file_path.relative_to(user_workspace_root)
+            except ValueError:
                 raise HTTPException(
                     status_code=403,
-                    detail=f"Access denied: file must be within workspace ({user_workspace_root}) or home directory"
+                    detail=f"Access denied: file must be within workspace ({user_workspace_root})"
                 )
         else:
             # Use workspace-relative path

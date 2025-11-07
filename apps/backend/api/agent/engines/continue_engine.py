@@ -38,8 +38,19 @@ class ContinueEngine:
             f"Change: {description}\n"
         )
 
+        # Build command with files, send prompt via stdin to avoid argv length limits
+        cmd = [self.cn]
+        if files:
+            cmd.extend(files)
+
         try:
-            p = subprocess.run([self.cn, "-p", prompt, *files], capture_output=True, text=True, timeout=600)
+            p = subprocess.run(
+                cmd,
+                input=prompt,
+                capture_output=True,
+                text=True,
+                timeout=600
+            )
             out = p.stdout
         except Exception as e:
             out = str(e)
