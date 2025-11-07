@@ -31,14 +31,45 @@ class BashIntelligence:
 
     # Dangerous commands that require confirmation
     DANGEROUS_PATTERNS = [
-        r'\brm\s+-rf\s+/',
-        r'\bdd\s+if=',
-        r'\b(sudo\s+)?mkfs',
-        r'\b:>',  # Truncate file
-        r'\bchmod\s+-R\s+777',
-        r'\bshred',
-        r'\bwipefs',
-        r'\bformat\b',
+        # Recursive file removal
+        r'\brm\s+-rf\s+/',  # rm -rf /
+        r'\brm\s+-rf\s+\*',  # rm -rf *
+        r'\brm\s+-rf\s+~',  # rm -rf ~
+        r'\brm\s+-rf\s+\.',  # rm -rf .
+        r'\brm\s+-rf\s+\./',  # rm -rf ./
+        r'\brm\s+-r\s+\*',  # rm -r *
+        r'\brm\s+.*\*.*\s+-rf?',  # rm */ -rf or rm * -r
+
+        # Disk operations
+        r'\bdd\s+if=',  # dd if= (dangerous write)
+        r'\bdd\s+.*of=/dev/',  # dd to device
+        r'\b(sudo\s+)?mkfs',  # Format filesystem
+        r'\bshred',  # Secure deletion
+        r'\bwipefs',  # Wipe filesystem signatures
+        r'\bformat\b',  # Format command
+
+        # Permission changes
+        r'\bchmod\s+-R\s+777',  # Recursive 777
+        r'\bchmod\s+777\s+/',  # 777 on root
+
+        # Redirect to device
+        r'>\s*/dev/sd[a-z]',  # > /dev/sda
+        r'>\s*/dev/disk',  # > /dev/disk*
+
+        # Truncate file
+        r'\b:>',  # :> file
+
+        # Fork bomb and malicious patterns
+        r':\(\)\s*\{\s*:\|:&\s*\}',  # :(){:|:&};:
+        r'\bwhile\s+true.*do.*done',  # Potential infinite loop with destructive commands
+
+        # Sudo with shell command injection
+        r"sudo\s+sh\s+-c\s+['\"].*>.*\/dev\/",  # sudo sh -c '... > /dev/*'
+        r"sudo\s+bash\s+-c\s+['\"].*>.*\/dev\/",  # sudo bash -c '... > /dev/*'
+
+        # Multiple dangerous operations
+        r'&&.*\brm\s+-rf?\s+[/~*\.]',  # Chained with rm -rf
+        r'\|.*\brm\s+-rf?\s+[/~*\.]',  # Piped to rm -rf
     ]
 
     # Common NL patterns → bash templates

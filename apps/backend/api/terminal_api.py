@@ -584,20 +584,37 @@ async def bash_assist(
 
     # Add to unified context
     if body.session_id:
-        context_mgr = get_unified_context()
-        context_mgr.add_entry(
-            user_id=user_id,
-            session_id=body.session_id,
-            source='terminal',
-            entry_type='command',
-            content=suggested_cmd or body.input,
-            metadata={
-                'original_input': body.input,
-                'input_type': classification['type'],
-                'is_safe': is_safe,
-                'cwd': body.cwd
-            }
-        )
+        try:
+            from .workspace_session import get_workspace_session_manager
+
+            context_mgr = get_unified_context()
+            ws_mgr = get_workspace_session_manager()
+
+            # Ensure session_id is a workspace session
+            # If passed session_id looks like a terminal/chat ID, create/get workspace session
+            workspace_session_id = body.session_id
+            if not workspace_session_id.startswith('ws_'):
+                # Try to get workspace session, creating if needed
+                workspace_session_id = ws_mgr.get_or_create_for_workspace(
+                    user_id=user_id,
+                    workspace_root=body.cwd or str(Path.home())
+                )
+
+            context_mgr.add_entry(
+                user_id=user_id,
+                session_id=workspace_session_id,
+                source='terminal',
+                entry_type='command',
+                content=suggested_cmd or body.input,
+                metadata={
+                    'original_input': body.input,
+                    'input_type': classification['type'],
+                    'is_safe': is_safe,
+                    'cwd': body.cwd
+                }
+            )
+        except Exception as e:
+            logger.warning(f"Failed to add to unified context: {e}")
 
     return BashAssistResponse(
         input_type=classification['type'],

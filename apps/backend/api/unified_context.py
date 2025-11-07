@@ -184,6 +184,7 @@ class UnifiedContextManager:
 
         # Cleanup old entries if over limit
         self._cleanup_session(session_id)
+        self._cleanup_global_tokens(user_id)
 
         logger.debug(f"Added context entry {entry_id} ({tokens_estimate} tokens)")
         return entry_id
@@ -409,6 +410,39 @@ class UnifiedContextManager:
             """, (session_id, session_id))
 
             logger.info(f"Cleaned up old entries for session {session_id}")
+
+        conn.commit()
+        conn.close()
+
+    def _cleanup_global_tokens(self, user_id: str):
+        """Remove old entries across all sessions if user exceeds global token limit"""
+        conn = sqlite3.connect(str(self.db_path))
+        cursor = conn.cursor()
+
+        # Get current total across all user's sessions
+        cursor.execute("""
+            SELECT SUM(tokens_estimate) FROM context_entries WHERE user_id = ?
+        """, (user_id,))
+        total = cursor.fetchone()[0] or 0
+
+        if total > self.max_tokens_global:
+            # Delete oldest entries across all sessions until under global limit
+            # Delete 25% of oldest entries
+            cursor.execute("""
+                DELETE FROM context_entries
+                WHERE entry_id IN (
+                    SELECT entry_id FROM context_entries
+                    WHERE user_id = ?
+                    ORDER BY timestamp ASC
+                    LIMIT (
+                        SELECT COUNT(*) FROM context_entries
+                        WHERE user_id = ?
+                    ) / 4
+                )
+            """, (user_id, user_id))
+
+            deleted = cursor.rowcount
+            logger.info(f"Global cleanup: removed {deleted} old entries for user {user_id}")
 
         conn.commit()
         conn.close()

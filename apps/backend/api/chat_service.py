@@ -524,15 +524,27 @@ async def send_message(request: Request, chat_id: str, body: SendMessageRequest,
 
     # Add to unified context for cross-component persistence
     try:
+        from .unified_context import get_unified_context
+        from .workspace_session import get_workspace_session_manager
+
         unified_ctx = get_unified_context()
+        ws_mgr = get_workspace_session_manager()
+
+        # Get or create workspace session for this chat
+        workspace_session_id = await asyncio.to_thread(
+            ws_mgr.get_or_create_for_chat,
+            user_id=current_user["user_id"],
+            chat_id=chat_id
+        )
+
         await asyncio.to_thread(
             unified_ctx.add_entry,
             user_id=current_user["user_id"],
-            session_id=chat_id,
+            session_id=workspace_session_id,  # Use workspace session ID
             source='chat',
             entry_type='message',
             content=body.content,
-            metadata={'role': 'user', 'model': model}
+            metadata={'role': 'user', 'model': model, 'chat_id': chat_id}
         )
     except Exception as e:
         logger.warning(f"Failed to add message to unified context: {e}")

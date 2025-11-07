@@ -99,6 +99,7 @@ class ApplyRequest(BaseModel):
     plan_id: Optional[str] = None
     input: str = Field(..., description="Requirement or task description")
     repo_root: Optional[str] = None
+    session_id: Optional[str] = Field(None, description="Workspace session ID for unified context")
     model: Optional[str] = Field(None, description="Model for Aider")
     dry_run: bool = Field(False, description="Preview only, don't apply")
 
@@ -627,19 +628,35 @@ async def apply_plan(
             # Add to unified context for persistence
             try:
                 from ..unified_context import get_unified_context
+                from ..workspace_session import get_workspace_session_manager
+
                 context_mgr = get_unified_context()
-                context_mgr.add_entry(
-                    user_id=current_user['user_id'],
-                    session_id=body.repo_root or 'default',  # Use repo_root as session_id
-                    source='agent',
-                    entry_type='patch',
-                    content=proposal.description,
-                    metadata={
-                        'patch_id': patch_id,
-                        'files': apply_result.get('files', []),
-                        'lines': apply_result.get('lines', 0)
-                    }
-                )
+                ws_mgr = get_workspace_session_manager()
+
+                # Get or create workspace session for this repo
+                workspace_session_id = body.session_id
+                if not workspace_session_id and body.repo_root:
+                    workspace_session_id = ws_mgr.get_or_create_for_workspace(
+                        user_id=current_user['user_id'],
+                        workspace_root=body.repo_root
+                    )
+
+                if workspace_session_id:
+                    context_mgr.add_entry(
+                        user_id=current_user['user_id'],
+                        session_id=workspace_session_id,
+                        source='agent',
+                        entry_type='patch',
+                        content=proposal.description,
+                        metadata={
+                            'patch_id': patch_id,
+                            'files': apply_result.get('files', []),
+                            'lines': apply_result.get('lines', 0),
+                            'repo_root': body.repo_root
+                        }
+                    )
+                else:
+                    logger.warning("No session_id or repo_root provided, skipping unified context")
             except Exception as e:
                 logger.warning(f"Failed to add patch to unified context: {e}")
 

@@ -194,17 +194,26 @@ class AuditLogger:
             resource_id: Specific resource identifier
             ip_address: Client IP address
             user_agent: Client user agent
-            details: Additional context as JSON
+            details: Additional context as JSON (will be sanitized)
 
         Returns:
             ID of created audit log entry
         """
         try:
+            # Import sanitization utility
+            try:
+                from .utils import sanitize_for_log
+            except ImportError:
+                from utils import sanitize_for_log
+
             conn = sqlite3.connect(str(self.db_path))
             cursor = conn.cursor()
 
             timestamp = datetime.utcnow().isoformat()
-            details_json = json.dumps(details) if details else None
+
+            # Sanitize details before storing
+            sanitized_details = sanitize_for_log(details) if details else None
+            details_json = json.dumps(sanitized_details) if sanitized_details else None
 
             cursor.execute("""
                 INSERT INTO audit_log
