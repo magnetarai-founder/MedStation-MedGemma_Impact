@@ -3091,7 +3091,6 @@ async def upload_vault_file(
     Returns:
         VaultFile metadata
     """
-    # TODO: Get real user_id from auth middleware
     user_id = current_user["user_id"]
 
     if vault_type not in ('real', 'decoy'):
@@ -3235,7 +3234,6 @@ async def upload_chunk(
 @router.get("/files", response_model=List[VaultFile])
 async def list_vault_files(vault_type: str = "real", folder_path: str = None, current_user: Dict = Depends(get_current_user)):
     """List all uploaded vault files, optionally filtered by folder"""
-    # TODO: Get real user_id from auth middleware
     user_id = current_user["user_id"]
 
     if vault_type not in ('real', 'decoy'):
@@ -3418,7 +3416,6 @@ async def download_vault_file(
     current_user: Dict = Depends(get_current_user)
 ):
     """Download and decrypt a vault file"""
-    # TODO: Get real user_id from auth middleware
     user_id = current_user["user_id"]
 
     if vault_type not in ('real', 'decoy'):
@@ -3486,7 +3483,6 @@ async def create_vault_folder(
     current_user: Dict = Depends(get_current_user)
 ):
     """Create a new folder in the vault"""
-    # TODO: Get real user_id from auth middleware
     user_id = current_user["user_id"]
 
     if vault_type not in ('real', 'decoy'):
@@ -3504,7 +3500,6 @@ async def create_vault_folder(
 @router.get("/folders", response_model=List[VaultFolder])
 async def list_vault_folders(vault_type: str = "real", parent_path: str = None, current_user: Dict = Depends(get_current_user)):
     """List folders, optionally filtered by parent path"""
-    # TODO: Get real user_id from auth middleware
     user_id = current_user["user_id"]
 
     if vault_type not in ('real', 'decoy'):
@@ -3517,7 +3512,6 @@ async def list_vault_folders(vault_type: str = "real", parent_path: str = None, 
 @router.delete("/folders")
 async def delete_vault_folder(folder_path: str, vault_type: str = "real", current_user: Dict = Depends(get_current_user)):
     """Delete a folder (and all its contents)"""
-    # TODO: Get real user_id from auth middleware
     user_id = current_user["user_id"]
 
     if vault_type not in ('real', 'decoy'):
@@ -3535,7 +3529,6 @@ async def delete_vault_folder(folder_path: str, vault_type: str = "real", curren
 @router.delete("/files/{file_id}")
 async def delete_vault_file(file_id: str, vault_type: str = "real", current_user: Dict = Depends(get_current_user)):
     """Delete a file"""
-    # TODO: Get real user_id from auth middleware
     user_id = current_user["user_id"]
 
     if vault_type not in ('real', 'decoy'):
@@ -3561,7 +3554,6 @@ async def delete_vault_file(file_id: str, vault_type: str = "real", current_user
 @router.put("/files/{file_id}/rename")
 async def rename_vault_file(file_id: str, new_filename: str, vault_type: str = "real", current_user: Dict = Depends(get_current_user)):
     """Rename a file"""
-    # TODO: Get real user_id from auth middleware
     user_id = current_user["user_id"]
 
     if vault_type not in ('real', 'decoy'):
@@ -3590,7 +3582,6 @@ async def rename_vault_file(file_id: str, new_filename: str, vault_type: str = "
 @router.put("/files/{file_id}/move")
 async def move_vault_file(file_id: str, new_folder_path: str, vault_type: str = "real", current_user: Dict = Depends(get_current_user)):
     """Move a file to a different folder"""
-    # TODO: Get real user_id from auth middleware
     user_id = current_user["user_id"]
 
     if vault_type not in ('real', 'decoy'):
@@ -3616,7 +3607,6 @@ async def move_vault_file(file_id: str, new_folder_path: str, vault_type: str = 
 @router.put("/folders/rename")
 async def rename_vault_folder(old_path: str, new_name: str, vault_type: str = "real", current_user: Dict = Depends(get_current_user)):
     """Rename a folder"""
-    # TODO: Get real user_id from auth middleware
     user_id = current_user["user_id"]
 
     if vault_type not in ('real', 'decoy'):
@@ -3661,7 +3651,7 @@ async def add_file_tag(
 ):
     """Add a tag to a file"""
     service = get_vault_service()
-    user_id = current_user["user_id"]  # TODO: Get from auth
+    user_id = current_user["user_id"]
 
     try:
         result = service.add_tag_to_file(user_id, vault_type, file_id, tag_name, tag_color)
@@ -3680,7 +3670,7 @@ async def remove_file_tag(
 ):
     """Remove a tag from a file"""
     service = get_vault_service()
-    user_id = current_user["user_id"]  # TODO: Get from auth
+    user_id = current_user["user_id"]
 
     try:
         success = service.remove_tag_from_file(user_id, vault_type, file_id, tag_name)
@@ -3702,7 +3692,7 @@ async def get_file_tags(
 ):
     """Get all tags for a file"""
     service = get_vault_service()
-    user_id = current_user["user_id"]  # TODO: Get from auth
+    user_id = current_user["user_id"]
 
     try:
         tags = service.get_file_tags(user_id, vault_type, file_id)
@@ -3722,7 +3712,7 @@ async def add_favorite_file(
 ):
     """Add file to favorites"""
     service = get_vault_service()
-    user_id = current_user["user_id"]  # TODO: Get from auth
+    user_id = current_user["user_id"]
 
     try:
         result = service.add_favorite(user_id, vault_type, file_id)
@@ -3740,7 +3730,7 @@ async def remove_favorite_file(
 ):
     """Remove file from favorites"""
     service = get_vault_service()
-    user_id = current_user["user_id"]  # TODO: Get from auth
+    user_id = current_user["user_id"]
 
     try:
         success = service.remove_favorite(user_id, vault_type, file_id)
@@ -3758,7 +3748,7 @@ async def remove_favorite_file(
 async def get_favorite_files(vault_type: str = "real", current_user: Dict = Depends(get_current_user)):
     """Get list of favorite file IDs"""
     service = get_vault_service()
-    user_id = current_user["user_id"]  # TODO: Get from auth
+    user_id = current_user["user_id"]
 
     try:
         favorites = service.get_favorites(user_id, vault_type)
@@ -3779,7 +3769,7 @@ async def log_file_access_endpoint(
 ):
     """Log file access (for recent files tracking)"""
     service = get_vault_service()
-    user_id = current_user["user_id"]  # TODO: Get from auth
+    user_id = current_user["user_id"]
 
     try:
         service.log_file_access(user_id, vault_type, file_id, access_type)
@@ -3797,7 +3787,7 @@ async def get_recent_files_endpoint(
 ):
     """Get recently accessed files"""
     service = get_vault_service()
-    user_id = current_user["user_id"]  # TODO: Get from auth
+    user_id = current_user["user_id"]
 
     try:
         recent = service.get_recent_files(user_id, vault_type, limit)
@@ -3813,7 +3803,7 @@ async def get_recent_files_endpoint(
 async def get_storage_statistics(vault_type: str = "real", current_user: Dict = Depends(get_current_user)):
     """Get storage statistics and analytics"""
     service = get_vault_service()
-    user_id = current_user["user_id"]  # TODO: Get from auth
+    user_id = current_user["user_id"]
 
     try:
         stats = service.get_storage_stats(user_id, vault_type)
@@ -3833,7 +3823,7 @@ async def secure_delete_file_endpoint(
 ):
     """Securely delete a file (overwrites with random data before deletion)"""
     service = get_vault_service()
-    user_id = current_user["user_id"]  # TODO: Get from auth
+    user_id = current_user["user_id"]
 
     try:
         success = service.secure_delete_file(user_id, vault_type, file_id)

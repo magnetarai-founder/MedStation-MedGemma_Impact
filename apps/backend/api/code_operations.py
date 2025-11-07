@@ -11,15 +11,16 @@ import logging
 
 from config_paths import PATHS
 
-# Try to import permissions, but make them optional for now
+# Import auth middleware
 try:
-    from permissions import require_permission
+    from auth_middleware import get_current_user
 except ImportError:
-    # Fallback: no permission check
-    def require_permission(perm: str):
-        async def _get_user():
-            return "default_user"
-        return _get_user
+    from .auth_middleware import get_current_user
+
+try:
+    from permission_engine import require_perm
+except ImportError:
+    from .permission_engine import require_perm
 
 try:
     from audit_logger import log_action
@@ -183,15 +184,15 @@ def walk_directory(
 async def get_file_tree(
     path: str = ".",
     recursive: bool = True,
-    absolute_path: str = None  # NEW: Allow browsing any path
+    absolute_path: str = None,  # NEW: Allow browsing any path
+    current_user: Dict = Depends(get_current_user)
 ):
     """
     Get file tree for user's code workspace OR any absolute path
     Implements Continue's walkDir pattern with security
     """
     try:
-        # For now, use default user until auth is fully wired
-        user_id = "default_user"
+        user_id = current_user["user_id"]
         logger.info(f"[CODE] GET /files - user_id={user_id}, path={path}, absolute_path={absolute_path}, recursive={recursive}")
 
         # If absolute_path provided, use it instead of workspace
@@ -248,15 +249,15 @@ async def read_file(
     path: str,
     offset: int = 1,
     limit: int = 2000,
-    absolute_path: bool = False  # NEW: Allow reading absolute paths
+    absolute_path: bool = False,  # NEW: Allow reading absolute paths
+    current_user: Dict = Depends(get_current_user)
 ):
     """
     Read file content (adapted from Codex's read_file with line numbers)
     Supports offset and limit for large files
     """
     try:
-        # For now, use default user until auth is fully wired
-        user_id = "default_user"
+        user_id = current_user["user_id"]
 
         # Resolve file path
         if absolute_path or path.startswith('/'):
@@ -335,12 +336,12 @@ async def read_file(
 
 
 @router.get("/workspace/info")
-async def get_workspace_info():
+async def get_workspace_info(current_user: Dict = Depends(get_current_user)):
     """
     Get information about user's code workspace
     """
     try:
-        user_id = "default_user"
+        user_id = current_user["user_id"]
         user_workspace = get_user_workspace(user_id)
 
         # Count files and directories
@@ -414,14 +415,15 @@ def generate_unified_diff(original: str, modified: str, filepath: str) -> str:
 
 @router.post("/diff/preview")
 async def preview_diff(
-    request: DiffPreviewRequest
+    request: DiffPreviewRequest,
+    current_user: Dict = Depends(get_current_user)
 ):
     """
     Preview changes before saving (Continue's diff pattern)
     Shows unified diff of changes
     """
     try:
-        user_id = "default_user"
+        user_id = current_user["user_id"]
         user_workspace = get_user_workspace(user_id)
         file_path = user_workspace / request.path
 
@@ -468,14 +470,15 @@ async def preview_diff(
 
 @router.post("/write")
 async def write_file(
-    request: WriteFileRequest
+    request: WriteFileRequest,
+    current_user: Dict = Depends(get_current_user)
 ):
     """
     Write file with permission checking (Jarvis pattern)
     Phase 3: Full write operations
     """
     try:
-        user_id = "default_user"
+        user_id = current_user["user_id"]
         user_workspace = get_user_workspace(user_id)
         file_path = user_workspace / request.path
 
@@ -543,14 +546,15 @@ async def write_file(
 
 @router.delete("/delete")
 async def delete_file(
-    path: str
+    path: str,
+    current_user: Dict = Depends(get_current_user)
 ):
     """
     Delete file with Jarvis permission checking
     Phase 3: Destructive operations
     """
     try:
-        user_id = "default_user"
+        user_id = current_user["user_id"]
         user_workspace = get_user_workspace(user_id)
         file_path = user_workspace / path
 
@@ -658,10 +662,10 @@ init_library_db()
 
 
 @router.get("/library")
-async def get_library_documents():
+async def get_library_documents(current_user: Dict = Depends(get_current_user)):
     """Get all project library documents"""
     try:
-        user_id = "default_user"
+        user_id = current_user["user_id"]
         db_path = get_library_db_path()
         conn = sqlite3.connect(str(db_path))
         cursor = conn.cursor()
@@ -695,10 +699,10 @@ async def get_library_documents():
 
 
 @router.post("/library")
-async def create_library_document(doc: ProjectLibraryDocument):
+async def create_library_document(doc: ProjectLibraryDocument, current_user: Dict = Depends(get_current_user)):
     """Create new project library document"""
     try:
-        user_id = "default_user"
+        user_id = current_user["user_id"]
         db_path = get_library_db_path()
         conn = sqlite3.connect(str(db_path))
         cursor = conn.cursor()
@@ -737,10 +741,10 @@ async def create_library_document(doc: ProjectLibraryDocument):
 
 
 @router.patch("/library/{doc_id}")
-async def update_library_document(doc_id: int, update: UpdateDocumentRequest):
+async def update_library_document(doc_id: int, update: UpdateDocumentRequest, current_user: Dict = Depends(get_current_user)):
     """Update project library document"""
     try:
-        user_id = "default_user"
+        user_id = current_user["user_id"]
         db_path = get_library_db_path()
         conn = sqlite3.connect(str(db_path))
         cursor = conn.cursor()
@@ -792,10 +796,10 @@ async def update_library_document(doc_id: int, update: UpdateDocumentRequest):
 
 
 @router.delete("/library/{doc_id}")
-async def delete_library_document(doc_id: int):
+async def delete_library_document(doc_id: int, current_user: Dict = Depends(get_current_user)):
     """Delete project library document"""
     try:
-        user_id = "default_user"
+        user_id = current_user["user_id"]
         db_path = get_library_db_path()
         conn = sqlite3.connect(str(db_path))
         cursor = conn.cursor()
@@ -867,15 +871,13 @@ async def set_workspace_root(request: WorkspaceRootRequest):
 
 
 @router.get("/git/log")
-async def get_git_log():
+async def get_git_log(current_user: Dict = Depends(get_current_user)):
     """
     Get git commit history from the currently opened project folder
     Returns commits from the workspace root stored in localStorage
     """
     try:
-        # In a real implementation, we'd get the workspace root from localStorage
-        # For now, we'll check if there's a .git directory in the default workspace
-        user_id = "default_user"
+        user_id = current_user["user_id"]
 
         # Try to get workspace root from environment or use default
         # The frontend stores this in localStorage as 'ns.code.workspaceRoot'

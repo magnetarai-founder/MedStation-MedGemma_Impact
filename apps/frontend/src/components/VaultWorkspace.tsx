@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useDocsStore } from '@/stores/docsStore'
+import { useUserStore } from '@/stores/userStore'
 import { Lock, Fingerprint, AlertTriangle, FileText, Table2, Lightbulb, Eye, EyeOff, Grid3x3, List, Search, Plus, MoreVertical, Shield, Clock, HardDrive, FolderOpen, Filter, SlidersHorizontal, ArrowUpDown, Upload, X, File, Folder, FolderPlus, ChevronRight, Home, Image, Video, Music, FileArchive, Code, FileJson, Download, Edit2, Trash2, FolderInput, ZoomIn, ZoomOut, Maximize, Minimize, Star, Tag, History, Play, Pause, Volume2, SkipBack, SkipForward, CheckSquare, Square, Check, Move, Share2, MessageSquare, Pin, PinOff, GitBranch, RotateCcw, Send, Calendar, Link2, Copy, Settings, FileText as FileTextIcon, Palette, Archive, Activity, Database, BarChart3, TrendingUp, Bell, Wifi, WifiOff } from 'lucide-react'
 import { authenticateBiometric, isBiometricAvailable } from '@/lib/biometricAuth'
 import toast from 'react-hot-toast'
@@ -31,6 +32,8 @@ export function VaultWorkspace() {
     vaultPassphrase,
     updateDocument
   } = useDocsStore()
+  const { getUserId } = useUserStore()
+  const userId = getUserId()
   const requireTouchID = securitySettings.require_touch_id
   const [isAuthenticating, setIsAuthenticating] = useState(false)
   const [password, setPassword] = useState('')
@@ -1581,7 +1584,7 @@ export function VaultWorkspace() {
     }
 
     // Connect to WebSocket when vault is unlocked
-    vaultWebSocket.connect('default_user', currentVaultMode)
+    vaultWebSocket.connect(userId, currentVaultMode)
 
     // Handle connection events
     const handleConnected = () => {

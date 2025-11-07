@@ -15,6 +15,24 @@ from datetime import datetime
 from typing import Dict, Optional, Callable
 import signal
 import select
+import logging
+
+# Import audit logging
+try:
+    from api.audit_logger import get_audit_logger, AuditAction
+except ImportError:
+    try:
+        from audit_logger import get_audit_logger, AuditAction
+    except ImportError:
+        # Fallback for testing
+        def get_audit_logger():
+            return None
+        class AuditAction:
+            TERMINAL_SPAWN = "terminal.spawn"
+            TERMINAL_CLOSE = "terminal.close"
+            TERMINAL_WRITE = "terminal.write"
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -126,8 +144,22 @@ class TerminalBridge:
         # Start output capture task
         asyncio.create_task(self._capture_output(session))
 
-        # TODO: Add audit logging
-        # await log_action(user_id, "code.terminal.spawn", session.id)
+        # Audit log terminal spawn
+        try:
+            audit_logger = get_audit_logger()
+            if audit_logger:
+                audit_logger.log(
+                    user_id=user_id,
+                    action=AuditAction.TERMINAL_SPAWN,
+                    details={
+                        "terminal_id": session.id,
+                        "shell": shell,
+                        "cwd": cwd,
+                        "pid": process.pid
+                    }
+                )
+        except Exception as e:
+            logger.error(f"Failed to log terminal spawn: {e}")
 
         return session
 
@@ -264,7 +296,22 @@ class TerminalBridge:
             os.close(session.master)
 
         except Exception as e:
-            print(f"Error closing terminal {terminal_id}: {e}")
+            logger.error(f"Error closing terminal {terminal_id}: {e}")
+
+        # Audit log terminal close
+        try:
+            audit_logger = get_audit_logger()
+            if audit_logger:
+                audit_logger.log(
+                    user_id=session.user_id,
+                    action=AuditAction.TERMINAL_CLOSE,
+                    details={
+                        "terminal_id": terminal_id,
+                        "duration_seconds": (datetime.now() - session.created_at).total_seconds()
+                    }
+                )
+        except Exception as e:
+            logger.error(f"Failed to log terminal close: {e}")
 
         # Remove from sessions
         if terminal_id in self.sessions:

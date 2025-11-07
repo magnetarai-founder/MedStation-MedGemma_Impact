@@ -16,15 +16,16 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from services.terminal_bridge import terminal_bridge, TerminalSession
 
-# Permission checking (TODO: integrate with full auth system)
+# Import auth middleware
 try:
-    from permissions import require_permission
+    from auth_middleware import get_current_user
 except ImportError:
-    # Fallback for testing
-    def require_permission(perm: str):
-        async def _get_user():
-            return {"user_id": "default_user", "role": "admin"}
-        return _get_user
+    from .auth_middleware import get_current_user
+
+try:
+    from permission_engine import require_perm
+except ImportError:
+    from .permission_engine import require_perm
 
 # Audit logging
 try:
@@ -40,7 +41,8 @@ router = APIRouter(prefix="/api/v1/terminal", tags=["terminal"])
 @router.post("/spawn")
 async def spawn_terminal(
     shell: Optional[str] = None,
-    cwd: Optional[str] = None
+    cwd: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Spawn a new terminal session
@@ -52,8 +54,7 @@ async def spawn_terminal(
     Returns:
         Terminal session info with ID and WebSocket URL
     """
-    # For now, use default user until auth is fully wired
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     try:
         session = await terminal_bridge.spawn_terminal(
@@ -80,7 +81,7 @@ async def spawn_terminal(
 
 
 @router.post("/spawn-system")
-async def spawn_system_terminal():
+async def spawn_system_terminal(current_user: dict = Depends(get_current_user)):
     """
     Spawn a system terminal (Warp, iTerm2, Terminal.app) with bridge script
 
@@ -93,7 +94,7 @@ async def spawn_system_terminal():
     Returns:
         Active terminal count and session info
     """
-    user_id = "default_user"
+    user_id = current_user["user_id"]
 
     try:
         # Check current session count (max 3) - use system terminal list
@@ -218,14 +219,14 @@ exec $SHELL
 
 
 @router.get("/sessions")
-async def list_terminal_sessions():
+async def list_terminal_sessions(current_user: dict = Depends(get_current_user)):
     """
     List all terminal sessions for current user
 
     Returns:
         List of active terminal sessions
     """
-    user_id = "default_user"
+    user_id = current_user["user_id"]
     sessions = terminal_bridge.list_sessions(user_id=user_id)
 
     return {
@@ -235,7 +236,7 @@ async def list_terminal_sessions():
 
 
 @router.get("/{terminal_id}")
-async def get_terminal_session(terminal_id: str):
+async def get_terminal_session(terminal_id: str, current_user: dict = Depends(get_current_user)):
     """
     Get terminal session info
 
@@ -245,14 +246,15 @@ async def get_terminal_session(terminal_id: str):
     Returns:
         Session info
     """
+    user_id = current_user["user_id"]
     session = terminal_bridge.get_session(terminal_id)
 
     if not session:
         raise HTTPException(status_code=404, detail="Terminal not found")
 
-    # TODO: Check ownership when auth is implemented
-    # if session.user_id != current_user['user_id']:
-    #     raise HTTPException(status_code=403, detail="Access denied")
+    # Check ownership
+    if session.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Access denied")
 
     return {
         'id': session.id,
@@ -264,7 +266,7 @@ async def get_terminal_session(terminal_id: str):
 
 
 @router.delete("/{terminal_id}")
-async def close_terminal_session(terminal_id: str):
+async def close_terminal_session(terminal_id: str, current_user: dict = Depends(get_current_user)):
     """
     Close a terminal session
 
@@ -274,15 +276,15 @@ async def close_terminal_session(terminal_id: str):
     Returns:
         Success message
     """
-    user_id = "default_user"
+    user_id = current_user["user_id"]
     session = terminal_bridge.get_session(terminal_id)
 
     if not session:
         raise HTTPException(status_code=404, detail="Terminal not found")
 
-    # TODO: Check ownership when auth is implemented
-    # if session.user_id != user_id:
-    #     raise HTTPException(status_code=403, detail="Access denied")
+    # Check ownership
+    if session.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Access denied")
 
     await terminal_bridge.close_terminal(terminal_id)
 
@@ -301,7 +303,8 @@ async def close_terminal_session(terminal_id: str):
 @router.get("/{terminal_id}/context")
 async def get_terminal_context(
     terminal_id: str,
-    lines: int = Query(default=100, ge=1, le=1000)
+    lines: int = Query(default=100, ge=1, le=1000),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Get terminal context (recent output) for AI/LLM
@@ -313,14 +316,15 @@ async def get_terminal_context(
     Returns:
         Recent terminal output as context
     """
+    user_id = current_user["user_id"]
     session = terminal_bridge.get_session(terminal_id)
 
     if not session:
         raise HTTPException(status_code=404, detail="Terminal not found")
 
-    # TODO: Check ownership when auth is implemented
-    # if session.user_id != user_id:
-    #     raise HTTPException(status_code=403, detail="Access denied")
+    # Check ownership
+    if session.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Access denied")
 
     context = terminal_bridge.get_context(terminal_id, lines=lines)
 
@@ -332,13 +336,14 @@ async def get_terminal_context(
 
 
 @router.websocket("/ws/{terminal_id}")
-async def terminal_websocket(websocket: WebSocket, terminal_id: str):
+async def terminal_websocket(websocket: WebSocket, terminal_id: str, token: Optional[str] = Query(None)):
     """
     WebSocket endpoint for real-time terminal I/O
 
     Args:
         websocket: WebSocket connection
         terminal_id: Terminal session ID
+        token: JWT token for authentication (query param)
 
     Protocol:
         Client -> Server: {"type": "input", "data": "command\n"}
@@ -346,6 +351,23 @@ async def terminal_websocket(websocket: WebSocket, terminal_id: str):
         Server -> Client: {"type": "output", "data": "command output"}
         Server -> Client: {"type": "error", "message": "error message"}
     """
+    # Authenticate before accepting connection
+    if not token:
+        await websocket.close(code=1008, reason="Missing authentication token")
+        return
+
+    try:
+        from auth_middleware import auth_service
+    except ImportError:
+        from .auth_middleware import auth_service
+
+    user_payload = auth_service.verify_token(token)
+    if not user_payload:
+        await websocket.close(code=1008, reason="Invalid or expired token")
+        return
+
+    user_id = user_payload["user_id"]
+
     await websocket.accept()
 
     session = terminal_bridge.get_session(terminal_id)
@@ -358,8 +380,14 @@ async def terminal_websocket(websocket: WebSocket, terminal_id: str):
         await websocket.close()
         return
 
-    # TODO: Add user authentication check via WebSocket
-    # For now, rely on session ownership validation
+    # Check ownership
+    if session.user_id != user_id:
+        await websocket.send_json({
+            'type': 'error',
+            'message': 'Access denied'
+        })
+        await websocket.close()
+        return
 
     # Register broadcast callback for this WebSocket
     async def send_output(data: str):
@@ -438,7 +466,8 @@ async def terminal_websocket(websocket: WebSocket, terminal_id: str):
 async def resize_terminal(
     terminal_id: str,
     rows: int = Query(..., ge=1, le=1000),
-    cols: int = Query(..., ge=1, le=1000)
+    cols: int = Query(..., ge=1, le=1000),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Resize terminal window (HTTP endpoint as alternative to WebSocket)
@@ -451,14 +480,15 @@ async def resize_terminal(
     Returns:
         Success message
     """
+    user_id = current_user["user_id"]
     session = terminal_bridge.get_session(terminal_id)
 
     if not session:
         raise HTTPException(status_code=404, detail="Terminal not found")
 
-    # TODO: Check ownership when auth is implemented
-    # if session.user_id != user_id:
-    #     raise HTTPException(status_code=403, detail="Access denied")
+    # Check ownership
+    if session.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Access denied")
 
     await terminal_bridge.resize_terminal(terminal_id, rows, cols)
 

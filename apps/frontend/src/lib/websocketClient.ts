@@ -45,11 +45,11 @@ class VaultWebSocketClient {
   private reconnectDelay = 1000 // Start with 1 second
   private pingInterval: NodeJS.Timeout | null = null
   private listeners: Map<string, Set<(data: any) => void>> = new Map()
-  private userId: string = 'default_user'
+  private userId: string = ''
   private vaultType: string = 'real'
   private isConnecting = false
 
-  connect(userId: string = 'default_user', vaultType: string = 'real') {
+  connect(userId: string, vaultType: string = 'real') {
     if (this.isConnecting || (this.ws && this.ws.readyState === WebSocket.OPEN)) {
       console.log('WebSocket already connected or connecting')
       return
@@ -70,8 +70,8 @@ class VaultWebSocketClient {
     // Construct WebSocket URL with JWT token in query param
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.hostname
-    // Use environment variable if set, otherwise fallback to 8742
-    const port = import.meta.env.VITE_WS_PORT || '8742'
+    // Use backend API port (8000) - WebSocket is served by the same FastAPI server
+    const port = import.meta.env.VITE_WS_PORT || '8000'
     const wsUrl = `${protocol}//${host}:${port}/api/v1/vault/ws/${userId}?vault_type=${vaultType}&token=${encodeURIComponent(token)}`
 
     console.log(`Connecting to WebSocket: ${wsUrl}`)

@@ -15,6 +15,11 @@ try:
 except ImportError:
     from permission_engine import get_permission_engine
 
+try:
+    from .rate_limiter import rate_limiter, get_client_ip
+except ImportError:
+    from rate_limiter import rate_limiter, get_client_ip
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/auth", tags=["authentication"])
@@ -75,7 +80,15 @@ async def register(request: Request, body: RegisterRequest):
     Register a new user
 
     This is the initial setup - creates the first user on the device
+
+    Rate limited to prevent abuse:
+    - 5 attempts per hour per IP
     """
+    # Rate limit registration attempts (prevent spam/abuse)
+    client_ip = get_client_ip(request)
+    if not rate_limiter.check_rate_limit(f"auth:register:{client_ip}", max_requests=5, window_seconds=3600):
+        raise HTTPException(status_code=429, detail="Too many registration attempts. Please try again later.")
+
     try:
         user = auth_service.create_user(
             username=body.username,
@@ -101,7 +114,15 @@ async def register(request: Request, body: RegisterRequest):
 async def login(request: Request, body: LoginRequest):
     """
     Login and receive JWT token
+
+    Rate limited to prevent brute force attacks:
+    - 10 attempts per minute per IP
     """
+    # Rate limit login attempts (prevent brute force)
+    client_ip = get_client_ip(request)
+    if not rate_limiter.check_rate_limit(f"auth:login:{client_ip}", max_requests=10, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Too many login attempts. Please try again later.")
+
     try:
         auth_result = auth_service.authenticate(
             username=body.username,

@@ -2,6 +2,9 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
+// Read backend port from environment (set by start_web.sh)
+const backendPort = process.env.VITE_BACKEND_PORT || '8000'
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -24,19 +27,19 @@ export default defineConfig({
     },
     proxy: {
       '/api/v1/lan': {
-        target: 'http://localhost:8001',
+        target: `http://localhost:${backendPort}`,
         changeOrigin: true,
       },
       '/api/v1/p2p': {
-        target: 'http://localhost:8001',
+        target: `http://localhost:${backendPort}`,
         changeOrigin: true,
       },
       '/api': {
-        target: 'http://localhost:8000',
+        target: `http://localhost:${backendPort}`,
         changeOrigin: true,
       },
       '/ws': {
-        target: 'ws://localhost:8000',
+        target: `ws://localhost:${backendPort}`,
         ws: true,
         changeOrigin: true,
       },

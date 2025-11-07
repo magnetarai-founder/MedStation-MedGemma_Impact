@@ -244,11 +244,14 @@ if cors_origins_env:
     # Parse comma-separated list from environment
     allowed_origins = [origin.strip() for origin in cors_origins_env.split(',') if origin.strip()]
 else:
-    # Default dev origins
+    # Default dev origins - include common Vite fallback ports
     allowed_origins = [
         "http://localhost:4200",
+        "http://localhost:4201",  # Vite fallback when 4200 is busy
         "http://127.0.0.1:4200",
-        "http://localhost:5173",
+        "http://localhost:5173",  # Vite default
+        "http://localhost:5174",  # Vite fallback
+        "http://localhost:5175",  # Vite fallback
         "http://localhost:3000"
     ]
 

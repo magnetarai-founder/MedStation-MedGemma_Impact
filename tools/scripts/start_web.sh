@@ -104,6 +104,11 @@ for i in {1..30}; do
 done
 echo ""
 
+# Export backend port for frontend (WebSocket + API proxy)
+export VITE_WS_PORT=$BACKEND_PORT
+export VITE_BACKEND_PORT=$BACKEND_PORT
+echo "📡 Frontend will connect to backend on port: $BACKEND_PORT"
+
 # Install frontend dependencies only if needed
 cd apps/frontend
 if [ ! -d "node_modules" ] || [ ! -f "node_modules/.package-lock.json" ]; then
