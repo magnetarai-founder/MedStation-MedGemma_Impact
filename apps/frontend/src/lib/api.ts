@@ -401,6 +401,20 @@ class NeutronAPI {
     return data
   }
 
+  async agentCapabilities(): Promise<{
+    engines: Array<{
+      name: string
+      available: boolean
+      version?: string
+      error?: string
+      remediation?: string
+    }>
+    features: Record<string, boolean>
+  }> {
+    const { data } = await this.client.get('/v1/agent/capabilities')
+    return data
+  }
+
   async agentContext(params: {
     sessionId?: string
     cwd?: string
