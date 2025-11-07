@@ -119,25 +119,43 @@ async def login(request: Request, body: LoginRequest):
     - 10 attempts per minute per IP
     """
     # Rate limit login attempts (prevent brute force)
-    # BUT: Skip rate limiting for privileged accounts (Founder Rights, Super Admin)
-    # These accounts need guaranteed access for emergency/administrative purposes
+    # BUT: Skip rate limiting for privileged accounts:
+    # - Founder Rights: Always exempt (hardcoded)
+    # - Super Admin: Always exempt (hardcoded)
+    # - Admin: Exempt if granted auth.bypass_rate_limit permission
     from auth_middleware import FOUNDER_RIGHTS_USERNAME
 
     # First check if this is a privileged login attempt
     is_privileged = body.username == FOUNDER_RIGHTS_USERNAME
 
-    # If not founder, check if user exists and is super_admin
+    # If not founder, check role and permissions
     if not is_privileged:
         try:
             import sqlite3
             from auth_middleware import auth_service
             conn = sqlite3.connect(str(auth_service.db_path))
             cursor = conn.cursor()
-            cursor.execute("SELECT role FROM users WHERE username = ?", (body.username,))
+            cursor.execute("SELECT user_id, role FROM users WHERE username = ?", (body.username,))
             row = cursor.fetchone()
             conn.close()
-            if row and row[0] == 'super_admin':
-                is_privileged = True
+
+            if row:
+                user_id, role = row
+
+                # Super Admin: always privileged (hardcoded)
+                if role == 'super_admin':
+                    is_privileged = True
+
+                # Admin: check for bypass permission
+                elif role == 'admin':
+                    try:
+                        perm_engine = get_permission_engine()
+                        context = perm_engine.get_user_context(user_id)
+                        # Check if admin has been granted bypass permission
+                        if context.effective_permissions.get('auth.bypass_rate_limit', False):
+                            is_privileged = True
+                    except:
+                        pass  # If permission check fails, apply rate limiting
         except:
             pass  # If check fails, apply rate limiting as normal
 
