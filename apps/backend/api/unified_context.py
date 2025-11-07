@@ -13,14 +13,13 @@ from dataclasses import dataclass, field
 import json
 
 try:
-    from .config import get_config_paths
+    from .config_paths import PATHS
 except ImportError:
-    from config import get_config_paths
+    from config_paths import PATHS
 
 logger = logging.getLogger(__name__)
 
-# Get PATHS for consistent data directory
-PATHS = get_config_paths()
+# PATHS imported from config_paths module
 
 
 @dataclass

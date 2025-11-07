@@ -36,8 +36,16 @@ export function Header({ onOpenServerControls }: HeaderProps) {
       // Stop polling after 3 consecutive failures
       if (queueFailures >= 3) return
 
+      // Get auth token
+      const token = localStorage.getItem('auth_token')
+      if (!token) return // Don't poll if not authenticated
+
       try {
-        const response = await fetch('/api/v1/monitoring/metal4')
+        const response = await fetch('/api/v1/monitoring/metal4', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
         if (!response.ok) {
           setQueueFailures(prev => prev + 1)
           return
@@ -74,9 +82,13 @@ export function Header({ onOpenServerControls }: HeaderProps) {
 
   const handleSpawnTerminal = async () => {
     try {
+      const token = localStorage.getItem('auth_token')
       const response = await fetch('/api/v1/terminal/spawn-system', {
         method: 'POST',
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : ''
+        }
       })
 
       if (!response.ok) {

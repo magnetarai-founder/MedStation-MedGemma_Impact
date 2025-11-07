@@ -69,7 +69,7 @@ export default function DangerZoneTab() {
       return
     }
 
-    setLoading({ ...loading, `verify-${backupName}`: true })
+    setLoading({ ...loading, [`verify-${backupName}`]: true })
     try {
       const response = await fetch('/api/v1/backups/verify', {
         method: 'POST',
@@ -105,7 +105,7 @@ export default function DangerZoneTab() {
       return
     }
 
-    setLoading({ ...loading, `restore-${backupName}`: true })
+    setLoading({ ...loading, [`restore-${backupName}`]: true })
     try {
       const response = await fetch('/api/v1/backups/restore', {
         method: 'POST',

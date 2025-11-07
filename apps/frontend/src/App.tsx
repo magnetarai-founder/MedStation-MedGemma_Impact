@@ -138,8 +138,11 @@ export default function App() {
     }
   }, [authState])
 
-  // Pre-load default AI model on mount
+  // Pre-load default AI model after authentication
   useEffect(() => {
+    // Only preload if authenticated
+    if (authState !== 'authenticated') return
+
     const preloadDefaultModel = async () => {
       try {
         console.log(`Pre-loading default model: ${settings.defaultModel}`)
@@ -154,7 +157,7 @@ export default function App() {
     // Small delay to ensure Ollama server is ready
     const timeoutId = setTimeout(preloadDefaultModel, 2000)
     return () => clearTimeout(timeoutId)
-  }, [settings.defaultModel])
+  }, [authState, settings.defaultModel])
 
   // Handle open library with pre-filled code from CodeEditor
   useEffect(() => {
