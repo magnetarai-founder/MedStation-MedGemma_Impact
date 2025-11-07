@@ -38,13 +38,7 @@ try:
     from api.learning_system import LearningSystem
     from api.ane_router import get_ane_router, ANERouter
     from api.learning_engine import get_learning_engine
-    from api.unified_context import get_unified_context
-except ImportError:
-    # Standalone fallback
-    try:
-        from .unified_context import get_unified_context
-    except ImportError:
-        from unified_context import get_unified_context
+    from .unified_context import get_unified_context
 except ImportError:
     # Fallback for standalone execution
     from chat_memory import get_memory, ConversationEvent

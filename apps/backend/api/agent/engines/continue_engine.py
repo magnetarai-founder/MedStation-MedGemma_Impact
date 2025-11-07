@@ -7,9 +7,19 @@ Never writes files directly; returns ChangeProposal for PatchBus.
 import shutil
 import subprocess
 from typing import List
-from tooling_integrations import build_context_block
 
-from patchbus import ChangeProposal
+try:
+    from ..patchbus import ChangeProposal
+except ImportError:
+    from patchbus import ChangeProposal
+
+
+# Stub for tooling_integrations
+def build_context_block(snippets):
+    """Build context block from snippets"""
+    if not snippets:
+        return ""
+    return "\n".join(f"# Context: {s}" for s in snippets)
 
 
 class ContinueEngine:

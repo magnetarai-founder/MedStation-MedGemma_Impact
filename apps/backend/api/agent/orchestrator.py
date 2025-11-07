@@ -17,15 +17,19 @@ try:
     from ..rate_limiter import rate_limiter, get_client_ip
     from ..permission_engine import require_perm
     from ..audit_logger import get_audit_logger, AuditAction
+    from ..config import get_config_paths
 except ImportError:
     from auth_middleware import get_current_user
     from rate_limiter import rate_limiter, get_client_ip
     from permission_engine import require_perm
     from audit_logger import get_audit_logger, AuditAction
+    from config import get_config_paths
+
+PATHS = get_config_paths()
 
 # Agent components
 from .patchbus import PatchBus, ChangeProposal
-from .intent_classifier import IntentClassifier
+from .intent_classifier import Phi3IntentClassifier as IntentClassifier
 from .planner_enhanced import EnhancedPlanner
 
 logger = logging.getLogger(__name__)
@@ -117,6 +121,7 @@ class ApplyResponse(BaseModel):
 # ==================== Endpoints ====================
 
 @router.post("/route", response_model=RouteResponse)
+@require_perm("code.use")
 async def route_input(
     request: Request,
     body: RouteRequest,
@@ -136,9 +141,6 @@ async def route_input(
         window_seconds=60
     ):
         raise HTTPException(status_code=429, detail="Too many route requests")
-
-    # Permission check
-    require_perm(current_user['user_id'], 'code.use')
 
     try:
         # Use intent classifier
@@ -181,6 +183,7 @@ async def route_input(
 
 
 @router.post("/plan", response_model=PlanResponse)
+@require_perm("code.use")
 async def generate_plan(
     request: Request,
     body: PlanRequest,
@@ -200,30 +203,27 @@ async def generate_plan(
     ):
         raise HTTPException(status_code=429, detail="Too many plan requests")
 
-    # Permission check
-    require_perm(current_user['user_id'], 'code.use')
-
     try:
         # Use enhanced planner
         planner = EnhancedPlanner()
 
-        # Generate plan
+        # Generate plan (EnhancedPlanner.plan returns a Plan dataclass)
         plan_result = planner.plan(
-            task_description=body.input,
-            context=body.context_bundle or {}
+            description=body.input,
+            files=[]  # TODO: extract files from context_bundle
         )
 
-        # Map to our response format
+        # Map Plan dataclass to our response format
         steps = []
-        for step in plan_result.get('steps', []):
+        for step in plan_result.steps:
             steps.append(PlanStep(
-                description=step.get('description', ''),
-                risk_level=step.get('risk', 'low'),
-                estimated_files=step.get('files', 0)
+                description=step.description,
+                risk_level=step.risk,
+                estimated_files=step.files
             ))
 
-        risks = plan_result.get('risks', [])
-        requires_confirmation = plan_result.get('requires_approval', False)
+        risks = plan_result.risks
+        requires_confirmation = plan_result.requires_approval
 
         # Audit log
         audit_logger = get_audit_logger()
@@ -242,8 +242,8 @@ async def generate_plan(
             steps=steps,
             risks=risks,
             requires_confirmation=requires_confirmation,
-            estimated_time_min=len(steps) * 2,  # Rough estimate
-            model_used=body.model or 'deepseek-r1:32b'
+            estimated_time_min=plan_result.estimated_time_min,
+            model_used=plan_result.model_used
         )
 
     except Exception as e:
@@ -252,6 +252,7 @@ async def generate_plan(
 
 
 @router.post("/context", response_model=ContextResponse)
+@require_perm("code.use")
 async def get_context_bundle(
     request: Request,
     body: ContextRequest,
@@ -271,16 +272,34 @@ async def get_context_bundle(
     ):
         raise HTTPException(status_code=429, detail="Too many context requests")
 
-    # Permission check
-    require_perm(current_user['user_id'], 'code.use')
-
     try:
         # Build context bundle
         # TODO: Integrate with Continue's context providers
 
         file_tree_slice = []
         if body.repo_root:
-            repo_path = Path(body.repo_root)
+            repo_path = Path(body.repo_root).resolve()
+
+            # Security: Validate repo_root is within allowed workspace
+            # Allow paths under user's home directory or PATHS.data_dir
+            user_home = Path.home()
+            allowed_roots = [user_home, PATHS.data_dir]
+
+            is_allowed = False
+            for allowed_root in allowed_roots:
+                try:
+                    repo_path.relative_to(allowed_root)
+                    is_allowed = True
+                    break
+                except ValueError:
+                    continue
+
+            if not is_allowed:
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Access denied: repo_root must be within user home directory"
+                )
+
             if repo_path.exists():
                 # Get top-level structure
                 file_tree_slice = [
@@ -315,6 +334,8 @@ async def get_context_bundle(
 
 
 @router.post("/apply", response_model=ApplyResponse)
+@require_perm("code.use")
+@require_perm("code.edit")
 async def apply_plan(
     request: Request,
     body: ApplyRequest,
@@ -333,10 +354,6 @@ async def apply_plan(
         window_seconds=60
     ):
         raise HTTPException(status_code=429, detail="Too many apply requests")
-
-    # Permission check (elevated)
-    require_perm(current_user['user_id'], 'code.use')
-    require_perm(current_user['user_id'], 'code.edit')
 
     try:
         # Import aider engine and patchbus
