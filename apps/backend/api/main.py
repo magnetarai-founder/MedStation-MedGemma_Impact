@@ -252,6 +252,9 @@ else:
         "http://localhost:5173",  # Vite default
         "http://localhost:5174",  # Vite fallback
         "http://localhost:5175",  # Vite fallback
+        "http://127.0.0.1:5173",  # 127.0.0.1 equivalents for Vite
+        "http://127.0.0.1:5174",
+        "http://127.0.0.1:5175",
         "http://localhost:3000"
     ]
 

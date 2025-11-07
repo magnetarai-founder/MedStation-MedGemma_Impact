@@ -2,15 +2,19 @@
 Audit Logging System
 
 Always-on logging of all data access and sensitive operations.
-Encrypted storage, admin-viewable only.
+SQLite storage, admin-viewable only.
 
 Features:
 - Always on (cannot be disabled)
 - Logs: user_id, action, resource, timestamp, ip_address
-- Encrypted storage in separate audit.db
+- Persistent storage in separate audit.db (SQLite)
 - Admin-only viewing (Super Admin + Admin roles)
 - 90-day retention with automatic cleanup
 - CSV export for compliance reviews
+
+Note: Currently uses unencrypted SQLite. For production deployments requiring
+encryption at rest, enable filesystem-level encryption (LUKS, FileVault, BitLocker)
+or use SQLCipher as a drop-in replacement for sqlite3.
 """
 
 import json
@@ -111,7 +115,11 @@ class AuditAction:
 
 class AuditLogger:
     """
-    Audit logging service with encrypted storage
+    Audit logging service with persistent SQLite storage
+
+    Storage is unencrypted by default. For encryption at rest in production:
+    - Use filesystem-level encryption (LUKS, FileVault, BitLocker)
+    - Or replace sqlite3 with pysqlcipher3 for database-level encryption
     """
 
     def __init__(self, db_path: Optional[Path] = None):

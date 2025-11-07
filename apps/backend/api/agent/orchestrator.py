@@ -446,9 +446,12 @@ async def get_context_bundle(
             user_id = current_user['user_id']
             user_workspace_root = PATHS.data_dir / "code_workspaces" / user_id
 
-            # Also allow user's home directory for convenience
-            user_home = Path.home()
-            allowed_roots = [user_workspace_root, user_home]
+            # Allow user's home directory for convenience (can be disabled via env var)
+            # Set ELOHIM_STRICT_WORKSPACE=1 to restrict to code_workspaces only
+            allowed_roots = [user_workspace_root]
+            if not os.getenv("ELOHIM_STRICT_WORKSPACE", "").lower() in ("1", "true", "yes"):
+                user_home = Path.home()
+                allowed_roots.append(user_home)
 
             is_allowed = False
             for allowed_root in allowed_roots:
@@ -495,17 +498,25 @@ async def get_context_bundle(
                             if commit:
                                 commit_hash = commit.split()[0]
                                 # Get diff for this commit
-                                diff_result = subprocess.run(
-                                    ["git", "-C", str(repo_path), "show", "--stat", commit_hash],
-                                    capture_output=True,
-                                    text=True,
-                                    timeout=5
-                                )
-                                if diff_result.returncode == 0:
-                                    recent_diffs.append({
-                                        "commit": commit,
-                                        "diff_stat": diff_result.stdout[:500]  # Truncate
-                                    })
+                                try:
+                                    diff_result = subprocess.run(
+                                        ["git", "-C", str(repo_path), "show", "--stat", commit_hash],
+                                        capture_output=True,
+                                        text=True,
+                                        timeout=5
+                                    )
+                                    if diff_result.returncode == 0:
+                                        recent_diffs.append({
+                                            "commit": commit,
+                                            "diff_stat": diff_result.stdout[:500]  # Truncate
+                                        })
+                                except subprocess.TimeoutExpired:
+                                    # On timeout, skip this commit but continue with others
+                                    logger.warning(f"Git show timeout for {commit_hash}, skipping")
+                                    continue
+                except subprocess.TimeoutExpired:
+                    # On timeout getting commits, return empty list but don't fail the whole request
+                    logger.warning(f"Git log timeout for {repo_path}, proceeding without git context")
                 except Exception as e:
                     logger.warning(f"Failed to get git diffs: {e}")
 
