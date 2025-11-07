@@ -85,6 +85,17 @@ class AuditAction:
     # Settings
     SETTINGS_CHANGED = "settings.changed"
 
+    # Code & Agent Operations
+    CODE_ASSIST = "code.assist"
+    CODE_EDIT = "code.edit"
+    CODE_FILE_OPENED = "code.file.opened"
+    CODE_FILE_SAVED = "code.file.saved"
+
+    # Terminal Operations
+    TERMINAL_SPAWN = "terminal.spawn"
+    TERMINAL_CLOSE = "terminal.close"
+    TERMINAL_COMMAND = "terminal.command"
+
     # Admin/Founder Rights Operations
     ADMIN_LIST_USERS = "admin.list.users"
     ADMIN_VIEW_USER = "admin.view.user"

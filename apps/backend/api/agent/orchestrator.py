@@ -17,13 +17,13 @@ try:
     from ..rate_limiter import rate_limiter, get_client_ip
     from ..permission_engine import require_perm
     from ..audit_logger import get_audit_logger, AuditAction
-    from ..config import get_config_paths
+    from ..config_paths import get_config_paths
 except ImportError:
     from auth_middleware import get_current_user
     from rate_limiter import rate_limiter, get_client_ip
     from permission_engine import require_perm
     from audit_logger import get_audit_logger, AuditAction
-    from config import get_config_paths
+    from config_paths import get_config_paths
 
 PATHS = get_config_paths()
 
@@ -157,8 +157,16 @@ async def get_capabilities(current_user: Dict = Depends(get_current_user)):
     aider_remediation = None
 
     try:
-        # Check if aider is available
-        venv_path = Path(os.getcwd()) / "venv"
+        # Detect venv from sys.executable or climb to project root
+        import sys
+        if hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix):
+            # Running in venv, use current venv
+            venv_path = Path(sys.executable).parent.parent
+        else:
+            # Not in venv, try project root
+            project_root = Path(os.getcwd()).parent.parent.parent
+            venv_path = project_root / "venv"
+
         aider_path = venv_path / "bin" / "aider"
 
         if aider_path.exists():
@@ -561,15 +569,21 @@ async def apply_plan(
         from .engines.aider_engine import AiderEngine
         from pathlib import Path
 
-        # Get venv path (use current venv or default)
-        venv_path = Path(os.getcwd()) / "venv"
+        # Get venv path (use project root venv or default)
+        # Climb up to project root from server cwd (apps/backend/api)
+        project_root = Path(os.getcwd()).parent.parent.parent
+        venv_path = project_root / "venv"
         if not venv_path.exists():
             venv_path = Path.home() / ".virtualenvs" / "elohimos"
+
+        # Get repo root from request or use project root
+        repo_root = Path(body.repo_root) if body.repo_root else project_root
 
         # Initialize Aider with correct signature
         aider = AiderEngine(
             model=body.model or 'qwen2.5-coder:32b',
-            venv_path=venv_path
+            venv_path=venv_path,
+            repo_root=repo_root
         )
 
         # Get files from context or empty list
@@ -592,8 +606,8 @@ async def apply_plan(
             )]
             patch_id = None
         else:
-            # Apply via PatchBus
-            apply_result = PatchBus.apply(proposal)
+            # Apply via PatchBus with repo_root
+            apply_result = PatchBus.apply(proposal, repo_root=body.repo_root)
 
             if not apply_result.get('success'):
                 raise HTTPException(
@@ -609,6 +623,25 @@ async def apply_plan(
                 patch_text=proposal.diff,
                 summary=f"Applied changes to {f}"
             ) for f in apply_result.get('files', [])]
+
+            # Add to unified context for persistence
+            try:
+                from ..unified_context import get_unified_context
+                context_mgr = get_unified_context()
+                context_mgr.add_entry(
+                    user_id=current_user['user_id'],
+                    session_id=body.repo_root or 'default',  # Use repo_root as session_id
+                    source='agent',
+                    entry_type='patch',
+                    content=proposal.description,
+                    metadata={
+                        'patch_id': patch_id,
+                        'files': apply_result.get('files', []),
+                        'lines': apply_result.get('lines', 0)
+                    }
+                )
+            except Exception as e:
+                logger.warning(f"Failed to add patch to unified context: {e}")
 
         # Audit log
         audit_logger = get_audit_logger()

@@ -22,9 +22,10 @@ def build_context_block(snippets):
 
 
 class AiderEngine:
-    def __init__(self, model: str, venv_path: Path):
+    def __init__(self, model: str, venv_path: Path, repo_root: Path = None):
         self.model = model
         self.venv_path = venv_path
+        self.repo_root = repo_root or Path.cwd()
 
     def propose(self, description: str, files: List[str], context_snippets: List[str]) -> ChangeProposal:
         # Build a prompt that asks for unified diff without applying changes
@@ -38,13 +39,13 @@ class AiderEngine:
         cmd = [
             "bash",
             "-c",
-            f"source {self.venv_path}/bin/activate && export AIDER_NO_BROWSER=1 && export NO_COLOR=1 && "
+            f"cd {self.repo_root} && source {self.venv_path}/bin/activate && export AIDER_NO_BROWSER=1 && export NO_COLOR=1 && "
             f"aider --yes --no-auto-commits --no-git --model ollama/{self.model} --message '{escaped}'"
             + (" " + " ".join(files) if files else "")
         ]
 
         try:
-            p = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            p = subprocess.run(cmd, capture_output=True, text=True, timeout=300, cwd=str(self.repo_root))
             out = p.stdout + p.stderr
         except Exception as e:
             out = str(e)

@@ -55,14 +55,21 @@ class PatchBus:
         return {"files": list(sorted(set(files))), "lines": lines}
 
     @staticmethod
-    def apply(proposal: ChangeProposal) -> Dict[str, object]:
+    def apply(proposal: ChangeProposal, repo_root: str = None) -> Dict[str, object]:
         """Apply a change proposal via CodexEngine with validation and rollback."""
         try:
             from .engines.codex_engine import CodexEngine
         except ImportError:
             from engines.codex_engine import CodexEngine
+        from pathlib import Path
+
         patch_id = f"P{int(time.time())}_{hashlib.md5(proposal.diff.encode()).hexdigest()[:8]}"
-        engine = CodexEngine()
+
+        # Use provided repo_root or default to cwd
+        if repo_root:
+            engine = CodexEngine(repo_root=Path(repo_root))
+        else:
+            engine = CodexEngine()
         # Dry-run: do not apply, just summarize
         if getattr(proposal, 'dry_run', False):
             summary = PatchBus.summarize_diff(proposal.diff)

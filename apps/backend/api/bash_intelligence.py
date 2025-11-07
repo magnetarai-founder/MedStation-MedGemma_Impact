@@ -264,8 +264,8 @@ Bash command:"""
         if re.search(r'\bls\s+\|', command):
             suggestions.append("💡 Consider using ls options instead of piping")
 
-        if 'rm' in command and '-f' in command and '-r' not in command:
-            suggestions.append("ℹ️  Use 'rm -rf' for directories")
+        if 'rm' in command and '-r' in command:
+            suggestions.append("⚠️  Use 'rm -r' carefully - specify explicit paths to avoid accidents")
 
         return suggestions
 
