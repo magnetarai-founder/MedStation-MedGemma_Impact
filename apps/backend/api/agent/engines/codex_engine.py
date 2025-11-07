@@ -17,10 +17,10 @@ import difflib
 from .codex_deterministic_ops import DeterministicOps
 from .codex_codemods import CodemodOperations
 
-# Platform-specific lock import
-if sys.platform != "win32":
+# Platform-specific lock import (safe for Windows)
+try:
     import fcntl
-else:
+except ImportError:
     fcntl = None  # Windows doesn't have fcntl
 
 
