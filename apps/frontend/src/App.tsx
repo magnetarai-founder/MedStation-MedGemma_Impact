@@ -138,11 +138,10 @@ export default function App() {
     }
   }, [authState])
 
-  // Pre-load default AI model after authentication and user fetch
+  // Pre-load default AI model after session is created
   useEffect(() => {
-    // Only preload if authenticated, user loaded, and token exists
-    if (authState !== 'authenticated') return
-    if (!user) return // Wait for user to be fetched
+    // Only preload if we have a valid session
+    if (!sessionId) return
     if (!localStorage.getItem('auth_token')) return
 
     const preloadDefaultModel = async () => {
@@ -150,16 +149,19 @@ export default function App() {
         console.log(`Pre-loading default model: ${settings.defaultModel}`)
         await api.preloadModel(settings.defaultModel, '1h')
         console.log(`✓ Model '${settings.defaultModel}' pre-loaded successfully`)
-      } catch (error) {
-        console.warn('Failed to pre-load model:', error)
-        // Non-critical error - don't block app initialization
+      } catch (error: any) {
+        // Silently ignore auth errors during startup
+        if (error?.response?.status === 401) {
+          return
+        }
+        // Non-critical error - don't log to avoid console noise
       }
     }
 
     // Delay to ensure Ollama server is ready
-    const timeoutId = setTimeout(preloadDefaultModel, 2000)
+    const timeoutId = setTimeout(preloadDefaultModel, 3000)
     return () => clearTimeout(timeoutId)
-  }, [authState, user, settings.defaultModel])
+  }, [sessionId, settings.defaultModel])
 
   // Handle open library with pre-filled code from CodeEditor
   useEffect(() => {
