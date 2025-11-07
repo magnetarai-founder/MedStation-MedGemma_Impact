@@ -10,6 +10,7 @@
 import { useState, useEffect } from 'react'
 import { FileBrowser } from './FileBrowser'
 import { FolderOpen, MessageSquarePlus, FolderPlus, FilePlus, Trash2, Package, Folder, MessageCircle, Clock, Settings } from 'lucide-react'
+import { authFetch } from '@/lib/api'
 
 interface CodeSidebarProps {
   onFileSelect: (path: string, isAbsolute?: boolean) => void
@@ -277,7 +278,7 @@ function GitRepository() {
       setLoading(true)
       setError(null)
 
-      const res = await fetch('/api/v1/code/git/log')
+      const res = await authFetch('/api/v1/code/git/log')
       const data = await res.json()
 
       if (data.error) {

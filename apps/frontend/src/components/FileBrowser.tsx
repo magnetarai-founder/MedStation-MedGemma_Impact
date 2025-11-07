@@ -6,6 +6,7 @@
 import { useState, useEffect } from 'react'
 import { Folder, File, ChevronRight, ChevronDown, RefreshCw, FolderOpen, FilePlus } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { authFetch } from '@/lib/api'
 
 interface FileNode {
   name: string
@@ -39,7 +40,7 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
         ? `/api/v1/code/files?recursive=true&absolute_path=${encodeURIComponent(absolutePath)}`
         : '/api/v1/code/files?recursive=true'
 
-      const res = await fetch(url)
+      const res = await authFetch(url)
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}))
@@ -69,7 +70,7 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
       localStorage.setItem('ns.code.workspaceRoot', input)
 
       // Notify backend of workspace root for git operations
-      await fetch('/api/v1/code/workspace/set', {
+      await authFetch('/api/v1/code/workspace/set', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ workspace_root: input })
@@ -95,7 +96,7 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
 
     setCreating(true)
     try {
-      const res = await fetch('/api/v1/code/write', {
+      const res = await authFetch('/api/v1/code/write', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

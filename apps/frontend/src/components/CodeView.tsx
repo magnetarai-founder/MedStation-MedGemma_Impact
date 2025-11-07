@@ -14,6 +14,7 @@ import { MonacoEditor } from './MonacoEditor'
 import { DiffPreviewModal } from './DiffPreviewModal'
 import { CodeChat } from './CodeChat'
 import toast from 'react-hot-toast'
+import { authFetch } from '@/lib/api'
 
 export function CodeView() {
   const [leftView, setLeftView] = useState<'files' | 'chats'>('files')
@@ -36,7 +37,7 @@ export function CodeView() {
         ? `/api/v1/code/read?path=${encodeURIComponent(path)}&absolute_path=true`
         : `/api/v1/code/read?path=${encodeURIComponent(path)}`
 
-      const res = await fetch(url)
+      const res = await authFetch(url)
 
       if (!res.ok) {
         throw new Error('Failed to load file')
@@ -100,7 +101,7 @@ export function CodeView() {
 
     try {
       // Get diff preview
-      const res = await fetch('/api/v1/code/diff/preview', {
+      const res = await authFetch('/api/v1/code/diff/preview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -126,7 +127,7 @@ export function CodeView() {
     if (!selectedFile) return
 
     try {
-      const res = await fetch('/api/v1/code/write', {
+      const res = await authFetch('/api/v1/code/write', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -149,6 +149,23 @@ class NeutronAPI {
     )
   }
 
+  // Generic HTTP methods for flexible API calls
+  async get(url: string, config?: any) {
+    return this.client.get(url, config)
+  }
+
+  async post(url: string, data?: any, config?: any) {
+    return this.client.post(url, data, config)
+  }
+
+  async put(url: string, data?: any, config?: any) {
+    return this.client.put(url, data, config)
+  }
+
+  async delete(url: string, config?: any) {
+    return this.client.delete(url, config)
+  }
+
   async createSession(): Promise<SessionResponse> {
     const maxRetries = 5
     let lastError: any
@@ -352,3 +369,21 @@ class NeutronAPI {
 }
 
 export const api = new NeutronAPI()
+
+/**
+ * Authenticated fetch wrapper that automatically includes JWT token
+ * Use this instead of raw fetch() for API calls
+ */
+export const authFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
+  const token = localStorage.getItem('auth_token')
+
+  const headers = new Headers(options.headers || {})
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`)
+  }
+
+  return fetch(url, {
+    ...options,
+    headers,
+  })
+}
