@@ -41,7 +41,7 @@ export default function App() {
   const { activeTab, setActiveTab } = useNavigationStore()
   const { setCode } = useEditorStore()
   const { settings } = useChatStore()
-  const { fetchUser } = useUserStore()
+  const { fetchUser, user } = useUserStore()
   const [isLoading, setIsLoading] = useState(true)
   const [isLibraryOpen, setIsLibraryOpen] = useState(false)
   const [isProjectLibraryOpen, setIsProjectLibraryOpen] = useState(false)
@@ -138,10 +138,11 @@ export default function App() {
     }
   }, [authState])
 
-  // Pre-load default AI model after authentication
+  // Pre-load default AI model after authentication and user fetch
   useEffect(() => {
-    // Only preload if authenticated and token exists
+    // Only preload if authenticated, user loaded, and token exists
     if (authState !== 'authenticated') return
+    if (!user) return // Wait for user to be fetched
     if (!localStorage.getItem('auth_token')) return
 
     const preloadDefaultModel = async () => {
@@ -155,10 +156,10 @@ export default function App() {
       }
     }
 
-    // Delay to ensure Ollama server and auth token are ready
-    const timeoutId = setTimeout(preloadDefaultModel, 3000)
+    // Delay to ensure Ollama server is ready
+    const timeoutId = setTimeout(preloadDefaultModel, 2000)
     return () => clearTimeout(timeoutId)
-  }, [authState, settings.defaultModel])
+  }, [authState, user, settings.defaultModel])
 
   // Handle open library with pre-filled code from CodeEditor
   useEffect(() => {
