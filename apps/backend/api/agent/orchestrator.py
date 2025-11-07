@@ -339,47 +339,41 @@ async def apply_plan(
     require_perm(current_user['user_id'], 'code.edit')
 
     try:
-        # Import aider engine
+        # Import aider engine and patchbus
         from .engines.aider_engine import AiderEngine
+        from pathlib import Path
 
-        # Initialize Aider
+        # Get venv path (use current venv or default)
+        venv_path = Path(os.getcwd()) / "venv"
+        if not venv_path.exists():
+            venv_path = Path.home() / ".virtualenvs" / "elohimos"
+
+        # Initialize Aider with correct signature
         aider = AiderEngine(
-            repo_root=body.repo_root or os.getcwd(),
-            model=body.model or 'qwen2.5-coder:32b'
+            model=body.model or 'qwen2.5-coder:32b',
+            venv_path=venv_path
         )
 
-        # Generate patches
-        result = aider.generate_patches(
-            prompt=body.input,
-            dry_run=body.dry_run
+        # Get files from context or empty list
+        files = []
+        context_snippets = []
+
+        # Call propose() method (returns ChangeProposal)
+        proposal = aider.propose(
+            description=body.input,
+            files=files,
+            context_snippets=context_snippets
         )
 
-        if not result.get('success'):
-            raise HTTPException(status_code=500, detail=result.get('error', 'Aider failed'))
-
-        # Map patches to response format
-        patches = []
-        for patch in result.get('patches', []):
-            patches.append(FilePatch(
-                path=patch.get('file', ''),
-                patch_text=patch.get('diff', ''),
-                summary=patch.get('summary', '')
-            ))
-
-        # If not dry run, apply via PatchBus
-        patch_id = None
-        if not body.dry_run and patches:
-            # Combine all patches into unified diff
-            unified_diff = "\n".join(p.patch_text for p in patches)
-
-            # Create change proposal
-            proposal = ChangeProposal(
-                description=body.input,
-                diff=unified_diff,
-                affected_files=[p.path for p in patches],
-                dry_run=False
-            )
-
+        # If dry run, just preview the diff
+        if body.dry_run:
+            patches = [FilePatch(
+                path='<unified>',
+                patch_text=proposal.diff,
+                summary=proposal.description
+            )]
+            patch_id = None
+        else:
             # Apply via PatchBus
             apply_result = PatchBus.apply(proposal)
 
@@ -390,6 +384,13 @@ async def apply_plan(
                 )
 
             patch_id = apply_result.get('patch_id')
+
+            # Convert to patches for response
+            patches = [FilePatch(
+                path=f,
+                patch_text=proposal.diff,
+                summary=f"Applied changes to {f}"
+            ) for f in apply_result.get('files', [])]
 
         # Audit log
         audit_logger = get_audit_logger()

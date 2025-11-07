@@ -501,8 +501,13 @@ async def resize_terminal(
 
 # ==================== Bash Assist Mode ====================
 
-from bash_intelligence import get_bash_intelligence
-from unified_context import get_unified_context
+try:
+    from .bash_intelligence import get_bash_intelligence
+    from .unified_context import get_unified_context
+except ImportError:
+    from bash_intelligence import get_bash_intelligence
+    from unified_context import get_unified_context
+
 from pydantic import BaseModel
 
 
@@ -525,6 +530,7 @@ class BashAssistResponse(BaseModel):
 
 @router.post("/assist", response_model=BashAssistResponse)
 async def bash_assist(
+    request: Request,
     body: BashAssistRequest,
     current_user: dict = Depends(get_current_user)
 ):
@@ -540,6 +546,19 @@ async def bash_assist(
     Rate limited: 30/min per user
     """
     user_id = current_user["user_id"]
+
+    # Rate limiting
+    try:
+        from .rate_limiter import rate_limiter
+    except ImportError:
+        from rate_limiter import rate_limiter
+
+    if not rate_limiter.check_rate_limit(
+        f"terminal:assist:{user_id}",
+        max_requests=30,
+        window_seconds=60
+    ):
+        raise HTTPException(status_code=429, detail="Too many assist requests. Please try again later.")
 
     # Get bash intelligence
     bash_intel = get_bash_intelligence()

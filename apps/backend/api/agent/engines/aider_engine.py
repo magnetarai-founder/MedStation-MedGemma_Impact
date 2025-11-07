@@ -8,8 +8,17 @@ import subprocess
 from pathlib import Path
 from typing import List
 
-from patchbus import ChangeProposal
-from tooling_integrations import build_context_block
+try:
+    from ..patchbus import ChangeProposal
+except ImportError:
+    from patchbus import ChangeProposal
+
+# Stub for tooling_integrations
+def build_context_block(snippets):
+    """Build context block from snippets"""
+    if not snippets:
+        return ""
+    return "\n".join(f"# Context: {s}" for s in snippets)
 
 
 class AiderEngine:

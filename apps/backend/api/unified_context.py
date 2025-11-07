@@ -12,7 +12,15 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 import json
 
+try:
+    from .config import get_config_paths
+except ImportError:
+    from config import get_config_paths
+
 logger = logging.getLogger(__name__)
+
+# Get PATHS for consistent data directory
+PATHS = get_config_paths()
 
 
 @dataclass
@@ -40,7 +48,10 @@ class UnifiedContextManager:
     - Rolling 200k token window (configurable)
     """
 
-    def __init__(self, db_path: str = ".neutron_data/unified_context.db"):
+    def __init__(self, db_path: Optional[Path] = None):
+        # Use PATHS.data_dir for consistent location
+        if db_path is None:
+            db_path = PATHS.data_dir / "unified_context.db"
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
