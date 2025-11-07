@@ -4,6 +4,7 @@ Authentication Routes for ElohimOS API
 """
 
 import logging
+import os
 from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
@@ -132,7 +133,6 @@ async def login(request: Request, body: LoginRequest):
     if not is_privileged:
         try:
             import sqlite3
-            from auth_middleware import auth_service
             conn = sqlite3.connect(str(auth_service.db_path))
             cursor = conn.cursor()
             cursor.execute("SELECT user_id, role FROM users WHERE username = ?", (body.username,))
