@@ -40,6 +40,22 @@ class AiderEngine:
         # Construct aider command directly with proper arguments
         aider_bin = self.venv_path / "bin" / "aider"
 
+        # Fallback to PATH if aider not in venv
+        import shutil
+        if not aider_bin.exists():
+            aider_path = shutil.which("aider")
+            if aider_path:
+                aider_bin = Path(aider_path)
+            else:
+                # Return empty proposal with clear error
+                return ChangeProposal(
+                    description=description,
+                    diff="",
+                    affected_files=[],
+                    confidence=0.0,
+                    rationale="Aider not found. Install via: pip install aider-chat"
+                )
+
         cmd = [
             str(aider_bin),
             "--yes",

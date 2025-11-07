@@ -531,9 +531,20 @@ async def write_file(
     """
     Write file with permission checking (Jarvis pattern)
     Phase 3: Full write operations
+
+    Rate limited: 30 writes/min per user
     """
+    user_id = current_user["user_id"]
+
+    # Rate limiting
+    if not rate_limiter.check_rate_limit(
+        f"code:write:{user_id}",
+        max_requests=30,
+        window_seconds=60
+    ):
+        raise HTTPException(status_code=429, detail="Too many write requests. Please slow down.")
+
     try:
-        user_id = current_user["user_id"]
         user_workspace = get_user_workspace(user_id)
         file_path = user_workspace / request.path
 
@@ -607,9 +618,20 @@ async def delete_file(
     """
     Delete file with Jarvis permission checking
     Phase 3: Destructive operations
+
+    Rate limited: 20 deletes/min per user
     """
+    user_id = current_user["user_id"]
+
+    # Rate limiting (lower than writes for safety)
+    if not rate_limiter.check_rate_limit(
+        f"code:delete:{user_id}",
+        max_requests=20,
+        window_seconds=60
+    ):
+        raise HTTPException(status_code=429, detail="Too many delete requests. Please slow down.")
+
     try:
-        user_id = current_user["user_id"]
         user_workspace = get_user_workspace(user_id)
         file_path = user_workspace / path
 

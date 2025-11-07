@@ -10,12 +10,18 @@ import shutil
 import subprocess
 import tempfile
 import time
-import fcntl
+import sys
 from pathlib import Path
 from typing import Tuple, List, Dict, Any, Optional
 import difflib
 from .codex_deterministic_ops import DeterministicOps
 from .codex_codemods import CodemodOperations
+
+# Platform-specific lock import
+if sys.platform != "win32":
+    import fcntl
+else:
+    fcntl = None  # Windows doesn't have fcntl
 
 
 class CodexEngine:
@@ -41,10 +47,18 @@ class CodexEngine:
         try:
             lock_fd = open(lock_file, 'w')
             # Try to acquire exclusive lock (non-blocking)
-            try:
-                fcntl.flock(lock_fd.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except BlockingIOError:
-                return False, "Another patch is being applied. Please wait and try again."
+            # Platform-specific locking
+            if fcntl:  # Unix/Linux/macOS
+                try:
+                    fcntl.flock(lock_fd.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    return False, "Another patch is being applied. Please wait and try again."
+            else:  # Windows - use file-based lock check
+                import msvcrt
+                try:
+                    msvcrt.locking(lock_fd.fileno(), msvcrt.LK_NBLCK, 1)
+                except (OSError, IOError):
+                    return False, "Another patch is being applied. Please wait and try again."
 
             # Write diff to temp file for patch command
             tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".diff")
@@ -140,10 +154,14 @@ class CodexEngine:
             return True, "Applied"
 
         finally:
-            # CONCURRENCY: Release lock
+            # CONCURRENCY: Release lock (platform-specific)
             if lock_fd:
                 try:
-                    fcntl.flock(lock_fd.fileno(), fcntl.LOCK_UN)
+                    if fcntl:  # Unix/Linux/macOS
+                        fcntl.flock(lock_fd.fileno(), fcntl.LOCK_UN)
+                    else:  # Windows
+                        import msvcrt
+                        msvcrt.locking(lock_fd.fileno(), msvcrt.LK_UNLCK, 1)
                     lock_fd.close()
                 except Exception:
                     pass
