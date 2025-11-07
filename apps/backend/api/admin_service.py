@@ -9,10 +9,11 @@ Provides Founder Rights (Founder Admin) with support capabilities:
 This follows the Salesforce model: Admins can manage accounts but cannot see user data.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from typing import Dict, List, Optional
-import sqlite3
 import logging
+import sqlite3
+from typing import Dict, List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 try:
     from .auth_middleware import get_current_user
@@ -25,14 +26,14 @@ except ImportError:
     from chat_memory import get_memory
 
 try:
-    from .audit_logger import get_audit_logger, AuditAction
+    from .audit_logger import AuditAction, get_audit_logger
 except ImportError:
-    from audit_logger import get_audit_logger, AuditAction
+    from audit_logger import AuditAction, get_audit_logger
 
 try:
-    from .rate_limiter import rate_limiter, get_client_ip
+    from .rate_limiter import get_client_ip, rate_limiter
 except ImportError:
-    from rate_limiter import rate_limiter, get_client_ip
+    from rate_limiter import get_client_ip, rate_limiter
 
 try:
     from .utils import sanitize_for_log
@@ -51,7 +52,7 @@ audit_logger = get_audit_logger()
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
 
-def require_founder_rights(current_user: Dict = Depends(get_current_user)) -> Dict:
+def require_founder_rights(current_user: dict = Depends(get_current_user)) -> dict:
     """Dependency to require Founder Rights (Founder Admin) role"""
     if current_user.get("role") != "founder_rights":
         raise HTTPException(
@@ -78,7 +79,7 @@ def get_admin_db_connection():
 
 
 @router.get("/users")
-async def list_all_users(request: Request, current_user: Dict = Depends(require_founder_rights)):
+async def list_all_users(request: Request, current_user: dict = Depends(require_founder_rights)):
     """List all users on the system (Founder Rights only)
 
     Returns user account metadata (username, user_id, email, created_at)
@@ -124,7 +125,7 @@ async def list_all_users(request: Request, current_user: Dict = Depends(require_
 async def get_user_details(
     request: Request,
     target_user_id: str,
-    current_user: Dict = Depends(require_founder_rights)
+    current_user: dict = Depends(require_founder_rights)
 ):
     """Get specific user's account details (Founder Rights only)
 
@@ -173,7 +174,7 @@ async def get_user_details(
 async def get_user_chats(
     request: Request,
     target_user_id: str,
-    current_user: Dict = Depends(require_founder_rights)
+    current_user: dict = Depends(require_founder_rights)
 ):
     """Get specific user's chat sessions (Founder Rights only - for support)
 
@@ -214,7 +215,7 @@ async def get_user_chats(
 
 
 @router.get("/chats")
-async def list_all_chats(request: Request, current_user: Dict = Depends(require_founder_rights)):
+async def list_all_chats(request: Request, current_user: dict = Depends(require_founder_rights)):
     """List ALL chat sessions across all users (Founder Rights only - for support)
 
     This is an ADMIN endpoint - explicitly for support access.
@@ -253,7 +254,7 @@ async def list_all_chats(request: Request, current_user: Dict = Depends(require_
 @router.post("/users/{target_user_id}/reset-password")
 async def reset_user_password(
     target_user_id: str,
-    current_user: Dict = Depends(require_founder_rights)
+    current_user: dict = Depends(require_founder_rights)
 ):
     """Reset user's password (Founder Rights only - for support)
 
@@ -276,31 +277,72 @@ async def reset_user_password(
 
 @router.post("/users/{target_user_id}/unlock")
 async def unlock_user_account(
+    request: Request,
     target_user_id: str,
-    current_user: Dict = Depends(require_founder_rights)
+    current_user: dict = Depends(require_founder_rights)
 ):
     """Unlock user account after failed login attempts (Founder Rights only)
 
-    TODO: Implement account unlock functionality
-    - Clear failed login counter
-    - Re-enable account
-    - Notify user of unlock
+    Clears failed login counters and re-enables account.
     """
-    logger.warning(
-        f"Founder Rights {current_user['username']} attempted to unlock "
-        f"user {target_user_id} - NOT YET IMPLEMENTED"
-    )
+    try:
+        conn = memory.memory.conn
 
-    raise HTTPException(
-        status_code=501,
-        detail="Account unlock not yet implemented. See roadmap Phase 1B."
-    )
+        # Check if user exists
+        user = conn.execute(
+            "SELECT user_id, username, is_active FROM users WHERE user_id = ?",
+            (target_user_id,)
+        ).fetchone()
+
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Clear failed login counter and re-enable account
+        conn.execute("""
+            UPDATE users
+            SET is_active = 1,
+                failed_login_attempts = 0,
+                lockout_until = NULL
+            WHERE user_id = ?
+        """, (target_user_id,))
+        conn.commit()
+
+        # Audit log
+        audit_logger.log(
+            user_id=current_user["user_id"],
+            action="admin.user.unlocked",
+            resource="user",
+            resource_id=target_user_id,
+            ip_address=request.client.host if request.client else None,
+            details={
+                "target_user_id": target_user_id,
+                "target_username": user[1]
+            }
+        )
+
+        logger.info(
+            f"Founder Rights {current_user['username']} unlocked user {user[1]} ({target_user_id})"
+        )
+
+        return {
+            "success": True,
+            "user_id": target_user_id,
+            "username": user[1],
+            "message": "User account unlocked successfully"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to unlock user {target_user_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to unlock user: {str(e)}")
 
 
 @router.get("/users/{target_user_id}/vault-status")
 async def get_user_vault_status(
+    request: Request,
     target_user_id: str,
-    current_user: Dict = Depends(require_founder_rights)
+    current_user: dict = Depends(require_founder_rights)
 ):
     """Get user's vault status (Founder Rights only - for support)
 
@@ -308,32 +350,84 @@ async def get_user_vault_status(
     - Number of documents
     - Vault lock status
     - Last access time
-    - Failed unlock attempts
 
     Does NOT return:
     - Encrypted vault contents
     - Vault passphrase
     - Decrypted data
-
-    This is for support - helping users who are locked out of their vault.
-    Founder Rights can reset the lock counter but CANNOT decrypt vault data.
     """
-    logger.warning(
-        f"Founder Rights {current_user['username']} requested vault status "
-        f"for user {target_user_id} - NOT YET IMPLEMENTED"
-    )
+    try:
+        conn = memory.memory.conn
 
-    raise HTTPException(
-        status_code=501,
-        detail="Vault status endpoint not yet implemented. See roadmap Phase 1B."
-    )
+        # Check if user exists
+        user = conn.execute(
+            "SELECT user_id, username FROM users WHERE user_id = ?",
+            (target_user_id,)
+        ).fetchone()
+
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Get document count for real vault
+        doc_count_real = conn.execute("""
+            SELECT COUNT(*) FROM documents
+            WHERE user_id = ? AND vault_type = 'real' AND deleted_at IS NULL
+        """, (target_user_id,)).fetchone()[0]
+
+        # Get document count for decoy vault (if enabled)
+        doc_count_decoy = conn.execute("""
+            SELECT COUNT(*) FROM documents
+            WHERE user_id = ? AND vault_type = 'decoy' AND deleted_at IS NULL
+        """, (target_user_id,)).fetchone()[0]
+
+        # Get last vault access time (approximate via last document update)
+        last_access = conn.execute("""
+            SELECT MAX(updated_at) FROM documents
+            WHERE user_id = ?
+        """, (target_user_id,)).fetchone()[0]
+
+        # Audit log
+        audit_logger.log(
+            user_id=current_user["user_id"],
+            action="admin.vault.status_viewed",
+            resource="vault",
+            resource_id=target_user_id,
+            ip_address=request.client.host if request.client else None,
+            details={
+                "target_user_id": target_user_id,
+                "target_username": user[1]
+            }
+        )
+
+        logger.info(
+            f"Founder Rights {current_user['username']} viewed vault status for {user[1]} ({target_user_id})"
+        )
+
+        return {
+            "user_id": target_user_id,
+            "username": user[1],
+            "real_vault": {
+                "document_count": doc_count_real
+            },
+            "decoy_vault": {
+                "document_count": doc_count_decoy
+            },
+            "last_access": last_access,
+            "note": "Metadata only - vault contents remain encrypted and inaccessible"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get vault status for {target_user_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get vault status: {str(e)}")
 
 
 @router.get("/device/overview")
 @require_perm("system.view_admin_dashboard")
 async def get_device_overview(
     request: Request,
-    current_user: Dict = Depends(require_founder_rights)
+    current_user: dict = Depends(require_founder_rights)
 ):
     """
     Get device-wide overview statistics (Founder Rights only)
@@ -526,7 +620,7 @@ async def get_device_overview(
 async def get_user_workflows(
     request: Request,
     target_user_id: str,
-    current_user: Dict = Depends(require_founder_rights)
+    current_user: dict = Depends(require_founder_rights)
 ):
     """Get specific user's workflows (Founder Rights only - for support)
 
@@ -623,6 +717,184 @@ async def get_user_workflows(
             status_code=500,
             detail=f"Failed to retrieve user workflows: {str(e)}"
         )
+
+
+@router.get("/audit/logs")
+@require_perm("system.view_audit_logs")
+async def get_audit_logs(
+    request: Request,
+    user_id: str | None = None,
+    action: str | None = None,
+    resource: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    limit: int = 100,
+    offset: int = 0,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get audit logs with filters (requires system.view_audit_logs permission)
+
+    Query params:
+    - user_id: Filter by user
+    - action: Filter by action type
+    - resource: Filter by resource type
+    - start_date: ISO format date string (YYYY-MM-DD)
+    - end_date: ISO format date string (YYYY-MM-DD)
+    - limit: Max results (default 100)
+    - offset: Pagination offset (default 0)
+
+    Returns:
+    - logs: List of audit log entries
+    - total: Total count matching filters
+    """
+    from datetime import datetime
+
+    # Parse dates if provided
+    start_dt = None
+    end_dt = None
+    if start_date:
+        try:
+            start_dt = datetime.fromisoformat(start_date)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid start_date format. Use YYYY-MM-DD")
+    if end_date:
+        try:
+            end_dt = datetime.fromisoformat(end_date)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid end_date format. Use YYYY-MM-DD")
+
+    try:
+        # Get logs from audit logger
+        logs = audit_logger.get_logs(
+            user_id=user_id,
+            action=action,
+            resource=resource,
+            start_date=start_dt,
+            end_date=end_dt,
+            limit=limit,
+            offset=offset
+        )
+
+        # Get total count
+        total = audit_logger.count_logs(
+            user_id=user_id,
+            action=action,
+            resource=resource,
+            start_date=start_dt,
+            end_date=end_dt
+        )
+
+        # Log this audit access
+        audit_logger.log(
+            user_id=current_user["user_id"],
+            action="audit.logs.viewed",
+            ip_address=request.client.host if request.client else None,
+            details={
+                "filters": {
+                    "user_id": user_id,
+                    "action": action,
+                    "resource": resource,
+                    "start_date": start_date,
+                    "end_date": end_date
+                },
+                "result_count": len(logs)
+            }
+        )
+
+        return {
+            "logs": [log.dict() for log in logs],
+            "total": total,
+            "limit": limit,
+            "offset": offset
+        }
+    except Exception as e:
+        logger.error(f"Failed to get audit logs: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve audit logs: {str(e)}")
+
+
+@router.get("/audit/export")
+@require_perm("system.view_audit_logs")
+async def export_audit_logs(
+    request: Request,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Export audit logs to CSV (requires system.view_audit_logs permission)
+
+    Query params:
+    - start_date: ISO format date string (YYYY-MM-DD)
+    - end_date: ISO format date string (YYYY-MM-DD)
+
+    Returns:
+    - CSV file download
+    """
+    import tempfile
+    from datetime import datetime
+    from pathlib import Path
+
+    from fastapi.responses import FileResponse
+
+    # Parse dates if provided
+    start_dt = None
+    end_dt = None
+    if start_date:
+        try:
+            start_dt = datetime.fromisoformat(start_date)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid start_date format. Use YYYY-MM-DD")
+    if end_date:
+        try:
+            end_dt = datetime.fromisoformat(end_date)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid end_date format. Use YYYY-MM-DD")
+
+    try:
+        # Create temp file for CSV
+        temp_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.csv')
+        temp_path = Path(temp_file.name)
+        temp_file.close()
+
+        # Export to CSV
+        success = audit_logger.export_to_csv(
+            output_path=temp_path,
+            start_date=start_dt,
+            end_date=end_dt
+        )
+
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to export audit logs")
+
+        # Log this export
+        audit_logger.log(
+            user_id=current_user["user_id"],
+            action="audit.logs.exported",
+            ip_address=request.client.host if request.client else None,
+            details={
+                "start_date": start_date,
+                "end_date": end_date
+            }
+        )
+
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"audit_logs_{timestamp}.csv"
+
+        # Return file with background deletion
+        from starlette.background import BackgroundTask
+        return FileResponse(
+            path=temp_path,
+            filename=filename,
+            media_type="text/csv",
+            background=BackgroundTask(lambda: temp_path.unlink(missing_ok=True))
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to export audit logs: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to export audit logs: {str(e)}")
 
 
 # Export the router

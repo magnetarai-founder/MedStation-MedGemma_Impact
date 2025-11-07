@@ -2,7 +2,7 @@
  * Profile Settings Component
  *
  * Global user profile and settings - integrated into SettingsModal
- * Includes: Identity, Security, Cloud/SaaS, Privacy, Danger Zone
+ * Includes: Identity, Security, Updates, Privacy, Danger Zone
  */
 
 import { useState, useEffect, useRef } from 'react'
@@ -37,8 +37,7 @@ import { isBiometricAvailable, registerBiometric, hasBiometricCredential } from 
 import { formatRole, getRoleDescription, getRoleColor } from '@/lib/roles'
 import toast from 'react-hot-toast'
 
-type ProfileTab = 'identity' | 'security' | 'cloud' | 'privacy' | 'danger'
-type LicenseType = 'none' | 'mission' | 'church' | 'business'
+type ProfileTab = 'identity' | 'security' | 'updates' | 'privacy' | 'danger'
 
 export function ProfileSettings() {
   const { user, fetchUser, updateUser, resetUser, isLoading } = useUserStore()
@@ -54,9 +53,7 @@ export function ProfileSettings() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [copiedUserId, setCopiedUserId] = useState(false)
 
-  // Cloud/SaaS state
-  const [licenseType, setLicenseType] = useState<LicenseType>('none')
-  const [licenseKey, setLicenseKey] = useState('')
+  // (Cloud/SaaS state removed - offline-only policy)
 
   // Biometric state
   const [biometricAvailable, setBiometricAvailable] = useState(false)
@@ -169,9 +166,7 @@ export function ProfileSettings() {
     toast('Import backup - Coming soon')
   }
 
-  const handleActivateLicense = () => {
-    toast('Cloud activation - Coming soon')
-  }
+  // (handleActivateLicense removed - offline-only policy)
 
   const handleRegisterBiometric = async () => {
     if (!user?.user_id) {
@@ -189,7 +184,7 @@ export function ProfileSettings() {
   const tabs = [
     { id: 'identity' as const, label: 'Identity', icon: User },
     { id: 'security' as const, label: 'Security', icon: Shield },
-    { id: 'cloud' as const, label: 'Cloud & SaaS', icon: Cloud },
+    { id: 'updates' as const, label: 'Updates', icon: Cloud },
     { id: 'privacy' as const, label: 'Privacy', icon: Eye },
     { id: 'danger' as const, label: 'Danger Zone', icon: AlertTriangle },
   ]
@@ -361,7 +356,7 @@ export function ProfileSettings() {
                   </button>
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Unique identifier for P2P connections and cloud sync
+                  Unique identifier for P2P LAN/mesh connections (local network only)
                 </p>
               </div>
 
@@ -656,166 +651,99 @@ export function ProfileSettings() {
           </div>
         )}
 
-        {/* Cloud & SaaS Tab */}
-        {activeTab === 'cloud' && (
+        {/* Updates Tab (formerly Cloud) */}
+        {activeTab === 'updates' && (
           <div className="space-y-6">
             <div>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                Cloud Sync & SaaS Licensing
+                System Updates & Offline Operation
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Connect to cloud storage and manage your license
+                ElohimOS operates fully offline. No cloud sync or SaaS features.
               </p>
             </div>
 
-            {/* Coming Soon Banner */}
-            <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+            {/* Offline-Only Policy */}
+            <div className="p-6 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 rounded-xl">
               <div className="flex items-center gap-3 mb-3">
-                <Cloud className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                <h4 className="font-semibold text-blue-900 dark:text-blue-100 text-lg">
-                  Coming Soon
+                <HardDrive className="w-6 h-6 text-green-600 dark:text-green-400" />
+                <h4 className="font-semibold text-green-900 dark:text-green-100 text-lg">
+                  Offline-First Design
                 </h4>
               </div>
-              <p className="text-sm text-blue-700 dark:text-blue-300">
-                Cloud sync and SaaS features are currently in development. Backup your data locally
-                for now.
+              <p className="text-sm text-green-700 dark:text-green-300 mb-3">
+                ElohimOS is designed for complete offline operation. No cloud sync, no external dependencies, no tracking.
               </p>
+              <ul className="text-xs text-green-700 dark:text-green-300 space-y-1">
+                <li>• All data stored locally in ~/.elohimos_data/</li>
+                <li>• Encrypted backups available via Settings → Danger Zone</li>
+                <li>• P2P LAN sync available for team collaboration (local network only)</li>
+                <li>• OS updates managed via system update mechanism</li>
+              </ul>
             </div>
 
-            {/* Pricing Model */}
-            <div className="flex items-center gap-4 p-4 bg-white/50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
-              <div className="flex items-center gap-2">
-                <Heart className="w-5 h-5 text-red-500" />
-                <div>
-                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    FREE for Missions & Churches
-                  </div>
-                  <div className="text-xs text-gray-600 dark:text-gray-400">
-                    Unlimited storage, forever
-                  </div>
-                </div>
+            {/* System Updates */}
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="flex items-center gap-3 mb-3">
+                <Cloud className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <h4 className="font-semibold text-blue-900 dark:text-blue-100">
+                  OS Updates
+                </h4>
               </div>
-              <div className="border-l border-gray-300 dark:border-gray-600 h-10"></div>
-              <div className="flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-blue-500" />
-                <div>
-                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    Paid for Businesses
-                  </div>
-                  <div className="text-xs text-gray-600 dark:text-gray-400">$49/user/month</div>
-                </div>
-              </div>
+              <p className="text-sm text-blue-700 dark:text-blue-300 mb-2">
+                ElohimOS receives updates via macOS system update mechanism.
+              </p>
+              <ul className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
+                <li>• Check for updates: System Settings → Software Update</li>
+                <li>• Updates include security patches, bug fixes, and new features</li>
+                <li>• All updates are cryptographically signed and verified</li>
+                <li>• No telemetry or usage tracking</li>
+              </ul>
             </div>
 
             <div className="space-y-4">
-              {/* Connection Status */}
+              {/* Network Policy */}
               <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
                 <div className="flex items-center justify-between mb-2">
                   <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    Connection Status
+                    Network Policy
                   </div>
-                  <span className="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded">
-                    Offline Only
+                  <span className="text-xs px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded">
+                    Local Only
                   </span>
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Cloud sync is not yet available. All data is stored locally.
+                  No cloud sync. P2P LAN/mesh only. Updates via OS. All data local.
                 </p>
               </div>
 
-              {/* License Type Selector */}
+              {/* Data Storage Info */}
               <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
                 <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
-                  License Type
+                  Local Data Directories
                 </label>
-                <div className="space-y-2">
-                  <label className="flex items-center justify-between p-3 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <Heart className="w-4 h-4 text-red-500" />
-                      <div>
-                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                          Mission Organization
-                        </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          FREE - Unlimited storage
-                        </div>
-                      </div>
+                <div className="space-y-2 text-xs font-mono text-gray-600 dark:text-gray-400">
+                  <div className="flex items-center gap-2 p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+                    <HardDrive className="w-4 h-4 flex-shrink-0" />
+                    <div>
+                      <div className="font-semibold text-gray-900 dark:text-gray-100">Databases</div>
+                      <div>~/.elohimos_data/</div>
                     </div>
-                    <input
-                      type="radio"
-                      name="license"
-                      value="mission"
-                      checked={licenseType === 'mission'}
-                      onChange={(e) => setLicenseType(e.target.value as LicenseType)}
-                      className="w-4 h-4 text-primary-600"
-                    />
-                  </label>
-
-                  <label className="flex items-center justify-between p-3 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <Church className="w-4 h-4 text-purple-500" />
-                      <div>
-                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                          Church/Ministry
-                        </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          FREE - Unlimited storage
-                        </div>
-                      </div>
+                  </div>
+                  <div className="flex items-center gap-2 p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+                    <HardDrive className="w-4 h-4 flex-shrink-0" />
+                    <div>
+                      <div className="font-semibold text-gray-900 dark:text-gray-100">Backups</div>
+                      <div>~/.elohimos_backups/</div>
                     </div>
-                    <input
-                      type="radio"
-                      name="license"
-                      value="church"
-                      checked={licenseType === 'church'}
-                      onChange={(e) => setLicenseType(e.target.value as LicenseType)}
-                      className="w-4 h-4 text-primary-600"
-                    />
-                  </label>
-
-                  <label className="flex items-center justify-between p-3 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <Building2 className="w-4 h-4 text-blue-500" />
-                      <div>
-                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                          Business/Enterprise
-                        </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          $49/user/month
-                        </div>
-                      </div>
+                  </div>
+                  <div className="flex items-center gap-2 p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+                    <HardDrive className="w-4 h-4 flex-shrink-0" />
+                    <div>
+                      <div className="font-semibold text-gray-900 dark:text-gray-100">Vault</div>
+                      <div>~/.elohimos_data/vault/</div>
                     </div>
-                    <input
-                      type="radio"
-                      name="license"
-                      value="business"
-                      checked={licenseType === 'business'}
-                      onChange={(e) => setLicenseType(e.target.value as LicenseType)}
-                      className="w-4 h-4 text-primary-600"
-                    />
-                  </label>
-                </div>
-              </div>
-
-              {/* License Key */}
-              <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
-                <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
-                  License Key
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={licenseKey}
-                    onChange={(e) => setLicenseKey(e.target.value)}
-                    placeholder="XXXX-XXXX-XXXX-XXXX"
-                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-mono"
-                  />
-                  <button
-                    onClick={handleActivateLicense}
-                    className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors"
-                  >
-                    Activate
-                  </button>
+                  </div>
                 </div>
               </div>
             </div>

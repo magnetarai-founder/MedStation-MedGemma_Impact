@@ -1,8 +1,20 @@
 # ElohimOS Production Deployment Checklist
 
-**Status:** ✅ Ready for Production Deployment  
-**Date:** 2025-11-07  
+**Status:** ✅ Ready for Production Deployment
+**Date:** 2025-11-07
 **Security Hardening:** Complete
+**Platform:** macOS-only (offline-first)
+
+---
+
+## Platform Requirements
+
+⚠️ **IMPORTANT**: ElohimOS is macOS-only and offline-first.
+
+- **OS**: macOS (Darwin) - No cross-platform support
+- **AI**: Local Ollama instance (localhost:11434) - No cloud calls
+- **Network**: LAN/mDNS/libp2p only - No internet required
+- **Dependencies**: brew install ffmpeg python@3.11; install Ollama
 
 ---
 

@@ -475,7 +475,7 @@ class PermissionEngine:
                 'code.use': True,
                 'team.use': True,
                 'panic.use': True,
-                'backups.use': True,
+                'backups.use': False,  # Require explicit grant via profile/set
 
                 # Vault resources (write level)
                 'vault.documents.create': PermissionLevel.WRITE,

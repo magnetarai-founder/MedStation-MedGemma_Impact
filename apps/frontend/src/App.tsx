@@ -61,10 +61,21 @@ export default function App() {
   }
 
   // Handle file selection from Code Tab file browser
-  const handleFileSelect = (path: string, isAbsolute?: boolean) => {
-    setSelectedFile(path)
-    // TODO: Load file content into editor
-    console.log('Selected file:', path, 'isAbsolute:', isAbsolute)
+  const handleFileSelect = async (fileId: string, isAbsolute?: boolean) => {
+    setSelectedFile(fileId)
+
+    try {
+      const response = await fetch(`/api/v1/code/files/${fileId}`)
+      if (!response.ok) {
+        console.error('Failed to load file:', response.statusText)
+        return
+      }
+
+      const file = await response.json()
+      setCode(file.content || '')
+    } catch (error) {
+      console.error('Error loading file:', error)
+    }
   }
 
   // Check authentication status on mount

@@ -3,6 +3,13 @@
 # 🚀 ElohimOS - Just start everything
 # Copyright (c) 2025 MagnetarAI, LLC
 
+# macOS-only check
+if [[ "$(uname -s)" != "Darwin" ]]; then
+    echo "❌ Error: ElohimOS is macOS-only. Detected OS: $(uname -s)"
+    echo "This system requires macOS (Darwin) to run."
+    exit 1
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 

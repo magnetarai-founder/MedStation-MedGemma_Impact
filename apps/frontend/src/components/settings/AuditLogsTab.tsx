@@ -5,7 +5,7 @@
  * Requires 'super_admin' or 'admin' role to access
  */
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Shield, FileText, Download, Calendar, User, Activity, Globe, AlertCircle, Search } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
@@ -23,11 +23,34 @@ interface AuditLog {
   status: 'success' | 'failed'
 }
 
+interface UserSuggestion {
+  user_id: string
+  username: string
+}
+
 export default function AuditLogsTab() {
-  const [userFilter, setUserFilter] = useState('')
-  const [actionFilter, setActionFilter] = useState('')
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
+  // Read filters from URL on mount
+  const urlParams = new URLSearchParams(window.location.search)
+  const [userFilter, setUserFilter] = useState(urlParams.get('user') || '')
+  const [actionFilter, setActionFilter] = useState(urlParams.get('action') || '')
+  const [startDate, setStartDate] = useState(urlParams.get('start_date') || '')
+  const [endDate, setEndDate] = useState(urlParams.get('end_date') || '')
+  const [showUserSuggestions, setShowUserSuggestions] = useState(false)
+
+  // Persist filters to URL whenever they change
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (userFilter) params.set('user', userFilter)
+    if (actionFilter) params.set('action', actionFilter)
+    if (startDate) params.set('start_date', startDate)
+    if (endDate) params.set('end_date', endDate)
+
+    const newUrl = params.toString()
+      ? `${window.location.pathname}?${params}`
+      : window.location.pathname
+
+    window.history.replaceState({}, '', newUrl)
+  }, [userFilter, actionFilter, startDate, endDate])
 
   // Fetch current user to check permissions
   const { data: currentUser } = useQuery({
@@ -39,143 +62,53 @@ export default function AuditLogsTab() {
     },
   })
 
-  // Fetch audit logs with filters
-  const { data: logs = [], isLoading } = useQuery({
-    queryKey: ['audit-logs', userFilter, actionFilter, startDate, endDate],
+  // Fetch user list for autosuggest
+  const { data: users = [] } = useQuery<UserSuggestion[]>({
+    queryKey: ['admin-users'],
     queryFn: async () => {
-      // TODO: Replace with actual API call when backend is ready
-      // const params = new URLSearchParams({
-      //   user: userFilter,
-      //   action: actionFilter,
-      //   start_date: startDate,
-      //   end_date: endDate,
-      // })
-      // const response = await fetch(`/api/v1/audit/logs?${params}`)
-      // const data = await response.json()
-      // return data as AuditLog[]
-
-      // Mock data for now
-      const allLogs: AuditLog[] = [
-        {
-          id: '1',
-          timestamp: new Date().toISOString(),
-          user_id: currentUser?.user_id || '1',
-          user_name: currentUser?.display_name || 'Field Worker',
-          action: 'vault.document.create',
-          resource: 'Document',
-          resource_id: 'doc_12345',
-          ip_address: '192.168.1.100',
-          user_agent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
-          status: 'success',
-        },
-        {
-          id: '2',
-          timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-          user_id: '2',
-          user_name: 'Sarah Chen',
-          action: 'user.role.update',
-          resource: 'User',
-          resource_id: 'user_67890',
-          ip_address: '192.168.1.101',
-          user_agent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0)',
-          status: 'success',
-        },
-        {
-          id: '3',
-          timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-          user_id: '3',
-          user_name: 'Mike Rodriguez',
-          action: 'vault.document.decrypt',
-          resource: 'Document',
-          resource_id: 'doc_54321',
-          ip_address: '192.168.1.102',
-          user_agent: 'Mozilla/5.0 (iPad; CPU OS 16_0)',
-          status: 'success',
-        },
-        {
-          id: '4',
-          timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-          user_id: '4',
-          user_name: 'Emily Johnson',
-          action: 'auth.login',
-          resource: 'Session',
-          resource_id: 'session_abc123',
-          ip_address: '192.168.1.103',
-          user_agent: 'Mozilla/5.0 (Linux; Android 13)',
-          status: 'success',
-        },
-        {
-          id: '5',
-          timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-          user_id: '5',
-          user_name: 'Unknown User',
-          action: 'auth.login',
-          resource: 'Session',
-          resource_id: 'session_xyz789',
-          ip_address: '203.0.113.42',
-          user_agent: 'Mozilla/5.0 (Windows NT 10.0)',
-          status: 'failed',
-        },
-        {
-          id: '6',
-          timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-          user_id: currentUser?.user_id || '1',
-          user_name: currentUser?.display_name || 'Field Worker',
-          action: 'backup.create',
-          resource: 'Backup',
-          resource_id: 'backup_001',
-          ip_address: '192.168.1.100',
-          user_agent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
-          status: 'success',
-        },
-        {
-          id: '7',
-          timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-          user_id: '2',
-          user_name: 'Sarah Chen',
-          action: 'team.member.invite',
-          resource: 'TeamMember',
-          resource_id: 'member_999',
-          ip_address: '192.168.1.101',
-          user_agent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0)',
-          status: 'success',
-        },
-      ]
-
-      // Apply filters
-      let filteredLogs = allLogs
-
-      if (userFilter) {
-        filteredLogs = filteredLogs.filter(log =>
-          log.user_name.toLowerCase().includes(userFilter.toLowerCase())
-        )
-      }
-
-      if (actionFilter) {
-        filteredLogs = filteredLogs.filter(log =>
-          log.action.toLowerCase().includes(actionFilter.toLowerCase())
-        )
-      }
-
-      if (startDate) {
-        const start = new Date(startDate)
-        filteredLogs = filteredLogs.filter(log =>
-          new Date(log.timestamp) >= start
-        )
-      }
-
-      if (endDate) {
-        const end = new Date(endDate)
-        end.setHours(23, 59, 59, 999)
-        filteredLogs = filteredLogs.filter(log =>
-          new Date(log.timestamp) <= end
-        )
-      }
-
-      return filteredLogs
+      const response = await fetch('/api/v1/admin/users')
+      if (!response.ok) return []
+      const data = await response.json()
+      return data.users?.map((u: any) => ({
+        user_id: u.user_id,
+        username: u.username
+      })) || []
     },
     enabled: !!currentUser,
   })
+
+  // Filter users based on input
+  const filteredUsers = users.filter(u =>
+    u.username.toLowerCase().includes(userFilter.toLowerCase()) ||
+    u.user_id.toLowerCase().includes(userFilter.toLowerCase())
+  ).slice(0, 5)
+
+  // Fetch audit logs with filters
+  const { data: logsResponse, isLoading } = useQuery({
+    queryKey: ['audit-logs', userFilter, actionFilter, startDate, endDate],
+    queryFn: async () => {
+      const params = new URLSearchParams()
+      if (userFilter) params.set('user_id', userFilter)
+      if (actionFilter) params.set('action', actionFilter)
+      if (startDate) params.set('start_date', startDate)
+      if (endDate) params.set('end_date', endDate)
+      params.set('limit', '100')
+      params.set('offset', '0')
+
+      const response = await fetch(`/api/v1/admin/audit/logs?${params}`)
+      if (!response.ok) {
+        if (response.status === 403) {
+          throw new Error('Insufficient permissions to view audit logs')
+        }
+        throw new Error('Failed to load audit logs')
+      }
+      const data = await response.json()
+      return data as { logs: AuditLog[], total: number }
+    },
+    enabled: !!currentUser,
+  })
+
+  const logs = logsResponse?.logs || []
 
   function handleExportCSV() {
     if (logs.length === 0) {
@@ -183,32 +116,18 @@ export default function AuditLogsTab() {
       return
     }
 
-    // Generate CSV content
-    const headers = ['Timestamp', 'User', 'Action', 'Resource', 'Resource ID', 'IP Address', 'Status']
-    const rows = logs.map(log => [
-      formatDateTime(log.timestamp),
-      log.user_name,
-      log.action,
-      log.resource,
-      log.resource_id,
-      log.ip_address,
-      log.status,
-    ])
+    // Use backend export endpoint
+    const params = new URLSearchParams()
+    if (startDate) params.set('start_date', startDate)
+    if (endDate) params.set('end_date', endDate)
 
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-    ].join('\n')
+    const exportUrl = `/api/v1/admin/audit/export?${params}`
 
-    // Create download link
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    // Create hidden link to trigger download
     const link = document.createElement('a')
-    const url = URL.createObjectURL(blob)
-
-    link.setAttribute('href', url)
-    link.setAttribute('download', `audit-logs-${new Date().toISOString().split('T')[0]}.csv`)
-    link.style.visibility = 'hidden'
-
+    link.href = exportUrl
+    link.download = `audit-logs-${new Date().toISOString().split('T')[0]}.csv`
+    link.style.display = 'none'
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -329,18 +248,41 @@ export default function AuditLogsTab() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div>
+          <div className="relative">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               User
             </label>
             <input
               type="text"
               value={userFilter}
-              onChange={(e) => setUserFilter(e.target.value)}
-              placeholder="Search by user name..."
+              onChange={(e) => {
+                setUserFilter(e.target.value)
+                setShowUserSuggestions(true)
+              }}
+              onFocus={() => setShowUserSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowUserSuggestions(false), 200)}
+              placeholder="Search by username or user ID..."
               className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600
                        rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            {/* User suggestions dropdown */}
+            {showUserSuggestions && userFilter && filteredUsers.length > 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {filteredUsers.map(user => (
+                  <button
+                    key={user.user_id}
+                    onClick={() => {
+                      setUserFilter(user.user_id)
+                      setShowUserSuggestions(false)
+                    }}
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <div className="font-medium text-gray-900 dark:text-gray-100">{user.username}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{user.user_id}</div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>

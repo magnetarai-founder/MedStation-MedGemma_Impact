@@ -9,9 +9,17 @@ ElohimOS is a self-hosted, local-first application designed for field workers, r
 ## 🚀 Quick Start
 
 ### Prerequisites
-- **Python 3.10+** with pip
+- **macOS only** (Darwin) - ElohimOS is designed exclusively for macOS
+- **Python 3.11 or 3.12** with pip
 - **Node.js 18+** with npm
-- **macOS, Linux, or Windows** (macOS recommended for Secure Enclave)
+- **Ollama** - For local AI inference (offline)
+- **Homebrew** - For installing system dependencies
+
+```bash
+# Install prerequisites
+brew install ffmpeg python@3.11
+# Install Ollama from https://ollama.ai
+```
 
 ### Installation
 

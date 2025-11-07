@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { Shield, User, Lock, Fingerprint, Loader2, ArrowLeft } from 'lucide-react'
-import { registerBiometric } from '@/lib/biometricAuth'
+import { useState, useEffect } from 'react'
+import { Shield, User, Lock, Fingerprint, Loader2, ArrowLeft, AlertCircle } from 'lucide-react'
+import { registerBiometric, isBiometricAvailable } from '@/lib/biometricAuth'
 
 interface SetupWizardProps {
   onComplete: (token: string) => void
@@ -15,6 +15,21 @@ export function SetupWizard({ onComplete, onBack }: SetupWizardProps) {
   const [setupTouchID, setSetupTouchID] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [biometricAvailable, setBiometricAvailable] = useState<boolean | null>(null)
+  const [isSecureContext, setIsSecureContext] = useState(true)
+
+  // Check biometric availability and secure context on mount
+  useEffect(() => {
+    const checkBiometrics = async () => {
+      const available = await isBiometricAvailable()
+      setBiometricAvailable(available)
+    }
+    checkBiometrics()
+
+    // Check if in secure context (HTTPS or localhost)
+    const isSecure = window.isSecureContext
+    setIsSecureContext(isSecure)
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -62,10 +77,13 @@ export function SetupWizard({ onComplete, onBack }: SetupWizardProps) {
       localStorage.setItem('auth_token', token)
       localStorage.setItem('user', JSON.stringify(user))
 
-      // Setup Touch ID if requested
-      if (setupTouchID) {
+      // Setup Touch ID if requested (use 'elohimos' as documentId for general login)
+      if (setupTouchID && biometricAvailable) {
         try {
-          await registerBiometric(username)
+          const success = await registerBiometric('elohimos', user.user_id)
+          if (!success) {
+            console.warn('Touch ID enrollment was not completed')
+          }
         } catch (biometricError) {
           console.error('Failed to setup Touch ID:', biometricError)
           // Don't fail setup if biometric fails - user can set it up later
@@ -187,25 +205,61 @@ export function SetupWizard({ onComplete, onBack }: SetupWizardProps) {
             </div>
 
             {/* Touch ID Option */}
-            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
-              <div className="flex items-center gap-3">
-                <Fingerprint className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-                <div>
-                  <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    Setup Touch ID
-                  </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                    Quick login with biometrics
+            <div className="space-y-2">
+              <div className={`flex items-center justify-between p-4 rounded-lg ${
+                biometricAvailable && isSecureContext
+                  ? 'bg-gray-50 dark:bg-gray-900/50'
+                  : 'bg-gray-100 dark:bg-gray-800 opacity-60'
+              }`}>
+                <div className="flex items-center gap-3">
+                  <Fingerprint className={`w-5 h-5 ${
+                    biometricAvailable && isSecureContext
+                      ? 'text-primary-600 dark:text-primary-400'
+                      : 'text-gray-400'
+                  }`} />
+                  <div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      Setup Touch ID
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      {biometricAvailable === null
+                        ? 'Checking availability...'
+                        : biometricAvailable && isSecureContext
+                        ? 'Quick unlock with biometrics'
+                        : !isSecureContext
+                        ? 'Requires HTTPS or localhost'
+                        : 'Not available on this device'}
+                    </div>
                   </div>
                 </div>
+                <input
+                  type="checkbox"
+                  checked={setupTouchID}
+                  onChange={(e) => setSetupTouchID(e.target.checked)}
+                  className="w-5 h-5 rounded text-primary-600"
+                  disabled={isLoading || !biometricAvailable || !isSecureContext}
+                />
               </div>
-              <input
-                type="checkbox"
-                checked={setupTouchID}
-                onChange={(e) => setSetupTouchID(e.target.checked)}
-                className="w-5 h-5 rounded text-primary-600"
-                disabled={isLoading}
-              />
+
+              {/* Warning if not secure context */}
+              {!isSecureContext && (
+                <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                  <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-700 dark:text-amber-300">
+                    WebAuthn requires HTTPS or localhost. Touch ID is unavailable in this context.
+                  </p>
+                </div>
+              )}
+
+              {/* Info about biometric usage */}
+              {biometricAvailable && isSecureContext && (
+                <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <Fingerprint className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-blue-700 dark:text-blue-300">
+                    Touch ID is for local UI unlock only. Your password remains the primary auth method. A PIN fallback will be available.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Error Message */}

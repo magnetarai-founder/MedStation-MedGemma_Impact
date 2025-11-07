@@ -2,6 +2,13 @@
 
 # Start script for ElohimOS
 
+# macOS-only check
+if [[ "$(uname -s)" != "Darwin" ]]; then
+    echo "❌ Error: ElohimOS is macOS-only. Detected OS: $(uname -s)"
+    echo "This system requires macOS (Darwin) to run."
+    exit 1
+fi
+
 # Set development environment
 export ELOHIM_ENV=development
 export ELOHIM_JWT_SECRET="dev_secret_do_not_use_in_production_12345678"

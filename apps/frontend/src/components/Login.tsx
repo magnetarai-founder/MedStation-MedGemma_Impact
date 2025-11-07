@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Shield, User, Lock, Fingerprint, Loader2, UserPlus } from 'lucide-react'
 import { authenticateBiometric } from '@/lib/biometricAuth'
 import { SetupWizard } from './SetupWizard'
@@ -7,12 +7,35 @@ interface LoginProps {
   onLogin: (token: string) => void
 }
 
+// Get or create stable device fingerprint
+function getDeviceFingerprint(): string {
+  const key = 'elohimos.device_id'
+  let fingerprint = localStorage.getItem(key)
+
+  if (!fingerprint) {
+    // Generate UUID v4
+    fingerprint = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = Math.random() * 16 | 0
+      const v = c === 'x' ? r : (r & 0x3 | 0x8)
+      return v.toString(16)
+    })
+    localStorage.setItem(key, fingerprint)
+  }
+
+  return fingerprint
+}
+
 export function Login({ onLogin }: LoginProps) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showSetupWizard, setShowSetupWizard] = useState(false)
+  const [deviceFingerprint, setDeviceFingerprint] = useState('')
+
+  useEffect(() => {
+    setDeviceFingerprint(getDeviceFingerprint())
+  }, [])
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -29,7 +52,11 @@ export function Login({ onLogin }: LoginProps) {
       const response = await fetch('/api/v1/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({
+          username,
+          password,
+          device_fingerprint: deviceFingerprint
+        }),
       })
 
       if (!response.ok) {
@@ -52,28 +79,19 @@ export function Login({ onLogin }: LoginProps) {
     }
   }
 
-  const handleTouchIDLogin = async () => {
+  const handleTouchIDTest = async () => {
+    // Test Touch ID availability (not for server login)
     setError(null)
-    setIsLoading(true)
 
     try {
-      const result = await authenticateBiometric()
-
-      if (result.success && result.token) {
-        // Store token
-        localStorage.setItem('auth_token', result.token)
-        if (result.user) {
-          localStorage.setItem('user', JSON.stringify(result.user))
-        }
-
-        // Complete login
-        onLogin(result.token)
+      const success = await authenticateBiometric()
+      if (success) {
+        setError('Touch ID test successful! (Note: Touch ID is for UI unlock only)')
       } else {
-        throw new Error('Biometric authentication failed')
+        setError('Touch ID test failed or cancelled')
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Touch ID login failed')
-      setIsLoading(false)
+      setError(err instanceof Error ? err.message : 'Touch ID test failed')
     }
   }
 
@@ -107,37 +125,6 @@ export function Login({ onLogin }: LoginProps) {
 
         {/* Login Form */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 border border-gray-200 dark:border-gray-700">
-          {/* Touch ID Button */}
-          <button
-            onClick={handleTouchIDLogin}
-            disabled={isLoading}
-            className="w-full py-3 px-4 mb-4 bg-gradient-to-r from-purple-600 to-primary-600 hover:from-purple-700 hover:to-primary-700 text-white font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Authenticating...
-              </>
-            ) : (
-              <>
-                <Fingerprint className="w-5 h-5" />
-                Sign in with Touch ID
-              </>
-            )}
-          </button>
-
-          {/* Divider */}
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">
-                Or continue with password
-              </span>
-            </div>
-          </div>
-
           <form onSubmit={handlePasswordLogin} className="space-y-5">
             {/* Username */}
             <div>
@@ -223,6 +210,24 @@ export function Login({ onLogin }: LoginProps) {
           >
             <UserPlus className="w-5 h-5" />
             Create New Account
+          </button>
+
+          {/* Divider */}
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
+            </div>
+          </div>
+
+          {/* Touch ID Test Button (UI unlock test only) */}
+          <button
+            type="button"
+            onClick={handleTouchIDTest}
+            disabled={isLoading}
+            className="w-full py-2 px-4 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <Fingerprint className="w-4 h-4" />
+            Test Touch ID (UI Unlock Only)
           </button>
 
           {/* Info */}

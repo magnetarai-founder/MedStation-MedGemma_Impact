@@ -8,7 +8,7 @@
  * - My Work Queue (for Team Workflow mode)
  */
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ChevronDown, ChevronRight, Folder, Star, Plus, Briefcase, Zap, Users, ListChecks } from 'lucide-react'
 import { useWorkflows } from '@/hooks/useWorkflowQueue'
 import type { Workflow } from '@/types/workflow'
@@ -30,10 +30,48 @@ export function WorkflowTreeSidebar({
   onViewQueue
 }: WorkflowTreeSidebarProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['workflows', 'queue']))
+  const [queueCount, setQueueCount] = useState(0)
+  const [queueFailures, setQueueFailures] = useState(0)
 
   // Fetch workflows from backend filtered by type
   const { data: workflows = [], isLoading } = useWorkflows({ workflow_type: automationType })
-  const queueCount = 0 // TODO: Fetch from backend
+
+  // Poll queue status every 5 seconds
+  useEffect(() => {
+    const pollQueues = async () => {
+      // Stop polling after 3 consecutive failures
+      if (queueFailures >= 3) return
+
+      try {
+        const response = await fetch('/api/v1/monitoring/metal4')
+        if (!response.ok) {
+          setQueueFailures(prev => prev + 1)
+          return
+        }
+
+        const data = await response.json()
+
+        // Sum active_buffers across all queues
+        let total = 0
+        if (data.queues) {
+          for (const queue of Object.values(data.queues)) {
+            if (typeof queue === 'object' && queue !== null && 'active_buffers' in queue) {
+              total += (queue as { active_buffers: number }).active_buffers || 0
+            }
+          }
+        }
+
+        setQueueCount(total)
+        setQueueFailures(0) // Reset on success
+      } catch {
+        setQueueFailures(prev => prev + 1)
+      }
+    }
+
+    pollQueues() // Initial poll
+    const interval = setInterval(pollQueues, 5000) // Every 5 seconds
+    return () => clearInterval(interval)
+  }, [queueFailures])
 
   const toggleFolder = (folderId: string) => {
     setExpandedFolders(prev => {

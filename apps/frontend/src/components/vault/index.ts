@@ -1,3 +1,3 @@
 // Vault Components
-export { TrashBin } from './TrashBin'
+// TrashBin removed - redundant (trash endpoints already wired in VaultWorkspace)
 export { FileEncryptionProgress, FileEncryptionProgressBar } from './FileEncryptionProgress'

@@ -3,32 +3,43 @@ Neutron Star Web API
 FastAPI backend wrapper for the existing SQL engine
 """
 
-import os
 import asyncio
-import uuid
-import re
-import signal
-from pathlib import Path
-from typing import Optional, List, Dict, Any
-from datetime import datetime
+import datetime as _dt
 import json
 import logging
+import math
+import os
+import re
+import signal
+import uuid
+import uuid as uuid_lib
+from contextlib import asynccontextmanager
+from contextvars import ContextVar
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, File, UploadFile, HTTPException, WebSocket, WebSocketDisconnect, Form, Query, Request, Depends
+import aiofiles
+import pandas as pd
+from fastapi import (
+    Depends,
+    FastAPI,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
-from starlette.background import BackgroundTask
 from pydantic import BaseModel, Field
 from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-import uuid as uuid_lib
-from contextvars import ContextVar
-import pandas as pd
-import aiofiles
-from contextlib import asynccontextmanager
-import math
-import datetime as _dt
+from slowapi.util import get_remote_address
+from starlette.background import BackgroundTask
 
 # Suppress DEBUG logs from httpcore and httpx to reduce terminal noise
 logging.getLogger("httpcore").setLevel(logging.WARNING)
@@ -64,31 +75,33 @@ limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
 # Import shared rate limiter to avoid code duplication
 try:
-    from .rate_limiter import rate_limiter, get_client_ip
+    from .rate_limiter import get_client_ip, rate_limiter
 except ImportError:
-    from rate_limiter import rate_limiter, get_client_ip
+    from rate_limiter import get_client_ip, rate_limiter
 
 # Import existing backend modules
 import sys
+
 # Insert at the beginning of sys.path to prioritize local modules
 sys.path.insert(0, str(Path(__file__).parent))  # /apps/backend/api - for api module imports
 sys.path.insert(0, str(Path(__file__).parent.parent))  # /apps/backend
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "packages"))  # /packages
 
-from neutron_core.engine import NeutronEngine, SQLDialect, QueryResult
-from redshift_sql_processor import RedshiftSQLProcessor
-from sql_validator import SQLValidator
-from neutron_utils.sql_utils import SQLProcessor
+from neutron_core.engine import NeutronEngine, QueryResult, SQLDialect
 from neutron_utils.config import config
 from neutron_utils.json_utils import df_to_jsonsafe_records as _df_to_jsonsafe_records
+from neutron_utils.sql_utils import SQLProcessor
+
+from redshift_sql_processor import RedshiftSQLProcessor
+from sql_validator import SQLValidator
 
 # Phase 2: Import permission decorator
 try:
-    from permission_engine import require_perm
     from auth_middleware import get_current_user
+    from permission_engine import require_perm
 except ImportError:
-    from api.permission_engine import require_perm
     from api.auth_middleware import get_current_user
+    from api.permission_engine import require_perm
 try:
     from .pulsar_core import JsonToExcelEngine
 except ImportError:
@@ -105,8 +118,8 @@ except ImportError:
     from data_engine import get_data_engine
 
 # Session storage
-sessions: Dict[str, dict] = {}
-query_results: Dict[str, pd.DataFrame] = {}
+sessions: dict[str, dict] = {}
+query_results: dict[str, pd.DataFrame] = {}
 
 # Initialize ElohimOS Memory System
 elohimos_memory = ElohimOSMemory()
@@ -171,6 +184,11 @@ async def cleanup_old_temp_files():
 async def lifespan(app: FastAPI):
     # Startup
     print("Starting ElohimOS API...")
+
+    # macOS-only check
+    import platform
+    if platform.system() != "Darwin":
+        raise RuntimeError(f"ElohimOS is macOS-only. Detected OS: {platform.system()}")
 
     # Register signal handlers for graceful shutdown
     signal.signal(signal.SIGTERM, handle_shutdown_signal)
@@ -271,7 +289,8 @@ services_loaded = []
 services_failed = []
 
 try:
-    from chat_service import router as chat_router, public_router as chat_public_router
+    from chat_service import public_router as chat_public_router
+    from chat_service import router as chat_router
     app.include_router(chat_router)
     app.include_router(chat_public_router)  # Public endpoints (health check)
     services_loaded.append("Chat")
@@ -420,6 +439,15 @@ except Exception as e:
     services_failed.append("Admin")
     logger.error(f"Admin service failed to load: {e}")
 
+# Backup routes
+try:
+    from backup_router import router as backup_router
+    app.include_router(backup_router)
+    services_loaded.append("Backups")
+except Exception as e:
+    services_failed.append("Backups")
+    logger.error(f"Backup service failed to load: {e}")
+
 # Agent Orchestrator (Aider + Continue + Codex integration)
 try:
     from agent import router as agent_router
@@ -491,28 +519,28 @@ class FileUploadResponse(BaseModel):
     size_mb: float
     row_count: int
     column_count: int
-    columns: List[ColumnInfo]
-    preview: List[dict]
+    columns: list[ColumnInfo]
+    preview: list[dict]
 
 class QueryRequest(BaseModel):
     sql: str
-    limit: Optional[int] = 1000
+    limit: int | None = 1000
     dialect: SQLDialect = SQLDialect.DUCKDB
-    timeout_seconds: Optional[int] = 300
+    timeout_seconds: int | None = 300
 
 class QueryResponse(BaseModel):
     query_id: str
     row_count: int
     column_count: int
-    columns: List[str]
+    columns: list[str]
     execution_time_ms: float
-    preview: List[dict]
+    preview: list[dict]
     has_more: bool
 
 class ExportRequest(BaseModel):
     query_id: str
     format: str = Field(default="excel", pattern="^(excel|csv|tsv|parquet|json)$")
-    filename: Optional[str] = None
+    filename: str | None = None
 
 class ValidationRequest(BaseModel):
     sql: str
@@ -520,26 +548,26 @@ class ValidationRequest(BaseModel):
 
 class ValidationResponse(BaseModel):
     is_valid: bool
-    errors: List[str]
-    warnings: List[str]
+    errors: list[str]
+    warnings: list[str]
 
 class QueryHistoryItem(BaseModel):
     id: str
     query: str
     timestamp: str
-    executionTime: Optional[float] = None
-    rowCount: Optional[int] = None
+    executionTime: float | None = None
+    rowCount: int | None = None
     status: str
 
 class QueryHistoryResponse(BaseModel):
-    history: List[QueryHistoryItem]
+    history: list[QueryHistoryItem]
 
 class SuccessResponse(BaseModel):
     success: bool
-    message: Optional[str] = None
+    message: str | None = None
 
 class DatasetListResponse(BaseModel):
-    datasets: List[Dict[str, Any]]
+    datasets: list[dict[str, Any]]
 
 # Helper functions
 async def save_upload(upload_file: UploadFile) -> Path:
@@ -560,15 +588,15 @@ async def save_upload(upload_file: UploadFile) -> Path:
             if not chunk:
                 break
             await f.write(chunk)
-    
+
     return file_path
 
-def get_column_info(df: pd.DataFrame) -> List[ColumnInfo]:
+def get_column_info(df: pd.DataFrame) -> list[ColumnInfo]:
     """Get column information with clean names"""
     from neutron_utils.sql_utils import ColumnNameCleaner
     cleaner = ColumnNameCleaner()
-    
-    columns: List[ColumnInfo] = []
+
+    columns: list[ColumnInfo] = []
     for col in df.columns:
         # Use the supported cleaner API (instance method `clean`)
         clean_name = cleaner.clean(str(col))
@@ -652,22 +680,22 @@ async def delete_session(request: Request, session_id: str):
     """Clean up session and its resources"""
     if session_id not in sessions:
         raise HTTPException(status_code=404, detail="Session not found")
-    
+
     session = sessions[session_id]
-    
+
     # Close engine
     if 'engine' in session:
         session['engine'].close()
-    
+
     # Clean up temp files
     for file_info in session.get('files', {}).values():
         if 'path' in file_info and Path(file_info['path']).exists():
             Path(file_info['path']).unlink()
-    
+
     # Clean up query results
     for query_id in session.get('queries', {}):
         query_results.pop(query_id, None)
-    
+
     del sessions[session_id]
     return {"message": "Session deleted"}
 
@@ -675,15 +703,15 @@ async def delete_session(request: Request, session_id: str):
 async def upload_file(
     session_id: str,
     file: UploadFile = File(...),
-    sheet_name: Optional[str] = Form(None)
+    sheet_name: str | None = Form(None)
 ):
     """Upload and load an Excel file"""
     if session_id not in sessions:
         raise HTTPException(status_code=404, detail="Session not found")
-    
+
     if not file.filename.lower().endswith(('.xlsx', '.xls', '.xlsm', '.csv')):
         raise HTTPException(status_code=400, detail="Only Excel (.xlsx, .xls, .xlsm) and CSV files are supported")
-    
+
     # Save file (streamed) and enforce max size
     file_path = await save_upload(file)
     size_mb = file_path.stat().st_size / (1024 * 1024)
@@ -694,10 +722,10 @@ async def upload_file(
         except Exception:
             pass
         raise HTTPException(status_code=413, detail=f"File too large: {size_mb:.1f} MB (limit {int(max_mb)} MB)")
-    
+
     try:
         engine = sessions[session_id]['engine']
-        
+
         # Load into engine based on file type
         lower_name = file.filename.lower()
         if lower_name.endswith('.csv'):
@@ -720,7 +748,7 @@ async def upload_file(
 
         if preview_result.error:
             raise HTTPException(status_code=500, detail=preview_result.error)
-        
+
         # Store file info
         file_info = {
             "filename": file.filename,
@@ -729,10 +757,10 @@ async def upload_file(
             "loaded_at": datetime.now()
         }
         sessions[session_id]['files'][file.filename] = file_info
-        
+
         # Get column info
         columns = get_column_info(preview_result.data)
-        
+
         # JSON-safe preview
         preview_records = _df_to_jsonsafe_records(preview_result.data)
 
@@ -744,7 +772,7 @@ async def upload_file(
             columns=columns,
             preview=preview_records
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -758,7 +786,7 @@ async def validate_sql(request: Request, session_id: str, body: ValidationReques
     """Validate SQL syntax before execution"""
     if session_id not in sessions:
         raise HTTPException(status_code=404, detail="Session not found")
-    
+
     validator = SQLValidator()
     is_valid, errors, warnings = validator.validate_sql(
         body.sql,
@@ -820,14 +848,14 @@ async def execute_query(req: Request, session_id: str, request: QueryRequest):
     except Exception as e:
         logger.error(f"Query execution failed: {str(e)}")
         raise
-    
+
     if result.error:
         raise HTTPException(status_code=400, detail=result.error)
-    
+
     # Store full result for export
     query_id = str(uuid.uuid4())
     query_results[query_id] = result.data
-    
+
     # Store query info
     sessions[session_id]['queries'][query_id] = {
         "sql": request.sql,
@@ -899,7 +927,7 @@ async def delete_query_from_history(request: Request, session_id: str, query_id:
 
 @app.post("/api/sessions/{session_id}/export")
 @require_perm("data.export")
-async def export_results(req: Request, session_id: str, request: ExportRequest, current_user: Dict = Depends(get_current_user)):
+async def export_results(req: Request, session_id: str, request: ExportRequest, current_user: dict = Depends(get_current_user)):
     """Export query results"""
     if session_id not in sessions:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -926,15 +954,15 @@ async def export_results(req: Request, session_id: str, request: ExportRequest, 
             raise HTTPException(status_code=404, detail="Query results not found. Please run the query again.")
 
         df = query_results[request.query_id]
-    
+
     # Generate filename
     filename = request.filename or f"neutron_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    
+
     # Export based on format
     api_dir = Path(__file__).parent
     temp_dir = api_dir / "temp_exports"
     temp_dir.mkdir(exist_ok=True)
-    
+
     if request.format == "excel":
         file_path = temp_dir / f"{filename}.xlsx"
         df.to_excel(file_path, index=False)
@@ -960,7 +988,7 @@ async def export_results(req: Request, session_id: str, request: ExportRequest, 
         media_type = "application/json"
     else:
         raise HTTPException(status_code=400, detail="Invalid export format")
-    
+
     return FileResponse(
         path=file_path,
         filename=file_path.name,
@@ -969,7 +997,7 @@ async def export_results(req: Request, session_id: str, request: ExportRequest, 
     )
 
 @app.get("/api/sessions/{session_id}/sheet-names")
-async def sheet_names(session_id: str, filename: Optional[str] = Query(None)):
+async def sheet_names(session_id: str, filename: str | None = Query(None)):
     """List Excel sheet names for an uploaded file in this session."""
     if session_id not in sessions:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -1004,10 +1032,10 @@ async def list_tables(session_id: str):
     """List loaded tables in session"""
     if session_id not in sessions:
         raise HTTPException(status_code=404, detail="Session not found")
-    
+
     engine = sessions[session_id]['engine']
     tables = []
-    
+
     for table_name, file_path in engine.tables.items():
         table_info = engine.get_table_info(table_name)
         tables.append({
@@ -1016,7 +1044,7 @@ async def list_tables(session_id: str):
             "row_count": table_info.get('row_count', 0),
             "column_count": len(table_info.get('columns', []))
         })
-    
+
     return {"tables": tables}
 
 @app.websocket("/api/sessions/{session_id}/ws")
@@ -1025,14 +1053,14 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
     if session_id not in sessions:
         await websocket.close(code=4004, reason="Session not found")
         return
-    
+
     await websocket.accept()
-    
+
     try:
         while True:
             # Receive query request
             data = await websocket.receive_json()
-            
+
             if data.get("type") == "query":
                 # Execute query and stream progress
                 await websocket.send_json({
@@ -1058,7 +1086,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 # For now, just execute and return result
                 engine = sessions[session_id]['engine']
                 result = engine.execute_sql(sql_query)
-                
+
                 if result.error:
                     await websocket.send_json({
                         "type": "error",
@@ -1070,7 +1098,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                         "row_count": result.row_count,
                         "execution_time_ms": result.execution_time_ms
                     })
-            
+
     except WebSocketDisconnect:
         pass
     except Exception as e:
@@ -1086,12 +1114,12 @@ class JsonUploadResponse(BaseModel):
     size_mb: float
     object_count: int
     depth: int
-    columns: List[str]
-    preview: List[Dict[str, Any]]
+    columns: list[str]
+    preview: list[dict[str, Any]]
 
 class JsonConvertRequest(BaseModel):
     json_data: str
-    options: Dict[str, Any] = Field(default_factory=lambda: {
+    options: dict[str, Any] = Field(default_factory=lambda: {
         "expand_arrays": True,
         "max_depth": 5,
         "auto_safe": True,
@@ -1102,9 +1130,9 @@ class JsonConvertResponse(BaseModel):
     success: bool
     output_file: str
     total_rows: int
-    sheets: List[str]
-    columns: List[str]
-    preview: List[Dict[str, Any]]
+    sheets: list[str]
+    columns: list[str]
+    preview: list[dict[str, Any]]
     is_preview_only: bool = False
 
 @app.post("/api/sessions/{session_id}/json/upload", response_model=JsonUploadResponse)
@@ -1152,17 +1180,17 @@ async def upload_json(request: Request, session_id: str, file: UploadFile = File
                 if not chunk:
                     break
                 await f.write(chunk)
-        
+
         # Analyze JSON structure
         engine = JsonToExcelEngine()
         load_result = engine.load_json(str(file_path))
-        
+
         if not load_result['success']:
             raise HTTPException(status_code=400, detail=load_result.get('error', 'Failed to load JSON'))
-        
+
         # Get column paths
         columns = load_result.get('columns', [])
-        
+
         # Preview data (first 10 objects)
         preview_data = []
         if 'preview' in load_result and hasattr(load_result['preview'], 'to_dict'):
@@ -1170,7 +1198,7 @@ async def upload_json(request: Request, session_id: str, file: UploadFile = File
             preview_data = _df_to_jsonsafe_records(load_result['preview'])
         elif 'data' in load_result and isinstance(load_result['data'], list):
             preview_data = load_result['data'][:10]
-        
+
         # Store JSON info in session
         sessions[session_id]['json_file'] = {
             'path': str(file_path),
@@ -1179,11 +1207,11 @@ async def upload_json(request: Request, session_id: str, file: UploadFile = File
             'columns': columns,
             'data': load_result.get('data', [])
         }
-        
+
         # Get metadata for counts
         metadata = load_result.get('metadata', {})
         data = load_result.get('data', [])
-        
+
         # Calculate object count based on data type
         if isinstance(data, list):
             object_count = len(data)
@@ -1197,13 +1225,13 @@ async def upload_json(request: Request, session_id: str, file: UploadFile = File
                 object_count = 1
         else:
             object_count = 0
-            
+
         # Estimate depth from column names
         max_depth = 1
         for col in columns:
             depth = col.count('.') + 1
             max_depth = max(max_depth, depth)
-        
+
         return JsonUploadResponse(
             filename=file.filename,
             size_mb=len(content) / (1024 * 1024),
@@ -1212,7 +1240,7 @@ async def upload_json(request: Request, session_id: str, file: UploadFile = File
             columns=columns[:50],  # Limit columns shown
             preview=preview_data
         )
-        
+
     except Exception as e:
         if file_path.exists():
             file_path.unlink()
@@ -1302,7 +1330,7 @@ async def convert_json(request: Request, session_id: str, body: JsonConvertReque
             )
 
             logger.info(f"Conversion completed with result: {result.get('success', False)}")
-        
+
         if not result['success']:
             raise HTTPException(status_code=400, detail=result.get('error', 'Conversion failed'))
 
@@ -1312,7 +1340,7 @@ async def convert_json(request: Request, session_id: str, body: JsonConvertReque
                 'excel_path': str(temp_excel),
                 'result': result
             }
-        
+
         # Use preview from result if available, otherwise fallback to reading Excel
         # Random sample for better data representation
         preview_limit = 100
@@ -1335,7 +1363,7 @@ async def convert_json(request: Request, session_id: str, body: JsonConvertReque
                 preview = _df_to_jsonsafe_records(preview_df)
             except Exception as e:
                 logger.warning(f"Could not read Excel file for preview: {e}")
-        
+
         # Get column information from result first
         column_list = result.get('column_names', [])[:50]
         if not column_list and 'columns' in result:
@@ -1347,7 +1375,7 @@ async def convert_json(request: Request, session_id: str, body: JsonConvertReque
                     column_list = list(df_cols.columns)[:50]
                 except:
                     column_list = []
-        
+
         # Get sheet information
         sheet_names = result.get('sheet_names', [])
         if not sheet_names:
@@ -1372,7 +1400,7 @@ async def convert_json(request: Request, session_id: str, body: JsonConvertReque
             preview=preview,
             is_preview_only=preview_only
         )
-        
+
     except Exception as e:
         # Cleanup temp files
         for f in [temp_json, temp_excel]:
@@ -1429,7 +1457,7 @@ async def download_json_result(session_id: str, format: str = Query("excel", pat
             status_code=404,
             detail="Result file not accessible. Please run the conversion again."
         )
-    
+
     if format == "excel":
         return FileResponse(
             excel_path,
@@ -1440,7 +1468,7 @@ async def download_json_result(session_id: str, format: str = Query("excel", pat
         # Convert to other formats
         try:
             df = pd.read_excel(excel_path, sheet_name=0)
-            
+
             if format == "csv":
                 output_path = excel_path.with_suffix('.csv')
                 df.to_csv(output_path, index=False)
@@ -1456,7 +1484,7 @@ async def download_json_result(session_id: str, format: str = Query("excel", pat
                 df.to_parquet(output_path, index=False)
                 media_type = "application/octet-stream"
                 extension = "parquet"
-            
+
             return FileResponse(
                 output_path,
                 filename=f"export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{extension}",
@@ -1474,17 +1502,17 @@ class SavedQueryRequest(BaseModel):
     name: str
     query: str
     query_type: str
-    folder: Optional[str] = None
-    description: Optional[str] = None
-    tags: Optional[List[str]] = None
+    folder: str | None = None
+    description: str | None = None
+    tags: list[str] | None = None
 
 class SavedQueryUpdateRequest(BaseModel):
-    name: Optional[str] = None
-    query: Optional[str] = None
-    query_type: Optional[str] = None
-    folder: Optional[str] = None
-    description: Optional[str] = None
-    tags: Optional[List[str]] = None
+    name: str | None = None
+    query: str | None = None
+    query_type: str | None = None
+    folder: str | None = None
+    description: str | None = None
+    tags: list[str] | None = None
 
 @app.post("/api/saved-queries")
 async def save_query(request: Request, body: SavedQueryRequest):
@@ -1504,8 +1532,8 @@ async def save_query(request: Request, body: SavedQueryRequest):
 
 @app.get("/api/saved-queries")
 async def get_saved_queries(
-    folder: Optional[str] = Query(None),
-    query_type: Optional[str] = Query(None)
+    folder: str | None = Query(None),
+    query_type: str | None = Query(None)
 ):
     """Get all saved queries"""
     try:
@@ -1577,15 +1605,15 @@ class AppSettings(BaseModel):
 
     # Naming Patterns
     naming_pattern_global: str = "{name}_{YYYYMMDD}"
-    naming_pattern_sql_excel: Optional[str] = None
-    naming_pattern_sql_csv: Optional[str] = None
-    naming_pattern_sql_tsv: Optional[str] = None
-    naming_pattern_sql_parquet: Optional[str] = None
-    naming_pattern_sql_json: Optional[str] = None
-    naming_pattern_json_excel: Optional[str] = None
-    naming_pattern_json_csv: Optional[str] = None
-    naming_pattern_json_tsv: Optional[str] = None
-    naming_pattern_json_parquet: Optional[str] = None
+    naming_pattern_sql_excel: str | None = None
+    naming_pattern_sql_csv: str | None = None
+    naming_pattern_sql_tsv: str | None = None
+    naming_pattern_sql_parquet: str | None = None
+    naming_pattern_sql_json: str | None = None
+    naming_pattern_json_excel: str | None = None
+    naming_pattern_json_csv: str | None = None
+    naming_pattern_json_tsv: str | None = None
+    naming_pattern_json_parquet: str | None = None
 
     # Automation & Workflows
     automation_enabled: bool = True
@@ -1877,7 +1905,7 @@ async def reset_data(request: Request):
 
 @app.post("/api/admin/export-all")
 @require_perm("data.export")
-async def export_all(request: Request, current_user: Dict = Depends(get_current_user)):
+async def export_all(request: Request, current_user: dict = Depends(get_current_user)):
     """Export complete backup as ZIP"""
     try:
         import shutil
@@ -1975,7 +2003,7 @@ async def export_queries(request: Request):
 async def upload_dataset(
     request: Request,
     file: UploadFile = File(...),
-    session_id: Optional[str] = Form(None)
+    session_id: str | None = Form(None)
 ):
     """
     Upload and load Excel/JSON/CSV into SQLite
@@ -2027,7 +2055,7 @@ async def upload_dataset(
 
 
 @app.get("/api/data/datasets", response_model=DatasetListResponse)
-async def list_datasets(session_id: Optional[str] = None):
+async def list_datasets(session_id: str | None = None):
     """List all datasets, optionally filtered by session"""
     try:
         datasets = await asyncio.to_thread(
@@ -2083,7 +2111,7 @@ class QueryRequest(BaseModel):
 
 @app.post("/api/data/query")
 @require_perm("data.run_sql")
-async def execute_data_query(req: Request, request: QueryRequest, current_user: Dict = Depends(get_current_user)):
+async def execute_data_query(req: Request, request: QueryRequest, current_user: dict = Depends(get_current_user)):
     """Execute SQL query on loaded datasets"""
     try:
         result = await asyncio.to_thread(
@@ -2289,7 +2317,7 @@ async def get_operation_metrics(operation: str):
 
 
 @app.post("/api/v1/metrics/reset")
-async def reset_metrics(operation: Optional[str] = None):
+async def reset_metrics(operation: str | None = None):
     """
     Reset metrics (admin only)
 

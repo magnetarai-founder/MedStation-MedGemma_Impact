@@ -19,6 +19,8 @@ export function Header({ onOpenServerControls }: HeaderProps) {
   const [showPanicConfirm, setShowPanicConfirm] = useState(false)
   const [showControlCenter, setShowControlCenter] = useState(false)
   const [activeTerminals, setActiveTerminals] = useState(0)
+  const [activeQueues, setActiveQueues] = useState(0)
+  const [queueFailures, setQueueFailures] = useState(0)
   const MAX_TERMINALS = 3
 
   // Fetch server status on mount and periodically
@@ -27,6 +29,43 @@ export function Header({ onOpenServerControls }: HeaderProps) {
     const interval = setInterval(fetchServerStatus, 60000) // Every 60 seconds (reduced from 10s to minimize noise)
     return () => clearInterval(interval)
   }, [])
+
+  // Poll queue status every 5 seconds
+  useEffect(() => {
+    const pollQueues = async () => {
+      // Stop polling after 3 consecutive failures
+      if (queueFailures >= 3) return
+
+      try {
+        const response = await fetch('/api/v1/monitoring/metal4')
+        if (!response.ok) {
+          setQueueFailures(prev => prev + 1)
+          return
+        }
+
+        const data = await response.json()
+
+        // Sum active_buffers across all queues
+        let total = 0
+        if (data.queues) {
+          for (const queue of Object.values(data.queues)) {
+            if (typeof queue === 'object' && queue !== null && 'active_buffers' in queue) {
+              total += (queue as { active_buffers: number }).active_buffers || 0
+            }
+          }
+        }
+
+        setActiveQueues(total)
+        setQueueFailures(0) // Reset on success
+      } catch {
+        setQueueFailures(prev => prev + 1)
+      }
+    }
+
+    pollQueues() // Initial poll
+    const interval = setInterval(pollQueues, 5000) // Every 5 seconds
+    return () => clearInterval(interval)
+  }, [queueFailures])
 
   const handleLogoClick = () => {
     // Toggle Model Management sidebar
@@ -181,14 +220,24 @@ export function Header({ onOpenServerControls }: HeaderProps) {
               </div>
             </div>
 
-            {/* Control Center (includes Performance Monitor) */}
-            <button
-              onClick={() => setShowControlCenter(true)}
-              className="p-2 hover:bg-blue-100 dark:hover:bg-blue-900/20 rounded-lg transition-colors text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
-              title="Control Center (System Monitoring)"
-            >
-              <Activity size={20} />
-            </button>
+            {/* Control Center (includes Performance Monitor) with Queue Badge */}
+            <div className="relative">
+              <button
+                onClick={() => setShowControlCenter(true)}
+                className="p-2 hover:bg-blue-100 dark:hover:bg-blue-900/20 rounded-lg transition-colors text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+                title={activeQueues > 0 ? `Control Center - ${activeQueues} active GPU queue(s)` : "Control Center (System Monitoring)"}
+              >
+                <Activity size={20} />
+              </button>
+              {activeQueues > 0 && (
+                <div
+                  className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center border-2 border-white dark:border-gray-900 animate-pulse"
+                  title={`${activeQueues} active GPU queue(s)`}
+                >
+                  <span className="text-[9px] font-bold text-white">{activeQueues}</span>
+                </div>
+              )}
+            </div>
 
             {/* PANIC BUTTON (Emergency Data Wipe) */}
             <button
