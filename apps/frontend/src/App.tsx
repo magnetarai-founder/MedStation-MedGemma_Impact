@@ -140,8 +140,9 @@ export default function App() {
 
   // Pre-load default AI model after authentication
   useEffect(() => {
-    // Only preload if authenticated
+    // Only preload if authenticated and token exists
     if (authState !== 'authenticated') return
+    if (!localStorage.getItem('auth_token')) return
 
     const preloadDefaultModel = async () => {
       try {
@@ -154,8 +155,8 @@ export default function App() {
       }
     }
 
-    // Small delay to ensure Ollama server is ready
-    const timeoutId = setTimeout(preloadDefaultModel, 2000)
+    // Delay to ensure Ollama server and auth token are ready
+    const timeoutId = setTimeout(preloadDefaultModel, 3000)
     return () => clearTimeout(timeoutId)
   }, [authState, settings.defaultModel])
 
