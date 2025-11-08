@@ -24,7 +24,10 @@ export default function DangerZoneTab() {
 
   const loadBackups = async () => {
     try {
-      const response = await fetch('/api/v1/backups/list')
+      const token = localStorage.getItem('auth_token')
+      const response = await fetch('/api/v1/backups/list', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
       if (!response.ok) throw new Error('Failed to load backups')
       const data = await response.json()
       setBackups(data.backups || [])
@@ -41,9 +44,13 @@ export default function DangerZoneTab() {
 
     setLoading({ ...loading, 'create-backup': true })
     try {
+      const token = localStorage.getItem('auth_token')
       const response = await fetch('/api/v1/backups/create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({ passphrase: backupPassphrase })
       })
       if (!response.ok) throw new Error('Failed to create backup')
@@ -71,9 +78,13 @@ export default function DangerZoneTab() {
 
     setLoading({ ...loading, [`verify-${backupName}`]: true })
     try {
+      const token = localStorage.getItem('auth_token')
       const response = await fetch('/api/v1/backups/verify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({
           backup_name: backupName,
           passphrase: backupPassphrase
@@ -107,9 +118,13 @@ export default function DangerZoneTab() {
 
     setLoading({ ...loading, [`restore-${backupName}`]: true })
     try {
+      const token = localStorage.getItem('auth_token')
       const response = await fetch('/api/v1/backups/restore', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({
           backup_name: backupName,
           passphrase: backupPassphrase
@@ -135,7 +150,11 @@ export default function DangerZoneTab() {
   const handleCleanupBackups = async () => {
     setLoading({ ...loading, 'cleanup-backups': true })
     try {
-      const response = await fetch('/api/v1/backups/cleanup', { method: 'POST' })
+      const token = localStorage.getItem('auth_token')
+      const response = await fetch('/api/v1/backups/cleanup', {
+        method: 'POST',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
       if (!response.ok) throw new Error('Failed to cleanup backups')
       const data = await response.json()
 
@@ -151,7 +170,10 @@ export default function DangerZoneTab() {
 
   const handleDownloadBackup = async (backupName: string) => {
     try {
-      const response = await fetch(`/api/v1/backups/download?backup_name=${encodeURIComponent(backupName)}`)
+      const token = localStorage.getItem('auth_token')
+      const response = await fetch(`/api/v1/backups/download?backup_name=${encodeURIComponent(backupName)}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
       if (!response.ok) throw new Error('Failed to download backup')
 
       const blob = await response.blob()
@@ -176,7 +198,11 @@ export default function DangerZoneTab() {
 
     setLoading({ ...loading, [action]: true })
     try {
-      const response = await fetch(endpoint, { method: 'POST' })
+      const token = localStorage.getItem('auth_token')
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
       if (!response.ok) {
         const errorText = await response.text().catch(() => 'Unknown error')
         toast.error(`${action} failed: ${errorText}`)
@@ -316,22 +342,26 @@ export default function DangerZoneTab() {
         </h3>
 
         <div className="space-y-4">
-          {/* Passphrase Field */}
+          {/* Passphrase Field (wrapped in a form to satisfy browser password field heuristics) */}
           <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Backup Passphrase (encrypted at ~/.elohimos_backups)
-            </label>
-            <input
-              type="password"
-              value={backupPassphrase}
-              onChange={(e) => setBackupPassphrase(e.target.value)}
-              placeholder="Enter passphrase for backup encryption"
-              className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600
-                       rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Used for create, verify, and restore operations. Keep this secure!
-            </p>
+            <form onSubmit={(e) => e.preventDefault()}>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Backup Passphrase (encrypted at ~/.elohimos_backups)
+              </label>
+              <input
+                type="password"
+                value={backupPassphrase}
+                onChange={(e) => setBackupPassphrase(e.target.value)}
+                placeholder="Enter passphrase for backup encryption"
+                autoComplete="off"
+                name="backup-passphrase"
+                className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600
+                        rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Used for create, verify, and restore operations. Keep this secure!
+              </p>
+            </form>
           </div>
 
           {/* Create Backup Button */}

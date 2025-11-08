@@ -32,15 +32,19 @@ export function WorkflowTreeSidebar({
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['workflows', 'queue']))
   const [queueCount, setQueueCount] = useState(0)
   const [queueFailures, setQueueFailures] = useState(0)
+  const [queueCooldownUntil, setQueueCooldownUntil] = useState<number>(0)
 
   // Fetch workflows from backend filtered by type
   const { data: workflows = [], isLoading } = useWorkflows({ workflow_type: automationType })
 
-  // Poll queue status every 5 seconds
+  // Poll queue status with cooldown on 429
   useEffect(() => {
     const pollQueues = async () => {
       // Stop polling after 3 consecutive failures
       if (queueFailures >= 3) return
+
+      // Respect cooldown after rate limit
+      if (Date.now() < queueCooldownUntil) return
 
       // Get auth token
       const token = localStorage.getItem('auth_token')
@@ -53,6 +57,9 @@ export function WorkflowTreeSidebar({
           }
         })
         if (!response.ok) {
+          if ((response as any).status === 429) {
+            setQueueCooldownUntil(Date.now() + 60_000)
+          }
           setQueueFailures(prev => prev + 1)
           return
         }
@@ -77,9 +84,9 @@ export function WorkflowTreeSidebar({
     }
 
     pollQueues() // Initial poll
-    const interval = setInterval(pollQueues, 5000) // Every 5 seconds
+    const interval = setInterval(pollQueues, 10000) // Every 10 seconds
     return () => clearInterval(interval)
-  }, [queueFailures])
+  }, [queueFailures, queueCooldownUntil])
 
   const toggleFolder = (folderId: string) => {
     setExpandedFolders(prev => {

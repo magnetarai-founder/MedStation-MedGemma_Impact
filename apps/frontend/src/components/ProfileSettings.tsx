@@ -30,6 +30,7 @@ import {
   CheckCircle,
   XCircle,
   Briefcase,
+  HardDrive,
 } from 'lucide-react'
 import { useUserStore } from '@/stores/userStore'
 import { useDocsStore } from '@/stores/docsStore'

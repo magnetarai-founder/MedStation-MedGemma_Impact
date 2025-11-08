@@ -5,6 +5,7 @@ Health checks, Metal 4 diagnostics, and system monitoring
 """
 
 import logging
+import os
 import time
 import psutil
 from fastapi import APIRouter, HTTPException, Request
@@ -216,9 +217,13 @@ async def get_metal4_stats(request: Request):
 
     Returns real-time metrics from Metal 4 diagnostics
     """
-    # Rate limit: 60 stats requests per minute
+    # Rate limit: 60 stats/min (120/min in development)
     client_ip = get_client_ip(request)
-    if not rate_limiter.check_rate_limit(f"monitoring:metal4:{client_ip}", max_requests=60, window_seconds=60):
+    dev_mode = os.getenv("ELOHIM_ENV") == "development"
+    max_per_min = 120 if dev_mode else 60
+    if not rate_limiter.check_rate_limit(
+        f"monitoring:metal4:{client_ip}", max_requests=max_per_min, window_seconds=60
+    ):
         raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 60 requests per minute.")
 
     try:

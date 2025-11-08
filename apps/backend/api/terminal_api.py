@@ -163,34 +163,58 @@ exec $SHELL
             workspace_root=workspace_root
         )
 
-        # Spawn terminal with bridge script
-        if terminal_app == 'warp':
-            # Warp CLI: warp-cli open <path>
-            subprocess.Popen([
-                'open', '-a', 'Warp',
-                bridge_script_path
-            ])
-        elif terminal_app == 'iterm':
-            # iTerm2 via AppleScript
-            applescript = f'''
-            tell application "iTerm"
-                activate
-                create window with default profile
-                tell current session of current window
-                    write text "{bridge_script_path}"
+        # Spawn terminal with bridge script (robust fallbacks)
+        def _run(cmd: list[str]) -> bool:
+            try:
+                p = subprocess.run(cmd, capture_output=True, text=True)
+                return p.returncode == 0
+            except Exception:
+                return False
+
+        def _open_with_app(app_name: str, path: str) -> bool:
+            return _run(['open', '-a', app_name, path])
+
+        spawned = False
+        try:
+            if terminal_app == 'warp':
+                # Prefer direct open; fallback to Terminal
+                spawned = _open_with_app('Warp', bridge_script_path)
+                if not spawned:
+                    terminal_app = 'terminal'
+            if terminal_app == 'iterm' and not spawned:
+                # Try AppleScript first, then open -a iTerm
+                applescript = f'''
+                tell application "iTerm"
+                    activate
+                    create window with default profile
+                    tell current session of current window
+                        write text "{bridge_script_path}"
+                    end tell
                 end tell
-            end tell
-            '''
-            subprocess.Popen(['osascript', '-e', applescript])
-        else:
-            # Terminal.app via AppleScript
-            applescript = f'''
-            tell application "Terminal"
-                activate
-                do script "{bridge_script_path}"
-            end tell
-            '''
-            subprocess.Popen(['osascript', '-e', applescript])
+                '''
+                spawned = _run(['osascript', '-e', applescript]) or _open_with_app('iTerm', bridge_script_path)
+                if not spawned:
+                    terminal_app = 'terminal'
+            if terminal_app == 'terminal' and not spawned:
+                # Try AppleScript, fallback to open -a Terminal
+                applescript = f'''
+                tell application "Terminal"
+                    activate
+                    do script "{bridge_script_path}"
+                end tell
+                '''
+                spawned = _run(['osascript', '-e', applescript]) or _open_with_app('Terminal', bridge_script_path)
+        except Exception:
+            spawned = False
+
+        if not spawned:
+            raise HTTPException(
+                status_code=500,
+                detail=(
+                    "Failed to spawn system terminal. Ensure Terminal/iTerm/Warp are installed and that this app "
+                    "has permission to control your computer (System Settings → Privacy & Security → Automation/Accessibility)."
+                )
+            )
 
         # Update active count
         active_count += 1

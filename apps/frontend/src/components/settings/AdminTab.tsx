@@ -56,12 +56,17 @@ export default function AdminTab() {
     setError(null)
     try {
       const token = localStorage.getItem('auth_token')
-      const response = await fetch('/api/v1/admin/device/overview', {
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
-          'Content-Type': 'application/json'
-        }
+      const baseHeaders: Record<string,string> = { 'Content-Type': 'application/json' }
+      if (token) baseHeaders['Authorization'] = `Bearer ${token}`
+      let response = await fetch('/api/v1/admin/device/overview', {
+        headers: baseHeaders
       })
+      // Fallback alias if route not found
+      if (response.status === 404) {
+        response = await fetch('/api/v1/admin/device-overview', {
+          headers: baseHeaders
+        })
+      }
 
       if (!response.ok) {
         if (response.status === 403) {
@@ -261,7 +266,7 @@ export default function AdminTab() {
             <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
               <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Users by Role</h4>
               <div className="space-y-2">
-                {Object.entries(deviceOverview.users_by_role).map(([role, count]) => (
+                {Object.entries(deviceOverview.users_by_role || {}).map(([role, count]) => (
                   <div key={role} className="flex items-center justify-between">
                     <span className={`px-2 py-1 text-xs font-medium rounded border ${getRoleBadgeClass(role)}`}>
                       {role || 'member'}
@@ -269,6 +274,9 @@ export default function AdminTab() {
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{count}</span>
                   </div>
                 ))}
+                {!deviceOverview.users_by_role && (
+                  <div className="text-sm text-gray-500 dark:text-gray-400">No role data available</div>
+                )}
               </div>
             </div>
           </>

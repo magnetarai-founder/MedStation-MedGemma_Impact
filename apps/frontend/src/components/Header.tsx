@@ -21,6 +21,7 @@ export function Header({ onOpenServerControls }: HeaderProps) {
   const [activeTerminals, setActiveTerminals] = useState(0)
   const [activeQueues, setActiveQueues] = useState(0)
   const [queueFailures, setQueueFailures] = useState(0)
+  const [queueCooldownUntil, setQueueCooldownUntil] = useState<number>(0)
   const MAX_TERMINALS = 3
 
   // Fetch server status on mount and periodically
@@ -30,11 +31,14 @@ export function Header({ onOpenServerControls }: HeaderProps) {
     return () => clearInterval(interval)
   }, [])
 
-  // Poll queue status every 5 seconds
+  // Poll queue status with cooldown on 429
   useEffect(() => {
     const pollQueues = async () => {
       // Stop polling after 3 consecutive failures
       if (queueFailures >= 3) return
+
+      // Respect cooldown after hitting rate limit
+      if (Date.now() < queueCooldownUntil) return
 
       // Get auth token
       const token = localStorage.getItem('auth_token')
@@ -47,6 +51,10 @@ export function Header({ onOpenServerControls }: HeaderProps) {
           }
         })
         if (!response.ok) {
+          if ((response as any).status === 429) {
+            // Back off for 60 seconds when rate limited
+            setQueueCooldownUntil(Date.now() + 60_000)
+          }
           setQueueFailures(prev => prev + 1)
           return
         }
@@ -71,9 +79,9 @@ export function Header({ onOpenServerControls }: HeaderProps) {
     }
 
     pollQueues() // Initial poll
-    const interval = setInterval(pollQueues, 5000) // Every 5 seconds
+    const interval = setInterval(pollQueues, 10000) // Every 10 seconds
     return () => clearInterval(interval)
-  }, [queueFailures])
+  }, [queueFailures, queueCooldownUntil])
 
   const handleLogoClick = () => {
     // Toggle Model Management sidebar
@@ -87,12 +95,18 @@ export function Header({ onOpenServerControls }: HeaderProps) {
         method: 'POST',
         credentials: 'include',
         headers: {
-          'Authorization': token ? `Bearer ${token}` : ''
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         }
       })
 
       if (!response.ok) {
-        throw new Error('Failed to spawn terminal')
+        let detail = 'Failed to spawn terminal'
+        try {
+          const data = await response.json()
+          if (data && (data as any).detail) detail = (data as any).detail
+        } catch {}
+        alert(detail)
+        return
       }
 
       const data = await response.json()

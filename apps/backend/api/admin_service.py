@@ -14,6 +14,7 @@ import sqlite3
 from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+import os
 
 try:
     from .auth_middleware import get_current_user
@@ -444,49 +445,86 @@ async def get_device_overview(
 
     This is for administrative monitoring purposes.
     """
-    # Rate limit: 20 device overview requests per minute per device
+    # Rate limit: 20/min (120/min in development)
     client_ip = get_client_ip(request)
-    if not rate_limiter.check_rate_limit(f"device_overview:{client_ip}", max_requests=20, window_seconds=60):
-        raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 20 requests per minute.")
+    dev_mode = os.getenv("ELOHIM_ENV") == "development"
+    max_per_min = 120 if dev_mode else 20
+    if not rate_limiter.check_rate_limit(f"device_overview:{client_ip}", max_requests=max_per_min, window_seconds=60):
+        raise HTTPException(status_code=429, detail=f"Rate limit exceeded. Max {max_per_min} requests per minute.")
 
-    # Audit log
-    audit_logger.log(
-        user_id=current_user["user_id"],
-        action=AuditAction.ADMIN_VIEW_DEVICE_OVERVIEW,
-        ip_address=request.client.host if request.client else None,
-        details={"admin_username": current_user["username"]}
-    )
-
-    overview = {}
-
-    # Phase 0: Get user statistics from auth.users in app_db
+    # Audit log (best-effort)
     try:
-        conn = get_admin_db_connection()
-        try:
-            # Total users from auth.users table
-            cursor = conn.execute("SELECT COUNT(*) as total FROM users")
-            overview["total_users"] = cursor.fetchone()["total"]
-
-            # Active users (simplified for Phase 0)
-            overview["active_users_7d"] = overview["total_users"]
-
-            # Users by role
-            cursor = conn.execute("""
-                SELECT role, COUNT(*) as count FROM users
-                GROUP BY role
-            """)
-            overview["users_by_role"] = {
-                row["role"] or "member": row["count"]
-                for row in cursor.fetchall()
-            }
-
-        finally:
-            conn.close()
+        audit_logger.log(
+            user_id=current_user["user_id"],
+            action=AuditAction.ADMIN_VIEW_DEVICE_OVERVIEW,
+            ip_address=request.client.host if request.client else None,
+            details={"admin_username": current_user["username"]}
+        )
     except Exception as e:
-        logger.error(f"Could not get user statistics from auth.users: {e}", exc_info=True)
-        overview["total_users"] = None
-        overview["active_users_7d"] = None
-        overview["users_by_role"] = None
+        logger.warning(f"Audit logging failed for device overview: {e}")
+
+    # Ensure PATHS is available for subsequent sections
+    try:
+        try:
+            from .config_paths import PATHS  # type: ignore
+        except ImportError:
+            from config_paths import PATHS  # type: ignore
+    except Exception as e:
+        logger.error(f"Failed to import PATHS: {e}")
+        # Provide minimal empty overview if path config is unavailable
+        return {
+            "device_overview": {
+                "total_users": None,
+                "active_users_7d": None,
+                "users_by_role": None,
+                "total_chat_sessions": None,
+                "total_workflows": None,
+                "total_work_items": None,
+                "total_documents": None,
+                "data_dir_size_bytes": None,
+                "data_dir_size_human": None,
+            },
+            "timestamp": str(__import__('datetime').datetime.utcnow().isoformat())
+        }
+
+
+# Backward/alias route to avoid path mismatches
+@router.get("/device-overview")
+@require_perm("system.view_admin_dashboard")
+async def get_device_overview_alias(request: Request, current_user: dict = Depends(require_founder_rights)):
+    return await get_device_overview(request, current_user)
+
+    try:
+        overview = {}
+
+        # Phase 0: Get user statistics from auth.users in app_db
+        try:
+            conn = get_admin_db_connection()
+            try:
+                # Total users from auth.users table
+                cursor = conn.execute("SELECT COUNT(*) as total FROM users")
+                overview["total_users"] = cursor.fetchone()["total"]
+
+                # Active users (simplified for Phase 0)
+                overview["active_users_7d"] = overview["total_users"]
+
+                # Users by role
+                cursor = conn.execute("""
+                    SELECT role, COUNT(*) as count FROM users
+                    GROUP BY role
+                """)
+                overview["users_by_role"] = {
+                    row["role"] or "member": row["count"]
+                    for row in cursor.fetchall()
+                }
+
+            finally:
+                conn.close()
+        except Exception as e:
+            logger.error(f"Could not get user statistics from auth.users: {e}", exc_info=True)
+            overview["total_users"] = None
+            overview["active_users_7d"] = None
+            overview["users_by_role"] = None
 
     # Phase 0: Get chat statistics from PATHS.memory_db (if exists)
     try:
@@ -608,12 +646,29 @@ async def get_device_overview(
         overview["data_dir_size_bytes"] = None
         overview["data_dir_size_human"] = None
 
-    logger.info(f"Founder Rights {current_user['username']} viewed device overview")
+        logger.info(f"Founder Rights {current_user['username']} viewed device overview")
 
-    return {
-        "device_overview": overview,
-        "timestamp": str(__import__('datetime').datetime.utcnow().isoformat())
-    }
+        return {
+            "device_overview": overview,
+            "timestamp": str(__import__('datetime').datetime.utcnow().isoformat())
+        }
+    except Exception as e:
+        logger.error(f"Device overview failed: {e}", exc_info=True)
+        return {
+            "device_overview": {
+                "total_users": None,
+                "active_users_7d": None,
+                "users_by_role": None,
+                "total_chat_sessions": None,
+                "total_workflows": None,
+                "total_work_items": None,
+                "total_documents": None,
+                "data_dir_size_bytes": None,
+                "data_dir_size_human": None,
+            },
+            "timestamp": str(__import__('datetime').datetime.utcnow().isoformat()),
+            "error": "device_overview_failed"
+        }
 
 
 @router.get("/users/{target_user_id}/workflows")

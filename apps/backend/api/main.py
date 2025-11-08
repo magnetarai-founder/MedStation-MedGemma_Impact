@@ -656,6 +656,62 @@ async def get_system_info():
 
     return info
 
+# Fallback Admin device overview endpoint to avoid 404 if admin router fails to load
+@app.get("/api/v1/admin/device/overview")
+async def _fallback_admin_device_overview(request, current_user: dict = Depends(get_current_user)):
+    # Require Founder Rights (Founder Admin)
+    if current_user.get("role") != "founder_rights":
+        raise HTTPException(status_code=403, detail="Founder Rights (Founder Admin) access required")
+
+    # Try to forward to admin_service implementation if available
+    try:
+        try:
+            from .admin_service import get_device_overview as _real_overview  # type: ignore
+        except ImportError:
+            from admin_service import get_device_overview as _real_overview  # type: ignore
+        return await _real_overview(request, current_user)
+    except Exception:
+        # Graceful minimal overview if admin_service is unavailable
+        return {
+            "device_overview": {
+                "total_users": None,
+                "active_users_7d": None,
+                "users_by_role": None,
+                "total_chat_sessions": None,
+                "total_workflows": None,
+                "total_work_items": None,
+                "total_documents": None,
+                "data_dir_size_bytes": None,
+                "data_dir_size_human": None,
+            },
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+# Fallback Terminal spawn endpoint to avoid 404 if terminal router fails to load
+@app.post("/api/v1/terminal/spawn-system")
+async def _fallback_spawn_system_terminal(current_user: dict = Depends(get_current_user)):
+    # Allow only founder_rights or super_admin by default
+    role = current_user.get("role")
+    if role not in ("founder_rights", "super_admin"):
+        raise HTTPException(status_code=403, detail="Insufficient permissions to spawn terminal")
+
+    # Try to forward to terminal_api implementation if available
+    try:
+        try:
+            from .terminal_api import spawn_system_terminal as _real_spawn  # type: ignore
+        except ImportError:
+            from terminal_api import spawn_system_terminal as _real_spawn  # type: ignore
+        return await _real_spawn(current_user=current_user)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"Failed to spawn system terminal: {e}. Ensure Terminal/iTerm/Warp are installed and grant Automation/Accessibility permissions."
+            )
+        )
+
 
 # Note: Auth endpoints moved to auth_routes.py at /api/v1/auth/*
 # This includes: /register, /login, /logout, /setup-needed
