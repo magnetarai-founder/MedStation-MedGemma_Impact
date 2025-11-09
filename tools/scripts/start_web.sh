@@ -88,6 +88,10 @@ echo "✓ ElohimOS running"
 echo "  Backend:  http://127.0.0.1:8000"
 echo "  Frontend: http://127.0.0.1:4200"
 echo ""
+
+# Open browser
+open http://127.0.0.1:4200 2>/dev/null || true
+
 echo "Press Ctrl+C to stop"
 
 # Cleanup on exit
