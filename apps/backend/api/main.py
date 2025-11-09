@@ -658,7 +658,7 @@ async def get_system_info():
 
 # Fallback Admin device overview endpoint to avoid 404 if admin router fails to load
 @app.get("/api/v1/admin/device/overview")
-async def _fallback_admin_device_overview(request, current_user: dict = Depends(get_current_user)):
+async def _fallback_admin_device_overview(request: Request, current_user: dict = Depends(get_current_user)):
     # Require Founder Rights (Founder Admin)
     if current_user.get("role") != "founder_rights":
         raise HTTPException(status_code=403, detail="Founder Rights (Founder Admin) access required")

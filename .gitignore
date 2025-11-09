@@ -52,6 +52,23 @@ Thumbs.db
 logs/
 Neutron-Star-master/
 
+# Test files
+test_*.py
+*_test.py
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Linter cache
+.ruff_cache/
+.mypy_cache/
+.pylint.d/
+
+# Sample/test data
+docs/data/*.xlsx
+docs/data/*.json
+docs/data/*.csv
+
 # Environment variables and secrets
 .env
 .env.*
