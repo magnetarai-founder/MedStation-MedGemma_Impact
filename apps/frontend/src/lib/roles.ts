@@ -30,7 +30,7 @@ export const ROLE_INFO: Record<Role, {
   level: number // Higher = more permissions
 }> = {
   [ROLES.GOD_RIGHTS]: {
-    label: 'God Rights',
+    label: 'Founder Rights',
     emoji: '👑',
     description: 'Full system access - Can do everything',
     color: 'text-purple-600 dark:text-purple-400',
@@ -155,14 +155,14 @@ export function hasHigherRole(role1?: string, role2?: string): boolean {
 
 /**
  * Check if role1 can manage role2 (promote/demote)
- * God Rights can manage everyone
+ * Founder Rights can manage everyone
  * Super Admin can manage Admin, Member, Guest
  * Admin can manage Member, Guest
  */
 export function canManageRole(managerRole?: string, targetRole?: string): boolean {
-  if (isGodRights(managerRole)) return true // God Rights can manage everyone
+  if (isGodRights(managerRole)) return true // Founder Rights can manage everyone
   if (isSuperAdmin(managerRole)) {
-    // Super Admin can manage everyone except God Rights
+    // Super Admin can manage everyone except Founder Rights
     return !isGodRights(targetRole)
   }
   if (isAdmin(managerRole)) {
@@ -211,7 +211,7 @@ export function canAddMoreSuperAdmins(
   teamSize: number,
   requestorRole?: string
 ): boolean {
-  // God Rights can always override limits
+  // Founder Rights can always override limits
   if (isGodRights(requestorRole)) return true
 
   // Otherwise check against the limit

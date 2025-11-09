@@ -7,7 +7,7 @@ with permission profiles and permission sets.
 Legacy support maintained for role-based checks.
 
 4 Roles:
-- Founder Rights: God Rights bypass (always allowed)
+- Founder Rights: Founder Rights bypass (always allowed)
 - Super Admin: Full control, can create Admins, transfer super admin status
 - Admin: Manage users/workflows/settings (cannot create other Admins)
 - Member: Default role, create/edit own workflows, access vault
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 class Role(str, Enum):
     """User roles in order of privilege"""
-    FOUNDER_RIGHTS = "founder_rights"  # Phase 2: God Rights
+    FOUNDER_RIGHTS = "founder_rights"  # Phase 2: Founder Rights
     SUPER_ADMIN = "super_admin"
     ADMIN = "admin"
     MEMBER = "member"

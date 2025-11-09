@@ -190,7 +190,7 @@ class ChatStorage:
 
     @staticmethod
     async def get_session(chat_id: str, user_id: str, role: str = None, team_id: Optional[str] = None) -> Optional[ChatSession]:
-        """Get session by ID (user-filtered unless God Rights)"""
+        """Get session by ID (user-filtered unless Founder Rights)"""
         session_data = await asyncio.to_thread(
             memory.get_session,
             chat_id,
@@ -206,7 +206,7 @@ class ChatStorage:
 
     @staticmethod
     async def list_sessions(user_id: str, role: str = None, team_id: Optional[str] = None) -> List[ChatSession]:
-        """List all chat sessions for user (God Rights sees all)"""
+        """List all chat sessions for user (Founder Rights sees all)"""
         sessions_data = await asyncio.to_thread(
             memory.list_sessions,
             user_id=user_id,
@@ -217,7 +217,7 @@ class ChatStorage:
 
     @staticmethod
     async def delete_session(chat_id: str, user_id: str, role: str = None):
-        """Delete a chat session (user-filtered unless God Rights)"""
+        """Delete a chat session (user-filtered unless Founder Rights)"""
         return await asyncio.to_thread(
             memory.delete_session,
             chat_id,

@@ -255,7 +255,7 @@ class NeutronChatMemory:
 
         Phase 5: If team_id is provided, return session when it matches that team_id.
         Otherwise, only return if owned by user_id (personal session).
-        God Rights may bypass user filter (admin endpoints should use admin methods).
+        Founder Rights may bypass user filter (admin endpoints should use admin methods).
         """
         conn = self._get_connection()
 
@@ -269,7 +269,7 @@ class NeutronChatMemory:
                 (session_id, team_id),
             )
         else:
-            # God Rights bypasses user filtering
+            # Founder Rights bypasses user filtering
             if role == "god_rights":
                 cur = conn.execute(
                     """
@@ -305,11 +305,11 @@ class NeutronChatMemory:
 
     def list_sessions(self, user_id: str = None, role: str = None, team_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """
-        List chat sessions (user-filtered for ALL users, including God Rights)
+        List chat sessions (user-filtered for ALL users, including Founder Rights)
 
         Phase 5: Supports team_id filtering for team-scoped sessions
 
-        This endpoint is for regular UI use - God Rights sees only their own chats here.
+        This endpoint is for regular UI use - Founder Rights sees only their own chats here.
         For admin access to view other users' chats, use admin endpoints.
         """
         conn = self._get_connection()
@@ -347,7 +347,7 @@ class NeutronChatMemory:
         return sessions
 
     def list_all_sessions_admin(self) -> List[Dict[str, Any]]:
-        """List ALL chat sessions across all users (God Rights admin access only)
+        """List ALL chat sessions across all users (Founder Rights admin access only)
 
         This method is for admin endpoints only - not for regular UI use.
         Returns all sessions with user_id included for support purposes.
@@ -375,10 +375,10 @@ class NeutronChatMemory:
         return sessions
 
     def list_user_sessions_admin(self, target_user_id: str) -> List[Dict[str, Any]]:
-        """List specific user's chat sessions (God Rights admin access only)
+        """List specific user's chat sessions (Founder Rights admin access only)
 
         This method is for admin endpoints only - not for regular UI use.
-        Allows God Rights to view a specific user's chats for support.
+        Allows Founder Rights to view a specific user's chats for support.
 
         Args:
             target_user_id: The user ID whose sessions to retrieve
@@ -407,7 +407,7 @@ class NeutronChatMemory:
         return sessions
 
     def delete_session(self, session_id: str, user_id: str = None, role: str = None) -> bool:
-        """Delete a chat session (user-filtered unless God Rights)
+        """Delete a chat session (user-filtered unless Founder Rights)
 
         Returns:
             bool: True if deleted, False if access denied
@@ -415,7 +415,7 @@ class NeutronChatMemory:
         conn = self._get_connection()
 
         with self._write_lock:
-            # Verify ownership before delete (unless God Rights)
+            # Verify ownership before delete (unless Founder Rights)
             if role != "god_rights":
                 cur = conn.execute("SELECT user_id FROM chat_sessions WHERE id = ?", (session_id,))
                 row = cur.fetchone()

@@ -72,7 +72,7 @@ python3 main.py
   - Guest auto-promotion (7-day)
   - Job roles & workflow permissions
   - Queue access control
-  - God Rights authorization
+  - Founder Rights authorization
   - Team Vault (encrypted storage)
 
 - **Phase 7**: Model management & settings redesign

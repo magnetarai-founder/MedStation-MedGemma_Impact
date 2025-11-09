@@ -430,7 +430,7 @@ except Exception as e:
     services_failed.append("Authentication")
     logger.error(f"Authentication service failed to load: {e}")
 
-# Admin routes (God Rights support access)
+# Admin routes (Founder Rights support access)
 try:
     from admin_service import router as admin_router
     app.include_router(admin_router)

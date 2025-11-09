@@ -251,7 +251,7 @@ class TeamManager:
             )
         """)
 
-        # God Rights authorization table (Phase 6.1)
+        # Founder Rights authorization table (Phase 6.1)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS god_rights_auth (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -759,9 +759,9 @@ class TeamManager:
             Tuple of (can_promote: bool, reason: str)
         """
         try:
-            # God Rights can always override
+            # Founder Rights can always override
             if requesting_user_role == 'god_rights':
-                return True, "God Rights override"
+                return True, "Founder Rights override"
 
             team_size = self.get_team_size(team_id)
             current_super_admins = self.count_super_admins(team_id)
@@ -784,8 +784,8 @@ class TeamManager:
             team_id: Team ID
             user_id: User whose role to update
             new_role: New role to assign
-            requesting_user_role: Role of user making the request (for God Rights check)
-            requesting_user_id: ID of user making the request (for God Rights protection)
+            requesting_user_role: Role of user making the request (for Founder Rights check)
+            requesting_user_id: ID of user making the request (for Founder Rights protection)
 
         Returns:
             Tuple of (success: bool, message: str)
@@ -804,11 +804,11 @@ class TeamManager:
 
             current_role = row['role']
 
-            # God Rights Protection (Phase 6.1)
-            # Check if target user has God Rights - only God Rights can modify God Rights users
+            # Founder Rights Protection (Phase 6.1)
+            # Check if target user has Founder Rights - only Founder Rights can modify Founder Rights users
             target_has_god_rights, _ = self.check_god_rights(user_id)
             if target_has_god_rights:
-                # Check if requester has God Rights
+                # Check if requester has Founder Rights
                 requester_has_god_rights = False
                 if requesting_user_id:
                     requester_has_god_rights, _ = self.check_god_rights(requesting_user_id)
@@ -816,7 +816,7 @@ class TeamManager:
                     requester_has_god_rights = True
 
                 if not requester_has_god_rights:
-                    return False, "Only users with God Rights can modify other God Rights users"
+                    return False, "Only users with Founder Rights can modify other Founder Rights users"
 
             # If promoting to Super Admin, check limits
             if new_role == 'super_admin' and current_role != 'super_admin':
@@ -826,7 +826,7 @@ class TeamManager:
 
             # If demoting a Super Admin, check if they're the last one
             if current_role == 'super_admin' and new_role != 'super_admin':
-                # God Rights can override
+                # Founder Rights can override
                 if requesting_user_role != 'god_rights':
                     current_super_admins = self.count_super_admins(team_id)
                     if current_super_admins <= 1:
@@ -1226,7 +1226,7 @@ class TeamManager:
         Args:
             team_id: Team ID
             offline_super_admin_id: The super_admin who went offline
-            requesting_user_role: Role of requester (for God Rights override)
+            requesting_user_role: Role of requester (for Founder Rights override)
 
         Returns:
             Tuple of (success: bool, message: str)
@@ -1583,7 +1583,7 @@ class TeamManager:
         Check if a user has a specific workflow permission (Phase 5.2)
 
         Checks in order:
-        1. God Rights always have all permissions
+        1. Founder Rights always have all permissions
         2. Explicit user grants
         3. Job role grants
         4. Role grants
@@ -1614,9 +1614,9 @@ class TeamManager:
             user_role = member['role']
             user_job_role = member['job_role'] or 'unassigned'
 
-            # God Rights always have all permissions
+            # Founder Rights always have all permissions
             if user_role == 'god_rights':
-                return True, "God Rights override"
+                return True, "Founder Rights override"
 
             # Check if any explicit permissions exist for this workflow
             cursor.execute("""
@@ -1870,7 +1870,7 @@ class TeamManager:
         Check if a user has access to a queue (Phase 5.3)
 
         Checks in order:
-        1. God Rights always have all access
+        1. Founder Rights always have all access
         2. Explicit user grants
         3. Job role grants
         4. Role grants
@@ -1901,9 +1901,9 @@ class TeamManager:
             user_role = member['role']
             user_job_role = member['job_role'] or 'unassigned'
 
-            # God Rights always have all access
+            # Founder Rights always have all access
             if user_role == 'god_rights':
-                return True, "God Rights override"
+                return True, "Founder Rights override"
 
             # Check for explicit user grant
             cursor.execute("""
@@ -2120,13 +2120,13 @@ class TeamManager:
 
     def grant_god_rights(self, user_id: str, delegated_by: str = None, auth_key: str = None, notes: str = None) -> tuple[bool, str]:
         """
-        Grant God Rights to a user (Phase 6.1)
+        Grant Founder Rights to a user (Phase 6.1)
 
         Args:
-            user_id: User ID to grant God Rights
-            delegated_by: User ID who is delegating (must have God Rights), NULL if founder
-            auth_key: Optional authentication key for God Rights access
-            notes: Reason for granting God Rights
+            user_id: User ID to grant Founder Rights
+            delegated_by: User ID who is delegating (must have Founder Rights), NULL if founder
+            auth_key: Optional authentication key for Founder Rights access
+            notes: Reason for granting Founder Rights
 
         Returns:
             Tuple of (success: bool, message: str)
@@ -2136,13 +2136,13 @@ class TeamManager:
 
             cursor = self.conn.cursor()
 
-            # If delegated_by is specified, verify they have active God Rights
+            # If delegated_by is specified, verify they have active Founder Rights
             if delegated_by:
                 has_rights, _ = self.check_god_rights(delegated_by)
                 if not has_rights:
-                    return False, "Delegator does not have active God Rights"
+                    return False, "Delegator does not have active Founder Rights"
 
-            # Check if user already has God Rights
+            # Check if user already has Founder Rights
             cursor.execute("""
                 SELECT is_active FROM god_rights_auth
                 WHERE user_id = ?
@@ -2150,23 +2150,23 @@ class TeamManager:
 
             existing = cursor.fetchone()
             if existing and existing['is_active']:
-                return False, "User already has active God Rights"
+                return False, "User already has active Founder Rights"
 
             # Hash auth key if provided
             auth_key_hash = None
             if auth_key:
                 auth_key_hash = hashlib.sha256(auth_key.encode()).hexdigest()
 
-            # Grant God Rights
+            # Grant Founder Rights
             if existing:
-                # Reactivate previously revoked God Rights
+                # Reactivate previously revoked Founder Rights
                 cursor.execute("""
                     UPDATE god_rights_auth
                     SET is_active = 1, revoked_at = NULL, delegated_by = ?, auth_key_hash = ?, notes = ?
                     WHERE user_id = ?
                 """, (delegated_by, auth_key_hash, notes, user_id))
             else:
-                # New God Rights grant
+                # New Founder Rights grant
                 cursor.execute("""
                     INSERT INTO god_rights_auth (user_id, delegated_by, auth_key_hash, notes)
                     VALUES (?, ?, ?, ?)
@@ -2174,23 +2174,23 @@ class TeamManager:
 
             self.conn.commit()
 
-            logger.info(f"Granted God Rights to {user_id}" + (f" by {delegated_by}" if delegated_by else " (founder)"))
+            logger.info(f"Granted Founder Rights to {user_id}" + (f" by {delegated_by}" if delegated_by else " (founder)"))
 
-            return True, f"God Rights granted to {user_id}"
+            return True, f"Founder Rights granted to {user_id}"
 
         except Exception as e:
-            logger.error(f"Failed to grant God Rights: {e}")
+            logger.error(f"Failed to grant Founder Rights: {e}")
             return False, str(e)
 
     def revoke_god_rights(self, user_id: str, revoked_by: str) -> tuple[bool, str]:
         """
-        Revoke God Rights from a user (Phase 6.1)
+        Revoke Founder Rights from a user (Phase 6.1)
 
-        Only other God Rights users can revoke God Rights.
+        Only other Founder Rights users can revoke Founder Rights.
 
         Args:
-            user_id: User ID to revoke God Rights from
-            revoked_by: User ID who is revoking (must have God Rights)
+            user_id: User ID to revoke Founder Rights from
+            revoked_by: User ID who is revoking (must have Founder Rights)
 
         Returns:
             Tuple of (success: bool, message: str)
@@ -2198,12 +2198,12 @@ class TeamManager:
         try:
             cursor = self.conn.cursor()
 
-            # Verify revoker has God Rights
+            # Verify revoker has Founder Rights
             has_rights, _ = self.check_god_rights(revoked_by)
             if not has_rights:
-                return False, "Only God Rights users can revoke God Rights"
+                return False, "Only Founder Rights users can revoke Founder Rights"
 
-            # Check if user has God Rights
+            # Check if user has Founder Rights
             cursor.execute("""
                 SELECT is_active FROM god_rights_auth
                 WHERE user_id = ?
@@ -2211,9 +2211,9 @@ class TeamManager:
 
             existing = cursor.fetchone()
             if not existing or not existing['is_active']:
-                return False, "User does not have active God Rights"
+                return False, "User does not have active Founder Rights"
 
-            # Revoke God Rights
+            # Revoke Founder Rights
             cursor.execute("""
                 UPDATE god_rights_auth
                 SET is_active = 0, revoked_at = CURRENT_TIMESTAMP
@@ -2222,17 +2222,17 @@ class TeamManager:
 
             self.conn.commit()
 
-            logger.info(f"Revoked God Rights from {user_id} by {revoked_by}")
+            logger.info(f"Revoked Founder Rights from {user_id} by {revoked_by}")
 
-            return True, f"God Rights revoked from {user_id}"
+            return True, f"Founder Rights revoked from {user_id}"
 
         except Exception as e:
-            logger.error(f"Failed to revoke God Rights: {e}")
+            logger.error(f"Failed to revoke Founder Rights: {e}")
             return False, str(e)
 
     def check_god_rights(self, user_id: str) -> tuple[bool, str]:
         """
-        Check if a user has active God Rights (Phase 6.1)
+        Check if a user has active Founder Rights (Phase 6.1)
 
         Args:
             user_id: User ID to check
@@ -2252,20 +2252,20 @@ class TeamManager:
 
             if result:
                 delegated_by = result['delegated_by'] or 'Founder'
-                return True, f"Active God Rights (granted by {delegated_by})"
+                return True, f"Active Founder Rights (granted by {delegated_by})"
             else:
-                return False, "No active God Rights"
+                return False, "No active Founder Rights"
 
         except Exception as e:
-            logger.error(f"Failed to check God Rights: {e}")
+            logger.error(f"Failed to check Founder Rights: {e}")
             return False, str(e)
 
     def get_god_rights_users(self) -> List[Dict]:
         """
-        Get all users with active God Rights (Phase 6.1)
+        Get all users with active Founder Rights (Phase 6.1)
 
         Returns:
-            List of God Rights users with details
+            List of Founder Rights users with details
         """
         try:
             cursor = self.conn.cursor()
@@ -2290,15 +2290,15 @@ class TeamManager:
             return users
 
         except Exception as e:
-            logger.error(f"Failed to get God Rights users: {e}")
+            logger.error(f"Failed to get Founder Rights users: {e}")
             return []
 
     def get_revoked_god_rights(self) -> List[Dict]:
         """
-        Get all users with revoked God Rights (Phase 6.1)
+        Get all users with revoked Founder Rights (Phase 6.1)
 
         Returns:
-            List of revoked God Rights users
+            List of revoked Founder Rights users
         """
         try:
             cursor = self.conn.cursor()
@@ -2323,7 +2323,7 @@ class TeamManager:
             return users
 
         except Exception as e:
-            logger.error(f"Failed to get revoked God Rights: {e}")
+            logger.error(f"Failed to get revoked Founder Rights: {e}")
             return []
 
     # ========================================================================
@@ -2685,7 +2685,7 @@ class TeamManager:
         """
         Check if user has vault item permission (Phase 6.2)
 
-        Permission priority: God Rights > explicit user > job_role > role > defaults
+        Permission priority: Founder Rights > explicit user > job_role > role > defaults
 
         Args:
             item_id: Item ID
@@ -2699,10 +2699,10 @@ class TeamManager:
         try:
             cursor = self.conn.cursor()
 
-            # Check God Rights
+            # Check Founder Rights
             has_god_rights, _ = self.check_god_rights(user_id)
             if has_god_rights:
-                return True, "God Rights override"
+                return True, "Founder Rights override"
 
             # Get user's role and job_role
             cursor.execute("""
@@ -3355,8 +3355,8 @@ async def join_team(req: Request, request: JoinTeamRequest):
 
 class UpdateRoleRequest(BaseModel):
     new_role: str
-    requesting_user_role: Optional[str] = None  # For God Rights override
-    requesting_user_id: Optional[str] = None  # For God Rights protection (Phase 6.1)
+    requesting_user_role: Optional[str] = None  # For Founder Rights override
+    requesting_user_id: Optional[str] = None  # For Founder Rights protection (Phase 6.1)
 
 
 class UpdateRoleResponse(BaseModel):
@@ -3373,7 +3373,7 @@ async def update_member_role(team_id: str, user_id: str, request: UpdateRoleRequ
     Update a team member's role
 
     Enforces Super Admin limits (team size determines max Super Admins).
-    God Rights can override limits.
+    Founder Rights can override limits.
 
     Valid roles: god_rights, super_admin, admin, member, guest
     """
@@ -4141,7 +4141,7 @@ async def check_workflow_permission(team_id: str, workflow_id: str, request: Che
     Check if a user has a specific permission for a workflow (Phase 5.2)
 
     Checks in priority order:
-    1. God Rights - always have all permissions
+    1. Founder Rights - always have all permissions
     2. User-specific grants
     3. Job role grants
     4. Role grants
@@ -4418,7 +4418,7 @@ async def check_queue_access(team_id: str, queue_id: str, request: CheckQueueAcc
     Check if a user has access to a queue (Phase 5.3)
 
     Checks in priority order:
-    1. God Rights - always have all access
+    1. Founder Rights - always have all access
     2. User-specific grants
     3. Job role grants
     4. Role grants
@@ -4550,7 +4550,7 @@ async def get_queue(team_id: str, queue_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ===== God Rights Endpoints (Phase 6.1) =====
+# ===== Founder Rights Endpoints (Phase 6.1) =====
 
 class GrantGodRightsRequest(BaseModel):
     user_id: str
@@ -4567,10 +4567,10 @@ class GrantGodRightsResponse(BaseModel):
 @router.post("/god-rights/grant", response_model=GrantGodRightsResponse)
 async def grant_god_rights(request: GrantGodRightsRequest):
     """
-    Grant God Rights to a user (Phase 6.1)
+    Grant Founder Rights to a user (Phase 6.1)
 
-    God Rights is the highest authority level in ElohimOS.
-    Can be granted by founder or delegated by existing God Rights users.
+    Founder Rights is the highest authority level in ElohimOS.
+    Can be granted by founder or delegated by existing Founder Rights users.
     Optional auth_key provides additional security layer.
     """
     team_manager = get_team_manager()
@@ -4591,7 +4591,7 @@ async def grant_god_rights(request: GrantGodRightsRequest):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to grant God Rights: {e}")
+        logger.error(f"Failed to grant Founder Rights: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -4608,10 +4608,10 @@ class RevokeGodRightsResponse(BaseModel):
 @router.post("/god-rights/revoke", response_model=RevokeGodRightsResponse)
 async def revoke_god_rights(request: RevokeGodRightsRequest):
     """
-    Revoke God Rights from a user (Phase 6.1)
+    Revoke Founder Rights from a user (Phase 6.1)
 
-    Only users with active God Rights can revoke God Rights from others.
-    This maintains the security of the God Rights system.
+    Only users with active Founder Rights can revoke Founder Rights from others.
+    This maintains the security of the Founder Rights system.
     """
     team_manager = get_team_manager()
 
@@ -4629,7 +4629,7 @@ async def revoke_god_rights(request: RevokeGodRightsRequest):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to revoke God Rights: {e}")
+        logger.error(f"Failed to revoke Founder Rights: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -4645,7 +4645,7 @@ class CheckGodRightsResponse(BaseModel):
 @router.post("/god-rights/check", response_model=CheckGodRightsResponse)
 async def check_god_rights(request: CheckGodRightsRequest):
     """
-    Check if a user has active God Rights (Phase 6.1)
+    Check if a user has active Founder Rights (Phase 6.1)
     """
     team_manager = get_team_manager()
 
@@ -4658,7 +4658,7 @@ async def check_god_rights(request: CheckGodRightsRequest):
         )
 
     except Exception as e:
-        logger.error(f"Failed to check God Rights: {e}")
+        logger.error(f"Failed to check Founder Rights: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -4678,7 +4678,7 @@ class GetGodRightsUsersResponse(BaseModel):
 @router.get("/god-rights/users", response_model=GetGodRightsUsersResponse)
 async def get_god_rights_users():
     """
-    Get all users with active God Rights (Phase 6.1)
+    Get all users with active Founder Rights (Phase 6.1)
     """
     team_manager = get_team_manager()
 
@@ -4691,7 +4691,7 @@ async def get_god_rights_users():
         )
 
     except Exception as e:
-        logger.error(f"Failed to get God Rights users: {e}")
+        logger.error(f"Failed to get Founder Rights users: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -4711,7 +4711,7 @@ class GetRevokedGodRightsResponse(BaseModel):
 @router.get("/god-rights/revoked", response_model=GetRevokedGodRightsResponse)
 async def get_revoked_god_rights():
     """
-    Get all users with revoked God Rights (Phase 6.1)
+    Get all users with revoked Founder Rights (Phase 6.1)
     """
     team_manager = get_team_manager()
 
@@ -4724,7 +4724,7 @@ async def get_revoked_god_rights():
         )
 
     except Exception as e:
-        logger.error(f"Failed to get revoked God Rights: {e}")
+        logger.error(f"Failed to get revoked Founder Rights: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

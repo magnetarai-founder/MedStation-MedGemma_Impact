@@ -7,7 +7,7 @@ Central permission evaluation system with:
 - Permission profiles (reusable role-based permission bundles)
 - Permission sets (ad-hoc grants for specific users)
 - User assignments (profiles + sets)
-- Evaluation engine with God Rights bypass
+- Evaluation engine with Founder Rights bypass
 - In-memory caching with invalidation (Phase 2.5)
 - Developer diagnostics for permission decisions (Phase 2.5)
 
@@ -98,7 +98,7 @@ class PermissionEngine:
     2. Assigned permission profiles
     3. Assigned permission sets
 
-    Evaluates permission checks with God Rights bypass.
+    Evaluates permission checks with Founder Rights bypass.
     """
 
     def __init__(self, db_path: Path):
@@ -610,7 +610,7 @@ class PermissionEngine:
         Check if user has a specific permission
 
         Logic:
-        1. If user is founder_rights: Always allow (God Rights bypass)
+        1. If user is founder_rights: Always allow (Founder Rights bypass)
         2. If user is super_admin: Allow unless explicitly forbidden
         3. For boolean permissions: Check if granted
         4. For level permissions: Check if user's level >= required level
@@ -625,9 +625,9 @@ class PermissionEngine:
         Returns:
             True if permission granted, False otherwise
         """
-        # God Rights: Always allow
+        # Founder Rights: Always allow
         if user_ctx.role == 'founder_rights':
-            logger.debug(f"God Rights bypass: {user_ctx.username} allowed {permission_key}")
+            logger.debug(f"Founder Rights bypass: {user_ctx.username} allowed {permission_key}")
             return True
 
         # Super Admin: Allow unless explicitly forbidden
@@ -763,7 +763,7 @@ class PermissionEngine:
 
         # Add reason based on decision logic
         if user_ctx.role == 'founder_rights':
-            explanation["reason"] = "God Rights bypass - Founder Rights always allowed"
+            explanation["reason"] = "Founder Rights bypass - Founder Rights always allowed"
         elif user_ctx.role == 'super_admin':
             if decision:
                 explanation["reason"] = "Super Admin allowed (not explicitly denied)"
@@ -863,9 +863,9 @@ def require_perm(permission_key: str, level: Optional[str] = None):
                     detail="Invalid authentication: user_id missing"
                 )
 
-            # God Rights bypass: founder_rights users always allowed
+            # Founder Rights bypass: founder_rights users always allowed
             if current_user.get('role') == 'founder_rights':
-                logger.debug(f"God Rights bypass in decorator: {current_user.get('username')} allowed {permission_key}")
+                logger.debug(f"Founder Rights bypass in decorator: {current_user.get('username')} allowed {permission_key}")
                 return await func(*args, **kwargs)
 
             # Load user context
@@ -943,9 +943,9 @@ def require_perm_team(permission_key: str, level: Optional[str] = None, team_kw:
                     detail="Invalid authentication: user_id missing"
                 )
 
-            # God Rights bypass: founder_rights users always allowed
+            # Founder Rights bypass: founder_rights users always allowed
             if current_user.get('role') == 'founder_rights':
-                logger.debug(f"God Rights bypass in decorator: {current_user.get('username')} allowed {permission_key}")
+                logger.debug(f"Founder Rights bypass in decorator: {current_user.get('username')} allowed {permission_key}")
                 return await func(*args, **kwargs)
 
             # Extract team_id from kwargs (may be None for solo mode)

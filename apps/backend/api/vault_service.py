@@ -2869,9 +2869,9 @@ async def create_vault_document(
     Server only stores encrypted blobs
 
     vault_type options:
-    - "personal": Personal vault (E2E encrypted, God Rights cannot decrypt)
+    - "personal": Personal vault (E2E encrypted, Founder Rights cannot decrypt)
     - "decoy": Decoy vault (plausible deniability)
-    - "team": Team vault (requires team_id, God Rights can decrypt metadata)
+    - "team": Team vault (requires team_id, Founder Rights can decrypt metadata)
     """
     user_id = current_user["user_id"]
 
