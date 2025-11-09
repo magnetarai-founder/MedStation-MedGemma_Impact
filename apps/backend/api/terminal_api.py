@@ -4,7 +4,7 @@ Terminal API - WebSocket endpoints for terminal I/O
 Provides real-time terminal access via WebSocket for the Code Tab.
 """
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, Query
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, Query, Request
 from typing import Optional
 import json
 import os

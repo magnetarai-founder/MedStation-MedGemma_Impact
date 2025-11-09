@@ -129,7 +129,7 @@ export const useChatStore = create<ChatStore>()(
 
       // Settings with defaults (Balanced preset)
       settings: {
-        defaultModel: 'qwen2.5-coder:7b-instruct',
+        defaultModel: 'gpt-oss:20b',
         autoGenerateTitles: true,
         contextWindow: 75,
 

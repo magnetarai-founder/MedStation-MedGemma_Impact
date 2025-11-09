@@ -470,25 +470,25 @@ except Exception as e:
 try:
     from monitoring_routes import router as monitoring_router
     app.include_router(monitoring_router)
-
-    # Code Tab Operations (Phase 2)
-    try:
-        from code_operations import router as code_router
-        app.include_router(code_router)
-    except ImportError as e:
-        logger.warning(f"Could not import code_operations router: {e}")
-
-    # Terminal Bridge API (Phase 5)
-    try:
-        from terminal_api import router as terminal_router
-        app.include_router(terminal_router)
-        services_loaded.append("Terminal Bridge")
-    except ImportError as e:
-        logger.warning(f"Could not import terminal_api router: {e}")
     services_loaded.append("Monitoring")
 except Exception as e:
     services_failed.append("Monitoring")
-    logger.error(f"Monitoring service failed to load: {e}")
+    logger.error(f"Monitoring service failed to load: {e}", exc_info=True)
+
+# Code Tab Operations (Phase 2)
+try:
+    from code_operations import router as code_router
+    app.include_router(code_router)
+except ImportError as e:
+    logger.warning(f"Could not import code_operations router: {e}")
+
+# Terminal Bridge API (Phase 5)
+try:
+    from terminal_api import router as terminal_router
+    app.include_router(terminal_router)
+    services_loaded.append("Terminal Bridge")
+except ImportError as e:
+    logger.warning(f"Could not import terminal_api router: {e}")
 
 # Log summary of loaded services
 if services_loaded:
