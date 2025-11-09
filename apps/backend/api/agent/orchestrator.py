@@ -870,3 +870,92 @@ async def apply_plan(
         # Log full error server-side, return generic message to client
         logger.error(f"Apply failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to apply changes. Please check logs for details.")
+
+
+@router.get("/models/validate")
+async def validate_models(current_user: Dict = Depends(get_current_user)):
+    """
+    Validate model configuration and provide setup guidance
+    
+    Returns validation status, errors, warnings, and suggested fixes
+    """
+    try:
+        from .model_validator import validate_config, get_setup_instructions
+    except ImportError:
+        from model_validator import validate_config, get_setup_instructions
+    
+    validation = validate_config(AGENT_CONFIG)
+    setup = get_setup_instructions()
+    
+    return {
+        **validation,
+        "setup_instructions": setup
+    }
+
+
+@router.post("/models/auto-fix")
+@require_perm("settings.update")
+async def auto_fix_models(
+    request: Request,
+    current_user: Dict = Depends(get_current_user)
+):
+    """
+    Automatically fix model configuration using intelligent defaults
+    
+    This will:
+    1. Auto-select compatible models for each task
+    2. Update agent.config.yaml with working models
+    3. Validate the fixes
+    """
+    try:
+        from .model_validator import validate_config, auto_select_model, get_installed_models
+    except ImportError:
+        from model_validator import validate_config, auto_select_model, get_installed_models
+    
+    installed = get_installed_models()
+    if not installed:
+        raise HTTPException(
+            status_code=400,
+            detail="No Ollama models installed. Please install at least one model first."
+        )
+    
+    # Load current config
+    with open(CONFIG_PATH, "r") as f:
+        import yaml
+        config = yaml.safe_load(f)
+    
+    fixes_applied = {}
+    
+    # Auto-fix orchestrator
+    orch_model = auto_select_model(installed, "orchestrator")
+    if orch_model:
+        config["orchestrator"]["model"] = orch_model
+        fixes_applied["orchestrator"] = orch_model
+    
+    # Auto-fix user preferences
+    prefs = config.get("user_model_preferences", {})
+    for task in prefs.keys():
+        auto_model = auto_select_model(installed, task)
+        if auto_model:
+            prefs[task] = auto_model
+            fixes_applied[f"user_pref_{task}"] = auto_model
+    
+    # Write updated config
+    with open(CONFIG_PATH, "w") as f:
+        yaml.safe_dump(config, f, default_flow_style=False, sort_keys=False)
+    
+    # Reload
+    global AGENT_CONFIG
+    AGENT_CONFIG = load_agent_config()
+    
+    # Validate after fixes
+    validation = validate_config(AGENT_CONFIG)
+    
+    logger.info(f"Auto-fixed models by {current_user.get('username', 'unknown')}: {fixes_applied}")
+    
+    return {
+        "success": True,
+        "fixes_applied": fixes_applied,
+        "validation": validation
+    }
+
