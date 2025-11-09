@@ -228,9 +228,40 @@ request_id_ctx: ContextVar[str] = ContextVar("request_id", default="")
 
 app = FastAPI(
     title="ElohimOS API",
-    description="SQL query engine for Excel files",
+    description="""
+## ElohimOS - Offline-First AI Operating System
+
+ElohimOS is a secure, privacy-first AI platform designed for mission-critical operations
+in disconnected environments.
+
+### Core Features
+* **Local AI Inference** - Ollama integration with Metal 4 GPU acceleration
+* **Agent Orchestrator** - Integrated Aider + Continue + Codex for AI coding
+* **Secure Data Processing** - SQL engine with AES-256-GCM encryption
+* **P2P Mesh Networking** - Offline device-to-device collaboration
+* **RBAC Permissions** - Salesforce-style role-based access control
+* **Zero-Trust Security** - End-to-end encryption, audit logging, panic mode
+
+### Authentication
+All endpoints require JWT authentication via `Authorization: Bearer <token>` header.
+Get your token via `/api/v1/auth/login`.
+
+### Rate Limiting
+Global limit: 100 requests/minute. Endpoint-specific limits documented below.
+    """,
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    docs_url="/api/docs",  # Swagger UI at /api/docs
+    redoc_url="/api/redoc",  # ReDoc at /api/redoc
+    openapi_url="/api/openapi.json",  # OpenAPI schema
+    contact={
+        "name": "ElohimOS Support",
+        "url": "https://github.com/yourusername/elohimos",  # Update with actual URL
+    },
+    license_info={
+        "name": "Proprietary",
+        "url": "https://elohimos.local/license",  # Update with actual license
+    },
 )
 
 # Middleware to add request ID to all requests
