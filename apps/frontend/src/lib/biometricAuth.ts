@@ -48,9 +48,13 @@ export async function registerBiometric(documentId: string, userId: string): Pro
     // For localhost, we need to use 'localhost' explicitly
     // For production, use the actual hostname
     const hostname = window.location.hostname
-    const rpId = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.lan')
-      ? 'localhost'
-      : hostname
+    // WebAuthn rpId must exactly match the origin hostname
+    // For 127.0.0.1, we must use 127.0.0.1 (not localhost)
+    // For localhost, we must use localhost (not 127.0.0.1)
+    const rpId = hostname === '127.0.0.1' ? '127.0.0.1' :
+                 hostname === 'localhost' ? 'localhost' :
+                 hostname.endsWith('.lan') ? hostname :
+                 hostname
 
     console.log('WebAuthn registration - hostname:', hostname, 'rpId:', rpId)
 

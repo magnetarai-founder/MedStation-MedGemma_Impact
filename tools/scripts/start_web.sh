@@ -85,12 +85,12 @@ cd ../..
 sleep 2
 
 echo "✓ ElohimOS running"
-echo "  Backend:  http://127.0.0.1:8000"
-echo "  Frontend: http://127.0.0.1:4200"
+echo "  Backend:  http://localhost:8000"
+echo "  Frontend: http://localhost:4200"
 echo ""
 
-# Open browser
-open http://127.0.0.1:4200 2>/dev/null || true
+# Open browser (use localhost for WebAuthn compatibility)
+open http://localhost:4200 2>/dev/null || true
 
 echo "Press Ctrl+C to stop"
 
