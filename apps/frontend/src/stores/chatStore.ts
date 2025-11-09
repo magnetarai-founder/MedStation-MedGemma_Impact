@@ -26,18 +26,8 @@ export interface ChatSession {
 
 type TonePreset = 'creative' | 'balanced' | 'precise' | 'custom'
 
-// Model classification types
-export type ModelClassification =
-  | 'chat'       // General conversation
-  | 'reasoning'  // Step-by-step logical reasoning
-  | 'code'       // Programming and development
-  | 'writing'    // Creative writing, documents
-  | 'research'   // Research, analysis, summarization
-  | 'intelligent' // Auto-detect based on task
-
 // Per-model configuration
 export interface ModelConfig {
-  classification: ModelClassification
   systemPrompt: string  // Model-specific system prompt
 
   // Model-specific LLM parameters
@@ -225,7 +215,6 @@ export const useChatStore = create<ChatStore>()(
 
       updateModelConfig: (modelName, configUpdate) => set((state) => {
         const existingConfig = state.settings.modelConfigs[modelName] || {
-          classification: 'intelligent',
           systemPrompt: '',
           tone: 'balanced',
           temperature: 0.7,

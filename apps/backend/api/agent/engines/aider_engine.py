@@ -56,12 +56,16 @@ class AiderEngine:
                     rationale="Aider not found. Install via: pip install aider-chat"
                 )
 
+        # Handle model format - don't double-prefix with ollama/
+        model_str = self.model if self.model.startswith('ollama/') else f'ollama/{self.model}'
+
         cmd = [
             str(aider_bin),
             "--yes",
             "--no-auto-commits",
             "--no-git",
-            f"--model=ollama/{self.model}",
+            f"--model={model_str}",
+            "--no-show-model-warnings",  # Suppress model warning pages
             f"--message={full_msg}"
         ]
 
@@ -73,6 +77,7 @@ class AiderEngine:
         env = os.environ.copy()
         env['AIDER_NO_BROWSER'] = '1'
         env['NO_COLOR'] = '1'
+        env['AIDER_NO_SHOW_MODEL_WARNINGS'] = '1'
 
         try:
             p = subprocess.run(

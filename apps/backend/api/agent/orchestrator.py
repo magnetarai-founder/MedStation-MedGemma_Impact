@@ -6,6 +6,7 @@ Integrates Aider + Continue + Codex for terminal-first AI coding
 
 import logging
 import os
+import subprocess
 from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any, List
@@ -35,6 +36,39 @@ from .planner_enhanced import EnhancedPlanner
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/agent", tags=["agent"])
+
+# ==================== Config Loading ====================
+
+import yaml
+
+CONFIG_PATH = Path(__file__).parent / "agent.config.yaml"
+
+def load_agent_config() -> Dict[str, Any]:
+    """Load agent configuration from YAML"""
+    if CONFIG_PATH.exists():
+        try:
+            with open(CONFIG_PATH, 'r') as f:
+                config = yaml.safe_load(f)
+                logger.info(f"Loaded agent config from {CONFIG_PATH}")
+                return config
+        except Exception as e:
+            logger.error(f"Failed to load agent config: {e}")
+
+    # Defaults if config missing
+    logger.warning("Using default agent config (agent.config.yaml not found)")
+    return {
+        "engine_order": ["aider"],  # Aider only by default
+        "models": {
+            "planner": "ollama/deepseek-r1:8b",
+            "coder": "ollama/qwen2.5-coder:32b",
+            "committer": "ollama/llama3.1:8b"
+        },
+        "verify": {"enabled": True, "timeout_sec": 120},
+        "commit": {"enabled": True, "branch_strategy": "patch-branches"},
+        "security": {"strict_workspace": True}
+    }
+
+AGENT_CONFIG = load_agent_config()
 
 
 # ==================== Request/Response Models ====================
@@ -99,6 +133,7 @@ class ApplyRequest(BaseModel):
     plan_id: Optional[str] = None
     input: str = Field(..., description="Requirement or task description")
     repo_root: Optional[str] = None
+    files: Optional[List[str]] = Field(None, description="Files to edit (if not specified, Aider will determine)")
     session_id: Optional[str] = Field(None, description="Workspace session ID for unified context")
     model: Optional[str] = Field(None, description="Model for Aider")
     dry_run: bool = Field(False, description="Preview only, don't apply")
@@ -277,6 +312,110 @@ async def get_capabilities(current_user: Dict = Depends(get_current_user)):
         engines=engines,
         features=features
     )
+
+
+@router.get("/models")
+async def get_models(current_user: Dict = Depends(get_current_user)):
+    """
+    Get model configuration and orchestrator status
+
+    Returns:
+    - orchestrator: {enabled: bool, model: str}
+    - user_preferences: Models selected per task (only used if orchestrator disabled)
+    - recommended_models: Tested models per task type (shown as "Tested & Recommended")
+    - strict_models: Enforced models (e.g., data_engine locked to phi3.5)
+    - available_models: All Ollama models currently available on system
+
+    UI Behavior:
+    - If orchestrator.enabled = true: Hide task-specific dropdowns, show toggle
+    - If orchestrator.enabled = false: Show task-specific dropdowns with user preferences
+    - Data engine is always locked to strict_models.data_engine
+    """
+    cfg = AGENT_CONFIG
+
+    # Get available Ollama models
+    available_models = []
+    try:
+        result = subprocess.run(
+            ["ollama", "list"],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        if result.returncode == 0:
+            lines = result.stdout.strip().split('\n')[1:]  # Skip header
+            for line in lines:
+                if line.strip():
+                    model_name = line.split()[0]  # First column is model name
+                    available_models.append(f"ollama/{model_name}")
+    except Exception as e:
+        logger.warning(f"Failed to get Ollama models: {e}")
+
+    return {
+        "orchestrator": cfg.get("orchestrator", {"enabled": True, "model": "ollama/qwen2.5-coder:1.5b-base"}),
+        "user_preferences": cfg.get("user_model_preferences", {}),
+        "recommended_models": cfg.get("recommended_models", {}),
+        "strict_models": cfg.get("strict_models", {}),
+        "available_models": available_models,
+        "note": "When orchestrator is enabled, it automatically selects models. When disabled, you choose per task."
+    }
+
+
+@router.post("/models/update")
+@require_perm("settings.update")
+async def update_model_settings(
+    request: Request,
+    body: Dict[str, Any],
+    current_user: Dict = Depends(get_current_user)
+):
+    """
+    Update model settings and orchestrator configuration
+
+    Accepts:
+    - orchestrator.enabled: bool (toggle intelligent routing)
+    - user_preferences: dict (task-specific model selections)
+
+    Note: Only Founder/Super Admins can update these settings
+    """
+    try:
+        # Load current config
+        if not CONFIG_PATH.exists():
+            raise HTTPException(404, "Config file not found")
+
+        with open(CONFIG_PATH, 'r') as f:
+            config = yaml.safe_load(f)
+
+        # Update orchestrator if provided
+        if "orchestrator" in body:
+            if "enabled" in body["orchestrator"]:
+                config["orchestrator"]["enabled"] = body["orchestrator"]["enabled"]
+
+        # Update user preferences if provided
+        if "user_preferences" in body:
+            if "user_model_preferences" not in config:
+                config["user_model_preferences"] = {}
+            config["user_model_preferences"].update(body["user_preferences"])
+
+        # Write updated config
+        with open(CONFIG_PATH, 'w') as f:
+            yaml.safe_dump(config, f, default_flow_style=False, sort_keys=False)
+
+        # Reload config in memory
+        global AGENT_CONFIG
+        AGENT_CONFIG = load_agent_config()
+
+        logger.info(f"Model settings updated by {current_user['username']}")
+
+        return {
+            "success": True,
+            "message": "Model settings updated successfully",
+            "orchestrator": config.get("orchestrator"),
+            "user_preferences": config.get("user_model_preferences")
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to update model settings: {e}")
+        raise HTTPException(500, f"Failed to update settings: {str(e)}")
 
 
 @router.post("/route", response_model=RouteResponse)
@@ -580,37 +719,67 @@ async def apply_plan(
         raise HTTPException(status_code=429, detail="Too many apply requests")
 
     try:
-        # Import aider engine and patchbus
-        from .engines.aider_engine import AiderEngine
-        from pathlib import Path
+        # Get config
+        cfg = AGENT_CONFIG
+        engines = cfg.get("engine_order", ["aider"])
+        coder_model = body.model or cfg["models"]["coder"]
 
-        # Get venv path (use project root venv or default)
-        # Climb up to project root from server cwd (apps/backend/api)
+        # Get paths
         project_root = Path(os.getcwd()).parent.parent.parent
         venv_path = project_root / "venv"
         if not venv_path.exists():
             venv_path = Path.home() / ".virtualenvs" / "elohimos"
 
-        # Get repo root from request or use project root
         repo_root = Path(body.repo_root) if body.repo_root else project_root
 
-        # Initialize Aider with correct signature
-        aider = AiderEngine(
-            model=body.model or 'qwen2.5-coder:32b',
-            venv_path=venv_path,
-            repo_root=repo_root
-        )
-
-        # Get files from context or empty list
-        files = []
+        # Get files and context
+        files = body.files or []
         context_snippets = []
 
-        # Call propose() method (returns ChangeProposal)
-        proposal = aider.propose(
-            description=body.input,
-            files=files,
-            context_snippets=context_snippets
-        )
+        # Try engines in order until one succeeds
+        proposal = None
+        engine_used = None
+
+        for engine_name in engines:
+            try:
+                logger.info(f"Trying engine: {engine_name}")
+
+                if engine_name == "aider":
+                    from .engines.aider_engine import AiderEngine
+                    engine = AiderEngine(
+                        model=coder_model,
+                        venv_path=venv_path,
+                        repo_root=repo_root
+                    )
+                    proposal = engine.propose(body.input, files, context_snippets)
+
+                elif engine_name == "continue":
+                    from .engines.continue_engine import ContinueEngine
+                    engine = ContinueEngine(model=coder_model)
+                    proposal = engine.propose(body.input, files, context_snippets)
+
+                else:
+                    logger.warning(f"Unknown engine: {engine_name}")
+                    continue
+
+                # Check if we got a valid diff
+                if proposal and proposal.diff.strip():
+                    engine_used = engine_name
+                    logger.info(f"✓ {engine_name} generated diff ({len(proposal.diff)} chars)")
+                    break
+                else:
+                    logger.warning(f"✗ {engine_name} returned empty diff")
+
+            except Exception as e:
+                logger.warning(f"✗ {engine_name} failed: {e}")
+                continue
+
+        # If no engine succeeded, fail
+        if not proposal or not proposal.diff.strip():
+            raise HTTPException(
+                status_code=500,
+                detail="No engine generated a diff. Check logs for details."
+            )
 
         # If dry run, just preview the diff
         if body.dry_run:
@@ -691,7 +860,7 @@ async def apply_plan(
         return ApplyResponse(
             success=True,
             patches=patches,
-            summary=f"Generated {len(patches)} patch(es)" + (" (dry run)" if body.dry_run else ""),
+            summary=f"Generated {len(patches)} patch(es) via {engine_used}" + (" (dry run)" if body.dry_run else ""),
             patch_id=patch_id
         )
 

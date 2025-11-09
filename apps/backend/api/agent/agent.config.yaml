@@ -1,0 +1,58 @@
+engine_order:
+- continue
+- aider
+orchestrator:
+  enabled: true
+  model: ollama/qwen2.5-coder:1.5b-base
+models:
+  planner: ollama/deepseek-r1:8b
+  coder: ollama/qwen2.5-coder:32b
+  committer: ollama/llama3.1:8b
+  reviewer: ollama/qwen2.5-coder:14b
+user_model_preferences:
+  large_refactor: ollama/qwen2.5-coder:32b
+  multi_file: ollama/qwen2.5-coder:32b
+  code_generation: ollama/qwen2.5-coder:32b
+  deep_reasoning: ollama/deepseek-r1:8b
+  surgical: ollama/qwen2.5-coder:1.5b
+  chat_default: ollama/gpt-oss:20b
+recommended_models:
+  large_refactor: ollama/qwen2.5-coder:32b
+  multi_file: ollama/qwen2.5-coder:32b
+  code_generation: ollama/qwen2.5-coder:32b
+  deep_reasoning: ollama/deepseek-r1:8b
+  surgical: ollama/qwen2.5-coder:1.5b
+  chat_default: ollama/gpt-oss:20b
+strict_models:
+  data_engine: ollama/phi3.5:3.8b
+limits:
+  apply_max_lines: 4000
+  preview_max_files: 30
+  max_context_tokens: 32000
+verify:
+  enabled: true
+  timeout_sec: 120
+  script: ./verify.py
+  auto_rollback: true
+commit:
+  enabled: true
+  sign: false
+  branch_strategy: patch-branches
+  message_template: "{description}\n\n\U0001F916 Generated with ElohimOS Agent\n\n\
+    Co-Authored-By: ElohimOS <noreply@magnetarai.dev>\n"
+security:
+  strict_workspace: true
+  max_concurrent_patches: 1
+  allowed_extensions: []
+  blocked_patterns:
+  - .*\.env$
+  - .*\.pem$
+  - .*\.key$
+continue:
+  service_url: http://127.0.0.1:9001
+  startup_timeout: 30
+  health_endpoint: /health
+aider:
+  edit_format: diff
+  map_tokens: 2048
+  cache_prompts: false

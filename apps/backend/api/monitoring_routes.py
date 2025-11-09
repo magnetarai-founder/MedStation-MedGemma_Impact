@@ -8,15 +8,21 @@ import logging
 import os
 import time
 import psutil
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
 from typing import Dict, Any, Optional
 from datetime import datetime
-from rate_limiter import rate_limiter, get_client_ip
 
 logger = logging.getLogger(__name__)
 
-from fastapi import Depends
-from auth_middleware import get_current_user
+try:
+    from .rate_limiter import rate_limiter, get_client_ip
+except ImportError:
+    from rate_limiter import rate_limiter, get_client_ip
+
+try:
+    from .auth_middleware import get_current_user
+except ImportError:
+    from auth_middleware import get_current_user
 
 router = APIRouter(
     prefix="/api/v1/monitoring",

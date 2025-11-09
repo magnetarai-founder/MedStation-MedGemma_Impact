@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useChatStore, type ModelClassification } from '@/stores/chatStore'
+import { useChatStore } from '@/stores/chatStore'
 
 export default function ChatTab() {
   const {
@@ -48,8 +48,7 @@ export default function ChatTab() {
         topP: settings.topP ?? 0.9,
         topK: settings.topK ?? 40,
         repeatPenalty: settings.repeatPenalty ?? 1.1,
-        systemPrompt: settings.systemPrompt || '',
-        classification: null
+        systemPrompt: settings.systemPrompt || ''
       }
     : {
         tone: modelConfig?.tone || 'balanced',
@@ -57,8 +56,7 @@ export default function ChatTab() {
         topP: modelConfig?.topP ?? 0.9,
         topK: modelConfig?.topK ?? 40,
         repeatPenalty: modelConfig?.repeatPenalty ?? 1.1,
-        systemPrompt: modelConfig?.systemPrompt || '',
-        classification: modelConfig?.classification || 'intelligent'
+        systemPrompt: modelConfig?.systemPrompt || ''
       }
 
   // Update handler
@@ -106,30 +104,6 @@ export default function ChatTab() {
               }
             </p>
           </div>
-
-          {/* Model Classification (only for per-model settings) */}
-          {!isGlobalSettings && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Model Classification
-              </label>
-              <select
-                value={activeConfig.classification as ModelClassification}
-                onChange={(e) => handleUpdate({ classification: e.target.value as ModelClassification })}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-              >
-                <option value="intelligent">Intelligent (Auto-detect)</option>
-                <option value="chat">Chat (General conversation)</option>
-                <option value="reasoning">Reasoning (Step-by-step logic)</option>
-                <option value="code">Code (Programming & development)</option>
-                <option value="writing">Writing (Creative writing, documents)</option>
-                <option value="research">Research (Analysis, summarization)</option>
-              </select>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                How this model should be used (Intelligent auto-detects based on task)
-              </p>
-            </div>
-          )}
 
           {/* Tone Presets */}
           <div>

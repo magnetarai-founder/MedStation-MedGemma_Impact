@@ -526,125 +526,125 @@ async def get_device_overview_alias(request: Request, current_user: dict = Depen
             overview["active_users_7d"] = None
             overview["users_by_role"] = None
 
-    # Phase 0: Get chat statistics from PATHS.memory_db (if exists)
-    try:
-        from pathlib import Path
+        # Phase 0: Get chat statistics from PATHS.memory_db (if exists)
         try:
-            from .config_paths import PATHS
-        except ImportError:
-            from config_paths import PATHS
+            from pathlib import Path
+            try:
+                from .config_paths import PATHS
+            except ImportError:
+                from config_paths import PATHS
 
-        memory_db = PATHS.memory_db
-        if memory_db.exists():
-            mem_conn = sqlite3.connect(str(memory_db))
-            mem_conn.row_factory = sqlite3.Row
+            memory_db = PATHS.memory_db
+            if memory_db.exists():
+                mem_conn = sqlite3.connect(str(memory_db))
+                mem_conn.row_factory = sqlite3.Row
 
-            # Check if chat_sessions table exists
-            cursor = mem_conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='chat_sessions'"
-            )
-            if cursor.fetchone():
-                cursor = mem_conn.execute("SELECT COUNT(*) as total FROM chat_sessions")
-                overview["total_chat_sessions"] = cursor.fetchone()["total"]
+                # Check if chat_sessions table exists
+                cursor = mem_conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='chat_sessions'"
+                )
+                if cursor.fetchone():
+                    cursor = mem_conn.execute("SELECT COUNT(*) as total FROM chat_sessions")
+                    overview["total_chat_sessions"] = cursor.fetchone()["total"]
+                else:
+                    overview["total_chat_sessions"] = None
+
+                mem_conn.close()
             else:
                 overview["total_chat_sessions"] = None
-
-            mem_conn.close()
-        else:
+        except Exception as e:
+            logger.warning(f"Could not get chat statistics: {e}")
             overview["total_chat_sessions"] = None
-    except Exception as e:
-        logger.warning(f"Could not get chat statistics: {e}")
-        overview["total_chat_sessions"] = None
 
-    # Phase 0: Get workflow statistics from workflows DB (if exists)
-    try:
-        # Phase 0: Use PATHS to find workflows DB in app_db
-        # For now, workflows might still be in separate DB - check both locations
-        workflow_db = PATHS.data_dir / "workflows.db"
+        # Phase 0: Get workflow statistics from workflows DB (if exists)
+        try:
+            # Phase 0: Use PATHS to find workflows DB in app_db
+            # For now, workflows might still be in separate DB - check both locations
+            workflow_db = PATHS.data_dir / "workflows.db"
 
-        if workflow_db.exists():
-            wf_conn = sqlite3.connect(str(workflow_db))
-            wf_conn.row_factory = sqlite3.Row
+            if workflow_db.exists():
+                wf_conn = sqlite3.connect(str(workflow_db))
+                wf_conn.row_factory = sqlite3.Row
 
-            # Check tables exist
-            cursor = wf_conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='workflows'"
-            )
-            if cursor.fetchone():
-                cursor = wf_conn.execute("SELECT COUNT(*) as total FROM workflows")
-                overview["total_workflows"] = cursor.fetchone()["total"]
+                # Check tables exist
+                cursor = wf_conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='workflows'"
+                )
+                if cursor.fetchone():
+                    cursor = wf_conn.execute("SELECT COUNT(*) as total FROM workflows")
+                    overview["total_workflows"] = cursor.fetchone()["total"]
+                else:
+                    overview["total_workflows"] = None
+
+                cursor = wf_conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='work_items'"
+                )
+                if cursor.fetchone():
+                    cursor = wf_conn.execute("SELECT COUNT(*) as total FROM work_items")
+                    overview["total_work_items"] = cursor.fetchone()["total"]
+                else:
+                    overview["total_work_items"] = None
+
+                wf_conn.close()
             else:
                 overview["total_workflows"] = None
-
-            cursor = wf_conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='work_items'"
-            )
-            if cursor.fetchone():
-                cursor = wf_conn.execute("SELECT COUNT(*) as total FROM work_items")
-                overview["total_work_items"] = cursor.fetchone()["total"]
-            else:
                 overview["total_work_items"] = None
-
-            wf_conn.close()
-        else:
+        except Exception as e:
+            logger.warning(f"Could not get workflow statistics: {e}")
             overview["total_workflows"] = None
             overview["total_work_items"] = None
-    except Exception as e:
-        logger.warning(f"Could not get workflow statistics: {e}")
-        overview["total_workflows"] = None
-        overview["total_work_items"] = None
 
-    # Phase 0: Get document statistics from docs DB (if exists)
-    try:
-        docs_db = PATHS.data_dir / "docs.db"
+        # Phase 0: Get document statistics from docs DB (if exists)
+        try:
+            docs_db = PATHS.data_dir / "docs.db"
 
-        if docs_db.exists():
-            docs_conn = sqlite3.connect(str(docs_db))
-            docs_conn.row_factory = sqlite3.Row
+            if docs_db.exists():
+                docs_conn = sqlite3.connect(str(docs_db))
+                docs_conn.row_factory = sqlite3.Row
 
-            cursor = docs_conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='documents'"
-            )
-            if cursor.fetchone():
-                cursor = docs_conn.execute("SELECT COUNT(*) as total FROM documents")
-                overview["total_documents"] = cursor.fetchone()["total"]
+                cursor = docs_conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='documents'"
+                )
+                if cursor.fetchone():
+                    cursor = docs_conn.execute("SELECT COUNT(*) as total FROM documents")
+                    overview["total_documents"] = cursor.fetchone()["total"]
+                else:
+                    overview["total_documents"] = None
+
+                docs_conn.close()
             else:
                 overview["total_documents"] = None
-
-            docs_conn.close()
-        else:
+        except Exception as e:
+            logger.warning(f"Could not get document statistics: {e}")
             overview["total_documents"] = None
-    except Exception as e:
-        logger.warning(f"Could not get document statistics: {e}")
-        overview["total_documents"] = None
 
-    # Phase 0: Calculate data directory size in bytes
-    try:
-        import os
-        data_dir = PATHS.data_dir
-        total_size = 0
+        # Phase 0: Calculate data directory size in bytes
+        try:
+            import os
+            data_dir = PATHS.data_dir
+            total_size = 0
 
-        if data_dir.exists():
-            for dirpath, dirnames, filenames in os.walk(data_dir):
-                for filename in filenames:
-                    filepath = os.path.join(dirpath, filename)
-                    if os.path.exists(filepath):
-                        total_size += os.path.getsize(filepath)
+            if data_dir.exists():
+                for dirpath, dirnames, filenames in os.walk(data_dir):
+                    for filename in filenames:
+                        filepath = os.path.join(dirpath, filename)
+                        if os.path.exists(filepath):
+                            total_size += os.path.getsize(filepath)
 
-        overview["data_dir_size_bytes"] = total_size
-        # Also provide human-readable size
-        if total_size >= 1024**3:  # GB
-            overview["data_dir_size_human"] = f"{total_size / (1024**3):.2f} GB"
-        elif total_size >= 1024**2:  # MB
-            overview["data_dir_size_human"] = f"{total_size / (1024**2):.2f} MB"
-        elif total_size >= 1024:  # KB
-            overview["data_dir_size_human"] = f"{total_size / 1024:.2f} KB"
-        else:
-            overview["data_dir_size_human"] = f"{total_size} bytes"
-    except Exception as e:
-        logger.warning(f"Could not calculate data directory size: {e}")
-        overview["data_dir_size_bytes"] = None
-        overview["data_dir_size_human"] = None
+            overview["data_dir_size_bytes"] = total_size
+            # Also provide human-readable size
+            if total_size >= 1024**3:  # GB
+                overview["data_dir_size_human"] = f"{total_size / (1024**3):.2f} GB"
+            elif total_size >= 1024**2:  # MB
+                overview["data_dir_size_human"] = f"{total_size / (1024**2):.2f} MB"
+            elif total_size >= 1024:  # KB
+                overview["data_dir_size_human"] = f"{total_size / 1024:.2f} KB"
+            else:
+                overview["data_dir_size_human"] = f"{total_size} bytes"
+        except Exception as e:
+            logger.warning(f"Could not calculate data directory size: {e}")
+            overview["data_dir_size_bytes"] = None
+            overview["data_dir_size_human"] = None
 
         logger.info(f"Founder Rights {current_user['username']} viewed device overview")
 

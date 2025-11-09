@@ -1,177 +1,242 @@
 import { useState, useEffect } from 'react'
-import { Cpu, Zap } from 'lucide-react'
-import { type NavTab } from '@/stores/navigationStore'
-import { useChatStore } from '@/stores/chatStore'
+import { Cpu, Zap, Lock, Check, AlertTriangle } from 'lucide-react'
 
-interface ModelsTabProps {
-  activeNavTab?: NavTab
+interface AgentModelSettings {
+  orchestrator: {
+    enabled: boolean
+    model: string
+  }
+  user_preferences: {
+    large_refactor: string
+    multi_file: string
+    code_generation: string
+    deep_reasoning: string
+    surgical: string
+    chat_default: string
+  }
+  recommended_models: {
+    [key: string]: string
+  }
+  strict_models: {
+    data_engine: string
+  }
+  available_models: string[]
+  note: string
 }
 
-export default function ModelsTab({ activeNavTab }: ModelsTabProps = {}) {
-  const { settings, availableModels, setAvailableModels, updateSettings } = useChatStore()
+export default function ModelsTab() {
+  const [modelSettings, setModelSettings] = useState<AgentModelSettings | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const [localSettings, setLocalSettings] = useState({
-    app_memory_percent: 30,
-    processing_memory_percent: 40,
-    cache_memory_percent: 20,
-  })
-
-  const [orchestratorModels, setOrchestratorModels] = useState<any[]>([])
-  const [systemInfo, setSystemInfo] = useState<{
-    total_memory_gb: number
-    metal_available_memory_gb: number
-    metal_device_name: string | null
-    metal_available: boolean
-  } | null>(null)
-
-  // Load system info on mount
-  useEffect(() => {
-    const loadSystemInfo = async () => {
-      try {
-        const response = await fetch('/api/system/info')
-        if (response.ok) {
-          const data = await response.json()
-          setSystemInfo(data)
-        }
-      } catch (error) {
-        console.error('Failed to load system info:', error)
-      }
-    }
-    loadSystemInfo()
-  }, [])
-
-  // Load available models on mount
-  useEffect(() => {
-    const loadModels = async () => {
-      try {
-        const response = await fetch(`/api/v1/chat/models/status`)
-        if (response.ok) {
-          const data = await response.json()
-          // Only show available (chat) models
-          setAvailableModels(data.available || [])
-        }
-      } catch (error) {
-        console.error('Failed to load models:', error)
-      }
-    }
-    loadModels()
-  }, [setAvailableModels])
-
-  // Load orchestrator-suitable models (includes small base models)
-  useEffect(() => {
-    const loadOrchestratorModels = async () => {
-      try {
-        const response = await fetch(`/api/v1/chat/models/orchestrator-suitable`)
-        if (response.ok) {
-          const data = await response.json()
-          setOrchestratorModels(data || [])
-        }
-      } catch (error) {
-        console.error('Failed to load orchestrator models:', error)
-      }
-    }
-    loadOrchestratorModels()
-  }, [])
-
-  // Load settings on mount
-  useEffect(() => {
-    const loadSettings = async () => {
-      try {
-        const response = await fetch('/api/settings')
-        if (response.ok) {
-          const data = await response.json()
-          setLocalSettings({
-            app_memory_percent: data.app_memory_percent ?? 35,
-            processing_memory_percent: data.processing_memory_percent ?? 50,
-            cache_memory_percent: data.cache_memory_percent ?? 15,
-          })
-        }
-      } catch (error) {
-        console.error('Failed to load settings:', error)
-      }
-    }
-    loadSettings()
-  }, [])
-
-  // Save settings
-  const handleSaveSettings = async () => {
-    try {
-      // Fetch current settings first
-      const getResponse = await fetch('/api/settings')
-      if (!getResponse.ok) {
-        throw new Error('Failed to fetch current settings')
-      }
-      const currentSettings = await getResponse.json()
-
-      // Merge with local changes
-      const updatedSettings = {
-        ...currentSettings,
-        ...localSettings
-      }
-
-      // Save merged settings
-      const response = await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedSettings),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to save settings')
-      }
-    } catch (error) {
-      console.error('Failed to save settings:', error)
+  // Task labels for display
+  const taskLabels: { [key: string]: { label: string; description: string } } = {
+    large_refactor: {
+      label: 'Large Refactoring',
+      description: 'Multi-file architectural changes and major rewrites'
+    },
+    multi_file: {
+      label: 'Multi-File Operations',
+      description: 'Cross-file edits, imports, and renames'
+    },
+    code_generation: {
+      label: 'Code Generation',
+      description: 'New features, boilerplate, and scaffolding'
+    },
+    deep_reasoning: {
+      label: 'Deep Reasoning',
+      description: 'Complex logic, algorithm design, and planning'
+    },
+    surgical: {
+      label: 'Surgical Fixes',
+      description: 'Precise single-file edits and bug fixes'
+    },
+    chat_default: {
+      label: 'AI Chat Default',
+      description: 'Default model for conversational AI in chat tab'
     }
   }
 
-  // Auto-save on change
+  // Load model settings from API
   useEffect(() => {
-    const timer = setTimeout(() => {
-      handleSaveSettings()
-    }, 1000)
-    return () => clearTimeout(timer)
-  }, [localSettings])
+    const loadModelSettings = async () => {
+      try {
+        setLoading(true)
+        const token = localStorage.getItem('auth_token')
+        const response = await fetch('/api/v1/agent/models', {
+          headers: {
+            'Authorization': token ? `Bearer ${token}` : '',
+            'Content-Type': 'application/json'
+          }
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to load model settings')
+        }
+
+        const data = await response.json()
+        setModelSettings(data)
+      } catch (err) {
+        console.error('Failed to load model settings:', err)
+        setError(err instanceof Error ? err.message : 'Failed to load settings')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadModelSettings()
+  }, [])
+
+  // Toggle orchestrator
+  const handleToggleOrchestrator = async (enabled: boolean) => {
+    if (!modelSettings) return
+
+    try {
+      setSaving(true)
+      const token = localStorage.getItem('auth_token')
+      const response = await fetch('/api/v1/agent/models/update', {
+        method: 'POST',
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          orchestrator: { enabled }
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update orchestrator setting')
+      }
+
+      const data = await response.json()
+      setModelSettings({
+        ...modelSettings,
+        orchestrator: data.orchestrator
+      })
+    } catch (err) {
+      console.error('Failed to toggle orchestrator:', err)
+      setError(err instanceof Error ? err.message : 'Failed to update')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Update user preference for a task
+  const handleUpdatePreference = async (task: string, model: string) => {
+    if (!modelSettings) return
+
+    try {
+      setSaving(true)
+      const token = localStorage.getItem('auth_token')
+      const response = await fetch('/api/v1/agent/models/update', {
+        method: 'POST',
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          user_preferences: { [task]: model }
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update model preference')
+      }
+
+      const data = await response.json()
+      setModelSettings({
+        ...modelSettings,
+        user_preferences: data.user_preferences
+      })
+    } catch (err) {
+      console.error('Failed to update preference:', err)
+      setError(err instanceof Error ? err.message : 'Failed to update')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="flex items-center gap-3 text-gray-500 dark:text-gray-400">
+          <div className="w-5 h-5 border-2 border-gray-300 border-t-primary-600 rounded-full animate-spin"></div>
+          <span>Loading model settings...</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
+          <h4 className="text-sm font-semibold text-red-900 dark:text-red-100">
+            Error Loading Settings
+          </h4>
+        </div>
+        <p className="text-xs text-red-800 dark:text-red-200 mt-1">
+          {error}
+        </p>
+      </div>
+    )
+  }
+
+  if (!modelSettings) return null
 
   return (
     <div className="space-y-6">
-      {/* Orchestrator Model */}
+      {/* Orchestrator Toggle */}
       <div>
         <div className="flex items-center space-x-2 mb-4">
           <Zap className="w-5 h-5 text-amber-600 dark:text-amber-400" />
           <div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Orchestrator Model
+              Orchestrator
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Always-running model that powers Jarvis intelligent routing
+              Intelligent model routing and task detection
             </p>
           </div>
         </div>
 
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Orchestrator Model
-            </label>
-            <select
-              value={settings.orchestratorModel}
-              onChange={(e) => updateSettings({ orchestratorModel: e.target.value })}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+          {/* Toggle */}
+          <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+            <div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  Enable Intelligent Routing
+                </label>
+                {modelSettings.orchestrator.enabled && (
+                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
+                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+                    <span className="text-xs font-medium">Active</span>
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                Auto-select the best model for each task using {modelSettings.orchestrator.model}
+              </p>
+            </div>
+            <button
+              onClick={() => handleToggleOrchestrator(!modelSettings.orchestrator.enabled)}
+              disabled={saving}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                modelSettings.orchestrator.enabled
+                  ? 'bg-primary-600'
+                  : 'bg-gray-300 dark:bg-gray-600'
+              } ${saving ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
             >
-              <option value="">None (Disable orchestrator)</option>
-              {orchestratorModels.length === 0 ? (
-                <option value="" disabled>Loading models...</option>
-              ) : (
-                orchestratorModels.map((model) => (
-                  <option key={model.name} value={model.name}>
-                    {model.name} ({model.size})
-                  </option>
-                ))
-              )}
-            </select>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Only small models (&lt; 4GB) shown - Choose a small, efficient model (1.5B-3B params recommended)
-            </p>
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  modelSettings.orchestrator.enabled ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
           </div>
 
           {/* Info card */}
@@ -180,188 +245,131 @@ export default function ModelsTab({ activeNavTab }: ModelsTabProps = {}) {
               About Orchestrator
             </h4>
             <ul className="text-xs text-amber-800 dark:text-amber-200 space-y-1">
-              <li>• Always running in background for instant Jarvis responses</li>
-              <li>• Powers intelligent model routing and task detection</li>
-              <li>• Manages resource allocation (lazy loading/unloading models)</li>
-              <li>• Cannot be unloaded while app is running</li>
-              <li>• Choose a small, efficient model (1.5B-3B params recommended)</li>
+              <li>• Automatically selects the best model for each coding task</li>
+              <li>• Uses {modelSettings.orchestrator.model} for lightweight routing decisions</li>
+              <li>• When disabled, you manually select models for each task type below</li>
+              <li>• Optimizes for speed vs quality based on task complexity</li>
             </ul>
           </div>
-
-          {/* Current orchestrator status */}
-          {settings.orchestratorModel && (
-            <div className="p-4 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                <h4 className="text-sm font-semibold text-green-900 dark:text-green-100">
-                  Orchestrator Active
-                </h4>
-              </div>
-              <p className="text-xs text-green-800 dark:text-green-200 mt-1">
-                Running: {settings.orchestratorModel}
-              </p>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Memory Allocation */}
-      <div>
-        <div className="flex items-center space-x-2 mb-4">
-          <Cpu className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Memory Allocation
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Configure how Metal GPU memory is allocated for model operations
-            </p>
-            {systemInfo && systemInfo.metal_available && (
-              <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                {systemInfo.metal_device_name}: {systemInfo.metal_available_memory_gb} GB available for models
+      {/* Task-Specific Models (only shown when orchestrator is OFF) */}
+      {!modelSettings.orchestrator.enabled && (
+        <div>
+          <div className="flex items-center space-x-2 mb-4">
+            <Cpu className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                Task-Specific Models
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Manually select models for each type of coding task
               </p>
-            )}
-            {systemInfo && !systemInfo.metal_available && (
-              <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
-                Metal GPU not available - using system memory ({systemInfo.total_memory_gb} GB)
-              </p>
-            )}
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              App memory: {localSettings.app_memory_percent}%
-              {systemInfo && systemInfo.metal_available && (
-                <span className="text-xs font-normal text-gray-500 dark:text-gray-400 ml-2">
-                  ({(systemInfo.metal_available_memory_gb * localSettings.app_memory_percent / 100).toFixed(1)} GB)
-                </span>
-              )}
-            </label>
-            <input
-              type="range"
-              min="10"
-              max="80"
-              value={localSettings.app_memory_percent}
-              onChange={(e) =>
-                setLocalSettings({
-                  ...localSettings,
-                  app_memory_percent: parseInt(e.target.value),
-                })
-              }
-              className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary-600"
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Memory allocated for general app operations and UI
-            </p>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Processing memory: {localSettings.processing_memory_percent}%
-              {systemInfo && systemInfo.metal_available && (
-                <span className="text-xs font-normal text-gray-500 dark:text-gray-400 ml-2">
-                  ({(systemInfo.metal_available_memory_gb * localSettings.processing_memory_percent / 100).toFixed(1)} GB)
-                </span>
-              )}
-            </label>
-            <input
-              type="range"
-              min="10"
-              max="80"
-              value={localSettings.processing_memory_percent}
-              onChange={(e) =>
-                setLocalSettings({
-                  ...localSettings,
-                  processing_memory_percent: parseInt(e.target.value),
-                })
-              }
-              className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary-600"
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Memory for loading and running AI models (this is what determines how many models you can load)
-            </p>
+          <div className="space-y-4">
+            {Object.entries(modelSettings.user_preferences).map(([task, selectedModel]) => {
+              const taskInfo = taskLabels[task]
+              if (!taskInfo) return null
+
+              return (
+                <div key={task} className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                  <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+                    {taskInfo.label}
+                  </label>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                    {taskInfo.description}
+                  </p>
+                  <select
+                    value={selectedModel}
+                    onChange={(e) => handleUpdatePreference(task, e.target.value)}
+                    disabled={saving}
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 disabled:opacity-50"
+                  >
+                    {modelSettings.available_models.map((model) => {
+                      const isRecommended = modelSettings.recommended_models[task] === model
+                      return (
+                        <option key={model} value={model}>
+                          {model} {isRecommended ? '✓ Tested' : ''}
+                        </option>
+                      )
+                    })}
+                  </select>
+                  {modelSettings.recommended_models[task] === selectedModel && (
+                    <div className="flex items-center gap-1 mt-2 text-xs text-green-600 dark:text-green-400">
+                      <Check className="w-3 h-3" />
+                      <span>Recommended and tested by ElohimOS</span>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Cache memory: {localSettings.cache_memory_percent}%
-              {systemInfo && systemInfo.metal_available && (
-                <span className="text-xs font-normal text-gray-500 dark:text-gray-400 ml-2">
-                  ({(systemInfo.metal_available_memory_gb * localSettings.cache_memory_percent / 100).toFixed(1)} GB)
-                </span>
-              )}
-            </label>
-            <input
-              type="range"
-              min="5"
-              max="40"
-              value={localSettings.cache_memory_percent}
-              onChange={(e) =>
-                setLocalSettings({
-                  ...localSettings,
-                  cache_memory_percent: parseInt(e.target.value),
-                })
-              }
-              className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary-600"
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Memory for caching model layers and conversation context
-            </p>
-          </div>
-
-          {/* Info card */}
+          {/* Note about non-recommended models */}
           <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
             <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">
-              Memory Recommendations
+              Model Selection
             </h4>
             <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1">
-              <li>• Total allocation should not exceed 100% of system memory</li>
-              <li>• Processing memory affects model inference speed</li>
-              <li>• Cache memory improves response times for repeated queries</li>
-              <li>• Settings auto-save after changes</li>
+              <li>• ✓ Tested models are verified to work well with ElohimOS</li>
+              <li>• Other models may work but could have unexpected behavior</li>
+              <li>• Aider and Continue will naturally reject unsupported models</li>
+              <li>• Changes save automatically</li>
             </ul>
           </div>
+        </div>
+      )}
 
-          {/* Current allocation summary */}
-          <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-            <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
-              Current Allocation
-            </h4>
-            <div className="space-y-1 text-xs">
-              <div className="flex justify-between">
-                <span className="text-gray-600 dark:text-gray-400">App:</span>
-                <span className="text-gray-900 dark:text-gray-100 font-medium">
-                  {localSettings.app_memory_percent}%
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600 dark:text-gray-400">Processing:</span>
-                <span className="text-gray-900 dark:text-gray-100 font-medium">
-                  {localSettings.processing_memory_percent}%
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600 dark:text-gray-400">Cache:</span>
-                <span className="text-gray-900 dark:text-gray-100 font-medium">
-                  {localSettings.cache_memory_percent}%
-                </span>
-              </div>
-              <div className="flex justify-between pt-2 mt-2 border-t border-gray-300 dark:border-gray-600">
-                <span className="text-gray-700 dark:text-gray-300 font-medium">Total:</span>
-                <span className={`font-bold ${
-                  localSettings.app_memory_percent + localSettings.processing_memory_percent + localSettings.cache_memory_percent > 100
-                    ? 'text-red-600 dark:text-red-400'
-                    : 'text-green-600 dark:text-green-400'
-                }`}>
-                  {localSettings.app_memory_percent + localSettings.processing_memory_percent + localSettings.cache_memory_percent}%
-                </span>
-              </div>
-            </div>
+      {/* Data Engine (always shown, always locked) */}
+      <div>
+        <div className="flex items-center space-x-2 mb-4">
+          <Lock className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              Data Engine
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Dedicated model for database operations
+            </p>
           </div>
         </div>
+
+        <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              Model
+            </label>
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+              <Lock className="w-3 h-3" />
+              <span className="text-xs font-medium">Locked</span>
+            </div>
+          </div>
+          <input
+            type="text"
+            value={modelSettings.strict_models.data_engine}
+            disabled
+            className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+          />
+          <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">
+            This model is locked to phi3.5 for reliable schema discovery and SQL generation. It cannot be changed.
+          </p>
+        </div>
       </div>
+
+      {/* Current Status Summary */}
+      {saving && (
+        <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin"></div>
+            <span className="text-sm text-blue-900 dark:text-blue-100">
+              Saving changes...
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
