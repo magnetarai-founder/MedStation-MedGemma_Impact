@@ -202,6 +202,22 @@ class ModelManager:
                 return slot_num
         return None
 
+    def get_favorites(self) -> List[str]:
+        """
+        Get list of favorite models (models assigned to hot slots)
+
+        Returns:
+            List of model names assigned to hot slots, excluding None values
+        """
+        favorites = []
+        for slot_num in sorted(self.hot_slots.keys()):
+            model = self.hot_slots[slot_num]
+            if model is not None:
+                favorites.append(model)
+
+        logger.debug(f"Retrieved {len(favorites)} favorite models: {favorites}")
+        return favorites
+
     async def get_model_status(self, ollama_client) -> Dict[str, Any]:
         """
         Get status of all models (loaded/unloaded, memory usage)
