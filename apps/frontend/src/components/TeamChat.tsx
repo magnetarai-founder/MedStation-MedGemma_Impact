@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react'
 import { ResizableSidebar } from './ResizableSidebar'
 import { TeamChatSidebar } from './TeamChatSidebar'
 import { TeamChatWindow } from './TeamChatWindow'
-import { X, Wifi, WifiOff, Loader2 } from 'lucide-react'
+import { P2PPeerDiscovery } from './P2PPeerDiscovery'
+import { P2PFileSharing } from './P2PFileSharing'
+import { X, Wifi, WifiOff, Loader2, Users, Upload } from 'lucide-react'
 import { useTeamChatStore } from '../stores/teamChatStore'
 import { useP2PChat } from '../hooks/useP2PChat'
 
@@ -18,6 +20,8 @@ export function TeamChat({ mode }: TeamChatProps) {
   const [newChannelName, setNewChannelName] = useState('')
   const [newChannelDescription, setNewChannelDescription] = useState('')
   const [isPrivate, setIsPrivate] = useState(false)
+  const [showPeerDiscovery, setShowPeerDiscovery] = useState(false)
+  const [showFileSharing, setShowFileSharing] = useState(false)
 
   const { channels: localChannels, setChannels, setActiveChannel } = useTeamChatStore()
 
@@ -110,11 +114,29 @@ export function TeamChat({ mode }: TeamChatProps) {
               </>
             )}
           </div>
-          {p2p.status && (
-            <div className="text-xs text-blue-600 dark:text-blue-400 font-mono">
-              {p2p.status.peer_id?.substring(0, 8)}...
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {p2p.status && (
+              <div className="text-xs text-blue-600 dark:text-blue-400 font-mono">
+                {p2p.status.peer_id?.substring(0, 8)}...
+              </div>
+            )}
+            <button
+              onClick={() => setShowPeerDiscovery(true)}
+              className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+              title="Connect to Peers"
+            >
+              <Users className="w-3 h-3" />
+              Peers
+            </button>
+            <button
+              onClick={() => setShowFileSharing(true)}
+              className="flex items-center gap-1 px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+              title="Share Files"
+            >
+              <Upload className="w-3 h-3" />
+              Files
+            </button>
+          </div>
         </div>
       )}
 
@@ -124,6 +146,18 @@ export function TeamChat({ mode }: TeamChatProps) {
         storageKey="ns.teamChatSidebarWidth"
         left={<TeamChatSidebar mode={chatMode} onModeChange={() => {}} onShowNewChannel={() => setShowNewChannelDialog(true)} />}
         right={<TeamChatWindow mode={chatMode} />}
+      />
+
+      {/* P2P Peer Discovery Modal */}
+      <P2PPeerDiscovery
+        isOpen={showPeerDiscovery}
+        onClose={() => setShowPeerDiscovery(false)}
+      />
+
+      {/* P2P File Sharing Modal */}
+      <P2PFileSharing
+        isOpen={showFileSharing}
+        onClose={() => setShowFileSharing(false)}
       />
 
       {/* New Channel Dialog - Rendered at root level */}
