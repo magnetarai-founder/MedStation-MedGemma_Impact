@@ -203,7 +203,9 @@ class CoreMLRouter:
             import coremltools as ct
             from pathlib import Path
 
-            model_path = Path.home() / ".omnistudio" / "router.mlmodel"
+            from config_paths import get_config_paths
+            paths = get_config_paths()
+            model_path = paths.data_dir / "router.mlmodel"
 
             if model_path.exists():
                 self.model = ct.models.MLModel(str(model_path))

@@ -63,7 +63,9 @@ class JarvisMemory:
     
     def __init__(self, db_path: Path = None):
         if db_path is None:
-            base = Path(os.getenv('JARVIS_DB_DIR', str(Path.home() / ".omnistudio"))).expanduser()
+            from config_paths import get_config_paths
+            paths = get_config_paths()
+            base = Path(os.getenv('JARVIS_DB_DIR', str(paths.data_dir))).expanduser()
             db_path = base / "jarvis_memory.db"
         
         self.db_path = db_path

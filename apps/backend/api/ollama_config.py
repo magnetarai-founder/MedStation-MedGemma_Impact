@@ -61,7 +61,9 @@ class OllamaConfigManager:
 
     def __init__(self, config_path: Optional[Path] = None):
         if config_path is None:
-            config_path = Path.home() / ".omnistudio" / "ollama_config.json"
+            from config_paths import get_config_paths
+            paths = get_config_paths()
+            config_path = paths.data_dir / "ollama_config.json"
 
         self.config_path = config_path
         self.config_path.parent.mkdir(parents=True, exist_ok=True)

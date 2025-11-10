@@ -83,7 +83,9 @@ class LearningSystem:
     
     def __init__(self, memory: JarvisMemory = None, db_path: Path = None):
         if db_path is None:
-            db_path = Path.home() / ".omnistudio" / "learning.db"
+            from config_paths import get_config_paths
+            paths = get_config_paths()
+            db_path = paths.data_dir / "learning.db"
             
         self.db_path = db_path
         self.db_path.parent.mkdir(parents=True, exist_ok=True)

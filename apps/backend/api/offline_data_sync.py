@@ -650,7 +650,9 @@ def get_data_sync(db_path: Path = None, local_peer_id: str = None) -> OfflineDat
 
     if _data_sync is None:
         if not db_path:
-            db_path = Path.home() / ".omnistudio" / "omnistudio.db"
+            from config_paths import get_config_paths
+            paths = get_config_paths()
+            db_path = paths.app_db
 
         if not local_peer_id:
             import hashlib
