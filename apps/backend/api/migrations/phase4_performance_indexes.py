@@ -53,7 +53,7 @@ def check_migration_applied(db_path: Path) -> bool:
         # Check if this specific migration was applied
         cursor.execute("""
             SELECT 1 FROM migrations
-            WHERE migration_id = ?
+            WHERE migration_name = ?
         """, (MIGRATION_ID,))
 
         result = cursor.fetchone() is not None
@@ -123,138 +123,190 @@ def migrate_phase4_performance_indexes(db_path: Path) -> bool:
         indexes_created.append("idx_users_role")
 
         # ===== Chat Messages Table Indexes =====
-        logger.info("Adding indexes to chat_messages table...")
+        # Note: Chat messages are stored in separate session databases, not the main app DB
+        # Check if chat_messages table exists before adding indexes
+        logger.info("Checking for chat_messages table...")
 
-        # Index on session_id for retrieving chat history
         cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_chat_messages_session_id
-            ON chat_messages(session_id)
+            SELECT name FROM sqlite_master
+            WHERE type='table' AND name='chat_messages'
         """)
-        indexes_created.append("idx_chat_messages_session_id")
 
-        # Index on timestamp for time-based queries
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_chat_messages_timestamp
-            ON chat_messages(timestamp)
-        """)
-        indexes_created.append("idx_chat_messages_timestamp")
+        if cursor.fetchone():
+            logger.info("Adding indexes to chat_messages table...")
 
-        # Composite index for session + timestamp (common query pattern)
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_chat_messages_session_timestamp
-            ON chat_messages(session_id, timestamp)
-        """)
-        indexes_created.append("idx_chat_messages_session_timestamp")
+            # Index on session_id for retrieving chat history
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_chat_messages_session_id
+                ON chat_messages(session_id)
+            """)
+            indexes_created.append("idx_chat_messages_session_id")
+
+            # Index on timestamp for time-based queries
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_chat_messages_timestamp
+                ON chat_messages(timestamp)
+            """)
+            indexes_created.append("idx_chat_messages_timestamp")
+
+            # Composite index for session + timestamp (common query pattern)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_chat_messages_session_timestamp
+                ON chat_messages(session_id, timestamp)
+            """)
+            indexes_created.append("idx_chat_messages_session_timestamp")
+        else:
+            logger.info("⏭️  Skipping chat_messages indexes (table doesn't exist in main DB)")
 
         # ===== Workflows Table Indexes =====
-        logger.info("Adding indexes to workflows table...")
+        logger.info("Checking for workflows table...")
 
-        # Index on user_id for user's workflow list
         cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_workflows_user_id
-            ON workflows(user_id)
+            SELECT name FROM sqlite_master
+            WHERE type='table' AND name='workflows'
         """)
-        indexes_created.append("idx_workflows_user_id")
 
-        # Index on team_id for team workflow filtering
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_workflows_team_id
-            ON workflows(team_id)
-        """)
-        indexes_created.append("idx_workflows_team_id")
+        if cursor.fetchone():
+            logger.info("Adding indexes to workflows table...")
 
-        # Index on workflow_type for type-based filtering
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_workflows_type
-            ON workflows(workflow_type)
-        """)
-        indexes_created.append("idx_workflows_type")
+            # Index on user_id for user's workflow list
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_workflows_user_id
+                ON workflows(user_id)
+            """)
+            indexes_created.append("idx_workflows_user_id")
 
-        # Index on created_at for sorting
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_workflows_created_at
-            ON workflows(created_at)
-        """)
-        indexes_created.append("idx_workflows_created_at")
+            # Index on team_id for team workflow filtering
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_workflows_team_id
+                ON workflows(team_id)
+            """)
+            indexes_created.append("idx_workflows_team_id")
+
+            # Index on workflow_type for type-based filtering
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_workflows_type
+                ON workflows(workflow_type)
+            """)
+            indexes_created.append("idx_workflows_type")
+
+            # Index on created_at for sorting
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_workflows_created_at
+                ON workflows(created_at)
+            """)
+            indexes_created.append("idx_workflows_created_at")
+        else:
+            logger.info("⏭️  Skipping workflows indexes (table doesn't exist in main DB)")
 
         # ===== Audit Logs Table Indexes =====
-        logger.info("Adding indexes to audit_logs table...")
+        logger.info("Checking for audit_logs table...")
 
-        # Index on user_id for user activity tracking
         cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id
-            ON audit_logs(user_id)
+            SELECT name FROM sqlite_master
+            WHERE type='table' AND name='audit_logs'
         """)
-        indexes_created.append("idx_audit_logs_user_id")
 
-        # Index on action for action-based filtering
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_audit_logs_action
-            ON audit_logs(action)
-        """)
-        indexes_created.append("idx_audit_logs_action")
+        if cursor.fetchone():
+            logger.info("Adding indexes to audit_logs table...")
 
-        # Index on timestamp for time-range queries
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp
-            ON audit_logs(timestamp)
-        """)
-        indexes_created.append("idx_audit_logs_timestamp")
+            # Index on user_id for user activity tracking
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id
+                ON audit_logs(user_id)
+            """)
+            indexes_created.append("idx_audit_logs_user_id")
 
-        # Composite index for user + action (common filter combination)
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_audit_logs_user_action
-            ON audit_logs(user_id, action)
-        """)
-        indexes_created.append("idx_audit_logs_user_action")
+            # Index on action for action-based filtering
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_audit_logs_action
+                ON audit_logs(action)
+            """)
+            indexes_created.append("idx_audit_logs_action")
 
-        # Composite index for user + timestamp (user activity timeline)
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_audit_logs_user_timestamp
-            ON audit_logs(user_id, timestamp DESC)
-        """)
-        indexes_created.append("idx_audit_logs_user_timestamp")
+            # Index on timestamp for time-range queries
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp
+                ON audit_logs(timestamp)
+            """)
+            indexes_created.append("idx_audit_logs_timestamp")
+
+            # Composite index for user + action (common filter combination)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_audit_logs_user_action
+                ON audit_logs(user_id, action)
+            """)
+            indexes_created.append("idx_audit_logs_user_action")
+
+            # Composite index for user + timestamp (user activity timeline)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_audit_logs_user_timestamp
+                ON audit_logs(user_id, timestamp DESC)
+            """)
+            indexes_created.append("idx_audit_logs_user_timestamp")
+        else:
+            logger.info("⏭️  Skipping audit_logs indexes (table doesn't exist in main DB)")
 
         # ===== Teams Table Indexes =====
-        logger.info("Adding indexes to teams table...")
+        logger.info("Checking for teams table...")
 
-        # Index on team_id for team lookups
         cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_teams_team_id
-            ON teams(team_id)
+            SELECT name FROM sqlite_master
+            WHERE type='table' AND name='teams'
         """)
-        indexes_created.append("idx_teams_team_id")
 
-        # Index on created_by for owner queries
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_teams_created_by
-            ON teams(created_by)
-        """)
-        indexes_created.append("idx_teams_created_by")
+        if cursor.fetchone():
+            logger.info("Adding indexes to teams table...")
+
+            # Index on team_id for team lookups
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_teams_team_id
+                ON teams(team_id)
+            """)
+            indexes_created.append("idx_teams_team_id")
+
+            # Index on created_by for owner queries
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_teams_created_by
+                ON teams(created_by)
+            """)
+            indexes_created.append("idx_teams_created_by")
+        else:
+            logger.info("⏭️  Skipping teams indexes (table doesn't exist in main DB)")
 
         # ===== Team Members Table Indexes =====
-        logger.info("Adding indexes to team_members table...")
+        logger.info("Checking for team_members table...")
 
-        # Index on user_id for user's team memberships
         cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_team_members_user_id
-            ON team_members(user_id)
+            SELECT name FROM sqlite_master
+            WHERE type='table' AND name='team_members'
         """)
-        indexes_created.append("idx_team_members_user_id")
 
-        # Index on team_id for team member lists
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_team_members_team_id
-            ON team_members(team_id)
-        """)
-        indexes_created.append("idx_team_members_team_id")
+        if cursor.fetchone():
+            logger.info("Adding indexes to team_members table...")
 
-        # Composite index for team + user (membership checks)
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_team_members_team_user
-            ON team_members(team_id, user_id)
-        """)
-        indexes_created.append("idx_team_members_team_user")
+            # Index on user_id for user's team memberships
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_team_members_user_id
+                ON team_members(user_id)
+            """)
+            indexes_created.append("idx_team_members_user_id")
+
+            # Index on team_id for team member lists
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_team_members_team_id
+                ON team_members(team_id)
+            """)
+            indexes_created.append("idx_team_members_team_id")
+
+            # Composite index for team + user (membership checks)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_team_members_team_user
+                ON team_members(team_id, user_id)
+            """)
+            indexes_created.append("idx_team_members_team_user")
+        else:
+            logger.info("⏭️  Skipping team_members indexes (table doesn't exist in main DB)")
 
         # ===== Sessions Table Indexes (if exists) =====
         logger.info("Adding indexes to sessions table (if exists)...")
@@ -291,9 +343,9 @@ def migrate_phase4_performance_indexes(db_path: Path) -> bool:
         logger.info("Recording migration in migrations table...")
 
         cursor.execute("""
-            INSERT INTO migrations (migration_id, version, applied_at)
-            VALUES (?, ?, datetime('now'))
-        """, (MIGRATION_ID, MIGRATION_VERSION))
+            INSERT INTO migrations (migration_name, applied_at, description)
+            VALUES (?, datetime('now'), ?)
+        """, (MIGRATION_ID, "Phase 4: Performance Optimization - Database Indexes"))
 
         conn.commit()
         conn.close()
@@ -367,7 +419,7 @@ def rollback_phase4_performance_indexes(db_path: Path) -> bool:
 
         # Remove migration record
         cursor.execute("""
-            DELETE FROM migrations WHERE migration_id = ?
+            DELETE FROM migrations WHERE migration_name = ?
         """, (MIGRATION_ID,))
 
         conn.commit()
