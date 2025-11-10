@@ -98,3 +98,33 @@ rate_limiter = SimpleRateLimiter()
 def get_client_ip(request) -> str:
     """Extract client IP from request"""
     return request.client.host if request.client else "unknown"
+
+
+def is_dev_mode(request) -> bool:
+    """
+    Detect if request is from development environment
+
+    Checks for:
+    1. ELOHIM_ENV=development env var
+    2. Localhost/127.0.0.1 requests
+    3. Development security warning (means dev mode)
+
+    Returns:
+        True if development mode, False otherwise
+    """
+    import os
+
+    # Check env var first
+    if os.getenv("ELOHIM_ENV") == "development":
+        return True
+
+    # Check if request is from localhost
+    client_ip = get_client_ip(request)
+    if client_ip in ("127.0.0.1", "localhost", "::1"):
+        return True
+
+    # If no founder password is set, we're in dev mode
+    if not os.getenv("ELOHIM_FOUNDER_PASSWORD"):
+        return True
+
+    return False

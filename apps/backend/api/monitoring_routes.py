@@ -224,13 +224,13 @@ async def get_metal4_stats(request: Request):
     Returns real-time metrics from Metal 4 diagnostics
     """
     # Rate limit: 60 stats/min (120/min in development)
+    from rate_limiter import is_dev_mode
     client_ip = get_client_ip(request)
-    dev_mode = os.getenv("ELOHIM_ENV") == "development"
-    max_per_min = 120 if dev_mode else 60
+    max_per_min = 120 if is_dev_mode(request) else 60
     if not rate_limiter.check_rate_limit(
         f"monitoring:metal4:{client_ip}", max_requests=max_per_min, window_seconds=60
     ):
-        raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 60 requests per minute.")
+        raise HTTPException(status_code=429, detail=f"Rate limit exceeded. Max {max_per_min} requests per minute.")
 
     try:
         from metal4_diagnostics import get_diagnostics

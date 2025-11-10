@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { Toaster } from 'react-hot-toast'
 import { FileUpload } from './components/FileUpload'
 import { SidebarTabs } from './components/SidebarTabs'
@@ -19,22 +19,23 @@ import * as settingsApi from './lib/settingsApi'
 import { FolderOpen, Clock, FileJson } from 'lucide-react'
 import { initializeSecurityMonitor, cleanupSecurityMonitor } from './lib/securityMonitor'
 import { useModelSync } from './hooks/useModelSync'
+import { lazyNamed } from './utils/lazyWithRetry'
 
-// Lazy load heavy components for code splitting
-const ChatSidebar = lazy(() => import('./components/ChatSidebar').then(m => ({ default: m.ChatSidebar })))
-const ChatWindow = lazy(() => import('./components/ChatWindow').then(m => ({ default: m.ChatWindow })))
-const CodeWorkspace = lazy(() => import('./components/CodeWorkspace').then(m => ({ default: m.CodeWorkspace })))
-const CodeSidebar = lazy(() => import('./components/CodeSidebar').then(m => ({ default: m.CodeSidebar })))
-const TeamWorkspace = lazy(() => import('./components/TeamWorkspace').then(m => ({ default: m.TeamWorkspace })))
+// Lazy load heavy components for code splitting with retry logic
+const ChatSidebar = lazyNamed(() => import('./components/ChatSidebar'), 'ChatSidebar')
+const ChatWindow = lazyNamed(() => import('./components/ChatWindow'), 'ChatWindow')
+const CodeWorkspace = lazyNamed(() => import('./components/CodeWorkspace'), 'CodeWorkspace')
+const CodeSidebar = lazyNamed(() => import('./components/CodeSidebar'), 'CodeSidebar')
+const TeamWorkspace = lazyNamed(() => import('./components/TeamWorkspace'), 'TeamWorkspace')
 
-// Lazy load modals (only loaded when opened)
-const SettingsModal = lazy(() => import('./components/SettingsModal').then(m => ({ default: m.SettingsModal })))
-const LibraryModal = lazy(() => import('./components/LibraryModal').then(m => ({ default: m.LibraryModal })))
-const ProjectLibraryModal = lazy(() => import('./components/ProjectLibraryModal').then(m => ({ default: m.ProjectLibraryModal })))
-const CodeChatSettingsModal = lazy(() => import('./components/CodeChatSettingsModal').then(m => ({ default: m.CodeChatSettingsModal })))
-const JsonConverterModal = lazy(() => import('./components/JsonConverterModal').then(m => ({ default: m.JsonConverterModal })))
-const QueryHistoryModal = lazy(() => import('./components/QueryHistoryModal').then(m => ({ default: m.QueryHistoryModal })))
-const ServerControlModal = lazy(() => import('./components/ServerControlModal').then(m => ({ default: m.ServerControlModal })))
+// Lazy load modals (only loaded when opened) with retry logic
+const SettingsModal = lazyNamed(() => import('./components/SettingsModal'), 'SettingsModal')
+const LibraryModal = lazyNamed(() => import('./components/LibraryModal'), 'LibraryModal')
+const ProjectLibraryModal = lazyNamed(() => import('./components/ProjectLibraryModal'), 'ProjectLibraryModal')
+const CodeChatSettingsModal = lazyNamed(() => import('./components/CodeChatSettingsModal'), 'CodeChatSettingsModal')
+const JsonConverterModal = lazyNamed(() => import('./components/JsonConverterModal'), 'JsonConverterModal')
+const QueryHistoryModal = lazyNamed(() => import('./components/QueryHistoryModal'), 'QueryHistoryModal')
+const ServerControlModal = lazyNamed(() => import('./components/ServerControlModal'), 'ServerControlModal')
 
 // Loading spinner component for Suspense fallbacks
 const LoadingSpinner = () => (
