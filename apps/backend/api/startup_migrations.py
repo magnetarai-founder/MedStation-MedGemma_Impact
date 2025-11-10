@@ -44,6 +44,7 @@ async def run_startup_migrations() -> None:
             from .migrations import phase25_rbac_hardening as phase25_migration
             from .migrations import phase3_team_mode as phase3_migration
             from .migrations import phase35_workflow_type as phase35_migration
+            from .migrations import phase4_performance_indexes as phase4_migration
         except ImportError:
             from migrations import phase0_user_db as phase0_migration
             from migrations import phase1_workflows_user_id as phase1_migration
@@ -51,6 +52,7 @@ async def run_startup_migrations() -> None:
             from migrations import phase25_rbac_hardening as phase25_migration
             from migrations import phase3_team_mode as phase3_migration
             from migrations import phase35_workflow_type as phase35_migration
+            from migrations import phase4_performance_indexes as phase4_migration
 
         # ===== Phase 0: Database Architecture Consolidation =====
         app_db = PATHS.app_db
@@ -122,6 +124,17 @@ async def run_startup_migrations() -> None:
                 raise Exception("Phase 3.5 migration failed - see logs above")
 
             logger.info("✓ Phase 3.5 migration completed successfully")
+
+        # ===== Phase 4: Performance Optimization (Indexes) =====
+        if not phase4_migration.check_migration_applied(app_db):
+            migrations_ran.append("Phase 4: Performance Optimization (Indexes)")
+            logger.info("Running Phase 4 migration: Performance Optimization")
+            success = phase4_migration.migrate_phase4_performance_indexes(app_db)
+
+            if not success:
+                raise Exception("Phase 4 migration failed - see logs above")
+
+            logger.info("✓ Phase 4 migration completed successfully")
 
         # Summary output - only show if migrations ran
         if migrations_ran:
