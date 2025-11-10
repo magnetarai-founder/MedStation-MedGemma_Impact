@@ -68,6 +68,7 @@ except ImportError:
         validate_model_name, validate_file_size, validate_file_format
     )
     from error_codes import ErrorCode
+    from response_cache import cache_response, get_cached, clear_cache
 
 logger = logging.getLogger(__name__)
 
@@ -866,7 +867,17 @@ async def upload_file_to_chat(
 
 @public_router.get("/models", response_model=List[OllamaModel])
 async def list_ollama_models():
-    """List available Ollama models (public endpoint - no auth required)"""
+    """
+    List available Ollama models (public endpoint - no auth required)
+
+    Cached for 5 minutes to reduce Ollama API calls and improve response time
+    """
+    # Check cache first
+    cache_key = "ollama_models_list"
+    cached = get_cached(cache_key)
+    if cached:
+        return cached
+
     models = await ollama_client.list_models()
 
     if not models:
@@ -895,6 +906,9 @@ async def list_ollama_models():
             logger.debug(f"Filtering out non-chat model: {model.name}")
             continue
         chat_models.append(model)
+
+    # Cache for 5 minutes
+    cache_response(cache_key, chat_models, ttl=300)
 
     return chat_models
 
