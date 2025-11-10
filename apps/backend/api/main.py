@@ -214,8 +214,35 @@ async def lifespan(app: FastAPI):
     cleanup_task = asyncio.create_task(cleanup_old_temp_files())
     logger.info("Started background temp file cleanup task")
 
-    # Note: Auto-load favorites feature removed - get_favorites() method not implemented
-    # Can be re-enabled when ModelManager.get_favorites() is added
+    # Auto-load favorite models from hot slots
+    try:
+        from model_manager import get_model_manager
+        from ollama_client import get_ollama_client
+
+        model_manager = get_model_manager()
+        favorites = model_manager.get_favorites()
+
+        if favorites:
+            logger.info(f"Preloading {len(favorites)} favorite model(s): {', '.join(favorites)}")
+            ollama_client = get_ollama_client()
+
+            for model_name in favorites:
+                try:
+                    # Preload model by sending a minimal request
+                    # This warms up the model without blocking startup
+                    await ollama_client.generate(model_name, prompt="", stream=False)
+                    logger.debug(f"✓ Preloaded model: {model_name}")
+                except Exception as model_error:
+                    # Don't fail startup if a model can't be loaded
+                    logger.warning(f"Could not preload model '{model_name}': {model_error}")
+
+            logger.info("✓ Model preloading completed")
+        else:
+            logger.debug("No favorite models to preload")
+
+    except Exception as e:
+        # Don't fail startup if model preloading fails entirely
+        logger.warning(f"Model auto-loading disabled: {e}")
 
     yield
     # Shutdown (clean shutdown via lifespan)
