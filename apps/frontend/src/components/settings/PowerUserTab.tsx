@@ -77,6 +77,8 @@ export default function PowerUserTab() {
         <div className="space-y-4">
           <label className="flex items-center space-x-2">
             <input
+              id="enable_semantic_search"
+              name="enable_semantic_search"
               type="checkbox"
               checked={localSettings.enable_semantic_search}
               onChange={(e) =>
