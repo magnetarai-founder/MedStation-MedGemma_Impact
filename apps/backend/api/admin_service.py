@@ -445,10 +445,10 @@ async def get_device_overview(
 
     This is for administrative monitoring purposes.
     """
-    # Rate limit: 20/min (120/min in development)
+    # Rate limit: 20/min (300/min in development)
     from rate_limiter import is_dev_mode
     client_ip = get_client_ip(request)
-    max_per_min = 120 if is_dev_mode(request) else 20
+    max_per_min = 300 if is_dev_mode(request) else 20
     if not rate_limiter.check_rate_limit(f"device_overview:{client_ip}", max_requests=max_per_min, window_seconds=60):
         raise HTTPException(status_code=429, detail=f"Rate limit exceeded. Max {max_per_min} requests per minute.")
 
