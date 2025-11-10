@@ -27,12 +27,14 @@ try:
         internal_error, check_resource_exists
     )
     from .error_codes import ErrorCode
+    from .query_cache import cache_query, invalidate_query, build_permissions_cache_key
 except ImportError:
     from error_responses import (
         bad_request, unauthorized, forbidden, too_many_requests,
         internal_error, check_resource_exists
     )
     from error_codes import ErrorCode
+    from query_cache import cache_query, invalidate_query, build_permissions_cache_key
 
 logger = logging.getLogger(__name__)
 
@@ -275,7 +277,7 @@ async def get_current_user_permissions(
     user: dict = Depends(get_current_user)
 ):
     """
-    Get current user's effective permissions
+    Get current user's effective permissions - Cached for 10 minutes
 
     Returns a safe, read-only view of the user's effective permissions.
     This endpoint is designed for frontend use to show/hide UI elements
@@ -295,33 +297,42 @@ async def get_current_user_permissions(
     try:
         from permission_engine import get_permission_engine
 
-        engine = get_permission_engine()
-        user_ctx = engine.load_user_context(
-            user_id=user['user_id'],
-            team_id=team_id
-        )
+        # Build cache key (include team_id for team-specific permissions)
+        cache_key = build_permissions_cache_key(user['user_id'])
+        if team_id:
+            cache_key = f"{cache_key}_team_{team_id}"
 
-        # Convert permissions to JSON-serializable format
-        permissions = {}
-        for key, value in user_ctx.effective_permissions.items():
-            # Convert enum values to strings
-            if hasattr(value, 'value'):
-                permissions[key] = value.value
-            elif isinstance(value, bool):
-                permissions[key] = value
-            elif isinstance(value, dict):
-                permissions[key] = value
-            else:
-                permissions[key] = str(value)
+        def fetch_permissions():
+            engine = get_permission_engine()
+            user_ctx = engine.load_user_context(
+                user_id=user['user_id'],
+                team_id=team_id
+            )
 
-        return {
-            "user_id": user_ctx.user_id,
-            "username": user_ctx.username,
-            "role": user_ctx.role,
-            "permissions": permissions,
-            "profiles": user_ctx.profiles,
-            "permission_sets": user_ctx.permission_sets
-        }
+            # Convert permissions to JSON-serializable format
+            permissions = {}
+            for key, value in user_ctx.effective_permissions.items():
+                # Convert enum values to strings
+                if hasattr(value, 'value'):
+                    permissions[key] = value.value
+                elif isinstance(value, bool):
+                    permissions[key] = value
+                elif isinstance(value, dict):
+                    permissions[key] = value
+                else:
+                    permissions[key] = str(value)
+
+            return {
+                "user_id": user_ctx.user_id,
+                "username": user_ctx.username,
+                "role": user_ctx.role,
+                "permissions": permissions,
+                "profiles": user_ctx.profiles,
+                "permission_sets": user_ctx.permission_sets
+            }
+
+        # Cache for 10 minutes (permissions rarely change)
+        return cache_query(cache_key, fetch_permissions, ttl=600)
 
     except Exception as e:
         logger.exception("Failed to get user permissions")
