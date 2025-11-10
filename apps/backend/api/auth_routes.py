@@ -21,6 +21,19 @@ try:
 except ImportError:
     from rate_limiter import rate_limiter, get_client_ip
 
+try:
+    from .error_responses import (
+        bad_request, unauthorized, forbidden, too_many_requests,
+        internal_error, check_resource_exists
+    )
+    from .error_codes import ErrorCode
+except ImportError:
+    from error_responses import (
+        bad_request, unauthorized, forbidden, too_many_requests,
+        internal_error, check_resource_exists
+    )
+    from error_codes import ErrorCode
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/auth", tags=["authentication"])
@@ -88,7 +101,7 @@ async def register(request: Request, body: RegisterRequest):
     # Rate limit registration attempts (prevent spam/abuse)
     client_ip = get_client_ip(request)
     if not rate_limiter.check_rate_limit(f"auth:register:{client_ip}", max_requests=5, window_seconds=3600):
-        raise HTTPException(status_code=429, detail="Too many registration attempts. Please try again later.")
+        raise too_many_requests(ErrorCode.AUTH_RATE_LIMIT_EXCEEDED, retry_after=3600)
 
     try:
         user = auth_service.create_user(
@@ -105,10 +118,13 @@ async def register(request: Request, body: RegisterRequest):
         )
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # Check if user already exists
+        if "already exists" in str(e).lower():
+            raise bad_request(ErrorCode.AUTH_USER_ALREADY_EXISTS)
+        raise bad_request(ErrorCode.SYSTEM_VALIDATION_FAILED, errors=str(e))
     except Exception as e:
-        logger.error(f"Registration failed: {e}")
-        raise HTTPException(status_code=500, detail="Registration failed")
+        logger.exception("Registration failed")
+        raise internal_error(ErrorCode.SYSTEM_INTERNAL_ERROR, technical_detail=str(e))
 
 
 @router.post("/login", response_model=LoginResponse)
@@ -164,7 +180,7 @@ async def login(request: Request, body: LoginRequest):
         client_ip = get_client_ip(request)
         max_login_attempts = 30 if os.getenv("ELOHIM_ENV") == "development" else 10
         if not rate_limiter.check_rate_limit(f"auth:login:{client_ip}", max_requests=max_login_attempts, window_seconds=60):
-            raise HTTPException(status_code=429, detail="Too many login attempts. Please try again later.")
+            raise too_many_requests(ErrorCode.AUTH_RATE_LIMIT_EXCEEDED, retry_after=60)
 
     try:
         auth_result = auth_service.authenticate(
@@ -174,10 +190,7 @@ async def login(request: Request, body: LoginRequest):
         )
 
         if not auth_result:
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid username or password"
-            )
+            raise unauthorized(ErrorCode.AUTH_INVALID_CREDENTIALS)
 
         # Return token and user info (no need to decode again)
         return LoginResponse(
@@ -189,14 +202,15 @@ async def login(request: Request, body: LoginRequest):
         )
 
     except ValueError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        # Check for account-disabled or other auth errors
+        if "disabled" in str(e).lower():
+            raise forbidden(ErrorCode.AUTH_ACCOUNT_DISABLED)
+        raise forbidden(ErrorCode.AUTH_INVALID_CREDENTIALS)
     except HTTPException:
         raise
     except Exception as e:
-        import traceback
-        logger.error(f"Login failed: {e}")
-        logger.error(f"Traceback: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"Login failed: {str(e)}")
+        logger.exception("Login failed")
+        raise internal_error(ErrorCode.SYSTEM_INTERNAL_ERROR, technical_detail=str(e))
 
 
 @router.post("/logout")
@@ -213,8 +227,8 @@ async def logout(request: Request, user: dict = Depends(get_current_user)):
         return {"message": "Logged out successfully"}
 
     except Exception as e:
-        logger.error(f"Logout failed: {e}")
-        raise HTTPException(status_code=500, detail="Logout failed")
+        logger.exception("Logout failed")
+        raise internal_error(ErrorCode.SYSTEM_INTERNAL_ERROR, technical_detail=str(e))
 
 
 @router.get("/me", response_model=UserResponse)
@@ -251,8 +265,8 @@ async def cleanup_expired_sessions(request: Request):
         auth_service.cleanup_expired_sessions()
         return {"message": "Expired sessions cleaned up"}
     except Exception as e:
-        logger.error(f"Session cleanup failed: {e}")
-        raise HTTPException(status_code=500, detail="Cleanup failed")
+        logger.exception("Session cleanup failed")
+        raise internal_error(ErrorCode.SYSTEM_INTERNAL_ERROR, technical_detail=str(e))
 
 
 @router.get("/permissions")
@@ -310,5 +324,5 @@ async def get_current_user_permissions(
         }
 
     except Exception as e:
-        logger.error(f"Failed to get user permissions: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve permissions")
+        logger.exception("Failed to get user permissions")
+        raise internal_error(ErrorCode.SYSTEM_INTERNAL_ERROR, technical_detail=str(e))
