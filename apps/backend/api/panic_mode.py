@@ -112,9 +112,8 @@ class PanicMode:
         paths = get_config_paths()
 
         cache_paths = [
-            paths.data_dir / "cache",
+            paths.cache_dir,
             paths.uploads_dir,
-            Path("/tmp/omnistudio_cache"),
         ]
 
         for cache_path in cache_paths:
@@ -194,8 +193,9 @@ class PanicMode:
 
     def _log_panic_event(self, reason: str, actions: List[str], errors: List[str]):
         """Log panic event (PII-scrubbed)"""
-        panic_log_path = Path.home() / ".omnistudio" / "panic_log.txt"
-        panic_log_path.parent.mkdir(parents=True, exist_ok=True)
+        from config_paths import get_config_paths
+        paths = get_config_paths()
+        panic_log_path = paths.data_dir / "panic_log.txt"
 
         log_entry = f"""
 =================================================
