@@ -39,6 +39,11 @@ try:
     from api.ane_router import get_ane_router, ANERouter
     from api.learning_engine import get_learning_engine
     from .unified_context import get_unified_context
+    from .error_responses import (
+        bad_request, not_found, internal_error,
+        validate_model_name, validate_file_size, validate_file_format
+    )
+    from .error_codes import ErrorCode
 except ImportError:
     # Fallback for standalone execution
     from chat_memory import get_memory, ConversationEvent
@@ -58,6 +63,11 @@ except ImportError:
     from jarvis_memory import JarvisMemory
     from learning_system import LearningSystem
     from ane_router import get_ane_router, ANERouter
+    from error_responses import (
+        bad_request, not_found, internal_error,
+        validate_model_name, validate_file_size, validate_file_format
+    )
+    from error_codes import ErrorCode
 
 logger = logging.getLogger(__name__)
 
@@ -485,7 +495,7 @@ async def delete_chat_session(request: Request, chat_id: str, current_user: Dict
         role=current_user.get("role")
     )
     if not deleted:
-        raise HTTPException(status_code=403, detail="Access denied or session not found")
+        raise not_found(ErrorCode.DB_RECORD_NOT_FOUND)
     return {"status": "deleted", "chat_id": chat_id}
 
 
@@ -497,7 +507,7 @@ async def send_message(request: Request, chat_id: str, body: SendMessageRequest,
     # Verify session exists
     session = await ChatStorage.get_session(chat_id, user_id=current_user["user_id"], role=current_user.get("role"), team_id=team_id)
     if not session:
-        raise HTTPException(status_code=404, detail="Chat session not found")
+        raise not_found(ErrorCode.DB_RECORD_NOT_FOUND)
 
     # Use model from body or session default
     model = body.model or session.model
@@ -793,7 +803,7 @@ async def upload_file_to_chat(
     # Verify session exists
     session = await ChatStorage.get_session(chat_id)
     if not session:
-        raise HTTPException(status_code=404, detail="Chat session not found")
+        raise not_found(ErrorCode.DB_RECORD_NOT_FOUND)
 
     # Generate unique filename
     file_id = uuid.uuid4().hex[:12]
