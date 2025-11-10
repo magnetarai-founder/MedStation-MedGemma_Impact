@@ -117,9 +117,18 @@ try:
 except ImportError:
     from data_engine import get_data_engine
 
+# Import unified configuration
+try:
+    from .config import get_settings
+except ImportError:
+    from config import get_settings
+
 # Session storage
 sessions: dict[str, dict] = {}
 query_results: dict[str, pd.DataFrame] = {}
+
+# Initialize configuration
+settings = get_settings()
 
 # Initialize ElohimOS Memory System
 elohimos_memory = ElohimOSMemory()
@@ -1863,16 +1872,11 @@ async def uninstall_app(request: Request):
         elohimos_memory.close()
 
         # Get data directories
-        api_dir = Path(__file__).parent
-        neutron_data = api_dir / ".neutron_data"
-        omnistudio_data = Path.home() / ".omnistudio"
+        data_dir = settings.data_dir
 
-        # Remove directories
-        if neutron_data.exists():
-            shutil.rmtree(neutron_data)
-
-        if omnistudio_data.exists():
-            shutil.rmtree(omnistudio_data)
+        # Remove data directory
+        if data_dir.exists():
+            shutil.rmtree(data_dir)
 
         return {"success": True, "message": "App data has been uninstalled"}
     except Exception as e:
@@ -2025,25 +2029,17 @@ async def export_all(request: Request, current_user: dict = Depends(get_current_
         import shutil
         import zipfile
 
-        api_dir = Path(__file__).parent
-        temp_dir = api_dir / "temp_exports"
-        temp_dir.mkdir(exist_ok=True)
+        temp_dir = settings.temp_exports_dir
 
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        zip_path = temp_dir / f"omnistudio_backup_{timestamp}.zip"
+        zip_path = temp_dir / f"elohimos_backup_{timestamp}.zip"
 
         with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            # Add chat data
-            chats_dir = api_dir / ".neutron_data" / "chats"
-            if chats_dir.exists():
-                for file in chats_dir.rglob('*'):
+            # Add all data from data directory
+            if settings.data_dir.exists():
+                for file in settings.data_dir.rglob('*'):
                     if file.is_file():
-                        zipf.write(file, f"chats/{file.relative_to(chats_dir)}")
-
-            # Add database
-            db_file = Path.home() / ".omnistudio" / "omnistudio.db"
-            if db_file.exists():
-                zipf.write(db_file, "database/omnistudio.db")
+                        zipf.write(file, str(file.relative_to(settings.data_dir.parent)))
 
         return FileResponse(
             path=zip_path,
@@ -2140,8 +2136,7 @@ async def upload_dataset(
             )
 
         # Save uploaded file temporarily
-        temp_dir = Path("/tmp/omnistudio_uploads")
-        temp_dir.mkdir(exist_ok=True)
+        temp_dir = settings.temp_uploads_dir
 
         # Sanitize filename to prevent path traversal (HIGH-01)
         safe_filename = sanitize_filename(file.filename)
