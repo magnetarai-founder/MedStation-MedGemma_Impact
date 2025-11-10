@@ -487,13 +487,6 @@ async def get_device_overview(
             "timestamp": str(__import__('datetime').datetime.utcnow().isoformat())
         }
 
-
-# Backward/alias route to avoid path mismatches
-@router.get("/device-overview")
-@require_perm("system.view_admin_dashboard")
-async def get_device_overview_alias(request: Request, current_user: dict = Depends(require_founder_rights)):
-    return await get_device_overview(request, current_user)
-
     try:
         overview = {}
 
@@ -669,6 +662,14 @@ async def get_device_overview_alias(request: Request, current_user: dict = Depen
             "timestamp": str(__import__('datetime').datetime.utcnow().isoformat()),
             "error": "device_overview_failed"
         }
+
+
+# Backward/alias route to avoid path mismatches
+@router.get("/device-overview")
+@require_perm("system.view_admin_dashboard")
+async def get_device_overview_alias(request: Request, current_user: dict = Depends(require_founder_rights)):
+    """Alias for /device/overview endpoint"""
+    return await get_device_overview(request, current_user)
 
 
 @router.get("/users/{target_user_id}/workflows")
