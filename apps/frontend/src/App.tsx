@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { Toaster } from 'react-hot-toast'
 import { FileUpload } from './components/FileUpload'
 import { SidebarTabs } from './components/SidebarTabs'
@@ -6,19 +6,6 @@ import { Header } from './components/Header'
 import { ResizablePanels } from './components/ResizablePanels'
 import { ResizableSidebar } from './components/ResizableSidebar'
 import { NavigationRail } from './components/NavigationRail'
-import { ChatSidebar } from './components/ChatSidebar'
-import { ChatWindow } from './components/ChatWindow'
-import { SettingsModal } from './components/SettingsModal'
-import { LibraryModal } from './components/LibraryModal'
-import { ProjectLibraryModal } from './components/ProjectLibraryModal'
-import { CodeChatSettingsModal } from './components/CodeChatSettingsModal'
-import { JsonConverterModal } from './components/JsonConverterModal'
-import { QueryHistoryModal } from './components/QueryHistoryModal'
-import { ServerControlModal } from './components/ServerControlModal'
-import { CodeWorkspace } from './components/CodeWorkspace'
-import { CodeSidebar } from './components/CodeSidebar'
-import { TeamWorkspace } from './components/TeamWorkspace'
-import { SetupWizard } from './components/SetupWizard'
 import { Login } from './components/Login'
 import { useSessionStore } from './stores/sessionStore'
 import { useNavigationStore } from './stores/navigationStore'
@@ -32,6 +19,32 @@ import * as settingsApi from './lib/settingsApi'
 import { FolderOpen, Clock, FileJson } from 'lucide-react'
 import { initializeSecurityMonitor, cleanupSecurityMonitor } from './lib/securityMonitor'
 import { useModelSync } from './hooks/useModelSync'
+
+// Lazy load heavy components for code splitting
+const ChatSidebar = lazy(() => import('./components/ChatSidebar').then(m => ({ default: m.ChatSidebar })))
+const ChatWindow = lazy(() => import('./components/ChatWindow').then(m => ({ default: m.ChatWindow })))
+const CodeWorkspace = lazy(() => import('./components/CodeWorkspace').then(m => ({ default: m.CodeWorkspace })))
+const CodeSidebar = lazy(() => import('./components/CodeSidebar').then(m => ({ default: m.CodeSidebar })))
+const TeamWorkspace = lazy(() => import('./components/TeamWorkspace').then(m => ({ default: m.TeamWorkspace })))
+
+// Lazy load modals (only loaded when opened)
+const SettingsModal = lazy(() => import('./components/SettingsModal').then(m => ({ default: m.SettingsModal })))
+const LibraryModal = lazy(() => import('./components/LibraryModal').then(m => ({ default: m.LibraryModal })))
+const ProjectLibraryModal = lazy(() => import('./components/ProjectLibraryModal').then(m => ({ default: m.ProjectLibraryModal })))
+const CodeChatSettingsModal = lazy(() => import('./components/CodeChatSettingsModal').then(m => ({ default: m.CodeChatSettingsModal })))
+const JsonConverterModal = lazy(() => import('./components/JsonConverterModal').then(m => ({ default: m.JsonConverterModal })))
+const QueryHistoryModal = lazy(() => import('./components/QueryHistoryModal').then(m => ({ default: m.QueryHistoryModal })))
+const ServerControlModal = lazy(() => import('./components/ServerControlModal').then(m => ({ default: m.ServerControlModal })))
+
+// Loading spinner component for Suspense fallbacks
+const LoadingSpinner = () => (
+  <div className="h-full w-full flex items-center justify-center">
+    <div className="relative w-12 h-12">
+      <div className="absolute inset-0 bg-gradient-to-br from-primary-500 to-primary-700 rounded-full animate-pulse"></div>
+      <div className="absolute inset-2 bg-gradient-to-br from-blue-300 to-primary-400 rounded-full"></div>
+    </div>
+  </div>
+)
 
 export default function App() {
   // Enable global model syncing (polls every 5 seconds for model changes)
@@ -235,7 +248,9 @@ export default function App() {
               display: activeTab === 'team' ? 'flex' : 'none'
             }}
           >
-            <TeamWorkspace />
+            <Suspense fallback={<LoadingSpinner />}>
+              <TeamWorkspace />
+            </Suspense>
           </div>
 
           {/* AI Chat Tab */}
@@ -245,13 +260,15 @@ export default function App() {
               display: activeTab === 'chat' ? 'flex' : 'none'
             }}
           >
-            <ResizableSidebar
-              initialWidth={320}
-              minWidth={280}
-              storageKey="ns.chatSidebarWidth"
-              left={<ChatSidebar />}
-              right={<ChatWindow />}
-            />
+            <Suspense fallback={<LoadingSpinner />}>
+              <ResizableSidebar
+                initialWidth={320}
+                minWidth={280}
+                storageKey="ns.chatSidebarWidth"
+                left={<ChatSidebar />}
+                right={<ChatWindow />}
+              />
+            </Suspense>
           </div>
 
           {/* Code Tab */}
@@ -261,20 +278,22 @@ export default function App() {
               display: activeTab === 'code' ? 'flex' : 'none'
             }}
           >
-            <ResizableSidebar
-              initialWidth={320}
-              minWidth={320}
-              storageKey="ns.codeSidebarWidth"
-              left={
-                <CodeSidebar
-                  onFileSelect={handleFileSelect}
-                  selectedFile={selectedFile}
-                  onOpenLibrary={() => setIsProjectLibraryOpen(true)}
-                  onOpenSettings={() => setIsCodeChatSettingsOpen(true)}
-                />
-              }
-              right={<CodeWorkspace />}
-            />
+            <Suspense fallback={<LoadingSpinner />}>
+              <ResizableSidebar
+                initialWidth={320}
+                minWidth={320}
+                storageKey="ns.codeSidebarWidth"
+                left={
+                  <CodeSidebar
+                    onFileSelect={handleFileSelect}
+                    selectedFile={selectedFile}
+                    onOpenLibrary={() => setIsProjectLibraryOpen(true)}
+                    onOpenSettings={() => setIsCodeChatSettingsOpen(true)}
+                  />
+                }
+                right={<CodeWorkspace />}
+              />
+            </Suspense>
           </div>
 
           {/* Database Tab */}
@@ -331,34 +350,62 @@ export default function App() {
         </div>
       </div>
 
-      <LibraryModal
-        isOpen={isLibraryOpen}
-        onClose={() => {
-          setIsLibraryOpen(false)
-          setLibraryInitialCode(null)
-        }}
-        initialCodeData={libraryInitialCode}
-        onLoadQuery={handleLoadQuery}
-      />
-      <ProjectLibraryModal
-        isOpen={isProjectLibraryOpen}
-        onClose={() => setIsProjectLibraryOpen(false)}
-      />
-      <CodeChatSettingsModal
-        isOpen={isCodeChatSettingsOpen}
-        onClose={() => setIsCodeChatSettingsOpen(false)}
-      />
-      <QueryHistoryModal
-        isOpen={isQueryHistoryOpen}
-        onClose={() => setIsQueryHistoryOpen(false)}
-        onRunQuery={(query) => {
-          setCode(query)
-          setActiveTab('database')
-        }}
-      />
-      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} activeNavTab={activeTab} />
-      <JsonConverterModal isOpen={isJsonConverterOpen} onClose={() => setIsJsonConverterOpen(false)} />
-      <ServerControlModal isOpen={isServerControlsOpen} onClose={() => setIsServerControlsOpen(false)} />
+      <Suspense fallback={null}>
+        {isLibraryOpen && (
+          <LibraryModal
+            isOpen={isLibraryOpen}
+            onClose={() => {
+              setIsLibraryOpen(false)
+              setLibraryInitialCode(null)
+            }}
+            initialCodeData={libraryInitialCode}
+            onLoadQuery={handleLoadQuery}
+          />
+        )}
+      </Suspense>
+      <Suspense fallback={null}>
+        {isProjectLibraryOpen && (
+          <ProjectLibraryModal
+            isOpen={isProjectLibraryOpen}
+            onClose={() => setIsProjectLibraryOpen(false)}
+          />
+        )}
+      </Suspense>
+      <Suspense fallback={null}>
+        {isCodeChatSettingsOpen && (
+          <CodeChatSettingsModal
+            isOpen={isCodeChatSettingsOpen}
+            onClose={() => setIsCodeChatSettingsOpen(false)}
+          />
+        )}
+      </Suspense>
+      <Suspense fallback={null}>
+        {isQueryHistoryOpen && (
+          <QueryHistoryModal
+            isOpen={isQueryHistoryOpen}
+            onClose={() => setIsQueryHistoryOpen(false)}
+            onRunQuery={(query) => {
+              setCode(query)
+              setActiveTab('database')
+            }}
+          />
+        )}
+      </Suspense>
+      <Suspense fallback={null}>
+        {isSettingsOpen && (
+          <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} activeNavTab={activeTab} />
+        )}
+      </Suspense>
+      <Suspense fallback={null}>
+        {isJsonConverterOpen && (
+          <JsonConverterModal isOpen={isJsonConverterOpen} onClose={() => setIsJsonConverterOpen(false)} />
+        )}
+      </Suspense>
+      <Suspense fallback={null}>
+        {isServerControlsOpen && (
+          <ServerControlModal isOpen={isServerControlsOpen} onClose={() => setIsServerControlsOpen(false)} />
+        )}
+      </Suspense>
       <ClearWorkspaceDialog />
       <OfflineIndicator />
       <Toaster
