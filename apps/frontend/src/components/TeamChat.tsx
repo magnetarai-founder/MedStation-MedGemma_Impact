@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ResizableSidebar } from './ResizableSidebar'
 import { TeamChatSidebar } from './TeamChatSidebar'
 import { TeamChatWindow } from './TeamChatWindow'
-import { X } from 'lucide-react'
+import { X, Wifi, WifiOff, Loader2 } from 'lucide-react'
 import { useTeamChatStore } from '../stores/teamChatStore'
+import { useP2PChat } from '../hooks/useP2PChat'
 
 interface TeamChatProps {
   mode: 'solo' | 'lan' | 'p2p'
@@ -18,37 +19,105 @@ export function TeamChat({ mode }: TeamChatProps) {
   const [newChannelDescription, setNewChannelDescription] = useState('')
   const [isPrivate, setIsPrivate] = useState(false)
 
-  const { channels, setChannels, setActiveChannel } = useTeamChatStore()
+  const { channels: localChannels, setChannels, setActiveChannel } = useTeamChatStore()
 
-  const handleCreateChannel = () => {
+  // Use P2P hook for real mesh networking
+  const p2p = useP2PChat(chatMode)
+
+  // Sync P2P channels with local store when in P2P mode
+  useEffect(() => {
+    if (chatMode === 'p2p' && p2p.channels.length > 0) {
+      setChannels(p2p.channels)
+    }
+  }, [chatMode, p2p.channels, setChannels])
+
+  const handleCreateChannel = async () => {
     if (!newChannelName.trim()) return
 
-    const newChannel = {
-      id: `channel_${Date.now()}`,
-      name: newChannelName.toLowerCase().replace(/\s+/g, '-'),
-      type: (isPrivate ? 'private' : 'public') as const,
-      created_at: new Date().toISOString(),
-      created_by: 'me',
-      members: ['me'],
-      admins: ['me'],
-      description: newChannelDescription || 'New channel'
-    }
+    if (chatMode === 'p2p') {
+      // Use P2P API to create channel
+      try {
+        const channel = await p2p.createChannel(
+          newChannelName.toLowerCase().replace(/\s+/g, '-'),
+          isPrivate ? 'private' : 'public',
+          newChannelDescription || undefined
+        )
 
-    setChannels([...channels, newChannel])
-    setActiveChannel(newChannel.id)
-    setNewChannelName('')
-    setNewChannelDescription('')
-    setIsPrivate(false)
-    setShowNewChannelDialog(false)
+        setActiveChannel(channel.id)
+        setNewChannelName('')
+        setNewChannelDescription('')
+        setIsPrivate(false)
+        setShowNewChannelDialog(false)
+      } catch (error) {
+        console.error('Failed to create P2P channel:', error)
+      }
+    } else {
+      // Solo mode - use localStorage
+      const newChannel = {
+        id: `channel_${Date.now()}`,
+        name: newChannelName.toLowerCase().replace(/\s+/g, '-'),
+        type: (isPrivate ? 'private' : 'public') as const,
+        created_at: new Date().toISOString(),
+        created_by: 'me',
+        members: ['me'],
+        admins: ['me'],
+        description: newChannelDescription || 'New channel'
+      }
 
-    // Save to localStorage for solo mode
-    if (chatMode === 'solo') {
-      localStorage.setItem('solo_channels', JSON.stringify([...channels, newChannel]))
+      setChannels([...localChannels, newChannel])
+      setActiveChannel(newChannel.id)
+      setNewChannelName('')
+      setNewChannelDescription('')
+      setIsPrivate(false)
+      setShowNewChannelDialog(false)
+      localStorage.setItem('solo_channels', JSON.stringify([...localChannels, newChannel]))
     }
   }
 
   return (
     <>
+      {/* P2P Status Banner */}
+      {chatMode === 'p2p' && (
+        <div className="px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm">
+            {p2p.isInitializing ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin text-blue-600 dark:text-blue-400" />
+                <span className="text-blue-700 dark:text-blue-300">Initializing P2P mesh...</span>
+              </>
+            ) : p2p.error ? (
+              <>
+                <WifiOff className="w-4 h-4 text-red-600 dark:text-red-400" />
+                <span className="text-red-700 dark:text-red-300">P2P connection failed</span>
+                <button
+                  onClick={p2p.retry}
+                  className="ml-2 px-2 py-0.5 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                >
+                  Retry
+                </button>
+              </>
+            ) : p2p.status?.running ? (
+              <>
+                <Wifi className="w-4 h-4 text-green-600 dark:text-green-400" />
+                <span className="text-green-700 dark:text-green-300">
+                  P2P mesh active • {p2p.peers.length} peer{p2p.peers.length !== 1 ? 's' : ''}
+                </span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                <span className="text-gray-700 dark:text-gray-300">P2P mesh offline</span>
+              </>
+            )}
+          </div>
+          {p2p.status && (
+            <div className="text-xs text-blue-600 dark:text-blue-400 font-mono">
+              {p2p.status.peer_id?.substring(0, 8)}...
+            </div>
+          )}
+        </div>
+      )}
+
       <ResizableSidebar
         initialWidth={320}
         minWidth={280}
