@@ -1,4 +1,4 @@
-import { create } from 'zustand'
+import { createWithEqualityFn } from 'zustand/traditional'
 import { persist } from 'zustand/middleware'
 
 export interface ChatMessage {
@@ -115,7 +115,7 @@ const storeActiveChatId = (chatId: string | null) => {
   }
 }
 
-export const useChatStore = create<ChatStore>()(
+export const useChatStore = createWithEqualityFn<ChatStore>()(
   persist(
     (set, get) => ({
       // Initial state - try to restore last active chat from session

@@ -1,4 +1,4 @@
-import { create } from 'zustand'
+import { createWithEqualityFn } from 'zustand/traditional'
 import type { FileUploadResponse, QueryResponse } from '@/lib/api'
 
 interface SessionState {
@@ -20,7 +20,7 @@ interface SessionState {
   clearSession: () => void
 }
 
-export const useSessionStore = create<SessionState>((set) => ({
+export const useSessionStore = createWithEqualityFn<SessionState>((set) => ({
   sessionId: null,
   currentFile: null,
   currentQuery: null,

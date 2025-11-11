@@ -1,4 +1,4 @@
-import { create } from 'zustand'
+import { createWithEqualityFn } from 'zustand/traditional'
 import { persist } from 'zustand/middleware'
 
 export type QueryNodeType = 'query' | 'folder'
@@ -35,7 +35,7 @@ const getMaxSavedQueries = () => {
   }
 }
 
-export const useQueriesStore = create<QueriesStore>()(
+export const useQueriesStore = createWithEqualityFn<QueriesStore>()(
   persist(
     (set, get) => ({
       queries: [],

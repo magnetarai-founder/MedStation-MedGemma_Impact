@@ -8,7 +8,7 @@
  * and Insights Lab - built on the Rock that never fails.
  */
 
-import { create } from 'zustand'
+import { createWithEqualityFn } from 'zustand/traditional'
 import { persist } from 'zustand/middleware'
 import { useUserStore } from './userStore'
 import { generateVerificationToken, encryptData, verifyPassphrase } from '../lib/encryption'
@@ -128,7 +128,7 @@ const defaultSecuritySettings: SecuritySettings = {
   require_touch_id: true,
 }
 
-export const useDocsStore = create<DocsStore>()(
+export const useDocsStore = createWithEqualityFn<DocsStore>()(
   persist(
     (set, get) => ({
       workspaceView: 'chat',

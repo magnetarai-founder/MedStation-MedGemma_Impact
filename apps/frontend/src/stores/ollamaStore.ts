@@ -1,4 +1,4 @@
-import { create } from 'zustand'
+import { createWithEqualityFn } from 'zustand/traditional'
 
 export interface OllamaServerState {
   running: boolean
@@ -12,7 +12,7 @@ interface OllamaStore {
   fetchServerStatus: () => Promise<void>
 }
 
-export const useOllamaStore = create<OllamaStore>()((set) => ({
+export const useOllamaStore = createWithEqualityFn<OllamaStore>()((set) => ({
   serverStatus: {
     running: false,
     loadedModels: [],

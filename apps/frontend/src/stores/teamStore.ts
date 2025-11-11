@@ -7,7 +7,7 @@
  * - Team Mode: On a team = Roles activate based on assignment
  */
 
-import { create } from 'zustand'
+import { createWithEqualityFn } from 'zustand/traditional'
 import { persist } from 'zustand/middleware'
 
 export type NetworkMode = 'solo' | 'lan' | 'p2p'
@@ -58,7 +58,7 @@ interface TeamStore {
   shouldActivateRoles: () => boolean
 }
 
-export const useTeamStore = create<TeamStore>()(
+export const useTeamStore = createWithEqualityFn<TeamStore>()(
   persist(
     (set, get) => ({
       // Initial state

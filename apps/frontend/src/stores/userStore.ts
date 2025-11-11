@@ -5,7 +5,7 @@
  * Single-user per device model for offline-first operation.
  */
 
-import { create } from 'zustand'
+import { createWithEqualityFn } from 'zustand/traditional'
 import { persist } from 'zustand/middleware'
 import axios from 'axios'
 import { ROLES } from '@/lib/roles'
@@ -54,7 +54,7 @@ interface UserStore {
   getUserId: () => string
 }
 
-export const useUserStore = create<UserStore>()(
+export const useUserStore = createWithEqualityFn<UserStore>()(
   persist(
     (set, get) => ({
       user: null,

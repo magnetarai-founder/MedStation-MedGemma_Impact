@@ -1,4 +1,4 @@
-import { create } from 'zustand'
+import { createWithEqualityFn } from 'zustand/traditional'
 
 type ContentType = 'sql' | 'json' | null
 
@@ -14,7 +14,7 @@ interface EditorState {
   reset: () => void
 }
 
-export const useEditorStore = create<EditorState>((set) => ({
+export const useEditorStore = createWithEqualityFn<EditorState>((set) => ({
   code: '',
   contentType: null,
   hasExecuted: false,

@@ -1,4 +1,4 @@
-import { create } from 'zustand'
+import { createWithEqualityFn } from 'zustand/traditional'
 
 interface JsonConversionResult {
   preview: any[]
@@ -32,7 +32,7 @@ interface JsonStore {
   setActualJsonContent: (content: string) => void
 }
 
-export const useJsonStore = create<JsonStore>((set) => ({
+export const useJsonStore = createWithEqualityFn<JsonStore>((set) => ({
   conversionResult: null,
   setConversionResult: (result) => set({ conversionResult: result }),
   isConverting: false,

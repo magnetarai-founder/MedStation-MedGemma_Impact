@@ -1,4 +1,4 @@
-import { create } from 'zustand'
+import { createWithEqualityFn } from 'zustand/traditional'
 
 type LogoAnimation = 'static' | 'pulsing'
 type ExportFormat = 'excel' | 'csv' | 'parquet' | 'json'
@@ -86,7 +86,7 @@ const setItem = <T>(key: string, value: T) => {
   localStorage.setItem(key, JSON.stringify(value))
 }
 
-export const useSettingsStore = create<SettingsState>((set) => ({
+export const useSettingsStore = createWithEqualityFn<SettingsState>((set) => ({
   // Display
   logoAnimation: getItem(KEYS.logoAnimation, 'pulsing'),
 

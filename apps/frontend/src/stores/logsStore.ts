@@ -1,4 +1,4 @@
-import { create } from 'zustand'
+import { createWithEqualityFn } from 'zustand/traditional'
 
 export type LogLevel = 'info' | 'warning' | 'error' | 'success'
 
@@ -15,7 +15,7 @@ interface LogsState {
   clearLogs: () => void
 }
 
-export const useLogsStore = create<LogsState>((set) => ({
+export const useLogsStore = createWithEqualityFn<LogsState>((set) => ({
   logs: [],
   appendLog: (entry) => set((s) => ({ logs: [...s.logs, entry] })),
   clearLogs: () => set({ logs: [] }),

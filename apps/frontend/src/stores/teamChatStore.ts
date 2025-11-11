@@ -1,4 +1,4 @@
-import { create } from 'zustand'
+import { createWithEqualityFn } from 'zustand/traditional'
 
 export interface Peer {
   peer_id: string
@@ -91,7 +91,7 @@ interface TeamChatStore {
   setSendingMessage: (sending: boolean) => void
 }
 
-export const useTeamChatStore = create<TeamChatStore>((set, get) => ({
+export const useTeamChatStore = createWithEqualityFn<TeamChatStore>((set, get) => ({
   // Initial state
   status: null,
   isInitialized: false,
