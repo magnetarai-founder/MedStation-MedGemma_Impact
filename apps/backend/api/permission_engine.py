@@ -113,9 +113,15 @@ class PermissionEngine:
         self._permission_cache: Dict[str, Dict[str, Any]] = {}
 
     def _get_connection(self) -> sqlite3.Connection:
-        """Get database connection with row factory"""
-        conn = sqlite3.connect(str(self.db_path))
+        """Get database connection with row factory and optimized settings"""
+        conn = sqlite3.connect(str(self.db_path), timeout=30.0)
         conn.row_factory = sqlite3.Row
+
+        # Enable WAL mode for better concurrent access
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")
+        conn.execute("PRAGMA temp_store=MEMORY")
+
         return conn
 
     def load_user_context(self, user_id: str, team_id: Optional[str] = None) -> UserPermissionContext:
@@ -151,113 +157,121 @@ class PermissionEngine:
         else:
             cached_perms = None
 
-        conn = self._get_connection()
-        cur = conn.cursor()
+        with self._get_connection() as conn:
+            cur = conn.cursor()
 
-        # Step 1: Load user data
-        # Note: team_id and job_role may not exist yet; handle gracefully
-        try:
-            cur.execute("""
-                SELECT user_id, username, role, job_role, team_id
-                FROM users
-                WHERE user_id = ?
-            """, (user_id,))
-            user_row = cur.fetchone()
+            # Step 1: Load user data
+            # Note: team_id and job_role may not exist yet; handle gracefully
+            try:
+                cur.execute("""
+                    SELECT user_id, username, role, job_role, team_id
+                    FROM users
+                    WHERE user_id = ?
+                """, (user_id,))
+                user_row = cur.fetchone()
 
-            if not user_row:
-                conn.close()
-                raise ValueError(f"User not found: {user_id}")
+                if not user_row:
+                    raise ValueError(f"User not found: {user_id}")
 
-            ctx = UserPermissionContext(
-                user_id=user_row['user_id'],
-                username=user_row['username'],
-                role=user_row['role'] or 'member',
-                job_role=user_row['job_role'] if 'job_role' in user_row.keys() else None,
-                team_id=user_row['team_id'] if 'team_id' in user_row.keys() else None,
-                is_solo_mode=(user_row['team_id'] if 'team_id' in user_row.keys() else None) is None,
-            )
-        except sqlite3.OperationalError as e:
-            # Columns don't exist yet; load minimal user data
-            logger.warning(f"Loading user context with minimal schema (team_id/job_role missing): {e}")
-            cur.execute("""
-                SELECT user_id, username, role
-                FROM users
-                WHERE user_id = ?
-            """, (user_id,))
-            user_row = cur.fetchone()
+                ctx = UserPermissionContext(
+                    user_id=user_row['user_id'],
+                    username=user_row['username'],
+                    role=user_row['role'] or 'member',
+                    job_role=user_row['job_role'] if 'job_role' in user_row.keys() else None,
+                    team_id=user_row['team_id'] if 'team_id' in user_row.keys() else None,
+                    is_solo_mode=(user_row['team_id'] if 'team_id' in user_row.keys() else None) is None,
+                )
+            except sqlite3.OperationalError as e:
+                # Columns don't exist yet; load minimal user data
+                logger.warning(f"Loading user context with minimal schema (team_id/job_role missing): {e}")
+                cur.execute("""
+                    SELECT user_id, username, role
+                    FROM users
+                    WHERE user_id = ?
+                """, (user_id,))
+                user_row = cur.fetchone()
 
-            if not user_row:
-                conn.close()
-                raise ValueError(f"User not found: {user_id}")
+                if not user_row:
+                    raise ValueError(f"User not found: {user_id}")
 
-            ctx = UserPermissionContext(
-                user_id=user_row['user_id'],
-                username=user_row['username'],
-                role=user_row['role'] or 'member',
-                job_role=None,
-                team_id=None,
-                is_solo_mode=True,
-            )
+                ctx = UserPermissionContext(
+                    user_id=user_row['user_id'],
+                    username=user_row['username'],
+                    role=user_row['role'] or 'member',
+                    job_role=None,
+                    team_id=None,
+                    is_solo_mode=True,
+                )
 
-        # Step 2: Load assigned profiles (Phase 3: team-aware)
-        # Load profiles that are either system-wide (team_id IS NULL) or team-scoped
-        if team_id:
-            cur.execute("""
-                SELECT upp.profile_id
-                FROM user_permission_profiles upp
-                JOIN permission_profiles pp ON upp.profile_id = pp.profile_id
-                WHERE upp.user_id = ?
-                AND (pp.team_id IS NULL OR pp.team_id = ?)
-            """, (user_id, team_id))
-        else:
-            # Solo mode: only system-wide profiles (team_id IS NULL)
-            cur.execute("""
-                SELECT upp.profile_id
-                FROM user_permission_profiles upp
-                JOIN permission_profiles pp ON upp.profile_id = pp.profile_id
-                WHERE upp.user_id = ?
-                AND pp.team_id IS NULL
-            """, (user_id,))
+            # Step 2 & 3: Load assigned profiles and permission sets in ONE query
+            # Optimized to eliminate N+1 queries using LEFT JOIN + UNION ALL
+            # This is significantly faster than separate queries
+            if team_id:
+                cur.execute("""
+                    SELECT
+                        'profile' as type,
+                        upp.profile_id as id
+                    FROM user_permission_profiles upp
+                    JOIN permission_profiles pp ON upp.profile_id = pp.profile_id
+                    WHERE upp.user_id = ?
+                    AND (pp.team_id IS NULL OR pp.team_id = ?)
 
-        ctx.profiles = [row['profile_id'] for row in cur.fetchall()]
+                    UNION ALL
 
-        # Step 3: Load assigned permission sets (Phase 3: team-aware, not expired)
-        if team_id:
-            cur.execute("""
-                SELECT ups.permission_set_id
-                FROM user_permission_sets ups
-                JOIN permission_sets ps ON ups.permission_set_id = ps.permission_set_id
-                WHERE ups.user_id = ?
-                AND (ps.team_id IS NULL OR ps.team_id = ?)
-                AND (ups.expires_at IS NULL OR ups.expires_at > datetime('now'))
-            """, (user_id, team_id))
-        else:
-            # Solo mode: only system-wide sets (team_id IS NULL)
-            cur.execute("""
-                SELECT ups.permission_set_id
-                FROM user_permission_sets ups
-                JOIN permission_sets ps ON ups.permission_set_id = ps.permission_set_id
-                WHERE ups.user_id = ?
-                AND ps.team_id IS NULL
-                AND (ups.expires_at IS NULL OR ups.expires_at > datetime('now'))
-            """, (user_id,))
+                    SELECT
+                        'permission_set' as type,
+                        ups.permission_set_id as id
+                    FROM user_permission_sets ups
+                    JOIN permission_sets ps ON ups.permission_set_id = ps.permission_set_id
+                    WHERE ups.user_id = ?
+                    AND (ps.team_id IS NULL OR ps.team_id = ?)
+                    AND (ups.expires_at IS NULL OR ups.expires_at > datetime('now'))
+                """, (user_id, team_id, user_id, team_id))
+            else:
+                # Solo mode: only system-wide
+                cur.execute("""
+                    SELECT
+                        'profile' as type,
+                        upp.profile_id as id
+                    FROM user_permission_profiles upp
+                    JOIN permission_profiles pp ON upp.profile_id = pp.profile_id
+                    WHERE upp.user_id = ?
+                    AND pp.team_id IS NULL
 
-        ctx.permission_sets = [row['permission_set_id'] for row in cur.fetchall()]
+                    UNION ALL
 
-        # Step 4: Resolve effective permissions
-        if cached_perms is not None:
-            # Use cached permissions
-            ctx.effective_permissions = cached_perms
-        else:
-            # Resolve from DB and cache
-            ctx.effective_permissions = self._resolve_permissions(
-                conn, ctx.role, ctx.profiles, ctx.permission_sets
-            )
-            # Phase 3: Store in cache with team-aware key
-            self._permission_cache[cache_key] = ctx.effective_permissions
-            logger.debug(f"Cached permissions for {cache_key}")
+                    SELECT
+                        'permission_set' as type,
+                        ups.permission_set_id as id
+                    FROM user_permission_sets ups
+                    JOIN permission_sets ps ON ups.permission_set_id = ps.permission_set_id
+                    WHERE ups.user_id = ?
+                    AND ps.team_id IS NULL
+                    AND (ups.expires_at IS NULL OR ups.expires_at > datetime('now'))
+                """, (user_id, user_id))
 
-        conn.close()
+            # Separate results by type
+            ctx.profiles = []
+            ctx.permission_sets = []
+            for row in cur.fetchall():
+                if row['type'] == 'profile':
+                    ctx.profiles.append(row['id'])
+                else:
+                    ctx.permission_sets.append(row['id'])
+
+            # Step 4: Resolve effective permissions
+            if cached_perms is not None:
+                # Use cached permissions
+                ctx.effective_permissions = cached_perms
+            else:
+                # Resolve from DB and cache
+                ctx.effective_permissions = self._resolve_permissions(
+                    conn, ctx.role, ctx.profiles, ctx.permission_sets
+                )
+                # Phase 3: Store in cache with team-aware key
+                self._permission_cache[cache_key] = ctx.effective_permissions
+                logger.debug(f"Cached permissions for {cache_key}")
+
         return ctx
 
     def _resolve_permissions(

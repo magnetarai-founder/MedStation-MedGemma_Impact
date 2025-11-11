@@ -365,6 +365,14 @@ def migrate_phase4_performance_indexes(db_path: Path) -> bool:
         return True
 
     except Exception as e:
+        # Rollback transaction on failure
+        try:
+            conn.rollback()
+            conn.close()
+            logger.error("⚠️  Migration rolled back due to error")
+        except:
+            pass
+
         logger.error(f"❌ Phase 4 migration failed: {e}")
         import traceback
         logger.error(traceback.format_exc())

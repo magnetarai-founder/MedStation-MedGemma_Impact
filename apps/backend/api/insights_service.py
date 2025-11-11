@@ -267,9 +267,13 @@ async def transcribe_audio(request: Request, audio_file: UploadFile = File(...))
 
     Supports: .m4a, .mp3, .wav, .webm, .mp4
     """
+    # Sanitize filename to prevent path traversal (HIGH-01)
+    from utils import sanitize_filename
+    safe_filename = sanitize_filename(audio_file.filename or "audio")
+
     # Validate file type
     valid_extensions = ['.m4a', '.mp3', '.wav', '.webm', '.mp4', '.ogg']
-    file_ext = Path(audio_file.filename).suffix.lower()
+    file_ext = Path(safe_filename).suffix.lower()
 
     if file_ext not in valid_extensions:
         raise HTTPException(

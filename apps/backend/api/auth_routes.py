@@ -55,9 +55,15 @@ class LoginRequest(BaseModel):
     device_fingerprint: Optional[str] = None
 
 
+class RefreshRequest(BaseModel):
+    """Token refresh request"""
+    refresh_token: str = Field(..., description="Refresh token from login")
+
+
 class LoginResponse(BaseModel):
     """Login response with JWT token"""
     token: str
+    refresh_token: Optional[str] = None  # LOW-02: Refresh token
     user_id: str
     username: str
     device_id: str
@@ -195,8 +201,10 @@ async def login(request: Request, body: LoginRequest):
             raise unauthorized(ErrorCode.AUTH_INVALID_CREDENTIALS)
 
         # Return token and user info (no need to decode again)
+        # LOW-02: Include refresh token
         return LoginResponse(
             token=auth_result['token'],
+            refresh_token=auth_result.get('refresh_token'),  # LOW-02
             user_id=auth_result['user_id'],
             username=auth_result['username'],
             device_id=auth_result['device_id'],
@@ -212,6 +220,43 @@ async def login(request: Request, body: LoginRequest):
         raise
     except Exception as e:
         logger.exception("Login failed")
+        raise internal_error(ErrorCode.SYSTEM_INTERNAL_ERROR, technical_detail=str(e))
+
+
+@router.post("/refresh", response_model=LoginResponse)
+async def refresh_token(request: Request, body: RefreshRequest):
+    """
+    LOW-02: Refresh access token using refresh token
+
+    When the access token expires (7 days), use the refresh token (30 days)
+    to get a new access token without requiring login again.
+
+    Rate limited to prevent abuse:
+    - 10 requests per minute per IP
+    """
+    client_ip = get_client_ip(request)
+    if not rate_limiter.check_rate_limit(f"auth:refresh:{client_ip}", max_requests=10, window_seconds=60):
+        raise too_many_requests(ErrorCode.AUTH_RATE_LIMIT_EXCEEDED, retry_after=60)
+
+    try:
+        refresh_result = auth_service.refresh_access_token(body.refresh_token)
+
+        if not refresh_result:
+            raise unauthorized(ErrorCode.AUTH_INVALID_CREDENTIALS, message="Invalid or expired refresh token")
+
+        return LoginResponse(
+            token=refresh_result['token'],
+            refresh_token=None,  # Don't return new refresh token (keep existing one)
+            user_id=refresh_result['user_id'],
+            username=refresh_result['username'],
+            device_id=refresh_result['device_id'],
+            role=refresh_result['role']
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Token refresh failed")
         raise internal_error(ErrorCode.SYSTEM_INTERNAL_ERROR, technical_detail=str(e))
 
 

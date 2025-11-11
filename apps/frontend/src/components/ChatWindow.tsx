@@ -5,8 +5,10 @@ import { ChatInput } from './ChatInput'
 import { ModelSelector } from './ModelSelector'
 import { useChatStore } from '../stores/chatStore'
 import { api } from '../lib/api'
+import { shallow } from 'zustand/shallow'  // MED-03: Prevent unnecessary re-renders
 
 export function ChatWindow() {
+  // MED-03: Use shallow selector to only re-render when used fields change
   const {
     activeChatId,
     messages,
@@ -19,7 +21,22 @@ export function ChatWindow() {
     appendStreamingContent,
     clearStreamingContent,
     setIsSending
-  } = useChatStore()
+  } = useChatStore(
+    (state) => ({
+      activeChatId: state.activeChatId,
+      messages: state.messages,
+      streamingContent: state.streamingContent,
+      isSending: state.isSending,
+      settings: state.settings,
+      getActiveSession: state.getActiveSession,
+      addMessage: state.addMessage,
+      setStreamingContent: state.setStreamingContent,
+      appendStreamingContent: state.appendStreamingContent,
+      clearStreamingContent: state.clearStreamingContent,
+      setIsSending: state.setIsSending,
+    }),
+    shallow
+  )
 
   const [selectedModel, setSelectedModel] = useState<string>('')
   const [ollamaHealth, setOllamaHealth] = useState<{status: string, message: string} | null>(null)

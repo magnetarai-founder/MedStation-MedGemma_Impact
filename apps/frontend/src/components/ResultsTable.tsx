@@ -7,12 +7,28 @@ import { Download, Table, Trash2, MessageSquare, Loader2 } from 'lucide-react'
 import { useMutation } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import toast from 'react-hot-toast'
+import { shallow } from 'zustand/shallow'  // MED-03: Prevent unnecessary re-renders
 
 export function ResultsTable() {
-  const { sessionId, currentQuery, currentSql, isExecuting, setCurrentQuery, exportFormat, setExportFormat } = useSessionStore()
-  const { contentType, hasExecuted } = useEditorStore()
-  const { setActiveTab } = useNavigationStore()
-  const { setActiveChat } = useChatStore()
+  // MED-03: Use shallow selectors for multi-field access
+  const { sessionId, currentQuery, currentSql, isExecuting, setCurrentQuery, exportFormat, setExportFormat } = useSessionStore(
+    (state) => ({
+      sessionId: state.sessionId,
+      currentQuery: state.currentQuery,
+      currentSql: state.currentSql,
+      isExecuting: state.isExecuting,
+      setCurrentQuery: state.setCurrentQuery,
+      exportFormat: state.exportFormat,
+      setExportFormat: state.setExportFormat,
+    }),
+    shallow
+  )
+  const { contentType, hasExecuted } = useEditorStore(
+    (state) => ({ contentType: state.contentType, hasExecuted: state.hasExecuted }),
+    shallow
+  )
+  const setActiveTab = useNavigationStore((state) => state.setActiveTab)  // Single field - no shallow needed
+  const setActiveChat = useChatStore((state) => state.setActiveChat)  // Single field - no shallow needed
 
   const exportMutation = useMutation({
     mutationKey: ['export-results', sessionId, currentQuery?.query_id],

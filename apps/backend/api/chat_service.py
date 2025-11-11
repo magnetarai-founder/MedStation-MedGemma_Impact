@@ -806,9 +806,13 @@ async def upload_file_to_chat(
     if not session:
         raise not_found(ErrorCode.DB_RECORD_NOT_FOUND)
 
+    # Sanitize filename to prevent path traversal (HIGH-01)
+    from utils import sanitize_filename
+    safe_filename = sanitize_filename(file.filename or "upload")
+
     # Generate unique filename
     file_id = uuid.uuid4().hex[:12]
-    file_ext = Path(file.filename).suffix
+    file_ext = Path(safe_filename).suffix
     stored_filename = f"{chat_id}_{file_id}{file_ext}"
     file_path = CHAT_UPLOADS_DIR / stored_filename
 
@@ -820,7 +824,7 @@ async def upload_file_to_chat(
     # Extract text if possible (PDF, txt, etc.)
     file_info = {
         "id": file_id,
-        "original_name": file.filename,
+        "original_name": safe_filename,  # Use sanitized filename
         "stored_name": stored_filename,
         "size": len(content),
         "type": file.content_type,

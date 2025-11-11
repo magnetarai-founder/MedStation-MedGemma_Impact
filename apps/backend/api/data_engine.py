@@ -28,6 +28,11 @@ from metrics import get_metrics
 logger = logging.getLogger(__name__)
 metrics = get_metrics()
 
+# MED-02: Compile frequently-used regex patterns once at module load
+_COLUMN_NAME_SPECIAL_CHARS = re.compile(r'[^\w\s]')
+_COLUMN_NAME_WHITESPACE = re.compile(r'\s+')
+_TABLE_NAME_VALIDATOR = re.compile(r'^[a-zA-Z0-9_]+$')
+
 # Metal 4 integration for parallel SQL operations
 try:
     from api.metal4_engine import get_metal4_engine
@@ -224,8 +229,9 @@ class DataEngine:
     def _sanitize_column_name(self, name: str) -> str:
         """Make column name SQL-safe"""
         # Replace spaces and special chars with underscores
-        name = re.sub(r'[^\w\s]', '_', str(name))
-        name = re.sub(r'\s+', '_', name)
+        # MED-02: Use pre-compiled regex patterns
+        name = _COLUMN_NAME_SPECIAL_CHARS.sub('_', str(name))
+        name = _COLUMN_NAME_WHITESPACE.sub('_', name)
         # Remove leading/trailing underscores
         name = name.strip('_')
         # Ensure it doesn't start with a number
@@ -450,7 +456,8 @@ class DataEngine:
         table_name = metadata['table_name']
 
         # Validate table name to prevent SQL injection
-        if not re.match(r'^[a-zA-Z0-9_]+$', table_name):
+        # MED-02: Use pre-compiled regex
+        if not _TABLE_NAME_VALIDATOR.match(table_name):
             logger.error(f"Invalid table name: {table_name}")
             return False
 

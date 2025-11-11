@@ -55,12 +55,26 @@ class UnifiedEmbedder:
         """Initialize the embedding backend"""
         if self._initialized:
             return True
-            
+
         # Silently try backends (only log success)
-        
+
         if self.backend == 'mlx':
+            # PHASE 1.1: Try Metal 4 MPS embedder first (5-10x faster)
             try:
-                # Try MLX sentence transformer first
+                from metal4_mps_embedder import get_metal4_mps_embedder
+                self._embedder = get_metal4_mps_embedder()
+                if self._embedder.is_available():
+                    self._initialized = True
+                    self.mlx_available = self._embedder.uses_metal()
+                    self.model_name = f"Metal 4 MPS ({self._embedder.model_name})"
+                    logger.info(f"✅ Metal 4 MPS embedder initialized (GPU: {self.mlx_available})")
+                    return True
+            except Exception as e:
+                logger.debug(f"Metal 4 MPS embedder unavailable: {e}")
+                pass  # Silently fall back
+
+            try:
+                # Try MLX sentence transformer
                 from mlx_sentence_transformer import MLXSentenceTransformer
                 self._embedder = MLXSentenceTransformer()
                 if self._embedder.initialize():

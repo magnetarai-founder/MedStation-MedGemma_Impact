@@ -6,6 +6,19 @@ import os
 import re
 from typing import Dict, Any
 
+# MED-02: Compile regex patterns once at module load (not per function call)
+_FILENAME_DANGEROUS_CHARS = re.compile(r'[^\w\-_.]')
+_SECRET_PATTERNS_COMPILED = [
+    (re.compile(r'password\s*[=:]\s*\S+', re.IGNORECASE), 'password=***REDACTED***'),
+    (re.compile(r'token\s*[=:]\s*\S+', re.IGNORECASE), 'token=***REDACTED***'),
+    (re.compile(r'api[_-]?key\s*[=:]\s*\S+', re.IGNORECASE), 'api_key=***REDACTED***'),
+    (re.compile(r'secret\s*[=:]\s*\S+', re.IGNORECASE), 'secret=***REDACTED***'),
+    (re.compile(r'bearer\s+\S+', re.IGNORECASE), 'bearer ***REDACTED***'),
+    (re.compile(r'sk-[a-zA-Z0-9]{20,}'), '***REDACTED_API_KEY***'),
+    (re.compile(r'ghp_[a-zA-Z0-9]{36}'), '***REDACTED_GITHUB_TOKEN***'),
+    (re.compile(r'xox[baprs]-[a-zA-Z0-9\-]+'), '***REDACTED_SLACK_TOKEN***'),
+]
+
 
 def sanitize_filename(filename: str) -> str:
     """
@@ -33,7 +46,8 @@ def sanitize_filename(filename: str) -> str:
     safe_name = os.path.basename(filename)
 
     # Remove dangerous characters (keep only alphanumeric, dash, underscore, dot)
-    safe_name = re.sub(r'[^\w\-_.]', '_', safe_name)
+    # MED-02: Use pre-compiled regex
+    safe_name = _FILENAME_DANGEROUS_CHARS.sub('_', safe_name)
 
     # Limit length to 255 characters (filesystem limit)
     safe_name = safe_name[:255]
@@ -87,18 +101,6 @@ def sanitize_for_log(data: Any, max_length: int = 500) -> Any:
         'encryption_key', 'master_key'
     }
 
-    # Patterns for detecting secrets in string content
-    SECRET_PATTERNS = [
-        (r'password\s*[=:]\s*\S+', 'password=***REDACTED***'),
-        (r'token\s*[=:]\s*\S+', 'token=***REDACTED***'),
-        (r'api[_-]?key\s*[=:]\s*\S+', 'api_key=***REDACTED***'),
-        (r'secret\s*[=:]\s*\S+', 'secret=***REDACTED***'),
-        (r'bearer\s+\S+', 'bearer ***REDACTED***'),
-        (r'sk-[a-zA-Z0-9]{20,}', '***REDACTED_API_KEY***'),  # OpenAI-style keys
-        (r'ghp_[a-zA-Z0-9]{36}', '***REDACTED_GITHUB_TOKEN***'),  # GitHub tokens
-        (r'xox[baprs]-[a-zA-Z0-9\-]+', '***REDACTED_SLACK_TOKEN***'),  # Slack tokens
-    ]
-
     if isinstance(data, dict):
         return {
             k: '***REDACTED***' if k.lower() in SENSITIVE_KEYS else sanitize_for_log(v, max_length)
@@ -110,9 +112,10 @@ def sanitize_for_log(data: Any, max_length: int = 500) -> Any:
         return tuple(sanitize_for_log(item, max_length) for item in data)
     elif isinstance(data, str):
         # Check for secret patterns in string content
+        # MED-02: Use pre-compiled regex patterns
         result = data
-        for pattern, replacement in SECRET_PATTERNS:
-            result = re.sub(pattern, replacement, result, flags=re.IGNORECASE)
+        for pattern, replacement in _SECRET_PATTERNS_COMPILED:
+            result = pattern.sub(replacement, result)
 
         # Truncate if too long
         if len(result) > max_length:

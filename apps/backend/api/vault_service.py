@@ -3201,10 +3201,12 @@ async def upload_chunk(
 
         # Upload assembled file
         try:
+            # Sanitize filename to prevent path traversal (HIGH-01)
+            safe_filename = sanitize_filename(filename)
             vault_file = service.upload_file(
                 user_id=user_id,
                 file_data=complete_file,
-                filename=filename,
+                filename=safe_filename,
                 mime_type=mime_type,
                 vault_type=vault_type,
                 passphrase=vault_passphrase,

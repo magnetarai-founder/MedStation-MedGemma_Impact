@@ -109,7 +109,7 @@ class NeutronAPI {
     headers: {
       'Content-Type': 'application/json',
     },
-    timeout: 300000, // 5 minutes timeout for large files
+    timeout: 30000, // 30s timeout (HIGH-07) - backend enforces per-request timeout
   })
 
   constructor() {

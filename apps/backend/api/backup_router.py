@@ -40,6 +40,7 @@ class BackupCreateResponse(BaseModel):
     backup_name: str | None = None
     size_bytes: int | None = None
     created_at: str | None = None
+    verified: bool = False  # HIGH-08: Auto-verification status
     error: str | None = None
 
 
@@ -127,7 +128,8 @@ async def create_backup(
             backup_path=str(backup_path),
             backup_name=backup_path.name,
             size_bytes=stat.st_size,
-            created_at=backup_path.stat().st_ctime.__str__()
+            created_at=backup_path.stat().st_ctime.__str__(),
+            verified=True  # HIGH-08: Verified during creation
         )
 
     except Exception as e:

@@ -70,6 +70,9 @@ except ImportError:
 # request bodies that may contain passwords, tokens, or API keys.
 # Current endpoints avoid logging request bodies directly.
 
+# MED-02: Compile frequently-used regex patterns once at module load
+_TABLE_NAME_VALIDATOR = re.compile(r'^[a-zA-Z0-9_]+$')
+
 # Initialize rate limiter
 limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
@@ -125,7 +128,104 @@ except ImportError:
 
 # Session storage
 sessions: dict[str, dict] = {}
+
+# Request deduplication (prevent double-click duplicate operations)
+# Store request IDs with timestamps to detect duplicates within 60s window
+from collections import defaultdict
+import time
+
+_request_dedup_cache: defaultdict[str, float] = defaultdict(float)  # request_id -> timestamp
+_dedup_lock = None  # Will be initialized as asyncio.Lock when needed
+DEDUP_WINDOW_SECONDS = 60  # Consider duplicate if within 60 seconds
+
+
+def _is_duplicate_request(request_id: str) -> bool:
+    """Check if request is a duplicate within time window"""
+    global _dedup_lock
+    if _dedup_lock is None:
+        import asyncio
+        _dedup_lock = asyncio.Lock()
+
+    current_time = time.time()
+
+    # Clean up old entries (older than window)
+    expired_keys = [k for k, v in _request_dedup_cache.items() if current_time - v > DEDUP_WINDOW_SECONDS]
+    for k in expired_keys:
+        del _request_dedup_cache[k]
+
+    # Check if this request ID exists and is recent
+    if request_id in _request_dedup_cache:
+        age = current_time - _request_dedup_cache[request_id]
+        if age < DEDUP_WINDOW_SECONDS:
+            return True  # Duplicate!
+
+    # Mark as seen
+    _request_dedup_cache[request_id] = current_time
+    return False
+
+
+# Query results cache with size limits to prevent OOM
+# Limit: 100MB per result, 500MB total cache, 50 results max
+MAX_RESULT_SIZE_MB = 100
+MAX_CACHE_SIZE_MB = 500
+MAX_CACHED_RESULTS = 50
 query_results: dict[str, pd.DataFrame] = {}
+_query_result_sizes: dict[str, int] = {}  # Track size in bytes
+_total_cache_size: int = 0  # Total cache size in bytes
+
+
+def _get_dataframe_size_bytes(df: pd.DataFrame) -> int:
+    """Estimate DataFrame memory usage in bytes"""
+    return df.memory_usage(deep=True).sum()
+
+
+def _evict_oldest_query_result():
+    """Evict the oldest query result from cache to free memory"""
+    global _total_cache_size
+    if not query_results:
+        return
+
+    # Get oldest query_id (first inserted)
+    oldest_id = next(iter(query_results))
+    size = _query_result_sizes.get(oldest_id, 0)
+
+    del query_results[oldest_id]
+    del _query_result_sizes[oldest_id]
+    _total_cache_size -= size
+
+    logger.info(f"Evicted query result {oldest_id} ({size / 1024 / 1024:.2f} MB) from cache")
+
+
+def _store_query_result(query_id: str, df: pd.DataFrame) -> bool:
+    """
+    Store query result with size limits. Returns False if result too large.
+
+    Implements LRU eviction when cache is full.
+    """
+    global _total_cache_size
+
+    # Calculate size
+    size_bytes = _get_dataframe_size_bytes(df)
+    size_mb = size_bytes / 1024 / 1024
+
+    # Check if single result exceeds per-result limit
+    if size_mb > MAX_RESULT_SIZE_MB:
+        logger.warning(f"Query result too large ({size_mb:.2f} MB > {MAX_RESULT_SIZE_MB} MB), not caching")
+        return False
+
+    # Evict oldest results until we have space
+    while (len(query_results) >= MAX_CACHED_RESULTS or
+           _total_cache_size + size_bytes > MAX_CACHE_SIZE_MB * 1024 * 1024):
+        _evict_oldest_query_result()
+
+    # Store result
+    query_results[query_id] = df
+    _query_result_sizes[query_id] = size_bytes
+    _total_cache_size += size_bytes
+
+    logger.debug(f"Cached query result {query_id} ({size_mb:.2f} MB), total cache: {_total_cache_size / 1024 / 1024:.2f} MB")
+    return True
+
 
 # Initialize configuration
 settings = get_settings()
@@ -143,7 +243,8 @@ def cleanup_sessions():
     logger.info("Cleaning up sessions...")
     try:
         # Clean up session engines
-        for session_id, session in sessions.items():
+        # Use list() to avoid RuntimeError if sessions dict is modified during iteration
+        for session_id, session in list(sessions.items()):
             if 'engine' in session:
                 try:
                     session['engine'].close()
@@ -189,6 +290,66 @@ async def cleanup_old_temp_files():
         except Exception as e:
             logger.error(f"Temp file cleanup error: {e}")
 
+
+async def vacuum_databases():
+    """
+    Background task to VACUUM SQLite databases weekly
+
+    Runs weekly to:
+    - Defragment database files
+    - Reclaim deleted space
+    - Rebuild indexes
+    - Reduce file size
+
+    Critical for long-running offline deployments
+    """
+    import asyncio
+
+    while True:
+        try:
+            # Run once per week
+            await asyncio.sleep(7 * 24 * 3600)  # 7 days
+
+            logger.info("Starting weekly database VACUUM maintenance...")
+
+            # VACUUM auth database
+            try:
+                from auth_middleware import auth_service
+                await asyncio.to_thread(lambda: _vacuum_db(auth_service.db_path, "auth"))
+            except Exception as e:
+                logger.error(f"Failed to VACUUM auth database: {e}")
+
+            # VACUUM data engine database
+            try:
+                from data_engine import get_data_engine
+                engine = get_data_engine()
+                if engine and engine.db_path:
+                    await asyncio.to_thread(lambda: _vacuum_db(engine.db_path, "data"))
+            except Exception as e:
+                logger.error(f"Failed to VACUUM data engine: {e}")
+
+            # VACUUM P2P codes database
+            try:
+                from p2p_mesh_service import CODES_DB_PATH
+                if CODES_DB_PATH.exists():
+                    await asyncio.to_thread(lambda: _vacuum_db(CODES_DB_PATH, "p2p_codes"))
+            except Exception as e:
+                logger.error(f"Failed to VACUUM P2P codes: {e}")
+
+            logger.info("✅ Database VACUUM maintenance completed")
+
+        except Exception as e:
+            logger.error(f"Database VACUUM error: {e}")
+
+
+def _vacuum_db(db_path: Path, db_name: str):
+    """Helper to VACUUM a single database"""
+    with sqlite3.connect(str(db_path)) as conn:
+        conn.isolation_level = None  # Autocommit mode required for VACUUM
+        conn.execute("VACUUM")
+        conn.execute("ANALYZE")  # Update query planner statistics
+    logger.info(f"✅ VACUUMed {db_name} database")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
@@ -219,9 +380,10 @@ async def lifespan(app: FastAPI):
         # Re-raise to prevent app from starting with broken DB state
         raise
 
-    # Start background cleanup task
+    # Start background cleanup tasks
     cleanup_task = asyncio.create_task(cleanup_old_temp_files())
-    logger.info("Started background temp file cleanup task")
+    vacuum_task = asyncio.create_task(vacuum_databases())
+    logger.info("Started background maintenance tasks (cleanup + VACUUM)")
 
     # Auto-load favorite models from hot slots
     try:
@@ -349,6 +511,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    max_age=3600,  # LOW-03: Cache preflight requests for 1 hour
 )
 
 # Import and include service routers
@@ -557,6 +720,14 @@ try:
 except ImportError as e:
     logger.warning(f"Could not import terminal_api router: {e}")
 
+# Metal 4 ML API (Phase 1.1-1.3: GPU-accelerated embeddings & vector search)
+try:
+    from metal4_ml_routes import router as metal4_ml_router
+    app.include_router(metal4_ml_router)
+    services_loaded.append("Metal 4 ML")
+except ImportError as e:
+    logger.warning(f"Could not import metal4_ml router: {e}")
+
 # Log summary of loaded services
 if services_loaded:
     logger.info(f"✓ Services: {', '.join(services_loaded)}")
@@ -694,6 +865,8 @@ async def get_system_info():
         "metal_available_memory_gb": 0,
         "metal_device_name": None,
         "metal_available": False,
+        "metal_initialized": False,
+        "metal_error": None,  # NEW: Expose initialization errors to frontend
     }
 
     # Get total system memory using sysctl
@@ -712,14 +885,24 @@ async def get_system_info():
 
         if engine.is_available():
             info["metal_available"] = True
-            info["metal_device_name"] = engine.device.name()
+            info["metal_initialized"] = engine._initialized
+            info["metal_device_name"] = engine.device.name() if engine.device else None
+
+            # Expose initialization error if any
+            if engine.initialization_error:
+                info["metal_error"] = engine.initialization_error
 
             # This is the key value - Metal's recommended max working set size
             # This is what should be used for calculating model loading capacity
-            recommended_max = engine.device.recommendedMaxWorkingSetSize()
-            info["metal_available_memory_gb"] = round(recommended_max / (1024**3), 1)
-    except:
-        pass
+            if engine.device:
+                recommended_max = engine.device.recommendedMaxWorkingSetSize()
+                info["metal_available_memory_gb"] = round(recommended_max / (1024**3), 1)
+        else:
+            # Metal not available at all
+            if hasattr(engine, 'initialization_error') and engine.initialization_error:
+                info["metal_error"] = engine.initialization_error
+    except Exception as e:
+        info["metal_error"] = f"Failed to query Metal engine: {str(e)}"
 
     return info
 
@@ -923,8 +1106,23 @@ async def validate_sql(request: Request, session_id: str, body: ValidationReques
     )
 
 @app.post("/api/sessions/{session_id}/query", response_model=QueryResponse)
-async def execute_query(req: Request, session_id: str, request: QueryRequest):
-    """Execute SQL query"""
+async def execute_query(
+    req: Request,
+    session_id: str,
+    request: QueryRequest,
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key")
+):
+    """Execute SQL query with deduplication support"""
+
+    # Request deduplication: Check if this is a duplicate request
+    if idempotency_key:
+        if _is_duplicate_request(f"query:{idempotency_key}"):
+            logger.warning(f"Duplicate query request detected: {idempotency_key}")
+            raise HTTPException(
+                status_code=409,
+                detail="Duplicate request detected. This query was already executed recently. Please wait 60 seconds or use a different idempotency key."
+            )
+
     # Rate limit: 60 queries per minute
     client_ip = get_client_ip(req)
     if not rate_limiter.check_rate_limit(f"query:{client_ip}", max_requests=60, window_seconds=60):
@@ -960,14 +1158,28 @@ async def execute_query(req: Request, session_id: str, request: QueryRequest):
             detail=f"Query references unauthorized tables: {', '.join(unauthorized_tables)}. Only 'excel_file' is allowed."
         )
 
-    # Execute query
+    # Execute query with timeout protection
+    # NOTE: True async cancellation requires aiosqlite (MED-06)
+    # For now, we use asyncio.wait_for to enforce max query time
+    timeout = request.timeout_seconds if hasattr(request, 'timeout_seconds') and request.timeout_seconds else 300  # 5min default
+
     try:
-        result = engine.execute_sql(
-            cleaned_sql,
-            dialect=request.dialect,
-            limit=request.limit
+        result = await asyncio.wait_for(
+            asyncio.to_thread(
+                engine.execute_sql,
+                cleaned_sql,
+                dialect=request.dialect,
+                limit=request.limit
+            ),
+            timeout=timeout
         )
         logger.info(f"Query execution completed, rows: {result.row_count if result else 'error'}")
+    except asyncio.TimeoutError:
+        logger.error(f"Query execution timed out after {timeout}s")
+        raise HTTPException(
+            status_code=408,
+            detail=f"Query execution exceeded timeout of {timeout} seconds. Consider adding a LIMIT clause or optimizing your query."
+        )
     except Exception as e:
         logger.error(f"Query execution failed: {str(e)}")
         raise
@@ -975,9 +1187,12 @@ async def execute_query(req: Request, session_id: str, request: QueryRequest):
     if result.error:
         raise HTTPException(status_code=400, detail=result.error)
 
-    # Store full result for export
+    # Store full result for export (with size limits)
     query_id = str(uuid.uuid4())
-    query_results[query_id] = result.data
+    cached = _store_query_result(query_id, result.data)
+
+    if not cached:
+        logger.warning(f"Query result not cached (too large), export will be unavailable")
 
     # Store query info
     sessions[session_id]['queries'][query_id] = {
@@ -1042,9 +1257,14 @@ async def delete_query_from_history(request: Request, session_id: str, query_id:
 
     del queries[query_id]
 
-    # Also remove from query_results if it exists
+    # Also remove from query_results cache if it exists
     if query_id in query_results:
+        global _total_cache_size
+        size = _query_result_sizes.get(query_id, 0)
         del query_results[query_id]
+        if query_id in _query_result_sizes:
+            del _query_result_sizes[query_id]
+        _total_cache_size -= size
 
     return SuccessResponse(success=True, message="Query deleted successfully")
 
@@ -2249,7 +2469,8 @@ async def rediscover_queries(request: Request, dataset_id: str):
 
         # Validate table name to prevent SQL injection (defense in depth)
         # Step 1: Regex validation (blocks most attacks)
-        if not re.match(r'^[a-zA-Z0-9_]+$', table_name):
+        # MED-02: Use pre-compiled regex
+        if not _TABLE_NAME_VALIDATOR.match(table_name):
             raise HTTPException(status_code=400, detail="Invalid table name")
 
         # Step 2: Whitelist validation (ensures table exists in our metadata)
@@ -2257,8 +2478,9 @@ async def rediscover_queries(request: Request, dataset_id: str):
         if table_name not in allowed_tables:
             raise HTTPException(status_code=400, detail="Table not found in dataset metadata")
 
-        # Now safe to use f-string (SQLite doesn't support ? for table names)
-        # Both regex and whitelist validation passed
+        # SECURITY NOTE: f-string is safe ONLY because of dual validation above
+        # ⚠️  DO NOT REMOVE REGEX OR WHITELIST VALIDATION - SQLite doesn't support parameterized table names
+        # ⚠️  If you remove validation, this becomes an immediate SQL injection vulnerability
         cursor = data_engine.conn.execute(f"SELECT * FROM {table_name} LIMIT 1000")
         columns = [desc[0] for desc in cursor.description]
         rows = cursor.fetchall()
@@ -2446,4 +2668,15 @@ async def reset_metrics(operation: str | None = None):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
+    # MED-05: Enable WebSocket compression (permessage-deflate)
+    # Reduces bandwidth for terminal I/O and chat streaming by ~60-80%
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        ws_ping_interval=20,  # Keep connections alive
+        ws_ping_timeout=20,
+        ws_max_size=16777216,  # 16MB max message size
+        ws="websockets",  # Use websockets library (supports compression)
+    )

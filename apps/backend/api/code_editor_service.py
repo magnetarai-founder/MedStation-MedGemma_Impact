@@ -672,12 +672,16 @@ async def import_file(
 ):
     """Import file into workspace"""
     try:
+        # Sanitize filename to prevent path traversal (HIGH-01)
+        from utils import sanitize_filename
+        safe_filename = sanitize_filename(file.filename or "untitled")
+
         # Read file content
         content = await file.read()
         content_str = content.decode('utf-8')
 
         # Detect language
-        ext = Path(file.filename).suffix.lower()
+        ext = Path(safe_filename).suffix.lower()
         lang_map = {
             '.js': 'javascript', '.ts': 'typescript', '.py': 'python',
             '.java': 'java', '.cpp': 'cpp', '.go': 'go', '.rs': 'rust',
@@ -689,8 +693,8 @@ async def import_file(
         # Create file
         file_create = FileCreate(
             workspace_id=workspace_id,
-            name=file.filename,
-            path=file.filename,
+            name=safe_filename,
+            path=safe_filename,
             content=content_str,
             language=language
         )

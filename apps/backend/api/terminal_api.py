@@ -37,6 +37,17 @@ except ImportError:
 
 router = APIRouter(prefix="/api/v1/terminal", tags=["terminal"])
 
+# WebSocket rate limiting
+# Track active connections per IP to prevent DoS
+import time
+from collections import defaultdict
+
+MAX_WS_CONNECTIONS_PER_IP = 5
+MAX_WS_CONNECTIONS_TOTAL = 100
+_ws_connections_by_ip: defaultdict[str, int] = defaultdict(int)
+_total_ws_connections: int = 0
+_ws_connection_lock = None  # Will initialize as asyncio.Lock when needed
+
 
 @router.post("/spawn")
 @require_perm("code.terminal")
@@ -56,6 +67,16 @@ async def spawn_terminal(
         Terminal session info with ID and WebSocket URL
     """
     user_id = current_user["user_id"]
+
+    # HIGH-09: Enforce server-side terminal session limit (max 3 per user)
+    active_sessions = terminal_bridge.list_sessions(user_id=user_id)
+    active_count = len([s for s in active_sessions if s.active])
+
+    if active_count >= 3:
+        raise HTTPException(
+            status_code=429,  # Too Many Requests
+            detail="Maximum terminal limit reached (3/3). Please close a terminal before opening a new one."
+        )
 
     try:
         session = await terminal_bridge.spawn_terminal(
@@ -124,12 +145,24 @@ async def spawn_system_terminal(current_user: dict = Depends(get_current_user)):
 
         # Get workspace root from marker file if exists
         from config_paths import PATHS
+        import shlex
         marker_file = PATHS.data_dir / "current_workspace.txt"
         workspace_root = home_dir  # default
         if marker_file.exists():
-            workspace_root = marker_file.read_text().strip()
+            workspace_root_raw = marker_file.read_text().strip()
+
+            # Validate workspace path to prevent command injection
+            workspace_path = Path(workspace_root_raw)
+            if workspace_path.is_dir():
+                # Normalize path and escape for shell
+                workspace_root = str(workspace_path.resolve())
+            else:
+                logger.warning(f"Invalid workspace path: {workspace_root_raw}, using home directory")
+                workspace_root = home_dir
 
         # Create bridge wrapper script
+        # Use shlex.quote() to prevent shell injection via workspace path
+        safe_workspace = shlex.quote(workspace_root)
         bridge_script_content = f"""#!/bin/bash
 # ElohimOS Terminal Bridge
 # This script transparently captures terminal I/O while maintaining normal shell behavior
@@ -141,8 +174,8 @@ elif [ -f "$HOME/.bashrc" ]; then
     source "$HOME/.bashrc"
 fi
 
-# Change to workspace directory
-cd "{workspace_root}"
+# Change to workspace directory (path is shell-escaped for security)
+cd {safe_workspace}
 
 # TODO: Set up socket connection to ElohimOS backend
 # For now, just spawn shell normally
@@ -377,8 +410,37 @@ async def terminal_websocket(websocket: WebSocket, terminal_id: str, token: Opti
         Server -> Client: {"type": "output", "data": "command output"}
         Server -> Client: {"type": "error", "message": "error message"}
     """
+    global _total_ws_connections, _ws_connection_lock
+
+    # Initialize lock on first use
+    if _ws_connection_lock is None:
+        import asyncio
+        _ws_connection_lock = asyncio.Lock()
+
+    # Rate limiting check
+    client_ip = websocket.client.host if websocket.client else "unknown"
+
+    async with _ws_connection_lock:
+        # Check global limit
+        if _total_ws_connections >= MAX_WS_CONNECTIONS_TOTAL:
+            await websocket.close(code=1008, reason="Server at capacity")
+            return
+
+        # Check per-IP limit
+        if _ws_connections_by_ip[client_ip] >= MAX_WS_CONNECTIONS_PER_IP:
+            await websocket.close(code=1008, reason="Too many connections from your IP")
+            return
+
+        # Increment counters
+        _ws_connections_by_ip[client_ip] += 1
+        _total_ws_connections += 1
+
     # Authenticate before accepting connection
     if not token:
+        # Decrement counters on early exit
+        async with _ws_connection_lock:
+            _ws_connections_by_ip[client_ip] -= 1
+            _total_ws_connections -= 1
         await websocket.close(code=1008, reason="Missing authentication token")
         return
 
@@ -389,6 +451,10 @@ async def terminal_websocket(websocket: WebSocket, terminal_id: str, token: Opti
 
     user_payload = auth_service.verify_token(token)
     if not user_payload:
+        # Decrement counters on auth failure
+        async with _ws_connection_lock:
+            _ws_connections_by_ip[client_ip] -= 1
+            _total_ws_connections -= 1
         await websocket.close(code=1008, reason="Invalid or expired token")
         return
 
@@ -399,6 +465,10 @@ async def terminal_websocket(websocket: WebSocket, terminal_id: str, token: Opti
     session = terminal_bridge.get_session(terminal_id)
 
     if not session:
+        # Decrement counters on session not found
+        async with _ws_connection_lock:
+            _ws_connections_by_ip[client_ip] -= 1
+            _total_ws_connections -= 1
         await websocket.send_json({
             'type': 'error',
             'message': 'Terminal not found'
@@ -408,6 +478,10 @@ async def terminal_websocket(websocket: WebSocket, terminal_id: str, token: Opti
 
     # Check ownership
     if session.user_id != user_id:
+        # Decrement counters on access denied
+        async with _ws_connection_lock:
+            _ws_connections_by_ip[client_ip] -= 1
+            _total_ws_connections -= 1
         await websocket.send_json({
             'type': 'error',
             'message': 'Access denied'
@@ -482,6 +556,14 @@ async def terminal_websocket(websocket: WebSocket, terminal_id: str, token: Opti
     finally:
         # Cleanup
         terminal_bridge.unregister_broadcast_callback(terminal_id, send_output)
+
+        # Decrement WebSocket connection counters
+        async with _ws_connection_lock:
+            _ws_connections_by_ip[client_ip] -= 1
+            _total_ws_connections -= 1
+            # Clean up empty IP entries
+            if _ws_connections_by_ip[client_ip] == 0:
+                del _ws_connections_by_ip[client_ip]
 
         # Optionally close terminal when WebSocket disconnects
         # For now, keep terminal alive for reconnection

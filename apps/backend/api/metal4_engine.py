@@ -227,6 +227,9 @@ class Metal4Engine:
             'active_command_buffers': 0
         }
 
+        # Initialization error tracking (for user notification)
+        self.initialization_error: Optional[str] = None
+
         # Try to initialize if Metal 4 available
         if self.capabilities.version == MetalVersion.METAL_4:
             self._initialize_metal4()
@@ -234,6 +237,7 @@ class Metal4Engine:
             self._initialize_metal3_fallback()
         else:
             logger.warning("Metal 4 not available - using CPU fallback")
+            self.initialization_error = "Metal 4 not available on this system"
 
     def _initialize_metal4(self):
         """
@@ -248,6 +252,9 @@ class Metal4Engine:
             device = Metal.MTLCreateSystemDefaultDevice()
             if device is None:
                 logger.error("❌ Failed to create Metal device")
+                logger.error("⚠️  CRITICAL: GPU acceleration unavailable - falling back to CPU")
+                logger.error("⚠️  Performance will be severely degraded for AI operations")
+                self.initialization_error = "Metal device creation failed - GPU unavailable"
                 return
 
             self.device = device
@@ -303,10 +310,14 @@ class Metal4Engine:
         except ImportError as e:
             logger.error(f"❌ Metal framework not available: {e}")
             logger.error("   Install with: pip install pyobjc-framework-Metal")
+            logger.error("⚠️  CRITICAL: GPU acceleration unavailable - falling back to CPU")
+            self.initialization_error = f"Metal framework not available: {e}"
         except Exception as e:
             logger.error(f"❌ Metal 4 initialization failed: {e}")
+            logger.error("⚠️  CRITICAL: GPU acceleration unavailable - falling back to CPU")
             import traceback
             traceback.print_exc()
+            self.initialization_error = f"Metal 4 initialization failed: {e}"
 
     def _initialize_metal3_fallback(self):
         """Initialize with Metal 3 fallback (basic MPS)"""
@@ -405,7 +416,9 @@ class Metal4Engine:
             self.frame_counter += 1
             self.stats['frames_rendered'] += 1
 
-            logger.debug(f"✓ Frame {self.frame_counter} kicked")
+            # MED-08: Only log every 100 frames to reduce I/O overhead
+            if self.frame_counter % 100 == 0:
+                logger.debug(f"✓ Frame {self.frame_counter} kicked")
 
         except Exception as e:
             logger.error(f"❌ Failed to kick frame: {e}")
@@ -450,7 +463,7 @@ class Metal4Engine:
             embedding = None
             if embedder:
                 embedding = embedder(user_message)
-                logger.debug(f"✓ Embedded message: {len(embedding)} dims")
+                # MED-08: Removed hot-path logging (ran on every message)
 
             # SIGNAL embeddings ready
             self.embed_counter += 1
@@ -464,7 +477,7 @@ class Metal4Engine:
             context = None
             if rag_retriever and embedding:
                 context = rag_retriever(embedding)
-                logger.debug(f"✓ Retrieved RAG context: {len(context) if context else 0} items")
+                # MED-08: Removed hot-path logging (ran on every RAG query)
 
             # SIGNAL RAG ready
             self.rag_counter += 1
@@ -479,8 +492,10 @@ class Metal4Engine:
             elapsed_ms = (time.time() - start_time) * 1000
             self.stats['ml_operations'] += 1
 
-            logger.info(f"✅ Chat message processed in {elapsed_ms:.2f}ms")
-            logger.info(f"   Frame: {self.frame_counter}, Embed: {self.embed_counter}, RAG: {self.rag_counter}")
+            # MED-08: Only log slow operations (>100ms) to reduce noise
+            if elapsed_ms > 100:
+                logger.info(f"✅ Chat message processed in {elapsed_ms:.2f}ms")
+                logger.info(f"   Frame: {self.frame_counter}, Embed: {self.embed_counter}, RAG: {self.rag_counter}")
 
             # Record diagnostics
             try:

@@ -232,6 +232,19 @@ class BackupService:
                 # Cleanup old backups
                 self.cleanup_old_backups()
 
+                # HIGH-08: Auto-verify backup integrity after creation
+                # Ensures backup can be decrypted and restored before declaring success
+                logger.info(f"Verifying backup integrity: {backup_name}")
+                is_valid = self.verify_backup(backup_path)
+
+                if not is_valid:
+                    logger.error(f"❌ CRITICAL: Backup verification failed for {backup_name}")
+                    logger.error(f"⚠️  Backup file may be corrupted and cannot be restored!")
+                    # Keep the backup file for forensics, but log error
+                    raise RuntimeError(f"Backup created but verification failed: {backup_name}")
+
+                logger.info(f"✅ Backup verified successfully: {backup_name}")
+
                 return backup_path
 
             finally:

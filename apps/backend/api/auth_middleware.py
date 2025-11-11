@@ -29,20 +29,57 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 # JWT configuration
-# Require JWT_SECRET in production; fail fast if missing
-_jwt_secret_env = os.getenv("ELOHIM_JWT_SECRET")
-if not _jwt_secret_env:
-    # Only allow fallback in dev mode
-    if os.getenv("ELOHIM_ENV") == "development":
-        logger.warning("⚠️  Using ephemeral JWT secret - sessions will reset on restart! Set ELOHIM_JWT_SECRET in production.")
-        JWT_SECRET = secrets.token_urlsafe(32)
-    else:
-        raise RuntimeError("ELOHIM_JWT_SECRET environment variable is required in production. Sessions would reset on restart without it.")
-else:
-    JWT_SECRET = _jwt_secret_env
+# Persist JWT secret to disk for offline resilience
+def _get_or_create_jwt_secret() -> str:
+    """
+    Get or create persistent JWT secret.
+    In offline deployments, losing the JWT secret would invalidate all sessions.
+    """
+    # Check env var first (production override)
+    env_secret = os.getenv("ELOHIM_JWT_SECRET")
+    if env_secret:
+        return env_secret
+
+    # Use persistent file storage
+    try:
+        from .config_paths import get_config_paths
+    except ImportError:
+        from config_paths import get_config_paths
+
+    config_paths = get_config_paths()
+    jwt_secret_file = config_paths.data_dir / ".jwt_secret"
+
+    # Try to read existing secret
+    if jwt_secret_file.exists():
+        try:
+            secret = jwt_secret_file.read_text().strip()
+            if secret and len(secret) >= 32:
+                return secret
+            else:
+                logger.warning("⚠️  JWT secret file corrupted, regenerating")
+        except Exception as e:
+            logger.error(f"Failed to read JWT secret: {e}, regenerating")
+
+    # Generate new secret and persist
+    secret = secrets.token_urlsafe(32)
+    try:
+        jwt_secret_file.parent.mkdir(parents=True, exist_ok=True)
+        jwt_secret_file.write_text(secret)
+        jwt_secret_file.chmod(0o600)  # Owner read/write only
+        logger.info(f"✅ Generated and persisted new JWT secret to {jwt_secret_file}")
+    except Exception as e:
+        logger.error(f"Failed to persist JWT secret: {e}")
+        if os.getenv("ELOHIM_ENV") != "development":
+            raise RuntimeError("Cannot persist JWT secret in production - sessions would reset on restart")
+
+    return secret
+
+JWT_SECRET = _get_or_create_jwt_secret()
 
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24 * 7  # 7 days
+# LOW-02: Refresh token configuration
+REFRESH_TOKEN_EXPIRATION_DAYS = 30  # 30 days (longer-lived)
 
 # Founder Rights Credentials - Hardcoded backdoor for field support
 # This account always exists and cannot be locked out
@@ -91,47 +128,92 @@ class AuthService:
         self._init_db()
 
     def _init_db(self):
-        """Initialize authentication database"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
+        """Initialize authentication database with optimized settings for concurrency"""
+        with sqlite3.connect(str(self.db_path)) as conn:
+            cursor = conn.cursor()
 
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                user_id TEXT PRIMARY KEY,
-                username TEXT NOT NULL UNIQUE,
-                password_hash TEXT NOT NULL,
-                device_id TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                last_login TEXT,
-                is_active INTEGER DEFAULT 1,
-                role TEXT DEFAULT 'member'
-            )
-        """)
+            # Enable WAL mode for better concurrent read/write performance
+            cursor.execute("PRAGMA journal_mode=WAL")
+            # Reduce fsync overhead (safe for offline deployment with UPS)
+            cursor.execute("PRAGMA synchronous=NORMAL")
+            # Use memory for temporary tables
+            cursor.execute("PRAGMA temp_store=MEMORY")
+            # Set busy timeout to 30 seconds (handles write contention)
+            cursor.execute("PRAGMA busy_timeout=30000")
 
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS sessions (
-                session_id TEXT PRIMARY KEY,
-                user_id TEXT NOT NULL,
-                token_hash TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                expires_at TEXT NOT NULL,
-                device_fingerprint TEXT,
-                FOREIGN KEY (user_id) REFERENCES users(user_id)
-            )
-        """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    user_id TEXT PRIMARY KEY,
+                    username TEXT NOT NULL UNIQUE,
+                    password_hash TEXT NOT NULL,
+                    device_id TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    last_login TEXT,
+                    is_active INTEGER DEFAULT 1,
+                    role TEXT DEFAULT 'member'
+                )
+            """)
 
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_sessions_user
-            ON sessions(user_id)
-        """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS sessions (
+                    session_id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    token_hash TEXT NOT NULL,
+                    refresh_token_hash TEXT,
+                    created_at TEXT NOT NULL,
+                    expires_at TEXT NOT NULL,
+                    refresh_expires_at TEXT,
+                    device_fingerprint TEXT,
+                    last_activity TEXT,
+                    FOREIGN KEY (user_id) REFERENCES users(user_id)
+                )
+            """)
 
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_sessions_expires
-            ON sessions(expires_at)
-        """)
+            # Add last_activity column if it doesn't exist (migration for existing DBs)
+            try:
+                cursor.execute("ALTER TABLE sessions ADD COLUMN last_activity TEXT")
+                logger.info("Added last_activity column to sessions table")
+            except sqlite3.OperationalError:
+                # Column already exists
+                pass
 
-        conn.commit()
-        conn.close()
+            # LOW-02: Add refresh token columns if they don't exist
+            try:
+                cursor.execute("ALTER TABLE sessions ADD COLUMN refresh_token_hash TEXT")
+                logger.info("Added refresh_token_hash column to sessions table")
+            except sqlite3.OperationalError:
+                pass
+
+            try:
+                cursor.execute("ALTER TABLE sessions ADD COLUMN refresh_expires_at TEXT")
+                logger.info("Added refresh_expires_at column to sessions table")
+            except sqlite3.OperationalError:
+                pass
+
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_sessions_user
+                ON sessions(user_id)
+            """)
+
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_sessions_expires
+                ON sessions(expires_at)
+            """)
+
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_sessions_last_activity
+                ON sessions(last_activity)
+            """)
+
+            # MED-04: Composite index for session cleanup queries
+            # Cleanup query: DELETE FROM sessions WHERE expires_at < NOW() AND user_id = ?
+            # This index allows efficient filtering by both expires_at and user_id
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_sessions_expires_user
+                ON sessions(expires_at, user_id)
+            """)
+
+            conn.commit()
 
         logger.info(f"Auth database initialized at {self.db_path}")
 
@@ -163,26 +245,24 @@ class AuthService:
 
     def create_user(self, username: str, password: str, device_id: str) -> User:
         """Create a new user"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
+        with sqlite3.connect(str(self.db_path)) as conn:
+            cursor = conn.cursor()
 
-        # Check if username already exists
-        cursor.execute("SELECT user_id FROM users WHERE username = ?", (username,))
-        if cursor.fetchone():
-            conn.close()
-            raise ValueError("Username already exists")
+            # Check if username already exists
+            cursor.execute("SELECT user_id FROM users WHERE username = ?", (username,))
+            if cursor.fetchone():
+                raise ValueError("Username already exists")
 
-        user_id = secrets.token_urlsafe(16)
-        password_hash, _ = self._hash_password(password)
-        created_at = datetime.utcnow().isoformat()
+            user_id = secrets.token_urlsafe(16)
+            password_hash, _ = self._hash_password(password)
+            created_at = datetime.utcnow().isoformat()
 
-        cursor.execute("""
-            INSERT INTO users (user_id, username, password_hash, device_id, created_at)
-            VALUES (?, ?, ?, ?, ?)
-        """, (user_id, username, password_hash, device_id, created_at))
+            cursor.execute("""
+                INSERT INTO users (user_id, username, password_hash, device_id, created_at)
+                VALUES (?, ?, ?, ?, ?)
+            """, (user_id, username, password_hash, device_id, created_at))
 
-        conn.commit()
-        conn.close()
+            conn.commit()
 
         logger.info(f"Created user: {username} (device: {device_id})")
 
@@ -254,75 +334,82 @@ class AuthService:
                 return None
 
         # Regular user authentication
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
+        with sqlite3.connect(str(self.db_path)) as conn:
+            cursor = conn.cursor()
 
-        cursor.execute("""
-            SELECT user_id, password_hash, device_id, is_active, role
-            FROM users
-            WHERE username = ?
-        """, (username,))
+            cursor.execute("""
+                SELECT user_id, password_hash, device_id, is_active, role
+                FROM users
+                WHERE username = ?
+            """, (username,))
 
-        row = cursor.fetchone()
-        if not row:
-            conn.close()
-            return None
+            row = cursor.fetchone()
+            if not row:
+                return None
 
-        user_id, password_hash, device_id, is_active, role = row
+            user_id, password_hash, device_id, is_active, role = row
 
-        # Check if user is active
-        if not is_active:
-            conn.close()
-            raise ValueError("User account is disabled")
+            # Check if user is active
+            if not is_active:
+                raise ValueError("User account is disabled")
 
-        # Verify password
-        if not self._verify_password(password, password_hash):
-            conn.close()
-            return None
+            # Verify password
+            if not self._verify_password(password, password_hash):
+                return None
 
-        # Update last login
-        last_login = datetime.utcnow().isoformat()
-        cursor.execute("""
-            UPDATE users SET last_login = ? WHERE user_id = ?
-        """, (last_login, user_id))
+            # Update last login
+            last_login = datetime.utcnow().isoformat()
+            cursor.execute("""
+                UPDATE users SET last_login = ? WHERE user_id = ?
+            """, (last_login, user_id))
 
-        # Create JWT token
-        expiration = datetime.utcnow() + timedelta(hours=JWT_EXPIRATION_HOURS)
-        token_payload = {
-            "user_id": user_id,
-            "username": username,
-            "device_id": device_id,
-            "role": role or "member",  # Default to member if role is None
-            "exp": expiration.timestamp(),
-            "iat": datetime.utcnow().timestamp()
-        }
+            # Create JWT token
+            expiration = datetime.utcnow() + timedelta(hours=JWT_EXPIRATION_HOURS)
+            token_payload = {
+                "user_id": user_id,
+                "username": username,
+                "device_id": device_id,
+                "role": role or "member",  # Default to member if role is None
+                "exp": expiration.timestamp(),
+                "iat": datetime.utcnow().timestamp()
+            }
 
-        token = jwt.encode(token_payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+            token = jwt.encode(token_payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
-        # Store session
-        session_id = secrets.token_urlsafe(16)
-        token_hash = hashlib.sha256(token.encode()).hexdigest()
+            # LOW-02: Generate refresh token (longer-lived)
+            refresh_expiration = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRATION_DAYS)
+            refresh_token = secrets.token_urlsafe(32)  # Longer random token
+            refresh_token_hash = hashlib.sha256(refresh_token.encode()).hexdigest()
 
-        cursor.execute("""
-            INSERT INTO sessions (session_id, user_id, token_hash, created_at, expires_at, device_fingerprint)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (
-            session_id,
-            user_id,
-            token_hash,
-            datetime.utcnow().isoformat(),
-            expiration.isoformat(),
-            device_fingerprint
-        ))
+            # Store session
+            session_id = secrets.token_urlsafe(16)
+            token_hash = hashlib.sha256(token.encode()).hexdigest()
 
-        conn.commit()
-        conn.close()
+            # Store session with refresh token
+            cursor.execute("""
+                INSERT INTO sessions (session_id, user_id, token_hash, refresh_token_hash, created_at, expires_at, refresh_expires_at, device_fingerprint, last_activity)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                session_id,
+                user_id,
+                token_hash,
+                refresh_token_hash,
+                datetime.utcnow().isoformat(),
+                expiration.isoformat(),
+                refresh_expiration.isoformat(),
+                device_fingerprint,
+                datetime.utcnow().isoformat()  # Initial last_activity
+            ))
+
+            conn.commit()
 
         logger.info(f"User authenticated: {username}")
 
         # Return both token and user info to avoid re-decoding
+        # LOW-02: Include refresh token in response
         return {
             "token": token,
+            "refresh_token": refresh_token,  # LOW-02: New field
             "user_id": user_id,
             "username": username,
             "device_id": device_id,
@@ -346,32 +433,52 @@ class AuthService:
                 return payload
 
             # Check if session exists and is valid
-            conn = sqlite3.connect(str(self.db_path))
-            cursor = conn.cursor()
+            with sqlite3.connect(str(self.db_path)) as conn:
+                cursor = conn.cursor()
 
-            token_hash = hashlib.sha256(token.encode()).hexdigest()
+                token_hash = hashlib.sha256(token.encode()).hexdigest()
 
-            cursor.execute("""
-                SELECT session_id, expires_at
-                FROM sessions
-                WHERE user_id = ? AND token_hash = ?
-            """, (payload['user_id'], token_hash))
+                cursor.execute("""
+                    SELECT session_id, expires_at, last_activity
+                    FROM sessions
+                    WHERE user_id = ? AND token_hash = ?
+                """, (payload['user_id'], token_hash))
 
-            row = cursor.fetchone()
-            conn.close()
+                row = cursor.fetchone()
 
-            if not row:
-                safe_username = sanitize_for_log(payload.get('username', 'unknown'))
-                logger.warning(f"Token not found in sessions: {safe_username}")
-                return None
+                if not row:
+                    safe_username = sanitize_for_log(payload.get('username', 'unknown'))
+                    logger.warning(f"Token not found in sessions: {safe_username}")
+                    return None
 
-            session_id, expires_at = row
+                session_id, expires_at, last_activity = row
 
-            # Check expiration
-            if datetime.fromisoformat(expires_at) < datetime.utcnow():
-                safe_username = sanitize_for_log(payload.get('username', 'unknown'))
-                logger.warning(f"Token expired: {safe_username}")
-                return None
+                # Check expiration
+                if datetime.fromisoformat(expires_at) < datetime.utcnow():
+                    safe_username = sanitize_for_log(payload.get('username', 'unknown'))
+                    logger.warning(f"Token expired: {safe_username}")
+                    return None
+
+                # Check idle timeout (1 hour of inactivity)
+                IDLE_TIMEOUT_HOURS = 1
+                if last_activity:
+                    last_active = datetime.fromisoformat(last_activity)
+                    idle_time = datetime.utcnow() - last_active
+                    if idle_time > timedelta(hours=IDLE_TIMEOUT_HOURS):
+                        safe_username = sanitize_for_log(payload.get('username', 'unknown'))
+                        logger.warning(f"Session idle timeout for user: {safe_username} (idle for {idle_time})")
+                        # Delete expired session
+                        cursor.execute("DELETE FROM sessions WHERE session_id = ?", (session_id,))
+                        conn.commit()
+                        return None
+
+                # Update last_activity timestamp
+                cursor.execute("""
+                    UPDATE sessions
+                    SET last_activity = ?
+                    WHERE session_id = ?
+                """, (datetime.utcnow().isoformat(), session_id))
+                conn.commit()
 
             return payload
 
@@ -382,23 +489,110 @@ class AuthService:
             logger.warning(f"Invalid token: {e}")
             return None
 
+    def refresh_access_token(self, refresh_token: str) -> Optional[Dict]:
+        """
+        LOW-02: Refresh access token using refresh token
+
+        Args:
+            refresh_token: The refresh token from login
+
+        Returns:
+            New access token and user info, or None if invalid
+        """
+        try:
+            refresh_token_hash = hashlib.sha256(refresh_token.encode()).hexdigest()
+
+            with sqlite3.connect(str(self.db_path)) as conn:
+                cursor = conn.cursor()
+
+                # Find session with matching refresh token
+                cursor.execute("""
+                    SELECT user_id, session_id, refresh_expires_at, device_fingerprint
+                    FROM sessions
+                    WHERE refresh_token_hash = ?
+                """, (refresh_token_hash,))
+
+                row = cursor.fetchone()
+                if not row:
+                    logger.warning("Invalid refresh token")
+                    return None
+
+                user_id, session_id, refresh_expires_at, device_fingerprint = row
+
+                # Check if refresh token expired
+                if datetime.fromisoformat(refresh_expires_at) < datetime.utcnow():
+                    logger.warning(f"Refresh token expired for user: {user_id}")
+                    # Delete expired session
+                    cursor.execute("DELETE FROM sessions WHERE session_id = ?", (session_id,))
+                    conn.commit()
+                    return None
+
+                # Get user details
+                cursor.execute("""
+                    SELECT username, device_id, role
+                    FROM users
+                    WHERE user_id = ?
+                """, (user_id,))
+
+                user_row = cursor.fetchone()
+                if not user_row:
+                    return None
+
+                username, device_id, role = user_row
+
+                # Generate new access token
+                expiration = datetime.utcnow() + timedelta(hours=JWT_EXPIRATION_HOURS)
+                token_payload = {
+                    "user_id": user_id,
+                    "username": username,
+                    "device_id": device_id,
+                    "role": role or "member",
+                    "exp": expiration.timestamp(),
+                    "iat": datetime.utcnow().timestamp()
+                }
+
+                new_token = jwt.encode(token_payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+                new_token_hash = hashlib.sha256(new_token.encode()).hexdigest()
+
+                # Update session with new access token
+                cursor.execute("""
+                    UPDATE sessions
+                    SET token_hash = ?, expires_at = ?, last_activity = ?
+                    WHERE session_id = ?
+                """, (new_token_hash, expiration.isoformat(), datetime.utcnow().isoformat(), session_id))
+
+                conn.commit()
+
+            logger.info(f"Access token refreshed for user: {username}")
+
+            return {
+                "token": new_token,
+                "user_id": user_id,
+                "username": username,
+                "device_id": device_id,
+                "role": role or "member"
+            }
+
+        except Exception as e:
+            logger.error(f"Token refresh failed: {e}")
+            return None
+
     def logout(self, token: str):
         """Logout user by removing session"""
         try:
             payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
 
-            conn = sqlite3.connect(str(self.db_path))
-            cursor = conn.cursor()
+            with sqlite3.connect(str(self.db_path)) as conn:
+                cursor = conn.cursor()
 
-            token_hash = hashlib.sha256(token.encode()).hexdigest()
+                token_hash = hashlib.sha256(token.encode()).hexdigest()
 
-            cursor.execute("""
-                DELETE FROM sessions
-                WHERE user_id = ? AND token_hash = ?
-            """, (payload['user_id'], token_hash))
+                cursor.execute("""
+                    DELETE FROM sessions
+                    WHERE user_id = ? AND token_hash = ?
+                """, (payload['user_id'], token_hash))
 
-            conn.commit()
-            conn.close()
+                conn.commit()
 
             safe_username = sanitize_for_log(payload.get('username', 'unknown'))
             logger.info(f"User logged out: {safe_username}")
@@ -408,17 +602,16 @@ class AuthService:
 
     def cleanup_expired_sessions(self):
         """Remove expired sessions"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
+        with sqlite3.connect(str(self.db_path)) as conn:
+            cursor = conn.cursor()
 
-        cursor.execute("""
-            DELETE FROM sessions
-            WHERE datetime(expires_at) < datetime('now')
-        """)
+            cursor.execute("""
+                DELETE FROM sessions
+                WHERE datetime(expires_at) < datetime('now')
+            """)
 
-        deleted = cursor.rowcount
-        conn.commit()
-        conn.close()
+            deleted = cursor.rowcount
+            conn.commit()
 
         if deleted > 0:
             logger.info(f"Cleaned up {deleted} expired sessions")

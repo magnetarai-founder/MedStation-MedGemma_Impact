@@ -47,9 +47,78 @@ class P2PMeshPeer(BaseModel):
     connected: bool
 
 
-# In-memory storage for connection codes
-# In production, this should be in Redis or similar
-connection_codes: Dict[str, ConnectionCode] = {}
+# Persistent storage for connection codes
+# Store in database to survive restarts (critical for offline deployments)
+from config_paths import get_config_paths
+import sqlite3
+from datetime import datetime, timedelta
+
+PATHS = get_config_paths()
+CODES_DB_PATH = PATHS.data_dir / "p2p_connection_codes.db"
+
+
+def _init_codes_db():
+    """Initialize database for connection codes"""
+    CODES_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(str(CODES_DB_PATH)) as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS connection_codes (
+                code TEXT PRIMARY KEY,
+                peer_id TEXT NOT NULL,
+                multiaddrs TEXT NOT NULL,
+                expires_at TEXT,
+                created_at TEXT NOT NULL
+            )
+        """)
+        conn.commit()
+
+
+def _save_connection_code(code: str, connection: ConnectionCode):
+    """Save connection code to persistent storage"""
+    with sqlite3.connect(str(CODES_DB_PATH)) as conn:
+        conn.execute("""
+            INSERT OR REPLACE INTO connection_codes (code, peer_id, multiaddrs, expires_at, created_at)
+            VALUES (?, ?, ?, ?, ?)
+        """, (
+            code,
+            connection.peer_id,
+            json.dumps(connection.multiaddrs),
+            connection.expires_at,
+            datetime.now().isoformat()
+        ))
+        conn.commit()
+
+
+def _load_connection_codes() -> Dict[str, ConnectionCode]:
+    """Load all valid connection codes from database"""
+    codes = {}
+    try:
+        with sqlite3.connect(str(CODES_DB_PATH)) as conn:
+            cursor = conn.execute("""
+                SELECT code, peer_id, multiaddrs, expires_at
+                FROM connection_codes
+                WHERE expires_at IS NULL OR datetime(expires_at) > datetime('now')
+            """)
+            for row in cursor.fetchall():
+                code, peer_id, multiaddrs_json, expires_at = row
+                codes[code] = ConnectionCode(
+                    code=code,
+                    peer_id=peer_id,
+                    multiaddrs=json.loads(multiaddrs_json),
+                    expires_at=expires_at
+                )
+    except Exception as e:
+        logger.error(f"Failed to load connection codes: {e}")
+    return codes
+
+
+# Initialize persistent storage
+_init_codes_db()
+
+# Load existing connection codes from database
+connection_codes: Dict[str, ConnectionCode] = _load_connection_codes()
+
+logger.info(f"Loaded {len(connection_codes)} connection codes from database")
 
 
 def generate_connection_code() -> str:
@@ -196,7 +265,7 @@ async def generate_connection_code_endpoint(request: Request):
         if service.host:
             addrs = [str(addr) for addr in service.host.get_addrs()]
 
-        # Store connection code
+        # Store connection code (in-memory and persistent storage)
         connection_info = ConnectionCode(
             code=code,
             peer_id=service.peer_id,
@@ -204,6 +273,7 @@ async def generate_connection_code_endpoint(request: Request):
         )
 
         connection_codes[code] = connection_info
+        _save_connection_code(code, connection_info)  # Persist to database
 
         return {
             "status": "success",
@@ -241,19 +311,42 @@ async def connect_to_peer(request: Request, body: AddPeerRequest):
 
         connection_info = connection_codes[body.code]
 
-        # STUB: P2P mesh connection not fully implemented
-        # This endpoint pretends success but does not establish real connections
-        # TODO: Implement actual libp2p connection using multiaddrs
-        # TODO: Validate peer identity and establish encrypted transport
-        # TODO: Add connection health checks and auto-reconnect
-        logger.warning(f"[STUB] Pretending to connect to peer {connection_info.peer_id} - not actually connecting")
+        # Attempt real P2P connection using libp2p multiaddrs
+        try:
+            # Get the p2p service
+            if not service.host:
+                raise HTTPException(status_code=503, detail="P2P host not initialized")
 
-        return {
-            "status": "success",
-            "message": f"Connected to peer (STUB - not real connection)",
-            "peer_id": connection_info.peer_id,
-            "_stub": True  # Flag indicating this is a stub response
-        }
+            # Parse multiaddrs and connect to peer
+            from multiaddr import Multiaddr
+
+            peer_multiaddrs = [Multiaddr(addr) for addr in connection_info.multiaddrs]
+
+            if not peer_multiaddrs:
+                raise HTTPException(status_code=400, detail="No valid multiaddrs found in connection code")
+
+            # Connect to peer using first valid multiaddr
+            # In production, should try all multiaddrs until one succeeds
+            peer_info = service.host.get_network().connect(peer_multiaddrs[0])
+
+            logger.info(f"✅ Successfully connected to peer {connection_info.peer_id}")
+
+            return {
+                "status": "success",
+                "message": f"Connected to peer {connection_info.peer_id}",
+                "peer_id": connection_info.peer_id,
+                "multiaddrs": connection_info.multiaddrs
+            }
+
+        except ImportError as e:
+            logger.error(f"libp2p/multiaddr not available: {e}")
+            raise HTTPException(
+                status_code=503,
+                detail="P2P networking libraries not installed. Install with: pip install libp2p"
+            )
+        except Exception as e:
+            logger.error(f"Failed to connect to peer {connection_info.peer_id}: {e}")
+            raise HTTPException(status_code=500, detail=f"Connection failed: {str(e)}")
 
     except HTTPException:
         raise
