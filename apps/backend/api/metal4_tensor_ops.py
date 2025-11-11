@@ -133,12 +133,12 @@ class Metal4TensorOps:
             shader_source = shader_path.read_text()
 
             # Compile library
-            library = self.metal_device.newLibraryWithSource_options_error_(
+            library, error = self.metal_device.newLibraryWithSource_options_error_(
                 shader_source, None, None
             )
 
-            if library is None:
-                logger.error("Failed to compile tensor shader library")
+            if library is None or error is not None:
+                logger.error(f"Failed to compile tensor shader library: {error}")
                 return
 
             # Create pipelines
@@ -175,11 +175,16 @@ class Metal4TensorOps:
         try:
             function = library.newFunctionWithName_(function_name)
             if function is None:
+                logger.warning(f"Function '{function_name}' not found in shader library")
                 return None
 
-            pipeline = self.metal_device.newComputePipelineStateWithFunction_error_(
+            pipeline, error = self.metal_device.newComputePipelineStateWithFunction_error_(
                 function, None
             )
+
+            if pipeline is None or error is not None:
+                logger.error(f"Pipeline creation failed for {function_name}: {error}")
+                return None
 
             return pipeline
 
