@@ -737,6 +737,23 @@ except ImportError as e:
     logger.warning(f"Could not import prometheus_metrics: {e}")
     prometheus_exporter = None
 
+# Founder Setup Wizard (Phase 5.3: First-time password setup)
+try:
+    from founder_setup_routes import router as founder_setup_router
+    app.include_router(founder_setup_router)
+    services_loaded.append("Founder Setup Wizard")
+except ImportError as e:
+    logger.warning(f"Could not import founder_setup_routes: {e}")
+
+# Health Diagnostics (Phase 5.4: Comprehensive health checks)
+try:
+    from health_diagnostics import get_health_diagnostics
+    health_diagnostics = get_health_diagnostics()
+    services_loaded.append("Health Diagnostics")
+except ImportError as e:
+    logger.warning(f"Could not import health_diagnostics: {e}")
+    health_diagnostics = None
+
 # Log summary of loaded services
 if services_loaded:
     logger.info(f"✓ Services: {', '.join(services_loaded)}")
@@ -943,6 +960,65 @@ async def prometheus_metrics():
     except Exception as e:
         logger.error(f"Failed to collect Prometheus metrics: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to collect metrics: {str(e)}")
+
+
+@app.get("/health")
+async def health_check():
+    """
+    Quick health check endpoint (Phase 5.4)
+
+    Lightweight health check for liveness probes.
+    Target: < 100ms response time.
+
+    Checks:
+    - Database connectivity
+    - System resources (memory, disk)
+
+    Returns:
+        JSON with health status
+    """
+    if not health_diagnostics:
+        raise HTTPException(status_code=503, detail="Health diagnostics not available")
+
+    try:
+        health = health_diagnostics.check_health()
+        status_code = 200 if health["status"] == "healthy" else 503
+        return health
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
+
+
+@app.get("/diagnostics")
+async def system_diagnostics(force_refresh: bool = False):
+    """
+    Comprehensive system diagnostics endpoint (Phase 5.4)
+
+    Detailed diagnostics for troubleshooting and monitoring.
+    Results cached for 60 seconds to avoid overhead.
+
+    Includes:
+    - All component health status
+    - System information
+    - Metal 4 GPU details
+    - Dependency validation
+    - Performance metrics
+
+    Query params:
+        force_refresh: Force fresh diagnostics (bypass cache)
+
+    Returns:
+        JSON with comprehensive diagnostics
+    """
+    if not health_diagnostics:
+        raise HTTPException(status_code=503, detail="Health diagnostics not available")
+
+    try:
+        diagnostics = health_diagnostics.get_diagnostics(force_refresh=force_refresh)
+        return diagnostics
+    except Exception as e:
+        logger.error(f"Diagnostics failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Diagnostics failed: {str(e)}")
 
 
 # Fallback Admin device overview endpoint to avoid 404 if admin router fails to load
