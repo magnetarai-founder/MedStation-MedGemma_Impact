@@ -6,8 +6,11 @@
  */
 
 import { useState, useEffect } from 'react'
-import { Shield, Users, MessageSquare, Workflow, Activity, TrendingUp, AlertCircle, Eye, ChevronRight } from 'lucide-react'
+import { Shield, Users, MessageSquare, Workflow, Activity, TrendingUp, AlertCircle, Eye, ChevronRight, Heart, FileText, Key } from 'lucide-react'
 import { ROLES } from '@/lib/roles'
+import SystemHealthDashboard from '../SystemHealthDashboard'
+import AuditLogViewer from '../AuditLogViewer'
+import FounderSetupWizard from '../FounderSetupWizard'
 
 interface DeviceOverview {
   total_users: number
@@ -38,7 +41,7 @@ interface ChatSession {
 }
 
 export default function AdminTab() {
-  const [activeView, setActiveView] = useState<'overview' | 'users' | 'user-detail'>('overview')
+  const [activeView, setActiveView] = useState<'overview' | 'users' | 'user-detail' | 'health' | 'audit-logs' | 'founder-setup'>('overview')
   const [deviceOverview, setDeviceOverview] = useState<DeviceOverview | null>(null)
   const [users, setUsers] = useState<User[]>([])
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
@@ -297,6 +300,48 @@ export default function AdminTab() {
             </div>
             <ChevronRight className="w-5 h-5 text-gray-400" />
           </button>
+
+          <button
+            onClick={() => setActiveView('health')}
+            className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-700 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <Heart className="w-5 h-5 text-green-600 dark:text-green-400" />
+              <div className="text-left">
+                <div className="font-medium text-gray-900 dark:text-gray-100">System Health</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Monitor system status and performance</div>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400" />
+          </button>
+
+          <button
+            onClick={() => setActiveView('audit-logs')}
+            className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <div className="text-left">
+                <div className="font-medium text-gray-900 dark:text-gray-100">Audit Logs</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">View permission changes and security events</div>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400" />
+          </button>
+
+          <button
+            onClick={() => setActiveView('founder-setup')}
+            className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-yellow-300 dark:hover:border-yellow-700 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <Key className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+              <div className="text-left">
+                <div className="font-medium text-gray-900 dark:text-gray-100">Founder Setup</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Configure founder password</div>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400" />
+          </button>
         </div>
       </div>
     )
@@ -436,6 +481,57 @@ export default function AdminTab() {
             </div>
           )}
         </div>
+      </div>
+    )
+  }
+
+  // System Health View
+  if (activeView === 'health') {
+    return (
+      <div className="space-y-4">
+        {/* Back Button */}
+        <button
+          onClick={() => setActiveView('overview')}
+          className="text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 flex items-center gap-1"
+        >
+          ← Back to Overview
+        </button>
+
+        <SystemHealthDashboard />
+      </div>
+    )
+  }
+
+  // Audit Logs View
+  if (activeView === 'audit-logs') {
+    return (
+      <div className="space-y-4">
+        {/* Back Button */}
+        <button
+          onClick={() => setActiveView('overview')}
+          className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1"
+        >
+          ← Back to Overview
+        </button>
+
+        <AuditLogViewer />
+      </div>
+    )
+  }
+
+  // Founder Setup View
+  if (activeView === 'founder-setup') {
+    return (
+      <div className="space-y-4">
+        {/* Back Button */}
+        <button
+          onClick={() => setActiveView('overview')}
+          className="text-sm text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300 flex items-center gap-1"
+        >
+          ← Back to Overview
+        </button>
+
+        <FounderSetupWizard />
       </div>
     )
   }
