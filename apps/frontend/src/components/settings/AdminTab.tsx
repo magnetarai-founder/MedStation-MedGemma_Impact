@@ -61,19 +61,17 @@ export default function AdminTab() {
       const token = localStorage.getItem('auth_token')
       const baseHeaders: Record<string,string> = { 'Content-Type': 'application/json' }
       if (token) baseHeaders['Authorization'] = `Bearer ${token}`
-      let response = await fetch('/api/v1/admin/device/overview', {
+
+      const response = await fetch('/api/v1/admin/device/overview', {
         headers: baseHeaders
       })
-      // Fallback alias if route not found
-      if (response.status === 404) {
-        response = await fetch('/api/v1/admin/device-overview', {
-          headers: baseHeaders
-        })
-      }
 
       if (!response.ok) {
         if (response.status === 403) {
           throw new Error('Access Denied: Founder Rights (Founder Admin) role required')
+        }
+        if (response.status === 429) {
+          throw new Error('Too many requests. Please wait a moment and try again.')
         }
         throw new Error(`Failed to fetch device overview: ${response.statusText}`)
       }
