@@ -24,11 +24,11 @@ from pydantic import BaseModel
 try:
     from .permission_engine import require_perm, get_permission_engine
     from .auth_middleware import get_current_user
-    from .audit_logger import audit_log_sync as log_admin_action
+    from .audit_logger import audit_log_sync, AuditAction
 except ImportError:
     from permission_engine import require_perm, get_permission_engine
     from auth_middleware import get_current_user
-    from audit_logger import audit_log_sync as log_admin_action
+    from audit_logger import audit_log_sync, AuditAction
 
 logger = logging.getLogger(__name__)
 
@@ -430,7 +430,30 @@ async def upsert_profile_grants(
             ))
 
         conn.commit()
+
+        # Invalidate cache for all users with this profile (before closing connection)
+        engine = get_permission_engine()
+        cur.execute("SELECT user_id FROM user_permission_profiles WHERE profile_id = ?", (profile_id,))
+        affected_users = [row['user_id'] for row in cur.fetchall()]
+
         conn.close()
+
+        # Invalidate cache for affected users
+        for user_id in affected_users:
+            engine.invalidate_user_permissions(user_id)
+
+        # Audit log - Profile permissions modified
+        audit_log_sync(
+            user_id=current_user['user_id'],
+            action=AuditAction.PERMISSION_MODIFIED,
+            resource="permission_profile",
+            resource_id=profile_id,
+            details={
+                "grants_updated": len(grants),
+                "permissions": [grant.permission_id for grant in grants],
+                "affected_users": len(affected_users)
+            }
+        )
 
         return {"status": "success", "grants_updated": len(grants)}
 
@@ -523,6 +546,22 @@ async def assign_profile_to_user(
         conn.commit()
         conn.close()
 
+        # Audit log - Profile granted to user
+        audit_log_sync(
+            user_id=current_user['user_id'],
+            action=AuditAction.PROFILE_GRANTED,
+            resource="permission_profile",
+            resource_id=profile_id,
+            details={
+                "target_user_id": user_id,
+                "profile_id": profile_id
+            }
+        )
+
+        # Invalidate user's permission cache
+        engine = get_permission_engine()
+        engine.invalidate_user_permissions(user_id)
+
         return {"status": "success", "user_id": user_id, "profile_id": profile_id}
 
     except Exception as e:
@@ -554,6 +593,22 @@ async def unassign_profile_from_user(
 
         if deleted == 0:
             raise HTTPException(status_code=404, detail="Assignment not found")
+
+        # Audit log - Profile revoked from user
+        audit_log_sync(
+            user_id=current_user['user_id'],
+            action=AuditAction.PROFILE_REVOKED,
+            resource="permission_profile",
+            resource_id=profile_id,
+            details={
+                "target_user_id": user_id,
+                "profile_id": profile_id
+            }
+        )
+
+        # Invalidate user's permission cache
+        engine = get_permission_engine()
+        engine.invalidate_user_permissions(user_id)
 
         return {"status": "success", "user_id": user_id, "profile_id": profile_id}
 
@@ -726,6 +781,23 @@ async def assign_permission_set_to_user(
         conn.commit()
         conn.close()
 
+        # Audit log - Permission set granted to user
+        audit_log_sync(
+            user_id=current_user['user_id'],
+            action=AuditAction.PERMISSION_SET_GRANTED,
+            resource="permission_set",
+            resource_id=set_id,
+            details={
+                "target_user_id": user_id,
+                "permission_set_id": set_id,
+                "expires_at": expires_at
+            }
+        )
+
+        # Invalidate user's permission cache
+        engine = get_permission_engine()
+        engine.invalidate_user_permissions(user_id)
+
         return {"status": "success", "user_id": user_id, "permission_set_id": set_id}
 
     except Exception as e:
@@ -757,6 +829,22 @@ async def unassign_permission_set_from_user(
 
         if deleted == 0:
             raise HTTPException(status_code=404, detail="Assignment not found")
+
+        # Audit log - Permission set revoked from user
+        audit_log_sync(
+            user_id=current_user['user_id'],
+            action=AuditAction.PERMISSION_SET_REVOKED,
+            resource="permission_set",
+            resource_id=set_id,
+            details={
+                "target_user_id": user_id,
+                "permission_set_id": set_id
+            }
+        )
+
+        # Invalidate user's permission cache
+        engine = get_permission_engine()
+        engine.invalidate_user_permissions(user_id)
 
         return {"status": "success", "user_id": user_id, "permission_set_id": set_id}
 
@@ -809,22 +897,29 @@ async def upsert_permission_set_grants(
 
         conn.commit()
 
-        # Audit log
-        log_admin_action(
-            admin_user=current_user.get("username", "unknown"),
-            action="upsert_permission_set_grants",
-            target_resource=f"permission_set:{set_id}",
-            details=f"Updated {len(grants)} grants",
-            ip_address=request.client.host if request.client else None
-        )
-
-        # Invalidate cache for all users with this set
+        # Invalidate cache for all users with this set (before closing connection)
         engine = get_permission_engine()
         cur.execute("SELECT user_id FROM user_permission_sets WHERE permission_set_id = ?", (set_id,))
-        for row in cur.fetchall():
-            engine.invalidate_user_permissions(row[0])
+        affected_users = [row[0] for row in cur.fetchall()]
 
         conn.close()
+
+        # Invalidate cache for affected users
+        for user_id in affected_users:
+            engine.invalidate_user_permissions(user_id)
+
+        # Audit log - Permission set modified
+        audit_log_sync(
+            user_id=current_user['user_id'],
+            action=AuditAction.PERMISSION_MODIFIED,
+            resource="permission_set",
+            resource_id=set_id,
+            details={
+                "grants_updated": len(grants),
+                "permissions": [grant.permission_id for grant in grants],
+                "affected_users": len(affected_users)
+            }
+        )
 
         return {"status": "success", "permission_set_id": set_id, "grants_updated": len(grants)}
 
@@ -911,22 +1006,28 @@ async def delete_permission_set_grant(
             conn.close()
             raise HTTPException(status_code=404, detail="Grant not found")
 
-        # Audit log
-        log_admin_action(
-            admin_user=current_user.get("username", "unknown"),
-            action="delete_permission_set_grant",
-            target_resource=f"permission_set:{set_id}",
-            details=f"Removed permission {permission_id}",
-            ip_address=request.client.host if request.client else None
-        )
-
-        # Invalidate cache for users with this set
+        # Invalidate cache for users with this set (before closing connection)
         engine = get_permission_engine()
         cur.execute("SELECT user_id FROM user_permission_sets WHERE permission_set_id = ?", (set_id,))
-        for row in cur.fetchall():
-            engine.invalidate_user_permissions(row[0])
+        affected_users = [row[0] for row in cur.fetchall()]
 
         conn.close()
+
+        # Invalidate cache for affected users
+        for user_id in affected_users:
+            engine.invalidate_user_permissions(user_id)
+
+        # Audit log - Permission revoked from set
+        audit_log_sync(
+            user_id=current_user['user_id'],
+            action=AuditAction.PERMISSION_REVOKED,
+            resource="permission_set",
+            resource_id=set_id,
+            details={
+                "permission_id": permission_id,
+                "affected_users": len(affected_users)
+            }
+        )
 
         return {"status": "success", "permission_set_id": set_id, "permission_id": permission_id}
 
@@ -957,13 +1058,16 @@ async def invalidate_user_permissions_cache(
         engine = get_permission_engine()
         engine.invalidate_user_permissions(user_id)
 
-        # Audit log
-        log_admin_action(
-            admin_user=current_user.get("username", "unknown"),
-            action="invalidate_permission_cache",
-            target_user=user_id,
-            details="Forced permission cache invalidation",
-            ip_address=request.client.host if request.client else None
+        # Audit log - Cache invalidation (using PERMISSION_MODIFIED as closest match)
+        audit_log_sync(
+            user_id=current_user['user_id'],
+            action=AuditAction.PERMISSION_MODIFIED,
+            resource="permission_cache",
+            resource_id=user_id,
+            details={
+                "action": "cache_invalidation",
+                "target_user_id": user_id
+            }
         )
 
         return {"status": "success", "user_id": user_id, "cache_invalidated": True}

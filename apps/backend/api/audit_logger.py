@@ -112,6 +112,19 @@ class AuditAction:
     ADMIN_VIEW_USER_WORKFLOWS = "admin.view.user_workflows"
     FOUNDER_RIGHTS_LOGIN = "founder_rights.login"
 
+    # Permission Operations (Phase 5.1 - LOW-07)
+    PERMISSION_GRANTED = "permission.granted"
+    PERMISSION_REVOKED = "permission.revoked"
+    PERMISSION_MODIFIED = "permission.modified"
+    ROLE_ASSIGNED = "role.assigned"
+    ROLE_REMOVED = "role.removed"
+    PROFILE_GRANTED = "profile.granted"
+    PROFILE_REVOKED = "profile.revoked"
+    PERMISSION_SET_GRANTED = "permission_set.granted"
+    PERMISSION_SET_REVOKED = "permission_set.revoked"
+    PERMISSION_CHECK_DENIED = "permission.check.denied"
+    PERMISSION_CHECK_GRANTED = "permission.check.granted"
+
 
 class AuditLogger:
     """

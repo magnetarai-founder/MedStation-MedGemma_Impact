@@ -661,25 +661,43 @@ class PermissionEngine:
         if perm_value is None:
             # Permission not defined: deny
             logger.debug(f"Permission not defined for {user_ctx.username}: {permission_key}")
+
+            # Audit log - Permission check denied
+            self._log_permission_check(user_ctx, permission_key, False, "permission_not_defined")
+
             return False
 
         # Boolean permission
         if isinstance(perm_value, bool):
+            if not perm_value:
+                self._log_permission_check(user_ctx, permission_key, False, "boolean_permission_denied")
             return perm_value
 
         # Level-based permission
         if isinstance(perm_value, PermissionLevel):
             if required_level is None:
                 # No specific level required: just check if not NONE
-                return perm_value != PermissionLevel.NONE
+                granted = perm_value != PermissionLevel.NONE
+                if not granted:
+                    self._log_permission_check(user_ctx, permission_key, False, f"insufficient_level_{perm_value}")
+                return granted
 
             try:
                 required = PermissionLevel(required_level)
                 user_level_num = LEVEL_HIERARCHY.get(perm_value, 0)
                 required_level_num = LEVEL_HIERARCHY.get(required, 0)
-                return user_level_num >= required_level_num
+                granted = user_level_num >= required_level_num
+
+                if not granted:
+                    self._log_permission_check(
+                        user_ctx, permission_key, False,
+                        f"insufficient_level_has_{perm_value}_requires_{required_level}"
+                    )
+
+                return granted
             except ValueError:
                 logger.warning(f"Invalid permission level: {required_level}")
+                self._log_permission_check(user_ctx, permission_key, False, "invalid_required_level")
                 return False
 
         # Scope-based permission (simplified for v1)
@@ -689,6 +707,45 @@ class PermissionEngine:
 
         # Unknown type: deny
         return False
+
+    def _log_permission_check(
+        self,
+        user_ctx: UserPermissionContext,
+        permission_key: str,
+        granted: bool,
+        reason: str
+    ) -> None:
+        """
+        Log permission check to audit log (Phase 5.1)
+
+        Only logs denials to avoid excessive audit log growth.
+        Grants are only logged for sensitive operations.
+
+        Args:
+            user_ctx: User permission context
+            permission_key: Permission key being checked
+            granted: Whether permission was granted
+            reason: Reason for decision
+        """
+        # Only log denials (grants would be too noisy)
+        if not granted:
+            try:
+                from audit_logger import audit_log_sync, AuditAction
+
+                audit_log_sync(
+                    user_id=user_ctx.user_id,
+                    action=AuditAction.PERMISSION_CHECK_DENIED,
+                    resource="permission",
+                    resource_id=permission_key,
+                    details={
+                        "permission_key": permission_key,
+                        "reason": reason,
+                        "role": user_ctx.role
+                    }
+                )
+            except Exception as e:
+                # Don't fail permission check if audit logging fails
+                logger.error(f"Failed to audit log permission check: {e}")
 
     def invalidate_user_permissions(self, user_id: str) -> None:
         """

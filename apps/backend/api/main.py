@@ -728,6 +728,15 @@ try:
 except ImportError as e:
     logger.warning(f"Could not import metal4_ml router: {e}")
 
+# Prometheus Metrics API (Phase 5.2: Monitoring & Observability)
+try:
+    from prometheus_metrics import get_prometheus_exporter
+    prometheus_exporter = get_prometheus_exporter()
+    services_loaded.append("Prometheus Metrics")
+except ImportError as e:
+    logger.warning(f"Could not import prometheus_metrics: {e}")
+    prometheus_exporter = None
+
 # Log summary of loaded services
 if services_loaded:
     logger.info(f"✓ Services: {', '.join(services_loaded)}")
@@ -905,6 +914,36 @@ async def get_system_info():
         info["metal_error"] = f"Failed to query Metal engine: {str(e)}"
 
     return info
+
+
+@app.get("/metrics")
+async def prometheus_metrics():
+    """
+    Prometheus metrics endpoint (Phase 5.2)
+
+    Returns metrics in Prometheus text format for scraping.
+    Includes:
+    - System metrics (CPU, RAM, disk, network)
+    - Metal 4 GPU metrics (if available)
+    - Application metrics (users, workflows, vault)
+    - Health status
+
+    Response format: text/plain (Prometheus format)
+    """
+    if not prometheus_exporter:
+        raise HTTPException(status_code=503, detail="Prometheus metrics not available")
+
+    try:
+        metrics_text = prometheus_exporter.collect_metrics()
+        from fastapi.responses import PlainTextResponse
+        return PlainTextResponse(
+            content=metrics_text,
+            media_type="text/plain; version=0.0.4; charset=utf-8"
+        )
+    except Exception as e:
+        logger.error(f"Failed to collect Prometheus metrics: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to collect metrics: {str(e)}")
+
 
 # Fallback Admin device overview endpoint to avoid 404 if admin router fails to load
 @app.get("/api/v1/admin/device/overview")
