@@ -30,7 +30,7 @@ from api.schemas.api_models import (
     ExportRequest,
 )
 
-router = APIRouter()
+router = APIRouter(tags=["sessions"])
 
 # Getter functions to access shared state from main.py
 def get_sessions():
@@ -373,7 +373,7 @@ async def get_query_history_router(session_id: str):
 
     return {"history": history}
 
-@router.delete("/{session_id}/query-history/{query_id}", name="sessions_delete_query_history", response_model=SuccessResponse)
+@router.delete("/{session_id}/query-history/{query_id}", name="sessions_query_history_delete", response_model=SuccessResponse)
 async def delete_query_from_history_router(session_id: str, query_id: str):
     """Delete a query from history"""
     sessions = get_sessions()
