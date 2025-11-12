@@ -693,11 +693,12 @@ except Exception as e:
 
 # Permissions Administration (Phase 2: RBAC management)
 try:
-    from permissions_admin import router as permissions_admin_router
-    app.include_router(permissions_admin_router)
+    from api.routes import permissions as _permissions_routes
+    app.include_router(_permissions_routes.router)
     services_loaded.append("Permissions Admin")
 except Exception as e:
     services_failed.append("Permissions Admin")
+    logger.error("Failed to load permissions router", exc_info=True)
     logger.error(f"Permissions Admin service failed to load: {e}")
 
 # Monitoring routes

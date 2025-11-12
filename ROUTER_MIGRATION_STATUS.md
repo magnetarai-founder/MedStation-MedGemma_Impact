@@ -61,24 +61,22 @@ api/schemas/[domain]_models.py → Pydantic models
 
 ---
 
-## In Progress (1/5)
+## Completed Migrations (4/5) - UPDATED
 
-### 🔄 Permissions Router (Phase 1/3)
+### ✅ Permissions Router
 - **Files:**
-  - ✅ `api/schemas/permission_models.py` - 10 Pydantic models extracted
-  - ⏳ `api/services/permissions.py` - Needs 14 service functions (~600 lines)
-  - ⏳ `api/routes/permissions.py` - Needs 18 thin endpoints (~400 lines)
+  - `api/schemas/permission_models.py` - 10 Pydantic models (94 lines)
+  - `api/services/permissions.py` - Business logic (1,050 lines, 18 functions)
+  - `api/routes/permissions.py` - Thin router (465 lines, 18 endpoints)
 - **Endpoints:** 18 RBAC management operations
+  - Permission registry (1 endpoint)
+  - Permission profiles (6 endpoints)
+  - User profile assignments (3 endpoints)
+  - Permission sets (7 endpoints)
+  - Cache management (1 endpoint)
 - **Complexity:** High (audit logging, cache invalidation, permission engine integration)
-- **Current Status:** Models extracted and committed
-- **Commit:** 312094da
-- **Remaining Work:**
-  - Extract business logic from `permissions_admin.py` to service layer
-  - Create thin router with lazy imports
-  - Preserve audit logging and cache invalidation calls
-  - Test all 18 endpoints
-
-**Migration Plan:** See detailed plan in session notes (14 service functions mapped)
+- **Status:** Fully migrated, tested
+- **Details:** All 18 service functions and endpoints successfully migrated with lazy imports, audit logging, and cache invalidation preserved
 
 ---
 
