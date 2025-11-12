@@ -11,6 +11,7 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, File, UploadFile, Form, Request, Header, Body
+from api.schemas.api_models import FileUploadResponse, QueryResponse
 
 router = APIRouter()
 
@@ -75,11 +76,8 @@ def get_require_perm():
     from api.main import require_perm
     return require_perm
 
-# Note: Endpoints return plain dicts to avoid circular import issues with Pydantic models.
-# The response shape matches the original models but avoids importing from main.py.
-
 # Endpoints
-@router.post("/{session_id}/upload", name="sessions_upload")
+@router.post("/{session_id}/upload", name="sessions_upload", response_model=FileUploadResponse)
 async def upload_file_router(
     session_id: str,
     file: UploadFile = File(...),
@@ -170,7 +168,7 @@ async def upload_file_router(
             file_path.unlink()
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/{session_id}/query", name="sessions_query")
+@router.post("/{session_id}/query", name="sessions_query", response_model=QueryResponse)
 async def execute_query_router(
     session_id: str,
     req: Request,
