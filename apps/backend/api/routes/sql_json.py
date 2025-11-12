@@ -1,17 +1,20 @@
 """
-SQL/JSON Router - Session-based data processing endpoints (upload + query).
+SQL/JSON Router - Session-based data processing endpoints.
 
-Export remains served from api.main to avoid duplication while we
-stabilize OpenAPI and behavior incrementally.
+Handles upload, query, validation, export, and JSON conversion operations.
 """
 
 import asyncio
+import json
 import uuid
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, File, UploadFile, Form, Request, Header, Body, Query
+import pandas as pd
+from fastapi import APIRouter, HTTPException, File, UploadFile, Form, Request, Header, Body, Query, Depends
 from fastapi.responses import FileResponse
+from starlette.background import BackgroundTask
 from api.schemas.api_models import (
     FileUploadResponse,
     QueryResponse,
@@ -24,6 +27,7 @@ from api.schemas.api_models import (
     JsonUploadResponse,
     JsonConvertRequest,
     JsonConvertResponse,
+    ExportRequest,
 )
 
 router = APIRouter()
@@ -453,7 +457,98 @@ async def list_tables_router(session_id: str):
 
     return {"tables": tables}
 
-# Note: Export endpoint intentionally not registered here; served by api.main
+# ============================================================================
+# Export Endpoint
+# ============================================================================
+
+@router.post("/{session_id}/export", name="sessions_export")
+async def export_results_router(
+    session_id: str,
+    req: Request,
+    request: ExportRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Export query results"""
+    sessions = get_sessions()
+    query_results = get_query_results()
+    df_to_jsonsafe = get_df_to_jsonsafe_records()
+    logger = get_logger()
+    require_perm = get_require_perm()
+
+    # Apply permission check
+    perm_decorator = require_perm("data.export")
+    # Since we're inside a router, we need to call the decorator manually
+    # The decorator expects an async function, so we check directly
+    from api.main import has_permission
+    if not has_permission(current_user, "data.export"):
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+    if session_id not in sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # Check if this is a JSON conversion result or SQL query result
+    if request.query_id.startswith('json_'):
+        # JSON conversion result
+        if 'json_result' not in sessions[session_id]:
+            raise HTTPException(status_code=404, detail="JSON conversion result not found. Please run the conversion first.")
+
+        # Load the Excel file that was created during conversion
+        json_result = sessions[session_id]['json_result']
+        excel_path = json_result.get('excel_path')
+
+        if not excel_path or not Path(excel_path).exists():
+            raise HTTPException(status_code=404, detail="JSON conversion output file not found. Please run the conversion again.")
+
+        # Read the Excel file into a DataFrame for export
+        logger.info(f"Exporting JSON conversion result from {excel_path}")
+        df = pd.read_excel(excel_path)
+    else:
+        # SQL query result
+        if request.query_id not in query_results:
+            raise HTTPException(status_code=404, detail="Query results not found. Please run the query again.")
+
+        df = query_results[request.query_id]
+
+    # Generate filename
+    filename = request.filename or f"neutron_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+    # Export based on format
+    api_dir = Path(__file__).parent.parent
+    temp_dir = api_dir / "temp_exports"
+    temp_dir.mkdir(exist_ok=True)
+
+    if request.format == "excel":
+        file_path = temp_dir / f"{filename}.xlsx"
+        df.to_excel(file_path, index=False)
+        media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    elif request.format == "csv":
+        file_path = temp_dir / f"{filename}.csv"
+        df.to_csv(file_path, index=False)
+        media_type = "text/csv"
+    elif request.format == "tsv":
+        file_path = temp_dir / f"{filename}.tsv"
+        df.to_csv(file_path, index=False, sep='\t')
+        media_type = "text/tab-separated-values"
+    elif request.format == "parquet":
+        file_path = temp_dir / f"{filename}.parquet"
+        df.to_parquet(file_path, index=False)
+        media_type = "application/octet-stream"
+    elif request.format == "json":
+        file_path = temp_dir / f"{filename}.json"
+        # Convert to JSON-safe records and write with proper formatting
+        json_records = df_to_jsonsafe(df)
+        with open(file_path, 'w', encoding='utf-8') as f:
+            json.dump(json_records, f, indent=2, ensure_ascii=False)
+        media_type = "application/json"
+    else:
+        raise HTTPException(status_code=400, detail="Invalid export format")
+
+    return FileResponse(
+        path=file_path,
+        filename=file_path.name,
+        media_type=media_type,
+        background=BackgroundTask(lambda: file_path.unlink(missing_ok=True))
+    )
 
 # ============================================================================
 # JSON Processing Endpoints
@@ -841,7 +936,6 @@ async def download_json_result_router(session_id: str, format: str = "excel"):
                 media_type = "application/octet-stream"
                 extension = ".parquet"
 
-            from fastapi.background import BackgroundTask
             return FileResponse(
                 output_path,
                 filename=f"export_{datetime.now().strftime('%Y%m%d_%H%M%S')}{extension}",

@@ -1396,76 +1396,13 @@ async def _fallback_spawn_system_terminal(current_user: dict = Depends(get_curre
 #
 #     return SuccessResponse(success=True, message="Query deleted successfully")
 
-@app.post("/api/sessions/{session_id}/export")
-@require_perm("data.export")
-async def export_results(req: Request, session_id: str, request: ExportRequest, current_user: dict = Depends(get_current_user)):
-    """Export query results"""
-    if session_id not in sessions:
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    # Check if this is a JSON conversion result or SQL query result
-    if request.query_id.startswith('json_'):
-        # JSON conversion result
-        if 'json_result' not in sessions[session_id]:
-            raise HTTPException(status_code=404, detail="JSON conversion result not found. Please run the conversion first.")
-
-        # Load the Excel file that was created during conversion
-        json_result = sessions[session_id]['json_result']
-        excel_path = json_result.get('excel_path')
-
-        if not excel_path or not Path(excel_path).exists():
-            raise HTTPException(status_code=404, detail="JSON conversion output file not found. Please run the conversion again.")
-
-        # Read the Excel file into a DataFrame for export
-        logger.info(f"Exporting JSON conversion result from {excel_path}")
-        df = pd.read_excel(excel_path)
-    else:
-        # SQL query result
-        if request.query_id not in query_results:
-            raise HTTPException(status_code=404, detail="Query results not found. Please run the query again.")
-
-        df = query_results[request.query_id]
-
-    # Generate filename
-    filename = request.filename or f"neutron_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-
-    # Export based on format
-    api_dir = Path(__file__).parent
-    temp_dir = api_dir / "temp_exports"
-    temp_dir.mkdir(exist_ok=True)
-
-    if request.format == "excel":
-        file_path = temp_dir / f"{filename}.xlsx"
-        df.to_excel(file_path, index=False)
-        media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    elif request.format == "csv":
-        file_path = temp_dir / f"{filename}.csv"
-        df.to_csv(file_path, index=False)
-        media_type = "text/csv"
-    elif request.format == "tsv":
-        file_path = temp_dir / f"{filename}.tsv"
-        df.to_csv(file_path, index=False, sep='\t')
-        media_type = "text/tab-separated-values"
-    elif request.format == "parquet":
-        file_path = temp_dir / f"{filename}.parquet"
-        df.to_parquet(file_path, index=False)
-        media_type = "application/octet-stream"
-    elif request.format == "json":
-        file_path = temp_dir / f"{filename}.json"
-        # Convert to JSON-safe records and write with proper formatting
-        json_records = _df_to_jsonsafe_records(df)
-        with open(file_path, 'w', encoding='utf-8') as f:
-            json.dump(json_records, f, indent=2, ensure_ascii=False)
-        media_type = "application/json"
-    else:
-        raise HTTPException(status_code=400, detail="Invalid export format")
-
-    return FileResponse(
-        path=file_path,
-        filename=file_path.name,
-        media_type=media_type,
-        background=BackgroundTask(lambda: file_path.unlink(missing_ok=True))
-    )
+# ============================================================================
+# MIGRATED TO: api/routes/sql_json.py
+# ============================================================================
+# @app.post("/api/sessions/{session_id}/export")
+# @require_perm("data.export")
+# async def export_results(req: Request, session_id: str, request: ExportRequest, current_user: dict = Depends(get_current_user)):
+#     """Export query results"""
 
 # ============================================================================
 # MIGRATED TO: api/routes/sql_json.py (Quick Wins - Sheet Names & Tables Endpoints)
