@@ -573,12 +573,12 @@ except Exception as e:
     logger.error("Failed to load users router", exc_info=True)
 
 try:
-    from team_service import router as team_router
-    app.include_router(team_router)
+    from api.routes import team as _team_routes
+    app.include_router(_team_routes.router)
     services_loaded.append("Team")
 except Exception as e:
     services_failed.append("Team")
-    logger.debug(f"Team service not available: {e}")
+    logger.error("Failed to load team router", exc_info=True)
 
 try:
     from docs_service import router as docs_router

@@ -1,0 +1,453 @@
+================================================================================
+                   TEAM SERVICE ARCHITECTURE MIGRATION
+================================================================================
+
+CURRENT MONOLITHIC STRUCTURE
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        team_service.py (5,145 LOC)                      │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                           │
+│  ┌────────────────────────────────────────────────────────────────────┐ │
+│  │ IMPORTS (40 lines)                                                 │ │
+│  │  - rate_limiter, permission_engine, audit_logger                  │ │
+│  │  - FastAPI, Pydantic, sqlite3, logging                            │ │
+│  └────────────────────────────────────────────────────────────────────┘ │
+│                                                                           │
+│  ┌────────────────────────────────────────────────────────────────────┐ │
+│  │ PYDANTIC MODELS (76 classes, scattered throughout)                │ │
+│  │  - Core Team (CreateTeamRequest, TeamResponse, etc.)              │ │
+│  │  - Member Management (UpdateRoleRequest, etc.)                    │ │
+│  │  - Promotion System (AutoPromoteResponse, etc.)                   │ │
+│  │  - Workflow Permissions (AddWorkflowPermissionRequest, etc.)      │ │
+│  │  - Queue Management (CreateQueueRequest, etc.)                    │ │
+│  │  - God Rights (GrantGodRightsRequest, etc.)                       │ │
+│  │  - Team Vault (CreateVaultItemRequest, etc.)                      │ │
+│  └────────────────────────────────────────────────────────────────────┘ │
+│                                                                           │
+│  ┌────────────────────────────────────────────────────────────────────┐ │
+│  │ HELPER FUNCTIONS (3 functions)                                    │ │
+│  │  - _get_app_conn()          Get DB connection                     │ │
+│  │  - is_team_member()         Check membership + return role        │ │
+│  │  - require_team_admin()     Enforce admin requirement             │ │
+│  └────────────────────────────────────────────────────────────────────┘ │
+│                                                                           │
+│  ┌────────────────────────────────────────────────────────────────────┐ │
+│  │ TEAMMANAGER CLASS (60+ methods, ~2,800 LOC)                       │ │
+│  │                                                                    │ │
+│  │  Core Operations (5)                                             │ │
+│  │  ├─ generate_team_id()                                          │ │
+│  │  ├─ create_team()                                               │ │
+│  │  ├─ get_team()                                                  │ │
+│  │  ├─ get_team_members()                                          │ │
+│  │  └─ get_user_teams()                                            │ │
+│  │                                                                    │ │
+│  │  Invite Management (6)                                           │ │
+│  │  ├─ generate_invite_code()                                      │ │
+│  │  ├─ get_active_invite_code()                                    │ │
+│  │  ├─ regenerate_invite_code()                                    │ │
+│  │  ├─ validate_invite_code()                                      │ │
+│  │  ├─ record_invite_attempt()                                     │ │
+│  │  └─ check_brute_force_lockout()                                 │ │
+│  │                                                                    │ │
+│  │  Role Management (6)                                             │ │
+│  │  ├─ count_role()                                                │ │
+│  │  ├─ count_super_admins()                                        │ │
+│  │  ├─ get_team_size()                                             │ │
+│  │  ├─ get_max_super_admins()                                      │ │
+│  │  ├─ can_promote_to_super_admin()                                │ │
+│  │  └─ update_member_role()                                        │ │
+│  │                                                                    │ │
+│  │  Promotion System (12)                                           │ │
+│  │  ├─ get_days_since_joined()                                     │ │
+│  │  ├─ check_auto_promotion_eligibility()                          │ │
+│  │  ├─ auto_promote_guests()                                       │ │
+│  │  ├─ instant_promote_guest()                                     │ │
+│  │  ├─ schedule_delayed_promotion()                                │ │
+│  │  ├─ execute_delayed_promotions()                                │ │
+│  │  ├─ update_last_seen()                                          │ │
+│  │  ├─ check_super_admin_offline()                                 │ │
+│  │  ├─ promote_admin_temporarily()                                 │ │
+│  │  ├─ get_pending_temp_promotions()                               │ │
+│  │  ├─ approve_temp_promotion()                                    │ │
+│  │  └─ revert_temp_promotion()                                     │ │
+│  │                                                                    │ │
+│  │  Job Roles (2)                                                   │ │
+│  │  ├─ update_job_role()                                           │ │
+│  │  └─ get_member_job_role()                                       │ │
+│  │                                                                    │ │
+│  │  Workflow Permissions (5)                                        │ │
+│  │  ├─ add_workflow_permission()                                   │ │
+│  │  ├─ remove_workflow_permission()                                │ │
+│  │  ├─ check_workflow_permission()                                 │ │
+│  │  ├─ get_workflow_permissions()                                  │ │
+│  │  └─ _check_default_permission()                                 │ │
+│  │                                                                    │ │
+│  │  Queue Management (8)                                            │ │
+│  │  ├─ create_queue()                                              │ │
+│  │  ├─ add_queue_permission()                                      │ │
+│  │  ├─ remove_queue_permission()                                   │ │
+│  │  ├─ check_queue_access()                                        │ │
+│  │  ├─ _check_default_queue_access()                               │ │
+│  │  ├─ get_accessible_queues()                                     │ │
+│  │  ├─ get_queue_permissions()                                     │ │
+│  │  └─ get_queue()                                                 │ │
+│  │                                                                    │ │
+│  │  God Rights (5)                                                  │ │
+│  │  ├─ grant_god_rights()                                          │ │
+│  │  ├─ revoke_god_rights()                                         │ │
+│  │  ├─ check_god_rights()                                          │ │
+│  │  ├─ get_god_rights_users()                                      │ │
+│  │  └─ get_revoked_god_rights()                                    │ │
+│  │                                                                    │ │
+│  │  Vault Operations (9)                                            │ │
+│  │  ├─ _get_vault_encryption_key()                                 │ │
+│  │  ├─ _encrypt_content()                                          │ │
+│  │  ├─ _decrypt_content()                                          │ │
+│  │  ├─ create_vault_item()                                         │ │
+│  │  ├─ update_vault_item()                                         │ │
+│  │  ├─ delete_vault_item()                                         │ │
+│  │  ├─ get_vault_item()                                            │ │
+│  │  ├─ list_vault_items()                                          │ │
+│  │  ├─ add_vault_permission()                                      │ │
+│  │  ├─ remove_vault_permission()                                   │ │
+│  │  ├─ check_vault_permission()                                    │ │
+│  │  └─ get_vault_permissions()                                     │ │
+│  │                                                                    │ │
+│  └────────────────────────────────────────────────────────────────────┘ │
+│                                                                           │
+│  ┌────────────────────────────────────────────────────────────────────┐ │
+│  │ API ENDPOINTS (50+)                                                │ │
+│  │  - POST    /              create_team_v3()                        │ │
+│  │  - GET     /{team_id}     get_team()                              │ │
+│  │  - GET     /{team_id}/members              get_team_members_v3()  │ │
+│  │  - POST    /{team_id}/invites              invite_to_team_v3()    │ │
+│  │  - POST    /join                           (join_team_v3)         │ │
+│  │  - POST    /{team_id}/members/{user_id}/role   (change_role)      │ │
+│  │  - DELETE  /{team_id}/members/{user_id}   (remove_member_v3)      │ │
+│  │  - [and 40+ more endpoints across 8 domains]                       │ │
+│  └────────────────────────────────────────────────────────────────────┘ │
+│                                                                           │
+└─────────────────────────────────────────────────────────────────────────┘
+
+
+TARGET SEPARATED STRUCTURE
+================================================================================
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│                           api/schemas/                                    │
+├───────────────────────────────────────────────────────────────────────────┤
+│                    team_models.py (~500-600 LOC)                          │
+│                                                                            │
+│  ┌─────────────────────────────────────────────────────────────────────┐ │
+│  │ PYDANTIC MODELS (76 classes, organized by domain)                  │ │
+│  │                                                                     │ │
+│  │  Group A: Core Team (5 models)                                    │ │
+│  │  ├─ CreateTeamRequest                                            │ │
+│  │  ├─ TeamResponse                                                 │ │
+│  │  ├─ InviteCodeResponse                                           │ │
+│  │  ├─ InviteRequest                                                │ │
+│  │  └─ JoinTeamRequest/Response                                     │ │
+│  │                                                                     │ │
+│  │  Group B: Member Management (6 models)                           │ │
+│  │  ├─ UpdateRoleRequest/Response                                   │ │
+│  │  ├─ ChangeRoleBody                                               │ │
+│  │  ├─ UpdateJobRoleRequest/Response                                │ │
+│  │  └─ JobRoleResponse                                              │ │
+│  │                                                                     │ │
+│  │  Group C: Promotion System (16 models)                           │ │
+│  │  ├─ AutoPromoteResponse                                          │ │
+│  │  ├─ InstantPromoteRequest/Response                               │ │
+│  │  ├─ DelayedPromoteRequest/Response                               │ │
+│  │  ├─ ExecuteDelayedResponse                                       │ │
+│  │  ├─ HeartbeatRequest/Response                                    │ │
+│  │  ├─ OfflineSuperAdminsResponse                                   │ │
+│  │  ├─ PromoteTempAdminRequest/Response                             │ │
+│  │  ├─ TempPromotionsResponse                                       │ │
+│  │  ├─ ApproveTempPromotionRequest/Response                         │ │
+│  │  └─ RevertTempPromotionRequest/Response                          │ │
+│  │                                                                     │ │
+│  │  Group D: Workflow Permissions (8 models)                        │ │
+│  │  ├─ AddWorkflowPermissionRequest/Response                        │ │
+│  │  ├─ RemoveWorkflowPermissionRequest/Response                     │ │
+│  │  ├─ WorkflowPermissionGrant                                      │ │
+│  │  ├─ GetWorkflowPermissionsResponse                               │ │
+│  │  ├─ CheckWorkflowPermissionRequest/Response                      │ │
+│  │  └─ [+ 2 more related models]                                    │ │
+│  │                                                                     │ │
+│  │  Group E: Queue Management (13 models)                           │ │
+│  │  ├─ CreateQueueRequest/Response                                  │ │
+│  │  ├─ AddQueuePermissionRequest/Response                           │ │
+│  │  ├─ RemoveQueuePermissionRequest/Response                        │ │
+│  │  ├─ QueuePermissionGrant                                         │ │
+│  │  ├─ GetQueuePermissionsResponse                                  │ │
+│  │  ├─ CheckQueueAccessRequest/Response                             │ │
+│  │  ├─ QueueInfo                                                    │ │
+│  │  ├─ GetAccessibleQueuesResponse                                  │ │
+│  │  ├─ QueueDetails                                                 │ │
+│  │  └─ [+ 3 more related models]                                    │ │
+│  │                                                                     │ │
+│  │  Group F: God Rights (10 models)                                 │ │
+│  │  ├─ GrantGodRightsRequest/Response                               │ │
+│  │  ├─ RevokeGodRightsRequest/Response                              │ │
+│  │  ├─ CheckGodRightsRequest/Response                               │ │
+│  │  ├─ GodRightsUser                                                │ │
+│  │  ├─ GetGodRightsUsersResponse                                    │ │
+│  │  ├─ RevokedGodRightsUser                                         │ │
+│  │  └─ GetRevokedGodRightsResponse                                  │ │
+│  │                                                                     │ │
+│  │  Group G: Team Vault (18 models)                                 │ │
+│  │  ├─ CreateVaultItemRequest/Response                              │ │
+│  │  ├─ VaultItemInfo                                                │ │
+│  │  ├─ ListVaultItemsResponse                                       │ │
+│  │  ├─ VaultItemDetail                                              │ │
+│  │  ├─ UpdateVaultItemRequest/Response                              │ │
+│  │  ├─ DeleteVaultItemRequest/Response                              │ │
+│  │  ├─ AddVaultPermissionRequest/Response                           │ │
+│  │  ├─ RemoveVaultPermissionRequest/Response                        │ │
+│  │  ├─ VaultPermissionGrant                                         │ │
+│  │  ├─ GetVaultPermissionsResponse                                  │ │
+│  │  └─ CheckVaultPermissionRequest/Response                         │ │
+│  │                                                                     │ │
+│  └─────────────────────────────────────────────────────────────────────┘ │
+│                                                                            │
+└───────────────────────────────────────────────────────────────────────────┘
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│                          api/services/                                    │
+├───────────────────────────────────────────────────────────────────────────┤
+│                    team.py (~2,000-2,500 LOC)                             │
+│                                                                            │
+│  ┌─────────────────────────────────────────────────────────────────────┐ │
+│  │ IMPORTS                                                             │ │
+│  │  - from api.schemas.team_models import *                          │ │
+│  │  - from permission_engine import require_perm, get_permission...  │ │
+│  │  - from audit_logger import audit_log_sync, AuditAction           │ │
+│  │  - from rate_limiter import rate_limiter, get_client_ip           │ │
+│  │  - sqlite3, logging, datetime, etc.                               │ │
+│  └─────────────────────────────────────────────────────────────────────┘ │
+│                                                                            │
+│  ┌─────────────────────────────────────────────────────────────────────┐ │
+│  │ HELPER FUNCTIONS                                                    │ │
+│  │  - _get_app_conn()                                                │ │
+│  │  - is_team_member()                                               │ │
+│  │  - require_team_admin()                                           │ │
+│  │  - get_team_manager() [Singleton pattern]                         │ │
+│  └─────────────────────────────────────────────────────────────────────┘ │
+│                                                                            │
+│  ┌─────────────────────────────────────────────────────────────────────┐ │
+│  │ TEAMMANAGER CLASS (62 methods)                                      │ │
+│  │  [All business logic organized by functional area]                 │ │
+│  │                                                                     │ │
+│  │  ├─ Core Operations (5 methods)                                   │ │
+│  │  ├─ Invite Management (6 methods)                                 │ │
+│  │  ├─ Member Joining (1 method)                                     │ │
+│  │  ├─ Role Management (6 methods)                                   │ │
+│  │  ├─ Guest Promotion (3 methods)                                   │ │
+│  │  ├─ Instant/Delayed Promotions (3 methods)                        │ │
+│  │  ├─ Admin Failsafe (6 methods)                                    │ │
+│  │  ├─ Job Roles (2 methods)                                         │ │
+│  │  ├─ Workflow Permissions (5 methods)                              │ │
+│  │  ├─ Queue Management (8 methods)                                  │ │
+│  │  ├─ God Rights (5 methods)                                        │ │
+│  │  └─ Vault Operations (12 methods with encryption)                 │ │
+│  │                                                                     │ │
+│  └─────────────────────────────────────────────────────────────────────┘ │
+│                                                                            │
+└───────────────────────────────────────────────────────────────────────────┘
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│                           api/routes/                                     │
+├───────────────────────────────────────────────────────────────────────────┤
+│                    team.py (~1,500-2,000 LOC)                             │
+│                                                                            │
+│  ┌─────────────────────────────────────────────────────────────────────┐ │
+│  │ IMPORTS                                                             │ │
+│  │  - from api.services.team import TeamManager, get_team_manager   │ │
+│  │  - from api.schemas.team_models import *                         │ │
+│  │  - from permission_engine import require_perm                    │ │
+│  │  - from auth_middleware import get_current_user                  │ │
+│  │  - FastAPI imports                                               │ │
+│  └─────────────────────────────────────────────────────────────────────┘ │
+│                                                                            │
+│  ┌─────────────────────────────────────────────────────────────────────┐ │
+│  │ ROUTER SETUP                                                        │ │
+│  │  router = APIRouter(                                              │ │
+│  │      prefix="/api/v1/teams",                                     │ │
+│  │      tags=["teams"],                                             │ │
+│  │      dependencies=[Depends(get_current_user)]                    │ │
+│  │  )                                                                │ │
+│  └─────────────────────────────────────────────────────────────────────┘ │
+│                                                                            │
+│  ┌─────────────────────────────────────────────────────────────────────┐ │
+│  │ API ENDPOINTS (50+) - Organized by functional domain              │ │
+│  │                                                                     │ │
+│  │  DOMAIN 1: Core Team Management (7 endpoints)                    │ │
+│  │  ├─ POST   /               create_team_v3()                     │ │
+│  │  ├─ GET    /{team_id}      get_team()                           │ │
+│  │  ├─ GET    /{team_id}/members          get_team_members_v3()    │ │
+│  │  ├─ POST   /{team_id}/invites          invite_to_team_v3()      │ │
+│  │  ├─ POST   /invites/{id}/accept        (accept_invite)          │ │
+│  │  ├─ GET    /{team_id}/invite-code      (get_invite_code)        │ │
+│  │  └─ POST   /{team_id}/invite-code/regenerate  (regenerate)      │ │
+│  │                                                                     │ │
+│  │  DOMAIN 2: Member Management (5 endpoints)                      │ │
+│  │  ├─ PUT    /{team_id}/members/{user_id}/role                   │ │
+│  │  ├─ DELETE /{team_id}/members/{user_id}                        │ │
+│  │  ├─ POST   /{team_id}/members/{user_id}/role                   │ │
+│  │  ├─ POST   /{team_id}/members/{user_id}/job-role               │ │
+│  │  └─ GET    /{team_id}/members/{user_id}/job-role               │ │
+│  │                                                                     │ │
+│  │  DOMAIN 3: Join Team & Invites (2 endpoints)                    │ │
+│  │  ├─ POST   /join                                                │ │
+│  │  └─ POST   /create                                              │ │
+│  │                                                                     │ │
+│  │  DOMAIN 4: Promotion & Admin Failsafe (10 endpoints)            │ │
+│  │  ├─ POST   /{team_id}/members/auto-promote                      │ │
+│  │  ├─ POST   /{team_id}/members/{user_id}/instant-promote         │ │
+│  │  ├─ POST   /{team_id}/members/{user_id}/delayed-promote         │ │
+│  │  ├─ POST   /delayed-promotions/execute                          │ │
+│  │  ├─ POST   /{team_id}/members/heartbeat                         │ │
+│  │  ├─ GET    /{team_id}/super-admins/status                       │ │
+│  │  ├─ POST   /{team_id}/promote-temp-admin                        │ │
+│  │  ├─ GET    /{team_id}/temp-promotions                           │ │
+│  │  ├─ POST   /{team_id}/temp-promotions/{id}/approve              │ │
+│  │  └─ POST   /{team_id}/temp-promotions/{id}/revert               │ │
+│  │                                                                     │ │
+│  │  DOMAIN 5: Workflow Permissions (5 endpoints)                   │ │
+│  │  ├─ POST   /{team_id}/workflows/{wf_id}/permissions             │ │
+│  │  ├─ DELETE /{team_id}/workflows/{wf_id}/permissions             │ │
+│  │  ├─ GET    /{team_id}/workflows/{wf_id}/permissions             │ │
+│  │  └─ POST   /{team_id}/workflows/{wf_id}/check-permission        │ │
+│  │                                                                     │ │
+│  │  DOMAIN 6: Queue Management (7 endpoints)                       │ │
+│  │  ├─ POST   /{team_id}/queues                                    │ │
+│  │  ├─ POST   /{team_id}/queues/{queue_id}/permissions             │ │
+│  │  ├─ DELETE /{team_id}/queues/{queue_id}/permissions             │ │
+│  │  ├─ GET    /{team_id}/queues/{queue_id}/permissions             │ │
+│  │  ├─ POST   /{team_id}/queues/{queue_id}/check-access            │ │
+│  │  ├─ GET    /{team_id}/queues/accessible/{user_id}               │ │
+│  │  └─ GET    /{team_id}/queues/{queue_id}                         │ │
+│  │                                                                     │ │
+│  │  DOMAIN 7: God Rights / Founder Rights (5 endpoints)            │ │
+│  │  ├─ POST   /god-rights/grant                                    │ │
+│  │  ├─ POST   /god-rights/revoke                                   │ │
+│  │  ├─ POST   /god-rights/check                                    │ │
+│  │  ├─ GET    /god-rights/users                                    │ │
+│  │  └─ GET    /god-rights/revoked                                  │ │
+│  │                                                                     │ │
+│  │  DOMAIN 8: Team Vault (9 endpoints)                             │ │
+│  │  ├─ POST   /{team_id}/vault/items                               │ │
+│  │  ├─ GET    /{team_id}/vault/items                               │ │
+│  │  ├─ GET    /{team_id}/vault/items/{item_id}                     │ │
+│  │  ├─ PUT    /{team_id}/vault/items/{item_id}                     │ │
+│  │  ├─ DELETE /{team_id}/vault/items/{item_id}                     │ │
+│  │  ├─ POST   /{team_id}/vault/items/{item_id}/permissions         │ │
+│  │  ├─ DELETE /{team_id}/vault/items/{item_id}/permissions         │ │
+│  │  ├─ GET    /{team_id}/vault/items/{item_id}/permissions         │ │
+│  │  └─ POST   /{team_id}/vault/items/{item_id}/check-permission    │ │
+│  │                                                                     │ │
+│  │  [Each endpoint is THIN - just validation + service call]        │ │
+│  │                                                                     │ │
+│  └─────────────────────────────────────────────────────────────────────┘ │
+│                                                                            │
+└───────────────────────────────────────────────────────────────────────────┘
+
+
+DEPENDENCY FLOW
+================================================================================
+
+    ┌──────────────────┐
+    │  FastAPI Routes  │  (api/routes/team.py)
+    └────────┬─────────┘
+             │
+             │ imports & depends on
+             ▼
+    ┌──────────────────────────────┐
+    │   Pydantic Models            │  (api/schemas/team_models.py)
+    │   + TeamManager Service      │  (api/services/team.py)
+    └─────┬──────────────┬──────────┘
+          │              │
+          │ uses         │ uses
+          ▼              ▼
+    ┌──────────┐    ┌──────────────┐
+    │ Pydantic │    │ TeamManager  │
+    │ Models   │    │ Class        │
+    └──────────┘    └────┬─────────┘
+                         │
+                    uses │
+                         ▼
+                  ┌──────────────┐
+                  │ External     │
+                  │ Dependencies │
+                  └──────────────┘
+                  ┌──────────────────┐
+                  │ permission_engine│  @require_perm decorators
+                  │ audit_logger     │  audit_log_sync calls
+                  │ rate_limiter     │  rate limit checks
+                  │ sqlite3 + DB     │  database operations
+                  └──────────────────┘
+
+
+DATABASE SCHEMA
+================================================================================
+
+EXISTING TABLES (9)
+├─ teams
+├─ team_members
+├─ invite_codes
+├─ team_invites
+├─ invite_attempts (brute-force)
+├─ delayed_promotions (21-day scheduling)
+├─ temp_promotions (offline failsafe)
+└─ [2 more internal tables]
+
+NEW TABLES TO CREATE (6)
+├─ workflow_permissions
+├─ queues
+├─ queue_permissions
+├─ god_rights
+├─ vault_items (with encryption)
+└─ vault_permissions
+
+
+MIGRATION PHASES
+================================================================================
+
+PHASE 1: Create Pydantic Models File
+├─ Extract all 76 models from current file
+├─ Organize into 8 logical groups
+├─ Add docstrings
+└─ 500-600 LOC
+
+PHASE 2: Create TeamManager Service File
+├─ Move TeamManager class (62 methods)
+├─ Move helper functions
+├─ Keep external dependency imports
+└─ 2,000-2,500 LOC
+
+PHASE 3: Create API Routes File
+├─ Extract all 50+ endpoints
+├─ Organize into 8 functional sections
+├─ Make endpoints thin
+└─ 1,500-2,000 LOC
+
+PHASE 4: Update Main Imports
+├─ Remove old team_service imports
+├─ Add new routes/schemas/services imports
+└─ Verify all dependencies resolve
+
+PHASE 5: Database Migrations
+├─ Create 6 new tables
+├─ Add proper indexes
+└─ Create migration script
+
+PHASE 6: Testing & Validation
+├─ Unit test service layer
+├─ Integration test endpoints
+├─ Verify all features work
+└─ Clean up/deprecate old team_service.py
+
