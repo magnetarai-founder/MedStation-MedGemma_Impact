@@ -523,14 +523,13 @@ services_loaded = []
 services_failed = []
 
 try:
-    from chat_service import public_router as chat_public_router
-    from chat_service import router as chat_router
-    app.include_router(chat_router)
-    app.include_router(chat_public_router)  # Public endpoints (health check)
+    from api.routes import chat as _chat_routes
+    app.include_router(_chat_routes.router)
+    app.include_router(_chat_routes.public_router)  # Public endpoints (health check)
     services_loaded.append("Chat")
 except Exception as e:
     services_failed.append("Chat")
-    logger.warning(f"Chat service not available: {e}")
+    logger.error("Failed to load chat router", exc_info=True)
 
 try:
     from p2p_chat_router import router as p2p_chat_router
