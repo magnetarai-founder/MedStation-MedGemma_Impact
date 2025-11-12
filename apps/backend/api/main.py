@@ -2034,88 +2034,92 @@ async def download_json_result(session_id: str, format: str = Query("excel", pat
 # Library API Endpoints (Saved Queries)
 # ============================================================================
 
-class SavedQueryRequest(BaseModel):
-    name: str
-    query: str
-    query_type: str
-    folder: str | None = None
-    description: str | None = None
-    tags: list[str] | None = None
-
-class SavedQueryUpdateRequest(BaseModel):
-    name: str | None = None
-    query: str | None = None
-    query_type: str | None = None
-    folder: str | None = None
-    description: str | None = None
-    tags: list[str] | None = None
-
-@app.post("/api/saved-queries")
-async def save_query(request: Request, body: SavedQueryRequest):
-    """Save a query for later use"""
-    try:
-        query_id = elohimos_memory.save_query(
-            name=body.name,
-            query=body.query,
-            query_type=body.query_type,
-            folder=body.folder,
-            description=body.description,
-            tags=body.tags
-        )
-        return {"id": query_id, "success": True}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/saved-queries")
-async def get_saved_queries(
-    folder: str | None = Query(None),
-    query_type: str | None = Query(None)
-):
-    """Get all saved queries"""
-    try:
-        queries = elohimos_memory.get_saved_queries(
-            folder=folder,
-            query_type=query_type
-        )
-        return {"queries": queries}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.put("/api/saved-queries/{query_id}")
-async def update_saved_query(request: Request, query_id: int, body: SavedQueryUpdateRequest):
-    """Update a saved query (partial updates supported)"""
-    try:
-        # Get existing query
-        all_queries = elohimos_memory.get_saved_queries()
-        existing = next((q for q in all_queries if q['id'] == query_id), None)
-
-        if not existing:
-            raise HTTPException(status_code=404, detail="Query not found")
-
-        # Merge updates with existing data
-        elohimos_memory.update_saved_query(
-            query_id=query_id,
-            name=body.name if body.name is not None else existing['name'],
-            query=body.query if body.query is not None else existing['query'],
-            query_type=body.query_type if body.query_type is not None else existing['query_type'],
-            folder=body.folder if body.folder is not None else existing.get('folder'),
-            description=body.description if body.description is not None else existing.get('description'),
-            tags=body.tags if body.tags is not None else (json.loads(existing.get('tags', '[]')) if existing.get('tags') else None)
-        )
-        return {"success": True}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.delete("/api/saved-queries/{query_id}")
-async def delete_saved_query(request: Request, query_id: int):
-    """Delete a saved query"""
-    try:
-        elohimos_memory.delete_saved_query(query_id)
-        return {"success": True}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# ============================================================================
+# MIGRATED TO: api/routes/saved_queries.py
+# ============================================================================
+# class SavedQueryRequest(BaseModel):
+#     name: str
+#     query: str
+#     query_type: str
+#     folder: str | None = None
+#     description: str | None = None
+#     tags: list[str] | None = None
+#
+# class SavedQueryUpdateRequest(BaseModel):
+#     name: str | None = None
+#     query: str | None = None
+#     query_type: str | None = None
+#     folder: str | None = None
+#     description: str | None = None
+#     tags: list[str] | None = None
+#
+# @app.post("/api/saved-queries")
+# async def save_query(request: Request, body: SavedQueryRequest):
+#     """Save a query for later use"""
+#     try:
+#         query_id = elohimos_memory.save_query(
+#             name=body.name,
+#             query=body.query,
+#             query_type=body.query_type,
+#             folder=body.folder,
+#             description=body.description,
+#             tags=body.tags
+#         )
+#         return {"id": query_id, "success": True}
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+#
+# @app.get("/api/saved-queries")
+# async def get_saved_queries(
+#     folder: str | None = Query(None),
+#     query_type: str | None = Query(None)
+# ):
+#     """Get all saved queries"""
+#     try:
+#         queries = elohimos_memory.get_saved_queries(
+#             folder=folder,
+#             query_type=query_type
+#         )
+#         return {"queries": queries}
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+#
+# @app.put("/api/saved-queries/{query_id}")
+# async def update_saved_query(request: Request, query_id: int, body: SavedQueryUpdateRequest):
+#     """Update a saved query (partial updates supported)"""
+#     try:
+#         # Get existing query
+#         all_queries = elohimos_memory.get_saved_queries()
+#         existing = next((q for q in all_queries if q['id'] == query_id), None)
+#
+#         if not existing:
+#             raise HTTPException(status_code=404, detail="Query not found")
+#
+#         # Merge updates with existing data
+#         elohimos_memory.update_saved_query(
+#             query_id=query_id,
+#             name=body.name if body.name is not None else existing['name'],
+#             query=body.query if body.query is not None else existing['query'],
+#             query_type=body.query_type if body.query_type is not None else existing['query_type'],
+#             folder=body.folder if body.folder is not None else existing.get('folder'),
+#             description=body.description if body.description is not None else existing.get('description'),
+#             tags=body.tags if body.tags is not None else (json.loads(existing.get('tags', '[]')) if existing.get('tags') else None)
+#         )
+#         return {"success": True}
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+#
+# @app.delete("/api/saved-queries/{query_id}")
+# async def delete_saved_query(request: Request, query_id: int):
+#     """Delete a saved query"""
+#     try:
+#         elohimos_memory.delete_saved_query(query_id)
+#         return {"success": True}
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+# ============================================================================
 
 
 # ============================================================================
