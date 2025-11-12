@@ -771,8 +771,8 @@ except Exception:
 try:
     from api.routes import sql_json as _sql_json_routes
     app.include_router(_sql_json_routes.router, prefix="/api/sessions")
-except Exception:
-    pass
+except Exception as e:
+    logger.error(f"Failed to import sql_json router: {e}", exc_info=True)
 
 try:
     from api.routes import saved_queries as _saved_queries_routes
@@ -1197,88 +1197,90 @@ async def _fallback_spawn_system_terminal(current_user: dict = Depends(get_curre
 #     del sessions[session_id]
 #     return {"message": "Session deleted"}
 # ============================================================================
-
-@app.post("/api/sessions/{session_id}/upload", response_model=FileUploadResponse)
-async def upload_file(
-    session_id: str,
-    file: UploadFile = File(...),
-    sheet_name: str | None = Form(None)
-):
-    """Upload and load an Excel file"""
-    if session_id not in sessions:
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    if not file.filename.lower().endswith(('.xlsx', '.xls', '.xlsm', '.csv')):
-        raise HTTPException(status_code=400, detail="Only Excel (.xlsx, .xls, .xlsm) and CSV files are supported")
-
-    # Save file (streamed) and enforce max size
-    file_path = await save_upload(file)
-    size_mb = file_path.stat().st_size / (1024 * 1024)
-    max_mb = float(config.get("max_file_size_mb", 1000))
-    if size_mb > max_mb:
-        try:
-            file_path.unlink()
-        except Exception:
-            pass
-        raise HTTPException(status_code=413, detail=f"File too large: {size_mb:.1f} MB (limit {int(max_mb)} MB)")
-
-    try:
-        engine = sessions[session_id]['engine']
-
-        # Load into engine based on file type
-        lower_name = file.filename.lower()
-        if lower_name.endswith('.csv'):
-            result = engine.load_csv(file_path, table_name="excel_file")
-        else:
-            result = engine.load_excel(file_path, table_name="excel_file", sheet_name=sheet_name)
-
-        # Defensive checks in case engine returns unexpected value
-        if result is None or not isinstance(result, QueryResult):
-            raise HTTPException(status_code=500, detail="Internal error: invalid engine result during load")
-
-        if result.error:
-            raise HTTPException(status_code=400, detail=result.error)
-
-        # Get preview data
-        preview_result = engine.execute_sql("SELECT * FROM excel_file LIMIT 20")
-
-        if preview_result is None or not isinstance(preview_result, QueryResult):
-            raise HTTPException(status_code=500, detail="Internal error: invalid engine result during preview")
-
-        if preview_result.error:
-            raise HTTPException(status_code=500, detail=preview_result.error)
-
-        # Store file info
-        file_info = {
-            "filename": file.filename,
-            "path": str(file_path),
-            "size_mb": file_path.stat().st_size / (1024 * 1024),
-            "loaded_at": datetime.now()
-        }
-        sessions[session_id]['files'][file.filename] = file_info
-
-        # Get column info
-        columns = get_column_info(preview_result.data)
-
-        # JSON-safe preview
-        preview_records = _df_to_jsonsafe_records(preview_result.data)
-
-        return FileUploadResponse(
-            filename=file.filename,
-            size_mb=file_info['size_mb'],
-            row_count=result.row_count,
-            column_count=len(result.column_names),
-            columns=columns,
-            preview=preview_records
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        # Clean up file on error
-        if file_path.exists():
-            file_path.unlink()
-        raise HTTPException(status_code=500, detail=str(e))
+# MIGRATED TO: api/routes/sql_json.py (Phase 4 - Upload Endpoint)
+# ============================================================================
+# @app.post("/api/sessions/{session_id}/upload", response_model=FileUploadResponse)
+# async def upload_file(
+#     session_id: str,
+#     file: UploadFile = File(...),
+#     sheet_name: str | None = Form(None)
+# ):
+#     """Upload and load an Excel file"""
+#     if session_id not in sessions:
+#         raise HTTPException(status_code=404, detail="Session not found")
+#
+#     if not file.filename.lower().endswith(('.xlsx', '.xls', '.xlsm', '.csv')):
+#         raise HTTPException(status_code=400, detail="Only Excel (.xlsx, .xls, .xlsm) and CSV files are supported")
+#
+#     # Save file (streamed) and enforce max size
+#     file_path = await save_upload(file)
+#     size_mb = file_path.stat().st_size / (1024 * 1024)
+#     max_mb = float(config.get("max_file_size_mb", 1000))
+#     if size_mb > max_mb:
+#         try:
+#             file_path.unlink()
+#         except Exception:
+#             pass
+#         raise HTTPException(status_code=413, detail=f"File too large: {size_mb:.1f} MB (limit {int(max_mb)} MB)")
+#
+#     try:
+#         engine = sessions[session_id]['engine']
+#
+#         # Load into engine based on file type
+#         lower_name = file.filename.lower()
+#         if lower_name.endswith('.csv'):
+#             result = engine.load_csv(file_path, table_name="excel_file")
+#         else:
+#             result = engine.load_excel(file_path, table_name="excel_file", sheet_name=sheet_name)
+#
+#         # Defensive checks in case engine returns unexpected value
+#         if result is None or not isinstance(result, QueryResult):
+#             raise HTTPException(status_code=500, detail="Internal error: invalid engine result during load")
+#
+#         if result.error:
+#             raise HTTPException(status_code=400, detail=result.error)
+#
+#         # Get preview data
+#         preview_result = engine.execute_sql("SELECT * FROM excel_file LIMIT 20")
+#
+#         if preview_result is None or not isinstance(preview_result, QueryResult):
+#             raise HTTPException(status_code=500, detail="Internal error: invalid engine result during preview")
+#
+#         if preview_result.error:
+#             raise HTTPException(status_code=500, detail=preview_result.error)
+#
+#         # Store file info
+#         file_info = {
+#             "filename": file.filename,
+#             "path": str(file_path),
+#             "size_mb": file_path.stat().st_size / (1024 * 1024),
+#             "loaded_at": datetime.now()
+#         }
+#         sessions[session_id]['files'][file.filename] = file_info
+#
+#         # Get column info
+#         columns = get_column_info(preview_result.data)
+#
+#         # JSON-safe preview
+#         preview_records = _df_to_jsonsafe_records(preview_result.data)
+#
+#         return FileUploadResponse(
+#             filename=file.filename,
+#             size_mb=file_info['size_mb'],
+#             row_count=result.row_count,
+#             column_count=len(result.column_names),
+#             columns=columns,
+#             preview=preview_records
+#         )
+#
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         # Clean up file on error
+#         if file_path.exists():
+#             file_path.unlink()
+#         raise HTTPException(status_code=500, detail=str(e))
+# ============================================================================
 
 @app.post("/api/sessions/{session_id}/validate", response_model=ValidationResponse)
 async def validate_sql(request: Request, session_id: str, body: ValidationRequest):
@@ -1298,121 +1300,125 @@ async def validate_sql(request: Request, session_id: str, body: ValidationReques
         warnings=warnings
     )
 
-@app.post("/api/sessions/{session_id}/query", response_model=QueryResponse)
-async def execute_query(
-    req: Request,
-    session_id: str,
-    request: QueryRequest,
-    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key")
-):
-    """Execute SQL query with deduplication support"""
-
-    # Request deduplication: Check if this is a duplicate request
-    if idempotency_key:
-        if _is_duplicate_request(f"query:{idempotency_key}"):
-            logger.warning(f"Duplicate query request detected: {idempotency_key}")
-            raise HTTPException(
-                status_code=409,
-                detail="Duplicate request detected. This query was already executed recently. Please wait 60 seconds or use a different idempotency key."
-            )
-
-    # Rate limit: 60 queries per minute
-    client_ip = get_client_ip(req)
-    if not rate_limiter.check_rate_limit(f"query:{client_ip}", max_requests=60, window_seconds=60):
-        raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 60 queries per minute.")
-
-    # Sanitize SQL for logging (redact potential sensitive data)
-    sanitized_sql = sanitize_for_log(request.sql[:100])
-    logger.info(f"Executing query for session {session_id}: {sanitized_sql}...")
-
-    if session_id not in sessions:
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    engine = sessions[session_id]['engine']
-    logger.info(f"Engine found for session {session_id}")
-
-    # Clean SQL (strip comments/trailing semicolons) to avoid parsing issues when embedding in LIMIT wrapper
-    cleaned_sql = SQLProcessor.clean_sql(request.sql)
-    sanitized_cleaned = sanitize_for_log(cleaned_sql[:100])
-    logger.info(f"Cleaned SQL: {sanitized_cleaned}...")
-
-    # Security: Validate query only accesses allowed tables (session's uploaded file)
-    from neutron_utils.sql_utils import SQLProcessor as SQLUtil
-    referenced_tables = SQLUtil.extract_table_names(cleaned_sql)
-
-    # Only allow queries to reference the excel_file table (or explicitly allowed tables)
-    allowed_tables = {'excel_file'}  # Default table for uploaded files
-    # TODO: Add support for multi-file sessions with explicit table names
-
-    unauthorized_tables = set(referenced_tables) - allowed_tables
-    if unauthorized_tables:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Query references unauthorized tables: {', '.join(unauthorized_tables)}. Only 'excel_file' is allowed."
-        )
-
-    # Execute query with timeout protection
-    # NOTE: True async cancellation requires aiosqlite (MED-06)
-    # For now, we use asyncio.wait_for to enforce max query time
-    timeout = request.timeout_seconds if hasattr(request, 'timeout_seconds') and request.timeout_seconds else 300  # 5min default
-
-    try:
-        result = await asyncio.wait_for(
-            asyncio.to_thread(
-                engine.execute_sql,
-                cleaned_sql,
-                dialect=request.dialect,
-                limit=request.limit
-            ),
-            timeout=timeout
-        )
-        logger.info(f"Query execution completed, rows: {result.row_count if result else 'error'}")
-    except asyncio.TimeoutError:
-        logger.error(f"Query execution timed out after {timeout}s")
-        raise HTTPException(
-            status_code=408,
-            detail=f"Query execution exceeded timeout of {timeout} seconds. Consider adding a LIMIT clause or optimizing your query."
-        )
-    except Exception as e:
-        logger.error(f"Query execution failed: {str(e)}")
-        raise
-
-    if result.error:
-        raise HTTPException(status_code=400, detail=result.error)
-
-    # Store full result for export (with size limits)
-    query_id = str(uuid.uuid4())
-    cached = _store_query_result(query_id, result.data)
-
-    if not cached:
-        logger.warning(f"Query result not cached (too large), export will be unavailable")
-
-    # Store query info
-    sessions[session_id]['queries'][query_id] = {
-        "sql": request.sql,
-        "executed_at": datetime.now(),
-        "row_count": result.row_count
-    }
-
-    # Return preview (random sample of 100 rows if dataset is large) — JSON-safe
-    preview_limit = 100
-    if result.row_count > preview_limit:
-        # Random sample for better data representation
-        preview_df = result.data.sample(n=preview_limit, random_state=None)
-    else:
-        preview_df = result.data
-
-    preview_data = _df_to_jsonsafe_records(preview_df)
-
-    return QueryResponse(
-        query_id=query_id,
-        row_count=result.row_count,
-        column_count=len(result.column_names),
-        columns=result.column_names,
-        execution_time_ms=result.execution_time_ms,
-        preview=preview_data,
-        has_more=result.row_count > preview_limit
-    )
+# ============================================================================
+# MIGRATED TO: api/routes/sql_json.py (Phase 4 - Query Endpoint)
+# ============================================================================
+# @app.post("/api/sessions/{session_id}/query", response_model=QueryResponse)
+# async def execute_query(
+#     req: Request,
+#     session_id: str,
+#     request: QueryRequest,
+#     idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key")
+# ):
+#     """Execute SQL query with deduplication support"""
+#
+#     # Request deduplication: Check if this is a duplicate request
+#     if idempotency_key:
+#         if _is_duplicate_request(f"query:{idempotency_key}"):
+#             logger.warning(f"Duplicate query request detected: {idempotency_key}")
+#             raise HTTPException(
+#                 status_code=409,
+#                 detail="Duplicate request detected. This query was already executed recently. Please wait 60 seconds or use a different idempotency key."
+#             )
+#
+#     # Rate limit: 60 queries per minute
+#     client_ip = get_client_ip(req)
+#     if not rate_limiter.check_rate_limit(f"query:{client_ip}", max_requests=60, window_seconds=60):
+#         raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 60 queries per minute.")
+#
+#     # Sanitize SQL for logging (redact potential sensitive data)
+#     sanitized_sql = sanitize_for_log(request.sql[:100])
+#     logger.info(f"Executing query for session {session_id}: {sanitized_sql}...")
+#
+#     if session_id not in sessions:
+#         raise HTTPException(status_code=404, detail="Session not found")
+#
+#     engine = sessions[session_id]['engine']
+#     logger.info(f"Engine found for session {session_id}")
+#
+#     # Clean SQL (strip comments/trailing semicolons) to avoid parsing issues when embedding in LIMIT wrapper
+#     cleaned_sql = SQLProcessor.clean_sql(request.sql)
+#     sanitized_cleaned = sanitize_for_log(cleaned_sql[:100])
+#     logger.info(f"Cleaned SQL: {sanitized_cleaned}...")
+#
+#     # Security: Validate query only accesses allowed tables (session's uploaded file)
+#     from neutron_utils.sql_utils import SQLProcessor as SQLUtil
+#     referenced_tables = SQLUtil.extract_table_names(cleaned_sql)
+#
+#     # Only allow queries to reference the excel_file table (or explicitly allowed tables)
+#     allowed_tables = {'excel_file'}  # Default table for uploaded files
+#     # TODO: Add support for multi-file sessions with explicit table names
+#
+#     unauthorized_tables = set(referenced_tables) - allowed_tables
+#     if unauthorized_tables:
+#         raise HTTPException(
+#             status_code=403,
+#             detail=f"Query references unauthorized tables: {', '.join(unauthorized_tables)}. Only 'excel_file' is allowed."
+#         )
+#
+#     # Execute query with timeout protection
+#     # NOTE: True async cancellation requires aiosqlite (MED-06)
+#     # For now, we use asyncio.wait_for to enforce max query time
+#     timeout = request.timeout_seconds if hasattr(request, 'timeout_seconds') and request.timeout_seconds else 300  # 5min default
+#
+#     try:
+#         result = await asyncio.wait_for(
+#             asyncio.to_thread(
+#                 engine.execute_sql,
+#                 cleaned_sql,
+#                 dialect=request.dialect,
+#                 limit=request.limit
+#             ),
+#             timeout=timeout
+#         )
+#         logger.info(f"Query execution completed, rows: {result.row_count if result else 'error'}")
+#     except asyncio.TimeoutError:
+#         logger.error(f"Query execution timed out after {timeout}s")
+#         raise HTTPException(
+#             status_code=408,
+#             detail=f"Query execution exceeded timeout of {timeout} seconds. Consider adding a LIMIT clause or optimizing your query."
+#         )
+#     except Exception as e:
+#         logger.error(f"Query execution failed: {str(e)}")
+#         raise
+#
+#     if result.error:
+#         raise HTTPException(status_code=400, detail=result.error)
+#
+#     # Store full result for export (with size limits)
+#     query_id = str(uuid.uuid4())
+#     cached = _store_query_result(query_id, result.data)
+#
+#     if not cached:
+#         logger.warning(f"Query result not cached (too large), export will be unavailable")
+#
+#     # Store query info
+#     sessions[session_id]['queries'][query_id] = {
+#         "sql": request.sql,
+#         "executed_at": datetime.now(),
+#         "row_count": result.row_count
+#     }
+#
+#     # Return preview (random sample of 100 rows if dataset is large) — JSON-safe
+#     preview_limit = 100
+#     if result.row_count > preview_limit:
+#         # Random sample for better data representation
+#         preview_df = result.data.sample(n=preview_limit, random_state=None)
+#     else:
+#         preview_df = result.data
+#
+#     preview_data = _df_to_jsonsafe_records(preview_df)
+#
+#     return QueryResponse(
+#         query_id=query_id,
+#         row_count=result.row_count,
+#         column_count=len(result.column_names),
+#         columns=result.column_names,
+#         execution_time_ms=result.execution_time_ms,
+#         preview=preview_data,
+#         has_more=result.row_count > preview_limit
+#     )
+# ============================================================================
 
 @app.get("/api/sessions/{session_id}/query-history", response_model=QueryHistoryResponse)
 async def get_query_history(session_id: str):
