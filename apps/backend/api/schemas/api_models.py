@@ -126,6 +126,25 @@ class JsonConvertResponse(BaseModel):
 
 
 # ============================================================================
+# Additional Session Data Models
+# ============================================================================
+
+class SheetNamesResponse(BaseModel):
+    filename: str
+    sheets: list[str]
+
+
+class TableInfo(BaseModel):
+    name: str
+    file: str
+    row_count: int
+    column_count: int
+
+
+class TablesListResponse(BaseModel):
+    tables: list[TableInfo]
+
+
 # Generic Response Models
 # ============================================================================
 

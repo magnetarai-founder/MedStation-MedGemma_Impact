@@ -857,6 +857,8 @@ from api.schemas.api_models import (
     JsonUploadResponse,
     JsonConvertRequest,
     JsonConvertResponse,
+    SheetNamesResponse,
+    TablesListResponse,
 )
 
 # Helper functions
@@ -1234,23 +1236,26 @@ async def _fallback_spawn_system_terminal(current_user: dict = Depends(get_curre
 #         raise HTTPException(status_code=500, detail=str(e))
 # ============================================================================
 
-@app.post("/api/sessions/{session_id}/validate", response_model=ValidationResponse)
-async def validate_sql(request: Request, session_id: str, body: ValidationRequest):
-    """Validate SQL syntax before execution"""
-    if session_id not in sessions:
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    validator = SQLValidator()
-    is_valid, errors, warnings = validator.validate_sql(
-        body.sql,
-        expected_table="excel_file"
-    )
-
-    return ValidationResponse(
-        is_valid=is_valid,
-        errors=errors,
-        warnings=warnings
-    )
+# ============================================================================
+# MIGRATED TO: api/routes/sql_json.py (Quick Wins - Validate Endpoint)
+# ============================================================================
+# @app.post("/api/sessions/{session_id}/validate", response_model=ValidationResponse)
+# async def validate_sql(request: Request, session_id: str, body: ValidationRequest):
+#     """Validate SQL syntax before execution"""
+#     if session_id not in sessions:
+#         raise HTTPException(status_code=404, detail="Session not found")
+#
+#     validator = SQLValidator()
+#     is_valid, errors, warnings = validator.validate_sql(
+#         body.sql,
+#         expected_table="excel_file"
+#     )
+#
+#     return ValidationResponse(
+#         is_valid=is_valid,
+#         errors=errors,
+#         warnings=warnings
+#     )
 
 # ============================================================================
 # MIGRATED TO: api/routes/sql_json.py (Phase 4 - Query Endpoint)
@@ -1372,52 +1377,55 @@ async def validate_sql(request: Request, session_id: str, body: ValidationReques
 #     )
 # ============================================================================
 
-@app.get("/api/sessions/{session_id}/query-history", response_model=QueryHistoryResponse)
-async def get_query_history(session_id: str):
-    """Get query history for a session"""
-    if session_id not in sessions:
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    queries = sessions[session_id].get('queries', {})
-    history = []
-
-    for query_id, query_info in queries.items():
-        history.append({
-            "id": query_id,
-            "query": query_info["sql"],
-            "timestamp": query_info["executed_at"].isoformat(),
-            "executionTime": query_info.get("execution_time_ms"),
-            "rowCount": query_info.get("row_count"),
-            "status": "success"  # We only store successful queries
-        })
-
-    # Sort by timestamp descending (most recent first)
-    history.sort(key=lambda x: x["timestamp"], reverse=True)
-
-    return {"history": history}
-
-@app.delete("/api/sessions/{session_id}/query-history/{query_id}", response_model=SuccessResponse)
-async def delete_query_from_history(request: Request, session_id: str, query_id: str):
-    """Delete a query from history"""
-    if session_id not in sessions:
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    queries = sessions[session_id].get('queries', {})
-    if query_id not in queries:
-        raise HTTPException(status_code=404, detail="Query not found")
-
-    del queries[query_id]
-
-    # Also remove from query_results cache if it exists
-    if query_id in query_results:
-        global _total_cache_size
-        size = _query_result_sizes.get(query_id, 0)
-        del query_results[query_id]
-        if query_id in _query_result_sizes:
-            del _query_result_sizes[query_id]
-        _total_cache_size -= size
-
-    return SuccessResponse(success=True, message="Query deleted successfully")
+# ============================================================================
+# MIGRATED TO: api/routes/sql_json.py (Quick Wins - Query History Endpoints)
+# ============================================================================
+# @app.get("/api/sessions/{session_id}/query-history", response_model=QueryHistoryResponse)
+# async def get_query_history(session_id: str):
+#     """Get query history for a session"""
+#     if session_id not in sessions:
+#         raise HTTPException(status_code=404, detail="Session not found")
+#
+#     queries = sessions[session_id].get('queries', {})
+#     history = []
+#
+#     for query_id, query_info in queries.items():
+#         history.append({
+#             "id": query_id,
+#             "query": query_info["sql"],
+#             "timestamp": query_info["executed_at"].isoformat(),
+#             "executionTime": query_info.get("execution_time_ms"),
+#             "rowCount": query_info.get("row_count"),
+#             "status": "success"  # We only store successful queries
+#         })
+#
+#     # Sort by timestamp descending (most recent first)
+#     history.sort(key=lambda x: x["timestamp"], reverse=True)
+#
+#     return {"history": history}
+#
+# @app.delete("/api/sessions/{session_id}/query-history/{query_id}", response_model=SuccessResponse)
+# async def delete_query_from_history(request: Request, session_id: str, query_id: str):
+#     """Delete a query from history"""
+#     if session_id not in sessions:
+#         raise HTTPException(status_code=404, detail="Session not found")
+#
+#     queries = sessions[session_id].get('queries', {})
+#     if query_id not in queries:
+#         raise HTTPException(status_code=404, detail="Query not found")
+#
+#     del queries[query_id]
+#
+#     # Also remove from query_results cache if it exists
+#     if query_id in query_results:
+#         global _total_cache_size
+#         size = _query_result_sizes.get(query_id, 0)
+#         del query_results[query_id]
+#         if query_id in _query_result_sizes:
+#             del _query_result_sizes[query_id]
+#         _total_cache_size -= size
+#
+#     return SuccessResponse(success=True, message="Query deleted successfully")
 
 @app.post("/api/sessions/{session_id}/export")
 @require_perm("data.export")
@@ -1490,56 +1498,59 @@ async def export_results(req: Request, session_id: str, request: ExportRequest, 
         background=BackgroundTask(lambda: file_path.unlink(missing_ok=True))
     )
 
-@app.get("/api/sessions/{session_id}/sheet-names")
-async def sheet_names(session_id: str, filename: str | None = Query(None)):
-    """List Excel sheet names for an uploaded file in this session."""
-    if session_id not in sessions:
-        raise HTTPException(status_code=404, detail="Session not found")
-    try:
-        from neutron_utils.excel_ops import ExcelReader
-    except Exception:
-        raise HTTPException(status_code=500, detail="Excel utilities unavailable")
-
-    files = sessions[session_id].get('files', {})
-    file_info = None
-    if filename and filename in files:
-        file_info = files[filename]
-    else:
-        # Pick first Excel file in session
-        for info in files.values():
-            if str(info.get('path', '')).lower().endswith(('.xlsx', '.xls', '.xlsm')):
-                file_info = info
-                break
-    if not file_info:
-        raise HTTPException(status_code=404, detail="No Excel file found in session")
-    path = Path(file_info['path'])
-    if not path.exists():
-        raise HTTPException(status_code=404, detail="File not found on server")
-    try:
-        sheets = ExcelReader.get_sheet_names(str(path))
-        return {"filename": file_info.get('filename', path.name), "sheets": sheets}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/sessions/{session_id}/tables")
-async def list_tables(session_id: str):
-    """List loaded tables in session"""
-    if session_id not in sessions:
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    engine = sessions[session_id]['engine']
-    tables = []
-
-    for table_name, file_path in engine.tables.items():
-        table_info = engine.get_table_info(table_name)
-        tables.append({
-            "name": table_name,
-            "file": Path(file_path).name,
-            "row_count": table_info.get('row_count', 0),
-            "column_count": len(table_info.get('columns', []))
-        })
-
-    return {"tables": tables}
+# ============================================================================
+# MIGRATED TO: api/routes/sql_json.py (Quick Wins - Sheet Names & Tables Endpoints)
+# ============================================================================
+# @app.get("/api/sessions/{session_id}/sheet-names")
+# async def sheet_names(session_id: str, filename: str | None = Query(None)):
+#     """List Excel sheet names for an uploaded file in this session."""
+#     if session_id not in sessions:
+#         raise HTTPException(status_code=404, detail="Session not found")
+#     try:
+#         from neutron_utils.excel_ops import ExcelReader
+#     except Exception:
+#         raise HTTPException(status_code=500, detail="Excel utilities unavailable")
+#
+#     files = sessions[session_id].get('files', {})
+#     file_info = None
+#     if filename and filename in files:
+#         file_info = files[filename]
+#     else:
+#         # Pick first Excel file in session
+#         for info in files.values():
+#             if str(info.get('path', '')).lower().endswith(('.xlsx', '.xls', '.xlsm')):
+#                 file_info = info
+#                 break
+#     if not file_info:
+#         raise HTTPException(status_code=404, detail="No Excel file found in session")
+#     path = Path(file_info['path'])
+#     if not path.exists():
+#         raise HTTPException(status_code=404, detail="File not found on server")
+#     try:
+#         sheets = ExcelReader.get_sheet_names(str(path))
+#         return {"filename": file_info.get('filename', path.name), "sheets": sheets}
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+#
+# @app.get("/api/sessions/{session_id}/tables")
+# async def list_tables(session_id: str):
+#     """List loaded tables in session"""
+#     if session_id not in sessions:
+#         raise HTTPException(status_code=404, detail="Session not found")
+#
+#     engine = sessions[session_id]['engine']
+#     tables = []
+#
+#     for table_name, file_path in engine.tables.items():
+#         table_info = engine.get_table_info(table_name)
+#         tables.append({
+#             "name": table_name,
+#             "file": Path(file_path).name,
+#             "row_count": table_info.get('row_count', 0),
+#             "column_count": len(table_info.get('columns', []))
+#         })
+#
+#     return {"tables": tables}
 
 @app.websocket("/api/sessions/{session_id}/ws")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
