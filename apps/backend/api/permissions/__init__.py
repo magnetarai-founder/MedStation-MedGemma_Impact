@@ -1,0 +1,4 @@
+"""
+Permissions domain package placeholder.
+"""
+

@@ -1,0 +1,4 @@
+"""
+Team domain package placeholder.
+"""
+

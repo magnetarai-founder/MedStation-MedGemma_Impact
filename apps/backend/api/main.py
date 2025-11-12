@@ -755,6 +755,79 @@ except ImportError as e:
     logger.warning(f"Could not import health_diagnostics: {e}")
     health_diagnostics = None
 
+# Optional placeholder routers for upcoming modular refactor (no endpoints defined)
+try:
+    from api.routes import system as _system_routes
+    app.include_router(_system_routes.router)
+except Exception:
+    pass
+
+try:
+    from api.routes import sessions as _sessions_routes
+    app.include_router(_sessions_routes.router, prefix="/api/sessions")
+except Exception:
+    pass
+
+try:
+    from api.routes import sql_json as _sql_json_routes
+    app.include_router(_sql_json_routes.router, prefix="/api/sessions")
+except Exception:
+    pass
+
+try:
+    from api.routes import saved_queries as _saved_queries_routes
+    app.include_router(_saved_queries_routes.router, prefix="/api/saved-queries")
+except Exception:
+    pass
+
+try:
+    from api.routes import settings as _settings_routes
+    app.include_router(_settings_routes.router, prefix="/api/settings")
+except Exception:
+    pass
+
+try:
+    from api.routes import metrics as _metrics_routes
+    app.include_router(_metrics_routes.router, prefix="/metrics")
+except Exception:
+    pass
+
+try:
+    from api.routes import metal as _metal_routes
+    app.include_router(_metal_routes.router, prefix="/api/v1/metal")
+except Exception:
+    pass
+
+try:
+    from api.routes import admin as _admin_routes
+    app.include_router(_admin_routes.router, prefix="/api/admin")
+except Exception:
+    pass
+
+try:
+    from api.vault import routes as _vault_routes
+    app.include_router(_vault_routes.router, prefix="/api/v1/vault")
+except Exception:
+    pass
+
+try:
+    from api.team import routes as _team_routes
+    app.include_router(_team_routes.router, prefix="/api/v1/teams")
+except Exception:
+    pass
+
+try:
+    from api.chat import routes as _chat_routes
+    app.include_router(_chat_routes.router, prefix="/api/v1/chat")
+except Exception:
+    pass
+
+try:
+    from api.permissions import routes as _perm_routes
+    app.include_router(_perm_routes.router, prefix="/api/v1/permissions")
+except Exception:
+    pass
+
 # Log summary of loaded services
 if services_loaded:
     logger.info(f"✓ Services: {', '.join(services_loaded)}")
