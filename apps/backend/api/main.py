@@ -1157,42 +1157,46 @@ async def _fallback_spawn_system_terminal(current_user: dict = Depends(get_curre
 # All frontend code should use /api/v1/auth/* prefix
 
 
-@app.post("/api/sessions/create", response_model=SessionResponse)
-async def create_session(request: Request):
-    """Create a new session with isolated engine"""
-    session_id = str(uuid.uuid4())
-    sessions[session_id] = {
-        "id": session_id,
-        "created_at": datetime.now(),
-        "engine": NeutronEngine(),
-        "files": {},
-        "queries": {}
-    }
-    return SessionResponse(session_id=session_id, created_at=sessions[session_id]["created_at"])
-
-@app.delete("/api/sessions/{session_id}")
-async def delete_session(request: Request, session_id: str):
-    """Clean up session and its resources"""
-    if session_id not in sessions:
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    session = sessions[session_id]
-
-    # Close engine
-    if 'engine' in session:
-        session['engine'].close()
-
-    # Clean up temp files
-    for file_info in session.get('files', {}).values():
-        if 'path' in file_info and Path(file_info['path']).exists():
-            Path(file_info['path']).unlink()
-
-    # Clean up query results
-    for query_id in session.get('queries', {}):
-        query_results.pop(query_id, None)
-
-    del sessions[session_id]
-    return {"message": "Session deleted"}
+# ============================================================================
+# MIGRATED TO: api/routes/sessions.py
+# ============================================================================
+# @app.post("/api/sessions/create", response_model=SessionResponse)
+# async def create_session(request: Request):
+#     """Create a new session with isolated engine"""
+#     session_id = str(uuid.uuid4())
+#     sessions[session_id] = {
+#         "id": session_id,
+#         "created_at": datetime.now(),
+#         "engine": NeutronEngine(),
+#         "files": {},
+#         "queries": {}
+#     }
+#     return SessionResponse(session_id=session_id, created_at=sessions[session_id]["created_at"])
+#
+# @app.delete("/api/sessions/{session_id}")
+# async def delete_session(request: Request, session_id: str):
+#     """Clean up session and its resources"""
+#     if session_id not in sessions:
+#         raise HTTPException(status_code=404, detail="Session not found")
+#
+#     session = sessions[session_id]
+#
+#     # Close engine
+#     if 'engine' in session:
+#         session['engine'].close()
+#
+#     # Clean up temp files
+#     for file_info in session.get('files', {}).values():
+#         if 'path' in file_info and Path(file_info['path']).exists():
+#             Path(file_info['path']).unlink()
+#
+#     # Clean up query results
+#     for query_id in session.get('queries', {}):
+#         query_results.pop(query_id, None)
+#
+#     del sessions[session_id]
+#     return {"message": "Session deleted"}
+# ============================================================================
 
 @app.post("/api/sessions/{session_id}/upload", response_model=FileUploadResponse)
 async def upload_file(
