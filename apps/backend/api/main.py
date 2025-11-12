@@ -2193,48 +2193,52 @@ def save_app_settings(settings: AppSettings) -> None:
 
 app_settings = load_app_settings()
 
-@app.get("/api/settings")
-async def get_settings():
-    """Get current app settings"""
-    return app_settings.dict()
-
-@app.post("/api/settings")
-async def update_settings(request: Request, settings: AppSettings):
-    """Update app settings"""
-    global app_settings
-    app_settings = settings
-    save_app_settings(settings)
-    return {"success": True, "settings": app_settings.dict()}
-
-@app.get("/api/settings/memory-status")
-async def get_memory_status():
-    """Get current memory usage and allocation"""
-    try:
-        import psutil
-        process = psutil.Process()
-        mem_info = process.memory_info()
-        system_mem = psutil.virtual_memory()
-
-        return {
-            "process_memory_mb": mem_info.rss / (1024 * 1024),
-            "system_total_mb": system_mem.total / (1024 * 1024),
-            "system_available_mb": system_mem.available / (1024 * 1024),
-            "system_percent_used": system_mem.percent,
-            "settings": {
-                "app_percent": app_settings.app_memory_percent,
-                "processing_percent": app_settings.processing_memory_percent,
-                "cache_percent": app_settings.cache_memory_percent,
-            }
-        }
-    except ImportError:
-        return {
-            "error": "psutil not available",
-            "settings": {
-                "app_percent": app_settings.app_memory_percent,
-                "processing_percent": app_settings.processing_memory_percent,
-                "cache_percent": app_settings.cache_memory_percent,
-            }
-        }
+# ============================================================================
+# MIGRATED TO: api/routes/settings.py
+# ============================================================================
+# @app.get("/api/settings")
+# async def get_settings():
+#     """Get current app settings"""
+#     return app_settings.dict()
+#
+# @app.post("/api/settings")
+# async def update_settings(request: Request, settings: AppSettings):
+#     """Update app settings"""
+#     global app_settings
+#     app_settings = settings
+#     save_app_settings(settings)
+#     return {"success": True, "settings": app_settings.dict()}
+#
+# @app.get("/api/settings/memory-status")
+# async def get_memory_status():
+#     """Get current memory usage and allocation"""
+#     try:
+#         import psutil
+#         process = psutil.Process()
+#         mem_info = process.memory_info()
+#         system_mem = psutil.virtual_memory()
+#
+#         return {
+#             "process_memory_mb": mem_info.rss / (1024 * 1024),
+#             "system_total_mb": system_mem.total / (1024 * 1024),
+#             "system_available_mb": system_mem.available / (1024 * 1024),
+#             "system_percent_used": system_mem.percent,
+#             "settings": {
+#                 "app_percent": app_settings.app_memory_percent,
+#                 "processing_percent": app_settings.processing_memory_percent,
+#                 "cache_percent": app_settings.cache_memory_percent,
+#             }
+#         }
+#     except ImportError:
+#         return {
+#             "error": "psutil not available",
+#             "settings": {
+#                 "app_percent": app_settings.app_memory_percent,
+#                 "processing_percent": app_settings.processing_memory_percent,
+#                 "cache_percent": app_settings.cache_memory_percent,
+#             }
+#         }
+# ============================================================================
 
 # ============================================================================
 # Danger Zone Admin Endpoints
