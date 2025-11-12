@@ -93,10 +93,13 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "packages"))
 
 from neutron_core.engine import NeutronEngine, QueryResult, SQLDialect
 from neutron_utils.config import config
-from neutron_utils.json_utils import df_to_jsonsafe_records as _df_to_jsonsafe_records
 from neutron_utils.sql_utils import SQLProcessor
 
 from redshift_sql_processor import RedshiftSQLProcessor
+
+# Import helpers from services
+from api.services.files import save_upload
+from api.services.sql_helpers import get_column_info, df_to_jsonsafe_records as _df_to_jsonsafe_records
 from sql_validator import SQLValidator
 
 # Phase 2: Import permission decorator
@@ -862,44 +865,10 @@ from api.schemas.api_models import (
 )
 
 # Helper functions
-async def save_upload(upload_file: UploadFile) -> Path:
-    """Save uploaded file to temp directory"""
-    # Get the directory where this script is located
-    api_dir = Path(__file__).parent
-    temp_dir = api_dir / "temp_uploads"
-    temp_dir.mkdir(exist_ok=True)
-
-    # Sanitize filename to prevent path traversal (HIGH-01)
-    safe_filename = sanitize_filename(upload_file.filename)
-    file_path = temp_dir / f"{uuid.uuid4()}_{safe_filename}"
-    # Stream upload to disk in chunks to avoid memory spikes
-    chunk_size = 16 * 1024 * 1024  # 16MB
-    async with aiofiles.open(file_path, 'wb') as f:
-        while True:
-            chunk = await upload_file.read(chunk_size)
-            if not chunk:
-                break
-            await f.write(chunk)
-
-    return file_path
-
-def get_column_info(df: pd.DataFrame) -> list[ColumnInfo]:
-    """Get column information with clean names"""
-    from neutron_utils.sql_utils import ColumnNameCleaner
-    cleaner = ColumnNameCleaner()
-
-    columns: list[ColumnInfo] = []
-    for col in df.columns:
-        # Use the supported cleaner API (instance method `clean`)
-        clean_name = cleaner.clean(str(col))
-        columns.append(ColumnInfo(
-            original_name=str(col),
-            clean_name=clean_name,
-            dtype=str(df[col].dtype),
-            non_null_count=int(df[col].notna().sum()),
-            null_count=int(df[col].isna().sum())
-        ))
-    return columns
+# Helper functions moved to api/services/
+# - save_upload -> api.services.files
+# - get_column_info -> api.services.sql_helpers
+# - df_to_jsonsafe_records -> api.services.sql_helpers
 
 # Endpoints
 @app.get("/")

@@ -38,16 +38,16 @@ def get_config():
     return config
 
 def get_save_upload():
-    from api import main
-    return main.save_upload
+    from api.services.files import save_upload
+    return save_upload
 
 def get_column_info():
-    from api import main
-    return main.get_column_info
+    from api.services.sql_helpers import get_column_info as _get_column_info
+    return _get_column_info
 
 def get_df_to_jsonsafe_records():
-    from api import main
-    return main._df_to_jsonsafe_records
+    from api.services.sql_helpers import df_to_jsonsafe_records
+    return df_to_jsonsafe_records
 
 def get_rate_limiter():
     from api import main
