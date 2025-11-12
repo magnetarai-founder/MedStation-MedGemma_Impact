@@ -565,12 +565,12 @@ except Exception as e:
     logger.debug(f"Code Editor not available: {e}")
 
 try:
-    from user_service import router as user_router
-    app.include_router(user_router)
+    from api.routes import users as _users_routes
+    app.include_router(_users_routes.router)
     services_loaded.append("User")
 except Exception as e:
     services_failed.append("User")
-    logger.debug(f"User service not available: {e}")
+    logger.error("Failed to load users router", exc_info=True)
 
 try:
     from team_service import router as team_router
@@ -804,8 +804,8 @@ except Exception:
 try:
     from api.routes import admin as _admin_routes
     app.include_router(_admin_routes.router, prefix="/api/admin")
-except Exception:
-    pass
+except Exception as e:
+    logger.error("Failed to load admin router", exc_info=True)
 
 try:
     from api.vault import routes as _vault_routes
@@ -1700,288 +1700,23 @@ app_settings = load_app_settings()
 # ============================================================================
 
 # ============================================================================
-# Danger Zone Admin Endpoints
+# MIGRATED TO: api/routes/admin.py
 # ============================================================================
-
-@app.post("/api/admin/reset-all")
-# @limiter.limit("3/hour")  # Very strict limit for destructive admin operations
-async def reset_all_data(request: Request):
-    """Reset all app data - clears database and temp files"""
-    try:
-        import shutil
-
-        # Clear all saved queries and history
-        elohimos_memory.memory.conn.execute("DELETE FROM query_history")
-        elohimos_memory.memory.conn.execute("DELETE FROM saved_queries")
-        elohimos_memory.memory.conn.execute("DELETE FROM app_settings")
-        elohimos_memory.memory.conn.commit()
-
-        # Reset settings to defaults
-        global app_settings
-        app_settings = AppSettings()
-
-        # Clear temp directories
-        api_dir = Path(__file__).parent
-        temp_uploads = api_dir / "temp_uploads"
-        temp_exports = api_dir / "temp_exports"
-
-        if temp_uploads.exists():
-            shutil.rmtree(temp_uploads)
-            temp_uploads.mkdir()
-
-        if temp_exports.exists():
-            shutil.rmtree(temp_exports)
-            temp_exports.mkdir()
-
-        # Clear all sessions
-        sessions.clear()
-        query_results.clear()
-
-        return {"success": True, "message": "All data has been reset"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Reset failed: {str(e)}")
-
-@app.post("/api/admin/uninstall")
-async def uninstall_app(request: Request):
-    """Uninstall app - removes all data directories"""
-    try:
-        import shutil
-        from pathlib import Path
-
-        # Close database connection
-        elohimos_memory.close()
-
-        # Get data directories
-        data_dir = settings.data_dir
-
-        # Remove data directory
-        if data_dir.exists():
-            shutil.rmtree(data_dir)
-
-        return {"success": True, "message": "App data has been uninstalled"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Uninstall failed: {str(e)}")
-
-# New Danger Zone Endpoints
-
-@app.post("/api/admin/clear-chats")
-async def clear_chats(request: Request):
-    """Clear all AI chat history"""
-    try:
-        import shutil
-        api_dir = Path(__file__).parent
-        chats_dir = api_dir / ".neutron_data" / "chats"
-
-        if chats_dir.exists():
-            shutil.rmtree(chats_dir)
-            chats_dir.mkdir(parents=True)
-            (chats_dir / "sessions.json").write_text("[]")
-
-        return {"success": True, "message": "AI chat history cleared"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Clear chats failed: {str(e)}")
-
-@app.post("/api/admin/clear-team-messages")
-async def clear_team_messages(request: Request):
-    """Clear P2P team chat history"""
-    try:
-        import shutil
-        api_dir = Path(__file__).parent
-        p2p_dir = api_dir / ".neutron_data" / "p2p"
-
-        if p2p_dir.exists():
-            shutil.rmtree(p2p_dir)
-            p2p_dir.mkdir(parents=True)
-
-        return {"success": True, "message": "Team messages cleared"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Clear team messages failed: {str(e)}")
-
-@app.post("/api/admin/clear-query-library")
-async def clear_query_library(request: Request):
-    """Clear all saved SQL queries"""
-    try:
-        elohimos_memory.memory.conn.execute("DELETE FROM saved_queries")
-        elohimos_memory.memory.conn.commit()
-
-        return {"success": True, "message": "Query library cleared"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Clear library failed: {str(e)}")
-
-@app.post("/api/admin/clear-query-history")
-async def clear_query_history(request: Request):
-    """Clear SQL execution history"""
-    try:
-        elohimos_memory.memory.conn.execute("DELETE FROM query_history")
-        elohimos_memory.memory.conn.commit()
-
-        return {"success": True, "message": "Query history cleared"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Clear history failed: {str(e)}")
-
-@app.post("/api/admin/clear-temp-files")
-async def clear_temp_files(request: Request):
-    """Clear uploaded files and exports"""
-    try:
-        import shutil
-        api_dir = Path(__file__).parent
-
-        for temp_dir_name in ["temp_uploads", "temp_exports"]:
-            temp_dir = api_dir / temp_dir_name
-            if temp_dir.exists():
-                shutil.rmtree(temp_dir)
-                temp_dir.mkdir()
-
-        return {"success": True, "message": "Temp files cleared"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Clear temp failed: {str(e)}")
-
-@app.post("/api/admin/clear-code-files")
-async def clear_code_files(request: Request):
-    """Clear saved code editor files"""
-    try:
-        import shutil
-        api_dir = Path(__file__).parent
-        code_dir = api_dir / ".neutron_data" / "code"
-
-        if code_dir.exists():
-            shutil.rmtree(code_dir)
-            code_dir.mkdir(parents=True)
-
-        return {"success": True, "message": "Code files cleared"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Clear code failed: {str(e)}")
-
-@app.post("/api/admin/reset-settings")
-async def reset_settings(request: Request):
-    """Reset all settings to defaults"""
-    try:
-        elohimos_memory.memory.conn.execute("DELETE FROM app_settings")
-        elohimos_memory.memory.conn.commit()
-
-        global app_settings
-        app_settings = AppSettings()
-
-        return {"success": True, "message": "Settings reset to defaults"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Reset settings failed: {str(e)}")
-
-@app.post("/api/admin/reset-data")
-async def reset_data(request: Request):
-    """Delete all data but keep settings"""
-    try:
-        import shutil
-
-        # Clear database tables except settings
-        elohimos_memory.memory.conn.execute("DELETE FROM query_history")
-        elohimos_memory.memory.conn.execute("DELETE FROM saved_queries")
-        elohimos_memory.memory.conn.commit()
-
-        # Clear chat data
-        api_dir = Path(__file__).parent
-        neutron_data = api_dir / ".neutron_data"
-
-        for subdir in ["chats", "p2p", "code", "uploads"]:
-            target = neutron_data / subdir
-            if target.exists():
-                shutil.rmtree(target)
-                target.mkdir(parents=True)
-
-        # Clear temp files
-        for temp_dir_name in ["temp_uploads", "temp_exports"]:
-            temp_dir = api_dir / temp_dir_name
-            if temp_dir.exists():
-                shutil.rmtree(temp_dir)
-                temp_dir.mkdir()
-
-        sessions.clear()
-        query_results.clear()
-
-        return {"success": True, "message": "All data deleted, settings preserved"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Reset data failed: {str(e)}")
-
-@app.post("/api/admin/export-all")
-@require_perm("data.export")
-async def export_all(request: Request, current_user: dict = Depends(get_current_user)):
-    """Export complete backup as ZIP"""
-    try:
-        import shutil
-        import zipfile
-
-        temp_dir = settings.temp_exports_dir
-
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        zip_path = temp_dir / f"elohimos_backup_{timestamp}.zip"
-
-        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            # Add all data from data directory
-            if settings.data_dir.exists():
-                for file in settings.data_dir.rglob('*'):
-                    if file.is_file():
-                        zipf.write(file, str(file.relative_to(settings.data_dir.parent)))
-
-        return FileResponse(
-            path=zip_path,
-            filename=zip_path.name,
-            media_type="application/zip",
-            background=BackgroundTask(lambda: zip_path.unlink(missing_ok=True))
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
-
-@app.post("/api/admin/export-chats")
-async def export_chats(request: Request):
-    """Export AI chat history as JSON"""
-    try:
-        import json
-
-        api_dir = Path(__file__).parent
-        chats_dir = api_dir / ".neutron_data" / "chats"
-
-        all_chats = []
-        if chats_dir.exists():
-            sessions_file = chats_dir / "sessions.json"
-            if sessions_file.exists():
-                all_chats = json.loads(sessions_file.read_text())
-
-        temp_dir = api_dir / "temp_exports"
-        temp_dir.mkdir(exist_ok=True)
-
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        export_path = temp_dir / f"chats_export_{timestamp}.json"
-        export_path.write_text(json.dumps(all_chats, indent=2))
-
-        return FileResponse(
-            path=export_path,
-            filename=export_path.name,
-            media_type="application/json",
-            background=BackgroundTask(lambda: export_path.unlink(missing_ok=True))
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Export chats failed: {str(e)}")
-
-@app.post("/api/admin/export-queries")
-async def export_queries(request: Request):
-    """Export query library as JSON"""
-    try:
-        queries = elohimos_memory.get_saved_queries()
-
-        temp_dir = Path(__file__).parent / "temp_exports"
-        temp_dir.mkdir(exist_ok=True)
-
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        export_path = temp_dir / f"queries_export_{timestamp}.json"
-        export_path.write_text(json.dumps(queries, indent=2))
-
-        return FileResponse(
-            path=export_path,
-            filename=export_path.name,
-            media_type="application/json",
-            background=BackgroundTask(lambda: export_path.unlink(missing_ok=True))
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Export queries failed: {str(e)}")
+# Danger Zone Admin Endpoints - All 13 endpoints migrated to api/routes/admin.py
+# - /api/admin/reset-all
+# - /api/admin/uninstall
+# - /api/admin/clear-chats
+# - /api/admin/clear-team-messages
+# - /api/admin/clear-query-library
+# - /api/admin/clear-query-history
+# - /api/admin/clear-temp-files
+# - /api/admin/clear-code-files
+# - /api/admin/reset-settings
+# - /api/admin/reset-data
+# - /api/admin/export-all
+# - /api/admin/export-chats
+# - /api/admin/export-queries
+# ============================================================================
 
 
 # ============================================================================
