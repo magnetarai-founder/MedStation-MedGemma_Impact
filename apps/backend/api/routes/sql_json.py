@@ -11,6 +11,7 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, File, UploadFile, Form, Request, Header, Body, Query
+from fastapi.responses import FileResponse
 from api.schemas.api_models import (
     FileUploadResponse,
     QueryResponse,
@@ -20,6 +21,9 @@ from api.schemas.api_models import (
     SuccessResponse,
     SheetNamesResponse,
     TablesListResponse,
+    JsonUploadResponse,
+    JsonConvertRequest,
+    JsonConvertResponse,
 )
 
 router = APIRouter()
@@ -96,6 +100,10 @@ def get_query_result_sizes():
 def get_total_cache_size_ref():
     from api import main
     return main
+
+def get_sanitize_filename():
+    from api.main import sanitize_filename
+    return sanitize_filename
 
 # Endpoints
 @router.post("/{session_id}/upload", name="sessions_upload", response_model=FileUploadResponse)
@@ -446,3 +454,401 @@ async def list_tables_router(session_id: str):
     return {"tables": tables}
 
 # Note: Export endpoint intentionally not registered here; served by api.main
+
+# ============================================================================
+# JSON Processing Endpoints
+# ============================================================================
+
+@router.post("/{session_id}/json/upload", name="sessions_json_upload", response_model=JsonUploadResponse)
+async def upload_json_router(session_id: str, req: Request, file: UploadFile = File(...)):
+    """Upload and analyze JSON file"""
+    sessions = get_sessions()
+    rate_limiter = get_rate_limiter()
+    get_client_ip_func = get_client_ip()
+    sanitize_filename = get_sanitize_filename()
+    df_to_jsonsafe = get_df_to_jsonsafe_records()
+    logger = get_logger()
+    
+    # Rate limit: 10 uploads per minute
+    client_ip = get_client_ip_func(req)
+    if not rate_limiter.check_rate_limit(f"upload:{client_ip}", max_requests=10, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 10 uploads per minute.")
+
+    if session_id not in sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if not file.filename.endswith('.json'):
+        raise HTTPException(status_code=400, detail="Only JSON files are supported")
+
+    # Security: Limit JSON file size to prevent OOM (100MB max)
+    MAX_JSON_SIZE = 100 * 1024 * 1024  # 100MB
+    file.file.seek(0, 2)  # Seek to end
+    file_size = file.file.tell()
+    file.file.seek(0)  # Reset to beginning
+
+    if file_size > MAX_JSON_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=f"JSON file too large ({file_size / 1024 / 1024:.1f}MB). Maximum size is {MAX_JSON_SIZE / 1024 / 1024}MB"
+        )
+
+    # Save uploaded file temporarily
+    from pathlib import Path
+    import aiofiles
+    api_dir = Path(__file__).parent.parent
+    temp_dir = api_dir / "temp_uploads"
+    temp_dir.mkdir(exist_ok=True)
+
+    # Sanitize filename to prevent path traversal
+    safe_filename = sanitize_filename(file.filename)
+    file_path = temp_dir / f"{uuid.uuid4()}_{safe_filename}"
+
+    try:
+        # Stream file to disk instead of loading entirely into memory
+        async with aiofiles.open(file_path, 'wb') as f:
+            # Stream in chunks to avoid OOM
+            chunk_size = 1024 * 1024  # 1MB chunks
+            while True:
+                chunk = await file.read(chunk_size)
+                if not chunk:
+                    break
+                await f.write(chunk)
+
+        # Analyze JSON structure
+        from neutron_utils.json_to_excel import JsonToExcelEngine
+        engine = JsonToExcelEngine()
+        load_result = engine.load_json(str(file_path))
+
+        if not load_result['success']:
+            raise HTTPException(status_code=400, detail=load_result.get('error', 'Failed to load JSON'))
+
+        # Get column paths
+        columns = load_result.get('columns', [])
+
+        # Preview data (first 10 objects)
+        preview_data = []
+        if 'preview' in load_result and hasattr(load_result['preview'], 'to_dict'):
+            # Convert DataFrame to list of dicts using JSON-safe conversion
+            preview_data = df_to_jsonsafe(load_result['preview'])
+        elif 'data' in load_result and isinstance(load_result['data'], list):
+            preview_data = load_result['data'][:10]
+
+        # Store JSON info in session
+        sessions[session_id]['json_file'] = {
+            'path': str(file_path),
+            'filename': file.filename,
+            'engine': engine,
+            'columns': columns,
+            'data': load_result.get('data', [])
+        }
+
+        # Get metadata for counts
+        data = load_result.get('data', [])
+
+        # Calculate object count based on data type
+        if isinstance(data, list):
+            object_count = len(data)
+        elif isinstance(data, dict):
+            # Count objects in detected arrays
+            detected_arrays = load_result.get('detected_arrays', {})
+            if detected_arrays:
+                # Use the largest array count
+                object_count = max(arr['length'] for arr in detected_arrays.values())
+            else:
+                object_count = 1
+        else:
+            object_count = 0
+
+        # Estimate depth from column names
+        max_depth = 1
+        for col in columns:
+            depth = col.count('.') + 1
+            max_depth = max(max_depth, depth)
+
+        # Get file size for response
+        size_mb = file_path.stat().st_size / (1024 * 1024)
+
+        return JsonUploadResponse(
+            filename=file.filename,
+            size_mb=size_mb,
+            object_count=object_count,
+            depth=max_depth,
+            columns=columns[:50],  # Limit columns shown
+            preview=preview_data
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"JSON upload failed: {str(e)}", exc_info=True)
+        if file_path.exists():
+            file_path.unlink()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{session_id}/json/convert", name="sessions_json_convert", response_model=JsonConvertResponse)
+async def convert_json_router(session_id: str, body: JsonConvertRequest):
+    """Convert JSON data to Excel format"""
+    sessions = get_sessions()
+    df_to_jsonsafe = get_df_to_jsonsafe_records()
+    logger = get_logger()
+
+    if session_id not in sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # Security: Enforce JSON size limit (100MB)
+    MAX_JSON_SIZE = 100 * 1024 * 1024  # 100MB
+    json_size = len(body.json_data.encode('utf-8'))
+
+    if json_size > MAX_JSON_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=f"JSON payload too large ({json_size / 1024 / 1024:.1f}MB). Maximum size is {MAX_JSON_SIZE / 1024 / 1024}MB"
+        )
+
+    from pathlib import Path
+    import aiofiles
+    import pandas as pd
+    api_dir = Path(__file__).parent.parent
+    temp_dir = api_dir / "temp_uploads"
+    temp_dir.mkdir(exist_ok=True)
+
+    # Create temporary files
+    temp_json = temp_dir / f"{uuid.uuid4()}_input.json"
+    temp_excel = temp_dir / f"{uuid.uuid4()}_output.xlsx"
+
+    try:
+        # Write JSON data to temp file
+        async with aiofiles.open(temp_json, 'w') as f:
+            await f.write(body.json_data)
+
+        # Reuse engine from session if available, otherwise create new
+        from neutron_utils.json_to_excel import JsonToExcelEngine
+        if 'json_file' in sessions[session_id] and 'engine' in sessions[session_id]['json_file']:
+            engine = sessions[session_id]['json_file']['engine']
+        else:
+            engine = JsonToExcelEngine()
+
+        # Check if preview_only mode
+        preview_only = body.options.get('preview_only', False)
+
+        if preview_only:
+            # Only analyze structure, don't do full conversion
+            preview_limit = body.options.get('limit', 100)
+            logger.info(f"Analyzing JSON structure for preview (session {session_id}, limit {preview_limit})")
+
+            load_result = engine.load_json(str(temp_json))
+            if not load_result['success']:
+                raise HTTPException(status_code=400, detail=load_result.get('error', 'Failed to analyze JSON'))
+
+            # Return lightweight preview data with configurable limit
+            preview_data = []
+            if 'preview' in load_result:
+                preview_raw = load_result['preview']
+                if hasattr(preview_raw, 'to_dict'):
+                    preview_data = df_to_jsonsafe(preview_raw)[:preview_limit]
+                elif isinstance(preview_raw, list):
+                    preview_data = preview_raw[:preview_limit]
+            elif 'data' in load_result and isinstance(load_result['data'], list):
+                preview_data = load_result['data'][:preview_limit]
+
+            # Get total rows from metadata or fallback
+            total_rows = load_result.get('metadata', {}).get('total_records', len(load_result.get('data', [])))
+
+            result = {
+                'success': True,
+                'preview_data': preview_data,
+                'column_names': load_result.get('columns', []),
+                'rows': total_rows,
+                'sheet_names': ['Preview'],
+                'sheets': 1
+            }
+            logger.info(f"Preview analysis completed: {result.get('rows', 0)} total rows, {len(preview_data)} in preview")
+        else:
+            # Full conversion
+            logger.info(f"Starting JSON to Excel conversion for session {session_id}")
+
+            result = engine.convert(
+                str(temp_json),
+                str(temp_excel),
+                expand_arrays=body.options.get('expand_arrays', True),
+                max_depth=body.options.get('max_depth', 5),
+                auto_safe=body.options.get('auto_safe', True),
+                include_summary=body.options.get('include_summary', True)
+            )
+
+            logger.info(f"Conversion completed with result: {result.get('success', False)}")
+
+        if not result['success']:
+            raise HTTPException(status_code=400, detail=result.get('error', 'Conversion failed'))
+
+        # Store result in session (only if Excel file was actually created)
+        if not preview_only:
+            sessions[session_id]['json_result'] = {
+                'excel_path': str(temp_excel),
+                'result': result
+            }
+
+        # Use preview from result if available, otherwise fallback to reading Excel
+        preview_limit = 100
+        preview = []
+        if 'preview_data' in result and result['preview_data']:
+            preview_data = result['preview_data']
+            if len(preview_data) > preview_limit:
+                # Random sample
+                import random
+                preview = random.sample(preview_data, preview_limit)
+            else:
+                preview = preview_data
+        elif temp_excel.exists():
+            try:
+                full_df = pd.read_excel(temp_excel)
+                if len(full_df) > preview_limit:
+                    preview_df = full_df.sample(n=preview_limit, random_state=None)
+                else:
+                    preview_df = full_df
+                preview = df_to_jsonsafe(preview_df)
+            except Exception as e:
+                logger.warning(f"Could not read Excel file for preview: {e}")
+
+        # Get column information from result first
+        column_list = result.get('column_names', [])[:50]
+        if not column_list and 'columns' in result:
+            if isinstance(result['columns'], list):
+                column_list = result['columns'][:50]
+            elif isinstance(result['columns'], int) and temp_excel.exists():
+                try:
+                    df_cols = pd.read_excel(temp_excel, nrows=0)
+                    column_list = list(df_cols.columns)[:50]
+                except:
+                    column_list = []
+
+        # Get sheet information
+        sheet_names = result.get('sheet_names', [])
+        if not sheet_names:
+            sheet_count = result.get('sheets', 1)
+            if sheet_count > 1:
+                sheet_names = [f"Sheet{i+1}" for i in range(sheet_count)]
+            else:
+                sheet_names = ['Sheet1']
+
+        # Get actual row count from the converted data
+        actual_rows = result.get('rows', 0)
+        if actual_rows == 0 and len(preview) > 0:
+            # Fallback to preview length if engine didn't report row count
+            actual_rows = len(preview)
+
+        return JsonConvertResponse(
+            success=True,
+            output_file=temp_excel.name,
+            total_rows=actual_rows,
+            sheets=sheet_names,
+            columns=column_list,
+            preview=preview,
+            is_preview_only=preview_only
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"JSON conversion failed: {str(e)}", exc_info=True)
+        # Cleanup temp files
+        for f in [temp_json, temp_excel]:
+            if f.exists():
+                f.unlink()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        # Always cleanup input JSON
+        if temp_json.exists():
+            temp_json.unlink()
+
+
+@router.get("/{session_id}/json/download", name="sessions_json_download")
+async def download_json_result_router(session_id: str, format: str = "excel"):
+    """Download converted JSON as Excel or CSV"""
+    sessions = get_sessions()
+    logger = get_logger()
+
+    if session_id not in sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if 'json_result' not in sessions[session_id]:
+        raise HTTPException(status_code=404, detail="No conversion result found")
+
+    json_result = sessions[session_id]['json_result']
+    excel_path_str = json_result.get('excel_path')
+
+    if not excel_path_str:
+        # Clean up stale session data
+        del sessions[session_id]['json_result']
+        raise HTTPException(status_code=404, detail="Result file path not found. Please convert again.")
+
+    from pathlib import Path
+    excel_path = Path(excel_path_str)
+
+    # Validate file still exists
+    if not excel_path.exists():
+        # Clean up stale session data
+        del sessions[session_id]['json_result']
+        raise HTTPException(
+            status_code=410,
+            detail="Result file expired or was cleaned up. Please run the conversion again."
+        )
+
+    # Check file age (auto-cleanup after 24 hours)
+    try:
+        file_age_seconds = datetime.now().timestamp() - excel_path.stat().st_mtime
+        if file_age_seconds > 86400:  # 24 hours
+            excel_path.unlink(missing_ok=True)
+            del sessions[session_id]['json_result']
+            raise HTTPException(
+                status_code=410,
+                detail="Result file expired (24-hour limit). Please run the conversion again."
+            )
+    except OSError:
+        # File stat failed, file probably doesn't exist
+        del sessions[session_id]['json_result']
+        raise HTTPException(
+            status_code=404,
+            detail="Result file not accessible. Please run the conversion again."
+        )
+
+    if format == "excel":
+        return FileResponse(
+            excel_path,
+            filename=f"export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    else:
+        # Convert to other formats
+        try:
+            import pandas as pd
+            df = pd.read_excel(excel_path, sheet_name=0)
+
+            if format == "csv":
+                output_path = excel_path.with_suffix('.csv')
+                df.to_csv(output_path, index=False)
+                media_type = "text/csv"
+                extension = ".csv"
+            elif format == "tsv":
+                output_path = excel_path.with_suffix('.tsv')
+                df.to_csv(output_path, index=False, sep='\t')
+                media_type = "text/tab-separated-values"
+                extension = ".tsv"
+            elif format == "parquet":
+                output_path = excel_path.with_suffix('.parquet')
+                df.to_parquet(output_path, index=False)
+                media_type = "application/octet-stream"
+                extension = ".parquet"
+
+            from fastapi.background import BackgroundTask
+            return FileResponse(
+                output_path,
+                filename=f"export_{datetime.now().strftime('%Y%m%d_%H%M%S')}{extension}",
+                media_type=media_type,
+                background=BackgroundTask(lambda: output_path.unlink(missing_ok=True))
+            )
+        except Exception as e:
+            logger.error(f"Format conversion failed: {str(e)}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Format conversion failed: {str(e)}")
+
