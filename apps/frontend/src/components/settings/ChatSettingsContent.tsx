@@ -429,6 +429,20 @@ export default function ChatSettingsContent() {
             />
           </div>
 
+          {/* Auto-preload default model */}
+          <div className="flex items-center justify-between">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Auto-preload default model</label>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Load model on startup (3s after login)</p>
+            </div>
+            <input
+              type="checkbox"
+              checked={settings.autoPreloadModel}
+              onChange={(e) => updateSettings({ autoPreloadModel: e.target.checked })}
+              className="w-4 h-4 rounded text-primary-600"
+            />
+          </div>
+
           {/* Context Window (locked) */}
           <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
             <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Context Window: 200k tokens</p>
