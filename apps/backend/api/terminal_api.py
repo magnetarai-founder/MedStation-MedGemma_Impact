@@ -43,16 +43,40 @@ except ImportError:
 
 router = APIRouter(prefix="/api/v1/terminal", tags=["terminal"])
 
-# WebSocket rate limiting
+# WebSocket rate limiting and security
 # Track active connections per IP to prevent DoS
 import time
+import re
+import asyncio
 from collections import defaultdict
+from datetime import datetime, timedelta
 
 MAX_WS_CONNECTIONS_PER_IP = 5
 MAX_WS_CONNECTIONS_TOTAL = 100
+MAX_SESSION_DURATION_SEC = 30 * 60  # 30 minutes
+MAX_INACTIVITY_SEC = 5 * 60  # 5 minutes
+MAX_INPUT_SIZE = 16 * 1024  # 16 KB
+MAX_OUTPUT_BURST = 20  # Max messages per tick
+
 _ws_connections_by_ip: defaultdict[str, int] = defaultdict(int)
 _total_ws_connections: int = 0
 _ws_connection_lock = None  # Will initialize as asyncio.Lock when needed
+_session_metadata: dict = {}  # Track session start time and last activity
+
+# Regex patterns for secret detection (basic)
+SECRET_PATTERNS = [
+    re.compile(r'(?i)(password|pwd|passwd)\s*[=:]\s*["\']?([^\s"\']+)', re.IGNORECASE),
+    re.compile(r'(?i)(token|secret|key|api[_-]?key)\s*[=:]\s*["\']?([^\s"\']+)', re.IGNORECASE),
+    re.compile(r'(?i)(aws_access_key|aws_secret)', re.IGNORECASE),
+    re.compile(r'[A-Za-z0-9+/]{40,}={0,2}', re.IGNORECASE),  # Base64-ish strings
+]
+
+def redact_secrets(text: str) -> str:
+    """Redact potential secrets from audit logs"""
+    redacted = text
+    for pattern in SECRET_PATTERNS:
+        redacted = pattern.sub('[REDACTED]', redacted)
+    return redacted
 
 
 @router.post("/spawn")
@@ -495,18 +519,65 @@ async def terminal_websocket(websocket: WebSocket, terminal_id: str, token: Opti
         await websocket.close()
         return
 
-    # Register broadcast callback for this WebSocket
+    # Initialize session metadata for TTL and inactivity tracking
+    session_start = datetime.utcnow()
+    last_activity = datetime.utcnow()
+    _session_metadata[terminal_id] = {
+        'start': session_start,
+        'last_activity': last_activity
+    }
+
+    # Output throttling state
+    output_queue = []
+
+    # Register broadcast callback for this WebSocket with throttling
     async def send_output(data: str):
-        """Callback to send terminal output to WebSocket"""
+        """Callback to send terminal output to WebSocket with burst control"""
         try:
-            await websocket.send_json({
-                'type': 'output',
-                'data': data
-            })
+            output_queue.append(data)
+            # Coalesce and send up to MAX_OUTPUT_BURST messages per tick
+            if len(output_queue) >= MAX_OUTPUT_BURST:
+                coalesced = ''.join(output_queue[:MAX_OUTPUT_BURST])
+                output_queue.clear()
+                await websocket.send_json({
+                    'type': 'output',
+                    'data': coalesced
+                })
         except Exception as e:
             print(f"Error sending to WebSocket: {e}")
 
     terminal_bridge.register_broadcast_callback(terminal_id, send_output)
+
+    # Background task to check TTL and inactivity
+    async def check_timeouts():
+        """Check session TTL and inactivity, close if exceeded"""
+        while session.active:
+            await asyncio.sleep(60)  # Check every minute
+
+            now = datetime.utcnow()
+            metadata = _session_metadata.get(terminal_id)
+            if not metadata:
+                break
+
+            # Check session duration TTL
+            if (now - metadata['start']).total_seconds() > MAX_SESSION_DURATION_SEC:
+                await websocket.send_json({
+                    'type': 'error',
+                    'message': f'Session timeout after {MAX_SESSION_DURATION_SEC // 60} minutes'
+                })
+                await websocket.close(code=1000, reason='Session TTL exceeded')
+                break
+
+            # Check inactivity timeout
+            if (now - metadata['last_activity']).total_seconds() > MAX_INACTIVITY_SEC:
+                await websocket.send_json({
+                    'type': 'error',
+                    'message': f'Inactivity timeout after {MAX_INACTIVITY_SEC // 60} minutes'
+                })
+                await websocket.close(code=1000, reason='Inactivity timeout')
+                break
+
+    timeout_task = asyncio.create_task(check_timeouts())
 
     try:
         # Send initial buffered output
@@ -522,6 +593,18 @@ async def terminal_websocket(websocket: WebSocket, terminal_id: str, token: Opti
             # Receive message from client
             message = await websocket.receive_text()
 
+            # Check input size limit
+            if len(message) > MAX_INPUT_SIZE:
+                await websocket.send_json({
+                    'type': 'error',
+                    'message': f'Input exceeds {MAX_INPUT_SIZE} byte limit'
+                })
+                await websocket.close(code=1009, reason='Message too large')
+                break
+
+            # Update last activity timestamp
+            _session_metadata[terminal_id]['last_activity'] = datetime.utcnow()
+
             try:
                 data = json.loads(message)
                 msg_type = data.get('type')
@@ -529,6 +612,15 @@ async def terminal_websocket(websocket: WebSocket, terminal_id: str, token: Opti
                 if msg_type == 'input':
                     # User input (commands, keystrokes)
                     input_data = data.get('data', '')
+
+                    # Audit log with redaction
+                    redacted_input = redact_secrets(input_data)
+                    await log_action(
+                        user_id,
+                        'terminal.input',
+                        {'terminal_id': terminal_id, 'input': redacted_input}
+                    )
+
                     await terminal_bridge.write_to_terminal(terminal_id, input_data)
 
                 elif msg_type == 'resize':
@@ -545,6 +637,12 @@ async def terminal_websocket(websocket: WebSocket, terminal_id: str, token: Opti
 
             except json.JSONDecodeError:
                 # Treat as raw input if not valid JSON
+                redacted_message = redact_secrets(message)
+                await log_action(
+                    user_id,
+                    'terminal.input',
+                    {'terminal_id': terminal_id, 'input': redacted_message}
+                )
                 await terminal_bridge.write_to_terminal(terminal_id, message)
 
             except Exception as e:
@@ -560,8 +658,15 @@ async def terminal_websocket(websocket: WebSocket, terminal_id: str, token: Opti
         print(f"WebSocket error for terminal {terminal_id}: {e}")
 
     finally:
+        # Cancel timeout task
+        timeout_task.cancel()
+
         # Cleanup
         terminal_bridge.unregister_broadcast_callback(terminal_id, send_output)
+
+        # Clean up session metadata
+        if terminal_id in _session_metadata:
+            del _session_metadata[terminal_id]
 
         # Decrement WebSocket connection counters
         async with _ws_connection_lock:
