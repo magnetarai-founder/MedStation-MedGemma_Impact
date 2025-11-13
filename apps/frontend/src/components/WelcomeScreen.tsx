@@ -160,7 +160,7 @@ function FounderLogin({ onBack, onLoginSuccess }: FounderLoginProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          username: 'founder',  // Hardcoded founder username
+          username: 'elohim_founder',  // Hardcoded founder username
           password: password,
           device_fingerprint: getDeviceFingerprint()
         }),
@@ -168,11 +168,21 @@ function FounderLogin({ onBack, onLoginSuccess }: FounderLoginProps) {
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.detail || 'Founder login failed')
+        // Handle ElohimOS error response format
+        const errorMessage = data.detail?.message || data.detail || data.message || 'Founder login failed'
+        throw new Error(errorMessage)
       }
 
       const data = await response.json()
-      const { token, user } = data
+
+      // Backend returns flat structure with token, user_id, username, role, etc.
+      const token = data.token
+      const user = {
+        user_id: data.user_id,
+        username: data.username,
+        role: data.role,
+        device_id: data.device_id
+      }
 
       // Store token and user
       localStorage.setItem('auth_token', token)
@@ -212,7 +222,7 @@ function FounderLogin({ onBack, onLoginSuccess }: FounderLoginProps) {
               </label>
               <input
                 type="text"
-                value="founder"
+                value="elohim_founder"
                 disabled
                 className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded-lg"
               />

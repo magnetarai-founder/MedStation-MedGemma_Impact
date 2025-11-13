@@ -10,6 +10,7 @@ import { ContextBadge } from './ContextBadge'
 import { useOllamaStore } from '../stores/ollamaStore'
 import { useChatStore } from '../stores/chatStore'
 import { useTeamStore } from '../stores/teamStore'
+import { useUserStore } from '../stores/userStore'
 import { ShutdownModal, RestartModal } from './OllamaServerModals'
 import { PanicModeModal } from './PanicModeModal'
 import { metal4StatsService } from '../services/metal4StatsService'
@@ -31,6 +32,7 @@ export function Header({ onOpenServerControls }: HeaderProps) {
   const { serverStatus, fetchServerStatus } = useOllamaStore()
   const { activeChatId, getActiveSession, createSession, setActiveChatId } = useChatStore()
   const { currentTeam } = useTeamStore()
+  const { user } = useUserStore()
   const [showShutdownModal, setShowShutdownModal] = useState(false)
   const [showRestartModal, setShowRestartModal] = useState(false)
   const [previousModels, setPreviousModels] = useState<string[]>([])

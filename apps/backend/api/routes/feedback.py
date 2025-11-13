@@ -9,7 +9,16 @@ from pydantic import BaseModel, Field
 from typing import Literal
 import logging
 
-from api.dependencies import get_current_user, require_perm_team
+# Auth and permissions
+try:
+    from auth_middleware import get_current_user
+except ImportError:
+    from .auth_middleware import get_current_user
+
+try:
+    from permission_engine import require_perm_team
+except ImportError:
+    from .permission_engine import require_perm_team
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +34,7 @@ class MessageFeedbackRequest(BaseModel):
 
 
 @router.post("/messages/{message_id}", name="submit_message_feedback")
+@require_perm_team("chat.use")
 async def submit_message_feedback(
     request: Request,
     message_id: str,

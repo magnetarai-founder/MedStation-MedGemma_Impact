@@ -126,13 +126,13 @@ class Metal4SQLEngine:
 
             shader_source = shader_path.read_text()
 
-            # Compile library
-            library = self.metal_device.newLibraryWithSource_options_error_(
+            # Compile library (returns (library, error))
+            library, lib_error = self.metal_device.newLibraryWithSource_options_error_(
                 shader_source, None, None
             )
 
-            if library is None:
-                logger.error("Failed to compile SQL shader library")
+            if library is None or lib_error is not None:
+                logger.error(f"Failed to compile SQL shader library: {lib_error}")
                 return
 
             # Create compute pipelines
@@ -173,12 +173,12 @@ class Metal4SQLEngine:
                 logger.error(f"Function not found: {function_name}")
                 return None
 
-            pipeline = self.metal_device.newComputePipelineStateWithFunction_error_(
+            pipeline, error = self.metal_device.newComputePipelineStateWithFunction_error_(
                 function, None
             )
 
-            if pipeline is None:
-                logger.error(f"Failed to create pipeline: {function_name}")
+            if pipeline is None or error is not None:
+                logger.error(f"Failed to create pipeline: {function_name}: {error}")
                 return None
 
             return pipeline

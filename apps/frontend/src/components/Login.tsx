@@ -61,11 +61,21 @@ export function Login({ onLogin }: LoginProps) {
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.detail || 'Login failed')
+        // Handle ElohimOS error response format
+        const errorMessage = data.detail?.message || data.detail || data.message || 'Login failed'
+        throw new Error(errorMessage)
       }
 
       const data = await response.json()
-      const { token, user } = data
+
+      // Backend returns flat structure with token, user_id, username, role, etc.
+      const token = data.token
+      const user = {
+        user_id: data.user_id,
+        username: data.username,
+        role: data.role,
+        device_id: data.device_id
+      }
 
       // Store token
       localStorage.setItem('auth_token', token)

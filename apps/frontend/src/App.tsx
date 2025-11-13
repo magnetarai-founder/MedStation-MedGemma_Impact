@@ -141,7 +141,20 @@ export default function App() {
 
     const checkUserSetup = async () => {
       try {
-        // Check per-user setup status
+        // Check if this is the founder account (bypass setup wizard)
+        const userStr = localStorage.getItem('user')
+        const user = userStr ? JSON.parse(userStr) : null
+        const isFounder = user?.role === 'founder_rights' || user?.username === 'elohim_founder'
+
+        if (isFounder) {
+          // Founder account always goes straight to authenticated
+          setUserSetupComplete(true)
+          setAuthState('authenticated')
+          setIsLoading(false)
+          return
+        }
+
+        // Check per-user setup status for regular users
         const response = await fetch('/api/v1/users/me/setup/status', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
@@ -154,15 +167,20 @@ export default function App() {
 
           if (status.user_setup_completed) {
             setAuthState('authenticated')
+          } else {
+            // Setup incomplete - change state so we exit loading screen and show wizard
+            setAuthState('setup_needed')
           }
         } else {
           // If status check fails, assume setup incomplete (show wizard)
           setUserSetupComplete(false)
+          setAuthState('setup_needed')
         }
       } catch (error) {
         console.error('Failed to check user setup status:', error)
         // If check fails, assume setup incomplete (show wizard to be safe)
         setUserSetupComplete(false)
+        setAuthState('setup_needed')
       } finally {
         setIsLoading(false)
       }

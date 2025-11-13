@@ -10,9 +10,25 @@ Adds columns to analytics_daily for model performance metrics:
 
 import sqlite3
 
-def migrate():
+def check_migration_applied(db_path: str) -> bool:
+    """Return True if KPI columns exist on analytics_daily"""
+    try:
+        conn = sqlite3.connect(db_path)
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info('analytics_daily')")
+        cols = {row[1] for row in cur.fetchall()}
+        return 'response_time_avg' in cols and 'response_time_p95' in cols and 'satisfaction_score' in cols and 'message_count' in cols
+    except Exception:
+        return False
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+def migrate(db_path: str):
     """Run the migration"""
-    conn = sqlite3.connect("data/elohimos.db")
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
     try:
@@ -51,4 +67,5 @@ def migrate():
         conn.close()
 
 if __name__ == "__main__":
-    migrate()
+    # No default path; run via startup migrations
+    pass

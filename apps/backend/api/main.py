@@ -394,7 +394,14 @@ async def lifespan(app: FastAPI):
         # Initialize storage singletons
         init_model_catalog(PATHS.app_db, ollama_base_url="http://localhost:11434")
         init_model_preferences_storage(PATHS.app_db)
-        init_hot_slots_storage(PATHS.app_db, PATHS.backend_dir / "config")
+        # Determine a config directory for legacy JSON; prefer backend_dir/config if available
+        cfg_dir = getattr(PATHS, 'backend_dir', None)
+        if cfg_dir is not None:
+            config_dir = cfg_dir / "config"
+        else:
+            # Fallback to data_dir
+            config_dir = PATHS.data_dir
+        init_hot_slots_storage(PATHS.app_db, config_dir)
 
         # Sync model catalog from Ollama on startup
         from services.model_catalog import get_model_catalog

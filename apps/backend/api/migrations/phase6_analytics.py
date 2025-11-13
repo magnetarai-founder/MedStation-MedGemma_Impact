@@ -8,7 +8,27 @@ Enables usage tracking, performance monitoring, and trend analysis.
 import sqlite3
 from pathlib import Path
 
-def migrate(db_path: str = "data/elohimos.db"):
+def check_migration_applied(db_path: str) -> bool:
+    """Return True if analytics tables exist in the DB"""
+    try:
+        conn = sqlite3.connect(db_path)
+        cur = conn.cursor()
+        # Check existence of analytics_daily (also implies events were created)
+        cur.execute("""
+            SELECT name FROM sqlite_master
+            WHERE type='table' AND name IN ('analytics_events','analytics_daily')
+        """)
+        names = {row[0] for row in cur.fetchall()}
+        return 'analytics_daily' in names and 'analytics_events' in names
+    except Exception:
+        return False
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+def migrate(db_path: str):
     """Create analytics tables with proper indexes"""
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
@@ -73,5 +93,5 @@ def migrate(db_path: str = "data/elohimos.db"):
         conn.close()
 
 if __name__ == "__main__":
-    # Auto-run if executed directly
-    migrate()
+    # No default path; run via startup migrations
+    pass

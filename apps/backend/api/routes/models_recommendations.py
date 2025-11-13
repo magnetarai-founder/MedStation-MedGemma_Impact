@@ -8,7 +8,11 @@ from fastapi import APIRouter, Depends, Query, Request
 from typing import Literal, Optional
 import logging
 
-from api.dependencies import get_current_user
+# Auth
+try:
+    from auth_middleware import get_current_user
+except ImportError:
+    from .auth_middleware import get_current_user
 from api.services.recommendations import get_recommendations_service, TaskType
 
 logger = logging.getLogger(__name__)

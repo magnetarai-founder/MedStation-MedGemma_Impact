@@ -8,7 +8,7 @@ Includes both authenticated and public routers.
 """
 
 import logging
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Request, Depends, Query
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Request, Depends, Query, Body
 from fastapi.responses import StreamingResponse
 from typing import List, Optional, Dict, Any
 

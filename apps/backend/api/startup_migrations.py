@@ -46,6 +46,9 @@ async def run_startup_migrations() -> None:
             from .migrations import phase3_team_mode as phase3_migration
             from .migrations import phase35_workflow_type as phase35_migration
             from .migrations import phase4_performance_indexes as phase4_migration
+            # Sprint 6 analytics migrations
+            from .migrations import phase6_analytics as phase6_analytics_migration
+            from .migrations import phase6_model_kpis as phase6_kpis_migration
         except ImportError:
             from migrations import phase0_user_db as phase0_migration
             from migrations import phase1_workflows_user_id as phase1_migration
@@ -55,6 +58,9 @@ async def run_startup_migrations() -> None:
             from migrations import phase3_team_mode as phase3_migration
             from migrations import phase35_workflow_type as phase35_migration
             from migrations import phase4_performance_indexes as phase4_migration
+            # Sprint 6 analytics migrations
+            from migrations import phase6_analytics as phase6_analytics_migration
+            from migrations import phase6_model_kpis as phase6_kpis_migration
 
         # ===== Phase 0: Database Architecture Consolidation =====
         app_db = PATHS.app_db
@@ -84,7 +90,12 @@ async def run_startup_migrations() -> None:
             logger.info("✓ Phase 1 migration completed successfully")
 
         # ===== Phase 1.5: Per-User Model Preferences =====
-        config_dir = PATHS.backend_dir / "config"  # Config directory for hot_slots.json
+        # Use data directory for legacy hot_slots/config files if present
+        # Some environments may not define backend_dir on PATHS
+        try:
+            config_dir = PATHS.data_dir
+        except AttributeError:
+            config_dir = Path('.')
 
         if not phase1_5_migration.check_migration_applied(app_db):
             migrations_ran.append("Phase 1.5: Per-User Model Preferences")
@@ -150,6 +161,24 @@ async def run_startup_migrations() -> None:
                 raise Exception("Phase 4 migration failed - see logs above")
 
             logger.info("✓ Phase 4 migration completed successfully")
+
+        # ===== Phase 6: Analytics Schema =====
+        # Phase 6: Analytics Schema
+        if not phase6_analytics_migration.check_migration_applied(str(app_db)):
+            migrations_ran.append("Phase 6: Analytics Schema")
+            logger.info("Running Phase 6 migration: Analytics Schema")
+            phase6_analytics_migration.migrate(str(app_db))
+
+            logger.info("✓ Phase 6 analytics migration completed successfully")
+
+        # ===== Phase 6.1: Model KPIs Extension =====
+        # Phase 6.1: Model KPIs Extension
+        if not phase6_kpis_migration.check_migration_applied(str(app_db)):
+            migrations_ran.append("Phase 6.1: Model KPIs Extension")
+            logger.info("Running Phase 6.1 migration: Model KPIs Extension")
+            phase6_kpis_migration.migrate(str(app_db))
+
+            logger.info("✓ Phase 6.1 model KPIs migration completed successfully")
 
         # Summary output - only show if migrations ran
         if migrations_ran:

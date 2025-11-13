@@ -10,7 +10,12 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 from uuid import uuid4
 
-DB_PATH = "data/elohimos.db"
+try:
+    from .config_paths import PATHS
+except ImportError:
+    from config_paths import PATHS
+
+DB_PATH = str(PATHS.app_db)
 
 class AnalyticsService:
     """Service for recording and querying analytics data"""
@@ -161,76 +166,73 @@ class AnalyticsService:
             cursor.execute("DELETE FROM analytics_daily WHERE date = ?", (date,))
 
             # Aggregate by user, team, model
+            # Use a CTE to avoid correlated subquery issues with GROUP BY
             cursor.execute("""
+                WITH daily_groups AS (
+                    SELECT
+                        DATE(ts) as date,
+                        team_id,
+                        user_id,
+                        model_name,
+                        COUNT(DISTINCT session_id) as sessions_count,
+                        COALESCE(SUM(tokens_used), 0) as tokens_total,
+                        COUNT(*) as api_calls,
+                        SUM(CASE WHEN event_type = 'error' THEN 1 ELSE 0 END) as errors
+                    FROM analytics_events
+                    WHERE DATE(ts) = ?
+                    GROUP BY DATE(ts), team_id, user_id, model_name
+                ),
+                latency_stats AS (
+                    SELECT
+                        DATE(ts) as date,
+                        team_id,
+                        user_id,
+                        model_name,
+                        AVG(duration_ms) as avg_latency,
+                        COUNT(*) as msg_count
+                    FROM analytics_events
+                    WHERE event_type = 'assistant_latency' AND DATE(ts) = ?
+                    GROUP BY DATE(ts), team_id, user_id, model_name
+                ),
+                feedback_stats AS (
+                    SELECT
+                        DATE(ts) as date,
+                        team_id,
+                        user_id,
+                        AVG(CAST(json_extract(metadata, '$.score') AS REAL)) as avg_score
+                    FROM analytics_events
+                    WHERE event_type = 'message_feedback' AND DATE(ts) = ?
+                    GROUP BY DATE(ts), team_id, user_id
+                )
                 INSERT INTO analytics_daily (
                     date, team_id, user_id, model_name,
                     sessions_count, tokens_total, api_calls, errors,
                     response_time_avg, response_time_p95, satisfaction_score, message_count
                 )
                 SELECT
-                    DATE(ts) as date,
-                    team_id,
-                    user_id,
-                    model_name,
-                    COUNT(DISTINCT session_id) as sessions_count,
-                    COALESCE(SUM(tokens_used), 0) as tokens_total,
-                    COUNT(*) as api_calls,
-                    SUM(CASE WHEN event_type = 'error' THEN 1 ELSE 0 END) as errors,
-
-                    -- Sprint 6 Theme C: Model Performance KPIs
-                    -- Average latency from assistant_latency events
-                    (SELECT AVG(duration_ms)
-                     FROM analytics_events e2
-                     WHERE e2.event_type = 'assistant_latency'
-                       AND DATE(e2.ts) = DATE(e1.ts)
-                       AND e2.model_name = e1.model_name
-                       AND (e2.team_id = e1.team_id OR (e2.team_id IS NULL AND e1.team_id IS NULL))
-                       AND (e2.user_id = e1.user_id OR (e2.user_id IS NULL AND e1.user_id IS NULL))
-                    ) as response_time_avg,
-
-                    -- P95 latency (approximate using percentile)
-                    (SELECT duration_ms
-                     FROM analytics_events e2
-                     WHERE e2.event_type = 'assistant_latency'
-                       AND DATE(e2.ts) = DATE(e1.ts)
-                       AND e2.model_name = e1.model_name
-                       AND (e2.team_id = e1.team_id OR (e2.team_id IS NULL AND e1.team_id IS NULL))
-                       AND (e2.user_id = e1.user_id OR (e2.user_id IS NULL AND e1.user_id IS NULL))
-                     ORDER BY duration_ms DESC
-                     LIMIT 1 OFFSET (
-                       SELECT CAST(COUNT(*) * 0.05 AS INTEGER)
-                       FROM analytics_events e3
-                       WHERE e3.event_type = 'assistant_latency'
-                         AND DATE(e3.ts) = DATE(e1.ts)
-                         AND e3.model_name = e1.model_name
-                         AND (e3.team_id = e1.team_id OR (e3.team_id IS NULL AND e1.team_id IS NULL))
-                         AND (e3.user_id = e1.user_id OR (e3.user_id IS NULL AND e1.user_id IS NULL))
-                     )
-                    ) as response_time_p95,
-
-                    -- Average satisfaction score from message_feedback events
-                    (SELECT AVG(CAST(json_extract(metadata, '$.score') AS REAL))
-                     FROM analytics_events e2
-                     WHERE e2.event_type = 'message_feedback'
-                       AND DATE(e2.ts) = DATE(e1.ts)
-                       AND (e2.team_id = e1.team_id OR (e2.team_id IS NULL AND e1.team_id IS NULL))
-                       AND (e2.user_id = e1.user_id OR (e2.user_id IS NULL AND e1.user_id IS NULL))
-                    ) as satisfaction_score,
-
-                    -- Count of assistant messages
-                    (SELECT COUNT(*)
-                     FROM analytics_events e2
-                     WHERE e2.event_type = 'assistant_latency'
-                       AND DATE(e2.ts) = DATE(e1.ts)
-                       AND e2.model_name = e1.model_name
-                       AND (e2.team_id = e1.team_id OR (e2.team_id IS NULL AND e1.team_id IS NULL))
-                       AND (e2.user_id = e1.user_id OR (e2.user_id IS NULL AND e1.user_id IS NULL))
-                    ) as message_count
-
-                FROM analytics_events e1
-                WHERE DATE(ts) = ?
-                GROUP BY DATE(ts), team_id, user_id, model_name
-            """, (date,))
+                    dg.date,
+                    dg.team_id,
+                    dg.user_id,
+                    dg.model_name,
+                    dg.sessions_count,
+                    dg.tokens_total,
+                    dg.api_calls,
+                    dg.errors,
+                    ls.avg_latency as response_time_avg,
+                    NULL as response_time_p95,  -- P95 calculation requires more complex query
+                    fs.avg_score as satisfaction_score,
+                    ls.msg_count as message_count
+                FROM daily_groups dg
+                LEFT JOIN latency_stats ls ON
+                    dg.date = ls.date AND
+                    dg.model_name = ls.model_name AND
+                    (dg.team_id = ls.team_id OR (dg.team_id IS NULL AND ls.team_id IS NULL)) AND
+                    (dg.user_id = ls.user_id OR (dg.user_id IS NULL AND ls.user_id IS NULL))
+                LEFT JOIN feedback_stats fs ON
+                    dg.date = fs.date AND
+                    (dg.team_id = fs.team_id OR (dg.team_id IS NULL AND fs.team_id IS NULL)) AND
+                    (dg.user_id = fs.user_id OR (dg.user_id IS NULL AND fs.user_id IS NULL))
+            """, (date, date, date))
 
             conn.commit()
             print(f"✅ Aggregated analytics for {date} (with model KPIs)")
