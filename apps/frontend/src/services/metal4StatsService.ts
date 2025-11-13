@@ -19,6 +19,8 @@ export interface Metal4Stats {
     memory_used_mb?: number
     memory_total_mb?: number
   }
+  queue_latency_ms?: number | null
+  oldest_job_age_ms?: number | null
   timestamp?: string
   [key: string]: any
 }

@@ -25,6 +25,8 @@ export function Header({ onOpenServerControls }: HeaderProps) {
   const [gpuActive, setGpuActive] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
   const [pausedSecondsRemaining, setPausedSecondsRemaining] = useState(0)
+  const [queueLatency, setQueueLatency] = useState<number | null>(null)
+  const [oldestJobAge, setOldestJobAge] = useState<number | null>(null)
   const MAX_TERMINALS = 3
 
   // Fetch server status on mount and periodically
@@ -57,6 +59,10 @@ export function Header({ onOpenServerControls }: HeaderProps) {
       // Check if GPU is active (utilization > 0)
       const gpuUtil = stats.gpu?.utilization ?? 0
       setGpuActive(gpuUtil > 0)
+
+      // Update queue latency and oldest job age (Sprint 3)
+      setQueueLatency(stats.queue_latency_ms ?? null)
+      setOldestJobAge(stats.oldest_job_age_ms ?? null)
     })
 
     return unsubscribe
@@ -257,6 +263,32 @@ export function Header({ onOpenServerControls }: HeaderProps) {
 
             {/* Control Center (includes Performance Monitor) with indicators */}
             <div className="flex items-center gap-2">
+              {/* Queue Latency Badge (Sprint 3) */}
+              {queueLatency !== null && queueLatency > 0 && (
+                <div
+                  className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded text-xs"
+                  title={`Queue Latency: ${queueLatency}ms`}
+                  aria-label={`Queue latency ${queueLatency} milliseconds`}
+                  role="status"
+                >
+                  <span className="text-[10px] font-medium">QL:</span>
+                  <span className="text-[10px]">{queueLatency.toFixed(0)}ms</span>
+                </div>
+              )}
+
+              {/* Oldest Job Age Badge (Sprint 3) */}
+              {oldestJobAge !== null && oldestJobAge > 0 && (
+                <div
+                  className="flex items-center gap-1 px-1.5 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 rounded text-xs"
+                  title={`Oldest Job: ${(oldestJobAge / 1000).toFixed(1)}s`}
+                  aria-label={`Oldest job age ${(oldestJobAge / 1000).toFixed(1)} seconds`}
+                  role="status"
+                >
+                  <span className="text-[10px] font-medium">Job:</span>
+                  <span className="text-[10px]">{(oldestJobAge / 1000).toFixed(1)}s</span>
+                </div>
+              )}
+
               {/* GPU Active Indicator */}
               {gpuActive && (
                 <div

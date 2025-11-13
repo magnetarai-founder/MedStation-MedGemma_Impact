@@ -200,6 +200,24 @@ class Metal4Diagnostics:
         """
         metrics = self.get_performance_metrics()
 
+        # Calculate queue latency (best-effort estimate)
+        # Average of all queue encode times weighted by active buffers
+        total_latency = 0.0
+        total_active = 0
+        for stats in self.queue_stats.values():
+            active = stats.buffers_submitted - stats.buffers_completed
+            if active > 0 and stats.avg_encode_time_ms > 0:
+                total_latency += stats.avg_encode_time_ms * active
+                total_active += active
+
+        queue_latency_ms = round(total_latency / total_active, 2) if total_active > 0 else None
+
+        # Calculate oldest job age (time since first operation started)
+        # This is a best-effort estimate based on uptime and completed jobs
+        uptime_s = time.time() - self.start_time
+        total_completed = sum(s.buffers_completed for s in self.queue_stats.values())
+        oldest_job_age_ms = round((uptime_s * 1000) / max(1, total_completed), 2) if total_completed > 0 else None
+
         return {
             'timestamp': metrics.timestamp,
 
@@ -224,6 +242,10 @@ class Metal4Diagnostics:
                     'avg_encode_time_ms': round(self.queue_stats['blit'].avg_encode_time_ms, 2)
                 }
             },
+
+            # Queue diagnostics (Sprint 3)
+            'queue_latency_ms': queue_latency_ms,
+            'oldest_job_age_ms': oldest_job_age_ms,
 
             # Event states
             'events': {
