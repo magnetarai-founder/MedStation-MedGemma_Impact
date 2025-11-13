@@ -63,7 +63,7 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
 
     # P2P Chat
     try:
-        from p2p_chat_router import router as p2p_chat_router
+        from api.p2p_chat_router import router as p2p_chat_router
         app.include_router(p2p_chat_router)
         services_loaded.append("P2P Chat")
     except Exception as e:
@@ -72,7 +72,7 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
 
     # LAN Discovery
     try:
-        from lan_discovery_router import router as lan_router
+        from api.lan_service import router as lan_router
         app.include_router(lan_router)
         services_loaded.append("LAN Discovery")
     except Exception as e:
@@ -81,7 +81,7 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
 
     # P2P Mesh
     try:
-        from p2p_mesh_router import router as p2p_mesh_router
+        from api.p2p_mesh_service import router as p2p_mesh_router
         app.include_router(p2p_mesh_router)
         services_loaded.append("P2P Mesh")
     except Exception as e:
@@ -90,7 +90,7 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
 
     # Code Editor
     try:
-        from code_editor_router import router as code_editor_router
+        from api.code_editor_router import router as code_editor_router
         app.include_router(code_editor_router)
         services_loaded.append("Code Editor")
     except Exception as e:
@@ -106,18 +106,9 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
         services_failed.append("Users API")
         logger.error("Failed to load users router", exc_info=True)
 
-    # Team API
-    try:
-        from api.routes import team as _team_routes
-        app.include_router(_team_routes.router)
-        services_loaded.append("Team API")
-    except Exception as e:
-        services_failed.append("Team API")
-        logger.error("Failed to load team router", exc_info=True)
-
     # Documents API
     try:
-        from docs_router import router as docs_router
+        from api.docs_service import router as docs_router
         app.include_router(docs_router)
         services_loaded.append("Documents API")
     except Exception as e:
@@ -126,7 +117,7 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
 
     # Insights API
     try:
-        from insights_router import router as insights_router
+        from api.insights_service import router as insights_router
         app.include_router(insights_router)
         services_loaded.append("Insights API")
     except Exception as e:
@@ -135,7 +126,7 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
 
     # Offline Mesh
     try:
-        from offline_mesh_router import router as mesh_router
+        from api.offline_mesh_router import router as mesh_router
         app.include_router(mesh_router)
         services_loaded.append("Offline Mesh")
     except Exception as e:
@@ -144,25 +135,16 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
 
     # Panic Mode
     try:
-        from panic_mode_router import router as panic_router
+        from api.panic_mode_router import router as panic_router
         app.include_router(panic_router)
         services_loaded.append("Panic Mode")
     except Exception as e:
         services_failed.append("Panic Mode")
         logger.error("Failed to load panic mode router", exc_info=True)
 
-    # Vault Service
-    try:
-        import vault_service
-        app.include_router(vault_service.router)
-        services_loaded.append("Vault Service")
-    except Exception as e:
-        services_failed.append("Vault Service")
-        logger.error("Failed to load vault service router", exc_info=True)
-
     # Automation
     try:
-        from automation_router import router as automation_router
+        from api.automation_router import router as automation_router
         app.include_router(automation_router)
         services_loaded.append("Automation")
     except Exception as e:
@@ -171,7 +153,7 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
 
     # Workflow
     try:
-        from workflow_router import router as workflow_router
+        from api.workflow_service import router as workflow_router
         app.include_router(workflow_router)
         services_loaded.append("Workflow")
     except Exception as e:
@@ -180,7 +162,7 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
 
     # Secure Enclave
     try:
-        from secure_enclave_router import router as secure_enclave_router
+        from api.secure_enclave_service import router as secure_enclave_router
         app.include_router(secure_enclave_router)
         services_loaded.append("Secure Enclave")
     except Exception as e:
@@ -189,48 +171,21 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
 
     # Auth
     try:
-        from auth_routes import router as auth_router
+        from api.auth_routes import router as auth_router
         app.include_router(auth_router)
         services_loaded.append("Auth")
     except Exception as e:
         services_failed.append("Auth")
         logger.error("Failed to load auth router", exc_info=True)
 
-    # Admin
-    try:
-        from admin_router import router as admin_router
-        app.include_router(admin_router)
-        services_loaded.append("Admin")
-    except Exception as e:
-        services_failed.append("Admin")
-        logger.error("Failed to load admin router", exc_info=True)
-
     # Backup
     try:
-        from backup_router import router as backup_router
+        from api.backup_router import router as backup_router
         app.include_router(backup_router)
         services_loaded.append("Backup")
     except Exception as e:
         services_failed.append("Backup")
         logger.error("Failed to load backup router", exc_info=True)
-
-    # Agent
-    try:
-        from agent_router import router as agent_router
-        app.include_router(agent_router)
-        services_loaded.append("Agent")
-    except Exception as e:
-        services_failed.append("Agent")
-        logger.error("Failed to load agent router", exc_info=True)
-
-    # Permissions API
-    try:
-        from api.routes import permissions as _permissions_routes
-        app.include_router(_permissions_routes.router)
-        services_loaded.append("Permissions API")
-    except Exception as e:
-        services_failed.append("Permissions API")
-        logger.error("Failed to load permissions router", exc_info=True)
 
     # Audit API
     try:
@@ -288,25 +243,16 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
 
     # Monitoring
     try:
-        from monitoring_routes import router as monitoring_router
+        from api.monitoring_routes import router as monitoring_router
         app.include_router(monitoring_router)
         services_loaded.append("Monitoring")
     except Exception as e:
         services_failed.append("Monitoring")
         logger.error("Failed to load monitoring router", exc_info=True)
 
-    # Code (v1 API)
-    try:
-        from code_router import router as code_router
-        app.include_router(code_router)
-        services_loaded.append("Code API")
-    except Exception as e:
-        services_failed.append("Code API")
-        logger.error("Failed to load code router", exc_info=True)
-
     # Terminal
     try:
-        from terminal_router import router as terminal_router
+        from api.terminal_api import router as terminal_router
         app.include_router(terminal_router)
         services_loaded.append("Terminal")
     except Exception as e:
@@ -315,7 +261,7 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
 
     # Metal 4 ML
     try:
-        from metal4_ml_routes import router as metal4_ml_router
+        from api.metal4_ml_routes import router as metal4_ml_router
         app.include_router(metal4_ml_router)
         services_loaded.append("Metal 4 ML")
     except Exception as e:
@@ -324,7 +270,7 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
 
     # Founder Setup
     try:
-        from founder_setup_routes import router as founder_setup_router
+        from api.founder_setup_routes import router as founder_setup_router
         app.include_router(founder_setup_router)
         services_loaded.append("Founder Setup")
     except Exception as e:
@@ -333,8 +279,8 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
 
     # Setup Wizard
     try:
-        from routes.setup_wizard_routes import router as setup_wizard_router
-        app.include_router(setup_wizard_router)
+        from api.routes import setup_wizard_routes as _setup_wizard_routes
+        app.include_router(_setup_wizard_routes.router)
         services_loaded.append("Setup Wizard")
     except Exception as e:
         services_failed.append("Setup Wizard")
@@ -342,8 +288,8 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
 
     # User Models
     try:
-        from user_models_router import router as user_models_router
-        app.include_router(user_models_router)
+        from api.routes import user_models as _user_models_routes
+        app.include_router(_user_models_routes.router)
         services_loaded.append("User Models")
     except Exception as e:
         services_failed.append("User Models")
@@ -425,27 +371,27 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
     try:
         from api.routes import vault as _vault_routes
         app.include_router(_vault_routes.router, prefix="/api/v1/vault")
-        services_loaded.append("Vault API (v1)")
+        services_loaded.append("Vault API")
     except Exception as e:
-        services_failed.append("Vault API (v1)")
+        services_failed.append("Vault API")
         logger.error("Failed to load vault v1 router", exc_info=True)
 
     # Team API (v1)
     try:
         from api.routes import team as _team_routes
         app.include_router(_team_routes.router, prefix="/api/v1/teams")
-        services_loaded.append("Team API (v1)")
+        services_loaded.append("Team API")
     except Exception as e:
-        services_failed.append("Team API (v1)")
+        services_failed.append("Team API")
         logger.error("Failed to load team v1 router", exc_info=True)
 
     # Permissions API (v1)
     try:
         from api.routes import permissions as _perm_routes
         app.include_router(_perm_routes.router, prefix="/api/v1/permissions")
-        services_loaded.append("Permissions API (v1)")
+        services_loaded.append("Permissions API")
     except Exception as e:
-        services_failed.append("Permissions API (v1)")
+        services_failed.append("Permissions API")
         logger.error("Failed to load permissions v1 router", exc_info=True)
 
     return services_loaded, services_failed
