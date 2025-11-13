@@ -140,7 +140,12 @@ class ModelManager:
         self.load_hot_slots()
 
     def load_hot_slots(self):
-        """Load hot slots from disk"""
+        """
+        Load hot slots from disk
+
+        Note: model_hot_slots.json is initialized on demand (first assignment).
+        If file doesn't exist, hot slots are empty (no models preloaded).
+        """
         try:
             if HOT_SLOTS_FILE.exists():
                 with open(HOT_SLOTS_FILE, 'r') as f:
@@ -148,23 +153,41 @@ class ModelManager:
                     slots = data.get('hot_slots', {})
                     # Convert string keys to int
                     self.hot_slots = {int(k): v for k, v in slots.items()}
-                    logger.info(f"Loaded hot slots: {self.hot_slots}")
+                    logger.info(f"✅ Loaded hot slots from {HOT_SLOTS_FILE}: {self.hot_slots}")
+            else:
+                logger.info(f"ℹ️ Hot slots file not found (will be created on first assignment): {HOT_SLOTS_FILE}")
+                self.hot_slots = {1: None, 2: None, 3: None, 4: None}
         except Exception as e:
-            logger.error(f"Failed to load hot slots: {e}")
+            logger.error(f"❌ Failed to load hot slots: {e}")
             self.hot_slots = {1: None, 2: None, 3: None, 4: None}
 
     def save_hot_slots(self):
-        """Save hot slots to disk"""
+        """
+        Save hot slots to disk (creates file if doesn't exist)
+
+        This is called on-demand when:
+        - User assigns a model to a hot slot
+        - User removes a model from a hot slot
+        """
         try:
+            # Ensure parent directory exists
+            HOT_SLOTS_FILE.parent.mkdir(parents=True, exist_ok=True)
+
             data = {
                 'hot_slots': self.hot_slots,
                 'updated_at': datetime.utcnow().isoformat()
             }
+
+            file_exists = HOT_SLOTS_FILE.exists()
             with open(HOT_SLOTS_FILE, 'w') as f:
                 json.dump(data, f, indent=2)
-            logger.info(f"Saved hot slots: {self.hot_slots}")
+
+            if file_exists:
+                logger.info(f"💾 Updated hot slots in {HOT_SLOTS_FILE}: {self.hot_slots}")
+            else:
+                logger.info(f"✨ Created hot slots file at {HOT_SLOTS_FILE}: {self.hot_slots}")
         except Exception as e:
-            logger.error(f"Failed to save hot slots: {e}")
+            logger.error(f"❌ Failed to save hot slots: {e}")
 
     def assign_to_slot(self, slot_number: int, model_name: str) -> bool:
         """Assign a model to a specific hot slot (1-4)"""
@@ -258,20 +281,25 @@ class ModelManager:
             unavailable_models = []
 
             for model in models:
+                # Handle both dict and object formats from different OllamaClient implementations
+                model_name = model.get("name") if isinstance(model, dict) else model.name
+                model_size = model.get("size") if isinstance(model, dict) else model.size
+                model_modified = model.get("modified_at") if isinstance(model, dict) else model.modified_at
+
                 model_info = {
-                    "name": model.name,
-                    "loaded": model.name in running_models,
-                    "slot_number": self.get_slot_for_model(model.name),
-                    "size": model.size,
-                    "modified_at": model.modified_at
+                    "name": model_name,
+                    "loaded": model_name in running_models,
+                    "slot_number": self.get_slot_for_model(model_name),
+                    "size": model_size,
+                    "modified_at": model_modified
                 }
 
                 # Check if model is suitable for chat
-                if is_chat_model(model.name):
+                if is_chat_model(model_name):
                     available_models.append(model_info)
                 else:
                     # Add reason why model is unavailable
-                    reason = get_model_unavailable_reason(model.name)
+                    reason = get_model_unavailable_reason(model_name)
                     model_info["unavailable_reason"] = reason
                     unavailable_models.append(model_info)
 

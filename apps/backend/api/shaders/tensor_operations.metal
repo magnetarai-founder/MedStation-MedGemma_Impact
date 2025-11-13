@@ -182,7 +182,6 @@ kernel void scaled_dot_product_attention(
     if (i >= seq_len || j >= d_v) return;
 
     // Compute attention scores for position i
-    float score_sum = 0.0f;
     float max_score = -INFINITY;
 
     // Find max score for numerical stability
@@ -237,8 +236,8 @@ kernel void scaled_dot_product_attention(
  */
 kernel void conv2d_float32(
     device const float* input [[buffer(0)]],
-    device const float* kernel [[buffer(1)]],
-    device const float* bias [[buffer(2)]],
+    device const float* weights [[buffer(1)]],
+    device const float* bias_data [[buffer(2)]],
     device float* output [[buffer(3)]],
     constant uint& batch_size [[buffer(4)]],
     constant uint& in_channels [[buffer(5)]],
@@ -265,7 +264,7 @@ kernel void conv2d_float32(
     uint oh = out_idx / output_width;
     uint ow = out_idx % output_width;
 
-    float sum = bias[oc];
+    float sum = bias_data[oc];
 
     // Convolve
     for (uint ic = 0; ic < in_channels; ic++) {
@@ -279,11 +278,11 @@ kernel void conv2d_float32(
                                    ic * input_height * input_width +
                                    ih * input_width + iw;
 
-                    uint kernel_idx = oc * in_channels * kernel_height * kernel_width +
+                    uint weights_idx = oc * in_channels * kernel_height * kernel_width +
                                     ic * kernel_height * kernel_width +
                                     kh * kernel_width + kw;
 
-                    sum += input[input_idx] * kernel[kernel_idx];
+                    sum += input[input_idx] * weights[weights_idx];
                 }
             }
         }
@@ -376,9 +375,10 @@ kernel void softmax_float32(
     constant uint& num_rows [[buffer(2)]],
     constant uint& num_cols [[buffer(3)]],
     uint2 gid [[thread_position_in_grid]],
-    uint tid [[thread_position_in_threadgroup]]
+    uint2 tid_vec [[thread_position_in_threadgroup]]
 ) {
     uint row = gid.y;
+    uint tid = tid_vec.x;
 
     if (row >= num_rows) return;
 
@@ -449,9 +449,10 @@ kernel void layer_norm_float32(
     constant uint& num_cols [[buffer(5)]],
     constant float& eps [[buffer(6)]],
     uint2 gid [[thread_position_in_grid]],
-    uint tid [[thread_position_in_threadgroup]]
+    uint2 tid_vec [[thread_position_in_threadgroup]]
 ) {
     uint row = gid.y;
+    uint tid = tid_vec.x;
 
     if (row >= num_rows) return;
 

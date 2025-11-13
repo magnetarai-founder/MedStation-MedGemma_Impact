@@ -21,11 +21,11 @@ import logging
 from fastapi import APIRouter, HTTPException, Request, Depends
 from pydantic import BaseModel, Field
 
-# Import user service
+# Import user service (migrated to services layer)
 try:
-    from user_service import get_or_create_user
+    from services.users import get_or_create_user_profile as get_or_create_user
 except ImportError:
-    from api.user_service import get_or_create_user
+    from api.services.users import get_or_create_user_profile as get_or_create_user
 
 # Phase 2: Import permission decorators
 # Phase 3: Import team-aware decorators and membership helpers
@@ -86,6 +86,7 @@ class Document(BaseModel):
     is_private: bool = False
     security_level: Optional[str] = None
     shared_with: List[str] = Field(default_factory=list)
+    team_id: Optional[str] = None
 
 
 class SyncRequest(BaseModel):
@@ -119,7 +120,8 @@ def init_db():
             created_by TEXT NOT NULL,
             is_private INTEGER DEFAULT 0,
             security_level TEXT,
-            shared_with TEXT DEFAULT '[]'
+            shared_with TEXT DEFAULT '[]',
+            team_id TEXT
         )
     """)
 
@@ -134,6 +136,11 @@ def init_db():
 
     cursor.execute("""
         CREATE INDEX IF NOT EXISTS idx_created_by_updated ON documents(created_by, updated_at)
+    """)
+
+    # Index for team documents (Phase 3)
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_team_id ON documents(team_id)
     """)
 
     conn.commit()

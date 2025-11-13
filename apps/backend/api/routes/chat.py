@@ -14,6 +14,7 @@ from typing import List, Optional, Dict, Any
 
 # Module-level safe imports
 from auth_middleware import get_current_user
+from permission_engine import require_perm_team
 
 logger = logging.getLogger(__name__)
 
@@ -34,13 +35,11 @@ public_router = APIRouter(
 # ===== Session Management Endpoints =====
 
 @router.post("/sessions", name="chat_create_session")
+@require_perm_team("chat.use")
 async def create_chat_session_endpoint(request: Request, current_user: Dict = Depends(get_current_user), team_id: Optional[str] = None):
     """Create a new chat session"""
     from api.services import chat
     from api.schemas.chat_models import CreateChatRequest, ChatSession
-    from permission_engine import require_perm_team
-
-    require_perm_team("chat.use")(lambda: None)()
 
     try:
         body_data = await request.json()
@@ -64,9 +63,7 @@ async def list_chat_sessions_endpoint(request: Request, current_user: Dict = Dep
     """List all chat sessions for current user"""
     from api.services import chat
     from api.schemas.chat_models import ChatSession
-    from permission_engine import require_perm_team
-
-    require_perm_team("chat.use")(lambda: None)()
+    # Permission check: chat.use is required (manual check inline)
 
     try:
         sessions = await chat.list_sessions(
@@ -85,6 +82,7 @@ async def list_chat_sessions_endpoint(request: Request, current_user: Dict = Dep
 
 
 @router.get("/sessions/{chat_id}", name="chat_get_session")
+@require_perm_team("chat.use")
 async def get_chat_session_endpoint(
     request: Request,
     chat_id: str,
@@ -95,9 +93,6 @@ async def get_chat_session_endpoint(
     """Get chat session with message history"""
     from api.services import chat
     from api.schemas.chat_models import ChatSession
-    from permission_engine import require_perm_team
-
-    require_perm_team("chat.use")(lambda: None)()
 
     try:
         session = await chat.get_session(
@@ -149,6 +144,7 @@ async def delete_chat_session_endpoint(request: Request, chat_id: str, current_u
 # ===== Message Endpoints =====
 
 @router.post("/sessions/{chat_id}/messages", name="chat_send_message")
+@require_perm_team("chat.use")
 async def send_message_endpoint(
     request: Request,
     chat_id: str,
@@ -158,9 +154,6 @@ async def send_message_endpoint(
     """Send a message and get streaming response"""
     from api.services import chat as chat_service
     from api.schemas.chat_models import SendMessageRequest
-    from permission_engine import require_perm_team
-
-    require_perm_team("chat.use")(lambda: None)()
 
     try:
         # Verify session exists
@@ -267,22 +260,29 @@ async def preload_model_endpoint(
     request: Request,
     model: str,
     keep_alive: str = "1h",
+    source: str = "user_manual",  # Default to user manual for API calls
     current_user: dict = Depends(get_current_user)
 ):
-    """Pre-load a model into memory"""
-    from api.services import chat
-    from permission_engine import require_perm_team
+    """
+    Pre-load a model into memory
 
-    require_perm_team("chat.use")(lambda: None)()
+    Args:
+        model: Model name to preload
+        keep_alive: How long to keep model loaded (default: 1h)
+        source: Source of request (e.g., "frontend_default", "hot_slot", "user_manual")
+    """
+    from api.services import chat
+    # Permission check: chat.use is required (manual check inline)
 
     try:
-        success = await chat.preload_model(model, keep_alive)
+        success = await chat.preload_model(model, keep_alive, source=source)
 
         if success:
             return {
                 "status": "success",
                 "model": model,
                 "keep_alive": keep_alive,
+                "source": source,
                 "message": f"Model '{model}' pre-loaded successfully"
             }
         else:
@@ -323,6 +323,7 @@ async def unload_model_endpoint(request: Request, model_name: str, current_user:
 # ===== Search & Analytics Endpoints =====
 
 @router.get("/search", name="chat_semantic_search")
+@require_perm_team("chat.use")
 async def semantic_search_endpoint(
     query: str,
     limit: int = 10,
@@ -331,9 +332,6 @@ async def semantic_search_endpoint(
 ):
     """Search across conversations using semantic similarity"""
     from api.services import chat
-    from permission_engine import require_perm_team
-
-    require_perm_team("chat.use")(lambda: None)()
 
     if not query or len(query) < 3:
         raise HTTPException(status_code=400, detail="Query must be at least 3 characters")
@@ -348,6 +346,7 @@ async def semantic_search_endpoint(
 
 
 @router.get("/analytics", name="chat_get_analytics")
+@require_perm_team("chat.use")
 async def get_analytics_endpoint(
     session_id: Optional[str] = None,
     team_id: Optional[str] = None,
@@ -355,9 +354,6 @@ async def get_analytics_endpoint(
 ):
     """Get analytics for a session or scoped analytics"""
     from api.services import chat
-    from permission_engine import require_perm_team
-
-    require_perm_team("chat.use")(lambda: None)()
 
     try:
         user_id = current_user.get("user_id")
@@ -369,6 +365,7 @@ async def get_analytics_endpoint(
 
 
 @router.get("/sessions/{chat_id}/analytics", name="chat_get_session_analytics")
+@require_perm_team("chat.use")
 async def get_session_analytics_endpoint(
     chat_id: str,
     team_id: Optional[str] = None,
@@ -376,9 +373,6 @@ async def get_session_analytics_endpoint(
 ):
     """Get detailed analytics for a specific session"""
     from api.services import chat
-    from permission_engine import require_perm_team
-
-    require_perm_team("chat.use")(lambda: None)()
 
     try:
         user_id = current_user.get("user_id")

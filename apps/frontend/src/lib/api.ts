@@ -341,9 +341,9 @@ class NeutronAPI {
   }
 
   // Chat/AI endpoints
-  async preloadModel(model: string, keepAlive: string = '1h'): Promise<void> {
+  async preloadModel(model: string, keepAlive: string = '1h', source: string = 'user_manual'): Promise<void> {
     const { data } = await this.client.post(
-      `/v1/chat/models/preload?model=${encodeURIComponent(model)}&keep_alive=${encodeURIComponent(keepAlive)}`
+      `/v1/chat/models/preload?model=${encodeURIComponent(model)}&keep_alive=${encodeURIComponent(keepAlive)}&source=${encodeURIComponent(source)}`
     )
     return data
   }

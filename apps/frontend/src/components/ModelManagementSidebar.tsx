@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { X, Cpu, Loader2, ChevronRight } from 'lucide-react'
-import { api } from '../lib/api'
+import { api, authFetch } from '../lib/api'
 
 interface ModelStatus {
   name: string
@@ -54,7 +54,7 @@ export function ModelManagementSidebar({ isOpen, onClose }: ModelManagementSideb
 
   const loadSystemMemory = async () => {
     try {
-      const response = await fetch('/api/v1/chat/system/memory')
+      const response = await authFetch('/api/v1/chat/system/memory')
       if (response.ok) {
         const data = await response.json()
         setSystemMemoryGB(data.usable_for_models_gb || 128)
@@ -95,7 +95,7 @@ export function ModelManagementSidebar({ isOpen, onClose }: ModelManagementSideb
   const loadModelToSlot = async (model: ModelStatus, slotNumber: number) => {
     try {
       // Call API to assign model to specific slot
-      const response = await fetch(
+      const response = await authFetch(
         `/api/v1/chat/models/hot-slots/${slotNumber}?model_name=${encodeURIComponent(model.name)}`,
         { method: 'POST' }
       )
@@ -126,7 +126,7 @@ export function ModelManagementSidebar({ isOpen, onClose }: ModelManagementSideb
 
     try {
       // Call API to remove from hot slot (which also unloads)
-      const response = await fetch(
+      const response = await authFetch(
         `/api/v1/chat/models/hot-slots/${slotNumber}`,
         { method: 'DELETE' }
       )

@@ -13,6 +13,7 @@ import { ChevronDown, ChevronRight, Folder, Star, Plus, Briefcase, Zap, Users, L
 import { useWorkflows } from '@/hooks/useWorkflowQueue'
 import type { Workflow } from '@/types/workflow'
 import type { AutomationType } from './AutomationWorkspace'
+import { metal4StatsService } from '../services/metal4StatsService'
 
 interface WorkflowTreeSidebarProps {
   automationType: AutomationType
@@ -31,62 +32,33 @@ export function WorkflowTreeSidebar({
 }: WorkflowTreeSidebarProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['workflows', 'queue']))
   const [queueCount, setQueueCount] = useState(0)
-  const [queueFailures, setQueueFailures] = useState(0)
-  const [queueCooldownUntil, setQueueCooldownUntil] = useState<number>(0)
 
   // Fetch workflows from backend filtered by type
   const { data: workflows = [], isLoading } = useWorkflows({ workflow_type: automationType })
 
-  // Poll queue status with cooldown on 429
+  // Subscribe to shared Metal4 stats service (prevents duplicate polling)
   useEffect(() => {
-    const pollQueues = async () => {
-      // Stop polling after 3 consecutive failures
-      if (queueFailures >= 3) return
-
-      // Respect cooldown after rate limit
-      if (Date.now() < queueCooldownUntil) return
-
-      // Get auth token
-      const token = localStorage.getItem('auth_token')
-      if (!token) return // Don't poll if not authenticated
-
-      try {
-        const response = await fetch('/api/v1/monitoring/metal4', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-        if (!response.ok) {
-          if ((response as any).status === 429) {
-            setQueueCooldownUntil(Date.now() + 60_000)
-          }
-          setQueueFailures(prev => prev + 1)
-          return
-        }
-
-        const data = await response.json()
-
-        // Sum active_buffers across all queues
-        let total = 0
-        if (data.queues) {
-          for (const queue of Object.values(data.queues)) {
-            if (typeof queue === 'object' && queue !== null && 'active_buffers' in queue) {
-              total += (queue as { active_buffers: number }).active_buffers || 0
-            }
-          }
-        }
-
-        setQueueCount(total)
-        setQueueFailures(0) // Reset on success
-      } catch {
-        setQueueFailures(prev => prev + 1)
+    const unsubscribe = metal4StatsService.subscribe((stats) => {
+      if (!stats) {
+        // Error or rate limited - keep current value
+        return
       }
-    }
 
-    pollQueues() // Initial poll
-    const interval = setInterval(pollQueues, 10000) // Every 10 seconds
-    return () => clearInterval(interval)
-  }, [queueFailures, queueCooldownUntil])
+      // Sum active_buffers across all queues
+      let total = 0
+      if (stats.queues) {
+        for (const queue of Object.values(stats.queues)) {
+          if (typeof queue === 'object' && queue !== null && 'active_buffers' in queue) {
+            total += (queue as { active_buffers: number }).active_buffers || 0
+          }
+        }
+      }
+
+      setQueueCount(total)
+    })
+
+    return unsubscribe
+  }, [])
 
   const toggleFolder = (folderId: string) => {
     setExpandedFolders(prev => {

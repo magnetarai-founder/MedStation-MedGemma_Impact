@@ -5,6 +5,7 @@ import { ModelManagementSidebar } from './ModelManagementSidebar'
 import { useOllamaStore } from '../stores/ollamaStore'
 import { ShutdownModal, RestartModal } from './OllamaServerModals'
 import { PanicModeModal } from './PanicModeModal'
+import { metal4StatsService } from '../services/metal4StatsService'
 
 interface HeaderProps {
   onOpenServerControls: () => void
@@ -20,8 +21,6 @@ export function Header({ onOpenServerControls }: HeaderProps) {
   const [showControlCenter, setShowControlCenter] = useState(false)
   const [activeTerminals, setActiveTerminals] = useState(0)
   const [activeQueues, setActiveQueues] = useState(0)
-  const [queueFailures, setQueueFailures] = useState(0)
-  const [queueCooldownUntil, setQueueCooldownUntil] = useState<number>(0)
   const MAX_TERMINALS = 3
 
   // Fetch server status on mount and periodically
@@ -31,57 +30,29 @@ export function Header({ onOpenServerControls }: HeaderProps) {
     return () => clearInterval(interval)
   }, [])
 
-  // Poll queue status with cooldown on 429
+  // Subscribe to shared Metal4 stats service (prevents duplicate polling)
   useEffect(() => {
-    const pollQueues = async () => {
-      // Stop polling after 3 consecutive failures
-      if (queueFailures >= 3) return
-
-      // Respect cooldown after hitting rate limit
-      if (Date.now() < queueCooldownUntil) return
-
-      // Get auth token
-      const token = localStorage.getItem('auth_token')
-      if (!token) return // Don't poll if not authenticated
-
-      try {
-        const response = await fetch('/api/v1/monitoring/metal4', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-        if (!response.ok) {
-          if ((response as any).status === 429) {
-            // Back off for 60 seconds when rate limited
-            setQueueCooldownUntil(Date.now() + 60_000)
-          }
-          setQueueFailures(prev => prev + 1)
-          return
-        }
-
-        const data = await response.json()
-
-        // Sum active_buffers across all queues
-        let total = 0
-        if (data.queues) {
-          for (const queue of Object.values(data.queues)) {
-            if (typeof queue === 'object' && queue !== null && 'active_buffers' in queue) {
-              total += (queue as { active_buffers: number }).active_buffers || 0
-            }
-          }
-        }
-
-        setActiveQueues(total)
-        setQueueFailures(0) // Reset on success
-      } catch {
-        setQueueFailures(prev => prev + 1)
+    const unsubscribe = metal4StatsService.subscribe((stats) => {
+      if (!stats) {
+        // Error or rate limited - keep current value
+        return
       }
-    }
 
-    pollQueues() // Initial poll
-    const interval = setInterval(pollQueues, 10000) // Every 10 seconds
-    return () => clearInterval(interval)
-  }, [queueFailures, queueCooldownUntil])
+      // Sum active_buffers across all queues
+      let total = 0
+      if (stats.queues) {
+        for (const queue of Object.values(stats.queues)) {
+          if (typeof queue === 'object' && queue !== null && 'active_buffers' in queue) {
+            total += (queue as { active_buffers: number }).active_buffers || 0
+          }
+        }
+      }
+
+      setActiveQueues(total)
+    })
+
+    return unsubscribe
+  }, [])
 
   const handleLogoClick = () => {
     // Toggle Model Management sidebar

@@ -559,9 +559,13 @@ def validate_sql_engine() -> Dict[str, Any]:
         }
 
 
+# Alias for backwards compatibility (prometheus_metrics expects this name)
+get_metal4_sql_engine = get_sql_engine
+
 # Export
 __all__ = [
     'Metal4SQLEngine',
     'get_sql_engine',
+    'get_metal4_sql_engine',
     'validate_sql_engine'
 ]

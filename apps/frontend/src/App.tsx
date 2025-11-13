@@ -36,6 +36,7 @@ const CodeChatSettingsModal = lazyNamed(() => import('./components/CodeChatSetti
 const JsonConverterModal = lazyNamed(() => import('./components/JsonConverterModal'), 'JsonConverterModal')
 const QueryHistoryModal = lazyNamed(() => import('./components/QueryHistoryModal'), 'QueryHistoryModal')
 const ServerControlModal = lazyNamed(() => import('./components/ServerControlModal'), 'ServerControlModal')
+const SetupWizard = lazyNamed(() => import('./components/SetupWizard/SetupWizard'), 'default')
 
 // Loading spinner component for Suspense fallbacks
 const LoadingSpinner = () => (
@@ -67,6 +68,7 @@ export default function App() {
   const [libraryInitialCode, setLibraryInitialCode] = useState<{ name: string; content: string } | null>(null)
   const [authState, setAuthState] = useState<'checking' | 'login' | 'authenticated'>('checking')
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
+  const [setupComplete, setSetupComplete] = useState<boolean | null>(null) // null = checking, true/false = determined
 
   // Handle loading query from library into editor
   const handleLoadQuery = (query: settingsApi.SavedQuery) => {
@@ -92,8 +94,28 @@ export default function App() {
     }
   }
 
-  // Check authentication status on mount
+  // Check setup status on mount (before auth check)
   useEffect(() => {
+    const checkSetup = async () => {
+      try {
+        const { setupWizardApi } = await import('./lib/setupWizardApi')
+        const status = await setupWizardApi.getSetupStatus()
+        setSetupComplete(status.setup_completed)
+      } catch (error) {
+        console.error('Failed to check setup status:', error)
+        // Assume setup complete if check fails (don't block user)
+        setSetupComplete(true)
+      }
+    }
+
+    checkSetup()
+  }, [])
+
+  // Check authentication status on mount (after setup check)
+  useEffect(() => {
+    // Wait for setup check to complete
+    if (setupComplete === null) return
+
     const checkAuth = async () => {
       try {
         // Check if we have a stored token
@@ -123,7 +145,7 @@ export default function App() {
     }
 
     checkAuth()
-  }, [])
+  }, [setupComplete])
 
   // Initialize user and session after authentication
   useEffect(() => {
@@ -152,27 +174,33 @@ export default function App() {
     }
   }, [authState])
 
-  // Pre-load default AI model after session is created
+  // Pre-load default AI model after session is created (if enabled)
   useEffect(() => {
+    // Only preload if enabled in settings
+    if (!settings.autoPreloadModel) {
+      console.debug('Auto-preload disabled in settings')
+      return
+    }
+
     // Only preload if we have a valid session
     if (!sessionId) return
     if (!localStorage.getItem('auth_token')) return
 
     const preloadDefaultModel = async () => {
       try {
-        console.log(`Pre-loading default model: ${settings.defaultModel}`)
-        await api.preloadModel(settings.defaultModel, '1h')
-        console.log(`✓ Model '${settings.defaultModel}' pre-loaded successfully`)
+        console.log(`🔄 Auto-preloading default model: ${settings.defaultModel} (source: frontend_default)`)
+        await api.preloadModel(settings.defaultModel, '1h', 'frontend_default')
+        console.log(`✅ Model '${settings.defaultModel}' pre-loaded successfully (source: frontend_default)`)
       } catch (error: any) {
         // Non-critical - models load on first use anyway
-        console.debug('Model preload failed:', error?.response?.status || error.message)
+        console.debug('⚠️ Model preload failed (non-critical):', error?.response?.status || error.message)
       }
     }
 
     // Delay to ensure Ollama server is ready
     const timeoutId = setTimeout(preloadDefaultModel, 3000)
     return () => clearTimeout(timeoutId)
-  }, [sessionId, settings.defaultModel])
+  }, [sessionId, settings.defaultModel, settings.autoPreloadModel])
 
   // Handle open library with pre-filled code from CodeEditor
   useEffect(() => {
@@ -203,8 +231,24 @@ export default function App() {
     }
   }, [])
 
+  // Setup wizard (first-run experience)
+  if (setupComplete === false) {
+    return (
+      <Suspense fallback={<LoadingSpinner />}>
+        <SetupWizard
+          onComplete={() => {
+            setSetupComplete(true)
+            // Refresh auth state after setup
+            setAuthState('checking')
+            setIsLoading(false)
+          }}
+        />
+      </Suspense>
+    )
+  }
+
   // Loading state
-  if (isLoading) {
+  if (isLoading || setupComplete === null) {
     return (
       <div className="h-screen flex items-center justify-center">
         <div className="text-center">
@@ -219,7 +263,7 @@ export default function App() {
     )
   }
 
-  // Login screen (with "Create Account" button to show setup wizard)
+  // Login screen
   if (authState === 'login') {
     return <Login onLogin={(token) => setAuthState('authenticated')} />
   }

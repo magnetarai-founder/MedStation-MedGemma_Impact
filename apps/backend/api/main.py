@@ -392,14 +392,13 @@ async def lifespan(app: FastAPI):
     # Auto-load favorite models from hot slots
     try:
         from model_manager import get_model_manager
-        from ollama_client import get_ollama_client
+        from chat_service import ollama_client
 
         model_manager = get_model_manager()
         favorites = model_manager.get_favorites()
 
         if favorites:
             logger.info(f"Preloading {len(favorites)} favorite model(s): {', '.join(favorites)}")
-            ollama_client = get_ollama_client()
 
             for model_name in favorites:
                 try:
@@ -749,6 +748,14 @@ try:
 except ImportError as e:
     logger.warning(f"Could not import founder_setup_routes: {e}")
 
+# Setup Wizard (Phase 1: First-run setup with Ollama, models, hot slots)
+try:
+    from routes.setup_wizard_routes import router as setup_wizard_router
+    app.include_router(setup_wizard_router)
+    services_loaded.append("Setup Wizard")
+except ImportError as e:
+    logger.warning(f"Could not import setup_wizard_routes: {e}")
+
 # Health Diagnostics (Phase 5.4: Comprehensive health checks)
 try:
     from health_diagnostics import get_health_diagnostics
@@ -819,11 +826,8 @@ try:
 except Exception:
     pass
 
-try:
-    from api.chat import routes as _chat_routes
-    app.include_router(_chat_routes.router, prefix="/api/v1/chat")
-except Exception:
-    pass
+# Removed: Empty placeholder chat router (redundant with routes.chat)
+# The actual chat router is loaded above via: from routes import chat
 
 try:
     from api.permissions import routes as _perm_routes

@@ -41,6 +41,7 @@ export interface ModelConfig {
 interface ChatSettings {
   defaultModel: string
   autoGenerateTitles: boolean
+  autoPreloadModel: boolean  // Auto-preload default model on startup
   contextWindow: number
 
   // Orchestrator Model (always running for Jarvis routing)
@@ -131,6 +132,7 @@ export const useChatStore = createWithEqualityFn<ChatStore>()(
       settings: {
         defaultModel: 'gpt-oss:20b',
         autoGenerateTitles: true,
+        autoPreloadModel: false,  // Disabled by default - user must enable
         contextWindow: 75,
 
         // Orchestrator Model (empty by default, user configures)

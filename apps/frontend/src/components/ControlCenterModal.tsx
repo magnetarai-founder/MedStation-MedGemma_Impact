@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { X, Activity, Cpu, HardDrive, Zap, Server, Database, Wifi, CheckCircle2, AlertCircle, XCircle, Loader2 } from 'lucide-react'
+import { metal4StatsService } from '../services/metal4StatsService'
 
 interface Metal4Stats {
   timestamp: string
@@ -88,34 +89,24 @@ export function ControlCenterModal({ isOpen, onClose }: ControlCenterModalProps)
   // Fetch data when opened
   useEffect(() => {
     if (isOpen) {
-      fetchAllData()
-      // Auto-refresh every 3 seconds while open
-      const interval = setInterval(fetchAllData, 3000)
+      fetchSystemHealth() // Fetch health immediately
+      // Auto-refresh health every 3 seconds while open
+      const interval = setInterval(fetchSystemHealth, 3000)
       return () => clearInterval(interval)
     }
   }, [isOpen])
 
-  const fetchAllData = async () => {
-    await Promise.all([
-      fetchMetal4Stats(),
-      fetchSystemHealth()
-    ])
-  }
+  // Subscribe to shared Metal4 stats service
+  useEffect(() => {
+    if (!isOpen) return
 
-  const fetchMetal4Stats = async () => {
-    setIsLoadingMetal(true)
-    try {
-      const response = await fetch('/api/v1/monitoring/metal4')
-      if (response.ok) {
-        const data = await response.json()
-        setMetal4Stats(data)
-      }
-    } catch (err) {
-      console.warn('Metal4 stats unavailable:', err)
-    } finally {
+    const unsubscribe = metal4StatsService.subscribe((stats) => {
+      setMetal4Stats(stats)
       setIsLoadingMetal(false)
-    }
-  }
+    })
+
+    return unsubscribe
+  }, [isOpen])
 
   const fetchSystemHealth = async () => {
     setIsLoadingHealth(true)

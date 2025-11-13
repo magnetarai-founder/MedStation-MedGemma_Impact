@@ -666,10 +666,28 @@ async def list_ollama_models() -> List[Dict[str, Any]]:
     return chat_models
 
 
-async def preload_model(model: str, keep_alive: str = "1h") -> bool:
-    """Pre-load a model into memory"""
+async def preload_model(model: str, keep_alive: str = "1h", source: str = "unknown") -> bool:
+    """
+    Pre-load a model into memory
+
+    Args:
+        model: Model name to preload
+        keep_alive: How long to keep model in memory (default: 1h)
+        source: Source of preload request (e.g., "frontend_default", "hot_slot", "user_manual")
+
+    Returns:
+        True if successful, False otherwise
+    """
+    logger.info(f"🔄 Preloading model '{model}' from source: {source} (keep_alive: {keep_alive})")
     ollama_client = _get_ollama_client()
-    return await ollama_client.preload_model(model, keep_alive)
+    result = await ollama_client.preload_model(model, keep_alive)
+
+    if result:
+        logger.info(f"✅ Model '{model}' preloaded successfully (source: {source})")
+    else:
+        logger.warning(f"⚠️ Failed to preload model '{model}' (source: {source})")
+
+    return result
 
 
 async def unload_model(model_name: str) -> bool:

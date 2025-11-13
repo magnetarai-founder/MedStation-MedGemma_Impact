@@ -179,10 +179,10 @@ def register_core_services():
 
     services.register_factory("vault_service", create_vault_service)
 
-    # User Service
+    # User Service (migrated to services layer)
     def create_user_service():
-        from user_service import get_user_service
-        return get_user_service()
+        from services.users import get_or_create_user_profile
+        return get_or_create_user_profile
 
     services.register_factory("user_service", create_user_service)
 

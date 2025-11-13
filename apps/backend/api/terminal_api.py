@@ -12,9 +12,15 @@ import subprocess
 
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from services.terminal_bridge import terminal_bridge, TerminalSession
+# Import terminal bridge from parent services directory
+try:
+    # Try relative import first (when imported as module)
+    from ..services.terminal_bridge import terminal_bridge, TerminalSession
+except ImportError:
+    # Fallback to sys.path manipulation (when run directly)
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from services.terminal_bridge import terminal_bridge, TerminalSession
 
 # Import auth middleware
 try:
