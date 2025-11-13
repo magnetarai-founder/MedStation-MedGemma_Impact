@@ -160,17 +160,30 @@ async def get_setup_status():
     """
     Get overall setup status
 
-    Returns whether the setup wizard has been completed.
-    This checks the founder_setup table for completion status.
+    Setup is complete if ANY users exist in the database.
+    This determines whether to show wizard or login screen.
+
+    Logic:
+    - No users exist → setup_completed = False (show wizard)
+    - Users exist → setup_completed = True (show login)
+
+    Founder login is always available via hardcoded credentials,
+    independent of setup status.
 
     Public endpoint - no authentication required.
     """
     try:
+        from auth_middleware import auth_service
+
+        # Check if any users exist in the database
+        users = auth_service.get_all_users()
+        has_users = len(users) > 0
+
         founder_wizard = get_founder_wizard()
         founder_info = founder_wizard.get_setup_info()
 
         return SetupStatusResponse(
-            setup_completed=founder_info["setup_completed"],
+            setup_completed=has_users,  # True if any users exist
             founder_setup_completed=founder_info["setup_completed"],
             founder_password_storage=founder_info.get("password_storage_type"),
             is_macos=founder_info.get("is_macos", False)
