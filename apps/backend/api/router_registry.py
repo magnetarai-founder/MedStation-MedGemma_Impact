@@ -187,6 +187,33 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
         services_failed.append("Backup")
         logger.error("Failed to load backup router", exc_info=True)
 
+    # Agent Orchestrator
+    try:
+        from api.agent import router as agent_router
+        app.include_router(agent_router)
+        services_loaded.append("Agent Orchestrator")
+    except Exception as e:
+        services_failed.append("Agent Orchestrator")
+        logger.error("Failed to load agent router", exc_info=True)
+
+    # Admin Service (legacy)
+    try:
+        from api.admin_service import router as admin_service_router
+        app.include_router(admin_service_router)
+        services_loaded.append("Admin Service")
+    except Exception as e:
+        services_failed.append("Admin Service")
+        logger.error("Failed to load admin service router", exc_info=True)
+
+    # Code Operations
+    try:
+        from api.code_operations import router as code_router
+        app.include_router(code_router)
+        services_loaded.append("Code Operations")
+    except Exception as e:
+        services_failed.append("Code Operations")
+        logger.error("Failed to load code operations router", exc_info=True)
+
     # Audit API
     try:
         from api.routes import audit as _audit_routes
