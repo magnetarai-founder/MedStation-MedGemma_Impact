@@ -89,3 +89,12 @@ repos:
   #     - id: interrogate
   #       args: ['--fail-under=50', '-vv']
   #       files: ^apps/backend/api/.*\.py$
+
+  # Local hooks
+  - repo: local
+    hooks:
+      - id: check-large-files-staged
+        name: Check large files in staged changes
+        language: system
+        entry: bash -lc 'for f in $(git diff --cached --name-only | grep -E "\.(py|ts|tsx)$"); do [ -f "$f" ] || continue; lines=$(wc -l < "$f"); if [ "$lines" -gt 1200 ] && ! grep -qx "$f" .precommit_allowlist_large_files.txt 2>/dev/null; then echo "File too large (>1200 lines): $f ($lines)"; exit 1; fi; done'
+        pass_filenames: false
