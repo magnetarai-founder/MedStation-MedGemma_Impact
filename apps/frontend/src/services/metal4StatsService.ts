@@ -90,6 +90,14 @@ class Metal4StatsService {
   }
 
   /**
+   * Get cooldown remaining time in seconds
+   */
+  getCooldownRemainingSeconds(): number {
+    if (!this.isInCooldown()) return 0
+    return Math.ceil((this.cooldownUntil - Date.now()) / 1000)
+  }
+
+  /**
    * Force refresh (ignores cooldown)
    */
   async forceRefresh(): Promise<void> {

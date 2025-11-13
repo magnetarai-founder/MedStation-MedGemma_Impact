@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { ChevronDown, XCircle, Star, AlertCircle } from 'lucide-react'
 import { useChatStore } from '../stores/chatStore'
 import { useUserModelPrefsStore } from '../stores/userModelPrefsStore'
-import { api } from '../lib/api'
+import { api, authFetch } from '../lib/api'
+import { parseModelSizeGB, canModelFit } from '../lib/models'
+import { showActionToast } from '../lib/toast'
 
 interface ModelSelectorProps {
   value: string
@@ -20,6 +22,7 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
   const { availableModels, setAvailableModels } = useChatStore()
   const { catalog, getVisibleModels, hotSlots, loadAll } = useUserModelPrefsStore()
   const [modelStatuses, setModelStatuses] = useState<ModelStatus[]>([])
+  const [usableMemoryGb, setUsableMemoryGb] = useState<number>(0)
 
   useEffect(() => {
     loadModels()
@@ -51,6 +54,20 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
       console.debug('Failed to load model statuses:', error)
     }
   }
+
+  // Load usable memory once (for memory-fit checks)
+  useEffect(() => {
+    const loadMemory = async () => {
+      try {
+        const res = await authFetch('/api/v1/chat/system/memory')
+        if (res.ok) {
+          const data = await res.json()
+          setUsableMemoryGb(data.usable_for_models_gb || 0)
+        }
+      } catch {}
+    }
+    loadMemory()
+  }, [])
 
   const getModelStatus = (modelName: string) => {
     return modelStatuses.find(m => m.name === modelName)
@@ -115,12 +132,44 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
     }
   }
 
+  const handleChange = async (name: string) => {
+    if (!name) { onChange(''); return }
+    // Prevent selecting not-installed models
+    if (!isModelInstalled(name)) {
+      showActionToast(
+        `Model '${name}' is not installed`,
+        'Install Model',
+        () => {
+          // Dispatch custom event to open Model Management sidebar
+          window.dispatchEvent(new CustomEvent('openModelManagement'))
+        },
+        { type: 'warning', duration: 5000 }
+      )
+      return
+    }
+
+    // Memory-fit check: if model not already loaded, ensure it fits
+    const selected = modelStatuses.find(m => m.name === name)
+    const alreadyLoaded = !!selected?.loaded
+    if (!alreadyLoaded) {
+      const currentUsed = modelStatuses.filter(m => m.loaded).reduce((sum, m) => sum + parseModelSizeGB(m.size), 0)
+      const selectedSize = parseModelSizeGB(selected?.size || '0 GB')
+      const fit = canModelFit(currentUsed, selectedSize, usableMemoryGb)
+      if (!fit.fits) {
+        alert(`Model '${name}' may exceed memory budget. ${fit.reason}`)
+        return
+      }
+    }
+
+    onChange(name)
+  }
+
   return (
     <div className="flex items-center gap-1">
       <div className="relative flex items-center">
         <select
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => handleChange(e.target.value)}
           className="appearance-none bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 pl-3 pr-8 py-1 rounded border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-1 focus:ring-primary-500 cursor-pointer text-xs hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
         >
           <option value="">Select Model</option>

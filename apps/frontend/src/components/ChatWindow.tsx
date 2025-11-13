@@ -3,6 +3,7 @@ import { Settings, AlertTriangle } from 'lucide-react'
 import { ChatMessage } from './ChatMessage'
 import { ChatInput } from './ChatInput'
 import { ModelSelector } from './ModelSelector'
+import { TokenMeter } from './TokenMeter'
 import { useChatStore } from '../stores/chatStore'
 import { api } from '../lib/api'
 import { shallow } from 'zustand/shallow'  // MED-03: Prevent unnecessary re-renders
@@ -267,9 +268,14 @@ export function ChatWindow() {
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
             {activeSession?.title || 'Chat'}
           </h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            {messages.length} messages
-          </p>
+          <div className="flex items-center gap-3">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {messages.length} messages
+            </p>
+            {activeChatId && (
+              <TokenMeter sessionId={activeChatId} refreshOn={messages.length} />
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-3">

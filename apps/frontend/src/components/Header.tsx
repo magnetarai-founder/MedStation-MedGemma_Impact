@@ -22,6 +22,9 @@ export function Header({ onOpenServerControls }: HeaderProps) {
   const [showControlCenter, setShowControlCenter] = useState(false)
   const [activeTerminals, setActiveTerminals] = useState(0)
   const [activeQueues, setActiveQueues] = useState(0)
+  const [gpuActive, setGpuActive] = useState(false)
+  const [isPaused, setIsPaused] = useState(false)
+  const [pausedSecondsRemaining, setPausedSecondsRemaining] = useState(0)
   const MAX_TERMINALS = 3
 
   // Fetch server status on mount and periodically
@@ -50,9 +53,40 @@ export function Header({ onOpenServerControls }: HeaderProps) {
       }
 
       setActiveQueues(total)
+
+      // Check if GPU is active (utilization > 0)
+      const gpuUtil = stats.gpu?.utilization ?? 0
+      setGpuActive(gpuUtil > 0)
     })
 
     return unsubscribe
+  }, [])
+
+  // Check paused state periodically
+  useEffect(() => {
+    const checkPausedState = () => {
+      const paused = metal4StatsService.isInCooldown()
+      const remaining = metal4StatsService.getCooldownRemainingSeconds()
+      setIsPaused(paused)
+      setPausedSecondsRemaining(remaining)
+    }
+
+    // Check immediately
+    checkPausedState()
+
+    // Check every second while paused
+    const interval = setInterval(checkPausedState, 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  // Listen for custom event to open Model Management sidebar
+  useEffect(() => {
+    const handleOpenModelManagement = () => {
+      setShowModelSidebar(true)
+    }
+
+    window.addEventListener('openModelManagement', handleOpenModelManagement)
+    return () => window.removeEventListener('openModelManagement', handleOpenModelManagement)
   }, [])
 
   const handleLogoClick = () => {
@@ -221,23 +255,44 @@ export function Header({ onOpenServerControls }: HeaderProps) {
               </div>
             </div>
 
-            {/* Control Center (includes Performance Monitor) with Queue Badge */}
-            <div className="relative">
-              <button
-                onClick={() => setShowControlCenter(true)}
-                className="p-2 hover:bg-blue-100 dark:hover:bg-blue-900/20 rounded-lg transition-colors text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
-                title={activeQueues > 0 ? `Control Center - ${activeQueues} active GPU queue(s)` : "Control Center (System Monitoring)"}
-              >
-                <Activity size={20} />
-              </button>
-              {activeQueues > 0 && (
+            {/* Control Center (includes Performance Monitor) with indicators */}
+            <div className="flex items-center gap-2">
+              {/* GPU Active Indicator */}
+              {gpuActive && (
                 <div
-                  className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center border-2 border-white dark:border-gray-900 animate-pulse"
-                  title={`${activeQueues} active GPU queue(s)`}
+                  className="w-2 h-2 bg-green-500 rounded-full animate-pulse"
+                  title="GPU Active"
+                />
+              )}
+
+              {/* Paused Indicator (429 backoff) */}
+              {isPaused && (
+                <div
+                  className="flex items-center gap-1 px-2 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 rounded text-xs"
+                  title={`Rate limited - resuming in ${pausedSecondsRemaining}s`}
                 >
-                  <span className="text-[9px] font-bold text-white">{activeQueues}</span>
+                  <span className="text-[10px]">⏸</span>
+                  <span className="text-[10px]">{pausedSecondsRemaining}s</span>
                 </div>
               )}
+
+              <div className="relative">
+                <button
+                  onClick={() => setShowControlCenter(true)}
+                  className="p-2 hover:bg-blue-100 dark:hover:bg-blue-900/20 rounded-lg transition-colors text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+                  title={activeQueues > 0 ? `Control Center - ${activeQueues} active GPU queue(s)` : "Control Center (System Monitoring)"}
+                >
+                  <Activity size={20} />
+                </button>
+                {activeQueues > 0 && (
+                  <div
+                    className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center border-2 border-white dark:border-gray-900 animate-pulse"
+                    title={`${activeQueues} active GPU queue(s)`}
+                  >
+                    <span className="text-[9px] font-bold text-white">{activeQueues}</span>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* PANIC BUTTON (Emergency Data Wipe) */}
