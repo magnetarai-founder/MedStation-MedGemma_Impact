@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { AlertTriangle, Activity, Terminal } from 'lucide-react'
 import { ControlCenterModal } from './ControlCenterModal'
 import { ModelManagementSidebar } from './ModelManagementSidebar'
+import { ContextBadge } from './ContextBadge'
 import { useOllamaStore } from '../stores/ollamaStore'
 import { ShutdownModal, RestartModal } from './OllamaServerModals'
 import { PanicModeModal } from './PanicModeModal'
@@ -201,6 +202,9 @@ export function Header({ onOpenServerControls }: HeaderProps) {
 
           {/* Right: Controls */}
           <div className="flex items-center gap-3">
+            {/* Context Badge */}
+            <ContextBadge size="sm" />
+
             {/* Terminal Button + Counter */}
             <div className="flex items-center gap-2">
               <button

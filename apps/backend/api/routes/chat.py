@@ -448,6 +448,10 @@ async def get_embedding_info_endpoint():
 
 # ===== Token Counting Endpoint =====
 
+# In-memory cache for token counts (session_id -> {count, timestamp})
+_token_count_cache: Dict[str, Dict] = {}
+_TOKEN_COUNT_CACHE_TTL = 30  # seconds
+
 @router.post("/sessions/{chat_id}/token-count", name="chat_get_token_count")
 async def get_token_count_endpoint(request: Request, chat_id: str, current_user: dict = Depends(get_current_user)):
     """Get token count for a chat session"""
@@ -460,6 +464,64 @@ async def get_token_count_endpoint(request: Request, chat_id: str, current_user:
 
         result = await chat.get_token_count(chat_id)
         return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get token count: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/sessions/{chat_id}/token-count", name="chat_get_token_count_cached")
+async def get_token_count_cached_endpoint(request: Request, chat_id: str, current_user: dict = Depends(get_current_user)):
+    """
+    Get token count for a chat session (GET variant with 30s cache)
+
+    Returns:
+        {
+            "session_id": str,
+            "total_tokens": int,
+            "max_tokens": int,
+            "percentage": float,
+            "cached": bool
+        }
+    """
+    from api.services import chat
+    import time
+
+    try:
+        # Verify session exists and user has access
+        session = await chat.get_session(chat_id, user_id=current_user["user_id"])
+        if not session:
+            raise HTTPException(status_code=404, detail="Chat session not found")
+
+        # Check cache
+        now = time.time()
+        cached_entry = _token_count_cache.get(chat_id)
+
+        if cached_entry and (now - cached_entry["timestamp"]) < _TOKEN_COUNT_CACHE_TTL:
+            # Return cached value
+            return {
+                **cached_entry["data"],
+                "cached": True
+            }
+
+        # Cache miss or expired - compute fresh count
+        result = await chat.get_token_count(chat_id)
+
+        # Add to cache
+        _token_count_cache[chat_id] = {
+            "data": {
+                "session_id": chat_id,
+                "total_tokens": result.get("total_tokens", 0),
+                "max_tokens": result.get("max_tokens", 128000),  # Default context window
+                "percentage": (result.get("total_tokens", 0) / result.get("max_tokens", 128000)) * 100 if result.get("max_tokens") else 0,
+                "cached": False
+            },
+            "timestamp": now
+        }
+
+        return _token_count_cache[chat_id]["data"]
+
     except HTTPException:
         raise
     except Exception as e:
