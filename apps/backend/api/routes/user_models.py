@@ -22,11 +22,13 @@ try:
     from ..services.hot_slots_storage import get_hot_slots_storage
     from ..services.model_catalog import get_model_catalog
     from ..auth_middleware import get_current_user
+    from ..permission_engine import require_perm
 except ImportError:
     from services.model_preferences_storage import get_model_preferences_storage
     from services.hot_slots_storage import get_hot_slots_storage
     from services.model_catalog import get_model_catalog
     from auth_middleware import get_current_user
+    from permission_engine import require_perm
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +112,7 @@ class UserSetupStatusResponse(BaseModel):
 # ===== API Endpoints =====
 
 @router.get("/users/me/setup/status", response_model=UserSetupStatusResponse)
+@require_perm("chat.use")
 async def get_user_setup_status(current_user = Depends(get_current_user)):
     """
     Get per-user setup completion status
@@ -126,7 +129,7 @@ async def get_user_setup_status(current_user = Depends(get_current_user)):
         has_hot_slots: True if user has any hot slots assigned
         visible_count: Number of visible models
 
-    Requires authentication.
+    Requires authentication and 'chat.use' permission.
     """
     try:
         user_id = current_user.get("user_id")
@@ -163,6 +166,7 @@ async def get_user_setup_status(current_user = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail="Failed to get user setup status")
 
 @router.get("/users/me/models/preferences", response_model=ModelPreferencesResponse)
+@require_perm("chat.use")
 async def get_user_model_preferences(current_user = Depends(get_current_user)):
     """
     Get user's model visibility preferences
@@ -199,6 +203,7 @@ async def get_user_model_preferences(current_user = Depends(get_current_user)):
 
 
 @router.put("/users/me/models/preferences", response_model=UpdateModelPreferencesResponse)
+@require_perm("chat.use")
 async def update_user_model_preferences(
     body: UpdateModelPreferencesRequest,
     current_user = Depends(get_current_user)
@@ -207,35 +212,83 @@ async def update_user_model_preferences(
     Update user's model visibility preferences
 
     Sets which models the user wants to see and their display order.
+    Automatically clears hot slots for any models being hidden.
 
-    Requires authentication and 'chat.models.configure' permission.
+    Requires authentication and 'chat.use' permission.
     """
     try:
         user_id = current_user.get("user_id")
         if not user_id:
             raise HTTPException(status_code=401, detail="User ID not found in token")
 
-        # Convert to storage format
-        preferences_data = []
-        for pref in body.preferences:
-            preferences_data.append({
-                "model_name": pref.model_name,
-                "visible": pref.visible,
-                "preferred": pref.preferred,
-                "display_order": pref.display_order
-            })
+        # Find models being hidden
+        hidden_models = [pref.model_name for pref in body.preferences if not pref.visible]
 
-        # Update preferences
-        prefs_storage = get_model_preferences_storage()
-        success = prefs_storage.set_preferences_bulk(user_id, preferences_data)
+        # Atomic transaction: Update preferences + clear hot slots for hidden models
+        import sqlite3
+        from pathlib import Path
 
-        if not success:
-            raise HTTPException(status_code=500, detail="Failed to update preferences")
+        db_path = Path.home() / ".elohim" / "app_db.sqlite3"
+        conn = sqlite3.connect(str(db_path))
 
-        return UpdateModelPreferencesResponse(
-            success=True,
-            updated_count=len(preferences_data)
-        )
+        try:
+            cursor = conn.cursor()
+
+            # Begin transaction
+            cursor.execute("BEGIN TRANSACTION")
+
+            # 1. Clear hot slots for models being hidden
+            if hidden_models:
+                placeholders = ','.join('?' * len(hidden_models))
+                cursor.execute(f"""
+                    DELETE FROM user_hot_slots
+                    WHERE user_id = ? AND model_name IN ({placeholders})
+                """, (user_id, *hidden_models))
+
+                cleared_slots = cursor.rowcount
+                if cleared_slots > 0:
+                    logger.info(f"Cleared {cleared_slots} hot slot(s) for hidden models: {hidden_models}")
+
+            # 2. Update preferences
+            from datetime import datetime
+            now = datetime.utcnow().isoformat()
+
+            for pref in body.preferences:
+                # Upsert preference
+                cursor.execute("""
+                    INSERT INTO user_model_preferences
+                    (user_id, model_name, visible, preferred, display_order, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(user_id, model_name) DO UPDATE SET
+                        visible = excluded.visible,
+                        preferred = excluded.preferred,
+                        display_order = excluded.display_order,
+                        updated_at = excluded.updated_at
+                """, (
+                    user_id,
+                    pref.model_name,
+                    1 if pref.visible else 0,
+                    1 if pref.preferred else 0,
+                    pref.display_order,
+                    now,
+                    now
+                ))
+
+            # Commit transaction
+            conn.commit()
+
+            return UpdateModelPreferencesResponse(
+                success=True,
+                updated_count=len(body.preferences)
+            )
+
+        except Exception as e:
+            # Rollback on any error
+            conn.rollback()
+            logger.error(f"Transaction failed, rolled back: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to update preferences: {str(e)}")
+        finally:
+            conn.close()
 
     except HTTPException:
         raise
@@ -245,6 +298,7 @@ async def update_user_model_preferences(
 
 
 @router.get("/users/me/models/hot-slots", response_model=HotSlotsResponse)
+@require_perm("chat.use")
 async def get_user_hot_slots(current_user = Depends(get_current_user)):
     """
     Get user's hot slots configuration
@@ -271,6 +325,7 @@ async def get_user_hot_slots(current_user = Depends(get_current_user)):
 
 
 @router.put("/users/me/models/hot-slots", response_model=UpdateHotSlotsResponse)
+@require_perm("chat.use")
 async def update_user_hot_slots(
     body: UpdateHotSlotsRequest,
     current_user = Depends(get_current_user)
@@ -279,8 +334,9 @@ async def update_user_hot_slots(
     Update user's hot slots configuration
 
     Assigns models to quick-access slots (1-4).
+    Validates that assigned models are installed in Ollama.
 
-    Requires authentication and 'chat.hot_slots.write' permission.
+    Requires authentication and 'chat.use' permission.
     """
     try:
         user_id = current_user.get("user_id")
@@ -293,6 +349,25 @@ async def update_user_hot_slots(
                 raise HTTPException(
                     status_code=400,
                     detail=f"Invalid slot number: {slot_num} (must be 1-4)"
+                )
+
+        # Validate that assigned models are installed
+        catalog = get_model_catalog()
+        catalog_models = catalog.get_all_models()
+        installed_models = {m.model_name for m in catalog_models if m.status == 'installed'}
+
+        for slot_num, model_name in body.slots.items():
+            if model_name and model_name not in installed_models:
+                # Model not installed - reject with machine-readable error
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "code": "model_not_installed",
+                        "model": model_name,
+                        "slot": slot_num,
+                        "suggestion": "install_or_choose_other",
+                        "message": f"Model '{model_name}' is not installed. Please install it from Ollama or choose another model."
+                    }
                 )
 
         # Update hot slots
