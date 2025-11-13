@@ -721,6 +721,16 @@ except Exception as e:
     logger.error("Failed to load permissions router", exc_info=True)
     logger.error(f"Permissions Admin service failed to load: {e}")
 
+# Audit Logging (Sprint 4)
+try:
+    from api.routes import audit as _audit_routes
+    app.include_router(_audit_routes.router)
+    services_loaded.append("Audit Logging")
+except Exception as e:
+    services_failed.append("Audit Logging")
+    logger.error("Failed to load audit router", exc_info=True)
+    logger.error(f"Audit Logging service failed to load: {e}")
+
 # Monitoring routes
 try:
     from monitoring_routes import router as monitoring_router

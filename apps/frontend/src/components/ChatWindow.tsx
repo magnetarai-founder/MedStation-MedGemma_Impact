@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
-import { Settings, AlertTriangle } from 'lucide-react'
+import { Settings, AlertTriangle, History } from 'lucide-react'
 import { ChatMessage } from './ChatMessage'
 import { ChatInput } from './ChatInput'
 import { ModelSelector } from './ModelSelector'
 import { TokenMeter } from './TokenMeter'
+import { SessionTimelineModal } from './SessionTimelineModal'
 import { useChatStore } from '../stores/chatStore'
 import { api } from '../lib/api'
 import { shallow } from 'zustand/shallow'  // MED-03: Prevent unnecessary re-renders
 import { showToast, showActionToast } from '../lib/toast'
+import { auditLog, AuditAction } from '../lib/audit'
 
 export function ChatWindow() {
   // MED-03: Use shallow selector to only re-render when used fields change
@@ -47,6 +49,7 @@ export function ChatWindow() {
   const [selectedModel, setSelectedModel] = useState<string>('')
   const [ollamaHealth, setOllamaHealth] = useState<{status: string, message: string} | null>(null)
   const [pendingSummarize, setPendingSummarize] = useState(false)
+  const [showTimeline, setShowTimeline] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const eventSourceRef = useRef<EventSource | null>(null)
 
@@ -98,6 +101,11 @@ export function ChatWindow() {
   const handleSummarize = () => {
     setPendingSummarize(true)
     showToast.success('Next message will include context summarization', 4000)
+
+    // Audit log (Sprint 4)
+    if (activeChatId) {
+      auditLog(AuditAction.SUMMARIZE_CONTEXT_INVOKED, {}, activeChatId)
+    }
   }
 
   // Handle near-limit warning
@@ -348,6 +356,14 @@ export function ChatWindow() {
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowTimeline(true)}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            title="Session Timeline"
+            aria-label="View session timeline"
+          >
+            <History size={18} className="text-gray-600 dark:text-gray-400" />
+          </button>
           <ModelSelector value={selectedModel} onChange={handleModelChange} />
         </div>
       </div>
@@ -402,6 +418,15 @@ export function ChatWindow() {
           }
         />
       </div>
+
+      {/* Session Timeline Modal */}
+      {showTimeline && activeChatId && (
+        <SessionTimelineModal
+          sessionId={activeChatId}
+          sessionTitle={activeSession?.title}
+          onClose={() => setShowTimeline(false)}
+        />
+      )}
 
     </div>
   )

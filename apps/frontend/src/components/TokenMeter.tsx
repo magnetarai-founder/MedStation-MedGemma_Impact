@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { authFetch } from '../lib/api'
+import { auditLog, AuditAction } from '../lib/audit'
 
 interface TokenMeterProps {
   sessionId: string
@@ -33,6 +34,10 @@ export function TokenMeter({ sessionId, refreshOn, onNearLimit }: TokenMeterProp
         const percentage = json.percentage || 0
         if (percentage >= 85 && !nearLimitTriggered && onNearLimit) {
           setNearLimitTriggered(true)
+
+          // Audit log (Sprint 4)
+          auditLog(AuditAction.TOKEN_NEAR_LIMIT_WARNING, { percentage }, sessionId)
+
           onNearLimit()
         } else if (percentage < 85) {
           // Reset flag if we drop back below threshold

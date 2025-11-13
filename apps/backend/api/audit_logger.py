@@ -130,6 +130,10 @@ class AuditAction:
     MODEL_HOT_SLOT_ASSIGNED = "model.hot_slot.assigned"
     SESSION_MODEL_UPDATED = "session.model.updated"
 
+    # Session Operations (Sprint 4)
+    TOKEN_NEAR_LIMIT_WARNING = "session.token.near_limit"
+    SUMMARIZE_CONTEXT_INVOKED = "session.summarize.invoked"
+
 
 class AuditLogger:
     """
