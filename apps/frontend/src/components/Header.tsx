@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { AlertTriangle, Activity, Terminal } from 'lucide-react'
 import { ControlCenterModal } from './ControlCenterModal'
 import { ModelManagementSidebar } from './ModelManagementSidebar'
+import { ModelDownloadsManager } from './ModelDownloadsManager'
 import { ContextBadge } from './ContextBadge'
 import { useOllamaStore } from '../stores/ollamaStore'
 import { ShutdownModal, RestartModal } from './OllamaServerModals'
@@ -14,6 +15,8 @@ interface HeaderProps {
 
 export function Header({ onOpenServerControls }: HeaderProps) {
   const [showModelSidebar, setShowModelSidebar] = useState(false)
+  const [showDownloadsManager, setShowDownloadsManager] = useState(false)
+  const [pendingDownloadModel, setPendingDownloadModel] = useState<string | undefined>(undefined)
   const { serverStatus, fetchServerStatus } = useOllamaStore()
   const [showShutdownModal, setShowShutdownModal] = useState(false)
   const [showRestartModal, setShowRestartModal] = useState(false)
@@ -27,6 +30,10 @@ export function Header({ onOpenServerControls }: HeaderProps) {
   const [pausedSecondsRemaining, setPausedSecondsRemaining] = useState(0)
   const [queueLatency, setQueueLatency] = useState<number | null>(null)
   const [oldestJobAge, setOldestJobAge] = useState<number | null>(null)
+  const [gpuUtil, setGpuUtil] = useState<number | null>(null)
+  const [gpuTemp, setGpuTemp] = useState<number | null>(null)
+  const [gpuMemUsed, setGpuMemUsed] = useState<number | null>(null)
+  const [gpuMemTotal, setGpuMemTotal] = useState<number | null>(null)
   const MAX_TERMINALS = 3
 
   // Fetch server status on mount and periodically
@@ -57,12 +64,18 @@ export function Header({ onOpenServerControls }: HeaderProps) {
       setActiveQueues(total)
 
       // Check if GPU is active (utilization > 0)
-      const gpuUtil = stats.gpu?.utilization ?? 0
-      setGpuActive(gpuUtil > 0)
+      const utilization = stats.gpu?.utilization ?? 0
+      setGpuActive(utilization > 0)
 
       // Update queue latency and oldest job age (Sprint 3)
       setQueueLatency(stats.queue_latency_ms ?? null)
       setOldestJobAge(stats.oldest_job_age_ms ?? null)
+
+      // Update GPU diagnostics (Sprint 4)
+      setGpuUtil(stats.gpu?.utilization ?? null)
+      setGpuTemp(stats.gpu?.temperature ?? null)
+      setGpuMemUsed(stats.gpu?.memory_used_mb ?? null)
+      setGpuMemTotal(stats.gpu?.memory_total_mb ?? null)
     })
 
     return unsubscribe
@@ -93,6 +106,17 @@ export function Header({ onOpenServerControls }: HeaderProps) {
 
     window.addEventListener('openModelManagement', handleOpenModelManagement)
     return () => window.removeEventListener('openModelManagement', handleOpenModelManagement)
+  }, [])
+
+  // Listen for custom event to open Downloads Manager
+  useEffect(() => {
+    const handleOpenDownloadsManager = ((event: CustomEvent) => {
+      setPendingDownloadModel(event.detail?.model)
+      setShowDownloadsManager(true)
+    }) as EventListener
+
+    window.addEventListener('openDownloadsManager', handleOpenDownloadsManager)
+    return () => window.removeEventListener('openDownloadsManager', handleOpenDownloadsManager)
   }, [])
 
   const handleLogoClick = () => {
@@ -263,11 +287,24 @@ export function Header({ onOpenServerControls }: HeaderProps) {
 
             {/* Control Center (includes Performance Monitor) with indicators */}
             <div className="flex items-center gap-2">
+              {/* GPU Badge (Sprint 4) */}
+              {gpuUtil !== null && gpuUtil > 0 && (
+                <div
+                  className="flex items-center gap-1 px-1.5 py-0.5 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded text-xs cursor-help"
+                  title={`GPU: ${Math.round(gpuUtil)}%${gpuTemp !== null ? ` • ${Math.round(gpuTemp)}°C` : ''}${gpuMemUsed !== null && gpuMemTotal !== null ? ` • ${Math.round(gpuMemUsed)}MB / ${Math.round(gpuMemTotal)}MB` : ''}`}
+                  aria-label={`GPU utilization ${Math.round(gpuUtil)} percent`}
+                  role="status"
+                >
+                  <span className="text-[10px] font-medium">GPU:</span>
+                  <span className="text-[10px]">{Math.round(gpuUtil)}%</span>
+                </div>
+              )}
+
               {/* Queue Latency Badge (Sprint 3) */}
               {queueLatency !== null && queueLatency > 0 && (
                 <div
-                  className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded text-xs"
-                  title={`Queue Latency: ${queueLatency}ms`}
+                  className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded text-xs cursor-help"
+                  title={`Queue Latency: ${queueLatency.toFixed(0)}ms${queueLatency > 100 ? ' (High)' : queueLatency > 50 ? ' (Moderate)' : ' (Low)'}`}
                   aria-label={`Queue latency ${queueLatency} milliseconds`}
                   role="status"
                 >
@@ -279,8 +316,8 @@ export function Header({ onOpenServerControls }: HeaderProps) {
               {/* Oldest Job Age Badge (Sprint 3) */}
               {oldestJobAge !== null && oldestJobAge > 0 && (
                 <div
-                  className="flex items-center gap-1 px-1.5 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 rounded text-xs"
-                  title={`Oldest Job: ${(oldestJobAge / 1000).toFixed(1)}s`}
+                  className="flex items-center gap-1 px-1.5 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 rounded text-xs cursor-help"
+                  title={`Oldest Job: ${(oldestJobAge / 1000).toFixed(1)}s${oldestJobAge > 10000 ? ' (Stale)' : oldestJobAge > 5000 ? ' (Aging)' : ' (Fresh)'}`}
                   aria-label={`Oldest job age ${(oldestJobAge / 1000).toFixed(1)} seconds`}
                   role="status"
                 >
@@ -379,6 +416,17 @@ export function Header({ onOpenServerControls }: HeaderProps) {
         isOpen={showControlCenter}
         onClose={() => setShowControlCenter(false)}
       />
+
+      {/* Model Downloads Manager */}
+      {showDownloadsManager && (
+        <ModelDownloadsManager
+          onClose={() => {
+            setShowDownloadsManager(false)
+            setPendingDownloadModel(undefined)
+          }}
+          initialModel={pendingDownloadModel}
+        />
+      )}
     </>
   )
 }
