@@ -367,14 +367,14 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
         services_failed.append("Admin API (v1)")
         logger.error("Failed to load admin v1 router", exc_info=True)
 
-    # Vault API (v1)
+    # Vault API
     try:
-        from api.routes import vault as _vault_routes
-        app.include_router(_vault_routes.router, prefix="/api/v1/vault")
+        from api.vault import routes as _vault_routes
+        app.include_router(_vault_routes.router)  # Router already has prefix="/api/v1/vault"
         services_loaded.append("Vault API")
     except Exception as e:
         services_failed.append("Vault API")
-        logger.error("Failed to load vault v1 router", exc_info=True)
+        logger.error("Failed to load vault router", exc_info=True)
 
     # Team API (v1)
     try:

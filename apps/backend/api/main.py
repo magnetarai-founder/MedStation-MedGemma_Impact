@@ -662,13 +662,7 @@ except Exception as e:
     services_failed.append("Panic")
     logger.debug(f"Panic Mode not available: {e}")
 
-try:
-    import vault_service
-    app.include_router(vault_service.router)
-    services_loaded.append("Vault")
-except Exception as e:
-    services_failed.append("Vault")
-    logger.debug(f"Vault service not available: {e}")
+# Vault router moved to api.vault.routes (see below)
 
 try:
     from automation_router import router as automation_router
@@ -935,9 +929,11 @@ except Exception as e:
 
 try:
     from api.vault import routes as _vault_routes
-    app.include_router(_vault_routes.router, prefix="/api/v1/vault")
-except Exception:
-    pass
+    app.include_router(_vault_routes.router)  # Router already has prefix="/api/v1/vault"
+    services_loaded.append("Vault API")
+except Exception as e:
+    services_failed.append("Vault API")
+    logger.error("Failed to load vault router", exc_info=True)
 
 try:
     from api.team import routes as _team_routes
