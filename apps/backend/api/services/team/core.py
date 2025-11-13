@@ -1,63 +1,35 @@
 """
-Team service for ElohimOS - Business logic for team management.
+Team Service Core Logic
 
-Handles team creation, member management, promotions, permissions,
-queues, Founder Rights, and team vault functionality.
+TeamManager class with all team operations:
+- Team CRUD
+- Member management
+- Invite code generation and validation
+- Role and promotion management
+- Workflow and queue permissions
+- God Rights (Founder Rights) management
+- Team vault operations
 """
 
 import sqlite3
 import logging
+import hashlib
 import secrets
+import random
 import string
-from pathlib import Path
-from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
+from typing import Optional, List, Dict, Tuple
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.backends import default_backend
+import base64
+
+from api.config_paths import get_config_paths
 
 logger = logging.getLogger(__name__)
 
-# Rate limiter imports at module level (safe - no circular deps)
-from rate_limiter import rate_limiter, get_client_ip
-
-
-# ===== Helper Functions =====
-
-def _get_app_conn() -> sqlite3.Connection:
-    """Get connection to app_db with row factory"""
-    from config_paths import get_config_paths  # Lazy import
-    PATHS = get_config_paths()
-    APP_DB = PATHS.app_db
-    conn = sqlite3.connect(str(APP_DB))
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
-def is_team_member(team_id: str, user_id: str) -> Optional[str]:
-    """
-    Check if user is a member of the team.
-    Returns the user's role if they are a member, None otherwise.
-    """
-    conn = _get_app_conn()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT role FROM team_members
-        WHERE team_id = ? AND user_id = ? AND is_active = 1
-    """, (team_id, user_id))
-    row = cur.fetchone()
-    conn.close()
-    return row["role"] if row else None
-
-
-def require_team_admin(team_id: str, user_id: str) -> None:
-    """
-    Raise HTTPException(403) if user is not a team admin (super_admin or admin).
-    """
-    from fastapi import HTTPException  # Lazy import
-    role = is_team_member(team_id, user_id)
-    if role not in ("super_admin", "admin"):
-        raise HTTPException(status_code=403, detail="Team admin required")
-
-
-# ===== TeamManager Class =====
+# Database path
+PATHS = get_config_paths()
 
 class TeamManager:
     """
@@ -2898,14 +2870,3 @@ class TeamManager:
         """Close database connection"""
         if self.conn:
             self.conn.close()
-
-
-# ===== Global Instance & Accessor =====
-
-# Global team manager instance
-_team_manager = TeamManager()
-
-
-def get_team_manager() -> TeamManager:
-    """Get the global team manager instance"""
-    return _team_manager
