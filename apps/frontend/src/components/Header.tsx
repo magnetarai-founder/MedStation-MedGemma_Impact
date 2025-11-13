@@ -5,6 +5,7 @@ import { ModelManagementSidebar } from './ModelManagementSidebar'
 import { ModelDownloadsManager } from './ModelDownloadsManager'
 import { QuickActionsModal } from './QuickActionsModal'
 import { SessionTimelineModal } from './SessionTimelineModal'
+import { SearchSessionsModal } from './SearchSessionsModal'
 import { ContextBadge } from './ContextBadge'
 import { useOllamaStore } from '../stores/ollamaStore'
 import { useChatStore } from '../stores/chatStore'
@@ -26,6 +27,7 @@ export function Header({ onOpenServerControls }: HeaderProps) {
   const [pendingDownloadModel, setPendingDownloadModel] = useState<string | undefined>(undefined)
   const [showQuickActions, setShowQuickActions] = useState(false)
   const [showTimeline, setShowTimeline] = useState(false)
+  const [showSearchModal, setShowSearchModal] = useState(false)
   const { serverStatus, fetchServerStatus } = useOllamaStore()
   const { activeChatId, getActiveSession, createSession, setActiveChatId } = useChatStore()
   const { currentTeam } = useTeamStore()
@@ -296,6 +298,10 @@ export function Header({ onOpenServerControls }: HeaderProps) {
     }
   }
 
+  const handleSearchSessions = () => {
+    setShowSearchModal(true)
+  }
+
   // Build ActionsContext for QuickActionsModal
   const activeSession = activeChatId ? getActiveSession(activeChatId) : null
   const actionsContext: ActionsContext = {
@@ -307,7 +313,8 @@ export function Header({ onOpenServerControls }: HeaderProps) {
     onOpenDownloads: handleOpenDownloads,
     onViewTimeline: handleViewTimeline,
     onSwitchTeam: handleSwitchTeam,
-    onExportPermissions: handleExportPermissions
+    onExportPermissions: handleExportPermissions,
+    onSearchSessions: handleSearchSessions
   }
 
   return (
@@ -548,6 +555,13 @@ export function Header({ onOpenServerControls }: HeaderProps) {
         <SessionTimelineModal
           sessionId={activeChatId}
           onClose={() => setShowTimeline(false)}
+        />
+      )}
+
+      {/* Search Sessions Modal */}
+      {showSearchModal && (
+        <SearchSessionsModal
+          onClose={() => setShowSearchModal(false)}
         />
       )}
     </>

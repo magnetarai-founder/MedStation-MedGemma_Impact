@@ -773,6 +773,16 @@ except Exception as e:
     logger.error("Failed to load analytics router", exc_info=True)
     logger.error(f"Analytics service failed to load: {e}")
 
+# Search API (Sprint 6 Theme B)
+try:
+    from api.routes import search as _search_routes
+    app.include_router(_search_routes.router)
+    services_loaded.append("Session Search")
+except Exception as e:
+    services_failed.append("Session Search")
+    logger.error("Failed to load search router", exc_info=True)
+    logger.error(f"Search service failed to load: {e}")
+
 # Monitoring routes
 try:
     from monitoring_routes import router as monitoring_router

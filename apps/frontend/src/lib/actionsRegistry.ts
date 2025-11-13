@@ -25,6 +25,7 @@ export interface ActionsContext {
   onViewTimeline?: () => void
   onSwitchTeam?: () => void
   onExportPermissions?: () => void
+  onSearchSessions?: () => void
 }
 
 /**
@@ -45,6 +46,17 @@ export function getActions(context: ActionsContext): QuickAction[] {
       category: 'sessions',
       icon: '💬',
       run: context.onNewSession
+    })
+  }
+
+  if (context.onSearchSessions) {
+    actions.push({
+      id: 'search-sessions',
+      label: 'Search Sessions',
+      keywords: ['find', 'search', 'query', 'messages', 'history'],
+      category: 'sessions',
+      icon: '🔍',
+      run: context.onSearchSessions
     })
   }
 

@@ -276,6 +276,28 @@ async def append_message(chat_id: str, role: str, content: str, timestamp: str, 
     # Update rolling summary every message
     await asyncio.to_thread(memory.update_summary, chat_id)
 
+    # Index message for search (Sprint 6 Theme B)
+    try:
+        from api.services.search_indexer import get_search_indexer
+
+        # Get session to find user_id
+        session_data = await asyncio.to_thread(memory.get_session, chat_id)
+        if session_data:
+            user_id = session_data.get('user_id', 'unknown')
+
+            indexer = get_search_indexer()
+            await asyncio.to_thread(
+                indexer.add_message_to_index,
+                session_id=chat_id,
+                role=role,
+                content=content,
+                timestamp=timestamp,
+                user_id=user_id
+            )
+    except Exception as index_error:
+        # Don't fail message append if indexing fails
+        logger.warning(f"Failed to index message for search: {index_error}")
+
 
 async def get_messages(chat_id: str, limit: Optional[int] = None) -> List[Dict[str, Any]]:
     """Get chat messages"""
