@@ -729,6 +729,15 @@ try:
 except Exception as e:
     services_failed.append("Audit Logging")
     logger.error("Failed to load audit router", exc_info=True)
+
+# Model Downloads Queue (Sprint 5)
+try:
+    from api.routes import model_downloads as _model_downloads_routes
+    app.include_router(_model_downloads_routes.router)
+    services_loaded.append("Model Downloads Queue")
+except Exception as e:
+    services_failed.append("Model Downloads Queue")
+    logger.error("Failed to load model downloads router", exc_info=True)
     logger.error(f"Audit Logging service failed to load: {e}")
 
 # Monitoring routes
