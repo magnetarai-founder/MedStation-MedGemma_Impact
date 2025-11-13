@@ -552,12 +552,42 @@ async def update_session_model_endpoint(
     from api.services import chat
     from audit_logger import get_audit_logger, AuditAction
     from telemetry import track_metric, TelemetryMetric
+    from api.services.team_model_policy import get_policy_service
 
     try:
         # Verify session exists and user has access
         session = await chat.get_session(chat_id, user_id=current_user["user_id"])
         if not session:
             raise HTTPException(status_code=404, detail="Chat session not found")
+
+        # Enforce team model policy (Sprint 5)
+        team_id = session.get("team_id")
+        if team_id:
+            policy_service = get_policy_service()
+            if not policy_service.is_model_allowed(team_id, model):
+                # Audit log violation
+                try:
+                    audit_logger = get_audit_logger()
+                    audit_logger.log(
+                        user_id=current_user["user_id"],
+                        action=AuditAction.MODEL_POLICY_VIOLATED,
+                        resource="chat_session",
+                        resource_id=chat_id,
+                        details={"model": model, "team_id": team_id}
+                    )
+                except Exception as audit_error:
+                    logger.warning(f"Audit logging failed: {audit_error}")
+
+                # Return 403 with clear error
+                raise HTTPException(
+                    status_code=403,
+                    detail={
+                        "code": "model_not_allowed",
+                        "model": model,
+                        "team_id": team_id,
+                        "message": f"Model '{model}' is not allowed by team policy"
+                    }
+                )
 
         # Update model
         updated_session = await chat.update_session_model(chat_id, model)

@@ -1332,3 +1332,111 @@ async def check_vault_perm_endpoint(request: Request, team_id: str, item_id: str
         return CheckVaultPermissionResponse(has_permission=has_permission, reason=reason)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== Model Policy Routes (Sprint 5) =====
+
+@router.get("/{team_id}/model-policy", name="teams_get_model_policy")
+async def get_model_policy_endpoint(
+    request: Request,
+    team_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get model policy for a team
+
+    Returns policy with allowed_models and default_model
+    """
+    from api.services.team_model_policy import get_policy_service
+    from permissions import require_perm_team
+
+    # Check permission: team.manage_models
+    await require_perm_team("team.manage_models", current_user, team_id)
+
+    try:
+        policy_service = get_policy_service()
+        policy = policy_service.get_policy(team_id)
+
+        # If no policy set, return empty policy
+        if not policy:
+            return {
+                "team_id": team_id,
+                "allowed_models": [],
+                "default_model": None,
+                "updated_at": None
+            }
+
+        return policy
+
+    except Exception as e:
+        logger.error(f"Failed to get model policy: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{team_id}/model-policy", name="teams_set_model_policy")
+async def set_model_policy_endpoint(
+    request: Request,
+    team_id: str,
+    allowed_models: List[str] = Body(...),
+    default_model: Optional[str] = Body(None),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Set model policy for a team
+
+    Body:
+        {
+            "allowed_models": ["llama3.2:3b", "qwen2.5-coder:7b"],
+            "default_model": "llama3.2:3b"  // optional
+        }
+
+    Validates:
+        - default_model must be in allowed_models if provided
+    """
+    from api.services.team_model_policy import get_policy_service
+    from permissions import require_perm_team
+    from audit_logger import get_audit_logger, AuditAction
+
+    # Check permission: team.manage_models
+    await require_perm_team("team.manage_models", current_user, team_id)
+
+    try:
+        policy_service = get_policy_service()
+
+        # Validate default_model
+        if default_model and default_model not in allowed_models:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Default model '{default_model}' must be in allowed_models"
+            )
+
+        # Set policy
+        success = policy_service.set_policy(team_id, allowed_models, default_model)
+
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to set model policy")
+
+        # Audit log
+        try:
+            audit_logger = get_audit_logger()
+            audit_logger.log(
+                user_id=current_user["user_id"],
+                action=AuditAction.MODEL_POLICY_UPDATED,
+                resource="team",
+                resource_id=team_id,
+                details={
+                    "allowed_models": allowed_models,
+                    "default_model": default_model
+                }
+            )
+        except Exception as audit_error:
+            logger.warning(f"Audit logging failed: {audit_error}")
+
+        # Return updated policy
+        return policy_service.get_policy(team_id)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to set model policy: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))

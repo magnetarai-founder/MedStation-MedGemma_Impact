@@ -134,6 +134,10 @@ class AuditAction:
     TOKEN_NEAR_LIMIT_WARNING = "session.token.near_limit"
     SUMMARIZE_CONTEXT_INVOKED = "session.summarize.invoked"
 
+    # Model Policy Operations (Sprint 5)
+    MODEL_POLICY_VIOLATED = "model.policy.violated"
+    MODEL_POLICY_UPDATED = "model.policy.updated"
+
 
 class AuditLogger:
     """
