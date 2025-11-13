@@ -40,6 +40,7 @@ async def run_startup_migrations() -> None:
         try:
             from .migrations import phase0_user_db as phase0_migration
             from .migrations import phase1_workflows_user_id as phase1_migration
+            from .migrations import phase1_5_per_user_models as phase1_5_migration
             from .migrations import phase2_permissions_rbac as phase2_migration
             from .migrations import phase25_rbac_hardening as phase25_migration
             from .migrations import phase3_team_mode as phase3_migration
@@ -48,6 +49,7 @@ async def run_startup_migrations() -> None:
         except ImportError:
             from migrations import phase0_user_db as phase0_migration
             from migrations import phase1_workflows_user_id as phase1_migration
+            from migrations import phase1_5_per_user_models as phase1_5_migration
             from migrations import phase2_permissions_rbac as phase2_migration
             from migrations import phase25_rbac_hardening as phase25_migration
             from migrations import phase3_team_mode as phase3_migration
@@ -80,6 +82,19 @@ async def run_startup_migrations() -> None:
                 raise Exception("Phase 1 migration failed - see logs above")
 
             logger.info("✓ Phase 1 migration completed successfully")
+
+        # ===== Phase 1.5: Per-User Model Preferences =====
+        config_dir = PATHS.backend_dir / "config"  # Config directory for hot_slots.json
+
+        if not phase1_5_migration.check_migration_applied(app_db):
+            migrations_ran.append("Phase 1.5: Per-User Model Preferences")
+            logger.info("Running Phase 1.5 migration: Per-User Model Preferences")
+            success = phase1_5_migration.migrate_phase1_5_per_user_models(app_db, config_dir)
+
+            if not success:
+                raise Exception("Phase 1.5 migration failed - see logs above")
+
+            logger.info("✓ Phase 1.5 migration completed successfully")
 
         # ===== Phase 2: Salesforce-style RBAC =====
         if not phase2_migration.check_migration_applied(app_db):

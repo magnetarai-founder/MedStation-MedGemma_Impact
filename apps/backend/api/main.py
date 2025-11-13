@@ -384,6 +384,28 @@ async def lifespan(app: FastAPI):
         # Re-raise to prevent app from starting with broken DB state
         raise
 
+    # Phase 1.5: Initialize per-user model storage
+    try:
+        from config_paths import PATHS
+        from services.model_catalog import init_model_catalog
+        from services.model_preferences_storage import init_model_preferences_storage
+        from services.hot_slots_storage import init_hot_slots_storage
+
+        # Initialize storage singletons
+        init_model_catalog(PATHS.app_db, ollama_base_url="http://localhost:11434")
+        init_model_preferences_storage(PATHS.app_db)
+        init_hot_slots_storage(PATHS.app_db, PATHS.backend_dir / "config")
+
+        # Sync model catalog from Ollama on startup
+        from services.model_catalog import get_model_catalog
+        catalog = get_model_catalog()
+        await catalog.sync_from_ollama()
+
+        logger.info("✓ Per-user model storage initialized")
+    except Exception as e:
+        logger.warning(f"Failed to initialize per-user model storage: {e}")
+        # Don't fail startup - endpoints will handle missing storage gracefully
+
     # Start background cleanup tasks
     cleanup_task = asyncio.create_task(cleanup_old_temp_files())
     vacuum_task = asyncio.create_task(vacuum_databases())
@@ -755,6 +777,14 @@ try:
     services_loaded.append("Setup Wizard")
 except ImportError as e:
     logger.warning(f"Could not import setup_wizard_routes: {e}")
+
+# User Models (Phase 1.5: Per-user model preferences and hot slots)
+try:
+    from routes.user_models import router as user_models_router
+    app.include_router(user_models_router)
+    services_loaded.append("User Models")
+except ImportError as e:
+    logger.warning(f"Could not import user_models: {e}")
 
 # Health Diagnostics (Phase 5.4: Comprehensive health checks)
 try:
