@@ -125,3 +125,7 @@ ElohimOS uses a centralized router registry (`api/router_registry.py`) that load
 ```
 
 Failed services are expected if optional dependencies (like libp2p) are not installed.
+
+## Code Tab
+
+For Code Tab setup and usage (Monaco editor, terminal, workspace management), see [docs/development/CodeTab.md](../../docs/development/CodeTab.md).
