@@ -7,85 +7,53 @@
  */
 
 import { useState, useEffect } from 'react'
-import { FolderTree, MessageSquare, FileCode, Save, Edit3 } from 'lucide-react'
+import { FolderTree, MessageSquare, FileCode, Save, Edit3, Terminal as TerminalIcon } from 'lucide-react'
 import { ResizableSidebar } from './ResizableSidebar'
 import { FileBrowser } from './FileBrowser'
 import { MonacoEditor } from './MonacoEditor'
-import { DiffPreviewModal } from './DiffPreviewModal'
+import { DiffConfirmModal } from './DiffConfirmModal'
+import { TerminalPanel } from './TerminalPanel'
 import { CodeChat } from './CodeChat'
 import toast from 'react-hot-toast'
-import { authFetch } from '@/lib/api'
+import { codeEditorApi } from '@/api/codeEditor'
 
 export function CodeView() {
   const [leftView, setLeftView] = useState<'files' | 'chats'>('files')
-  const [selectedFile, setSelectedFile] = useState<string | null>(null)
+  const [selectedFileId, setSelectedFileId] = useState<string | null>(null)
+  const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null)
   const [fileContent, setFileContent] = useState<string>('')
   const [originalContent, setOriginalContent] = useState<string>('')
   const [fileLanguage, setFileLanguage] = useState<string>('typescript')
+  const [baseUpdatedAt, setBaseUpdatedAt] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
   const [showDiffPreview, setShowDiffPreview] = useState(false)
   const [diffData, setDiffData] = useState<any>(null)
+  const [permissionError, setPermissionError] = useState<string | null>(null)
+  const [terminalOpen, setTerminalOpen] = useState(false)
 
-  const loadFile = async (path: string, isAbsolute: boolean = false) => {
+  const loadFile = async (fileId: string, filePath: string) => {
     setLoading(true)
-    setSelectedFile(path)
+    setSelectedFileId(fileId)
+    setSelectedFilePath(filePath)
+    setPermissionError(null)
 
     try {
-      const url = isAbsolute
-        ? `/api/v1/code/read?path=${encodeURIComponent(path)}&absolute_path=true`
-        : `/api/v1/code/read?path=${encodeURIComponent(path)}`
-
-      const res = await authFetch(url)
-
-      if (!res.ok) {
-        throw new Error('Failed to load file')
-      }
-
-      const data = await res.json()
-      const content = data.content || ''
-      setFileContent(content)
-      setOriginalContent(content)
+      const file = await codeEditorApi.getFile(fileId)
+      setFileContent(file.content || '')
+      setOriginalContent(file.content || '')
+      setFileLanguage(file.language || 'plaintext')
+      setBaseUpdatedAt(file.updated_at || null)
       setIsEditing(false)
       setHasChanges(false)
-
-      // Detect language from file extension
-      const ext = path.split('.').pop()?.toLowerCase()
-      const languageMap: Record<string, string> = {
-        'ts': 'typescript',
-        'tsx': 'typescript',
-        'js': 'javascript',
-        'jsx': 'javascript',
-        'py': 'python',
-        'rs': 'rust',
-        'go': 'go',
-        'java': 'java',
-        'cpp': 'cpp',
-        'c': 'c',
-        'cs': 'csharp',
-        'rb': 'ruby',
-        'php': 'php',
-        'swift': 'swift',
-        'kt': 'kotlin',
-        'md': 'markdown',
-        'json': 'json',
-        'yaml': 'yaml',
-        'yml': 'yaml',
-        'toml': 'toml',
-        'xml': 'xml',
-        'html': 'html',
-        'css': 'css',
-        'scss': 'scss',
-        'sql': 'sql',
-        'sh': 'shell',
-        'bash': 'shell',
+    } catch (err: any) {
+      if (err?.status === 403) {
+        setPermissionError('Permission denied: code.use required')
+      } else {
+        console.error('Error loading file:', err)
+        setFileContent(`Error loading file: ${err instanceof Error ? err.message : 'Unknown error'}`)
       }
-
-      setFileLanguage(languageMap[ext || ''] || 'plaintext')
-    } catch (err) {
-      console.error('Error loading file:', err)
-      setFileContent(`Error loading file: ${err instanceof Error ? err.message : 'Unknown error'}`)
     } finally {
       setLoading(false)
     }
@@ -97,66 +65,69 @@ export function CodeView() {
   }
 
   const handleSaveClick = async () => {
-    if (!selectedFile || !hasChanges) return
+    if (!selectedFileId || !hasChanges) return
 
     try {
-      // Get diff preview
-      const res = await authFetch('/api/v1/code/diff/preview', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          path: selectedFile,
-          new_content: fileContent
-        })
-      })
-
-      if (!res.ok) {
-        throw new Error('Failed to generate diff')
-      }
-
-      const diff = await res.json()
-      setDiffData(diff)
+      const diffResp = await codeEditorApi.diffFile(
+        selectedFileId,
+        fileContent,
+        baseUpdatedAt || undefined
+      )
+      setDiffData(diffResp)
       setShowDiffPreview(true)
-    } catch (err) {
-      console.error('Error generating diff:', err)
-      toast.error('Failed to preview changes')
+    } catch (err: any) {
+      if (err?.status === 403) {
+        setPermissionError('Permission denied: code.use required')
+      } else {
+        console.error('Error generating diff:', err)
+        toast.error('Failed to preview changes')
+      }
     }
   }
 
   const handleConfirmSave = async () => {
-    if (!selectedFile) return
+    if (!selectedFileId) return
 
     try {
-      const res = await authFetch('/api/v1/code/write', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          path: selectedFile,
-          content: fileContent,
-          create_if_missing: false
-        })
+      const updated = await codeEditorApi.updateFile(selectedFileId, {
+        content: fileContent,
+        base_updated_at: baseUpdatedAt || undefined,
       })
 
-      if (!res.ok) {
-        throw new Error('Failed to save file')
-      }
-
-      const result = await res.json()
-
-      // Update original content
+      // Success - update state
       setOriginalContent(fileContent)
+      setBaseUpdatedAt(updated.updated_at)
       setHasChanges(false)
       setShowDiffPreview(false)
+      toast.success(`Saved ${selectedFilePath}`)
+    } catch (err: any) {
+      if (err?.status === 409) {
+        // Conflict - reload and show fresh diff
+        toast.error('File was modified by another user')
+        setShowDiffPreview(false)
 
-      toast.success(`Saved ${selectedFile}`)
-
-      // Show risk assessment if present
-      if (result.risk_assessment) {
-        console.log('Risk assessment:', result.risk_assessment)
+        try {
+          const fresh = await codeEditorApi.getFile(selectedFileId)
+          const freshDiff = await codeEditorApi.diffFile(
+            selectedFileId,
+            fileContent,
+            fresh.updated_at
+          )
+          setDiffData({
+            ...freshDiff,
+            conflictWarning: `File changed (current: ${fresh.updated_at})`,
+          })
+          setShowDiffPreview(true)
+        } catch (refetchErr) {
+          console.error('Error refetching after conflict:', refetchErr)
+        }
+      } else if (err?.status === 403) {
+        setPermissionError('Permission denied: code.edit required')
+        setShowDiffPreview(false)
+      } else {
+        console.error('Error saving file:', err)
+        toast.error('Failed to save file')
       }
-    } catch (err) {
-      console.error('Error saving file:', err)
-      toast.error('Failed to save file')
     }
   }
 
@@ -212,7 +183,7 @@ export function CodeView() {
           {/* Left Pane Content */}
           <div className="flex-1 overflow-auto">
             {leftView === 'files' && (
-              <FileBrowser onFileSelect={loadFile} selectedFile={selectedFile} />
+              <FileBrowser onFileSelect={loadFile} selectedFileId={selectedFileId} />
             )}
 
             {leftView === 'chats' && (
@@ -233,7 +204,20 @@ export function CodeView() {
       }
       right={
         <div className="h-full flex flex-col bg-white dark:bg-gray-900">
-          {selectedFile ? (
+          {/* Permission Error Banner */}
+          {permissionError && (
+            <div className="bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800 px-4 py-2 flex items-center justify-between">
+              <span className="text-sm text-red-800 dark:text-red-200">{permissionError}</span>
+              <button
+                onClick={() => setPermissionError(null)}
+                className="text-red-600 hover:text-red-800 dark:text-red-400"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {selectedFileId ? (
             <>
               {/* File header */}
               <div className="border-b border-gray-200 dark:border-gray-700 px-4 py-2 bg-white dark:bg-gray-800">
@@ -241,7 +225,7 @@ export function CodeView() {
                   <div className="flex items-center gap-2">
                     <FileCode className="w-4 h-4 text-gray-500" />
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {selectedFile}
+                      {selectedFilePath}
                     </span>
                     {hasChanges && (
                       <span className="text-xs text-orange-600 dark:text-orange-400">
@@ -280,9 +264,16 @@ export function CodeView() {
                       Edit
                     </button>
                   )}
+                  <button
+                    onClick={() => setTerminalOpen((v) => !v)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  >
+                    <TerminalIcon className="w-3.5 h-3.5" />
+                    Terminal
+                  </button>
                 </div>
               </div>
-              </div>
+            </div>
 
               {/* Monaco Editor */}
               <div className="flex-1 min-h-0">
@@ -301,9 +292,14 @@ export function CodeView() {
                 )}
               </div>
 
+              {/* Terminal Panel */}
+              {terminalOpen && (
+                <TerminalPanel isOpen={terminalOpen} onClose={() => setTerminalOpen(false)} />
+              )}
+
               {/* Chat - Fixed height at bottom */}
               <div className="h-80 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-                <CodeChat currentFile={selectedFile} fileContent={fileContent} />
+                <CodeChat currentFile={selectedFilePath} fileContent={fileContent} />
               </div>
             </>
           ) : (
@@ -335,15 +331,15 @@ export function CodeView() {
       }
     />
 
-    {/* Diff Preview Modal */}
+    {/* Diff Confirm Modal */}
     {showDiffPreview && diffData && (
-      <DiffPreviewModal
+      <DiffConfirmModal
         isOpen={showDiffPreview}
         onClose={() => setShowDiffPreview(false)}
         onConfirm={handleConfirmSave}
         diffText={diffData.diff}
-        stats={diffData.stats}
-        filePath={selectedFile || ''}
+        filePath={selectedFilePath || ''}
+        conflictWarning={diffData.conflictWarning}
       />
     )}
   </>
