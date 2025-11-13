@@ -935,11 +935,7 @@ except Exception as e:
     services_failed.append("Vault API")
     logger.error("Failed to load vault router", exc_info=True)
 
-try:
-    from api.team import routes as _team_routes
-    app.include_router(_team_routes.router, prefix="/api/v1/teams")
-except Exception:
-    pass
+# Team router already included above via api.routes.team (line 627)
 
 # Removed: Empty placeholder chat router (redundant with routes.chat)
 # The actual chat router is loaded above via: from routes import chat

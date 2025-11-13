@@ -376,14 +376,14 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
         services_failed.append("Vault API")
         logger.error("Failed to load vault router", exc_info=True)
 
-    # Team API (v1)
+    # Team API
     try:
         from api.routes import team as _team_routes
-        app.include_router(_team_routes.router, prefix="/api/v1/teams")
+        app.include_router(_team_routes.router)  # Router already has prefix="/api/v1/teams"
         services_loaded.append("Team API")
     except Exception as e:
         services_failed.append("Team API")
-        logger.error("Failed to load team v1 router", exc_info=True)
+        logger.error("Failed to load team router", exc_info=True)
 
     # Permissions API (v1)
     try:
