@@ -8,6 +8,7 @@ import { ROLES } from '@/lib/roles'
 // Lazy load heavy tab components for better performance
 const ChatTab = lazy(() => import('./settings/ChatTab'))
 const ModelsTab = lazy(() => import('./settings/ModelsTab'))
+const PermissionsTab = lazy(() => import('./settings/PermissionsTab'))
 const AppSettingsTab = lazy(() => import('./settings/AppSettingsTab'))
 const AutomationTab = lazy(() => import('./settings/AutomationTab'))
 const AdvancedTab = lazy(() => import('./settings/AdvancedTab'))
@@ -37,7 +38,7 @@ function LoadingFallback() {
 
 export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalProps) {
   const permissions = usePermissions()
-  const [activeTab, setActiveTab] = useState<'profile' | 'admin' | 'chat' | 'models' | 'app' | 'automation' | 'advanced' | 'security' | 'danger'>('profile')
+  const [activeTab, setActiveTab] = useState<'profile' | 'admin' | 'chat' | 'models' | 'permissions' | 'app' | 'automation' | 'advanced' | 'security' | 'danger'>('profile')
   const [preloaded, setPreloaded] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
 
@@ -164,6 +165,18 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
             </button>
 
             <button
+              onClick={() => setActiveTab('permissions')}
+              className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all rounded-lg ${
+                activeTab === 'permissions'
+                  ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50'
+              }`}
+            >
+              <Shield className="w-4 h-4" />
+              <span>Permissions</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('app')}
               className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all rounded-lg ${
                 activeTab === 'app'
@@ -240,6 +253,7 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
               {activeTab === 'admin' && 'Founder Rights Admin'}
               {activeTab === 'chat' && 'Chat'}
               {activeTab === 'models' && 'Models'}
+              {activeTab === 'permissions' && 'Permissions'}
               {activeTab === 'app' && 'App'}
               {activeTab === 'automation' && 'Automation'}
               {activeTab === 'advanced' && 'Advanced'}
@@ -276,6 +290,11 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
               {activeTab === 'models' && (
                 <div>
                   <ModelsTab />
+                </div>
+              )}
+              {activeTab === 'permissions' && (
+                <div>
+                  <PermissionsTab />
                 </div>
               )}
               {activeTab === 'app' && (

@@ -463,3 +463,55 @@ async def invalidate_user_permissions_endpoint(request: Request, user_id: str):
     except Exception as e:
         logger.error(f"Failed to invalidate permission cache: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== Effective Permissions Endpoint =====
+
+@router.get("/effective", name="permissions_get_effective")
+async def get_effective_permissions_endpoint(
+    request: Request,
+    team_id: Optional[str] = Query(None),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get effective permissions for the current user (read-only view)
+
+    Returns:
+        {
+            "user_id": str,
+            "role": str,
+            "is_founder": bool,
+            "team_id": str | None,
+            "effective_permissions": {
+                "permission_key": true | level | scope,
+                ...
+            }
+        }
+    """
+    from permission_engine import get_permission_engine, require_perm
+
+    # Require basic chat.use permission to view own permissions
+    require_perm("chat.use")(lambda: None)()
+
+    try:
+        engine = get_permission_engine()
+        user_id = current_user["user_id"]
+
+        # Get user's role
+        role = current_user.get("role", "user")
+        is_founder = role == "founder"
+
+        # Get effective permissions
+        effective_perms = engine.get_effective_permissions(user_id, team_id)
+
+        return {
+            "user_id": user_id,
+            "role": role,
+            "is_founder": is_founder,
+            "team_id": team_id,
+            "effective_permissions": effective_perms
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to get effective permissions: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
