@@ -3,11 +3,18 @@ import { AlertTriangle, Activity, Terminal } from 'lucide-react'
 import { ControlCenterModal } from './ControlCenterModal'
 import { ModelManagementSidebar } from './ModelManagementSidebar'
 import { ModelDownloadsManager } from './ModelDownloadsManager'
+import { QuickActionsModal } from './QuickActionsModal'
+import { SessionTimelineModal } from './SessionTimelineModal'
 import { ContextBadge } from './ContextBadge'
 import { useOllamaStore } from '../stores/ollamaStore'
+import { useChatStore } from '../stores/chatStore'
+import { useTeamStore } from '../stores/teamStore'
 import { ShutdownModal, RestartModal } from './OllamaServerModals'
 import { PanicModeModal } from './PanicModeModal'
 import { metal4StatsService } from '../services/metal4StatsService'
+import { ActionsContext } from '../lib/actionsRegistry'
+import { authFetch } from '../lib/api'
+import { showToast } from '../lib/toast'
 
 interface HeaderProps {
   onOpenServerControls: () => void
@@ -17,7 +24,11 @@ export function Header({ onOpenServerControls }: HeaderProps) {
   const [showModelSidebar, setShowModelSidebar] = useState(false)
   const [showDownloadsManager, setShowDownloadsManager] = useState(false)
   const [pendingDownloadModel, setPendingDownloadModel] = useState<string | undefined>(undefined)
+  const [showQuickActions, setShowQuickActions] = useState(false)
+  const [showTimeline, setShowTimeline] = useState(false)
   const { serverStatus, fetchServerStatus } = useOllamaStore()
+  const { activeChatId, getActiveSession, createSession, setActiveChatId } = useChatStore()
+  const { currentTeam } = useTeamStore()
   const [showShutdownModal, setShowShutdownModal] = useState(false)
   const [showRestartModal, setShowRestartModal] = useState(false)
   const [previousModels, setPreviousModels] = useState<string[]>([])
@@ -119,6 +130,19 @@ export function Header({ onOpenServerControls }: HeaderProps) {
     return () => window.removeEventListener('openDownloadsManager', handleOpenDownloadsManager)
   }, [])
 
+  // Listen for Cmd/Ctrl+K to open Quick Actions (Sprint 5)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setShowQuickActions(true)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   const handleLogoClick = () => {
     // Toggle Model Management sidebar
     setShowModelSidebar(!showModelSidebar)
@@ -201,6 +225,89 @@ export function Header({ onOpenServerControls }: HeaderProps) {
       console.error('Failed to restart Ollama:', error)
       alert('Failed to restart Ollama server')
     }
+  }
+
+  // Quick Actions handlers (Sprint 5 Theme D)
+  const handleNewSession = async () => {
+    try {
+      const response = await authFetch('/api/v1/chat/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: 'New Session',
+          team_id: currentTeam?.team_id || null
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const newSessionId = data.chat_id
+
+        // Add to store and set as active
+        createSession(newSessionId, 'New Session', currentTeam?.team_id || null)
+        setActiveChatId(newSessionId)
+
+        showToast.success('New session created')
+      }
+    } catch (error) {
+      console.error('Failed to create session:', error)
+      showToast.error('Failed to create new session')
+    }
+  }
+
+  const handleOpenDownloads = () => {
+    setShowDownloads(true)
+  }
+
+  const handleViewTimeline = () => {
+    if (!activeChatId) {
+      showToast.error('No active session to view timeline')
+      return
+    }
+    setShowTimeline(true)
+  }
+
+  const handleSwitchTeam = () => {
+    setShowTeamSwitcher(true)
+  }
+
+  const handleExportPermissions = async () => {
+    try {
+      const response = await authFetch('/api/v1/permissions/export')
+      if (response.ok) {
+        const data = await response.json()
+
+        // Download as JSON file
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `permissions-export-${new Date().toISOString().split('T')[0]}.json`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+
+        showToast.success('Permissions exported successfully')
+      }
+    } catch (error) {
+      console.error('Failed to export permissions:', error)
+      showToast.error('Failed to export permissions')
+    }
+  }
+
+  // Build ActionsContext for QuickActionsModal
+  const activeSession = activeChatId ? getActiveSession(activeChatId) : null
+  const actionsContext: ActionsContext = {
+    activeSessionId: activeChatId || undefined,
+    activeSessionTitle: activeSession?.title || undefined,
+    teams: currentTeam ? [{ id: currentTeam.team_id, name: currentTeam.team_name }] : [],
+    hasPermissions: user?.role === 'admin',
+    onNewSession: handleNewSession,
+    onOpenDownloads: handleOpenDownloads,
+    onViewTimeline: handleViewTimeline,
+    onSwitchTeam: handleSwitchTeam,
+    onExportPermissions: handleExportPermissions
   }
 
   return (
@@ -425,6 +532,22 @@ export function Header({ onOpenServerControls }: HeaderProps) {
             setPendingDownloadModel(undefined)
           }}
           initialModel={pendingDownloadModel}
+        />
+      )}
+
+      {/* Quick Actions Panel (Sprint 5 Theme D) */}
+      {showQuickActions && (
+        <QuickActionsModal
+          context={actionsContext}
+          onClose={() => setShowQuickActions(false)}
+        />
+      )}
+
+      {/* Session Timeline Modal */}
+      {showTimeline && activeChatId && (
+        <SessionTimelineModal
+          sessionId={activeChatId}
+          onClose={() => setShowTimeline(false)}
         />
       )}
     </>
