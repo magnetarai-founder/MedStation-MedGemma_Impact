@@ -73,8 +73,11 @@ export default function HotSlotsStep(props: StepProps) {
     }
   }
 
-  // Available models = selected models that were downloaded
-  const availableModels = selectedModels.length > 0 ? selectedModels : installedModels
+  // Available models = only those that were successfully downloaded
+  // Filter selected models by installed models to avoid assigning non-downloaded models
+  const availableModels = selectedModels.length > 0
+    ? selectedModels.filter(m => installedModels.includes(m))
+    : installedModels
 
   const assignedCount = Object.values(slots).filter(m => m !== null).length
 
