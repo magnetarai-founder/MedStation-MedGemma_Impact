@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from 'react'
-import { Download, BarChart3, TrendingUp, Activity, AlertCircle } from 'lucide-react'
+import { Download, BarChart3, TrendingUp, Activity, AlertCircle, Copy, Check } from 'lucide-react'
 import {
   fetchAnalyticsUsage,
   exportAnalytics,
@@ -22,6 +22,7 @@ export default function AnalyticsTab() {
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<AnalyticsSummary | null>(null)
   const [exporting, setExporting] = useState(false)
+  const [copiedChart, setCopiedChart] = useState<string | null>(null)
 
   useEffect(() => {
     loadAnalytics()
@@ -63,6 +64,18 @@ export default function AnalyticsTab() {
     }
   }
 
+  const handleCopyChartData = (chartName: string, chartData: any[]) => {
+    try {
+      const text = JSON.stringify(chartData, null, 2)
+      navigator.clipboard.writeText(text)
+      setCopiedChart(chartName)
+      setTimeout(() => setCopiedChart(null), 2000)
+      showToast.success(`${chartName} data copied to clipboard`)
+    } catch (err) {
+      showToast.error('Failed to copy data')
+    }
+  }
+
   // Calculate totals
   const totalTokens = data?.tokens_trend.reduce((sum, point) => sum + (point.tokens || 0), 0) || 0
   const totalSessions = data?.sessions_trend.reduce((sum, point) => sum + (point.sessions || 0), 0) || 0
@@ -82,6 +95,17 @@ export default function AnalyticsTab() {
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             View usage patterns, trends, and system metrics
           </p>
+          {data && !loading && !error && (
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 flex items-center gap-1">
+              <span className="inline-block w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+              Data updated: {new Date().toLocaleString(undefined, {
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit'
+              })}
+            </p>
+          )}
         </div>
 
         {/* Export Buttons */}
@@ -205,10 +229,19 @@ export default function AnalyticsTab() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Model Usage */}
             <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-                <BarChart3 size={20} />
-                Model Usage
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                  <BarChart3 size={20} />
+                  Model Usage
+                </h3>
+                <button
+                  onClick={() => handleCopyChartData('Model Usage', data.model_usage)}
+                  className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                  title="Copy chart data"
+                >
+                  {copiedChart === 'Model Usage' ? <Check size={16} /> : <Copy size={16} />}
+                </button>
+              </div>
               {data.model_usage.length === 0 ? (
                 <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
                   No model usage data
@@ -247,10 +280,19 @@ export default function AnalyticsTab() {
 
             {/* Daily Tokens Trend */}
             <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-                <TrendingUp size={20} />
-                Daily Tokens
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                  <TrendingUp size={20} />
+                  Daily Tokens
+                </h3>
+                <button
+                  onClick={() => handleCopyChartData('Daily Tokens', data.tokens_trend)}
+                  className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                  title="Copy chart data"
+                >
+                  {copiedChart === 'Daily Tokens' ? <Check size={16} /> : <Copy size={16} />}
+                </button>
+              </div>
               {data.tokens_trend.length === 0 ? (
                 <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
                   No token data
@@ -283,10 +325,19 @@ export default function AnalyticsTab() {
 
             {/* Sessions Trend */}
             <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-                <Activity size={20} />
-                Sessions per Day
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                  <Activity size={20} />
+                  Sessions per Day
+                </h3>
+                <button
+                  onClick={() => handleCopyChartData('Sessions', data.sessions_trend)}
+                  className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                  title="Copy chart data"
+                >
+                  {copiedChart === 'Sessions' ? <Check size={16} /> : <Copy size={16} />}
+                </button>
+              </div>
               {data.sessions_trend.length === 0 ? (
                 <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
                   No session data
@@ -319,10 +370,19 @@ export default function AnalyticsTab() {
 
             {/* Error Rate */}
             <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-                <AlertCircle size={20} />
-                Error Rate
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                  <AlertCircle size={20} />
+                  Error Rate
+                </h3>
+                <button
+                  onClick={() => handleCopyChartData('Error Rate', data.errors_trend)}
+                  className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                  title="Copy chart data"
+                >
+                  {copiedChart === 'Error Rate' ? <Check size={16} /> : <Copy size={16} />}
+                </button>
+              </div>
               {data.errors_trend.length === 0 ? (
                 <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
                   No error data

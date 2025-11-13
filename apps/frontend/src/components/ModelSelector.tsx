@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { ChevronDown, XCircle, Star, AlertCircle, Shield } from 'lucide-react'
+import { ChevronDown, XCircle, Star, AlertCircle, Shield, Sparkles } from 'lucide-react'
 import { useChatStore } from '../stores/chatStore'
 import { useUserModelPrefsStore } from '../stores/userModelPrefsStore'
 import { useTeamStore } from '../stores/teamStore'
 import { api, authFetch } from '../lib/api'
 import { parseModelSizeGB, canModelFit } from '../lib/models'
 import { showActionToast, showToast } from '../lib/toast'
+import { getModelRecommendations, type ModelRecommendation } from '../lib/recommendationsApi'
 
 interface ModelSelectorProps {
   value: string
@@ -26,11 +27,13 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
   const [modelStatuses, setModelStatuses] = useState<ModelStatus[]>([])
   const [usableMemoryGb, setUsableMemoryGb] = useState<number>(0)
   const [allowedModels, setAllowedModels] = useState<string[] | null>(null) // null = no policy (allow all)
+  const [recommendations, setRecommendations] = useState<ModelRecommendation[]>([])
 
   useEffect(() => {
     loadModels()
     loadModelStatuses()
     loadAll() // Load user preferences, catalog, and hot slots
+    loadRecommendations() // Sprint 6 Theme C
   }, [])
 
   // Load team model policy (Sprint 5)
@@ -82,6 +85,17 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
       }
     } catch (error) {
       console.debug('Failed to load model statuses:', error)
+    }
+  }
+
+  const loadRecommendations = async () => {
+    try {
+      // Get general recommendations (task-specific can be added later)
+      const recs = await getModelRecommendations('general', 3)
+      setRecommendations(recs)
+    } catch (error) {
+      console.debug('Failed to load model recommendations:', error)
+      setRecommendations([])
     }
   }
 
@@ -228,8 +242,75 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
           className="appearance-none bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 pl-3 pr-8 py-1 rounded border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-1 focus:ring-primary-500 cursor-pointer text-xs hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
         >
           <option value="">Select Model</option>
+
+          {/* Suggested models (Sprint 6 Theme C) */}
+          {recommendations.length > 0 && loadedModels.length > 0 && (
+            <optgroup label="✨ Suggested">
+              {recommendations.map((rec) => {
+                const model = loadedModels.find(m => m.name === rec.model_name)
+                if (!model) return null // Not loaded
+
+                const allowed = isModelAllowed(model.name)
+                let displayText = model.name
+
+                if (!allowed) displayText += ' 🔒'
+                if (!model.installed) displayText += ' ⚠️'
+
+                return (
+                  <option
+                    key={`suggested-${model.name}`}
+                    value={model.name}
+                    disabled={!allowed}
+                    title={rec.reason}
+                  >
+                    {displayText}
+                  </option>
+                )
+              })}
+            </optgroup>
+          )}
+
+          {/* All loaded models */}
           {loadedModels.length === 0 ? (
             <option value="" disabled>No visible models loaded</option>
+          ) : recommendations.length > 0 ? (
+            <optgroup label="All Models">
+              {loadedModels.map((model) => {
+                const allowed = isModelAllowed(model.name)
+
+                // Build display text with hot slot badge and indicators
+                let displayText = ''
+
+                // Hot slot badge (1-4)
+                if (model.hotSlot !== null) {
+                  displayText += `[${model.hotSlot}] `
+                }
+
+                // Model name
+                displayText += model.name
+
+                // Policy indicator (Sprint 5)
+                if (!allowed) {
+                  displayText += ' 🔒'
+                }
+
+                // Not-installed indicator
+                if (!model.installed) {
+                  displayText += ' ⚠️'
+                }
+
+                return (
+                  <option
+                    key={model.name}
+                    value={model.name}
+                    disabled={!allowed}
+                    title={!allowed ? 'Not allowed by team policy' : undefined}
+                  >
+                    {displayText}
+                  </option>
+                )
+              })}
+            </optgroup>
           ) : (
             loadedModels.map((model) => {
               const allowed = isModelAllowed(model.name)
@@ -311,6 +392,23 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
           <AlertCircle className="w-3 h-3" aria-hidden="true" />
           <span>Not installed</span>
         </div>
+      )}
+
+      {/* Suggestion pill (Sprint 6 Theme C) */}
+      {!value && recommendations.length > 0 && (
+        <button
+          onClick={() => {
+            const topRec = recommendations[0]
+            if (topRec) {
+              handleChange(topRec.model_name)
+            }
+          }}
+          className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs hover:bg-blue-200 dark:hover:bg-blue-800/40 transition-colors cursor-pointer"
+          title={recommendations[0]?.reason}
+        >
+          <Sparkles className="w-3 h-3" aria-hidden="true" />
+          <span>Try: {recommendations[0]?.model_name}</span>
+        </button>
       )}
 
       {/* Eject button */}
