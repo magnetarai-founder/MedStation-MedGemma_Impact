@@ -141,23 +141,28 @@ export default function App() {
 
     const checkUserSetup = async () => {
       try {
-        // Note: We're checking global setup status for now
-        // Backend needs to be updated to support per-user setup status
-        const { setupWizardApi } = await import('./lib/setupWizardApi')
-        const status = await setupWizardApi.getSetupStatus()
+        // Check per-user setup status
+        const response = await fetch('/api/v1/users/me/setup/status', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          }
+        })
 
-        // For now, use global setup_completed
-        // TODO: Update backend to return per-user setup status
-        setUserSetupComplete(status.setup_completed)
+        if (response.ok) {
+          const status = await response.json()
+          setUserSetupComplete(status.user_setup_completed)
 
-        if (status.setup_completed) {
-          setAuthState('authenticated')
+          if (status.user_setup_completed) {
+            setAuthState('authenticated')
+          }
+        } else {
+          // If status check fails, assume setup incomplete (show wizard)
+          setUserSetupComplete(false)
         }
       } catch (error) {
         console.error('Failed to check user setup status:', error)
-        // Assume setup complete if check fails (don't block user)
-        setUserSetupComplete(true)
-        setAuthState('authenticated')
+        // If check fails, assume setup incomplete (show wizard to be safe)
+        setUserSetupComplete(false)
       } finally {
         setIsLoading(false)
       }

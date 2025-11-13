@@ -1,168 +1,123 @@
-import { useState, useEffect } from 'react'
-import { Cpu, Zap, Lock, Check, AlertTriangle } from 'lucide-react'
+/**
+ * Models Tab - Settings
+ *
+ * Per-user model preferences and hot slots management.
+ * Allows users to control which models they see and assign favorites.
+ */
 
-interface AgentModelSettings {
-  orchestrator: {
-    enabled: boolean
-    model: string
-  }
-  user_preferences: {
-    large_refactor: string
-    multi_file: string
-    code_generation: string
-    deep_reasoning: string
-    surgical: string
-    chat_default: string
-  }
-  recommended_models: {
-    [key: string]: string
-  }
-  strict_models: {
-    data_engine: string
-  }
-  available_models: string[]
-  note: string
-}
+import { useState, useEffect } from 'react'
+import { Package, Eye, EyeOff, Star, AlertTriangle, Loader2, Check, X } from 'lucide-react'
+import { useUserModelPrefsStore } from '../../stores/userModelPrefsStore'
+import { userModelsApi, HotSlots } from '../../lib/userModelsApi'
+import toast from 'react-hot-toast'
 
 export default function ModelsTab() {
-  const [modelSettings, setModelSettings] = useState<AgentModelSettings | null>(null)
-  const [loading, setLoading] = useState(true)
+  const {
+    catalog,
+    catalogLoading,
+    catalogError,
+    preferences,
+    preferencesLoading,
+    hotSlots,
+    hotSlotsLoading,
+    loadAll,
+    toggleModelVisibility,
+    assignHotSlot,
+    getVisibleModels
+  } = useUserModelPrefsStore()
+
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [confirmHideSlottedModel, setConfirmHideSlottedModel] = useState<{
+    modelName: string
+    slotNumber: number
+  } | null>(null)
 
-  // Task labels for display
-  const taskLabels: { [key: string]: { label: string; description: string } } = {
-    large_refactor: {
-      label: 'Large Refactoring',
-      description: 'Multi-file architectural changes and major rewrites'
-    },
-    multi_file: {
-      label: 'Multi-File Operations',
-      description: 'Cross-file edits, imports, and renames'
-    },
-    code_generation: {
-      label: 'Code Generation',
-      description: 'New features, boilerplate, and scaffolding'
-    },
-    deep_reasoning: {
-      label: 'Deep Reasoning',
-      description: 'Complex logic, algorithm design, and planning'
-    },
-    surgical: {
-      label: 'Surgical Fixes',
-      description: 'Precise single-file edits and bug fixes'
-    },
-    chat_default: {
-      label: 'AI Chat Default',
-      description: 'Default model for conversational AI in chat tab'
-    }
-  }
-
-  // Load model settings from API
+  // Load all data on mount
   useEffect(() => {
-    const loadModelSettings = async () => {
-      try {
-        setLoading(true)
-        const token = localStorage.getItem('auth_token')
-        const response = await fetch('/api/v1/agent/models', {
-          headers: {
-            'Authorization': token ? `Bearer ${token}` : '',
-            'Content-Type': 'application/json'
-          }
-        })
-
-        if (!response.ok) {
-          throw new Error('Failed to load model settings')
-        }
-
-        const data = await response.json()
-        setModelSettings(data)
-      } catch (err) {
-        console.error('Failed to load model settings:', err)
-        setError(err instanceof Error ? err.message : 'Failed to load settings')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadModelSettings()
+    loadAll()
   }, [])
 
-  // Toggle orchestrator
-  const handleToggleOrchestrator = async (enabled: boolean) => {
-    if (!modelSettings) return
+  // Check if model is in a hot slot
+  const getModelSlot = (modelName: string): number | null => {
+    for (const [slotNum, model] of Object.entries(hotSlots)) {
+      if (model === modelName) {
+        return parseInt(slotNum)
+      }
+    }
+    return null
+  }
 
+  // Handle visibility toggle with hot slot check
+  const handleToggleVisibility = async (modelName: string) => {
+    const isCurrentlyVisible = preferences.find(p => p.model_name === modelName)?.visible ?? true
+    const slotNumber = getModelSlot(modelName)
+
+    // If hiding and model is in a slot, show confirmation
+    if (isCurrentlyVisible && slotNumber !== null) {
+      setConfirmHideSlottedModel({ modelName, slotNumber })
+      return
+    }
+
+    // Toggle visibility
     try {
       setSaving(true)
-      const token = localStorage.getItem('auth_token')
-      const response = await fetch('/api/v1/agent/models/update', {
-        method: 'POST',
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          orchestrator: { enabled }
-        })
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to update orchestrator setting')
-      }
-
-      const data = await response.json()
-      setModelSettings({
-        ...modelSettings,
-        orchestrator: data.orchestrator
-      })
-    } catch (err) {
-      console.error('Failed to toggle orchestrator:', err)
-      setError(err instanceof Error ? err.message : 'Failed to update')
+      await toggleModelVisibility(modelName)
+      toast.success(isCurrentlyVisible ? 'Model hidden' : 'Model visible')
+    } catch (error) {
+      toast.error('Failed to update visibility')
+      console.error(error)
     } finally {
       setSaving(false)
     }
   }
 
-  // Update user preference for a task
-  const handleUpdatePreference = async (task: string, model: string) => {
-    if (!modelSettings) return
+  // Confirm hiding slotted model
+  const handleConfirmHideSlotted = async () => {
+    if (!confirmHideSlottedModel) return
+
+    const { modelName, slotNumber } = confirmHideSlottedModel
 
     try {
       setSaving(true)
-      const token = localStorage.getItem('auth_token')
-      const response = await fetch('/api/v1/agent/models/update', {
-        method: 'POST',
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          user_preferences: { [task]: model }
-        })
-      })
 
-      if (!response.ok) {
-        throw new Error('Failed to update model preference')
-      }
+      // Clear hot slot first
+      await assignHotSlot(slotNumber as (1 | 2 | 3 | 4), null)
 
-      const data = await response.json()
-      setModelSettings({
-        ...modelSettings,
-        user_preferences: data.user_preferences
-      })
-    } catch (err) {
-      console.error('Failed to update preference:', err)
-      setError(err instanceof Error ? err.message : 'Failed to update')
+      // Then hide model
+      await toggleModelVisibility(modelName)
+
+      toast.success(`Model hidden and removed from Slot ${slotNumber}`)
+      setConfirmHideSlottedModel(null)
+    } catch (error) {
+      toast.error('Failed to update model')
+      console.error(error)
     } finally {
       setSaving(false)
     }
   }
+
+  // Handle hot slot assignment
+  const handleAssignSlot = async (slotNumber: 1 | 2 | 3 | 4, modelName: string | null) => {
+    try {
+      setSaving(true)
+      await assignHotSlot(slotNumber, modelName)
+      toast.success(modelName ? `Assigned to Slot ${slotNumber}` : `Slot ${slotNumber} cleared`)
+    } catch (error) {
+      toast.error('Failed to update hot slot')
+      console.error(error)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const loading = catalogLoading || preferencesLoading || hotSlotsLoading
+  const error = catalogError
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="flex items-center gap-3 text-gray-500 dark:text-gray-400">
-          <div className="w-5 h-5 border-2 border-gray-300 border-t-primary-600 rounded-full animate-spin"></div>
+          <Loader2 className="w-5 h-5 animate-spin" />
           <span>Loading model settings...</span>
         </div>
       </div>
@@ -175,195 +130,236 @@ export default function ModelsTab() {
         <div className="flex items-center gap-2">
           <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
           <h4 className="text-sm font-semibold text-red-900 dark:text-red-100">
-            Error Loading Settings
+            Error Loading Models
           </h4>
         </div>
-        <p className="text-xs text-red-800 dark:text-red-200 mt-1">
-          {error}
-        </p>
+        <p className="text-xs text-red-800 dark:text-red-200 mt-1">{error}</p>
       </div>
     )
   }
 
-  if (!modelSettings) return null
+  const visibleModels = getVisibleModels()
+  const visibleModelNames = new Set(visibleModels.map(m => m.model_name))
 
   return (
     <div className="space-y-6">
-      {/* Orchestrator Toggle */}
-      <div>
-        <div className="flex items-center space-x-2 mb-4">
-          <Zap className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Orchestrator
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Intelligent model routing and task detection
-            </p>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          {/* Toggle */}
-          <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-            <div>
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  Enable Intelligent Routing
-                </label>
-                {modelSettings.orchestrator.enabled && (
-                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
-                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-                    <span className="text-xs font-medium">Active</span>
-                  </div>
-                )}
+      {/* Confirmation Dialog */}
+      {confirmHideSlottedModel && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-md border border-gray-200 dark:border-gray-700">
+            <div className="flex items-start gap-3 mb-4">
+              <AlertTriangle className="w-6 h-6 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  Model in Hot Slot
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  <strong>{confirmHideSlottedModel.modelName}</strong> is assigned to Slot {confirmHideSlottedModel.slotNumber}.
+                  Hiding it will also clear this slot.
+                </p>
               </div>
-              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                Auto-select the best model for each task using {modelSettings.orchestrator.model}
-              </p>
             </div>
-            <button
-              onClick={() => handleToggleOrchestrator(!modelSettings.orchestrator.enabled)}
-              disabled={saving}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                modelSettings.orchestrator.enabled
-                  ? 'bg-primary-600'
-                  : 'bg-gray-300 dark:bg-gray-600'
-              } ${saving ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  modelSettings.orchestrator.enabled ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </button>
-          </div>
-
-          {/* Info card */}
-          <div className="p-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-            <h4 className="text-sm font-semibold text-amber-900 dark:text-amber-100 mb-2">
-              About Orchestrator
-            </h4>
-            <ul className="text-xs text-amber-800 dark:text-amber-200 space-y-1">
-              <li>• Automatically selects the best model for each coding task</li>
-              <li>• Uses {modelSettings.orchestrator.model} for lightweight routing decisions</li>
-              <li>• When disabled, you manually select models for each task type below</li>
-              <li>• Optimizes for speed vs quality based on task complexity</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      {/* Task-Specific Models (only shown when orchestrator is OFF) */}
-      {!modelSettings.orchestrator.enabled && (
-        <div>
-          <div className="flex items-center space-x-2 mb-4">
-            <Cpu className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                Task-Specific Models
-              </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Manually select models for each type of coding task
-              </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmHideSlottedModel(null)}
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmHideSlotted}
+                disabled={saving}
+                className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  'Hide & Clear Slot'
+                )}
+              </button>
             </div>
-          </div>
-
-          <div className="space-y-4">
-            {Object.entries(modelSettings.user_preferences).map(([task, selectedModel]) => {
-              const taskInfo = taskLabels[task]
-              if (!taskInfo) return null
-
-              return (
-                <div key={task} className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                  <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
-                    {taskInfo.label}
-                  </label>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
-                    {taskInfo.description}
-                  </p>
-                  <select
-                    value={selectedModel}
-                    onChange={(e) => handleUpdatePreference(task, e.target.value)}
-                    disabled={saving}
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 disabled:opacity-50"
-                  >
-                    {modelSettings.available_models.map((model) => {
-                      const isRecommended = modelSettings.recommended_models[task] === model
-                      return (
-                        <option key={model} value={model}>
-                          {model} {isRecommended ? '✓ Tested' : ''}
-                        </option>
-                      )
-                    })}
-                  </select>
-                  {modelSettings.recommended_models[task] === selectedModel && (
-                    <div className="flex items-center gap-1 mt-2 text-xs text-green-600 dark:text-green-400">
-                      <Check className="w-3 h-3" />
-                      <span>Recommended and tested by ElohimOS</span>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Note about non-recommended models */}
-          <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-            <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">
-              Model Selection
-            </h4>
-            <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1">
-              <li>• ✓ Tested models are verified to work well with ElohimOS</li>
-              <li>• Other models may work but could have unexpected behavior</li>
-              <li>• Aider and Continue will naturally reject unsupported models</li>
-              <li>• Changes save automatically</li>
-            </ul>
           </div>
         </div>
       )}
 
-      {/* Data Engine (always shown, always locked) */}
+      {/* Header */}
       <div>
-        <div className="flex items-center space-x-2 mb-4">
-          <Lock className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Data Engine
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Dedicated model for database operations
-            </p>
-          </div>
+        <div className="flex items-center gap-2 mb-2">
+          <Package className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            My Models
+          </h3>
         </div>
-
-        <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              Model
-            </label>
-            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-              <Lock className="w-3 h-3" />
-              <span className="text-xs font-medium">Locked</span>
-            </div>
-          </div>
-          <input
-            type="text"
-            value={modelSettings.strict_models.data_engine}
-            disabled
-            className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 cursor-not-allowed"
-          />
-          <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">
-            This model is locked to phi3.5 for reliable schema discovery and SQL generation. It cannot be changed.
-          </p>
-        </div>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Choose which models you want to see in your model selector. {visibleModels.length} of {catalog.length} visible.
+        </p>
       </div>
 
-      {/* Current Status Summary */}
+      {/* Info Banner */}
+      <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+        <p className="text-sm text-blue-800 dark:text-blue-200">
+          💡 <strong>Personal Preferences:</strong> These settings are personal to you.
+          Other users on this device can have different preferences.
+        </p>
+      </div>
+
+      {/* Model List */}
+      <div className="space-y-3">
+        {catalog.length === 0 ? (
+          <div className="text-center py-12">
+            <Package className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
+            <p className="text-gray-600 dark:text-gray-400">
+              No models found. Make sure Ollama is running and has models installed.
+            </p>
+          </div>
+        ) : (
+          catalog.map((model) => {
+            const isVisible = visibleModelNames.has(model.model_name)
+            const slotNumber = getModelSlot(model.model_name)
+            const isInstalled = model.status === 'installed'
+
+            return (
+              <div
+                key={model.model_name}
+                className={`p-4 rounded-lg border-2 transition-all ${
+                  isVisible
+                    ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                    : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h4 className="font-medium text-gray-900 dark:text-gray-100">
+                        {model.model_name}
+                      </h4>
+
+                      {/* Status Badge */}
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full ${
+                          isInstalled
+                            ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                            : 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'
+                        }`}
+                      >
+                        {model.status}
+                      </span>
+
+                      {/* Hot Slot Badge */}
+                      {slotNumber !== null && (
+                        <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300">
+                          <Star className="w-3 h-3 fill-current" />
+                          Slot {slotNumber}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-500">
+                      {model.size && <span>Size: {model.size}</span>}
+                      {model.installed_at && (
+                        <span>
+                          Installed: {new Date(model.installed_at).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+
+                    {!isInstalled && (
+                      <p className="text-xs text-orange-600 dark:text-orange-400 mt-2">
+                        ⚠️ Model not installed. Download it from Ollama to use it.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Visibility Toggle */}
+                  <button
+                    onClick={() => handleToggleVisibility(model.model_name)}
+                    disabled={saving}
+                    className={`p-2 rounded-lg transition-colors ${
+                      isVisible
+                        ? 'text-primary-600 dark:text-primary-400 hover:bg-primary-100 dark:hover:bg-primary-900/30'
+                        : 'text-gray-400 dark:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    title={isVisible ? 'Hide model' : 'Show model'}
+                  >
+                    {isVisible ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+            )
+          })
+        )}
+      </div>
+
+      {/* Hot Slots */}
+      <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex items-center gap-2 mb-4">
+          <Star className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            Hot Slots
+          </h3>
+        </div>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          Quick-access favorites for your most-used models (1-4)
+        </p>
+
+        <div className="space-y-3">
+          {([1, 2, 3, 4] as const).map((slotNum) => {
+            const assignedModel = hotSlots[slotNum]
+
+            return (
+              <div
+                key={slotNum}
+                className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+              >
+                <label className="block">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Star
+                      className={`w-4 h-4 ${
+                        assignedModel
+                          ? 'text-yellow-500 fill-yellow-500'
+                          : 'text-gray-400 dark:text-gray-600'
+                      }`}
+                    />
+                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      Hot Slot {slotNum}
+                    </span>
+                  </div>
+                  <select
+                    value={assignedModel || ''}
+                    onChange={(e) => handleAssignSlot(slotNum, e.target.value || null)}
+                    disabled={saving}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50"
+                  >
+                    <option value="">-- Not assigned --</option>
+                    {visibleModels.map((pref) => (
+                      <option key={pref.model_name} value={pref.model_name}>
+                        {pref.model_name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            )
+          })}
+        </div>
+
+        {visibleModels.length === 0 && (
+          <div className="mt-4 p-4 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800">
+            <p className="text-sm text-orange-800 dark:text-orange-200">
+              ⚠️ No visible models available for hot slots. Make some models visible above first.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Saving Indicator */}
       {saving && (
         <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin"></div>
+            <Loader2 className="w-4 h-4 animate-spin text-blue-600 dark:text-blue-400" />
             <span className="text-sm text-blue-900 dark:text-blue-100">
               Saving changes...
             </span>

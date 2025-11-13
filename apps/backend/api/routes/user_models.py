@@ -4,6 +4,7 @@ User Models API Routes
 Per-user model preferences and hot slots endpoints.
 
 Endpoints:
+- GET /api/v1/users/me/setup/status - Get per-user setup completion status
 - GET /api/v1/users/me/models/preferences - Get user's model visibility preferences
 - PUT /api/v1/users/me/models/preferences - Update model visibility preferences
 - GET /api/v1/users/me/models/hot-slots - Get user's hot slots
@@ -98,7 +99,68 @@ class ModelCatalogResponse(BaseModel):
     total_count: int
 
 
+class UserSetupStatusResponse(BaseModel):
+    """Per-user setup completion status"""
+    user_setup_completed: bool
+    has_prefs: bool
+    has_hot_slots: bool
+    visible_count: int
+
+
 # ===== API Endpoints =====
+
+@router.get("/users/me/setup/status", response_model=UserSetupStatusResponse)
+async def get_user_setup_status(current_user = Depends(get_current_user)):
+    """
+    Get per-user setup completion status
+
+    Returns whether the current user has completed their personal setup.
+    This is used to determine if the user should see the setup wizard
+    after authentication.
+
+    A user is considered "setup complete" if they have any model preferences.
+
+    Returns:
+        user_setup_completed: True if user has completed setup
+        has_prefs: True if user has model preferences
+        has_hot_slots: True if user has any hot slots assigned
+        visible_count: Number of visible models
+
+    Requires authentication.
+    """
+    try:
+        user_id = current_user.get("user_id")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="User ID not found in token")
+
+        prefs_storage = get_model_preferences_storage()
+        hot_slots_storage = get_hot_slots_storage()
+
+        # Get preferences
+        preferences = prefs_storage.get_preferences(user_id)
+        has_prefs = len(preferences) > 0
+        visible_count = sum(1 for p in preferences if p.visible)
+
+        # Get hot slots
+        slots = hot_slots_storage.get_hot_slots(user_id)
+        has_hot_slots = any(v is not None for v in slots.values())
+
+        # User setup is complete if they have any preferences
+        # (This means they've gone through the wizard or Settings)
+        user_setup_completed = has_prefs
+
+        return UserSetupStatusResponse(
+            user_setup_completed=user_setup_completed,
+            has_prefs=has_prefs,
+            has_hot_slots=has_hot_slots,
+            visible_count=visible_count
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get user setup status: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get user setup status")
 
 @router.get("/users/me/models/preferences", response_model=ModelPreferencesResponse)
 async def get_user_model_preferences(current_user = Depends(get_current_user)):
