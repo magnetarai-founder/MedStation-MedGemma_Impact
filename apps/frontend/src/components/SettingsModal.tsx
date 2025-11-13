@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
-import { X, Settings as SettingsIcon, Zap, AlertTriangle, Cpu, User, Loader2, Shield, MessageSquare, Sparkles, Workflow, Crown } from 'lucide-react'
+import { X, Settings as SettingsIcon, Zap, AlertTriangle, Cpu, User, Loader2, Shield, MessageSquare, Sparkles, Workflow, Crown, BarChart3 } from 'lucide-react'
 import { type NavTab } from '@/stores/navigationStore'
 import { usePermissions } from '@/hooks/usePermissions'
 import { ProfileSettings } from './ProfileSettings'
@@ -15,6 +15,7 @@ const AdvancedTab = lazy(() => import('./settings/AdvancedTab'))
 const SecurityTab = lazy(() => import('./settings/SecurityTab'))
 const DangerZoneTab = lazy(() => import('./settings/DangerZoneTab'))
 const AdminTab = lazy(() => import('./settings/AdminTab'))
+const AnalyticsTab = lazy(() => import('./settings/AnalyticsTab'))
 
 
 interface SettingsModalProps {
@@ -38,7 +39,7 @@ function LoadingFallback() {
 
 export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalProps) {
   const permissions = usePermissions()
-  const [activeTab, setActiveTab] = useState<'profile' | 'admin' | 'chat' | 'models' | 'permissions' | 'app' | 'automation' | 'advanced' | 'security' | 'danger'>('profile')
+  const [activeTab, setActiveTab] = useState<'profile' | 'admin' | 'chat' | 'models' | 'permissions' | 'app' | 'automation' | 'advanced' | 'security' | 'danger' | 'analytics'>('profile')
   const [preloaded, setPreloaded] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
 
@@ -137,6 +138,21 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
               >
                 <Crown className="w-4 h-4" />
                 <span>Admin</span>
+              </button>
+            )}
+
+            {/* Analytics - Admin/Founder only (Sprint 6) */}
+            {(userRole === ROLES.GOD_RIGHTS || userRole === 'admin') && (
+              <button
+                onClick={() => setActiveTab('analytics')}
+                className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all rounded-lg ${
+                  activeTab === 'analytics'
+                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50'
+                }`}
+              >
+                <BarChart3 className="w-4 h-4" />
+                <span>Analytics</span>
               </button>
             )}
 
@@ -251,6 +267,7 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
             <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
               {activeTab === 'profile' && 'Profile'}
               {activeTab === 'admin' && 'Founder Rights Admin'}
+              {activeTab === 'analytics' && 'Analytics Dashboard'}
               {activeTab === 'chat' && 'Chat'}
               {activeTab === 'models' && 'Models'}
               {activeTab === 'permissions' && 'Permissions'}
@@ -280,6 +297,11 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
               {activeTab === 'admin' && (
                 <div>
                   <AdminTab />
+                </div>
+              )}
+              {activeTab === 'analytics' && (
+                <div>
+                  <AnalyticsTab />
                 </div>
               )}
               {activeTab === 'chat' && (
