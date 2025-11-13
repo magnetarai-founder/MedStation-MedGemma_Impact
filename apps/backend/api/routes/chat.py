@@ -551,6 +551,7 @@ async def update_session_model_endpoint(
     """
     from api.services import chat
     from audit_logger import get_audit_logger, AuditAction
+    from telemetry import track_metric, TelemetryMetric
 
     try:
         # Verify session exists and user has access
@@ -560,6 +561,9 @@ async def update_session_model_endpoint(
 
         # Update model
         updated_session = await chat.update_session_model(chat_id, model)
+
+        # Telemetry (non-blocking, best-effort)
+        track_metric(TelemetryMetric.MODEL_SESSION_UPDATED)
 
         # Audit log (non-blocking)
         try:

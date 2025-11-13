@@ -8,7 +8,8 @@ from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
 
 from auth_middleware import get_current_user
-from audit_logger import get_audit_logger, AuditEntry
+from audit_logger import get_audit_logger, AuditEntry, AuditAction
+from telemetry import track_metric, TelemetryMetric
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,12 @@ async def log_audit_event(
             ip_address=client_ip,
             details=body.details
         )
+
+        # Track telemetry for specific events (non-blocking)
+        if body.action == AuditAction.TOKEN_NEAR_LIMIT_WARNING:
+            track_metric(TelemetryMetric.TOKEN_NEAR_LIMIT_WARNING)
+        elif body.action == AuditAction.SUMMARIZE_CONTEXT_INVOKED:
+            track_metric(TelemetryMetric.SUMMARIZE_CONTEXT_INVOKED)
 
         return {"status": "logged"}
 

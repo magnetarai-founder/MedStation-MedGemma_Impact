@@ -11,19 +11,48 @@ interface EffectivePermissions {
   effective_permissions: Record<string, boolean | number | string>
 }
 
+interface Team {
+  id: string
+  name: string
+}
+
 export default function PermissionsTab() {
   const [permissions, setPermissions] = useState<EffectivePermissions | null>(null)
+  const [teams, setTeams] = useState<Team[]>([])
+  const [selectedTeamId, setSelectedTeamId] = useState<string>('local')
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
-    loadPermissions()
+    loadTeams()
   }, [])
+
+  useEffect(() => {
+    loadPermissions()
+  }, [selectedTeamId])
+
+  const loadTeams = async () => {
+    try {
+      // Get current user ID from localStorage or auth context
+      const userId = localStorage.getItem('user_id') || 'me'
+      const response = await authFetch(`/api/v1/teams/user/${userId}/teams`)
+      if (response.ok) {
+        const data = await response.json()
+        setTeams(data.teams || [])
+      }
+    } catch (error) {
+      console.error('Failed to load teams:', error)
+    }
+  }
 
   const loadPermissions = async () => {
     setLoading(true)
     try {
-      const response = await authFetch('/api/v1/permissions/effective')
+      const url = selectedTeamId === 'local'
+        ? '/api/v1/permissions/effective'
+        : `/api/v1/permissions/effective?team_id=${selectedTeamId}`
+
+      const response = await authFetch(url)
       if (response.ok) {
         const data = await response.json()
         setPermissions(data)
@@ -148,6 +177,33 @@ export default function PermissionsTab() {
           </button>
         </div>
       </div>
+
+      {/* Team Context Selector */}
+      {teams.length > 0 && (
+        <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
+          <div className="flex items-center gap-3">
+            <label htmlFor="team-context" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              Permission Context:
+            </label>
+            <select
+              id="team-context"
+              value={selectedTeamId}
+              onChange={(e) => setSelectedTeamId(e.target.value)}
+              className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-purple-300 dark:border-purple-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+            >
+              <option value="local">Local (Personal)</option>
+              {teams.map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.name}
+                </option>
+              ))}
+            </select>
+            <span className="text-xs text-gray-600 dark:text-gray-400">
+              Switch context to view team-scoped permissions
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Role Badge */}
       <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
