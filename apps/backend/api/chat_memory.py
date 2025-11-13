@@ -604,6 +604,18 @@ class NeutronChatMemory:
 
             conn.commit()
 
+    def update_session_model(self, session_id: str, model: str) -> None:
+        """Update the model for a chat session"""
+        now = datetime.utcnow().isoformat()
+        conn = self._get_connection()
+        with self._write_lock:
+            conn.execute("""
+                UPDATE chat_sessions
+                SET model = ?, updated_at = ?
+                WHERE id = ?
+            """, (model, now, session_id))
+            conn.commit()
+
     def get_summary(self, session_id: str) -> Optional[Dict[str, Any]]:
         """Get conversation summary"""
         conn = self._get_connection()

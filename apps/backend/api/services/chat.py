@@ -845,6 +845,19 @@ async def get_token_count(chat_id: str) -> Dict[str, Any]:
     }
 
 
+async def update_session_model(chat_id: str, model: str) -> Dict[str, Any]:
+    """Update the model for a chat session"""
+    memory = _get_memory()
+    await asyncio.to_thread(memory.update_session_model, chat_id, model)
+
+    # Return updated session
+    session = await asyncio.to_thread(memory.get_session, chat_id)
+    if not session:
+        raise ValueError(f"Session {chat_id} not found")
+
+    return session
+
+
 # ===== Health & Status =====
 
 async def check_health() -> Dict[str, Any]:

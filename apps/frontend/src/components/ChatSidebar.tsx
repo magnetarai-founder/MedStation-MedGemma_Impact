@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { MessageSquarePlus, MessageSquare, Trash2 } from 'lucide-react'
 import { useChatStore } from '../stores/chatStore'
 import { api } from '../lib/api'
+import { ContextBadge } from './ContextBadge'
 
 export function ChatSidebar() {
   const {
@@ -151,6 +152,10 @@ export function ChatSidebar() {
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="p-4 border-b border-white/10 dark:border-gray-700/30">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Chats</h2>
+          <ContextBadge size="xs" />
+        </div>
         <button
           onClick={createNewChat}
           className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-primary-600 hover:bg-primary-700 text-white rounded-lg hover:shadow-md transition-all"

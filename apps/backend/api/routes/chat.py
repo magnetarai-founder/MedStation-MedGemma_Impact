@@ -529,6 +529,47 @@ async def get_token_count_cached_endpoint(request: Request, chat_id: str, curren
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ===== Session Model Update Endpoint =====
+
+@router.patch("/sessions/{chat_id}/model", name="chat_update_session_model")
+@require_perm_team("chat.use")
+async def update_session_model_endpoint(
+    request: Request,
+    chat_id: str,
+    model: str = Body(..., embed=True),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Update the model for a chat session
+
+    Body:
+        {
+            "model": "qwen2.5-coder:7b-instruct"
+        }
+
+    Returns updated session
+    """
+    from api.services import chat
+
+    try:
+        # Verify session exists and user has access
+        session = await chat.get_session(chat_id, user_id=current_user["user_id"])
+        if not session:
+            raise HTTPException(status_code=404, detail="Chat session not found")
+
+        # Update model
+        updated_session = await chat.update_session_model(chat_id, model)
+        return updated_session
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to update session model: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ===== Health & Status Endpoints (Public) =====
 
 @public_router.get("/health", name="chat_check_health")

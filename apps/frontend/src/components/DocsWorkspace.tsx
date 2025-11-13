@@ -11,6 +11,7 @@ import { useDocsStore } from '@/stores/docsStore'
 import { DocumentTypeSelector } from './DocumentTypeSelector'
 import { DocumentEditor } from './DocumentEditor'
 import { DocumentsSidebar } from './DocumentsSidebar'
+import { ContextBadge } from './ContextBadge'
 import { Plus, Lock } from 'lucide-react'
 import { useState } from 'react'
 import toast from 'react-hot-toast'
@@ -65,6 +66,10 @@ export function DocsWorkspace() {
         <div className="w-64 flex-shrink-0 bg-gray-50/80 dark:bg-gray-800/50 backdrop-blur-xl border-r border-white/10 dark:border-gray-700/30 flex flex-col">
         {/* Header with create button */}
         <div className="p-3 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Documents</h2>
+            <ContextBadge size="xs" />
+          </div>
           <button
             onClick={() => setShowTypeSelector(!showTypeSelector)}
             className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-all font-medium text-sm"

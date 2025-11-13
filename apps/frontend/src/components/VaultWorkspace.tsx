@@ -15,6 +15,7 @@ import { decryptDocument } from '@/lib/encryption'
 import axios from 'axios'
 import { vaultWebSocket } from '@/lib/websocketClient'
 import type { FileEvent } from '@/lib/websocketClient'
+import { ContextBadge } from './ContextBadge'
 
 export function VaultWorkspace() {
   const {
@@ -1747,6 +1748,8 @@ export function VaultWorkspace() {
               {vaultDocs.length} {vaultDocs.length === 1 ? 'document' : 'documents'}
             </span>
           </div>
+          {/* Context Badge */}
+          <ContextBadge size="sm" />
         </div>
 
         <div className="flex items-center gap-3">

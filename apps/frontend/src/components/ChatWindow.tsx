@@ -53,6 +53,32 @@ export function ChatWindow() {
     }
   }, [activeSession])
 
+  // Persist model selection to session
+  const handleModelChange = async (model: string) => {
+    if (!activeChatId) return
+
+    setSelectedModel(model)
+
+    try {
+      const token = localStorage.getItem('auth_token')
+      const response = await fetch(`/api/v1/chat/sessions/${activeChatId}/model`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ model })
+      })
+
+      if (!response.ok) {
+        console.error('Failed to persist model selection')
+      }
+    } catch (error) {
+      console.error('Error persisting model:', error)
+    }
+  }
+
   // Check Ollama health on mount and periodically
   useEffect(() => {
     const checkHealth = async () => {
@@ -279,7 +305,7 @@ export function ChatWindow() {
         </div>
 
         <div className="flex items-center gap-3">
-          <ModelSelector value={selectedModel} onChange={setSelectedModel} />
+          <ModelSelector value={selectedModel} onChange={handleModelChange} />
         </div>
       </div>
 
