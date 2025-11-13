@@ -1,0 +1,35 @@
+name: Code Quality Checks
+
+on: [push, pull_request]
+
+jobs:
+  check-file-sizes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Check for oversized files
+        continue-on-error: true
+        run: |
+          echo "Checking for files larger than 1200 lines..."
+
+          # Find files larger than 1200 lines
+          oversized=$(find . -type f \( -name "*.py" -o -name "*.ts" -o -name "*.tsx" \) \
+                     -not -path "*/venv/*" \
+                     -not -path "*/node_modules/*" \
+                     -not -path "*/dist/*" \
+                     -not -path "*/.neutron_data/*" \
+                     -not -path "*/.vite/*" \
+                     -not -path "*/apps/backend/external/*" \
+                     -exec sh -c 'lines=$(wc -l < "$1"); if [ "$lines" -gt 1200 ]; then echo "$1 ($lines lines)"; fi' _ {} \;)
+
+          if [ -n "$oversized" ]; then
+            echo "⚠️  Warning: Large files detected (>1200 lines):"
+            echo "$oversized"
+            echo ""
+            echo "Consider refactoring files larger than 1200 lines."
+          else
+            echo "✅ All files are appropriately sized"
+          fi
+
+          exit 0
