@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Star, CheckCircle, Info } from 'lucide-react'
 import { SetupWizardState } from '../SetupWizard'
+import { userModelsApi, HotSlots } from '../../../lib/userModelsApi'
 import { setupWizardApi } from '../../../lib/setupWizardApi'
 
 interface StepProps {
@@ -12,7 +13,7 @@ interface StepProps {
 }
 
 export default function HotSlotsStep(props: StepProps) {
-  const [slots, setSlots] = useState<Record<number, string | null>>({
+  const [slots, setSlots] = useState<HotSlots>({
     1: null,
     2: null,
     3: null,
@@ -28,11 +29,8 @@ export default function HotSlotsStep(props: StepProps) {
     // Load installed models
     loadInstalledModels()
 
-    // Auto-assign based on recommendations if available
-    const recommendations = props.wizardState.hotSlotRecommendations
-    if (recommendations) {
-      setSlots(recommendations)
-    }
+    // Load existing hot slots (if user has any)
+    loadExistingHotSlots()
   }, [])
 
   const loadInstalledModels = async () => {
@@ -44,11 +42,24 @@ export default function HotSlotsStep(props: StepProps) {
     }
   }
 
+  const loadExistingHotSlots = async () => {
+    try {
+      // Try to load existing hot slots for this user
+      const result = await userModelsApi.getHotSlots()
+      if (result.slots) {
+        setSlots(result.slots)
+      }
+    } catch (err) {
+      // If error (e.g., user not logged in yet), use empty slots
+      console.debug('No existing hot slots found:', err)
+    }
+  }
+
   const handleSlotChange = (slotNum: number, modelName: string) => {
     setSlots(prev => ({
       ...prev,
       [slotNum]: modelName || null
-    }))
+    }) as HotSlots)
   }
 
   const handleNext = async () => {
@@ -56,8 +67,8 @@ export default function HotSlotsStep(props: StepProps) {
     setError(null)
 
     try {
-      // Save hot slots configuration
-      await setupWizardApi.configureHotSlots(slots)
+      // Save hot slots configuration using per-user API
+      await userModelsApi.updateHotSlots(slots)
 
       // Store in wizard state
       props.updateWizardState({
