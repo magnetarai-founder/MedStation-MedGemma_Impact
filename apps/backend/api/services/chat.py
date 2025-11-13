@@ -598,12 +598,29 @@ async def send_message_stream(
                 duration_ms=duration_ms,
                 metadata={"temperature": temperature, "top_p": top_p}
             )
+
+            # Record latency separately for model performance tracking (Sprint 6 Theme C)
+            await asyncio.to_thread(
+                analytics.record_event,
+                user_id=user_id,
+                event_type="assistant_latency",
+                session_id=chat_id,
+                team_id=team_id,
+                model_name=model,
+                duration_ms=duration_ms,
+                metadata={
+                    "latency_ms": duration_ms,
+                    "tokens": tokens,
+                    "temperature": temperature
+                }
+            )
         except Exception as analytics_error:
             # Don't fail the request if analytics fails
             logger.warning(f"Failed to record analytics: {analytics_error}")
 
-        # Send done event
-        yield f"data: {json.dumps({'done': True, 'message_id': str(uuid.uuid4())})}\n\n"
+        # Send done event with message ID for feedback
+        message_id = f"{chat_id}:{assistant_timestamp}"
+        yield f"data: {json.dumps({'done': True, 'message_id': message_id})}\n\n"
 
     except Exception as e:
         logger.error(f"Error in message streaming: {e}")

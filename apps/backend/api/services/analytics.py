@@ -145,6 +145,11 @@ class AnalyticsService:
         Rolls up events into analytics_daily table by:
         - date, team_id, user_id, model_name
 
+        Sprint 6 Theme C: Now includes model performance KPIs:
+        - response_time_avg, response_time_p95: Latency metrics
+        - satisfaction_score: Average feedback (-1 to +1)
+        - message_count: Total assistant messages
+
         Args:
             date: Date to aggregate in YYYY-MM-DD format
         """
@@ -159,7 +164,8 @@ class AnalyticsService:
             cursor.execute("""
                 INSERT INTO analytics_daily (
                     date, team_id, user_id, model_name,
-                    sessions_count, tokens_total, api_calls, errors
+                    sessions_count, tokens_total, api_calls, errors,
+                    response_time_avg, response_time_p95, satisfaction_score, message_count
                 )
                 SELECT
                     DATE(ts) as date,
@@ -169,14 +175,65 @@ class AnalyticsService:
                     COUNT(DISTINCT session_id) as sessions_count,
                     COALESCE(SUM(tokens_used), 0) as tokens_total,
                     COUNT(*) as api_calls,
-                    SUM(CASE WHEN event_type = 'error' THEN 1 ELSE 0 END) as errors
-                FROM analytics_events
+                    SUM(CASE WHEN event_type = 'error' THEN 1 ELSE 0 END) as errors,
+
+                    -- Sprint 6 Theme C: Model Performance KPIs
+                    -- Average latency from assistant_latency events
+                    (SELECT AVG(duration_ms)
+                     FROM analytics_events e2
+                     WHERE e2.event_type = 'assistant_latency'
+                       AND DATE(e2.ts) = DATE(e1.ts)
+                       AND e2.model_name = e1.model_name
+                       AND (e2.team_id = e1.team_id OR (e2.team_id IS NULL AND e1.team_id IS NULL))
+                       AND (e2.user_id = e1.user_id OR (e2.user_id IS NULL AND e1.user_id IS NULL))
+                    ) as response_time_avg,
+
+                    -- P95 latency (approximate using percentile)
+                    (SELECT duration_ms
+                     FROM analytics_events e2
+                     WHERE e2.event_type = 'assistant_latency'
+                       AND DATE(e2.ts) = DATE(e1.ts)
+                       AND e2.model_name = e1.model_name
+                       AND (e2.team_id = e1.team_id OR (e2.team_id IS NULL AND e1.team_id IS NULL))
+                       AND (e2.user_id = e1.user_id OR (e2.user_id IS NULL AND e1.user_id IS NULL))
+                     ORDER BY duration_ms DESC
+                     LIMIT 1 OFFSET (
+                       SELECT CAST(COUNT(*) * 0.05 AS INTEGER)
+                       FROM analytics_events e3
+                       WHERE e3.event_type = 'assistant_latency'
+                         AND DATE(e3.ts) = DATE(e1.ts)
+                         AND e3.model_name = e1.model_name
+                         AND (e3.team_id = e1.team_id OR (e3.team_id IS NULL AND e1.team_id IS NULL))
+                         AND (e3.user_id = e1.user_id OR (e3.user_id IS NULL AND e1.user_id IS NULL))
+                     )
+                    ) as response_time_p95,
+
+                    -- Average satisfaction score from message_feedback events
+                    (SELECT AVG(CAST(json_extract(metadata, '$.score') AS REAL))
+                     FROM analytics_events e2
+                     WHERE e2.event_type = 'message_feedback'
+                       AND DATE(e2.ts) = DATE(e1.ts)
+                       AND (e2.team_id = e1.team_id OR (e2.team_id IS NULL AND e1.team_id IS NULL))
+                       AND (e2.user_id = e1.user_id OR (e2.user_id IS NULL AND e1.user_id IS NULL))
+                    ) as satisfaction_score,
+
+                    -- Count of assistant messages
+                    (SELECT COUNT(*)
+                     FROM analytics_events e2
+                     WHERE e2.event_type = 'assistant_latency'
+                       AND DATE(e2.ts) = DATE(e1.ts)
+                       AND e2.model_name = e1.model_name
+                       AND (e2.team_id = e1.team_id OR (e2.team_id IS NULL AND e1.team_id IS NULL))
+                       AND (e2.user_id = e1.user_id OR (e2.user_id IS NULL AND e1.user_id IS NULL))
+                    ) as message_count
+
+                FROM analytics_events e1
                 WHERE DATE(ts) = ?
                 GROUP BY DATE(ts), team_id, user_id, model_name
             """, (date,))
 
             conn.commit()
-            print(f"✅ Aggregated analytics for {date}")
+            print(f"✅ Aggregated analytics for {date} (with model KPIs)")
 
         except Exception as e:
             conn.rollback()
@@ -378,6 +435,74 @@ class AnalyticsService:
                 conn.close()
         else:
             raise ValueError(f"Unsupported format: {format}")
+
+    def get_events_by_type(
+        self,
+        event_type: str,
+        user_id: Optional[str] = None,
+        team_id: Optional[str] = None,
+        limit: int = 100
+    ) -> List[Dict[str, Any]]:
+        """
+        Query events by type with optional user/team filtering
+
+        Args:
+            event_type: Type of event to query
+            user_id: Filter by user ID
+            team_id: Filter by team ID
+            limit: Maximum number of events to return
+
+        Returns:
+            List of event dictionaries
+        """
+        conn = self._get_conn()
+        try:
+            cursor = conn.cursor()
+
+            where_clauses = ["event_type = ?"]
+            params = [event_type]
+
+            if user_id:
+                where_clauses.append("user_id = ?")
+                params.append(user_id)
+
+            if team_id:
+                where_clauses.append("team_id = ?")
+                params.append(team_id)
+
+            where_clause = " AND ".join(where_clauses)
+
+            cursor.execute(f"""
+                SELECT id, ts, user_id, team_id, session_id, event_type,
+                       model_name, tokens_used, duration_ms, metadata
+                FROM analytics_events
+                WHERE {where_clause}
+                ORDER BY ts DESC
+                LIMIT ?
+            """, params + [limit])
+
+            rows = cursor.fetchall()
+
+            events = []
+            for row in rows:
+                event = {
+                    "id": row["id"],
+                    "ts": row["ts"],
+                    "user_id": row["user_id"],
+                    "team_id": row["team_id"],
+                    "session_id": row["session_id"],
+                    "event_type": row["event_type"],
+                    "model_name": row["model_name"],
+                    "tokens_used": row["tokens_used"],
+                    "duration_ms": row["duration_ms"],
+                    "metadata": json.loads(row["metadata"]) if row["metadata"] else None
+                }
+                events.append(event)
+
+            return events
+
+        finally:
+            conn.close()
 
 
 # Singleton instance

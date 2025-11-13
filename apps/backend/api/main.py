@@ -783,6 +783,26 @@ except Exception as e:
     logger.error("Failed to load search router", exc_info=True)
     logger.error(f"Search service failed to load: {e}")
 
+# Feedback API (Sprint 6 Theme C)
+try:
+    from api.routes import feedback as _feedback_routes
+    app.include_router(_feedback_routes.router)
+    services_loaded.append("Message Feedback")
+except Exception as e:
+    services_failed.append("Message Feedback")
+    logger.error("Failed to load feedback router", exc_info=True)
+    logger.error(f"Feedback service failed to load: {e}")
+
+# Model Recommendations API (Sprint 6 Theme C)
+try:
+    from api.routes import models_recommendations as _recommendations_routes
+    app.include_router(_recommendations_routes.router)
+    services_loaded.append("Model Recommendations")
+except Exception as e:
+    services_failed.append("Model Recommendations")
+    logger.error("Failed to load recommendations router", exc_info=True)
+    logger.error(f"Recommendations service failed to load: {e}")
+
 # Monitoring routes
 try:
     from monitoring_routes import router as monitoring_router

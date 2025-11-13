@@ -1,6 +1,8 @@
-import { User, Bot, Copy, Check, FileText, Image as ImageIcon, File as FileIcon, Code, AlertTriangle } from 'lucide-react'
+import { User, Bot, Copy, Check, FileText, Image as ImageIcon, File as FileIcon, Code, AlertTriangle, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { useState } from 'react'
 import { ChatMessage as ChatMessageType } from '../stores/chatStore'
+import { submitMessageFeedback } from '../lib/feedbackApi'
+import { showToast } from '../lib/toast'
 
 interface ChatMessageProps {
   message: ChatMessageType
@@ -9,12 +11,34 @@ interface ChatMessageProps {
 
 export function ChatMessage({ message, isStreaming = false }: ChatMessageProps) {
   const [copied, setCopied] = useState(false)
+  const [feedback, setFeedback] = useState<1 | -1 | null>(null)
+  const [submittingFeedback, setSubmittingFeedback] = useState(false)
   const isUser = message.role === 'user'
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleFeedback = async (score: 1 | -1) => {
+    // Generate message ID from session and timestamp
+    const messageId = `${message.sessionId || 'unknown'}:${message.timestamp}`
+
+    // Optimistic update
+    setFeedback(score)
+    setSubmittingFeedback(true)
+
+    try {
+      await submitMessageFeedback(messageId, score)
+      showToast.success(score === 1 ? 'Thanks for the positive feedback!' : 'Thanks for the feedback!')
+    } catch (error: any) {
+      // Revert on error
+      setFeedback(null)
+      showToast.error(error.message || 'Failed to submit feedback')
+    } finally {
+      setSubmittingFeedback(false)
+    }
   }
 
   const formatTime = (timestamp: string) => {
@@ -211,6 +235,39 @@ export function ChatMessage({ message, isStreaming = false }: ChatMessageProps) 
               <>
                 <span>•</span>
                 <span className="animate-pulse">●</span>
+              </>
+            )}
+
+            {/* Feedback buttons (assistant messages only) */}
+            {!isUser && !isStreaming && (
+              <>
+                <span>•</span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => handleFeedback(1)}
+                    disabled={submittingFeedback}
+                    className={`p-1 rounded transition-colors ${
+                      feedback === 1
+                        ? 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30'
+                        : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                    title="Helpful"
+                  >
+                    <ThumbsUp size={12} />
+                  </button>
+                  <button
+                    onClick={() => handleFeedback(-1)}
+                    disabled={submittingFeedback}
+                    className={`p-1 rounded transition-colors ${
+                      feedback === -1
+                        ? 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30'
+                        : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                    title="Not helpful"
+                  >
+                    <ThumbsDown size={12} />
+                  </button>
+                </div>
               </>
             )}
           </div>
