@@ -32,7 +32,7 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
 
   const loadModels = async () => {
     try {
-      const response = await fetch('/api/v1/chat/models')
+      const response = await authFetch('/api/v1/chat/models')
       if (response.ok) {
         const models = await response.json()
         setAvailableModels(models)
@@ -44,7 +44,7 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
 
   const loadModelStatuses = async () => {
     try {
-      const response = await fetch('/api/v1/chat/models/status')
+      const response = await authFetch('/api/v1/chat/models/status')
       if (response.ok) {
         const data = await response.json()
         // Only show available (chat) models in selector
@@ -115,7 +115,7 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
     if (!value) return
 
     try {
-      const response = await fetch(
+      const response = await authFetch(
         `/api/v1/chat/models/unload/${encodeURIComponent(value)}`,
         { method: 'POST' }
       )
@@ -210,16 +210,25 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
 
       {/* Hot slot badge indicator (visible when model selected) */}
       {value && getHotSlotNumber(value) !== null && (
-        <div className="flex items-center gap-1 px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 rounded text-xs">
-          <Star className="w-3 h-3 fill-current" />
+        <div
+          className="flex items-center gap-1 px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 rounded text-xs"
+          aria-label={`Hot slot ${getHotSlotNumber(value)} - favorite model`}
+          role="status"
+        >
+          <Star className="w-3 h-3 fill-current" aria-hidden="true" />
           <span>{getHotSlotNumber(value)}</span>
         </div>
       )}
 
       {/* Not-installed warning (visible when model selected but not installed) */}
       {value && !isModelInstalled(value) && (
-        <div className="flex items-center gap-1 px-2 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 rounded text-xs" title="Model not installed in Ollama">
-          <AlertCircle className="w-3 h-3" />
+        <div
+          className="flex items-center gap-1 px-2 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 rounded text-xs"
+          title="Model not installed in Ollama"
+          aria-label="Warning: Model not installed in Ollama"
+          role="alert"
+        >
+          <AlertCircle className="w-3 h-3" aria-hidden="true" />
           <span>Not installed</span>
         </div>
       )}

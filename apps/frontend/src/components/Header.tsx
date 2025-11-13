@@ -262,6 +262,8 @@ export function Header({ onOpenServerControls }: HeaderProps) {
                 <div
                   className="w-2 h-2 bg-green-500 rounded-full animate-pulse"
                   title="GPU Active"
+                  aria-label="GPU is currently active"
+                  role="status"
                 />
               )}
 
@@ -270,6 +272,9 @@ export function Header({ onOpenServerControls }: HeaderProps) {
                 <div
                   className="flex items-center gap-1 px-2 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 rounded text-xs"
                   title={`Rate limited - resuming in ${pausedSecondsRemaining}s`}
+                  aria-label={`Monitoring paused due to rate limit, resuming in ${pausedSecondsRemaining} seconds`}
+                  role="status"
+                  aria-live="polite"
                 >
                   <span className="text-[10px]">⏸</span>
                   <span className="text-[10px]">{pausedSecondsRemaining}s</span>
@@ -281,6 +286,7 @@ export function Header({ onOpenServerControls }: HeaderProps) {
                   onClick={() => setShowControlCenter(true)}
                   className="p-2 hover:bg-blue-100 dark:hover:bg-blue-900/20 rounded-lg transition-colors text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
                   title={activeQueues > 0 ? `Control Center - ${activeQueues} active GPU queue(s)` : "Control Center (System Monitoring)"}
+                  aria-label={activeQueues > 0 ? `Open Control Center, ${activeQueues} active GPU queues` : "Open Control Center for system monitoring"}
                 >
                   <Activity size={20} />
                 </button>
@@ -288,8 +294,10 @@ export function Header({ onOpenServerControls }: HeaderProps) {
                   <div
                     className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center border-2 border-white dark:border-gray-900 animate-pulse"
                     title={`${activeQueues} active GPU queue(s)`}
+                    aria-label={`${activeQueues} active GPU queue${activeQueues > 1 ? 's' : ''}`}
+                    role="status"
                   >
-                    <span className="text-[9px] font-bold text-white">{activeQueues}</span>
+                    <span className="text-[9px] font-bold text-white" aria-hidden="true">{activeQueues}</span>
                   </div>
                 )}
               </div>
