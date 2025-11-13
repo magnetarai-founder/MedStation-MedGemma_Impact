@@ -94,6 +94,12 @@ class AuditAction:
     CODE_EDIT = "code.edit"
     CODE_FILE_OPENED = "code.file.opened"
     CODE_FILE_SAVED = "code.file.saved"
+    CODE_WORKSPACE_CREATED = "code.workspace.created"
+    CODE_WORKSPACE_SYNCED = "code.workspace.synced"
+    CODE_FILE_CREATED = "code.file.created"
+    CODE_FILE_UPDATED = "code.file.updated"
+    CODE_FILE_DELETED = "code.file.deleted"
+    CODE_FILE_IMPORTED = "code.file.imported"
 
     # Terminal Operations
     TERMINAL_SPAWN = "terminal.spawn"

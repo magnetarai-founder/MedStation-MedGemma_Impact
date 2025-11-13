@@ -10,9 +10,11 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 import logging
 import json
+import difflib
+import hashlib
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Request
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Request, Header
+from pydantic import BaseModel, Field
 
 from elohimos_memory import ElohimOSMemory
 
@@ -20,6 +22,8 @@ logger = logging.getLogger(__name__)
 
 from fastapi import Depends
 from auth_middleware import get_current_user
+from permission_engine import require_perm
+from audit_logger import get_audit_logger, AuditAction
 
 router = APIRouter(
     prefix="/api/v1/code-editor",
@@ -69,6 +73,33 @@ def init_code_editor_db():
 init_code_editor_db()
 
 
+# Security: Path traversal guard
+def ensure_under_root(root: Path, candidate: Path) -> None:
+    """
+    Ensure candidate path is under root directory.
+    Prevents path traversal attacks.
+
+    Raises HTTPException(400) if validation fails.
+    """
+    try:
+        root_resolved = root.resolve()
+        candidate_resolved = candidate.resolve()
+
+        # Check if candidate is relative to root
+        if not candidate_resolved.is_relative_to(root_resolved):
+            logger.warning(f"Path traversal attempt: {candidate} not under {root}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Path must be under workspace root"
+            )
+    except (ValueError, OSError) as e:
+        logger.error(f"Path validation error: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid path"
+        )
+
+
 # Models
 class WorkspaceCreate(BaseModel):
     name: str
@@ -98,6 +129,19 @@ class FileUpdate(BaseModel):
     path: Optional[str] = None
     content: Optional[str] = None
     language: Optional[str] = None
+    base_updated_at: Optional[str] = Field(None, description="Base timestamp for optimistic concurrency")
+
+
+class FileDiffRequest(BaseModel):
+    new_content: str
+    base_updated_at: Optional[str] = Field(None, description="Base timestamp to check for conflicts")
+
+
+class FileDiffResponse(BaseModel):
+    diff: str
+    current_hash: str
+    current_updated_at: str
+    conflict: bool = False
 
 
 class FileResponse(BaseModel):
@@ -251,7 +295,8 @@ def scan_disk_directory(dir_path: str) -> List[Dict[str, Any]]:
 
 # Endpoints
 @router.post("/workspaces", response_model=WorkspaceResponse)
-async def create_workspace(request: Request, workspace: WorkspaceCreate):
+@require_perm("code.edit")
+async def create_workspace(request: Request, workspace: WorkspaceCreate, current_user: dict = Depends(get_current_user)):
     """Create a new database workspace"""
     try:
         if workspace.source_type != 'database':
@@ -266,6 +311,19 @@ async def create_workspace(request: Request, workspace: WorkspaceCreate):
         """, (workspace_id, workspace.name))
 
         conn.commit()
+
+        # Audit log
+        try:
+            audit_logger = get_audit_logger()
+            audit_logger.log(
+                user_id=current_user.get("user_id"),
+                action=AuditAction.CODE_WORKSPACE_CREATED,
+                resource="code_workspace",
+                resource_id=workspace_id,
+                details={"name": workspace.name, "source_type": "database"}
+            )
+        except Exception as audit_error:
+            logger.warning(f"Audit logging failed: {audit_error}")
 
         # Return workspace info
         created_workspace = conn.execute("""
@@ -291,7 +349,8 @@ async def create_workspace(request: Request, workspace: WorkspaceCreate):
 
 
 @router.post("/workspaces/open-disk", response_model=WorkspaceResponse)
-async def open_disk_workspace(request: Request, name: str = Form(...), disk_path: str = Form(...)):
+@require_perm("code.edit")
+async def open_disk_workspace(request: Request, name: str = Form(...), disk_path: str = Form(...), current_user: dict = Depends(get_current_user)):
     """Open folder from disk and create workspace"""
     try:
         # Validate path exists
@@ -328,6 +387,19 @@ async def open_disk_workspace(request: Request, name: str = Form(...), disk_path
 
         conn.commit()
 
+        # Audit log
+        try:
+            audit_logger = get_audit_logger()
+            audit_logger.log(
+                user_id=current_user.get("user_id"),
+                action=AuditAction.CODE_WORKSPACE_CREATED,
+                resource="code_workspace",
+                resource_id=workspace_id,
+                details={"name": name, "source_type": "disk", "disk_path": str(path.absolute()), "files_imported": len(files)}
+            )
+        except Exception as audit_error:
+            logger.warning(f"Audit logging failed: {audit_error}")
+
         # Return workspace info
         workspace = conn.execute("""
             SELECT id, name, source_type, disk_path, created_at, updated_at
@@ -352,7 +424,8 @@ async def open_disk_workspace(request: Request, name: str = Form(...), disk_path
 
 
 @router.post("/workspaces/open-database", response_model=WorkspaceResponse)
-async def open_database_workspace(request: Request, workspace_id: str = Form(...)):
+@require_perm("code.use")
+async def open_database_workspace(request: Request, workspace_id: str = Form(...), current_user: dict = Depends(get_current_user)):
     """Open existing workspace from database"""
     try:
         conn = memory.memory.conn
@@ -382,7 +455,8 @@ async def open_database_workspace(request: Request, workspace_id: str = Form(...
 
 
 @router.get("/workspaces")
-async def list_workspaces():
+@require_perm("code.use")
+async def list_workspaces(current_user: dict = Depends(get_current_user)):
     """Get all workspaces"""
     try:
         conn = memory.memory.conn
@@ -412,7 +486,8 @@ async def list_workspaces():
 
 
 @router.get("/workspaces/{workspace_id}/files")
-async def get_workspace_files(workspace_id: str):
+@require_perm("code.use")
+async def get_workspace_files(workspace_id: str, current_user: dict = Depends(get_current_user)):
     """Get file tree for workspace"""
     try:
         tree = build_file_tree(workspace_id)
@@ -423,7 +498,8 @@ async def get_workspace_files(workspace_id: str):
 
 
 @router.get("/files/{file_id}", response_model=FileResponse)
-async def get_file(file_id: str):
+@require_perm("code.use")
+async def get_file(file_id: str, current_user: dict = Depends(get_current_user)):
     """Get file content"""
     try:
         conn = memory.memory.conn
@@ -455,7 +531,8 @@ async def get_file(file_id: str):
 
 
 @router.post("/files", response_model=FileResponse)
-async def create_file(request: Request, file: FileCreate):
+@require_perm("code.edit")
+async def create_file(request: Request, file: FileCreate, current_user: dict = Depends(get_current_user)):
     """Create new file in workspace"""
     try:
         file_id = str(uuid.uuid4())
@@ -490,9 +567,27 @@ async def create_file(request: Request, file: FileCreate):
         """, (file.workspace_id,)).fetchone()
 
         if workspace and workspace[0] == 'disk' and workspace[1]:
-            disk_file_path = Path(workspace[1]) / file.path
+            workspace_root = Path(workspace[1])
+            disk_file_path = workspace_root / file.path
+
+            # Path guard: ensure file is under workspace root
+            ensure_under_root(workspace_root, disk_file_path)
+
             disk_file_path.parent.mkdir(parents=True, exist_ok=True)
             disk_file_path.write_text(file.content, encoding='utf-8')
+
+        # Audit log
+        try:
+            audit_logger = get_audit_logger()
+            audit_logger.log(
+                user_id=current_user.get("user_id"),
+                action=AuditAction.CODE_FILE_CREATED,
+                resource="code_file",
+                resource_id=file_id,
+                details={"workspace_id": file.workspace_id, "path": file.path, "name": file.name}
+            )
+        except Exception as audit_error:
+            logger.warning(f"Audit logging failed: {audit_error}")
 
         # Return created file
         created_file = conn.execute("""
@@ -518,7 +613,8 @@ async def create_file(request: Request, file: FileCreate):
 
 
 @router.put("/files/{file_id}", response_model=FileResponse)
-async def update_file(request: Request, file_id: str, file_update: FileUpdate):
+@require_perm("code.edit")
+async def update_file(request: Request, file_id: str, file_update: FileUpdate, current_user: dict = Depends(get_current_user)):
     """Update file"""
     try:
         conn = memory.memory.conn
@@ -576,18 +672,37 @@ async def update_file(request: Request, file_id: str, file_update: FileUpdate):
         """, (current[0],)).fetchone()
 
         if workspace and workspace[0] == 'disk' and workspace[1]:
+            workspace_root = Path(workspace[1])
             new_path = file_update.path if file_update.path is not None else current[2]
             new_content = file_update.content if file_update.content is not None else current[3]
 
-            disk_file_path = Path(workspace[1]) / new_path
+            disk_file_path = workspace_root / new_path
+
+            # Path guard: ensure file is under workspace root
+            ensure_under_root(workspace_root, disk_file_path)
+
             disk_file_path.parent.mkdir(parents=True, exist_ok=True)
             disk_file_path.write_text(new_content, encoding='utf-8')
 
             # If path changed, delete old file
             if file_update.path is not None and file_update.path != current[2]:
-                old_path = Path(workspace[1]) / current[2]
+                old_path = workspace_root / current[2]
+                ensure_under_root(workspace_root, old_path)  # Guard old path too
                 if old_path.exists():
                     old_path.unlink()
+
+        # Audit log
+        try:
+            audit_logger = get_audit_logger()
+            audit_logger.log(
+                user_id=current_user.get("user_id"),
+                action=AuditAction.CODE_FILE_UPDATED,
+                resource="code_file",
+                resource_id=file_id,
+                details={"workspace_id": current[0], "path": new_path if file_update.path else current[2]}
+            )
+        except Exception as audit_error:
+            logger.warning(f"Audit logging failed: {audit_error}")
 
         # Return updated file
         updated_file = conn.execute("""
@@ -615,7 +730,8 @@ async def update_file(request: Request, file_id: str, file_update: FileUpdate):
 
 
 @router.delete("/files/{file_id}")
-async def delete_file(request: Request, file_id: str):
+@require_perm("code.edit")
+async def delete_file(request: Request, file_id: str, current_user: dict = Depends(get_current_user)):
     """Delete file"""
     try:
         conn = memory.memory.conn
@@ -652,9 +768,27 @@ async def delete_file(request: Request, file_id: str):
         """, (workspace_id,)).fetchone()
 
         if workspace and workspace[0] == 'disk' and workspace[1]:
-            disk_file_path = Path(workspace[1]) / file_path
+            workspace_root = Path(workspace[1])
+            disk_file_path = workspace_root / file_path
+
+            # Path guard
+            ensure_under_root(workspace_root, disk_file_path)
+
             if disk_file_path.exists():
                 disk_file_path.unlink()
+
+        # Audit log
+        try:
+            audit_logger = get_audit_logger()
+            audit_logger.log(
+                user_id=current_user.get("user_id"),
+                action=AuditAction.CODE_FILE_DELETED,
+                resource="code_file",
+                resource_id=file_id,
+                details={"workspace_id": workspace_id, "path": file_path}
+            )
+        except Exception as audit_error:
+            logger.warning(f"Audit logging failed: {audit_error}")
 
         return {"success": True}
 
@@ -665,10 +799,12 @@ async def delete_file(request: Request, file_id: str):
 
 
 @router.post("/files/import")
+@require_perm("code.edit")
 async def import_file(
     request: Request,
     workspace_id: str = Form(...),
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
 ):
     """Import file into workspace"""
     try:
@@ -699,7 +835,22 @@ async def import_file(
             language=language
         )
 
-        return await create_file(file_create)
+        result = await create_file(request, file_create, current_user)
+
+        # Audit log for import action (in addition to create_file's audit log)
+        try:
+            audit_logger = get_audit_logger()
+            audit_logger.log(
+                user_id=current_user.get("user_id"),
+                action=AuditAction.CODE_FILE_IMPORTED,
+                resource="code_file",
+                resource_id=result.id,
+                details={"workspace_id": workspace_id, "filename": safe_filename}
+            )
+        except Exception as audit_error:
+            logger.warning(f"Audit logging failed: {audit_error}")
+
+        return result
 
     except Exception as e:
         logger.error(f"Failed to import file: {e}")
@@ -707,7 +858,8 @@ async def import_file(
 
 
 @router.post("/workspaces/{workspace_id}/sync")
-async def sync_workspace(request: Request, workspace_id: str):
+@require_perm("code.edit")
+async def sync_workspace(request: Request, workspace_id: str, current_user: dict = Depends(get_current_user)):
     """Sync disk workspace with filesystem"""
     try:
         conn = memory.memory.conn
@@ -756,6 +908,19 @@ async def sync_workspace(request: Request, workspace_id: str):
         """, (workspace_id,))
 
         conn.commit()
+
+        # Audit log
+        try:
+            audit_logger = get_audit_logger()
+            audit_logger.log(
+                user_id=current_user.get("user_id"),
+                action=AuditAction.CODE_WORKSPACE_SYNCED,
+                resource="code_workspace",
+                resource_id=workspace_id,
+                details={"files_synced": len(files), "disk_path": workspace[1]}
+            )
+        except Exception as audit_error:
+            logger.warning(f"Audit logging failed: {audit_error}")
 
         return {"success": True, "files_synced": len(files)}
 
