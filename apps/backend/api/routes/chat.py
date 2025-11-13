@@ -13,8 +13,13 @@ from fastapi.responses import StreamingResponse
 from typing import List, Optional, Dict, Any
 
 # Module-level safe imports
-from auth_middleware import get_current_user
-from permission_engine import require_perm_team
+try:
+    from api.auth_middleware import get_current_user
+    from api.permission_engine import require_perm_team
+except ImportError:
+    # Fallback for standalone execution
+    from auth_middleware import get_current_user
+    from permission_engine import require_perm_team
 
 logger = logging.getLogger(__name__)
 
