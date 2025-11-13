@@ -125,6 +125,11 @@ class AuditAction:
     PERMISSION_CHECK_DENIED = "permission.check.denied"
     PERMISSION_CHECK_GRANTED = "permission.check.granted"
 
+    # Model Operations (Sprint 3)
+    MODEL_PREFERENCE_TOGGLED = "model.preference.toggled"
+    MODEL_HOT_SLOT_ASSIGNED = "model.hot_slot.assigned"
+    SESSION_MODEL_UPDATED = "session.model.updated"
+
 
 class AuditLogger:
     """

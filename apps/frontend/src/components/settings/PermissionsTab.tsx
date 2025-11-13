@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Shield, Check, X, Search } from 'lucide-react'
+import { Shield, Check, X, Search, Copy, Download } from 'lucide-react'
 import { authFetch } from '../../lib/api'
+import { showToast } from '../../lib/toast'
 
 interface EffectivePermissions {
   user_id: string
@@ -31,6 +32,40 @@ export default function PermissionsTab() {
       console.error('Failed to load permissions:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const copyPermissionsJSON = () => {
+    if (!permissions) return
+
+    try {
+      const json = JSON.stringify(permissions, null, 2)
+      navigator.clipboard.writeText(json)
+      showToast.success('Permissions copied to clipboard')
+    } catch (error) {
+      showToast.error('Failed to copy permissions')
+      console.error('Copy failed:', error)
+    }
+  }
+
+  const downloadPermissionsJSON = () => {
+    if (!permissions) return
+
+    try {
+      const json = JSON.stringify(permissions, null, 2)
+      const blob = new Blob([json], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `permissions_${permissions.user_id}_${new Date().toISOString().split('T')[0]}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      showToast.success('Permissions downloaded')
+    } catch (error) {
+      showToast.error('Failed to download permissions')
+      console.error('Download failed:', error)
     }
   }
 
@@ -93,6 +128,24 @@ export default function PermissionsTab() {
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
             View your effective permissions and role in the system
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={copyPermissionsJSON}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+            title="Copy permissions JSON to clipboard"
+          >
+            <Copy className="w-4 h-4" />
+            <span>Copy JSON</span>
+          </button>
+          <button
+            onClick={downloadPermissionsJSON}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg transition-colors"
+            title="Download permissions as JSON file"
+          >
+            <Download className="w-4 h-4" />
+            <span>Download</span>
+          </button>
         </div>
       </div>
 

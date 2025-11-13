@@ -550,6 +550,7 @@ async def update_session_model_endpoint(
     Returns updated session
     """
     from api.services import chat
+    from audit_logger import get_audit_logger, AuditAction
 
     try:
         # Verify session exists and user has access
@@ -559,6 +560,20 @@ async def update_session_model_endpoint(
 
         # Update model
         updated_session = await chat.update_session_model(chat_id, model)
+
+        # Audit log (non-blocking)
+        try:
+            audit_logger = get_audit_logger()
+            audit_logger.log(
+                user_id=current_user["user_id"],
+                action=AuditAction.SESSION_MODEL_UPDATED,
+                resource="chat_session",
+                resource_id=chat_id,
+                details={"model": model, "previous_model": session.get("model")}
+            )
+        except Exception as audit_error:
+            logger.warning(f"Audit logging failed: {audit_error}")
+
         return updated_session
 
     except HTTPException:
