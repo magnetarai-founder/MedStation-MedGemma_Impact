@@ -7,6 +7,7 @@ import { ResizablePanels } from './components/ResizablePanels'
 import { ResizableSidebar } from './components/ResizableSidebar'
 import { NavigationRail } from './components/NavigationRail'
 import { Login } from './components/Login'
+import { WelcomeScreen } from './components/WelcomeScreen'
 import { useSessionStore } from './stores/sessionStore'
 import { useNavigationStore } from './stores/navigationStore'
 import { useEditorStore } from './stores/editorStore'
@@ -66,9 +67,10 @@ export default function App() {
   const [isQueryHistoryOpen, setIsQueryHistoryOpen] = useState(false)
   const [isServerControlsOpen, setIsServerControlsOpen] = useState(false)
   const [libraryInitialCode, setLibraryInitialCode] = useState<{ name: string; content: string } | null>(null)
-  const [authState, setAuthState] = useState<'checking' | 'login' | 'authenticated'>('checking')
+  const [authState, setAuthState] = useState<'welcome' | 'checking' | 'authenticated'>('welcome')
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
-  const [setupComplete, setSetupComplete] = useState<boolean | null>(null) // null = checking, true/false = determined
+  const [userSetupComplete, setUserSetupComplete] = useState<boolean | null>(null) // null = checking, true/false = per-user setup status
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   // Handle loading query from library into editor
   const handleLoadQuery = (query: settingsApi.SavedQuery) => {
@@ -94,28 +96,8 @@ export default function App() {
     }
   }
 
-  // Check setup status on mount (before auth check)
+  // Check authentication status on mount
   useEffect(() => {
-    const checkSetup = async () => {
-      try {
-        const { setupWizardApi } = await import('./lib/setupWizardApi')
-        const status = await setupWizardApi.getSetupStatus()
-        setSetupComplete(status.setup_completed)
-      } catch (error) {
-        console.error('Failed to check setup status:', error)
-        // Assume setup complete if check fails (don't block user)
-        setSetupComplete(true)
-      }
-    }
-
-    checkSetup()
-  }, [])
-
-  // Check authentication status on mount (after setup check)
-  useEffect(() => {
-    // Wait for setup check to complete
-    if (setupComplete === null) return
-
     const checkAuth = async () => {
       try {
         // Check if we have a stored token
@@ -125,27 +107,64 @@ export default function App() {
           // Token exists - validate it by fetching user
           try {
             await fetchUser()
-            setAuthState('authenticated')
+            const userStr = localStorage.getItem('user')
+            const user = userStr ? JSON.parse(userStr) : null
+            const userId = user?.user_id || user?.id || ''
+
+            setCurrentUserId(userId)
+            setAuthState('checking') // Will check per-user setup next
           } catch (error) {
-            // Token invalid - clear and show login
+            // Token invalid - clear and show welcome
             localStorage.removeItem('auth_token')
             localStorage.removeItem('user')
-            setAuthState('login')
+            setAuthState('welcome')
+            setIsLoading(false)
           }
         } else {
-          // No token - show login
-          setAuthState('login')
+          // No token - show welcome
+          setAuthState('welcome')
+          setIsLoading(false)
         }
       } catch (error) {
         console.error('Failed to check auth:', error)
-        setAuthState('login')
-      } finally {
+        setAuthState('welcome')
         setIsLoading(false)
       }
     }
 
     checkAuth()
-  }, [setupComplete])
+  }, [])
+
+  // Check per-user setup status after authentication
+  useEffect(() => {
+    if (authState !== 'checking') return
+
+    const checkUserSetup = async () => {
+      try {
+        // Note: We're checking global setup status for now
+        // Backend needs to be updated to support per-user setup status
+        const { setupWizardApi } = await import('./lib/setupWizardApi')
+        const status = await setupWizardApi.getSetupStatus()
+
+        // For now, use global setup_completed
+        // TODO: Update backend to return per-user setup status
+        setUserSetupComplete(status.setup_completed)
+
+        if (status.setup_completed) {
+          setAuthState('authenticated')
+        }
+      } catch (error) {
+        console.error('Failed to check user setup status:', error)
+        // Assume setup complete if check fails (don't block user)
+        setUserSetupComplete(true)
+        setAuthState('authenticated')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    checkUserSetup()
+  }, [authState])
 
   // Initialize user and session after authentication
   useEffect(() => {
@@ -231,24 +250,20 @@ export default function App() {
     }
   }, [])
 
-  // Setup wizard (first-run experience)
-  if (setupComplete === false) {
+  // Welcome Screen (always shown first if not authenticated)
+  if (authState === 'welcome') {
     return (
-      <Suspense fallback={<LoadingSpinner />}>
-        <SetupWizard
-          onComplete={() => {
-            setSetupComplete(true)
-            // Refresh auth state after setup
-            setAuthState('checking')
-            setIsLoading(false)
-          }}
-        />
-      </Suspense>
+      <WelcomeScreen
+        onLoginSuccess={(token, userId) => {
+          setCurrentUserId(userId)
+          setAuthState('checking') // Will check per-user setup status next
+        }}
+      />
     )
   }
 
   // Loading state
-  if (isLoading || setupComplete === null) {
+  if (isLoading || authState === 'checking') {
     return (
       <div className="h-screen flex items-center justify-center">
         <div className="text-center">
@@ -263,9 +278,18 @@ export default function App() {
     )
   }
 
-  // Login screen
-  if (authState === 'login') {
-    return <Login onLogin={(token) => setAuthState('authenticated')} />
+  // Per-user setup wizard (shown after auth if user hasn't completed setup)
+  if (userSetupComplete === false) {
+    return (
+      <Suspense fallback={<LoadingSpinner />}>
+        <SetupWizard
+          onComplete={() => {
+            setUserSetupComplete(true)
+            setAuthState('authenticated')
+          }}
+        />
+      </Suspense>
+    )
   }
 
   // Main app (authenticated)
