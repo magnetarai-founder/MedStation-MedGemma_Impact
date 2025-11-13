@@ -4,6 +4,7 @@ import { authFetch } from '../lib/api'
 interface TokenMeterProps {
   sessionId: string
   refreshOn?: any // changes to this prop will trigger a refresh
+  onNearLimit?: () => void // callback when token usage >= 85%
 }
 
 interface TokenCountResponse {
@@ -14,9 +15,10 @@ interface TokenCountResponse {
   cached?: boolean
 }
 
-export function TokenMeter({ sessionId, refreshOn }: TokenMeterProps) {
+export function TokenMeter({ sessionId, refreshOn, onNearLimit }: TokenMeterProps) {
   const [data, setData] = useState<TokenCountResponse | null>(null)
   const [loading, setLoading] = useState(false)
+  const [nearLimitTriggered, setNearLimitTriggered] = useState(false)
 
   const fetchCount = async (signal?: AbortSignal) => {
     if (!sessionId) return
@@ -26,6 +28,16 @@ export function TokenMeter({ sessionId, refreshOn }: TokenMeterProps) {
       if (res.ok) {
         const json = await res.json()
         setData(json)
+
+        // Check near-limit threshold (85%)
+        const percentage = json.percentage || 0
+        if (percentage >= 85 && !nearLimitTriggered && onNearLimit) {
+          setNearLimitTriggered(true)
+          onNearLimit()
+        } else if (percentage < 85) {
+          // Reset flag if we drop back below threshold
+          setNearLimitTriggered(false)
+        }
       }
     } catch (e) {
       // ignore

@@ -156,7 +156,14 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
       const selectedSize = parseModelSizeGB(selected?.size || '0 GB')
       const fit = canModelFit(currentUsed, selectedSize, usableMemoryGb)
       if (!fit.fits) {
-        alert(`Model '${name}' may exceed memory budget. ${fit.reason}`)
+        showActionToast(
+          `Model '${name}' exceeds memory budget`,
+          'View Details',
+          () => {
+            showToast.warning(`${fit.reason}`, 5000)
+          },
+          { type: 'warning', duration: 5000 }
+        )
         return
       }
     }

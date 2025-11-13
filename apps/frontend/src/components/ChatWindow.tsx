@@ -7,6 +7,7 @@ import { TokenMeter } from './TokenMeter'
 import { useChatStore } from '../stores/chatStore'
 import { api } from '../lib/api'
 import { shallow } from 'zustand/shallow'  // MED-03: Prevent unnecessary re-renders
+import { showToast, showActionToast } from '../lib/toast'
 
 export function ChatWindow() {
   // MED-03: Use shallow selector to only re-render when used fields change
@@ -21,7 +22,9 @@ export function ChatWindow() {
     setStreamingContent,
     appendStreamingContent,
     clearStreamingContent,
-    setIsSending
+    setIsSending,
+    createSession,
+    setActiveChat
   } = useChatStore(
     (state) => ({
       activeChatId: state.activeChatId,
@@ -35,6 +38,8 @@ export function ChatWindow() {
       appendStreamingContent: state.appendStreamingContent,
       clearStreamingContent: state.clearStreamingContent,
       setIsSending: state.setIsSending,
+      createSession: state.createSession,
+      setActiveChat: state.setActiveChat,
     }),
     shallow
   )
@@ -53,10 +58,13 @@ export function ChatWindow() {
     }
   }, [activeSession])
 
-  // Persist model selection to session
+  // Persist model selection to session (with optimistic update)
   const handleModelChange = async (model: string) => {
     if (!activeChatId) return
 
+    const previousModel = selectedModel
+
+    // Optimistic update
     setSelectedModel(model)
 
     try {
@@ -72,11 +80,35 @@ export function ChatWindow() {
       })
 
       if (!response.ok) {
+        // Revert on failure
+        setSelectedModel(previousModel)
+        showToast.error('Failed to save model selection')
         console.error('Failed to persist model selection')
       }
     } catch (error) {
+      // Revert on error
+      setSelectedModel(previousModel)
+      showToast.error('Network error - model selection not saved')
       console.error('Error persisting model:', error)
     }
+  }
+
+  // Handle near-limit warning
+  const handleNearLimit = () => {
+    showActionToast(
+      'Approaching context limit — consider starting a new session',
+      'New Session',
+      async () => {
+        try {
+          const newSession = await createSession('New Chat', selectedModel)
+          setActiveChat(newSession.id)
+          showToast.success('New session created')
+        } catch (error) {
+          showToast.error('Failed to create new session')
+        }
+      },
+      { type: 'warning', duration: 8000 }
+    )
   }
 
   // Check Ollama health on mount and periodically
@@ -299,7 +331,11 @@ export function ChatWindow() {
               {messages.length} messages
             </p>
             {activeChatId && (
-              <TokenMeter sessionId={activeChatId} refreshOn={messages.length} />
+              <TokenMeter
+                sessionId={activeChatId}
+                refreshOn={messages.length}
+                onNearLimit={handleNearLimit}
+              />
             )}
           </div>
         </div>
