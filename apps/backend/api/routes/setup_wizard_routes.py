@@ -27,8 +27,11 @@ Endpoints:
 """
 
 import logging
+import asyncio
+import json
 from typing import Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 try:
@@ -308,6 +311,123 @@ async def download_model(body: DownloadModelRequest):
     except Exception as e:
         logger.error(f"❌ Failed to download model: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/models/download/progress")
+async def download_model_progress(model_name: str):
+    """
+    Download a model with real-time progress updates via Server-Sent Events (SSE)
+
+    This endpoint streams progress updates while downloading a model from Ollama.
+    The frontend can listen to this stream to show a progress bar.
+
+    Args:
+        model_name: Ollama model name (e.g., "qwen2.5-coder:7b-instruct")
+
+    Returns:
+        SSE stream with progress updates
+
+    Event format:
+        data: {"progress": 45.5, "status": "downloading", "model": "qwen2.5-coder:7b"}
+
+    Public endpoint - no authentication required (setup phase).
+    """
+    async def progress_generator():
+        """Generate SSE events for download progress"""
+        try:
+            import subprocess
+
+            logger.info(f"⬇️ Starting download stream for: {model_name}")
+
+            # Start Ollama pull process
+            process = subprocess.Popen(
+                ["ollama", "pull", model_name],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1
+            )
+
+            # Stream output and parse progress
+            for line in iter(process.stdout.readline, ''):
+                if not line:
+                    break
+
+                line = line.strip()
+
+                # Parse progress from Ollama output
+                progress_data = {
+                    "model": model_name,
+                    "status": "downloading",
+                    "progress": 0.0,
+                    "message": line
+                }
+
+                # Extract percentage if available
+                if "%" in line:
+                    try:
+                        percent_str = line.split("%")[0].split()[-1]
+                        progress_data["progress"] = float(percent_str)
+                    except:
+                        pass
+
+                # Check for completion
+                if "success" in line.lower() or "already" in line.lower():
+                    progress_data["status"] = "complete"
+                    progress_data["progress"] = 100.0
+
+                # Send SSE event
+                yield f"data: {json.dumps(progress_data)}\n\n"
+
+                # Small delay to avoid overwhelming the client
+                await asyncio.sleep(0.1)
+
+            # Wait for process to complete
+            process.wait()
+
+            # Send final status
+            if process.returncode == 0:
+                final_data = {
+                    "model": model_name,
+                    "status": "complete",
+                    "progress": 100.0,
+                    "message": f"Model '{model_name}' downloaded successfully"
+                }
+                yield f"data: {json.dumps(final_data)}\n\n"
+                logger.info(f"✅ Download stream complete: {model_name}")
+            else:
+                error_data = {
+                    "model": model_name,
+                    "status": "error",
+                    "progress": 0.0,
+                    "message": f"Download failed with exit code {process.returncode}"
+                }
+                yield f"data: {json.dumps(error_data)}\n\n"
+                logger.error(f"❌ Download stream failed: {model_name}")
+
+            # Send done marker
+            yield "data: [DONE]\n\n"
+
+        except Exception as e:
+            logger.error(f"❌ Download stream error: {e}")
+            error_data = {
+                "model": model_name,
+                "status": "error",
+                "progress": 0.0,
+                "message": str(e)
+            }
+            yield f"data: {json.dumps(error_data)}\n\n"
+            yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        progress_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
 
 
 @router.post("/hot-slots", response_model=ConfigureHotSlotsResponse)
