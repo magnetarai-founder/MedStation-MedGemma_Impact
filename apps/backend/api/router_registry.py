@@ -90,7 +90,7 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
 
     # Code Editor
     try:
-        from api.code_editor_router import router as code_editor_router
+        from api.code_editor_service import router as code_editor_router
         app.include_router(code_editor_router)
         services_loaded.append("Code Editor")
     except Exception as e:
