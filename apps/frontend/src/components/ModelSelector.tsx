@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { ChevronDown, XCircle, Star, AlertCircle } from 'lucide-react'
+import { ChevronDown, XCircle, Star, AlertCircle, Shield } from 'lucide-react'
 import { useChatStore } from '../stores/chatStore'
 import { useUserModelPrefsStore } from '../stores/userModelPrefsStore'
+import { useTeamStore } from '../stores/teamStore'
 import { api, authFetch } from '../lib/api'
 import { parseModelSizeGB, canModelFit } from '../lib/models'
-import { showActionToast } from '../lib/toast'
+import { showActionToast, showToast } from '../lib/toast'
 
 interface ModelSelectorProps {
   value: string
@@ -21,14 +22,43 @@ interface ModelStatus {
 export function ModelSelector({ value, onChange }: ModelSelectorProps) {
   const { availableModels, setAvailableModels } = useChatStore()
   const { catalog, getVisibleModels, hotSlots, loadAll } = useUserModelPrefsStore()
+  const { currentTeam } = useTeamStore()
   const [modelStatuses, setModelStatuses] = useState<ModelStatus[]>([])
   const [usableMemoryGb, setUsableMemoryGb] = useState<number>(0)
+  const [allowedModels, setAllowedModels] = useState<string[] | null>(null) // null = no policy (allow all)
 
   useEffect(() => {
     loadModels()
     loadModelStatuses()
     loadAll() // Load user preferences, catalog, and hot slots
   }, [])
+
+  // Load team model policy (Sprint 5)
+  useEffect(() => {
+    if (currentTeam?.team_id) {
+      loadTeamPolicy(currentTeam.team_id)
+    } else {
+      setAllowedModels(null) // No team context, allow all
+    }
+  }, [currentTeam?.team_id])
+
+  const loadTeamPolicy = async (teamId: string) => {
+    try {
+      const response = await authFetch(`/api/v1/teams/${teamId}/model-policy`)
+      if (response.ok) {
+        const policy = await response.json()
+        // If no models specified, treat as "allow all"
+        if (policy.allowed_models && policy.allowed_models.length > 0) {
+          setAllowedModels(policy.allowed_models)
+        } else {
+          setAllowedModels(null)
+        }
+      }
+    } catch (error) {
+      console.debug('Failed to load team policy (may not have permission):', error)
+      setAllowedModels(null) // Fallback to allow all on error
+    }
+  }
 
   const loadModels = async () => {
     try {
@@ -89,6 +119,14 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
     return catalogEntry?.status === 'installed'
   }
 
+  // Check if model is allowed by team policy (Sprint 5)
+  const isModelAllowed = (modelName: string): boolean => {
+    // If no policy (null), allow all
+    if (allowedModels === null) return true
+    // Otherwise check if model is in allowed list
+    return allowedModels.includes(modelName)
+  }
+
   const selectedModelStatus = getModelStatus(value)
 
   // Get visible models from user preferences
@@ -134,6 +172,16 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
 
   const handleChange = async (name: string) => {
     if (!name) { onChange(''); return }
+
+    // Check team policy (Sprint 5)
+    if (!isModelAllowed(name)) {
+      showToast.error(
+        `Model '${name}' is not allowed by team policy. Ask your team admin to add it to the allowed list.`,
+        5000
+      )
+      return
+    }
+
     // Prevent selecting not-installed models
     if (!isModelInstalled(name)) {
       showActionToast(
@@ -184,7 +232,9 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
             <option value="" disabled>No visible models loaded</option>
           ) : (
             loadedModels.map((model) => {
-              // Build display text with hot slot badge and not-installed indicator
+              const allowed = isModelAllowed(model.name)
+
+              // Build display text with hot slot badge and indicators
               let displayText = ''
 
               // Hot slot badge (1-4)
@@ -195,13 +245,23 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
               // Model name
               displayText += model.name
 
+              // Policy indicator (Sprint 5)
+              if (!allowed) {
+                displayText += ' 🔒'
+              }
+
               // Not-installed indicator
               if (!model.installed) {
                 displayText += ' ⚠️'
               }
 
               return (
-                <option key={model.name} value={model.name}>
+                <option
+                  key={model.name}
+                  value={model.name}
+                  disabled={!allowed}
+                  title={!allowed ? 'Not allowed by team policy' : undefined}
+                >
                   {displayText}
                 </option>
               )
@@ -224,6 +284,19 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
         >
           <Star className="w-3 h-3 fill-current" aria-hidden="true" />
           <span>{getHotSlotNumber(value)}</span>
+        </div>
+      )}
+
+      {/* Policy violation warning (Sprint 5) */}
+      {value && !isModelAllowed(value) && (
+        <div
+          className="flex items-center gap-1 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded text-xs"
+          title="Not allowed by team policy"
+          aria-label="Warning: Not allowed by team policy"
+          role="alert"
+        >
+          <Shield className="w-3 h-3" aria-hidden="true" />
+          <span>Policy</span>
         </div>
       )}
 
