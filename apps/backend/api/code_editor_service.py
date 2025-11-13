@@ -530,6 +530,66 @@ async def get_file(file_id: str, current_user: dict = Depends(get_current_user))
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/files/{file_id}/diff", response_model=FileDiffResponse)
+@require_perm("code.use")
+async def get_file_diff(file_id: str, diff_request: FileDiffRequest, current_user: dict = Depends(get_current_user)):
+    """
+    Generate unified diff between current file content and proposed new content.
+    Optionally detects conflicts if base_updated_at is provided.
+    """
+    try:
+        conn = memory.memory.conn
+
+        # Get current file
+        file = conn.execute("""
+            SELECT content, updated_at
+            FROM code_editor_files
+            WHERE id = ?
+        """, (file_id,)).fetchone()
+
+        if not file:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        current_content = file[0] or ""
+        current_updated_at = file[1]
+
+        # Check for conflict if base timestamp provided
+        conflict = False
+        if diff_request.base_updated_at and diff_request.base_updated_at != current_updated_at:
+            conflict = True
+            logger.warning(f"File {file_id} has been modified since base timestamp")
+
+        # Generate unified diff
+        current_lines = current_content.splitlines(keepends=True)
+        new_lines = diff_request.new_content.splitlines(keepends=True)
+
+        diff = difflib.unified_diff(
+            current_lines,
+            new_lines,
+            fromfile='current',
+            tofile='proposed',
+            lineterm=''
+        )
+
+        diff_str = '\n'.join(diff)
+
+        # Generate hash of current content
+        current_hash = hashlib.sha256(current_content.encode('utf-8')).hexdigest()
+
+        return FileDiffResponse(
+            diff=diff_str,
+            current_hash=current_hash,
+            current_updated_at=current_updated_at,
+            conflict=conflict
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to generate diff: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/files", response_model=FileResponse)
 @require_perm("code.edit")
 async def create_file(request: Request, file: FileCreate, current_user: dict = Depends(get_current_user)):
@@ -619,15 +679,26 @@ async def update_file(request: Request, file_id: str, file_update: FileUpdate, c
     try:
         conn = memory.memory.conn
 
-        # Get current file
+        # Get current file (include updated_at for optimistic concurrency)
         current = conn.execute("""
-            SELECT workspace_id, name, path, content, language
+            SELECT workspace_id, name, path, content, language, updated_at
             FROM code_editor_files
             WHERE id = ?
         """, (file_id,)).fetchone()
 
         if not current:
             raise HTTPException(status_code=404, detail="File not found")
+
+        # Optimistic concurrency: check if file was modified since base timestamp
+        if file_update.base_updated_at and file_update.base_updated_at != current[5]:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "error": "Conflict: File has been modified by another user",
+                    "current_updated_at": current[5],
+                    "your_base_updated_at": file_update.base_updated_at
+                }
+            )
 
         # Build update
         updates = []
