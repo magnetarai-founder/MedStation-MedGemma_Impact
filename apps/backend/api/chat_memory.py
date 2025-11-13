@@ -117,6 +117,12 @@ class NeutronChatMemory:
         except sqlite3.OperationalError:
             pass  # Column already exists
 
+        # Sprint 3: Add archived column for session management
+        try:
+            conn.execute("ALTER TABLE chat_sessions ADD COLUMN archived INTEGER DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
         # Full message history
         conn.execute("""
             CREATE TABLE IF NOT EXISTS chat_messages (
@@ -614,6 +620,18 @@ class NeutronChatMemory:
                 SET model = ?, updated_at = ?
                 WHERE id = ?
             """, (model, now, session_id))
+            conn.commit()
+
+    def set_session_archived(self, session_id: str, archived: bool) -> None:
+        """Archive or unarchive a chat session"""
+        now = datetime.utcnow().isoformat()
+        conn = self._get_connection()
+        with self._write_lock:
+            conn.execute("""
+                UPDATE chat_sessions
+                SET archived = ?, updated_at = ?
+                WHERE id = ?
+            """, (1 if archived else 0, now, session_id))
             conn.commit()
 
     def get_summary(self, session_id: str) -> Optional[Dict[str, Any]]:

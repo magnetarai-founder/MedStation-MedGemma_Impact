@@ -570,6 +570,84 @@ async def update_session_model_endpoint(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.patch("/sessions/{chat_id}/rename", name="chat_rename_session")
+@require_perm_team("chat.use")
+async def rename_session_endpoint(
+    request: Request,
+    chat_id: str,
+    title: str = Body(..., embed=True),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Rename a chat session
+
+    Body:
+        {
+            "title": "New Session Title"
+        }
+
+    Returns updated session
+    """
+    from api.services import chat
+
+    try:
+        # Verify session exists and user has access
+        session = await chat.get_session(chat_id, user_id=current_user["user_id"])
+        if not session:
+            raise HTTPException(status_code=404, detail="Chat session not found")
+
+        # Update title
+        updated_session = await chat.update_session_title(chat_id, title)
+        return updated_session
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to rename session: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.patch("/sessions/{chat_id}/archive", name="chat_archive_session")
+@require_perm_team("chat.use")
+async def archive_session_endpoint(
+    request: Request,
+    chat_id: str,
+    archived: bool = Body(..., embed=True),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Archive or unarchive a chat session
+
+    Body:
+        {
+            "archived": true
+        }
+
+    Returns updated session
+    """
+    from api.services import chat
+
+    try:
+        # Verify session exists and user has access
+        session = await chat.get_session(chat_id, user_id=current_user["user_id"])
+        if not session:
+            raise HTTPException(status_code=404, detail="Chat session not found")
+
+        # Update archived status
+        updated_session = await chat.set_session_archived(chat_id, archived)
+        return updated_session
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to archive session: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ===== Health & Status Endpoints (Public) =====
 
 @public_router.get("/health", name="chat_check_health")

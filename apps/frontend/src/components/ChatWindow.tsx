@@ -46,6 +46,7 @@ export function ChatWindow() {
 
   const [selectedModel, setSelectedModel] = useState<string>('')
   const [ollamaHealth, setOllamaHealth] = useState<{status: string, message: string} | null>(null)
+  const [pendingSummarize, setPendingSummarize] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const eventSourceRef = useRef<EventSource | null>(null)
 
@@ -93,21 +94,19 @@ export function ChatWindow() {
     }
   }
 
+  // Handle summarization request
+  const handleSummarize = () => {
+    setPendingSummarize(true)
+    showToast.success('Next message will include context summarization', 4000)
+  }
+
   // Handle near-limit warning
   const handleNearLimit = () => {
     showActionToast(
-      'Approaching context limit — consider starting a new session',
-      'New Session',
-      async () => {
-        try {
-          const newSession = await createSession('New Chat', selectedModel)
-          setActiveChat(newSession.id)
-          showToast.success('New session created')
-        } catch (error) {
-          showToast.error('Failed to create new session')
-        }
-      },
-      { type: 'warning', duration: 8000 }
+      'Approaching context limit — summarize or start fresh?',
+      'Summarize Context',
+      handleSummarize,
+      { type: 'warning', duration: 10000 }
     )
   }
 
@@ -181,6 +180,14 @@ export function ChatWindow() {
       }
       addMessage(userMessage)
 
+      // Prepare system prompt with optional summarization instruction
+      let effectiveSystemPrompt = settings.systemPrompt || undefined
+      if (pendingSummarize) {
+        const summarizeInstruction = '\n\nIMPORTANT: Before responding, briefly summarize the key points from our previous conversation to compress context, then answer the current question.'
+        effectiveSystemPrompt = (effectiveSystemPrompt || '') + summarizeInstruction
+        setPendingSummarize(false) // Clear flag after use
+      }
+
       // Send message via SSE with LLM parameters (with safe defaults)
       const response = await fetch(
         `/api/v1/chat/sessions/${activeChatId}/messages`,
@@ -194,7 +201,7 @@ export function ChatWindow() {
             top_p: settings.topP ?? 0.9,
             top_k: settings.topK ?? 40,
             repeat_penalty: settings.repeatPenalty ?? 1.1,
-            system_prompt: settings.systemPrompt || undefined
+            system_prompt: effectiveSystemPrompt
           })
         }
       )

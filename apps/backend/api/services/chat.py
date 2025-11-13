@@ -858,6 +858,32 @@ async def update_session_model(chat_id: str, model: str) -> Dict[str, Any]:
     return session
 
 
+async def update_session_title(chat_id: str, title: str) -> Dict[str, Any]:
+    """Update the title of a chat session"""
+    memory = _get_memory()
+    await asyncio.to_thread(memory.update_session_title, chat_id, title, auto_titled=False)
+
+    # Return updated session
+    session = await asyncio.to_thread(memory.get_session, chat_id)
+    if not session:
+        raise ValueError(f"Session {chat_id} not found")
+
+    return session
+
+
+async def set_session_archived(chat_id: str, archived: bool) -> Dict[str, Any]:
+    """Archive or unarchive a chat session"""
+    memory = _get_memory()
+    await asyncio.to_thread(memory.set_session_archived, chat_id, archived)
+
+    # Return updated session
+    session = await asyncio.to_thread(memory.get_session, chat_id)
+    if not session:
+        raise ValueError(f"Session {chat_id} not found")
+
+    return session
+
+
 # ===== Health & Status =====
 
 async def check_health() -> Dict[str, Any]:
