@@ -24,6 +24,13 @@ export interface CodeFile {
   updated_at: string
 }
 
+export interface FileDiffResponse {
+  diff: string
+  current_hash: string
+  current_updated_at: string
+  conflict: boolean
+}
+
 export interface FileTreeNode {
   id: string
   name: string
@@ -96,9 +103,21 @@ export const codeEditorApi = {
 
   async getWorkspaceFiles(workspaceId: string): Promise<FileTreeNode[]> {
     const res = await fetch(`${API_BASE}/workspaces/${workspaceId}/files`)
-    if (!res.ok) throw new Error('Failed to fetch files')
+    if (!res.ok) {
+      if (res.status === 403) {
+        const error: any = new Error('Permission denied: code.use required')
+        error.status = 403
+        throw error
+      }
+      throw new Error('Failed to fetch files')
+    }
     const data = await res.json()
     return data.files
+  },
+
+  // Convenience alias
+  async listWorkspaceFiles(workspaceId: string): Promise<FileTreeNode[]> {
+    return this.getWorkspaceFiles(workspaceId)
   },
 
   async syncWorkspace(workspaceId: string): Promise<{ success: boolean; files_synced: number }> {
@@ -144,6 +163,7 @@ export const codeEditorApi = {
       path?: string
       content?: string
       language?: string
+      base_updated_at?: string
     }
   ): Promise<CodeFile> {
     const res = await fetch(`${API_BASE}/files/${fileId}`, {
@@ -153,8 +173,47 @@ export const codeEditorApi = {
     })
 
     if (!res.ok) {
+      if (res.status === 409) {
+        const conflictData = await res.json()
+        const error: any = new Error('Conflict: File has been modified')
+        error.status = 409
+        error.detail = conflictData.detail
+        throw error
+      }
+      if (res.status === 403) {
+        const error: any = new Error('Permission denied: code.edit required')
+        error.status = 403
+        throw error
+      }
       const error = await res.json()
       throw new Error(error.detail || 'Failed to update file')
+    }
+
+    return res.json()
+  },
+
+  async diffFile(
+    fileId: string,
+    newContent: string,
+    baseUpdatedAt?: string
+  ): Promise<FileDiffResponse> {
+    const res = await fetch(`${API_BASE}/files/${fileId}/diff`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        new_content: newContent,
+        base_updated_at: baseUpdatedAt,
+      }),
+    })
+
+    if (!res.ok) {
+      if (res.status === 403) {
+        const error: any = new Error('Permission denied: code.use required')
+        error.status = 403
+        throw error
+      }
+      const error = await res.json()
+      throw new Error(error.detail || 'Failed to generate diff')
     }
 
     return res.json()

@@ -1,60 +1,70 @@
 /**
  * FileBrowser - File tree navigation for Code Tab
- * Uses patterns from Continue's file tree implementation
+ * Uses code-editor API with workspace-based file management
  */
 
 import { useState, useEffect } from 'react'
 import { Folder, File, ChevronRight, ChevronDown, RefreshCw, FolderOpen, FilePlus } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { authFetch } from '@/lib/api'
-
-interface FileNode {
-  name: string
-  type: 'file' | 'directory'
-  path: string
-  size?: number
-  children?: FileNode[]
-}
+import { codeEditorApi, type FileTreeNode } from '@/api/codeEditor'
 
 interface FileBrowserProps {
-  onFileSelect: (path: string, isAbsolute?: boolean) => void
-  selectedFile: string | null
+  onFileSelect: (fileId: string, filePath: string) => void
+  selectedFileId: string | null
 }
 
-export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
-  const [tree, setTree] = useState<FileNode[]>([])
+export function FileBrowser({ onFileSelect, selectedFileId }: FileBrowserProps) {
+  const [tree, setTree] = useState<FileTreeNode[]>([])
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [currentPath, setCurrentPath] = useState<string | null>(null)
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null)
+  const [workspacePath, setWorkspacePath] = useState<string | null>(null)
   const [showNewFileModal, setShowNewFileModal] = useState(false)
   const [newFileName, setNewFileName] = useState('')
   const [creating, setCreating] = useState(false)
 
-  const loadFileTree = async (absolutePath?: string) => {
+  // Build flat file ID map for quick lookup
+  const [fileIdMap, setFileIdMap] = useState<Map<string, string>>(new Map())
+
+  const buildFileIdMap = (nodes: FileTreeNode[]): Map<string, string> => {
+    const map = new Map<string, string>()
+    const traverse = (items: FileTreeNode[]) => {
+      for (const item of items) {
+        if (!item.is_directory) {
+          map.set(item.id, item.path)
+        }
+        if (item.children) {
+          traverse(item.children)
+        }
+      }
+    }
+    traverse(nodes)
+    return map
+  }
+
+  const loadFileTree = async (wsId?: string) => {
+    const targetWsId = wsId || workspaceId
+    if (!targetWsId) {
+      setTree([])
+      return
+    }
+
     setLoading(true)
     setError(null)
 
     try {
-      const url = absolutePath
-        ? `/api/v1/code/files?recursive=true&absolute_path=${encodeURIComponent(absolutePath)}`
-        : '/api/v1/code/files?recursive=true'
-
-      const res = await authFetch(url)
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
-        throw new Error(errorData.detail || `Failed to load file tree (${res.status})`)
-      }
-
-      const data = await res.json()
-      setTree(data.items || [])
-      if (absolutePath) {
-        setCurrentPath(absolutePath)
-      }
-    } catch (err) {
+      const files = await codeEditorApi.listWorkspaceFiles(targetWsId)
+      setTree(files || [])
+      const idMap = buildFileIdMap(files || [])
+      setFileIdMap(idMap)
+    } catch (err: any) {
       console.error('Error loading file tree:', err)
-      setError(err instanceof Error ? err.message : 'Failed to load files')
+      if (err.status === 403) {
+        setError('Permission denied: code.use required')
+      } else {
+        setError(err.message || 'Failed to load files')
+      }
     } finally {
       setLoading(false)
     }
@@ -66,25 +76,31 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
     if (!input) return
 
     try {
-      // Save to localStorage
-      localStorage.setItem('ns.code.workspaceRoot', input)
+      // Open disk workspace
+      const workspace = await codeEditorApi.openDiskWorkspace(
+        input.split('/').pop() || 'workspace',
+        input
+      )
 
-      // Notify backend of workspace root for git operations
-      await authFetch('/api/v1/code/workspace/set', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workspace_root: input })
-      })
+      // Save to localStorage
+      localStorage.setItem('ns.code.workspaceId', workspace.id)
+      localStorage.setItem('ns.code.workspaceRoot', input)
+      setWorkspaceId(workspace.id)
+      setWorkspacePath(input)
 
       // Load file tree
-      await loadFileTree(input)
+      await loadFileTree(workspace.id)
       toast.success('Opened folder')
 
       // Dispatch event to update project name in sidebar
       window.dispatchEvent(new CustomEvent('workspace-changed', { detail: { path: input } }))
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error opening folder:', err)
-      toast.error('Failed to open folder')
+      if (err.status === 403) {
+        toast.error('Permission denied: code.edit required')
+      } else {
+        toast.error('Failed to open folder')
+      }
     }
   }
 
@@ -94,46 +110,62 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
       return
     }
 
+    if (!workspaceId) {
+      toast.error('No workspace open')
+      return
+    }
+
     setCreating(true)
     try {
-      const res = await authFetch('/api/v1/code/write', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          path: newFileName,
-          content: '',
-          create_if_missing: true
-        })
-      })
-
-      if (!res.ok) {
-        const error = await res.json().catch(() => ({}))
-        throw new Error(error.detail || 'Failed to create file')
+      // Detect language from extension
+      const ext = newFileName.split('.').pop()?.toLowerCase() || 'txt'
+      const langMap: Record<string, string> = {
+        js: 'javascript', jsx: 'javascript', ts: 'typescript', tsx: 'typescript',
+        py: 'python', java: 'java', cpp: 'cpp', c: 'c', go: 'go', rs: 'rust',
+        rb: 'ruby', php: 'php', html: 'html', css: 'css', json: 'json',
+        yaml: 'yaml', yml: 'yaml', md: 'markdown', sql: 'sql', sh: 'shell'
       }
+      const language = langMap[ext] || 'plaintext'
+
+      const file = await codeEditorApi.createFile({
+        workspace_id: workspaceId,
+        name: newFileName,
+        path: newFileName,
+        content: '',
+        language
+      })
 
       toast.success(`Created ${newFileName}`)
       setShowNewFileModal(false)
       setNewFileName('')
 
       // Reload file tree
-      await loadFileTree(currentPath || undefined)
+      await loadFileTree()
 
       // Open the new file
-      if (currentPath) {
-        onFileSelect(`${currentPath}/${newFileName}`, true)
-      } else {
-        onFileSelect(newFileName, false)
-      }
-    } catch (err) {
+      onFileSelect(file.id, file.path)
+    } catch (err: any) {
       console.error('Error creating file:', err)
-      toast.error(err instanceof Error ? err.message : 'Failed to create file')
+      if (err.status === 403) {
+        toast.error('Permission denied: code.edit required')
+      } else {
+        toast.error(err.message || 'Failed to create file')
+      }
     } finally {
       setCreating(false)
     }
   }
 
   useEffect(() => {
-    loadFileTree()
+    // Load workspace from localStorage
+    const savedWsId = localStorage.getItem('ns.code.workspaceId')
+    const savedWsPath = localStorage.getItem('ns.code.workspaceRoot')
+
+    if (savedWsId) {
+      setWorkspaceId(savedWsId)
+      setWorkspacePath(savedWsPath)
+      loadFileTree(savedWsId)
+    }
 
     // Listen for 'open-folder' event from CodeSidebar
     const handleOpenFolderEvent = () => {
@@ -143,9 +175,8 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
 
     // Auto-refresh every 500ms when a workspace is open (like VS Code)
     const refreshInterval = setInterval(() => {
-      const storedPath = localStorage.getItem('ns.code.workspaceRoot')
-      if (storedPath && !loading) {
-        loadFileTree(storedPath)
+      if (workspaceId && !loading) {
+        loadFileTree()
       }
     }, 500)
 
@@ -153,7 +184,7 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
       window.removeEventListener('open-folder', handleOpenFolderEvent)
       clearInterval(refreshInterval)
     }
-  }, [])
+  }, [workspaceId])
 
   const toggleExpand = (path: string) => {
     setExpanded(prev => {
@@ -167,23 +198,20 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
     })
   }
 
-  const handleFileClick = (path: string) => {
-    if (currentPath) {
-      // If browsing absolute path, send full path
-      onFileSelect(`${currentPath}/${path}`, true)
-    } else {
-      onFileSelect(path, false)
+  const handleFileClick = (node: FileTreeNode) => {
+    if (!node.is_directory) {
+      onFileSelect(node.id, node.path)
     }
   }
 
-  const renderNode = (node: FileNode, depth: number = 0): JSX.Element => {
+  const renderNode = (node: FileTreeNode, depth: number = 0): JSX.Element => {
     const isExpanded = expanded.has(node.path)
-    const isSelected = selectedFile === node.path || selectedFile === `${currentPath}/${node.path}`
+    const isSelected = selectedFileId === node.id
     const paddingLeft = depth * 16
 
-    if (node.type === 'directory') {
+    if (node.is_directory) {
       return (
-        <div key={node.path}>
+        <div key={node.id}>
           <button
             onClick={() => toggleExpand(node.path)}
             className={`flex items-center gap-2 py-1.5 px-2 hover:bg-gray-50 dark:hover:bg-gray-800/50 w-full text-left transition-colors ${
@@ -212,8 +240,8 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
     // File node
     return (
       <button
-        key={node.path}
-        onClick={() => handleFileClick(node.path)}
+        key={node.id}
+        onClick={() => handleFileClick(node)}
         className={`flex items-center gap-2 py-1.5 px-2 hover:bg-gray-50 dark:hover:bg-gray-800/50 w-full text-left transition-colors ${
           isSelected ? 'bg-primary-100 dark:bg-primary-900/30' : ''
         }`}
@@ -288,7 +316,7 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
               <FilePlus className="w-3.5 h-3.5 text-gray-500" />
             </button>
             <button
-              onClick={() => loadFileTree(currentPath || undefined)}
+              onClick={() => loadFileTree()}
               className="p-1 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors"
               title="Refresh"
             >
@@ -296,9 +324,9 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
             </button>
           </div>
         </div>
-        {currentPath && (
-          <div className="text-xs text-gray-500 truncate" title={currentPath}>
-            {currentPath}
+        {workspacePath && (
+          <div className="text-xs text-gray-500 truncate" title={workspacePath}>
+            {workspacePath}
           </div>
         )}
       </div>
@@ -317,7 +345,7 @@ export function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
                 Create New File
               </h2>
               <p className="text-sm text-gray-500 mt-1">
-                {currentPath ? `In ${currentPath}` : 'In workspace'}
+                {workspacePath ? `In ${workspacePath}` : 'In workspace'}
               </p>
             </div>
 
