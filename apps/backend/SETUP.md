@@ -2,8 +2,24 @@
 
 ## Prerequisites
 
-- Python 3.12+ (Note: Some dependencies may not support Python 3.14+ yet)
+- **Python 3.12 or 3.13** (required - Python 3.14 not supported due to `openai-whisper` build failures)
 - macOS (ElohimOS is macOS-only for Metal framework support)
+
+### Python Version
+
+ElohimOS backend requires Python 3.12 or 3.13. Python 3.14 is not currently supported due to compatibility issues with the `openai-whisper` dependency.
+
+**Recommended setup:**
+```bash
+# Using pyenv (recommended)
+pyenv install 3.13.0
+pyenv local 3.13.0
+
+# Or using system Python
+python3.13 -m venv venv
+```
+
+The `.python-version` file in this directory specifies Python 3.13.0 for automatic version selection with pyenv.
 
 ## Installation
 
