@@ -1,15 +1,17 @@
 import { useEffect, useState, useRef } from 'react'
-import { X, Download, CheckCircle, XCircle, RefreshCw, Loader2 } from 'lucide-react'
+import { X, Download, CheckCircle, XCircle, RefreshCw, Loader2, Ban } from 'lucide-react'
 import { showToast } from '../lib/toast'
+import { authFetch } from '../lib/api'
 
 interface DownloadProgress {
-  model_name: string
-  status: 'pending' | 'downloading' | 'completed' | 'failed'
+  name: string
+  status: 'queued' | 'downloading' | 'completed' | 'failed' | 'canceled'
   progress?: number
-  speed?: string
-  size?: string
-  error?: string
-  timestamp?: string
+  speed?: string | null
+  error?: string | null
+  position?: number | null
+  started_at?: string | null
+  completed_at?: string | null
 }
 
 interface ModelDownloadsManagerProps {
@@ -18,126 +20,131 @@ interface ModelDownloadsManagerProps {
 }
 
 export function ModelDownloadsManager({ onClose, initialModel }: ModelDownloadsManagerProps) {
-  const [downloads, setDownloads] = useState<Record<string, DownloadProgress>>({})
-  const [activeDownload, setActiveDownload] = useState<string | null>(null)
-  const eventSourceRef = useRef<EventSource | null>(null)
+  const [downloads, setDownloads] = useState<DownloadProgress[]>([])
+  const [loading, setLoading] = useState(true)
+  const pollIntervalRef = useRef<number | null>(null)
+  const notifiedRef = useRef<Set<string>>(new Set()) // Track which downloads we've notified about
 
   useEffect(() => {
     // Start downloading initial model if provided
-    if (initialModel && !downloads[initialModel]) {
-      startDownload(initialModel)
+    if (initialModel) {
+      enqueueDownload(initialModel)
     }
-  }, [initialModel])
 
-  useEffect(() => {
+    // Start polling for status
+    fetchStatus()
+    startPolling()
+
     return () => {
-      // Cleanup: close EventSource on unmount
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close()
-      }
+      stopPolling()
     }
   }, [])
 
-  const startDownload = async (modelName: string) => {
-    // Mark as pending
-    setDownloads(prev => ({
-      ...prev,
-      [modelName]: {
-        model_name: modelName,
-        status: 'pending',
-        timestamp: new Date().toISOString()
-      }
-    }))
+  const startPolling = () => {
+    // Poll every 2 seconds for status updates
+    pollIntervalRef.current = window.setInterval(() => {
+      fetchStatus()
+    }, 2000)
+  }
 
-    setActiveDownload(modelName)
-
-    // Close existing EventSource if any
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close()
+  const stopPolling = () => {
+    if (pollIntervalRef.current !== null) {
+      clearInterval(pollIntervalRef.current)
+      pollIntervalRef.current = null
     }
+  }
 
-    // Create new EventSource for this download
-    const eventSource = new EventSource(
-      `/api/v1/setup/models/download/progress?model_name=${encodeURIComponent(modelName)}`
-    )
+  const fetchStatus = async () => {
+    try {
+      const response = await authFetch('/api/v1/models/downloads/status')
+      if (response.ok) {
+        const data = await response.json()
+        const newDownloads = data.downloads || []
 
-    eventSourceRef.current = eventSource
-
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data)
-
-        if (data.status === 'error') {
-          setDownloads(prev => ({
-            ...prev,
-            [modelName]: {
-              model_name: modelName,
-              status: 'failed',
-              error: data.error || 'Download failed',
-              timestamp: new Date().toISOString()
-            }
-          }))
-          eventSource.close()
-          setActiveDownload(null)
-          return
-        }
-
-        if (data.status === 'completed') {
-          setDownloads(prev => ({
-            ...prev,
-            [modelName]: {
-              model_name: modelName,
-              status: 'completed',
-              progress: 100,
-              timestamp: new Date().toISOString()
-            }
-          }))
-          showToast.success(`Model ${modelName} downloaded successfully`)
-          eventSource.close()
-          setActiveDownload(null)
-          return
-        }
-
-        // Update progress
-        setDownloads(prev => ({
-          ...prev,
-          [modelName]: {
-            model_name: modelName,
-            status: 'downloading',
-            progress: data.progress || 0,
-            speed: data.speed,
-            size: data.size,
-            timestamp: new Date().toISOString()
+        // Check for completed downloads and send notifications
+        newDownloads.forEach((download: DownloadProgress) => {
+          if (download.status === 'completed' && !notifiedRef.current.has(download.name)) {
+            notifiedRef.current.add(download.name)
+            showDesktopNotification(download.name)
+            showToast.success(`${download.name} downloaded successfully`)
           }
-        }))
-      } catch (error) {
-        console.error('Failed to parse SSE message:', error)
-      }
-    }
+        })
 
-    eventSource.onerror = (error) => {
-      console.error('SSE error:', error)
-      setDownloads(prev => ({
-        ...prev,
-        [modelName]: {
-          model_name: modelName,
-          status: 'failed',
-          error: 'Connection lost',
-          timestamp: new Date().toISOString()
+        setDownloads(newDownloads)
+        setLoading(false)
+      }
+    } catch (error) {
+      console.error('Failed to fetch download status:', error)
+      setLoading(false)
+    }
+  }
+
+  const enqueueDownload = async (modelName: string) => {
+    try {
+      const response = await authFetch('/api/v1/models/downloads/enqueue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ models: [modelName] })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.enqueued.length > 0) {
+          showToast.success(`${modelName} added to download queue`)
+          fetchStatus() // Refresh immediately
+        } else {
+          showToast.info(`${modelName} is already queued or downloading`)
         }
-      }))
-      eventSource.close()
-      setActiveDownload(null)
+      }
+    } catch (error) {
+      console.error('Failed to enqueue download:', error)
+      showToast.error('Failed to start download')
+    }
+  }
+
+  const cancelDownload = async (modelName: string) => {
+    try {
+      const response = await authFetch(`/api/v1/models/downloads/${encodeURIComponent(modelName)}/cancel`, {
+        method: 'POST'
+      })
+
+      if (response.ok) {
+        showToast.success(`${modelName} download canceled`)
+        fetchStatus() // Refresh immediately
+      }
+    } catch (error) {
+      console.error('Failed to cancel download:', error)
+      showToast.error('Failed to cancel download')
     }
   }
 
   const retryDownload = (modelName: string) => {
-    startDownload(modelName)
+    enqueueDownload(modelName)
+  }
+
+  const showDesktopNotification = (modelName: string) => {
+    // Check if notifications are supported and permitted
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('Model Download Complete', {
+        body: `${modelName} is ready to use`,
+        icon: '/favicon.ico'
+      })
+    } else if ('Notification' in window && Notification.permission !== 'denied') {
+      // Request permission
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          new Notification('Model Download Complete', {
+            body: `${modelName} is ready to use`,
+            icon: '/favicon.ico'
+          })
+        }
+      })
+    }
   }
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'pending':
+      case 'queued':
         return <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
       case 'downloading':
         return <Download className="w-4 h-4 text-blue-600 dark:text-blue-400 animate-bounce" />
@@ -145,6 +152,8 @@ export function ModelDownloadsManager({ onClose, initialModel }: ModelDownloadsM
         return <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
       case 'failed':
         return <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
+      case 'canceled':
+        return <Ban className="w-4 h-4 text-orange-600 dark:text-orange-400" />
       default:
         return null
     }
@@ -152,7 +161,7 @@ export function ModelDownloadsManager({ onClose, initialModel }: ModelDownloadsM
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending':
+      case 'queued':
         return 'text-gray-600 dark:text-gray-400'
       case 'downloading':
         return 'text-blue-600 dark:text-blue-400'
@@ -160,17 +169,22 @@ export function ModelDownloadsManager({ onClose, initialModel }: ModelDownloadsM
         return 'text-green-600 dark:text-green-400'
       case 'failed':
         return 'text-red-600 dark:text-red-400'
+      case 'canceled':
+        return 'text-orange-600 dark:text-orange-400'
       default:
         return 'text-gray-600 dark:text-gray-400'
     }
   }
 
-  const downloadsList = Object.values(downloads).sort((a, b) => {
+  const downloadsList = downloads.sort((a, b) => {
     // Active downloads first
     if (a.status === 'downloading' && b.status !== 'downloading') return -1
     if (b.status === 'downloading' && a.status !== 'downloading') return 1
+    // Queued second
+    if (a.status === 'queued' && b.status !== 'queued') return -1
+    if (b.status === 'queued' && a.status !== 'queued') return 1
     // Then by timestamp (newest first)
-    return (b.timestamp || '').localeCompare(a.timestamp || '')
+    return (b.started_at || b.completed_at || '').localeCompare(a.started_at || a.completed_at || '')
   })
 
   return (
@@ -211,7 +225,7 @@ export function ModelDownloadsManager({ onClose, initialModel }: ModelDownloadsM
             <div className="space-y-3">
               {downloadsList.map((download) => (
                 <div
-                  key={download.model_name}
+                  key={download.name}
                   className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4"
                 >
                   <div className="flex items-start justify-between mb-2">
@@ -219,25 +233,40 @@ export function ModelDownloadsManager({ onClose, initialModel }: ModelDownloadsM
                       {getStatusIcon(download.status)}
                       <div className="flex-1 min-w-0">
                         <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                          {download.model_name}
+                          {download.name}
                         </h3>
                         <p className={`text-xs ${getStatusColor(download.status)} capitalize`}>
                           {download.status}
-                          {download.size && ` • ${download.size}`}
+                          {download.position && ` • Position: ${download.position}`}
                         </p>
                       </div>
                     </div>
 
-                    {download.status === 'failed' && (
-                      <button
-                        onClick={() => retryDownload(download.model_name)}
-                        className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                        title="Retry download"
-                      >
-                        <RefreshCw size={12} />
-                        Retry
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {/* Cancel button for queued/downloading */}
+                      {(download.status === 'queued' || download.status === 'downloading') && (
+                        <button
+                          onClick={() => cancelDownload(download.name)}
+                          className="flex items-center gap-1 px-2 py-1 text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+                          title="Cancel download"
+                        >
+                          <X size={12} />
+                          Cancel
+                        </button>
+                      )}
+
+                      {/* Retry button for failed/canceled */}
+                      {(download.status === 'failed' || download.status === 'canceled') && (
+                        <button
+                          onClick={() => retryDownload(download.name)}
+                          className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                          title="Retry download"
+                        >
+                          <RefreshCw size={12} />
+                          Retry
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Progress Bar */}
@@ -271,14 +300,9 @@ export function ModelDownloadsManager({ onClose, initialModel }: ModelDownloadsM
         {/* Footer */}
         <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            {activeDownload ? (
-              <>Downloading {activeDownload}...</>
-            ) : (
-              <>
-                {downloadsList.filter(d => d.status === 'completed').length} completed •{' '}
-                {downloadsList.filter(d => d.status === 'failed').length} failed
-              </>
-            )}
+            {downloadsList.filter(d => d.status === 'downloading').length} active •{' '}
+            {downloadsList.filter(d => d.status === 'queued').length} queued •{' '}
+            {downloadsList.filter(d => d.status === 'completed').length} completed
           </p>
           <button
             onClick={onClose}
