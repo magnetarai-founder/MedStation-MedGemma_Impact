@@ -17,35 +17,42 @@ function ModelManagerSection() {
     refetchInterval: 5000 // Refresh every 5 seconds
   })
 
-  // Load favorites
+  // DEPRECATED: Favorites endpoint removed in favor of hot slots
+  // Hot slots are managed via ModelManagementSidebar using:
+  // - POST /api/v1/chat/models/hot-slots/{slot}
+  // - DELETE /api/v1/chat/models/hot-slots/{slot}
+  //
+  // Load favorites (DISABLED - endpoint doesn't exist)
   useEffect(() => {
-    const loadFavorites = async () => {
-      try {
-        const response = await fetch('/api/v1/chat/models/favorites')
-        if (response.ok) {
-          const data = await response.json()
-          setFavorites(data.favorites || [])
-        }
-      } catch (error) {
-        console.error('Failed to load favorites:', error)
-      }
-    }
-    loadFavorites()
+    // const loadFavorites = async () => {
+    //   try {
+    //     const response = await fetch('/api/v1/chat/models/favorites')
+    //     if (response.ok) {
+    //       const data = await response.json()
+    //       setFavorites(data.favorites || [])
+    //     }
+    //   } catch (error) {
+    //     console.error('Failed to load favorites:', error)
+    //   }
+    // }
+    // loadFavorites()
   }, [])
 
   const toggleFavorite = async (modelName: string) => {
-    const isFavorite = favorites.includes(modelName)
-    try {
-      const method = isFavorite ? 'DELETE' : 'POST'
-      const response = await fetch(`/api/v1/chat/models/favorites/${encodeURIComponent(modelName)}`, { method })
-
-      if (response.ok) {
-        const data = await response.json()
-        setFavorites(data.favorites || [])
-      }
-    } catch (error) {
-      console.error('Failed to toggle favorite:', error)
-    }
+    // DISABLED - Use hot slots instead via ModelManagementSidebar
+    console.warn('toggleFavorite is deprecated - use hot slots instead')
+    // const isFavorite = favorites.includes(modelName)
+    // try {
+    //   const method = isFavorite ? 'DELETE' : 'POST'
+    //   const response = await fetch(`/api/v1/chat/models/favorites/${encodeURIComponent(modelName)}`, { method })
+    //
+    //   if (response.ok) {
+    //     const data = await response.json()
+    //     setFavorites(data.favorites || [])
+    //   }
+    // } catch (error) {
+    //   console.error('Failed to toggle favorite:', error)
+    // }
   }
 
   const preloadModel = async (modelName: string) => {

@@ -64,11 +64,15 @@ export function CodeChatPanel() {
         : message
 
       // Send to backend with streaming
-      const response = await fetch('/api/v1/chat/send', {
+      // Note: Endpoint updated to match current API structure
+      const token = localStorage.getItem('auth_token')
+      const response = await fetch(`/api/v1/chat/sessions/${activeChatId}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
-          chat_id: activeChatId,
           message: contextMessage,
           model: selectedModel,
           stream: true,

@@ -72,7 +72,13 @@ export function PerformanceMonitorDropdown({ isOpen: controlledIsOpen, onToggle 
     setIsLoading(true)
     setError(null)
     try {
-      const response = await fetch('/api/v1/chat/performance/stats')
+      // Use authFetch to include Authorization header
+      const token = localStorage.getItem('auth_token')
+      const response = await fetch('/api/v1/chat/performance/stats', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
       if (!response.ok) {
         throw new Error('Failed to fetch stats')
       }
