@@ -368,3 +368,38 @@ class ErrorHandler:
                 "details": details or {}
             }
         )
+
+    @staticmethod
+    def record_error_analytics(
+        user_id: str,
+        error: ElohimOSError,
+        session_id: Optional[str] = None,
+        team_id: Optional[str] = None
+    ):
+        """
+        Record error to analytics (Sprint 6 Theme A)
+
+        Args:
+            user_id: User experiencing the error
+            error: ElohimOSError instance
+            session_id: Associated session ID
+            team_id: Associated team ID
+        """
+        try:
+            from api.services.analytics import get_analytics_service
+
+            analytics = get_analytics_service()
+            analytics.record_error(
+                user_id=user_id,
+                error_code=error.error_type.value,
+                session_id=session_id,
+                team_id=team_id,
+                metadata={
+                    "message": error.message,
+                    "status_code": error.status_code,
+                    **error.details
+                }
+            )
+        except Exception as analytics_error:
+            # Don't fail the request if analytics recording fails
+            logger.warning(f"Failed to record error analytics: {analytics_error}")

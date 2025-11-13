@@ -516,6 +516,7 @@ async def send_message_stream(
 
     # Stream response
     full_response = ""
+    start_time = datetime.utcnow()  # Track start time for analytics
 
     try:
         # Send SSE header
@@ -556,6 +557,28 @@ async def send_message_stream(
             context_data,
             {"model": model, "tokens": len(full_response.split())}
         )
+
+        # Record analytics event (Sprint 6 Theme A)
+        try:
+            from api.services.analytics import get_analytics_service
+            duration_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+            tokens = len(full_response.split())  # Rough token estimate
+
+            analytics = get_analytics_service()
+            await asyncio.to_thread(
+                analytics.record_event,
+                user_id=user_id,
+                event_type="message.sent",
+                session_id=chat_id,
+                team_id=team_id,
+                model_name=model,
+                tokens_used=tokens,
+                duration_ms=duration_ms,
+                metadata={"temperature": temperature, "top_p": top_p}
+            )
+        except Exception as analytics_error:
+            # Don't fail the request if analytics fails
+            logger.warning(f"Failed to record analytics: {analytics_error}")
 
         # Send done event
         yield f"data: {json.dumps({'done': True, 'message_id': str(uuid.uuid4())})}\n\n"

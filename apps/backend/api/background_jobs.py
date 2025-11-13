@@ -268,3 +268,82 @@ async def cleanup_audit_logs(max_age_days: int = 90):
         logger.debug("Audit logger not available for cleanup")
     except Exception as e:
         logger.error(f"Failed to cleanup audit logs: {e}")
+
+
+# ============================================================================
+# ANALYTICS AGGREGATION JOBS (Sprint 6 Theme A)
+# ============================================================================
+
+async def aggregate_analytics_hourly():
+    """
+    Aggregate analytics data hourly
+
+    Re-aggregates today's data (idempotent) to keep dashboard current
+    """
+    try:
+        from api.services.analytics import get_analytics_service
+        from datetime import datetime
+
+        analytics = get_analytics_service()
+        today = datetime.utcnow().date().strftime('%Y-%m-%d')
+
+        # Re-aggregate today (idempotent)
+        await asyncio.to_thread(analytics.aggregate_daily, today)
+
+        logger.info(f"📊 Analytics aggregation complete for {today}")
+
+    except Exception as e:
+        logger.error(f"Failed to aggregate analytics: {e}", exc_info=True)
+
+
+async def aggregate_analytics_daily():
+    """
+    Aggregate analytics data daily
+
+    Runs aggregation for yesterday and today to catch any missed events
+    """
+    try:
+        from api.services.analytics import get_analytics_service
+        from datetime import datetime, timedelta
+
+        analytics = get_analytics_service()
+
+        # Aggregate yesterday and today
+        today = datetime.utcnow().date()
+        yesterday = today - timedelta(days=1)
+
+        await asyncio.to_thread(analytics.aggregate_daily, yesterday.strftime('%Y-%m-%d'))
+        await asyncio.to_thread(analytics.aggregate_daily, today.strftime('%Y-%m-%d'))
+
+        logger.info(f"📊 Daily analytics aggregation complete")
+
+    except Exception as e:
+        logger.error(f"Failed to run daily analytics aggregation: {e}", exc_info=True)
+
+
+def register_analytics_jobs(manager: Optional[BackgroundJobManager] = None):
+    """
+    Register analytics aggregation jobs with the background job manager
+
+    Call this from main.py after job manager is initialized
+    """
+    if manager is None:
+        manager = get_job_manager()
+
+    # Hourly aggregation (keeps dashboard current throughout the day)
+    manager.register_job(
+        name="analytics_hourly",
+        interval_seconds=3600,  # Every hour
+        task=aggregate_analytics_hourly,
+        description="Aggregate analytics data hourly for real-time dashboard updates"
+    )
+
+    # Daily aggregation (comprehensive daily rollup)
+    manager.register_job(
+        name="analytics_daily",
+        interval_seconds=86400,  # Every 24 hours
+        task=aggregate_analytics_daily,
+        description="Aggregate analytics data daily (yesterday + today)"
+    )
+
+    logger.info("✅ Analytics aggregation jobs registered")

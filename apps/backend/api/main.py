@@ -440,10 +440,33 @@ async def lifespan(app: FastAPI):
         # Don't fail startup if model preloading fails entirely
         logger.warning(f"Model auto-loading disabled: {e}")
 
+    # Register analytics aggregation jobs (Sprint 6 Theme A)
+    try:
+        from api.background_jobs import register_analytics_jobs, get_job_manager
+
+        register_analytics_jobs()
+
+        # Start the background job manager
+        job_manager = get_job_manager()
+        await job_manager.start()
+
+        logger.info("✓ Analytics aggregation jobs started")
+    except Exception as e:
+        logger.warning(f"Failed to start analytics jobs: {e}")
+
     yield
     # Shutdown (clean shutdown via lifespan)
     print("Shutting down...")
     cleanup_task.cancel()
+
+    # Stop background jobs
+    try:
+        from api.background_jobs import get_job_manager
+        job_manager = get_job_manager()
+        await job_manager.stop()
+    except Exception as e:
+        logger.warning(f"Error stopping background jobs: {e}")
+
     cleanup_sessions()
 
 # Request ID context for structured logging
@@ -739,6 +762,16 @@ except Exception as e:
     services_failed.append("Model Downloads Queue")
     logger.error("Failed to load model downloads router", exc_info=True)
     logger.error(f"Audit Logging service failed to load: {e}")
+
+# Analytics API (Sprint 6 Theme A)
+try:
+    from api.routes import analytics as _analytics_routes
+    app.include_router(_analytics_routes.router)
+    services_loaded.append("Analytics Dashboard")
+except Exception as e:
+    services_failed.append("Analytics Dashboard")
+    logger.error("Failed to load analytics router", exc_info=True)
+    logger.error(f"Analytics service failed to load: {e}")
 
 # Monitoring routes
 try:
