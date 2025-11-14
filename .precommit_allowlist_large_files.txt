@@ -4,7 +4,6 @@ apps/backend/api/services/team.py
 apps/backend/api/chat_service.py
 apps/backend/api/services/chat.py
 apps/backend/api/main.py
-apps/frontend/src/components/VaultWorkspace.tsx
 apps/frontend/src/components/ProfileSettings.tsx
 apps/frontend/src/components/AutomationTab.tsx
 apps/frontend/src/components/WorkflowBuilder.tsx

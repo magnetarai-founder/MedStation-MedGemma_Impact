@@ -166,7 +166,7 @@ This software uses strong cryptographic algorithms (256-bit) that may be subject
 source venv/bin/activate
 
 # Install dev dependencies
-pip install -r docs/dev/requirements-dev.txt
+pip install -r docs/development/requirements-dev.txt
 
 # Run linting
 ruff check apps/backend/api/

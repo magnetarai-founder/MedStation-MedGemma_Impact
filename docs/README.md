@@ -137,9 +137,9 @@ Old/duplicate documentation kept for reference.
 
 ## 🔗 External Resources
 
-- **GitHub:** [Repository URL]
-- **Documentation Site:** [Docs URL]
-- **Community:** [Discord/Slack URL]
+- **GitHub:** https://github.com/indiedevhipps/ElohimOS
+- **Documentation Site:** /docs
+- **Community:** Contact founder for access
 
 ---
 
