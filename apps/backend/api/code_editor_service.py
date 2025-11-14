@@ -142,6 +142,11 @@ class FileDiffResponse(BaseModel):
     current_hash: str
     current_updated_at: str
     conflict: bool = False
+    truncated: bool = False
+    max_lines: Optional[int] = None
+    shown_head: Optional[int] = None
+    shown_tail: Optional[int] = None
+    message: Optional[str] = None
 
 
 class FileResponse(BaseModel):
@@ -530,12 +535,20 @@ async def get_file(file_id: str, current_user: dict = Depends(get_current_user))
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# Diff size limits (configurable)
+MAX_DIFF_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+MAX_DIFF_LINES = 10_000  # Max lines in diff
+TRUNCATE_HEAD_LINES = 200  # Head lines to show when truncated
+TRUNCATE_TAIL_LINES = 200  # Tail lines to show when truncated
+
+
 @router.post("/files/{file_id}/diff", response_model=FileDiffResponse)
 @require_perm("code.use")
 async def get_file_diff(file_id: str, diff_request: FileDiffRequest, current_user: dict = Depends(get_current_user)):
     """
     Generate unified diff between current file content and proposed new content.
     Optionally detects conflicts if base_updated_at is provided.
+    Truncates large diffs with flags.
     """
     try:
         conn = memory.memory.conn
@@ -559,6 +572,29 @@ async def get_file_diff(file_id: str, diff_request: FileDiffRequest, current_use
             conflict = True
             logger.warning(f"File {file_id} has been modified since base timestamp")
 
+        # Check file size limits
+        if len(current_content) > MAX_DIFF_FILE_SIZE or len(diff_request.new_content) > MAX_DIFF_FILE_SIZE:
+            logger.warning(
+                f"File {file_id} exceeds size limit: current={len(current_content)} bytes, new={len(diff_request.new_content)} bytes"
+            )
+            # Generate hash of current content
+            current_hash = hashlib.sha256(current_content.encode('utf-8')).hexdigest()
+
+            return FileDiffResponse(
+                diff=f"[Diff unavailable - file exceeds {MAX_DIFF_FILE_SIZE / 1024 / 1024:.1f}MB limit]
+
+Current: {len(current_content):,} bytes
+Proposed: {len(diff_request.new_content):,} bytes",
+                current_hash=current_hash,
+                current_updated_at=current_updated_at,
+                conflict=conflict,
+                truncated=True,
+                max_lines=0,
+                shown_head=0,
+                shown_tail=0,
+                message="Diff unavailable for files exceeding size limit"
+            )
+
         # Generate unified diff
         current_lines = current_content.splitlines(keepends=True)
         new_lines = diff_request.new_content.splitlines(keepends=True)
@@ -571,7 +607,45 @@ async def get_file_diff(file_id: str, diff_request: FileDiffRequest, current_use
             lineterm=''
         )
 
-        diff_str = '\n'.join(diff)
+        diff_lines = list(diff)
+
+        # Check if diff exceeds line limit
+        if len(diff_lines) > MAX_DIFF_LINES:
+            logger.warning(f"Diff for file {file_id} exceeds {MAX_DIFF_LINES} lines, truncating")
+
+            # Take head and tail
+            head = diff_lines[:TRUNCATE_HEAD_LINES]
+            tail = diff_lines[-TRUNCATE_TAIL_LINES:]
+
+            truncated_diff = (
+                '
+'.join(head) +
+                f"
+
+... [Truncated: {len(diff_lines) - TRUNCATE_HEAD_LINES - TRUNCATE_TAIL_LINES:,} lines omitted] ...
+
+" +
+                '
+'.join(tail)
+            )
+
+            # Generate hash of current content
+            current_hash = hashlib.sha256(current_content.encode('utf-8')).hexdigest()
+
+            return FileDiffResponse(
+                diff=truncated_diff,
+                current_hash=current_hash,
+                current_updated_at=current_updated_at,
+                conflict=conflict,
+                truncated=True,
+                max_lines=MAX_DIFF_LINES,
+                shown_head=TRUNCATE_HEAD_LINES,
+                shown_tail=TRUNCATE_TAIL_LINES,
+                message=f"Diff truncated: showing first {TRUNCATE_HEAD_LINES} and last {TRUNCATE_TAIL_LINES} lines of {len(diff_lines):,} total"
+            )
+
+        diff_str = '
+'.join(diff_lines)
 
         # Generate hash of current content
         current_hash = hashlib.sha256(current_content.encode('utf-8')).hexdigest()
