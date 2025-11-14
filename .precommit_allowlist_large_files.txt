@@ -1,6 +1,3 @@
 apps/backend/api/main.py
 apps/backend/api/template_library_full.py
 apps/backend/api/routes/team.py
-apps/backend/api/routes/chat.py
-apps/backend/api/vault/routes.py
-apps/backend/api/core_nlp_templates.py
