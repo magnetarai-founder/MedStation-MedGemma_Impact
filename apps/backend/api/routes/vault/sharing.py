@@ -8,12 +8,15 @@ import uuid
 import base64
 from datetime import datetime, timedelta
 from typing import Optional, Dict
-from fastapi import APIRouter, HTTPException, Form, Depends
+from fastapi import APIRouter, HTTPException, Form, Depends, Request
 
 from api.auth_middleware import get_current_user
 from api.services.vault.core import get_vault_service
+from api.rate_limiter import get_client_ip, rate_limiter
+from api.audit_logger import get_audit_logger
 
 logger = logging.getLogger(__name__)
+audit_logger = get_audit_logger()
 
 router = APIRouter()
 
@@ -22,6 +25,7 @@ router = APIRouter()
 
 @router.post("/files/{file_id}/share")
 async def create_share_link_endpoint(
+    request: Request,
     file_id: str,
     vault_type: str = Form("real"),
     password: str = Form(None),
@@ -31,6 +35,12 @@ async def create_share_link_endpoint(
     current_user: Dict = Depends(get_current_user)
 ):
     """Create a shareable link for a file"""
+    # Rate limiting: 10 requests per minute per user
+    ip = get_client_ip(request)
+    key = f"vault:share:create:{current_user['user_id']}:{ip}"
+    if not rate_limiter.check_rate_limit(key, max_requests=10, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded for vault.share.created")
+
     service = get_vault_service()
     user_id = current_user["user_id"]
 
@@ -39,6 +49,21 @@ async def create_share_link_endpoint(
             user_id, vault_type, file_id, password,
             expires_at, max_downloads, permissions
         )
+
+        # Audit logging after success
+        audit_logger.log(
+            user_id=user_id,
+            action="vault.share.created",
+            resource="vault",
+            resource_id=file_id,
+            details={
+                "file_id": file_id,
+                "share_id": result.get("share_id"),
+                "expires_at": expires_at,
+                "max_downloads": max_downloads
+            }
+        )
+
         return result
     except Exception as e:
         logger.error(f"Failed to create share link: {e}")
@@ -47,11 +72,18 @@ async def create_share_link_endpoint(
 
 @router.get("/files/{file_id}/shares")
 async def get_file_shares_endpoint(
+    request: Request,
     file_id: str,
     vault_type: str = "real",
     current_user: Dict = Depends(get_current_user)
 ):
     """Get all share links for a file"""
+    # Rate limiting: 60 requests per minute per user
+    ip = get_client_ip(request)
+    key = f"vault:share:list:{current_user['user_id']}:{ip}"
+    if not rate_limiter.check_rate_limit(key, max_requests=60, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded for vault.share.list")
+
     service = get_vault_service()
     user_id = current_user["user_id"]
 
@@ -65,11 +97,18 @@ async def get_file_shares_endpoint(
 
 @router.delete("/shares/{share_id}")
 async def revoke_share_link_endpoint(
+    request: Request,
     share_id: str,
     vault_type: str = "real",
     current_user: Dict = Depends(get_current_user)
 ):
     """Revoke a share link"""
+    # Rate limiting: 30 requests per minute per user
+    ip = get_client_ip(request)
+    key = f"vault:share:revoke:{current_user['user_id']}:{ip}"
+    if not rate_limiter.check_rate_limit(key, max_requests=30, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded for vault.share.revoked")
+
     service = get_vault_service()
     user_id = current_user["user_id"]
 
@@ -77,6 +116,16 @@ async def revoke_share_link_endpoint(
         success = service.revoke_share_link(user_id, vault_type, share_id)
         if not success:
             raise HTTPException(status_code=404, detail="Share link not found")
+
+        # Audit logging after success
+        audit_logger.log(
+            user_id=user_id,
+            action="vault.share.revoked",
+            resource="vault",
+            resource_id=share_id,
+            details={"share_id": share_id}
+        )
+
         return {"success": True, "message": "Share link revoked"}
     except Exception as e:
         logger.error(f"Failed to revoke share link: {e}")

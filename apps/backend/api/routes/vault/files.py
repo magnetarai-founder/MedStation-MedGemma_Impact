@@ -14,8 +14,11 @@ from api.auth_middleware import get_current_user
 from api.utils import sanitize_filename
 from api.services.vault.core import get_vault_service
 from api.services.vault.schemas import VaultFile
+from api.rate_limiter import get_client_ip, rate_limiter
+from api.audit_logger import get_audit_logger
 
 logger = logging.getLogger(__name__)
+audit_logger = get_audit_logger()
 
 # Import WebSocket connection manager
 try:
@@ -338,12 +341,19 @@ async def get_file_thumbnail(
 
 @router.get("/files/{file_id}/download")
 async def download_vault_file(
+    request: Request,
     file_id: str,
     vault_type: str = "real",
     vault_passphrase: str = "",
     current_user: Dict = Depends(get_current_user)
 ):
     """Download and decrypt a vault file"""
+    # Rate limiting: 120 requests per minute per user
+    ip = get_client_ip(request)
+    key = f"vault:file:download:{current_user['user_id']}:{ip}"
+    if not rate_limiter.check_rate_limit(key, max_requests=120, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded for vault.file.downloaded")
+
     user_id = current_user["user_id"]
 
     if vault_type not in ('real', 'decoy'):
@@ -390,6 +400,15 @@ async def download_vault_file(
         temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=f"_{file_row['filename']}")
         temp_file.write(decrypted_data)
         temp_file.close()
+
+        # Audit logging after successful download
+        audit_logger.log(
+            user_id=user_id,
+            action="vault.file.downloaded",
+            resource="vault",
+            resource_id=file_id,
+            details={"file_id": file_id, "vault_type": vault_type}
+        )
 
         return FileResponse(
             path=temp_file.name,
@@ -686,6 +705,7 @@ async def secure_delete_file_endpoint(
 
 @router.get("/files/{file_id}/versions")
 async def get_file_versions_endpoint(
+    request: Request,
     file_id: str,
     vault_type: str = "real",
     limit: int = 50,
@@ -693,6 +713,12 @@ async def get_file_versions_endpoint(
     current_user: Dict = Depends(get_current_user)
 ):
     """Get file versions with pagination"""
+    # Rate limiting: 60 requests per minute per user
+    ip = get_client_ip(request)
+    key = f"vault:versions:list:{current_user['user_id']}:{ip}"
+    if not rate_limiter.check_rate_limit(key, max_requests=60, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded for vault.versions.list")
+
     service = get_vault_service()
     user_id = current_user["user_id"]
 
@@ -717,17 +743,34 @@ async def get_file_versions_endpoint(
 
 @router.post("/files/{file_id}/versions/{version_id}/restore")
 async def restore_file_version_endpoint(
+    request: Request,
     file_id: str,
     version_id: str,
     vault_type: str = Form("real"),
     current_user: Dict = Depends(get_current_user)
 ):
     """Restore a file to a previous version"""
+    # Rate limiting: 20 requests per minute per user
+    ip = get_client_ip(request)
+    key = f"vault:version:restore:{current_user['user_id']}:{ip}"
+    if not rate_limiter.check_rate_limit(key, max_requests=20, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded for vault.version.restored")
+
     service = get_vault_service()
     user_id = current_user["user_id"]
 
     try:
         result = service.restore_file_version(user_id, vault_type, file_id, version_id)
+
+        # Audit logging after success
+        audit_logger.log(
+            user_id=user_id,
+            action="vault.version.restored",
+            resource="vault",
+            resource_id=file_id,
+            details={"file_id": file_id, "version_id": version_id}
+        )
+
         return result
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -738,12 +781,19 @@ async def restore_file_version_endpoint(
 
 @router.delete("/files/{file_id}/versions/{version_id}")
 async def delete_file_version_endpoint(
+    request: Request,
     file_id: str,
     version_id: str,
     vault_type: str = "real",
     current_user: Dict = Depends(get_current_user)
 ):
     """Delete a specific file version"""
+    # Rate limiting: 20 requests per minute per user
+    ip = get_client_ip(request)
+    key = f"vault:version:delete:{current_user['user_id']}:{ip}"
+    if not rate_limiter.check_rate_limit(key, max_requests=20, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded for vault.version.deleted")
+
     service = get_vault_service()
     user_id = current_user["user_id"]
 
@@ -751,6 +801,16 @@ async def delete_file_version_endpoint(
         success = service.delete_file_version(user_id, vault_type, version_id)
         if not success:
             raise HTTPException(status_code=404, detail="Version not found")
+
+        # Audit logging after success
+        audit_logger.log(
+            user_id=user_id,
+            action="vault.version.deleted",
+            resource="vault",
+            resource_id=file_id,
+            details={"file_id": file_id, "version_id": version_id}
+        )
+
         return {"success": True, "message": "Version deleted"}
     except Exception as e:
         logger.error(f"Failed to delete file version: {e}")
@@ -761,16 +821,33 @@ async def delete_file_version_endpoint(
 
 @router.post("/files/{file_id}/trash")
 async def move_to_trash_endpoint(
+    request: Request,
     file_id: str,
     vault_type: str = Form("real"),
     current_user: Dict = Depends(get_current_user)
 ):
     """Move a file to trash (soft delete)"""
+    # Rate limiting: 60 requests per minute per user
+    ip = get_client_ip(request)
+    key = f"vault:file:trash:{current_user['user_id']}:{ip}"
+    if not rate_limiter.check_rate_limit(key, max_requests=60, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded for vault.file.trashed")
+
     service = get_vault_service()
     user_id = current_user["user_id"]
 
     try:
         result = service.move_to_trash(user_id, vault_type, file_id)
+
+        # Audit logging after success
+        audit_logger.log(
+            user_id=user_id,
+            action="vault.file.trashed",
+            resource="vault",
+            resource_id=file_id,
+            details={"file_id": file_id}
+        )
+
         return result
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -781,16 +858,33 @@ async def move_to_trash_endpoint(
 
 @router.post("/files/{file_id}/restore")
 async def restore_from_trash_endpoint(
+    request: Request,
     file_id: str,
     vault_type: str = Form("real"),
     current_user: Dict = Depends(get_current_user)
 ):
     """Restore a file from trash"""
+    # Rate limiting: 30 requests per minute per user
+    ip = get_client_ip(request)
+    key = f"vault:file:restore:{current_user['user_id']}:{ip}"
+    if not rate_limiter.check_rate_limit(key, max_requests=30, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded for vault.file.restored")
+
     service = get_vault_service()
     user_id = current_user["user_id"]
 
     try:
         result = service.restore_from_trash(user_id, vault_type, file_id)
+
+        # Audit logging after success
+        audit_logger.log(
+            user_id=user_id,
+            action="vault.file.restored",
+            resource="vault",
+            resource_id=file_id,
+            details={"file_id": file_id}
+        )
+
         return result
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -801,12 +895,19 @@ async def restore_from_trash_endpoint(
 
 @router.get("/trash")
 async def get_trash_files_endpoint(
+    request: Request,
     vault_type: str = "real",
     limit: int = 50,
     offset: int = 0,
     current_user: Dict = Depends(get_current_user)
 ):
     """Get trash files with pagination"""
+    # Rate limiting: 60 requests per minute per user
+    ip = get_client_ip(request)
+    key = f"vault:trash:list:{current_user['user_id']}:{ip}"
+    if not rate_limiter.check_rate_limit(key, max_requests=60, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded for vault.trash.list")
+
     service = get_vault_service()
     user_id = current_user["user_id"]
 
@@ -830,13 +931,34 @@ async def get_trash_files_endpoint(
 
 
 @router.delete("/trash/empty")
-async def empty_trash_endpoint(vault_type: str = "real", current_user: Dict = Depends(get_current_user)):
+async def empty_trash_endpoint(
+    request: Request,
+    vault_type: str = "real",
+    current_user: Dict = Depends(get_current_user)
+):
     """Permanently delete all files in trash"""
+    # Rate limiting: 5 requests per minute per user (destructive operation)
+    ip = get_client_ip(request)
+    key = f"vault:trash:empty:{current_user['user_id']}:{ip}"
+    if not rate_limiter.check_rate_limit(key, max_requests=5, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded for vault.trash.emptied")
+
     service = get_vault_service()
     user_id = current_user["user_id"]
 
     try:
         result = service.empty_trash(user_id, vault_type)
+
+        # Audit logging after success
+        deleted_count = result.get("deleted_count", 0)
+        audit_logger.log(
+            user_id=user_id,
+            action="vault.trash.emptied",
+            resource="vault",
+            resource_id=user_id,  # User-level operation
+            details={"count": deleted_count}
+        )
+
         return result
     except Exception as e:
         logger.error(f"Failed to empty trash: {e}")
@@ -847,6 +969,7 @@ async def empty_trash_endpoint(vault_type: str = "real", current_user: Dict = De
 
 @router.get("/search")
 async def search_files_endpoint(
+    request: Request,
     vault_type: str = "real",
     query: str = None,
     mime_type: str = None,
@@ -861,6 +984,12 @@ async def search_files_endpoint(
     current_user: Dict = Depends(get_current_user)
 ):
     """Advanced file search with pagination"""
+    # Rate limiting: 60 requests per minute per user
+    ip = get_client_ip(request)
+    key = f"vault:search:{current_user['user_id']}:{ip}"
+    if not rate_limiter.check_rate_limit(key, max_requests=60, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded for vault.search")
+
     service = get_vault_service()
     user_id = current_user["user_id"]
 
@@ -934,17 +1063,34 @@ async def get_audit_logs_endpoint(
 
 @router.post("/files/{file_id}/comments")
 async def add_file_comment_endpoint(
+    request: Request,
     file_id: str,
     comment_text: str = Form(...),
     vault_type: str = Form("real"),
     current_user: Dict = Depends(get_current_user)
 ):
     """Add a comment to a file"""
+    # Rate limiting: 60 requests per minute per user
+    ip = get_client_ip(request)
+    key = f"vault:comment:add:{current_user['user_id']}:{ip}"
+    if not rate_limiter.check_rate_limit(key, max_requests=60, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded for vault.comment.added")
+
     service = get_vault_service()
     user_id = current_user["user_id"]
 
     try:
         result = service.add_file_comment(user_id, vault_type, file_id, comment_text)
+
+        # Audit logging after success
+        audit_logger.log(
+            user_id=user_id,
+            action="vault.comment.added",
+            resource="vault",
+            resource_id=file_id,
+            details={"file_id": file_id, "comment_id": result.get("comment_id")}
+        )
+
         return result
     except Exception as e:
         logger.error(f"Failed to add comment: {e}")
@@ -953,6 +1099,7 @@ async def add_file_comment_endpoint(
 
 @router.get("/files/{file_id}/comments")
 async def get_file_comments_endpoint(
+    request: Request,
     file_id: str,
     vault_type: str = "real",
     limit: int = 50,
@@ -960,6 +1107,12 @@ async def get_file_comments_endpoint(
     current_user: Dict = Depends(get_current_user)
 ):
     """Get file comments with pagination"""
+    # Rate limiting: 60 requests per minute per user
+    ip = get_client_ip(request)
+    key = f"vault:comment:list:{current_user['user_id']}:{ip}"
+    if not rate_limiter.check_rate_limit(key, max_requests=60, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded for vault.comment.list")
+
     service = get_vault_service()
     user_id = current_user["user_id"]
 
@@ -984,17 +1137,34 @@ async def get_file_comments_endpoint(
 
 @router.put("/comments/{comment_id}")
 async def update_file_comment_endpoint(
+    request: Request,
     comment_id: str,
     comment_text: str = Form(...),
     vault_type: str = Form("real"),
     current_user: Dict = Depends(get_current_user)
 ):
     """Update a comment"""
+    # Rate limiting: 60 requests per minute per user
+    ip = get_client_ip(request)
+    key = f"vault:comment:update:{current_user['user_id']}:{ip}"
+    if not rate_limiter.check_rate_limit(key, max_requests=60, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded for vault.comment.updated")
+
     service = get_vault_service()
     user_id = current_user["user_id"]
 
     try:
         result = service.update_file_comment(user_id, vault_type, comment_id, comment_text)
+
+        # Audit logging after success
+        audit_logger.log(
+            user_id=user_id,
+            action="vault.comment.updated",
+            resource="vault",
+            resource_id=comment_id,
+            details={"comment_id": comment_id}
+        )
+
         return result
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -1005,11 +1175,18 @@ async def update_file_comment_endpoint(
 
 @router.delete("/comments/{comment_id}")
 async def delete_file_comment_endpoint(
+    request: Request,
     comment_id: str,
     vault_type: str = "real",
     current_user: Dict = Depends(get_current_user)
 ):
     """Delete a comment"""
+    # Rate limiting: 60 requests per minute per user
+    ip = get_client_ip(request)
+    key = f"vault:comment:delete:{current_user['user_id']}:{ip}"
+    if not rate_limiter.check_rate_limit(key, max_requests=60, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded for vault.comment.deleted")
+
     service = get_vault_service()
     user_id = current_user["user_id"]
 
@@ -1017,6 +1194,16 @@ async def delete_file_comment_endpoint(
         success = service.delete_file_comment(user_id, vault_type, comment_id)
         if not success:
             raise HTTPException(status_code=404, detail="Comment not found")
+
+        # Audit logging after success
+        audit_logger.log(
+            user_id=user_id,
+            action="vault.comment.deleted",
+            resource="vault",
+            resource_id=comment_id,
+            details={"comment_id": comment_id}
+        )
+
         return {"success": True, "message": "Comment deleted"}
     except Exception as e:
         logger.error(f"Failed to delete comment: {e}")
@@ -1039,6 +1226,16 @@ async def set_file_metadata_endpoint(
 
     try:
         result = service.set_file_metadata(user_id, vault_type, file_id, key, value)
+
+        # Audit logging after success
+        audit_logger.log(
+            user_id=user_id,
+            action="vault.file.metadata.set",
+            resource="vault",
+            resource_id=file_id,
+            details={"file_id": file_id, "key": key}
+        )
+
         return result
     except Exception as e:
         logger.error(f"Failed to set metadata: {e}")
@@ -1138,11 +1335,18 @@ async def export_vault_data_endpoint(vault_type: str = "real", current_user: Dic
 
 @router.get("/analytics/storage-trends")
 async def get_storage_trends(
+    request: Request,
     vault_type: str = "real",
     days: int = 30,
     current_user: Dict = Depends(get_current_user)
 ):
     """Get storage usage trends over time"""
+    # Rate limiting: 120 requests per minute per user
+    ip = get_client_ip(request)
+    key = f"vault:analytics:storage:{current_user['user_id']}:{ip}"
+    if not rate_limiter.check_rate_limit(key, max_requests=120, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded for vault.analytics.storage")
+
     user_id = current_user["user_id"]
     service = get_vault_service()
 
@@ -1200,8 +1404,19 @@ async def get_storage_trends(
 
 
 @router.get("/analytics/access-patterns")
-async def get_access_patterns(vault_type: str = "real", limit: int = 10, current_user: Dict = Depends(get_current_user)):
+async def get_access_patterns(
+    request: Request,
+    vault_type: str = "real",
+    limit: int = 10,
+    current_user: Dict = Depends(get_current_user)
+):
     """Get file access patterns and most accessed files"""
+    # Rate limiting: 120 requests per minute per user
+    ip = get_client_ip(request)
+    key = f"vault:analytics:access:{current_user['user_id']}:{ip}"
+    if not rate_limiter.check_rate_limit(key, max_requests=120, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded for vault.analytics.access")
+
     user_id = current_user["user_id"]
     service = get_vault_service()
 
@@ -1276,12 +1491,19 @@ async def get_access_patterns(vault_type: str = "real", limit: int = 10, current
 
 @router.get("/analytics/activity-timeline")
 async def get_activity_timeline(
+    request: Request,
     vault_type: str = "real",
     hours: int = 24,
     limit: int = 50,
     current_user: Dict = Depends(get_current_user)
 ):
     """Get recent activity timeline"""
+    # Rate limiting: 120 requests per minute per user
+    ip = get_client_ip(request)
+    key = f"vault:analytics:activity:{current_user['user_id']}:{ip}"
+    if not rate_limiter.check_rate_limit(key, max_requests=120, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded for vault.analytics.activity")
+
     user_id = current_user["user_id"]
     service = get_vault_service()
 
