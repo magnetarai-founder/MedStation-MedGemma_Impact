@@ -41,6 +41,7 @@ async def run_startup_migrations() -> None:
             from .migrations import phase0_user_db as phase0_migration
             from .migrations import phase1_workflows_user_id as phase1_migration
             from .migrations import phase1_5_per_user_models as phase1_5_migration
+            from .migrations import phase1b_password_reset as phase1b_migration
             from .migrations import phase2_permissions_rbac as phase2_migration
             from .migrations import phase25_rbac_hardening as phase25_migration
             from .migrations import phase3_team_mode as phase3_migration
@@ -53,6 +54,7 @@ async def run_startup_migrations() -> None:
             from migrations import phase0_user_db as phase0_migration
             from migrations import phase1_workflows_user_id as phase1_migration
             from migrations import phase1_5_per_user_models as phase1_5_migration
+            from migrations import phase1b_password_reset as phase1b_migration
             from migrations import phase2_permissions_rbac as phase2_migration
             from migrations import phase25_rbac_hardening as phase25_migration
             from migrations import phase3_team_mode as phase3_migration
@@ -106,6 +108,10 @@ async def run_startup_migrations() -> None:
                 raise Exception("Phase 1.5 migration failed - see logs above")
 
             logger.info("✓ Phase 1.5 migration completed successfully")
+
+        # ===== Phase 1B: Password Reset Support =====
+        if phase1b_migration.run_migration(app_db):
+            migrations_ran.append("Phase 1B: Password Reset Support")
 
         # ===== Phase 2: Salesforce-style RBAC =====
         if not phase2_migration.check_migration_applied(app_db):

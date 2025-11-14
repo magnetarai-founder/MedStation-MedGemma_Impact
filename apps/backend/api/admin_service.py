@@ -254,26 +254,118 @@ async def list_all_chats(request: Request, current_user: dict = Depends(require_
 
 @router.post("/users/{target_user_id}/reset-password")
 async def reset_user_password(
+    request: Request,
     target_user_id: str,
     current_user: dict = Depends(require_founder_rights)
 ):
     """Reset user's password (Founder Rights only - for support)
 
-    TODO: Implement password reset functionality
-    - Generate temporary password
-    - Force password change on next login
-    - Send notification to user (if email configured)
-    - NEVER see the user's current password
-    """
-    logger.warning(
-        f"Founder Rights {current_user['username']} attempted to reset password "
-        f"for user {target_user_id} - NOT YET IMPLEMENTED"
-    )
+    Generates a secure temporary password and sets must_change_password flag.
+    The user will be required to change their password on next login.
 
-    raise HTTPException(
-        status_code=501,
-        detail="Password reset not yet implemented. See roadmap Phase 1B."
-    )
+    Security:
+    - Founder Rights only
+    - Generates cryptographically secure temporary password
+    - Forces password change on next login
+    - Audit logged
+    - Original password is never disclosed
+    """
+    import secrets
+    import string
+    import hashlib
+    import sqlite3
+    from datetime import datetime
+
+    try:
+        from .config_paths import PATHS
+    except ImportError:
+        from config_paths import PATHS
+
+    try:
+        from .audit_logger import AuditAction, get_audit_logger
+    except ImportError:
+        from audit_logger import AuditAction, get_audit_logger
+
+    audit_logger = get_audit_logger()
+
+    try:
+        conn = sqlite3.connect(str(PATHS.app_db))
+        cursor = conn.cursor()
+
+        # Verify target user exists
+        cursor.execute(
+            "SELECT username, is_active FROM users WHERE user_id = ?",
+            (target_user_id,)
+        )
+        row = cursor.fetchone()
+
+        if not row:
+            conn.close()
+            raise HTTPException(status_code=404, detail="User not found")
+
+        target_username, is_active = row
+
+        if not is_active:
+            conn.close()
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot reset password for inactive user"
+            )
+
+        # Generate secure temporary password (16 characters)
+        alphabet = string.ascii_letters + string.digits + "!@#$%^&*()"
+        temp_password = ''.join(secrets.choice(alphabet) for _ in range(16))
+
+        # Hash the temporary password
+        password_hash = hashlib.sha256(temp_password.encode()).hexdigest()
+
+        # Update user: set new password hash and must_change_password flag
+        cursor.execute(
+            """
+            UPDATE users
+            SET password_hash = ?, must_change_password = 1
+            WHERE user_id = ?
+            """,
+            (password_hash, target_user_id)
+        )
+
+        conn.commit()
+        conn.close()
+
+        # Audit log
+        audit_logger.log(
+            user_id=current_user["user_id"],
+            action=AuditAction.PASSWORD_RESET,
+            resource="user",
+            resource_id=target_user_id,
+            ip_address=request.client.host if request.client else None,
+            details={
+                "target_username": target_username,
+                "reset_by": current_user["username"]
+            }
+        )
+
+        logger.info(
+            f"Founder Rights {current_user['username']} reset password for user {target_username} (ID: {target_user_id})"
+        )
+
+        return {
+            "success": True,
+            "user_id": target_user_id,
+            "username": target_username,
+            "temp_password": temp_password,
+            "must_change_password": True,
+            "message": "Password reset successful. User must change password on next login."
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to reset password for user {target_user_id}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to reset password: {str(e)}"
+        )
 
 
 @router.post("/users/{target_user_id}/unlock")

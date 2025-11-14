@@ -433,7 +433,7 @@ async def lifespan(app: FastAPI):
     try:
         import sqlite3
         import json
-        from pathlib import Path
+        # Avoid shadowing the module-level Path import; no local Path import here
         from chat_service import ollama_client
         from .services.hot_slots_storage import get_hot_slots_storage
 

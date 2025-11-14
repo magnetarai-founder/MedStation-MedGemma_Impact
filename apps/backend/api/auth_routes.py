@@ -200,6 +200,33 @@ async def login(request: Request, body: LoginRequest):
         if not auth_result:
             raise unauthorized(ErrorCode.AUTH_INVALID_CREDENTIALS)
 
+        # Check if user must change password (Phase 1B)
+        import sqlite3
+        conn = sqlite3.connect(str(auth_service.db_path))
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT must_change_password FROM users WHERE user_id = ?",
+            (auth_result['user_id'],)
+        )
+        row = cursor.fetchone()
+        conn.close()
+
+        must_change_password = False
+        if row and len(row) > 0:
+            must_change_password = bool(row[0])
+
+        # If must_change_password is set, return error indicating password change required
+        if must_change_password:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error_code": "AUTH_PASSWORD_CHANGE_REQUIRED",
+                    "message": "Password change required. Please use temporary password to set a new password.",
+                    "user_id": auth_result['user_id'],
+                    "must_change_password": True
+                }
+            )
+
         # Return token and user info (no need to decode again)
         # LOW-02: Include refresh token
         return LoginResponse(
