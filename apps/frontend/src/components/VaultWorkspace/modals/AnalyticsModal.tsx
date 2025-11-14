@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { BarChart3, X, TrendingUp, Activity, Clock } from 'lucide-react'
 import axios from 'axios'
-import { toast } from 'sonner'
+import toast from 'react-hot-toast'
 
 interface AnalyticsModalProps {
   isOpen: boolean

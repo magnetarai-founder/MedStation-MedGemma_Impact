@@ -3,7 +3,7 @@ import { Shield, User, Lock, Fingerprint, Loader2, UserPlus } from 'lucide-react
 import { authenticateBiometric } from '@/lib/biometricAuth'
 import { SetupWizard } from './SetupWizard'
 import { PasswordChangeModal } from './PasswordChangeModal'
-import { toast } from 'sonner'
+import toast from 'react-hot-toast'
 
 interface LoginProps {
   onLogin: (token: string) => void

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { MessageSquare, X, Send } from 'lucide-react'
 import axios from 'axios'
-import { toast } from 'sonner'
+import toast from 'react-hot-toast'
 
 interface CommentsModalProps {
   isOpen: boolean

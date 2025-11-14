@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Search, X } from 'lucide-react'
 import axios from 'axios'
-import { toast } from 'sonner'
+import toast from 'react-hot-toast'
 
 interface AdvancedSearchPanelProps {
   isOpen: boolean

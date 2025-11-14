@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Activity, X } from 'lucide-react'
 import axios from 'axios'
-import { toast } from 'sonner'
+import toast from 'react-hot-toast'
 
 interface AuditLogsModalProps {
   isOpen: boolean
