@@ -32,9 +32,16 @@ async def create_share_link_endpoint(
     expires_at: str = Form(None),
     max_downloads: int = Form(None),
     permissions: str = Form("download"),
+    one_time: bool = Form(False),
     current_user: Dict = Depends(get_current_user)
 ):
-    """Create a shareable link for a file"""
+    """
+    Create a shareable link for a file
+
+    Defaults:
+    - TTL: 24 hours if expires_at not provided
+    - One-time links: Set max_downloads=1 if one_time=True
+    """
     # Rate limiting: 10 requests per minute per user
     ip = get_client_ip(request)
     key = f"vault:share:create:{current_user['user_id']}:{ip}"
@@ -44,13 +51,24 @@ async def create_share_link_endpoint(
     service = get_vault_service()
     user_id = current_user["user_id"]
 
+    # Apply default 24h TTL if not provided
+    if not expires_at:
+        from datetime import datetime, timedelta
+        now = datetime.utcnow()
+        default_expiry = now + timedelta(hours=24)
+        expires_at = default_expiry.isoformat()
+
+    # One-time link: force max_downloads=1
+    if one_time and max_downloads is None:
+        max_downloads = 1
+
     try:
         result = service.create_share_link(
             user_id, vault_type, file_id, password,
             expires_at, max_downloads, permissions
         )
 
-        # Audit logging after success
+        # Audit logging after success (don't log full token)
         audit_logger.log(
             user_id=user_id,
             action="vault.share.created",
@@ -58,9 +76,10 @@ async def create_share_link_endpoint(
             resource_id=file_id,
             details={
                 "file_id": file_id,
-                "share_id": result.get("share_id"),
+                "share_id": result.get("id"),
                 "expires_at": expires_at,
-                "max_downloads": max_downloads
+                "max_downloads": max_downloads,
+                "one_time": one_time
             }
         )
 
@@ -134,11 +153,43 @@ async def revoke_share_link_endpoint(
 
 @router.get("/share/{share_token}")
 async def access_share_link_endpoint(
+    request: Request,
     share_token: str,
     password: str = None
 ):
-    """Access a shared file via share token"""
+    """
+    Access a shared file via share token
+
+    Enforces per-token IP throttles:
+    - 5 downloads per minute per IP
+    - 50 downloads per day per IP
+    """
     service = get_vault_service()
+
+    # Per-token IP throttles
+    ip = get_client_ip(request)
+    key_min = f"vault:share.download.min:{share_token[:8]}:{ip}"
+    key_day = f"vault:share.download.day:{share_token[:8]}:{ip}"
+
+    if not rate_limiter.check_rate_limit(key_min, max_requests=5, window_seconds=60):
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "rate_limited",
+                "message": "Too many downloads for this link from your IP (1 min)",
+                "retry_after": 60
+            }
+        )
+
+    if not rate_limiter.check_rate_limit(key_day, max_requests=50, window_seconds=86400):
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "rate_limited",
+                "message": "Too many downloads for this link from your IP (24h)",
+                "retry_after": 3600
+            }
+        )
 
     try:
         # Get share details
@@ -147,17 +198,40 @@ async def access_share_link_endpoint(
         # Verify password if required
         if share_info["requires_password"]:
             if not password:
-                raise HTTPException(status_code=401, detail="Password required")
+                raise HTTPException(
+                    status_code=401,
+                    detail={"code": "password_required", "message": "Password required"}
+                )
             if not service.verify_share_password(share_token, password):
-                raise HTTPException(status_code=401, detail="Invalid password")
+                raise HTTPException(
+                    status_code=401,
+                    detail={"code": "password_incorrect", "message": "Incorrect password"}
+                )
 
         return share_info
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        error_msg = str(e).lower()
+
+        # Map ValueError messages to consistent error codes
+        if "expired" in error_msg:
+            raise HTTPException(
+                status_code=410,
+                detail={"code": "expired", "message": "Share link has expired"}
+            )
+        elif "download limit" in error_msg or "max" in error_msg:
+            raise HTTPException(
+                status_code=410,
+                detail={"code": "max_downloads_reached", "message": "Download limit reached"}
+            )
+        else:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "invalid_token", "message": "Invalid or revoked share token"}
+            )
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to access share link: {e}")
+        logger.error(f"Failed to access share link (token: {share_token[:6]}...): {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
