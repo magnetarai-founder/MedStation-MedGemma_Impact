@@ -182,6 +182,79 @@ pytest apps/backend/api/
 
 ---
 
+## 🚀 Release Process
+
+### Preparing a Release
+
+1. **Update VERSION file**
+   ```bash
+   echo "1.0.0" > docs/VERSION
+   ```
+
+2. **Generate changelog and release draft**
+   ```bash
+   python3 scripts/prepare_release.py --version v1.0.0 --from-tag v1.0.0-rc1
+   ```
+
+   This will:
+   - Validate/update VERSION file
+   - Generate changelog section from git commits
+   - Prepend new section to `changelog/CHANGELOG.md`
+   - Fill release template with version, date, and links
+   - Create draft in `dist/release_draft_v1.0.0.md`
+
+3. **Review generated files**
+   ```bash
+   # Review changelog
+   cat changelog/CHANGELOG.md
+
+   # Review release draft
+   cat dist/release_draft_v1.0.0.md
+   ```
+
+4. **Create git tag**
+   ```bash
+   git add docs/VERSION changelog/CHANGELOG.md
+   git commit -m "chore(release): Prepare v1.0.0 release"
+   git tag v1.0.0
+   git push origin main
+   git push origin v1.0.0
+   ```
+
+5. **Create GitHub release**
+   - Go to GitHub → Releases → New Release
+   - Select tag: `v1.0.0`
+   - Copy content from `dist/release_draft_v1.0.0.md`
+   - Publish release
+
+### Manual Changelog Generation
+
+If you need to regenerate changelog for a specific range:
+
+```bash
+python3 scripts/generate_changelog.py \
+  --from-tag v1.0.0-rc1 \
+  --to-tag HEAD \
+  --version v1.0.0
+```
+
+### Conventional Commits
+
+Changelog is auto-generated from conventional commit format:
+
+- `feat:` - New features
+- `fix:` - Bug fixes
+- `docs:` - Documentation changes
+- `perf:` - Performance improvements
+- `refactor:` - Code refactoring
+- `test:` - Test additions/changes
+- `ci:` - CI/CD changes
+- `chore:` - Maintenance tasks
+
+Example: `feat(vault): add one-time share links`
+
+---
+
 ## 📝 License
 
 [Add your license here - MIT, Apache 2.0, etc.]

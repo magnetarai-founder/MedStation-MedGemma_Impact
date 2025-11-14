@@ -1,0 +1,136 @@
+groups:
+  - name: elohimos-slos
+    interval: 15s
+    rules:
+      # High Error Rate (5xx > 1%)
+      - alert: ElohimOSHighErrorRate
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m])) /
+          sum(rate(http_requests_total[5m])) > 0.01
+        for: 5m
+        labels:
+          severity: page
+          service: elohimos
+        annotations:
+          summary: "High 5xx error rate (>1%)"
+          description: "ElohimOS is experiencing {{ $value | humanizePercentage }} error rate over the last 5 minutes (threshold: 1%)"
+          dashboard: "https://grafana.example.com/d/elohimos-vault-ops"
+
+      # High P95 Latency (>1s)
+      - alert: ElohimOSHighLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(http_request_duration_seconds_bucket[5m]))
+          ) > 1
+        for: 5m
+        labels:
+          severity: page
+          service: elohimos
+        annotations:
+          summary: "P95 latency >1s"
+          description: "ElohimOS P95 latency is {{ $value | humanizeDuration }} (threshold: 1s, sustained for 5m)"
+          dashboard: "https://grafana.example.com/d/elohimos-vault-ops"
+
+      # Excessive Rate Limiting (429 responses > 10/s)
+      - alert: ElohimOSRateLimitSpike
+        expr: |
+          sum(rate(http_requests_total{status="429"}[5m])) > 10
+        for: 5m
+        labels:
+          severity: warn
+          service: elohimos
+        annotations:
+          summary: "Rate limiting spikes (>10/s)"
+          description: "ElohimOS rate limiting triggered at {{ $value | humanize }}/s over 5 minutes (threshold: 10/s)"
+          runbook: "Check if clients are misbehaving or rate limits need adjustment"
+
+      # Share Link Errors (4xx/5xx on share endpoints > 5/s)
+      - alert: ElohimOSShareLinkErrors
+        expr: |
+          sum(rate(http_requests_total{path=~"/api/v1/vault/share.*",status=~"4..|5.."}[5m])) > 5
+        for: 5m
+        labels:
+          severity: warn
+          service: elohimos
+        annotations:
+          summary: "Share link errors >5/s"
+          description: "Share link endpoints experiencing {{ $value | humanize }} errors/s over 5 minutes (threshold: 5/s)"
+          runbook: "Check for invalid tokens, expired shares, or IP throttle issues"
+
+      # Memory High (>5GB for 10 minutes)
+      - alert: ElohimOSHighMemory
+        expr: |
+          process_resident_memory_bytes{job="elohimos"} > 5e9
+        for: 10m
+        labels:
+          severity: warn
+          service: elohimos
+        annotations:
+          summary: "Memory usage >5GB"
+          description: "ElohimOS memory usage is {{ $value | humanize1024 }}B (threshold: 5GB, sustained for 10m)"
+          runbook: "Check model preloader; 3 models loaded should be ~4.5GB. Investigate if higher."
+
+      # Database Lock Contention
+      - alert: ElohimOSDatabaseLockWait
+        expr: |
+          rate(sqlite_lock_wait_total[5m]) > 1
+        for: 5m
+        labels:
+          severity: warn
+          service: elohimos
+        annotations:
+          summary: "SQLite lock contention detected"
+          description: "SQLite lock waits at {{ $value | humanize }}/s over 5 minutes"
+          runbook: "Check for long-running transactions or concurrent write operations"
+
+      # Vault Upload Failures
+      - alert: ElohimOSVaultUploadFailures
+        expr: |
+          sum(rate(http_requests_total{path=~"/api/v1/vault/upload",status=~"5.."}[5m])) > 0.5
+        for: 5m
+        labels:
+          severity: warn
+          service: elohimos
+        annotations:
+          summary: "Vault upload failures"
+          description: "Vault uploads failing at {{ $value | humanize }}/s over 5 minutes"
+          runbook: "Check disk space, encryption service, and vault database health"
+
+      # High Download Rate (potential abuse)
+      - alert: ElohimOSHighDownloadRate
+        expr: |
+          sum(rate(http_requests_total{path=~"/api/v1/vault/files/.*/download"}[5m])) > 100
+        for: 5m
+        labels:
+          severity: info
+          service: elohimos
+        annotations:
+          summary: "High vault download rate (>100/s)"
+          description: "Vault downloads at {{ $value | humanize }}/s over 5 minutes (info threshold: 100/s)"
+          runbook: "Monitor for potential abuse or legitimate bulk operations"
+
+      # Authentication Failures Spike
+      - alert: ElohimOSAuthFailureSpike
+        expr: |
+          sum(rate(http_requests_total{path="/api/v1/auth/login",status=~"401|403"}[5m])) > 5
+        for: 5m
+        labels:
+          severity: warn
+          service: elohimos
+        annotations:
+          summary: "Authentication failure spike (>5/s)"
+          description: "Login failures at {{ $value | humanize }}/s over 5 minutes (threshold: 5/s)"
+          runbook: "Potential brute force attack or configuration issue"
+
+      # Model Preloader Errors
+      - alert: ElohimOSModelPreloaderErrors
+        expr: |
+          sum(rate(model_preload_errors_total[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warn
+          service: elohimos
+        annotations:
+          summary: "Model preloader errors detected"
+          description: "Model preload failing at {{ $value | humanize }}/s over 5 minutes"
+          runbook: "Check Ollama service status and model availability"

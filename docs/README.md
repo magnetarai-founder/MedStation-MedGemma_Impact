@@ -34,7 +34,16 @@ Getting started, development workflow, and tools.
 Production deployment guides and checklists.
 
 - **[DEPLOYMENT_CHECKLIST.md](deployment/DEPLOYMENT_CHECKLIST.md)** - Pre-deployment checklist
+- **[GO_LIVE_CHECKLIST.md](deployment/GO_LIVE_CHECKLIST.md)** - 5-minute go-live validation guide
+- **[PRODUCTION_READINESS.md](deployment/PRODUCTION_READINESS.md)** - Complete production readiness checklist
 - **[DISCLAIMERS.md](deployment/DISCLAIMERS.md)** - Legal disclaimers and notices
+
+### 📊 Monitoring
+Production monitoring setup with Prometheus and Grafana.
+
+- **[README.md](monitoring/README.md)** - Monitoring setup guide
+- **[Prometheus Alerts](../ops/monitoring/alerts/)** - Alert rules and runbooks
+- **[Grafana Dashboard](monitoring/grafana_dashboards/elohimos_vault_ops.json)** - Vault & API overview dashboard
 
 ### 🗺️ Roadmap
 Future plans, features, and optimization strategies.
