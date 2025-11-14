@@ -80,15 +80,32 @@ export ELOHIM_FOUNDER_PASSWORD=your_secure_password
 uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 4
 ```
 
-## Verify Installation
+## Testing
+
+### Run Tests
+
+```bash
+# Activate virtual environment
+source venv/bin/activate
+
+# Install pytest if not already installed
+pip install pytest
+
+# Run all tests
+pytest apps/backend/tests -v
+
+# Run specific test suites
+pytest apps/backend/tests/smoke/ -v           # Smoke tests
+pytest apps/backend/tests/vault/ -v           # Vault tests
+pytest apps/backend/tests/auth/ -v            # Auth tests
+pytest apps/backend/tests/analytics/ -v       # Analytics tests
+```
+
+### Verify Installation
 
 Run smoke tests to verify setup:
 
 ```bash
-# Install pytest if not already installed
-pip install pytest
-
-# Run smoke tests
 pytest tests/smoke/ -v
 ```
 
