@@ -143,6 +143,28 @@ export function CodeView() {
     setIsEditing(!isEditing)
   }
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd/Ctrl+S: Save with diff modal
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault()
+        if (isEditing && hasChanges && selectedFileId) {
+          handleSaveClick()
+        }
+      }
+
+      // Cmd/Ctrl+/: Toggle terminal
+      if ((e.metaKey || e.ctrlKey) && e.key === '/') {
+        e.preventDefault()
+        setTerminalOpen((prev) => !prev)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isEditing, hasChanges, selectedFileId])
+
   return (
     <>
     <ResizableSidebar
@@ -340,6 +362,8 @@ export function CodeView() {
         diffText={diffData.diff}
         filePath={selectedFilePath || ''}
         conflictWarning={diffData.conflictWarning}
+        truncated={diffData.truncated}
+        truncationMessage={diffData.message}
       />
     )}
   </>

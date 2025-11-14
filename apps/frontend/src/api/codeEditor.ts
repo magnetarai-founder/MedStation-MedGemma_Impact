@@ -29,6 +29,11 @@ export interface FileDiffResponse {
   current_hash: string
   current_updated_at: string
   conflict: boolean
+  truncated?: boolean
+  max_lines?: number
+  shown_head?: number
+  shown_tail?: number
+  message?: string
 }
 
 export interface FileTreeNode {

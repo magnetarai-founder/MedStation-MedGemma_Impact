@@ -7,6 +7,8 @@ interface DiffConfirmModalProps {
   diffText: string
   filePath: string
   conflictWarning?: string
+  truncated?: boolean
+  truncationMessage?: string
 }
 
 export function DiffConfirmModal({
@@ -16,6 +18,8 @@ export function DiffConfirmModal({
   diffText,
   filePath,
   conflictWarning,
+  truncated,
+  truncationMessage,
 }: DiffConfirmModalProps) {
   if (!isOpen) return null
 
@@ -29,6 +33,11 @@ export function DiffConfirmModal({
           {conflictWarning && (
             <div className="mt-2 text-sm text-orange-600 dark:text-orange-400">
               ⚠️ {conflictWarning}
+            </div>
+          )}
+          {truncated && (
+            <div className="mt-2 text-sm text-blue-600 dark:text-blue-400">
+              ℹ️ {truncationMessage || 'Diff truncated for size - showing partial preview'}
             </div>
           )}
         </div>
