@@ -2,7 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react'
 import { X, Settings as SettingsIcon, Zap, AlertTriangle, Cpu, User, Loader2, Shield, MessageSquare, Sparkles, Workflow, Crown, BarChart3 } from 'lucide-react'
 import { type NavTab } from '@/stores/navigationStore'
 import { usePermissions } from '@/hooks/usePermissions'
-import { ProfileSettings } from './ProfileSettings'
+import { ProfileSettings } from './ProfileSettings/index'
 import { ROLES } from '@/lib/roles'
 
 // Lazy load heavy tab components for better performance
