@@ -316,8 +316,8 @@ async def reset_user_password(
         alphabet = string.ascii_letters + string.digits + "!@#$%^&*()"
         temp_password = ''.join(secrets.choice(alphabet) for _ in range(16))
 
-        # Hash the temporary password
-        password_hash = hashlib.sha256(temp_password.encode()).hexdigest()
+        # Hash the temporary password using PBKDF2 (consistent with auth_middleware)
+        password_hash, _ = auth_service._hash_password(temp_password)
 
         # Update user: set new password hash and must_change_password flag
         cursor.execute(

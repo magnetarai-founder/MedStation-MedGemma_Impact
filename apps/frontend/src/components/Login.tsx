@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { Shield, User, Lock, Fingerprint, Loader2, UserPlus } from 'lucide-react'
 import { authenticateBiometric } from '@/lib/biometricAuth'
 import { SetupWizard } from './SetupWizard'
+import { PasswordChangeModal } from './PasswordChangeModal'
+import { toast } from 'sonner'
 
 interface LoginProps {
   onLogin: (token: string) => void
@@ -31,6 +33,7 @@ export function Login({ onLogin }: LoginProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showSetupWizard, setShowSetupWizard] = useState(false)
+  const [showPasswordChangeModal, setShowPasswordChangeModal] = useState(false)
   const [deviceFingerprint, setDeviceFingerprint] = useState('')
 
   useEffect(() => {
@@ -61,7 +64,15 @@ export function Login({ onLogin }: LoginProps) {
 
       if (!response.ok) {
         const data = await response.json()
-        // Handle ElohimOS error response format
+
+        // Check if password change is required (403 with specific error code)
+        if (response.status === 403 && data.detail?.error_code === 'AUTH_PASSWORD_CHANGE_REQUIRED') {
+          setIsLoading(false)
+          setShowPasswordChangeModal(true)
+          return
+        }
+
+        // Handle other errors
         const errorMessage = data.detail?.message || data.detail || data.message || 'Login failed'
         throw new Error(errorMessage)
       }
@@ -85,6 +96,55 @@ export function Login({ onLogin }: LoginProps) {
       onLogin(token)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')
+      setIsLoading(false)
+    }
+  }
+
+  const handlePasswordChangeSuccess = async (newPassword: string) => {
+    // Password change successful - automatically retry login with new password
+    setShowPasswordChangeModal(false)
+    setPassword(newPassword)
+    toast.success('Password changed successfully. Logging in...')
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch('/api/v1/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username,
+          password: newPassword,
+          device_fingerprint: deviceFingerprint
+        })
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        const errorMessage = data.detail?.message || data.detail || data.message || 'Login failed'
+        throw new Error(errorMessage)
+      }
+
+      const data = await response.json()
+
+      // Store token
+      const token = data.token
+      const user = {
+        user_id: data.user_id,
+        username: data.username,
+        role: data.role,
+        device_id: data.device_id
+      }
+
+      localStorage.setItem('auth_token', token)
+      localStorage.setItem('user', JSON.stringify(user))
+
+      // Complete login
+      toast.success('Login successful!')
+      onLogin(token)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed after password change')
       setIsLoading(false)
     }
   }
@@ -252,6 +312,14 @@ export function Login({ onLogin }: LoginProps) {
           </div>
         </div>
       </div>
+
+      {/* Password Change Modal */}
+      <PasswordChangeModal
+        isOpen={showPasswordChangeModal}
+        username={username}
+        onClose={() => setShowPasswordChangeModal(false)}
+        onSuccess={handlePasswordChangeSuccess}
+      />
     </div>
   )
 }

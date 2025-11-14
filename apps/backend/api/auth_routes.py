@@ -60,6 +60,14 @@ class RefreshRequest(BaseModel):
     refresh_token: str = Field(..., description="Refresh token from login")
 
 
+class ChangePasswordFirstLoginRequest(BaseModel):
+    """Forced password change request for first login after reset"""
+    username: str
+    temp_password: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=12)
+    confirm_password: str = Field(..., min_length=12)
+
+
 class LoginResponse(BaseModel):
     """Login response with JWT token"""
     token: str
@@ -247,6 +255,118 @@ async def login(request: Request, body: LoginRequest):
         raise
     except Exception as e:
         logger.exception("Login failed")
+        raise internal_error(ErrorCode.SYSTEM_INTERNAL_ERROR, technical_detail=str(e))
+
+
+@router.post("/change-password-first-login")
+async def change_password_first_login(request: Request, body: ChangePasswordFirstLoginRequest):
+    """
+    Forced password change after admin reset
+
+    This endpoint is used when a user must change their password after an admin reset.
+    It does not require an existing session - only the username and temporary password.
+
+    Rate limited to prevent brute force attacks:
+    - 10 attempts per minute per IP
+    """
+    import re
+    import sqlite3
+    from datetime import datetime
+
+    # Rate limit password change attempts
+    client_ip = get_client_ip(request)
+    if not rate_limiter.check_rate_limit(f"auth:change-password:{client_ip}", max_requests=10, window_seconds=60):
+        raise too_many_requests(ErrorCode.AUTH_RATE_LIMIT_EXCEEDED, retry_after=60)
+
+    try:
+        # Validate password confirmation matches
+        if body.new_password != body.confirm_password:
+            raise bad_request(ErrorCode.SYSTEM_VALIDATION_FAILED, errors="Passwords do not match")
+
+        # Enforce password complexity (>=12 chars; upper+lower+digit+symbol)
+        if len(body.new_password) < 12:
+            raise bad_request(ErrorCode.SYSTEM_VALIDATION_FAILED, errors="Password must be at least 12 characters")
+
+        if not re.search(r'[A-Z]', body.new_password):
+            raise bad_request(ErrorCode.SYSTEM_VALIDATION_FAILED, errors="Password must contain at least one uppercase letter")
+
+        if not re.search(r'[a-z]', body.new_password):
+            raise bad_request(ErrorCode.SYSTEM_VALIDATION_FAILED, errors="Password must contain at least one lowercase letter")
+
+        if not re.search(r'[0-9]', body.new_password):
+            raise bad_request(ErrorCode.SYSTEM_VALIDATION_FAILED, errors="Password must contain at least one digit")
+
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', body.new_password):
+            raise bad_request(ErrorCode.SYSTEM_VALIDATION_FAILED, errors="Password must contain at least one special character")
+
+        # Load user by username
+        conn = sqlite3.connect(str(auth_service.db_path))
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT user_id, password_hash, must_change_password, is_active FROM users WHERE username = ?",
+            (body.username,)
+        )
+        row = cursor.fetchone()
+
+        if not row:
+            conn.close()
+            raise unauthorized(ErrorCode.AUTH_INVALID_CREDENTIALS, message="Invalid username or temporary password")
+
+        user_id, stored_hash, must_change_password, is_active = row
+
+        # Verify user is active
+        if not is_active:
+            conn.close()
+            raise forbidden(ErrorCode.AUTH_ACCOUNT_DISABLED)
+
+        # Check if must_change_password flag is set
+        if must_change_password == 0:
+            conn.close()
+            raise bad_request(ErrorCode.SYSTEM_VALIDATION_FAILED, errors="Password has already been changed")
+
+        # Verify temporary password
+        if not auth_service._verify_password(body.temp_password, stored_hash):
+            conn.close()
+            raise unauthorized(ErrorCode.AUTH_INVALID_CREDENTIALS, message="Invalid username or temporary password")
+
+        # Hash new password with PBKDF2
+        new_password_hash, _ = auth_service._hash_password(body.new_password)
+
+        # Update user: set new password hash, clear must_change_password flag, update last_login
+        cursor.execute(
+            """
+            UPDATE users
+            SET password_hash = ?, must_change_password = 0, last_login = ?
+            WHERE user_id = ?
+            """,
+            (new_password_hash, datetime.utcnow().isoformat(), user_id)
+        )
+
+        conn.commit()
+        conn.close()
+
+        # Audit log
+        try:
+            from .audit_logger import get_audit_logger, AuditAction
+            audit_logger = get_audit_logger()
+            audit_logger.log(
+                user_id=user_id,
+                action=AuditAction.PASSWORD_CHANGED,
+                resource="user",
+                resource_id=user_id,
+                details={"username": body.username, "source": "forced_change_after_reset"}
+            )
+        except Exception as audit_error:
+            logger.error(f"Failed to log password change audit: {audit_error}")
+
+        logger.info(f"Password changed successfully for user: {body.username} (forced change after reset)")
+
+        return {"success": True}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Password change failed")
         raise internal_error(ErrorCode.SYSTEM_INTERNAL_ERROR, technical_detail=str(e))
 
 
