@@ -207,6 +207,18 @@ async def load_hot_slot_models_endpoint(
 
 # ===== Ollama Server Management =====
 
+@router.get("/system/memory", name="chat_get_system_memory")
+async def get_system_memory_endpoint():
+    """Get system memory stats (public endpoint)"""
+    from api.services import chat
+
+    try:
+        return await chat.get_system_memory()
+    except Exception as e:
+        logger.error(f"Failed to get system memory: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/ollama/server/status", name="chat_get_ollama_server_status")
 async def get_ollama_server_status_endpoint():
     """Check if Ollama server is running (public endpoint)"""

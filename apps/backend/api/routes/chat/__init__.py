@@ -25,6 +25,6 @@ router.include_router(sessions.router)
 router.include_router(messages.router)
 router.include_router(files.router)
 
-# Models can be both auth'd and public - include both
-router.include_router(models.router)
+# Models router is public (function-level auth on protected endpoints)
+# router.include_router(models.router)  # REMOVED - was causing 403 shadowing
 public_router.include_router(models.router)
