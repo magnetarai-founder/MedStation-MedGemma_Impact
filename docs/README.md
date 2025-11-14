@@ -90,6 +90,10 @@ Old/duplicate documentation kept for reference.
 ## 📊 Project Status
 
 ### Recent Achievements
+- ✅ **Frontend Large-File Refactor Complete** (R5-R7: 3 components, 55 modular files)
+  - VaultWorkspace: 4,119 → 30 files
+  - ProfileSettings: 982 → 13 files
+  - AutomationTab: 902 → 12 files (+ template consolidation)
 - ✅ **Code Tab Complete** (Monaco editor + terminal, production ready)
 - ✅ **Router Migration Complete** (5/5 routers to service layer pattern)
 - ✅ **SQL/JSON Endpoints Refactored** (Phases 1-3 complete)
@@ -97,6 +101,7 @@ Old/duplicate documentation kept for reference.
 - ✅ **P2P Mesh Networking** (Offline-first collaboration)
 
 ### Active Development
+- 🚧 **Backend Route Modularization** (R8: Vault/Chat/Team routes)
 - 🚧 **Vault/Team Service Refactoring** (R1-R11, see REFACTORING_ROADMAP.md)
 - 🚧 **Metal 4 Optimization** (Phase 4.1-4.2)
 - 🚧 **Database Tab AI Query Builder** (256 SQL templates)

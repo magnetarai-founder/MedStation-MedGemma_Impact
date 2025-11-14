@@ -396,7 +396,7 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
 
     # Vault API
     try:
-        from api.vault import routes as _vault_routes
+        from api.routes import vault as _vault_routes
         app.include_router(_vault_routes.router)  # Router already has prefix="/api/v1/vault"
         services_loaded.append("Vault API")
     except Exception as e:
