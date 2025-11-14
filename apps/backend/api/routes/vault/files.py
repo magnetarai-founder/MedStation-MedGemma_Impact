@@ -688,15 +688,28 @@ async def secure_delete_file_endpoint(
 async def get_file_versions_endpoint(
     file_id: str,
     vault_type: str = "real",
+    limit: int = 50,
+    offset: int = 0,
     current_user: Dict = Depends(get_current_user)
 ):
-    """Get all versions of a file"""
+    """Get file versions with pagination"""
     service = get_vault_service()
     user_id = current_user["user_id"]
 
     try:
-        versions = service.get_file_versions(user_id, vault_type, file_id)
-        return {"versions": versions}
+        all_versions = service.get_file_versions(user_id, vault_type, file_id)
+        # Apply pagination
+        total = len(all_versions)
+        versions = all_versions[offset:offset + limit]
+        has_more = (offset + limit) < total
+
+        return {
+            "versions": versions,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+            "has_more": has_more
+        }
     except Exception as e:
         logger.error(f"Failed to get file versions: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -787,14 +800,30 @@ async def restore_from_trash_endpoint(
 
 
 @router.get("/trash")
-async def get_trash_files_endpoint(vault_type: str = "real", current_user: Dict = Depends(get_current_user)):
-    """Get all files in trash"""
+async def get_trash_files_endpoint(
+    vault_type: str = "real",
+    limit: int = 50,
+    offset: int = 0,
+    current_user: Dict = Depends(get_current_user)
+):
+    """Get trash files with pagination"""
     service = get_vault_service()
     user_id = current_user["user_id"]
 
     try:
-        trash_files = service.get_trash_files(user_id, vault_type)
-        return {"trash_files": trash_files}
+        all_trash_files = service.get_trash_files(user_id, vault_type)
+        # Apply pagination
+        total = len(all_trash_files)
+        trash_files = all_trash_files[offset:offset + limit]
+        has_more = (offset + limit) < total
+
+        return {
+            "trash_files": trash_files,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+            "has_more": has_more
+        }
     except Exception as e:
         logger.error(f"Failed to get trash files: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -827,9 +856,11 @@ async def search_files_endpoint(
     min_size: int = None,
     max_size: int = None,
     folder_path: str = None,
+    limit: int = 100,
+    offset: int = 0,
     current_user: Dict = Depends(get_current_user)
 ):
-    """Advanced file search with multiple filters"""
+    """Advanced file search with pagination"""
     service = get_vault_service()
     user_id = current_user["user_id"]
 
@@ -837,11 +868,22 @@ async def search_files_endpoint(
         # Parse tags if provided
         tags_list = tags.split(",") if tags else None
 
-        results = service.search_files(
+        all_results = service.search_files(
             user_id, vault_type, query, mime_type, tags_list,
             date_from, date_to, min_size, max_size, folder_path
         )
-        return {"results": results}
+        # Apply pagination
+        total = len(all_results)
+        results = all_results[offset:offset + limit]
+        has_more = (offset + limit) < total
+
+        return {
+            "results": results,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+            "has_more": has_more
+        }
     except Exception as e:
         logger.error(f"Failed to search files: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -857,18 +899,32 @@ async def get_audit_logs_endpoint(
     date_from: str = None,
     date_to: str = None,
     limit: int = 100,
+    offset: int = 0,
     current_user: Dict = Depends(get_current_user)
 ):
-    """Get audit logs with filters"""
+    """Get audit logs with pagination and filters"""
     service = get_vault_service()
     user_id = current_user["user_id"]
 
     try:
-        logs = service.get_audit_logs(
+        # Get all matching logs first (service applies limit internally)
+        # We'll need to modify this to handle pagination properly
+        all_logs = service.get_audit_logs(
             user_id, vault_type, action, resource_type,
-            date_from, date_to, limit
+            date_from, date_to, limit + offset  # Get enough to paginate
         )
-        return {"logs": logs}
+        # Apply pagination
+        total = len(all_logs)
+        logs = all_logs[offset:offset + limit]
+        has_more = (offset + limit) < total
+
+        return {
+            "logs": logs,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+            "has_more": has_more
+        }
     except Exception as e:
         logger.error(f"Failed to get audit logs: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -899,15 +955,28 @@ async def add_file_comment_endpoint(
 async def get_file_comments_endpoint(
     file_id: str,
     vault_type: str = "real",
+    limit: int = 50,
+    offset: int = 0,
     current_user: Dict = Depends(get_current_user)
 ):
-    """Get all comments for a file"""
+    """Get file comments with pagination"""
     service = get_vault_service()
     user_id = current_user["user_id"]
 
     try:
-        comments = service.get_file_comments(user_id, vault_type, file_id)
-        return {"comments": comments}
+        all_comments = service.get_file_comments(user_id, vault_type, file_id)
+        # Apply pagination
+        total = len(all_comments)
+        comments = all_comments[offset:offset + limit]
+        has_more = (offset + limit) < total
+
+        return {
+            "comments": comments,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+            "has_more": has_more
+        }
     except Exception as e:
         logger.error(f"Failed to get comments: {e}")
         raise HTTPException(status_code=500, detail=str(e))

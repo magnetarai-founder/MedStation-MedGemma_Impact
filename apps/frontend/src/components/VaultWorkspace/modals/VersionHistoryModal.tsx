@@ -25,19 +25,36 @@ interface VersionHistoryModalProps {
 export function VersionHistoryModal({ isOpen, onClose, fileId, filename }: VersionHistoryModalProps) {
   const [fileVersions, setFileVersions] = useState<FileVersion[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [offset, setOffset] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
 
   useEffect(() => {
     if (isOpen && fileId) {
-      fetchFileVersions()
+      // Reset pagination when modal opens
+      setFileVersions([])
+      setOffset(0)
+      setHasMore(false)
+      fetchFileVersions(0)
     }
   }, [isOpen, fileId])
 
-  async function fetchFileVersions() {
+  async function fetchFileVersions(currentOffset: number = offset) {
     if (!fileId) return
 
-    setIsLoading(true)
+    const isInitialLoad = currentOffset === 0
+    if (isInitialLoad) {
+      setIsLoading(true)
+    } else {
+      setIsLoadingMore(true)
+    }
+
     try {
-      const response = await fetch(`/api/v1/vault/files/${fileId}/versions`, {
+      const url = new URL(`/api/v1/vault/files/${fileId}/versions`, window.location.origin)
+      url.searchParams.append('limit', '50')
+      url.searchParams.append('offset', currentOffset.toString())
+
+      const response = await fetch(url.toString(), {
         credentials: 'include'
       })
 
@@ -46,13 +63,21 @@ export function VersionHistoryModal({ isOpen, onClose, fileId, filename }: Versi
       }
 
       const data = await response.json()
-      setFileVersions(data.versions || [])
+      const newVersions = data.versions || []
+      setFileVersions(prev => currentOffset === 0 ? newVersions : [...prev, ...newVersions])
+      setOffset(currentOffset + newVersions.length)
+      setHasMore(data.has_more || false)
     } catch (error) {
       console.error('Failed to fetch file versions:', error)
       toast.error('Failed to load version history')
     } finally {
       setIsLoading(false)
+      setIsLoadingMore(false)
     }
+  }
+
+  function handleLoadMore() {
+    fetchFileVersions(offset)
   }
 
   async function handleRestoreVersion(versionId: string) {
@@ -71,7 +96,11 @@ export function VersionHistoryModal({ isOpen, onClose, fileId, filename }: Versi
       }
 
       toast.success('Version restored successfully')
-      fetchFileVersions()
+      // Reset pagination and reload
+      setFileVersions([])
+      setOffset(0)
+      setHasMore(false)
+      fetchFileVersions(0)
     } catch (error) {
       console.error('Failed to restore version:', error)
       toast.error('Failed to restore version')
@@ -156,6 +185,19 @@ export function VersionHistoryModal({ isOpen, onClose, fileId, filename }: Versi
                   )}
                 </div>
               ))}
+
+              {/* Load More Button */}
+              {hasMore && (
+                <div className="flex justify-center pt-2">
+                  <button
+                    onClick={handleLoadMore}
+                    disabled={isLoadingMore}
+                    className="px-4 py-2 bg-gray-200 dark:bg-zinc-700 hover:bg-gray-300 dark:hover:bg-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed text-gray-900 dark:text-gray-100 rounded text-sm"
+                  >
+                    {isLoadingMore ? 'Loading...' : 'Load More'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

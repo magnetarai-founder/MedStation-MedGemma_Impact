@@ -12,26 +12,52 @@ interface AuditLogsModalProps {
 export function AuditLogsModal({ isOpen, vaultMode, onClose }: AuditLogsModalProps) {
   const [auditLogs, setAuditLogs] = useState<Array<any>>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [offset, setOffset] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
 
   useEffect(() => {
     if (isOpen) {
-      loadAuditLogs()
+      // Reset pagination when modal opens
+      setAuditLogs([])
+      setOffset(0)
+      setHasMore(false)
+      loadAuditLogs(0)
     }
   }, [isOpen])
 
-  const loadAuditLogs = async () => {
-    setIsLoading(true)
+  const loadAuditLogs = async (currentOffset: number = offset) => {
+    const isInitialLoad = currentOffset === 0
+    if (isInitialLoad) {
+      setIsLoading(true)
+    } else {
+      setIsLoadingMore(true)
+    }
+
     try {
       const response = await axios.get('/api/v1/vault/audit-logs', {
-        params: { vault_type: vaultMode, limit: 50 }
+        params: {
+          vault_type: vaultMode,
+          limit: 100,
+          offset: currentOffset
+        }
       })
-      setAuditLogs(response.data.logs)
+
+      const newLogs = response.data.logs || []
+      setAuditLogs(prev => currentOffset === 0 ? newLogs : [...prev, ...newLogs])
+      setOffset(currentOffset + newLogs.length)
+      setHasMore(response.data.has_more || false)
     } catch (error) {
       console.error('Failed to load audit logs:', error)
       toast.error('Failed to load audit logs')
     } finally {
       setIsLoading(false)
+      setIsLoadingMore(false)
     }
+  }
+
+  const handleLoadMore = () => {
+    loadAuditLogs(offset)
   }
 
   if (!isOpen) return null
@@ -94,6 +120,19 @@ export function AuditLogsModal({ isOpen, vaultMode, onClose }: AuditLogsModalPro
                   </div>
                 </div>
               ))}
+
+              {/* Load More Button */}
+              {hasMore && (
+                <div className="flex justify-center pt-2">
+                  <button
+                    onClick={handleLoadMore}
+                    disabled={isLoadingMore}
+                    className="px-4 py-2 bg-gray-200 dark:bg-zinc-700 hover:bg-gray-300 dark:hover:bg-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed text-gray-900 dark:text-gray-100 rounded text-sm"
+                  >
+                    {isLoadingMore ? 'Loading...' : 'Load More'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

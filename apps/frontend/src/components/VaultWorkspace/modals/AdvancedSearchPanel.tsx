@@ -26,6 +26,8 @@ export function AdvancedSearchPanel({ isOpen, vaultMode, onClose, onResults }: A
     try {
       const params = new URLSearchParams({
         vault_type: vaultMode,
+        limit: '100',
+        offset: '0',
         ...(searchFilters.query && { query: searchFilters.query }),
         ...(searchFilters.mimeType && { mime_type: searchFilters.mimeType }),
         ...(searchFilters.dateFrom && { date_from: searchFilters.dateFrom }),
@@ -36,8 +38,11 @@ export function AdvancedSearchPanel({ isOpen, vaultMode, onClose, onResults }: A
       })
 
       const response = await axios.get(`/api/v1/vault/search?${params}`)
-      onResults(response.data.files || [])
-      toast.success(`Found ${response.data.files?.length || 0} file(s)`)
+      // Backend now returns {results, total, limit, offset, has_more}
+      onResults(response.data.results || [])
+      const total = response.data.total || 0
+      const shown = response.data.results?.length || 0
+      toast.success(`Found ${total} file(s)${total > shown ? ` (showing first ${shown})` : ''}`)
     } catch (error) {
       console.error('Search failed:', error)
       toast.error('Advanced search failed')

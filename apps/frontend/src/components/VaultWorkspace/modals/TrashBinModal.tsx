@@ -23,17 +23,35 @@ interface TrashBinModalProps {
 export function TrashBinModal({ isOpen, onClose }: TrashBinModalProps) {
   const [trashFiles, setTrashFiles] = useState<TrashFile[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [offset, setOffset] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
 
   useEffect(() => {
     if (isOpen) {
-      fetchTrashFiles()
+      // Reset pagination when modal opens
+      setTrashFiles([])
+      setOffset(0)
+      setHasMore(false)
+      fetchTrashFiles(0)
     }
   }, [isOpen])
 
-  async function fetchTrashFiles() {
-    setIsLoading(true)
+  async function fetchTrashFiles(currentOffset: number = offset) {
+    const isInitialLoad = currentOffset === 0
+    if (isInitialLoad) {
+      setIsLoading(true)
+    } else {
+      setIsLoadingMore(true)
+    }
+
     try {
-      const response = await fetch('/api/v1/vault/trash/list', {
+      const url = new URL('/api/v1/vault/trash', window.location.origin)
+      url.searchParams.append('vault_type', 'real')
+      url.searchParams.append('limit', '50')
+      url.searchParams.append('offset', currentOffset.toString())
+
+      const response = await fetch(url.toString(), {
         credentials: 'include'
       })
 
@@ -42,13 +60,21 @@ export function TrashBinModal({ isOpen, onClose }: TrashBinModalProps) {
       }
 
       const data = await response.json()
-      setTrashFiles(data.files || [])
+      const newFiles = data.trash_files || []
+      setTrashFiles(prev => currentOffset === 0 ? newFiles : [...prev, ...newFiles])
+      setOffset(currentOffset + newFiles.length)
+      setHasMore(data.has_more || false)
     } catch (error) {
       console.error('Failed to fetch trash files:', error)
       toast.error('Failed to load trash')
     } finally {
       setIsLoading(false)
+      setIsLoadingMore(false)
     }
+  }
+
+  function handleLoadMore() {
+    fetchTrashFiles(offset)
   }
 
   async function handleRestoreFromTrash(fileId: string) {
@@ -63,7 +89,11 @@ export function TrashBinModal({ isOpen, onClose }: TrashBinModalProps) {
       }
 
       toast.success('File restored successfully')
-      fetchTrashFiles() // Refresh list
+      // Reset pagination and reload
+      setTrashFiles([])
+      setOffset(0)
+      setHasMore(false)
+      fetchTrashFiles(0)
     } catch (error) {
       console.error('Failed to restore file:', error)
       toast.error('Failed to restore file')
@@ -87,6 +117,8 @@ export function TrashBinModal({ isOpen, onClose }: TrashBinModalProps) {
 
       toast.success('Trash emptied successfully')
       setTrashFiles([])
+      setOffset(0)
+      setHasMore(false)
     } catch (error) {
       console.error('Failed to empty trash:', error)
       toast.error('Failed to empty trash')
@@ -154,6 +186,19 @@ export function TrashBinModal({ isOpen, onClose }: TrashBinModalProps) {
                   </button>
                 </div>
               ))}
+
+              {/* Load More Button */}
+              {hasMore && (
+                <div className="flex justify-center pt-2">
+                  <button
+                    onClick={handleLoadMore}
+                    disabled={isLoadingMore}
+                    className="px-4 py-2 bg-gray-200 dark:bg-zinc-700 hover:bg-gray-300 dark:hover:bg-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed text-gray-900 dark:text-gray-100 rounded text-sm"
+                  >
+                    {isLoadingMore ? 'Loading...' : 'Load More'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

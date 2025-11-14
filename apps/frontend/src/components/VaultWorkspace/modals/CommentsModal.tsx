@@ -14,28 +14,54 @@ export function CommentsModal({ isOpen, file, vaultMode, onClose }: CommentsModa
   const [fileComments, setFileComments] = useState<Array<any>>([])
   const [newComment, setNewComment] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [offset, setOffset] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
 
   useEffect(() => {
     if (isOpen && file) {
-      loadFileComments()
+      // Reset pagination when modal opens
+      setFileComments([])
+      setOffset(0)
+      setHasMore(false)
+      loadFileComments(0)
     }
   }, [isOpen, file])
 
-  const loadFileComments = async () => {
+  const loadFileComments = async (currentOffset: number = offset) => {
     if (!file) return
 
-    setIsLoading(true)
+    const isInitialLoad = currentOffset === 0
+    if (isInitialLoad) {
+      setIsLoading(true)
+    } else {
+      setIsLoadingMore(true)
+    }
+
     try {
       const response = await axios.get(`/api/v1/vault/files/${file.id}/comments`, {
-        params: { vault_type: vaultMode }
+        params: {
+          vault_type: vaultMode,
+          limit: 50,
+          offset: currentOffset
+        }
       })
-      setFileComments(response.data.comments)
+
+      const newComments = response.data.comments || []
+      setFileComments(prev => currentOffset === 0 ? newComments : [...prev, ...newComments])
+      setOffset(currentOffset + newComments.length)
+      setHasMore(response.data.has_more || false)
     } catch (error) {
       console.error('Failed to load comments:', error)
       toast.error('Failed to load comments')
     } finally {
       setIsLoading(false)
+      setIsLoadingMore(false)
     }
+  }
+
+  const handleLoadMore = () => {
+    loadFileComments(offset)
   }
 
   const handleAddComment = async () => {
@@ -49,7 +75,11 @@ export function CommentsModal({ isOpen, file, vaultMode, onClose }: CommentsModa
       await axios.post(`/api/v1/vault/files/${file.id}/comments`, formData)
       toast.success('Comment added')
       setNewComment('')
-      loadFileComments()
+      // Reset pagination and reload
+      setFileComments([])
+      setOffset(0)
+      setHasMore(false)
+      loadFileComments(0)
     } catch (error) {
       console.error('Add comment failed:', error)
       toast.error('Failed to add comment')
@@ -64,7 +94,11 @@ export function CommentsModal({ isOpen, file, vaultMode, onClose }: CommentsModa
         params: { vault_type: vaultMode }
       })
       toast.success('Comment deleted')
-      loadFileComments()
+      // Reset pagination and reload
+      setFileComments([])
+      setOffset(0)
+      setHasMore(false)
+      loadFileComments(0)
     } catch (error) {
       console.error('Delete comment failed:', error)
       toast.error('Failed to delete comment')
@@ -129,6 +163,19 @@ export function CommentsModal({ isOpen, file, vaultMode, onClose }: CommentsModa
                   </div>
                 </div>
               ))}
+
+              {/* Load More Button */}
+              {hasMore && (
+                <div className="flex justify-center pt-2">
+                  <button
+                    onClick={handleLoadMore}
+                    disabled={isLoadingMore}
+                    className="px-4 py-2 bg-gray-200 dark:bg-zinc-700 hover:bg-gray-300 dark:hover:bg-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed text-gray-900 dark:text-gray-100 rounded text-sm"
+                  >
+                    {isLoadingMore ? 'Loading...' : 'Load More'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
