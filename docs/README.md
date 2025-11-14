@@ -24,6 +24,7 @@ Getting started, development workflow, and tools.
 
 - **[README.md](development/README.md)** - Getting started guide
 - **[ONBOARDING.md](development/ONBOARDING.md)** - New developer onboarding
+- **[API_REFERENCE.md](development/API_REFERENCE.md)** - Complete REST API documentation ⭐
 - **[PRE_COMMIT_SETUP.md](development/PRE_COMMIT_SETUP.md)** - Pre-commit hooks setup
 - **[FOUNDER_RIGHTS_LOGIN.md](development/FOUNDER_RIGHTS_LOGIN.md)** - Founder rights authentication
 - **[DEVELOPMENT_NOTES.md](development/DEVELOPMENT_NOTES.md)** - Development tips and notes
@@ -129,6 +130,7 @@ Old/duplicate documentation kept for reference.
 ### Development
 - [Getting Started](development/README.md)
 - [Onboarding Guide](development/ONBOARDING.md)
+- [API Reference](development/API_REFERENCE.md) ⭐
 - [Development Notes](development/DEVELOPMENT_NOTES.md)
 
 ### Roadmap
@@ -154,5 +156,5 @@ Old/duplicate documentation kept for reference.
 
 ---
 
-**Last Updated:** 2025-11-13
-**Documentation Version:** 2.1 (Code Tab complete, docs consolidated)
+**Last Updated:** 2025-11-14
+**Documentation Version:** 2.2 (v1.0.0-rc1 release, API reference added)
