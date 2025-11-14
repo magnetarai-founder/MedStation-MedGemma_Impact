@@ -139,12 +139,20 @@ This is the first release candidate for ElohimOS v1.0.0, featuring comprehensive
 ## 🔄 Migration Notes
 
 ### Database Changes
-**No database migrations required for this release.**
+**Auto-applied, backward-compatible migration at startup.**
 
-Existing databases are fully compatible. New features use existing tables:
+The following schema change is applied automatically on first startup (if needed):
+- **`users.must_change_password`** column added (default: 0, non-breaking)
+  - Enables forced password change flow for new users
+  - Existing users unaffected (column defaults to 0)
+  - No manual intervention required
+
+Other new features use existing tables:
 - Share link hardening uses existing `vault_file_shares` table
 - Rate limiting uses in-memory token buckets (no persistence)
 - Audit logging uses existing `vault_audit_logs` table
+
+**Backward Compatibility**: 100% compatible. Rollback to previous versions is safe.
 
 ### Configuration Changes
 

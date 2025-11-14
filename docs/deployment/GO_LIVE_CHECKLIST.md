@@ -19,8 +19,12 @@ cd /Users/indiedevhipps/Documents/ElohimOS/apps/backend
 export ELOHIM_FOUNDER_PASSWORD="$(openssl rand -base64 32)"
 export ELOHIM_JWT_SECRET="$(openssl rand -base64 48)"
 
-# Required: Lock down CORS (NO WILDCARDS)
+# Required: Lock down CORS (NO WILDCARDS, include scheme + host)
 export ELOHIM_CORS_ORIGINS="https://yourdomain.com,https://app.yourdomain.com"
+# IMPORTANT:
+# - Must include scheme (https://)
+# - No wildcards (*) allowed in production
+# - Comma-separated for multiple origins
 
 # Optional: Custom data directory
 export ELOHIMOS_DATA_DIR="/var/lib/elohimos/data"
@@ -29,6 +33,8 @@ export ELOHIMOS_DATA_DIR="/var/lib/elohimos/data"
 echo "Founder password length: ${#ELOHIM_FOUNDER_PASSWORD}"  # Should be >30
 echo "JWT secret length: ${#ELOHIM_JWT_SECRET}"              # Should be >40
 echo "CORS origins: $ELOHIM_CORS_ORIGINS"                   # Should NOT contain "*"
+# Verify CORS: grep for "*" - should return nothing
+echo "$ELOHIM_CORS_ORIGINS" | grep "\*" && echo "ERROR: Wildcard detected!" || echo "CORS OK"
 ```
 
 ### 2. Start Server (1 minute)
@@ -41,11 +47,26 @@ source venv/bin/activate
 export ELOHIM_ENV=production
 
 # Start with workers
-uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 4
+# If behind proxy (nginx, ALB, etc.): add --proxy-headers --forwarded-allow-ips='*'
+uvicorn api.main:app \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --workers 4 \
+  --proxy-headers \
+  --forwarded-allow-ips='*'
+
+# Without proxy (direct access):
+# uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 4
 
 # Expected output:
 # ✓ Services: Chat API, Users API, Team API, Vault API...
 # INFO:     Application startup complete.
+
+# Proxy headers preserve client IPs for:
+# - Rate limiting (per user+IP)
+# - Share link throttles (per token+IP)
+# - Audit logging
+# - Analytics
 ```
 
 ### 3. Health Check (30 seconds)

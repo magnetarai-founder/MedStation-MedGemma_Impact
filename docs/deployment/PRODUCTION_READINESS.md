@@ -23,9 +23,10 @@ Complete checklist for deploying ElohimOS v1.0.0-rc1 to production.
   export ELOHIM_JWT_SECRET="$(openssl rand -base64 48)"
   ```
 
-- [ ] `ELOHIM_CORS_ORIGINS` - Lock down allowed origins
+- [ ] `ELOHIM_CORS_ORIGINS` - Lock down allowed origins (scheme + host, no wildcards)
   ```bash
   export ELOHIM_CORS_ORIGINS="https://yourdomain.com,https://app.yourdomain.com"
+  # CRITICAL: Must include https:// scheme, NO wildcards (*)
   ```
 
 #### Optional (Recommended)
@@ -147,12 +148,14 @@ Complete checklist for deploying ElohimOS v1.0.0-rc1 to production.
 - [ ] Verify rate limits enforced on all endpoints (see API_REFERENCE.md)
 - [ ] Test rate limit responses (429 with retry_after)
 - [ ] Monitor rate limit metrics
+- [ ] Verify client IPs preserved (requires --proxy-headers if behind proxy)
 
 #### Share Link Security
 - [ ] Verify IP throttles active (5/min, 50/day per token)
 - [ ] Test one-time link behavior
 - [ ] Verify default 24h TTL applied
 - [ ] Test expired share link handling
+- [ ] Confirm client IP detection works for per-IP throttles
 
 #### Authentication
 - [ ] Verify forced password change flow works
@@ -319,9 +322,19 @@ pip install -r requirements.txt
 ```bash
 # 4. Run database migrations (none for v1.0.0-rc1)
 # No migrations needed - fully backward compatible
+# Note: users.must_change_password column auto-applied at startup
 
 # 5. Start server
-uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 4
+# If behind proxy (nginx, ALB, etc.): add --proxy-headers --forwarded-allow-ips='*'
+uvicorn api.main:app \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --workers 4 \
+  --proxy-headers \
+  --forwarded-allow-ips='*'
+
+# Without proxy (direct access):
+# uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 4
 
 # 6. Verify startup logs
 # Look for "✓ Services: Chat API, Users API, Team API, Vault API..."
