@@ -302,6 +302,70 @@ exec $SHELL
         raise HTTPException(status_code=500, detail=f"Failed to spawn system terminal: {str(e)}")
 
 
+@router.post("/socket/start")
+@require_perm("code.terminal")
+async def start_terminal_socket(
+    request: Request,
+    terminal_app: Optional[str] = None,
+    workspace_root: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Start a Unix socket listener for external terminal output capture
+
+    Creates a socket that external terminal processes can write to.
+    The TerminalBridge will broadcast captured output to subscribers.
+
+    Args:
+        terminal_app: Name of terminal application (e.g., 'iTerm2', 'Warp')
+        workspace_root: Working directory for the terminal session
+
+    Returns:
+        terminal_id: Session ID
+        socket_path: Path to Unix socket for external process to connect
+    """
+    user_id = current_user["user_id"]
+
+    try:
+        # Import PATHS
+        try:
+            from config_paths import PATHS
+        except ImportError:
+            from .config_paths import PATHS
+
+        # Register system terminal session
+        terminal_id = terminal_bridge.register_system_terminal(
+            user_id=user_id,
+            terminal_app=terminal_app or "unknown",
+            workspace_root=workspace_root or str(Path.home())
+        )
+
+        # Compute socket path under data_dir
+        socket_path = PATHS.data_dir / f"term_{terminal_id}.sock"
+
+        # Validate socket path is inside data_dir (security check)
+        if not str(socket_path).startswith(str(PATHS.data_dir)):
+            raise HTTPException(status_code=400, detail="Invalid socket path")
+
+        # Start socket listener in background (non-blocking)
+        asyncio.create_task(terminal_bridge.start_socket_listener(str(socket_path), terminal_id))
+
+        # Log the operation
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Terminal socket started: user={user_id}, terminal_id={terminal_id}, socket_path={socket_path}")
+
+        return {
+            "terminal_id": terminal_id,
+            "socket_path": str(socket_path)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to start socket listener: {str(e)}")
+
+
 @router.get("/sessions")
 async def list_terminal_sessions(current_user: dict = Depends(get_current_user)):
     """
