@@ -12,7 +12,7 @@ import sqlite3
 from typing import List, Dict, Any, Optional, Literal
 from datetime import datetime, timedelta
 
-DB_PATH = "data/elohimos.db"
+from api.config_paths import PATHS
 
 TaskType = Literal["code", "chat", "analysis", "general"]
 
@@ -20,8 +20,8 @@ TaskType = Literal["code", "chat", "analysis", "general"]
 class RecommendationsService:
     """Service for model recommendations"""
 
-    def __init__(self, db_path: str = DB_PATH):
-        self.db_path = db_path
+    def __init__(self, db_path: Optional[str] = None):
+        self.db_path = db_path or str(PATHS.app_db)
 
         # Task-specific weights for scoring
         # Format: {task: (w_latency, w_satisfaction, w_efficiency)}

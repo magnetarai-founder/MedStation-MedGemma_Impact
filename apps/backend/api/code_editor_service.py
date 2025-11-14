@@ -581,10 +581,10 @@ async def get_file_diff(file_id: str, diff_request: FileDiffRequest, current_use
             current_hash = hashlib.sha256(current_content.encode('utf-8')).hexdigest()
 
             return FileDiffResponse(
-                diff=f"[Diff unavailable - file exceeds {MAX_DIFF_FILE_SIZE / 1024 / 1024:.1f}MB limit]
+                diff=f"""[Diff unavailable - file exceeds {MAX_DIFF_FILE_SIZE / 1024 / 1024:.1f}MB limit]
 
 Current: {len(current_content):,} bytes
-Proposed: {len(diff_request.new_content):,} bytes",
+Proposed: {len(diff_request.new_content):,} bytes""",
                 current_hash=current_hash,
                 current_updated_at=current_updated_at,
                 conflict=conflict,
@@ -617,17 +617,7 @@ Proposed: {len(diff_request.new_content):,} bytes",
             head = diff_lines[:TRUNCATE_HEAD_LINES]
             tail = diff_lines[-TRUNCATE_TAIL_LINES:]
 
-            truncated_diff = (
-                '
-'.join(head) +
-                f"
-
-... [Truncated: {len(diff_lines) - TRUNCATE_HEAD_LINES - TRUNCATE_TAIL_LINES:,} lines omitted] ...
-
-" +
-                '
-'.join(tail)
-            )
+            truncated_diff = '\n'.join(head) + f"\n\n... [Truncated: {len(diff_lines) - TRUNCATE_HEAD_LINES - TRUNCATE_TAIL_LINES:,} lines omitted] ...\n\n" + '\n'.join(tail)
 
             # Generate hash of current content
             current_hash = hashlib.sha256(current_content.encode('utf-8')).hexdigest()
@@ -644,8 +634,7 @@ Proposed: {len(diff_request.new_content):,} bytes",
                 message=f"Diff truncated: showing first {TRUNCATE_HEAD_LINES} and last {TRUNCATE_TAIL_LINES} lines of {len(diff_lines):,} total"
             )
 
-        diff_str = '
-'.join(diff_lines)
+        diff_str = '\n'.join(diff_lines)
 
         # Generate hash of current content
         current_hash = hashlib.sha256(current_content.encode('utf-8')).hexdigest()

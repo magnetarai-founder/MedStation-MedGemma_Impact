@@ -387,9 +387,21 @@ async def lifespan(app: FastAPI):
     # Phase 1.5: Initialize per-user model storage
     try:
         from config_paths import PATHS
-        from services.model_catalog import init_model_catalog
-        from services.model_preferences_storage import init_model_preferences_storage
-        from services.hot_slots_storage import init_hot_slots_storage
+
+        # Prefer relative imports when running as a package; if running as a script,
+        # fall back to absolute package imports after adding the backend dir to sys.path
+        try:
+            from .services.model_catalog import init_model_catalog, get_model_catalog
+            from .services.model_preferences_storage import init_model_preferences_storage
+            from .services.hot_slots_storage import init_hot_slots_storage
+        except Exception:
+            import sys as _sys
+            from pathlib import Path as _Path
+            # Ensure 'apps/backend' is on sys.path so 'api.services' is importable
+            _sys.path.insert(0, str(_Path(__file__).parent.parent))
+            from api.services.model_catalog import init_model_catalog, get_model_catalog  # type: ignore
+            from api.services.model_preferences_storage import init_model_preferences_storage  # type: ignore
+            from api.services.hot_slots_storage import init_hot_slots_storage  # type: ignore
 
         # Initialize storage singletons
         init_model_catalog(PATHS.app_db, ollama_base_url="http://localhost:11434")
@@ -404,7 +416,6 @@ async def lifespan(app: FastAPI):
         init_hot_slots_storage(PATHS.app_db, config_dir)
 
         # Sync model catalog from Ollama on startup
-        from services.model_catalog import get_model_catalog
         catalog = get_model_catalog()
         await catalog.sync_from_ollama()
 

@@ -20,6 +20,14 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 from api.config_paths import get_config_paths
+from .schemas import (
+    VaultDocument,
+    VaultDocumentCreate,
+    VaultDocumentUpdate,
+    VaultListResponse,
+    VaultFile,
+    VaultFolder,
+)
 
 logger = logging.getLogger(__name__)
 
