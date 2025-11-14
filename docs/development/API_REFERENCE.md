@@ -809,6 +809,56 @@ Authorization: Bearer <token>
 
 ---
 
+## Terminal API
+
+### POST /api/v1/terminal/socket/start
+
+Start a Unix socket listener for terminal bridge integration.
+
+**Permission Required**: `code.terminal`
+
+**Request Body** (JSON):
+```json
+{
+  "terminal_app": "iterm" | "warp" | "unknown",  // optional
+  "workspace_root": "/Users/..."                 // optional
+}
+```
+
+**Response**:
+```json
+{
+  "terminal_id": "term_xxxxxxxx",
+  "socket_path": "/absolute/path/.neutron_data/term_term_xxxxx.sock"
+}
+```
+
+**Notes**:
+- Starts a non-blocking Unix socket listener
+- External terminal or script can connect and send bytes to stream output into ElohimOS
+- Socket path is always under `PATHS.data_dir`
+- Path validation enforced to prevent directory traversal
+- Socket cleanup handled automatically on disconnect
+- See `apps/backend/api/services/terminal_bridge.py` for implementation details
+
+**Example**:
+```http
+POST /api/v1/terminal/socket/start
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "terminal_app": "iterm",
+  "workspace_root": "/Users/indiedevhipps/Documents/ElohimOS"
+}
+```
+
+**Error Responses**:
+- `403 Forbidden` - Missing `code.terminal` permission
+- `500 Internal Server Error` - Socket creation failed
+
+---
+
 ## Changelog
 
 - **2025-11-14**: Added share link hardening (IP throttles, one-time links, default 24h TTL)

@@ -397,7 +397,7 @@ curl http://localhost:8000/health
 
 **Database Compatibility**:
 - v1.0.0-rc1 is **100% backward compatible**
-- No DB migrations needed
+- No manual DB migrations needed (startup migrations auto-apply)
 - Can rollback to any previous version without data loss
 
 **Rollback Reference**:
@@ -598,7 +598,7 @@ Create `docs/performance/baseline_v1.0.0-rc1.md`:
 - [ ] Token redaction verified
 - [ ] Rate limits working
 - [ ] Share throttles active
-- [ ] Memory usage normal (<2GB)
+- [ ] Memory usage normal (idle: ~500MB, with 3 models: <5GB)
 
 ### Soak Period (First 24h)
 - [ ] Error rate <0.1%

@@ -1,8 +1,8 @@
 # ElohimOS Modularization Refactor Roadmap
 
 **Version:** 1.0
-**Date:** 2025-11-13
-**Status:** Ready for Implementation
+**Date:** 2025-11-14
+**Status:** Updated — Vault + Router Registry complete; Team partial; Chat pending
 
 ---
 
@@ -88,12 +88,12 @@ warnings.warn(
 
 **Acceptance Criteria:**
 
-- [ ] All vault routes behave identically (GET/POST/PUT/DELETE)
-- [ ] No runtime errors or import failures
-- [ ] New modules import without circular dependencies
-- [ ] Vault audit logs continue to work
-- [ ] File size of `vault_service.py` reduced by >80%
-- [ ] All vault unit tests pass unchanged
+- [x] All vault routes behave identically (GET/POST/PUT/DELETE)
+- [x] No runtime errors or import failures
+- [x] New modules import without circular dependencies
+- [x] Vault audit logs continue to work
+- [x] File size of `vault_service.py` reduced by >80% (split across services/vault/*)
+- [x] All vault unit tests pass unchanged
 
 **File Touchpoints:**
 - `apps/backend/api/vault_service.py` (split + facade)
@@ -336,13 +336,13 @@ app = FastAPI(lifespan=lifespan, title="ElohimOS API")
 
 **Acceptance Criteria:**
 
-- [ ] Same set/order of routers mounted
-- [ ] App boots normally with all services loaded
-- [ ] Service status logging works (loaded/failed)
-- [ ] Lifespan events (startup/shutdown) function correctly
-- [ ] Background jobs start/stop as expected
-- [ ] Middleware chain remains intact
-- [ ] File size of `main.py` reduced by >60%
+- [x] Same set/order of routers mounted
+- [x] App boots normally with all services loaded
+- [x] Service status logging works (loaded/failed)
+- [x] Lifespan events (startup/shutdown) function correctly
+- [x] Background jobs start/stop as expected
+- [x] Middleware chain remains intact
+- [x] File size of `main.py` reduced by >60%
 
 **File Touchpoints:**
 - `apps/backend/api/main.py` (simplify)

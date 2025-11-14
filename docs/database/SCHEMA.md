@@ -1,14 +1,22 @@
 # ElohimOS Database Schema Documentation
 
 **Version**: 1.0
-**Last Updated**: 2025-11-11
-**Total Databases**: 8
+**Last Updated**: 2025-11-14
+**Total Databases**: 3 (consolidated)
 
 ---
 
 ## Overview
 
-ElohimOS uses **8 separate SQLite databases** for different concerns. All databases use:
+ElohimOS uses **3 consolidated SQLite databases** under `.neutron_data/`:
+
+- **elohimos_app.db** - Main application database (users, auth, sessions, docs, chat memory, workflows, RBAC, analytics, etc.)
+- **vault.db** - Vault documents/files/folders, ACL and vault-specific metadata
+- **datasets.db** - Datasets for data engine
+
+All previous separate databases are consolidated into `app_db` via `PATHS` (see `apps/backend/api/config_paths.py`). Legacy database references (users_db, auth_db, docs_db, etc.) are compatibility aliases pointing to `elohimos_app.db`.
+
+All databases use:
 - **WAL Mode** (Write-Ahead Logging) for concurrent access
 - **PRAGMA synchronous=NORMAL** for balance of safety and performance
 - **Memory-mapped I/O** (30GB mmap_size) for performance
@@ -33,6 +41,7 @@ CREATE TABLE users (
     created_at TEXT NOT NULL,
     last_login TEXT,
     is_active INTEGER DEFAULT 1,
+    must_change_password INTEGER DEFAULT 0,   -- enforced on first login when reset
     role TEXT DEFAULT 'member',               -- System role
     job_role TEXT DEFAULT 'unassigned'        -- Organizational role
 );

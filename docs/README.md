@@ -17,7 +17,7 @@ System design, philosophy, and technical decisions.
 ### 💾 Database
 Schema documentation and database design.
 
-- **[SCHEMA.md](database/SCHEMA.md)** - Database schema (8 SQLite databases)
+- **[SCHEMA.md](database/SCHEMA.md)** - Database schema (consolidated SQLite design)
 
 ### 👨‍💻 Development
 Getting started, development workflow, and tools.
@@ -102,8 +102,10 @@ Old/duplicate documentation kept for reference.
 - ✅ **P2P Mesh Networking** (Offline-first collaboration)
 
 ### Active Development
-- 🚧 **Backend Route Modularization** (R8: Vault/Chat/Team routes)
-- 🚧 **Vault/Team Service Refactoring** (R1-R11, see REFACTORING_ROADMAP.md)
+- ✅ **Router Registry** (R4) - Complete (centralized router management)
+- ✅ **Vault Service Split** (R1) - Complete (services/vault/* modules)
+- 🚧 **Team Service Split** (R2) - Partial (core.py exists; full split pending)
+- 🚧 **Chat Service Split** (R3) - Pending (legacy monolith still present)
 - 🚧 **Metal 4 Optimization** (Phase 4.1-4.2)
 - 🚧 **Database Tab AI Query Builder** (256 SQL templates)
 

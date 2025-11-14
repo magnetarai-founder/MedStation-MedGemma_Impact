@@ -512,42 +512,43 @@ Learning system adjusts thresholds
 
 ## Database Architecture
 
-### Database List
+### Consolidated Design (3 Databases)
 
 All databases stored in `.neutron_data/`:
 
-1. **elohimos_app.db** (260 KB) - Main application
-   - users, teams, team_members, permissions
-   - invite_codes, delayed_promotions
-   - audit_log (cross-references other DBs)
+1. **elohimos_app.db** - Main application database (consolidated)
+   - **Users & Auth**: users, sessions, user_profiles, permissions
+   - **Teams**: teams, team_members, team_invites, delayed_promotions
+   - **RBAC**: permissions, permission_profiles, profile_permissions
+   - **Chat**: chat_sessions, chat_messages, chat_summaries
+   - **Workflows**: workflows, work_items, workflow_history
+   - **Analytics**: audit_log, cross-references
+   - **Docs**: document metadata and storage
+   - **Learning**: learned_patterns, performance_metrics
 
-2. **vault.db** - Encrypted vault storage
-   - vault_documents (real + decoy)
-   - vault_files, vault_file_versions
-   - team_vault_items
+2. **vault.db** - Vault documents and file storage
+   - vault_documents (real + decoy vaults)
+   - vault_files, vault_file_versions, vault_file_shares
+   - vault_folders, vault_file_comments
+   - vault_audit_logs, vault ACL
 
 3. **datasets.db** - Data engine
    - dataset_metadata
    - ds_{hash} (dynamic tables per upload)
 
-4. **chat_memory.db** (28 KB) - AI chat
-   - chat_sessions, chat_messages
-   - chat_summaries (rolling summaries)
+### Legacy Compatibility
 
-5. **teams.db** (116 KB) - Team collaboration
-   - teams, team_members, team_invites
-   - team_vault_items, team_chat_messages
+**PATHS** (`apps/backend/api/config_paths.py`) provides compatibility aliases:
+- `users_db`, `auth_db`, `docs_db`, `chat_db`, `workflows_db`, `teams_db` → all point to `elohimos_app.db`
+- Legacy components continue to work without modification
+- Enables gradual migration from old multi-DB architecture
 
-6. **workflows.db** (112 KB) - Workflow automation
-   - workflows, work_items
-   - workflow_history
+### Startup Migrations
 
-7. **learning.db** (20 KB) - Adaptive learning
-   - learned_patterns (query templates, preferences)
-   - performance_metrics (backend latency, throughput)
-
-8. **audit.db** (40 KB) - Audit logging
-   - audit_log (all operations, 90-day retention)
+Auto-applied schema migrations run on startup:
+- Non-blocking, backward-compatible changes
+- Example: `users.must_change_password` column (Phase 1B)
+- Migration runner in `apps/backend/api/db_init.py`
 
 ### Database Configuration
 
@@ -561,15 +562,10 @@ All databases stored in `.neutron_data/`:
 ### Relationships
 
 ```
-elohimos_app.db (users, teams, permissions)
-    ↓ user_id
-vault.db (user-specific vaults)
-chat_memory.db (user chat sessions)
-    ↓ team_id
-teams.db (team data)
-workflows.db (team workflows)
-    ↓ audit_log
-audit.db (all operations)
+elohimos_app.db (consolidated: users, teams, permissions, chat, workflows, analytics)
+    ↓ user_id, team_id
+vault.db (user-specific vaults + team vaults)
+datasets.db (data engine tables)
 ```
 
 ---

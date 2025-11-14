@@ -139,13 +139,14 @@ This is the first release candidate for ElohimOS v1.0.0, featuring comprehensive
 ## 🔄 Migration Notes
 
 ### Database Changes
-**Auto-applied, backward-compatible migration at startup.**
+**Startup migrations automatically apply on boot (no manual steps).**
 
 The following schema change is applied automatically on first startup (if needed):
 - **`users.must_change_password`** column added (default: 0, non-breaking)
-  - Enables forced password change flow for new users
+  - Enables forced password change flow for new users (Phase 1B)
   - Existing users unaffected (column defaults to 0)
-  - No manual intervention required
+  - Migration runner: `apps/backend/api/db_init.py`
+  - Non-blocking, backward-compatible
 
 Other new features use existing tables:
 - Share link hardening uses existing `vault_file_shares` table
