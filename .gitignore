@@ -59,6 +59,14 @@ test_*.py
 .coverage
 htmlcov/
 
+# Backup files
+*.bak
+*.backup
+*.old
+*.orig
+*.tmp
+*~.nib
+
 # Linter cache
 .ruff_cache/
 .mypy_cache/
