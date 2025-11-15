@@ -309,7 +309,22 @@ class BackupService:
                 extract_dir.mkdir(exist_ok=True)
 
                 with tarfile.open(tar_path, 'r') as tar:
-                    tar.extractall(extract_dir)
+                    # SECURITY: Prevent path traversal when extracting archives
+                    # Only extract members that are safely contained within extract_dir
+                    def is_within_directory(directory, target):
+                        try:
+                            directory = os.path.realpath(directory)
+                            target = os.path.realpath(target)
+                            return os.path.commonprefix([target, directory]) == directory
+                        except Exception:
+                            return False
+
+                    safe_members = []
+                    for member in tar.getmembers():
+                        member_path = os.path.join(extract_dir, member.name)
+                        if is_within_directory(extract_dir, member_path):
+                            safe_members.append(member)
+                    tar.extractall(extract_dir, members=safe_members)
 
                 # Verify metadata
                 metadata_path = extract_dir / "metadata.json"

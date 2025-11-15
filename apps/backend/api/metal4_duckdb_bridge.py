@@ -315,6 +315,14 @@ class Metal4DuckDBBridge:
     # Accelerated Aggregations (Direct API)
     # ========================================================================
 
+    import re
+    _IDENTIFIER_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
+
+    def _validate_identifier(self, name: str, kind: str = "identifier"):
+        """Validate DuckDB identifier (table/column) to prevent SQL injection."""
+        if not isinstance(name, str) or not self._IDENTIFIER_RE.match(name):
+            raise ValueError(f"Invalid {kind}: {name!r}")
+
     def accelerated_sum(
         self,
         table_name: str,
@@ -330,6 +338,10 @@ class Metal4DuckDBBridge:
         Returns:
             Sum value
         """
+        # Validate identifiers to prevent SQL injection
+        self._validate_identifier(table_name, "table name")
+        self._validate_identifier(column_name, "column name")
+
         if not self.sql_engine:
             # Fallback to DuckDB
             query = f"SELECT SUM({column_name}) FROM {table_name}"
@@ -359,6 +371,10 @@ class Metal4DuckDBBridge:
         Returns:
             Average value
         """
+        # Validate identifiers to prevent SQL injection
+        self._validate_identifier(table_name, "table name")
+        self._validate_identifier(column_name, "column name")
+
         if not self.sql_engine:
             query = f"SELECT AVG({column_name}) FROM {table_name}"
             result = self.duckdb_conn.execute(query).fetchone()
@@ -387,7 +403,11 @@ class Metal4DuckDBBridge:
         Returns:
             Count value
         """
+        # Validate identifiers to prevent SQL injection
+        self._validate_identifier(table_name, "table name")
         col = column_name or '*'
+        if col != '*':
+            self._validate_identifier(col, "column name")
         query = f"SELECT COUNT({col}) FROM {table_name}"
         result = self.duckdb_conn.execute(query).fetchone()
         return int(result[0])
@@ -408,6 +428,9 @@ class Metal4DuckDBBridge:
         """
         if not self.duckdb_conn:
             return {}
+
+        # Validate identifier
+        self._validate_identifier(table_name, "table name")
 
         # Get row count
         count_query = f"SELECT COUNT(*) FROM {table_name}"

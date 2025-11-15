@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import DOMPurify from 'dompurify'
 import { Send, Smile, Paperclip, Hash, Bold, Italic, Code, Link as LinkIcon, AtSign, X, Pencil, Trash2, Check } from 'lucide-react'
 import { useTeamChatStore } from '../stores/teamChatStore'
 import { showToast, showUndoToast } from '@/lib/toast'
@@ -406,7 +407,11 @@ export function TeamChatWindow({ mode }: TeamChatWindowProps) {
     // Links: [text](url)
     rendered = rendered.replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 hover:underline">$1</a>')
 
-    return rendered
+    // Sanitize output to prevent XSS when injecting HTML
+    return DOMPurify.sanitize(rendered, {
+      ALLOWED_TAGS: ['strong', 'em', 'code', 'a', 'p', 'br'],
+      ALLOWED_ATTR: ['href', 'target', 'rel']
+    })
   }
 
   if (!activeChannelId) {

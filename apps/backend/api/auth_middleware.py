@@ -35,10 +35,17 @@ def _get_or_create_jwt_secret() -> str:
     Get or create persistent JWT secret.
     In offline deployments, losing the JWT secret would invalidate all sessions.
     """
-    # Check env var first (production override)
-    env_secret = os.getenv("ELOHIM_JWT_SECRET")
+    # Check env vars first (production override)
+    # Preferred: ELOHIMOS_JWT_SECRET_KEY (standardized)
+    env_secret = os.getenv("ELOHIMOS_JWT_SECRET_KEY")
     if env_secret:
         return env_secret
+
+    # Backwards-compat: ELOHIM_JWT_SECRET (deprecated)
+    legacy_secret = os.getenv("ELOHIM_JWT_SECRET")
+    if legacy_secret:
+        logger.warning("Using deprecated env var ELOHIM_JWT_SECRET; prefer ELOHIMOS_JWT_SECRET_KEY")
+        return legacy_secret
 
     # Use persistent file storage
     try:
