@@ -21,9 +21,11 @@ from pydantic import BaseModel, Field
 
 from api.auth_middleware import get_current_user, User
 from api.config_paths import get_config_paths
+from api.config import get_settings
 from api.utils import sanitize_for_log
 from api.rate_limiter import rate_limiter, get_client_ip
 from api.services.crypto_wrap import wrap_key, unwrap_key
+# from api.services.webauthn_verify import verify_assertion, verify_registration
 
 logger = logging.getLogger(__name__)
 
@@ -409,10 +411,20 @@ async def unlock_biometric(
             wrap_method = wrap_method or "xor_legacy"  # Default for old entries
 
         # Verify WebAuthn assertion
-        # In production, use py_webauthn library for full verification
-        # For demo, we'll do a simplified check
-
-        # TODO: Full WebAuthn verification (challenge validation, signature verification)
+        # TODO: Full WebAuthn verification with challenge validation
+        # To enable, uncomment webauthn_verify import and use:
+        #   settings = get_settings()
+        #   challenge = get_stored_challenge(current_user.user_id, req.vault_id)  # Implement challenge storage
+        #   verified = verify_assertion(
+        #       assert_response=req.webauthn_assertion,
+        #       rp_id=settings.webauthn_rp_id,
+        #       origin=settings.webauthn_origin,
+        #       public_key_pem=public_key,
+        #       challenge=challenge,
+        #       credential_id=credential_id,
+        #       current_sign_count=row[4] if len(row) > 4 else 0  # Fetch webauthn_counter from DB
+        #   )
+        #   # Update sign_count in DB to prevent replay attacks
         # For now, we trust the client has verified the credential
 
         # Unwrap KEK using the stored wrap method

@@ -112,6 +112,25 @@ class ElohimOSSettings(BaseSettings):
     )
 
     # ============================================
+    # WEBAUTHN SETTINGS
+    # ============================================
+
+    webauthn_rp_id: str = Field(
+        default="localhost",
+        description="WebAuthn Relying Party ID (must match domain)"
+    )
+
+    webauthn_rp_name: str = Field(
+        default="ElohimOS",
+        description="WebAuthn Relying Party name (displayed to user)"
+    )
+
+    webauthn_origin: str = Field(
+        default="http://localhost:3000",
+        description="WebAuthn origin (frontend URL)"
+    )
+
+    # ============================================
     # PATH CONFIGURATION
     # ============================================
 
