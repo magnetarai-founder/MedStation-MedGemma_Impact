@@ -18,7 +18,9 @@ import { AutomationWorkspace } from './AutomationWorkspace'
 import { NetworkSelector } from './NetworkSelector'
 import { CreateTeamModal } from './CreateTeamModal'
 import { JoinTeamModal } from './JoinTeamModal'
-import { MessageSquare, FileText, Lock, Workflow, Plus, UserPlus } from 'lucide-react'
+import { MessageSquare, FileText, Lock, Workflow, Plus, UserPlus, Database, BarChart3 } from 'lucide-react'
+import { NLQueryPanel } from './data/NLQueryPanel'
+import { PatternDiscoveryPanel } from './data/PatternDiscoveryPanel'
 
 export function TeamWorkspace() {
   const { workspaceView, setWorkspaceView, vaultSetupComplete, vaultUnlocked } = useDocsStore()
@@ -27,6 +29,8 @@ export function TeamWorkspace() {
   const [showVaultSetup, setShowVaultSetup] = useState(false)
   const [showCreateTeam, setShowCreateTeam] = useState(false)
   const [showJoinTeam, setShowJoinTeam] = useState(false)
+  const [showNLQ, setShowNLQ] = useState(false)
+  const [showPatterns, setShowPatterns] = useState(false)
 
   const handleVaultClick = () => {
     if (!vaultSetupComplete) {
@@ -74,6 +78,26 @@ export function TeamWorkspace() {
               <span>Docs</span>
             </button>
           )}
+
+          {/* Data Lab (NL→SQL quick access) */}
+          <button
+            onClick={() => setShowNLQ(true)}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-md transition-all text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50"
+            title="Ask AI about your data"
+          >
+            <Database className="w-4 h-4" />
+            <span>Data Lab</span>
+          </button>
+
+          {/* Pattern Discovery */}
+          <button
+            onClick={() => setShowPatterns(true)}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-md transition-all text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50"
+            title="Discover patterns in your data"
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span>Patterns</span>
+          </button>
 
           {/* Workflows Tab - Members and above only */}
           {permissions.canAccessAutomation && (
@@ -164,6 +188,12 @@ export function TeamWorkspace() {
         isOpen={showJoinTeam}
         onClose={() => setShowJoinTeam(false)}
       />
+
+      {/* NL→SQL Panel */}
+      {showNLQ && <NLQueryPanel onClose={() => setShowNLQ(false)} />}
+
+      {/* Pattern Discovery Panel */}
+      {showPatterns && <PatternDiscoveryPanel onClose={() => setShowPatterns(false)} />}
     </div>
   )
 }
