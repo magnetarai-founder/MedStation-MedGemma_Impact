@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Archive, X, Download } from 'lucide-react'
 import axios from 'axios'
 import toast from 'react-hot-toast'
@@ -9,6 +10,17 @@ interface ExportModalProps {
 }
 
 export function ExportModal({ isOpen, vaultMode, onClose }: ExportModalProps) {
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onClose])
+
   const handleExportVault = async () => {
     try {
       const response = await axios.get('/api/v1/vault/export', {
@@ -35,14 +47,8 @@ export function ExportModal({ isOpen, vaultMode, onClose }: ExportModalProps) {
   if (!isOpen) return null
 
   return (
-    <div
-      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded-lg w-[500px] overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded-lg w-[500px] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-300 dark:border-zinc-700">
           <h3 className="text-lg font-semibold flex items-center gap-2 text-gray-900 dark:text-gray-100">

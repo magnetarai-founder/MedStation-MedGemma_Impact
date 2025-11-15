@@ -60,3 +60,13 @@ async def update_wiki(page_id: str, body: WikiUpdate):
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to update wiki page: {str(e)}")
 
+
+@router.delete("/wiki/{page_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_wiki(page_id: str):
+    try:
+        kb.delete_wiki_page(page_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to delete wiki page: {str(e)}")
+

@@ -1,6 +1,8 @@
 import { api } from './api'
 
-const BASE = '/api/v1/kanban'
+// Note: axios baseURL is '/api' (see lib/api.ts). Use '/v1/kanban' here
+// to avoid double '/api/api/...'
+const BASE = '/v1/kanban'
 
 // ===== Types =====
 export interface ProjectItem {
@@ -193,4 +195,8 @@ export async function updateWiki(
 ): Promise<WikiItem> {
   const response = await api.patch(`${BASE}/wiki/${pageId}`, updates)
   return response.data
+}
+
+export async function deleteWiki(pageId: string): Promise<void> {
+  await api.delete(`${BASE}/wiki/${pageId}`)
 }

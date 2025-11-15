@@ -30,6 +30,17 @@ export function FilePreviewModal({ isOpen, file, vaultMode, vaultPassphrase, onC
     }
   }, [isOpen, file])
 
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleClose()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [handleClose])
+
   const loadPreview = async () => {
     if (!file) return
 
@@ -89,14 +100,8 @@ export function FilePreviewModal({ isOpen, file, vaultMode, vaultPassphrase, onC
   if (!isOpen || !file) return null
 
   return (
-    <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-      onClick={handleClose}
-    >
-      <div
-        className="bg-white dark:bg-gray-900 rounded-lg max-w-6xl w-full max-h-[90vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-lg max-w-6xl w-full max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-3">

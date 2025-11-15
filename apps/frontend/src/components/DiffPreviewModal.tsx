@@ -3,6 +3,7 @@
  * Uses Continue's streamDiff pattern
  */
 
+import { useEffect } from 'react'
 import { X, Save, AlertTriangle } from 'lucide-react'
 
 interface DiffStats {
@@ -32,6 +33,17 @@ export function DiffPreviewModal({
   riskLevel,
   riskReason
 }: DiffPreviewModalProps) {
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onClose])
+
   if (!isOpen) return null
 
   const getRiskColor = (level?: string) => {

@@ -12,7 +12,7 @@ interface ColumnProps {
 
 export function Column({ column, tasks, onTaskClick, onCreateTask }: ColumnProps) {
   return (
-    <div className="flex-shrink-0 w-80 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 flex flex-col max-h-full">
+    <div className="flex-1 min-w-80 bg-gray-800/50 dark:bg-gray-800/50 rounded-lg border border-gray-700/50 dark:border-gray-700 flex flex-col max-h-full">
       {/* Column Header */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
         <h3 className="font-semibold text-gray-900 dark:text-gray-100">

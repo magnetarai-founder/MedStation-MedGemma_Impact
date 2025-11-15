@@ -351,85 +351,92 @@ export default function KanbanWorkspace() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <select
-              value={selectedProjectId || ''}
-              onChange={(e) => setSelectedProjectId(e.target.value)}
-              className="px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-sm"
-            >
-              {projects.map(p => (
-                <option key={p.project_id} value={p.project_id}>{p.name}</option>
-              ))}
-            </select>
+    <div className="h-full w-full flex flex-col bg-gray-50 dark:bg-gray-900">
+      {/* Header - Clean Kanban style with proper dropdowns */}
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30">
+        {/* Project Selector */}
+        <select
+          value={selectedProjectId || ''}
+          onChange={(e) => setSelectedProjectId(e.target.value)}
+          className="px-2 py-0.5 text-xs rounded border-0 bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none text-gray-700 dark:text-gray-300 font-medium cursor-pointer"
+        >
+          {projects.map(p => (
+            <option key={p.project_id} value={p.project_id}>{p.name}</option>
+          ))}
+        </select>
 
-            <select
-              value={selectedBoardId || ''}
-              onChange={(e) => setSelectedBoardId(e.target.value)}
-              className="px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-sm"
-              disabled={boards.length === 0}
-            >
-              {boards.length === 0 ? (
-                <option value="">No boards</option>
+        <div className="h-4 w-px bg-gray-300 dark:bg-gray-600"></div>
+
+        {/* Board Selector */}
+        <select
+          value={selectedBoardId || ''}
+          onChange={(e) => setSelectedBoardId(e.target.value)}
+          className="px-2 py-0.5 text-xs rounded border-0 bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300 cursor-pointer"
+          disabled={boards.length === 0}
+        >
+          {boards.length === 0 ? (
+            <option value="">No boards</option>
+          ) : (
+            boards.map(b => (
+              <option key={b.board_id} value={b.board_id}>{b.name}</option>
+            ))
+          )}
+        </select>
+
+        {/* Connection Status */}
+        {selectedBoardId && (
+          <>
+            <div className="h-4 w-px bg-gray-300 dark:bg-gray-600"></div>
+            <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+              {connected ? (
+                <>
+                  <Wifi className="w-3.5 h-3.5 text-green-500" />
+                  <span>Live</span>
+                </>
               ) : (
-                boards.map(b => (
-                  <option key={b.board_id} value={b.board_id}>{b.name}</option>
-                ))
+                <>
+                  <WifiOff className="w-3.5 h-3.5 text-gray-400" />
+                  <span>Offline</span>
+                </>
               )}
-            </select>
+            </div>
+          </>
+        )}
 
-            {/* Connection status */}
-            {selectedBoardId && (
-              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                {connected ? (
-                  <>
-                    <Wifi size={14} className="text-green-500" />
-                    <span>Live</span>
-                  </>
-                ) : (
-                  <>
-                    <WifiOff size={14} className="text-gray-400" />
-                    <span>Offline</span>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
+        <div className="flex-1"></div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleCreateProject}
-              className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              New Project
-            </button>
-            <button
-              onClick={handleCreateBoard}
-              className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
-              disabled={!selectedProjectId}
-            >
-              New Board
-            </button>
-            <button
-              onClick={handleCreateColumn}
-              className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
-              disabled={!selectedBoardId}
-            >
-              New Column
-            </button>
-            <button
-              onClick={() => setIsWikiOpen(true)}
-              className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2"
-              disabled={!selectedProjectId}
-            >
-              <BookOpen size={16} />
-              Wiki
-            </button>
-          </div>
-        </div>
+        {/* Action Buttons */}
+        <button
+          onClick={handleCreateProject}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-all text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50"
+        >
+          <Plus className="w-4 h-4" />
+          <span>New Project</span>
+        </button>
+        <button
+          onClick={handleCreateBoard}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-all text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={!selectedProjectId}
+        >
+          <Plus className="w-4 h-4" />
+          <span>New Board</span>
+        </button>
+        <button
+          onClick={handleCreateColumn}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-all text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={!selectedBoardId}
+        >
+          <Plus className="w-4 h-4" />
+          <span>New Column</span>
+        </button>
+        <button
+          onClick={() => setIsWikiOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-all text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={!selectedProjectId}
+        >
+          <BookOpen className="w-4 h-4" />
+          <span>Wiki</span>
+        </button>
       </div>
 
       {/* Board Content */}

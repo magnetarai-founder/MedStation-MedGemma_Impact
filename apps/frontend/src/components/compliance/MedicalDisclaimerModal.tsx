@@ -5,7 +5,7 @@
  * Required for compliance with medical information regulations
  */
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { AlertTriangle, Heart, Phone, X, Shield } from 'lucide-react'
 
 interface MedicalDisclaimerModalProps {
@@ -22,6 +22,17 @@ export function MedicalDisclaimerModal({
   insightType = 'general',
 }: MedicalDisclaimerModalProps) {
   const [dontShowAgain, setDontShowAgain] = useState(false)
+
+  // Handle Escape key to decline
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onDecline()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onDecline])
 
   if (!isOpen) return null
 

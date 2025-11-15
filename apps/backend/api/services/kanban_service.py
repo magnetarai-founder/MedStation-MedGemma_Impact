@@ -711,3 +711,20 @@ def update_wiki_page(page_id: str, *, title: Optional[str] = None, content: Opti
             "updated_at": now,
         }
 
+
+def delete_wiki_page(page_id: str) -> None:
+    """Delete a wiki page.
+
+    Args:
+        page_id: Wiki page ID
+
+    Raises:
+        ValueError: If wiki page not found
+    """
+    with _conn() as conn:
+        row = conn.execute("SELECT * FROM wiki_pages WHERE page_id=?", (page_id,)).fetchone()
+        if not row:
+            raise ValueError("Wiki page not found")
+        conn.execute("DELETE FROM wiki_pages WHERE page_id=?", (page_id,))
+        conn.commit()
+

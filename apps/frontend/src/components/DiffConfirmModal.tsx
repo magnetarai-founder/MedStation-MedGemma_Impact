@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 
 interface DiffConfirmModalProps {
   isOpen: boolean
@@ -21,6 +21,17 @@ export function DiffConfirmModal({
   truncated,
   truncationMessage,
 }: DiffConfirmModalProps) {
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onClose])
+
   if (!isOpen) return null
 
   return (

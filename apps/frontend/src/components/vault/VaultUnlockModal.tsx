@@ -42,6 +42,17 @@ export function VaultUnlockModal({
     checkBiometric()
   }, [unlockMode])
 
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onCancel()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onCancel])
+
   const handleBiometricUnlock = async () => {
     if (!credentialId) {
       setError('Biometric unlock not configured')

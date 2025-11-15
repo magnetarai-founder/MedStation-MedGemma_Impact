@@ -20,7 +20,7 @@ const NAV_ITEMS = {
 } as const
 
 // Static navigation order
-const NAV_ORDER: NavTab[] = ['chat', 'team', 'code', 'database', 'kanban', 'admin']
+const NAV_ORDER: NavTab[] = ['chat', 'team', 'kanban', 'code', 'database', 'admin']
 
 export function NavigationRail({ activeTab, onTabChange, onOpenSettings, onOpenServerControls }: NavigationRailProps) {
   const permissions = usePermissions()

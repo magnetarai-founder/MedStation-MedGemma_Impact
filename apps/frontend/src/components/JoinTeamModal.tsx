@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, Users, Check } from 'lucide-react'
 import { useUserStore } from '../stores/userStore'
 import { useTeamStore } from '../stores/teamStore'
@@ -15,6 +15,17 @@ export function JoinTeamModal({ isOpen, onClose }: JoinTeamModalProps) {
   const [inviteCode, setInviteCode] = useState('')
   const [isJoining, setIsJoining] = useState(false)
   const [joinedTeam, setJoinedTeam] = useState<{ name: string; teamId: string } | null>(null)
+
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleClose()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [])
 
   if (!isOpen) return null
 

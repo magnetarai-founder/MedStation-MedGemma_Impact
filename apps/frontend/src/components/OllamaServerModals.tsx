@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, AlertTriangle, Power, RotateCcw, Loader2 } from 'lucide-react'
 
 interface ShutdownModalProps {
@@ -10,6 +10,17 @@ interface ShutdownModalProps {
 
 export function ShutdownModal({ isOpen, onClose, onConfirm, loadedModels }: ShutdownModalProps) {
   const [isShuttingDown, setIsShuttingDown] = useState(false)
+
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onClose])
 
   const handleConfirm = async () => {
     setIsShuttingDown(true)
@@ -26,15 +37,9 @@ export function ShutdownModal({ isOpen, onClose, onConfirm, loadedModels }: Shut
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center"
-        onClick={onClose}
-      >
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
         {/* Modal */}
-        <div
-          className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-md w-full mx-4 border border-red-200 dark:border-red-800"
-          onClick={(e) => e.stopPropagation()}
-        >
+        <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-md w-full mx-4 border border-red-200 dark:border-red-800">
           {/* Header */}
           <div className="flex items-center gap-3 px-6 py-4 border-b border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
             <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
@@ -135,6 +140,17 @@ export function RestartModal({ isOpen, onClose, onConfirm, previousModels }: Res
   const [reloadModels, setReloadModels] = useState(true)
   const [selectedModels, setSelectedModels] = useState<Set<string>>(new Set(previousModels))
 
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onClose])
+
   const handleConfirm = async () => {
     setIsRestarting(true)
     try {
@@ -161,15 +177,9 @@ export function RestartModal({ isOpen, onClose, onConfirm, previousModels }: Res
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center"
-        onClick={onClose}
-      >
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
         {/* Modal */}
-        <div
-          className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-md w-full mx-4 border border-primary-200 dark:border-primary-800"
-          onClick={(e) => e.stopPropagation()}
-        >
+        <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-md w-full mx-4 border border-primary-200 dark:border-primary-800">
           {/* Header */}
           <div className="flex items-center gap-3 px-6 py-4 border-b border-primary-200 dark:border-primary-800 bg-primary-50 dark:bg-primary-900/20">
             <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/40 flex items-center justify-center">

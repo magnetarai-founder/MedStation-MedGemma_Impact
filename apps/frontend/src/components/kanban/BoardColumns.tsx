@@ -18,7 +18,7 @@ export function BoardColumns({ columns, tasks, onTaskClick, onCreateTask }: Boar
   })
 
   return (
-    <div className="flex gap-4 h-full">
+    <div className="flex gap-4 h-full w-full">
       {columns.map(column => (
         <Column
           key={column.column_id}

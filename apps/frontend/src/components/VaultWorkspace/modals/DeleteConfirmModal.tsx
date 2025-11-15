@@ -2,6 +2,7 @@
  * Delete Confirmation Modal
  */
 
+import { useEffect } from 'react'
 import { AlertTriangle, X } from 'lucide-react'
 import type { DeleteTarget } from '../types'
 
@@ -19,6 +20,17 @@ export function DeleteConfirmModal({
   onClose
 }: DeleteConfirmModalProps) {
   if (!isOpen || !deleteTarget) return null
+
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onClose])
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">

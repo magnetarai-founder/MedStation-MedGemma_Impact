@@ -2,6 +2,7 @@
  * Move File Modal
  */
 
+import { useEffect } from 'react'
 import { FolderInput, X, Home, Folder } from 'lucide-react'
 import type { MoveTarget, VaultFolder } from '../types'
 
@@ -15,6 +16,17 @@ interface MoveFileModalProps {
 
 export function MoveFileModal({ isOpen, moveTarget, folders, onMove, onClose }: MoveFileModalProps) {
   if (!isOpen || !moveTarget) return null
+
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onClose])
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">

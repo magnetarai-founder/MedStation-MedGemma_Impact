@@ -3,7 +3,7 @@
  */
 
 import { EyeOff, X } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface StealthLabelModalProps {
   isOpen: boolean
@@ -18,6 +18,17 @@ export function StealthLabelModal({ isOpen, docId, currentLabel, realTitle, onSa
   const [label, setLabel] = useState(currentLabel)
 
   if (!isOpen || !docId) return null
+
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onClose])
 
   const handleSave = () => {
     onSave(label)

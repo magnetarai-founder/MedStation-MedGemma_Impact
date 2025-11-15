@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { AlertTriangle, Shield } from 'lucide-react'
 
 interface PanicModeModalProps {
@@ -10,6 +10,23 @@ export function PanicModeModal({ isOpen, onClose }: PanicModeModalProps) {
   const [needsSecondClick, setNeedsSecondClick] = useState(false)
   const [isTriggering, setIsTriggering] = useState(false)
   const [result, setResult] = useState<any>(null)
+
+  const handleClose = () => {
+    setNeedsSecondClick(false)
+    setResult(null)
+    onClose()
+  }
+
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleClose()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onClose])
 
   if (!isOpen) return null
 
@@ -45,12 +62,6 @@ export function PanicModeModal({ isOpen, onClose }: PanicModeModalProps) {
     } finally {
       setIsTriggering(false)
     }
-  }
-
-  const handleClose = () => {
-    setNeedsSecondClick(false)
-    setResult(null)
-    onClose()
   }
 
   if (result) {

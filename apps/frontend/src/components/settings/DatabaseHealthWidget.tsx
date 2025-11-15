@@ -25,7 +25,8 @@ export function DatabaseHealthWidget() {
     try {
       setLoading(true)
       setError(null)
-      const response = await api.get('/api/v1/system/db-health')
+      // axios baseURL is '/api' so use '/v1/system/db-health'
+      const response = await api.get('/v1/system/db-health')
       setHealth(response.data)
     } catch (err: any) {
       console.error('Failed to fetch DB health:', err)

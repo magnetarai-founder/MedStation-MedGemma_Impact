@@ -3,7 +3,7 @@
  */
 
 import { Tag, X } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { FileTag } from '../types'
 
 interface TagManagementModalProps {
@@ -20,6 +20,17 @@ export function TagManagementModal({ isOpen, file, tags, onAddTag, onRemoveTag, 
   const [newTagColor, setNewTagColor] = useState('#3B82F6')
 
   if (!isOpen || !file) return null
+
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onClose])
 
   const handleAddTag = () => {
     if (newTagName.trim()) {

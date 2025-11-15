@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, Power, RefreshCw } from 'lucide-react'
 import { useOllamaStore } from '../stores/ollamaStore'
 
@@ -11,6 +11,17 @@ export function ServerControlModal({ isOpen, onClose }: ServerControlModalProps)
   const { serverStatus, fetchServerStatus } = useOllamaStore()
   const [isShuttingDown, setIsShuttingDown] = useState(false)
   const [isRestarting, setIsRestarting] = useState(false)
+
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onClose])
 
   if (!isOpen) return null
 
@@ -65,11 +76,8 @@ export function ServerControlModal({ isOpen, onClose }: ServerControlModalProps)
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div
-        className="w-full max-w-md bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg shadow-xl">
         {/* Header */}
         <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <div className="flex items-center gap-2">

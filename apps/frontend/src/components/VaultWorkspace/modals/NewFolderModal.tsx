@@ -3,7 +3,7 @@
  */
 
 import { FolderPlus, X } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface NewFolderModalProps {
   isOpen: boolean
@@ -19,6 +19,17 @@ export function NewFolderModal({
   const [folderName, setFolderName] = useState('')
 
   if (!isOpen) return null
+
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onClose])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()

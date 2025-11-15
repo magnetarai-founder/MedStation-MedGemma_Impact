@@ -26,6 +26,17 @@ export function MiniAIChatModal({ isOpen, onClose, context }: MiniAIChatModalPro
     setTimeout(() => inputRef.current?.focus(), 50)
   }, [isOpen, context.filePath, context.language])
 
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onClose])
+
   const send = async () => {
     const content = input.trim()
     if (!content) return

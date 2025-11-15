@@ -39,6 +39,17 @@ export function VersionHistoryModal({ isOpen, onClose, fileId, filename }: Versi
     }
   }, [isOpen, fileId])
 
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onClose])
+
   async function fetchFileVersions(currentOffset: number = offset) {
     if (!fileId) return
 
@@ -118,8 +129,8 @@ export function VersionHistoryModal({ isOpen, onClose, fileId, filename }: Versi
   if (!isOpen || !fileId) return null
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded-lg w-[700px] max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded-lg w-[700px] max-h-[80vh] overflow-hidden flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-gray-300 dark:border-zinc-700">
           <h3 className="text-lg font-semibold flex items-center gap-2 text-gray-900 dark:text-gray-100">
             <GitBranch className="w-5 h-5" />

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { X, Plus, FileText, Wifi, WifiOff, Save } from 'lucide-react'
+import { X, Plus, FileText, Wifi, WifiOff, Save, Edit2, Trash2, Check } from 'lucide-react'
 import toast from 'react-hot-toast'
 import * as Y from 'yjs'
 import * as kanbanApi from '@/lib/kanbanApi'
@@ -18,6 +18,9 @@ export function ProjectWiki({ projectId, onClose }: ProjectWikiProps) {
   const [loading, setLoading] = useState(true)
   const [connected, setConnected] = useState(false)
   const [editTitle, setEditTitle] = useState('')
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [editingPageId, setEditingPageId] = useState<string | null>(null)
+  const [renamingTitle, setRenamingTitle] = useState('')
 
   // Yjs refs
   const ydocRef = useRef<Y.Doc | null>(null)
@@ -122,24 +125,102 @@ export function ProjectWiki({ projectId, onClose }: ProjectWikiProps) {
       // Update pages list
       setPages(pages.map(p => p.page_id === updatedPage.page_id ? updatedPage : p))
       setSelectedPage(updatedPage)
+      setHasUnsavedChanges(false)
       toast.success('Page saved')
     } catch (err) {
       toast.error('Failed to save page')
     }
   }
 
+  const handleCancel = () => {
+    if (!selectedPage) return
+    // Reset to original values
+    setEditTitle(selectedPage.title)
+    if (ytextRef.current && selectedPage.content) {
+      ytextRef.current.delete(0, ytextRef.current.length)
+      ytextRef.current.insert(0, selectedPage.content)
+    }
+    setHasUnsavedChanges(false)
+  }
+
+  const handleDeletePage = async (pageId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!confirm('Delete this page?')) return
+
+    try {
+      await kanbanApi.deleteWiki(pageId)
+      setPages(pages.filter(p => p.page_id !== pageId))
+      if (selectedPage?.page_id === pageId) {
+        setSelectedPage(null)
+      }
+      toast.success('Page deleted')
+    } catch (err) {
+      toast.error('Failed to delete page')
+    }
+  }
+
+  const startRename = (page: WikiItem, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setEditingPageId(page.page_id)
+    setRenamingTitle(page.title)
+  }
+
+  const saveRename = async (pageId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!renamingTitle.trim()) return
+
+    try {
+      const page = pages.find(p => p.page_id === pageId)
+      if (!page) return
+
+      const updatedPage = await kanbanApi.updateWiki(pageId, renamingTitle, page.content || '')
+      setPages(pages.map(p => p.page_id === pageId ? updatedPage : p))
+      if (selectedPage?.page_id === pageId) {
+        setSelectedPage(updatedPage)
+        setEditTitle(renamingTitle)
+      }
+      setEditingPageId(null)
+      toast.success('Page renamed')
+    } catch (err) {
+      toast.error('Failed to rename page')
+    }
+  }
+
+  const cancelRename = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setEditingPageId(null)
+  }
+
   // Use Y.Text binding hook
   const { value: content, onChange: onContentChange } = useYTextBinding(ytextRef.current)
 
+  // Track changes
+  useEffect(() => {
+    if (!selectedPage) return
+    const titleChanged = editTitle !== selectedPage.title
+    const contentChanged = content !== (selectedPage.content || '')
+    setHasUnsavedChanges(titleChanged || contentChanged)
+  }, [editTitle, content, selectedPage])
+
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onClose])
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] flex"
-        onClick={(e) => e.stopPropagation()}
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-[900px] h-[600px] flex overflow-hidden"
       >
         {/* Sidebar */}
         <div className="w-64 border-r border-gray-200 dark:border-gray-700 flex flex-col">
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <div className="px-4 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between h-[57px]">
             <h3 className="font-semibold text-gray-900 dark:text-gray-100">Wiki Pages</h3>
             <button
               onClick={handleCreatePage}
@@ -151,36 +232,89 @@ export function ProjectWiki({ projectId, onClose }: ProjectWikiProps) {
 
           <div className="flex-1 overflow-y-auto p-2">
             {pages.map(page => (
-              <button
+              <div
                 key={page.page_id}
-                onClick={() => setSelectedPage(page)}
-                className={`w-full p-3 text-left rounded-lg mb-1 flex items-center gap-2 ${
+                className={`w-full p-3 text-left rounded-lg mb-1 group cursor-pointer ${
                   selectedPage?.page_id === page.page_id
-                    ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
-                    : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+                    ? 'bg-primary-100 dark:bg-primary-900/30'
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
+                onClick={() => !editingPageId && setSelectedPage(page)}
               >
-                <FileText size={16} />
-                <span className="text-sm truncate">{page.title}</span>
-              </button>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <FileText size={14} className="flex-shrink-0 text-gray-400" />
+                    {editingPageId === page.page_id ? (
+                      <div className="flex-1 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="text"
+                          value={renamingTitle}
+                          onChange={(e) => setRenamingTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') saveRename(page.page_id, e as any)
+                            if (e.key === 'Escape') cancelRename(e as any)
+                          }}
+                          className="flex-1 px-2 py-0.5 text-sm bg-white dark:bg-gray-800 border border-primary-300 dark:border-primary-600 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                          autoFocus
+                        />
+                        <button
+                          onClick={(e) => saveRename(page.page_id, e)}
+                          className="p-0.5 hover:bg-green-100 dark:hover:bg-green-900/20 rounded"
+                          title="Save"
+                        >
+                          <Check size={14} className="text-green-600 dark:text-green-400" />
+                        </button>
+                        <button
+                          onClick={cancelRename}
+                          className="p-0.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+                          title="Cancel"
+                        >
+                          <X size={14} className="text-gray-600 dark:text-gray-400" />
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-sm font-medium truncate">{page.title}</span>
+                    )}
+                  </div>
+
+                  {editingPageId !== page.page_id && (
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => startRename(page, e)}
+                        className="p-1 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
+                        title="Rename"
+                      >
+                        <Edit2 size={12} className="text-blue-600 dark:text-blue-400" />
+                      </button>
+                      <button
+                        onClick={(e) => handleDeletePage(page.page_id, e)}
+                        className="p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                        title="Delete"
+                      >
+                        <Trash2 size={12} className="text-red-600 dark:text-red-400" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
             ))}
           </div>
         </div>
 
         {/* Content */}
         <div className="flex-1 flex flex-col">
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <div className="px-4 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between h-[57px]">
             <div className="flex items-center gap-3 flex-1">
               {selectedPage ? (
                 <input
                   type="text"
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
-                  className="text-xl font-semibold text-gray-900 dark:text-gray-100 bg-transparent border-none outline-none focus:ring-0 px-0"
+                  className="font-semibold text-gray-900 dark:text-gray-100 bg-transparent border-none outline-none focus:ring-0 px-0"
                   placeholder="Page title"
                 />
               ) : (
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                <h2 className="font-semibold text-gray-900 dark:text-gray-100">
                   Select a page
                 </h2>
               )}
@@ -204,10 +338,20 @@ export function ProjectWiki({ projectId, onClose }: ProjectWikiProps) {
             </div>
 
             <div className="flex items-center gap-2">
+              {selectedPage && hasUnsavedChanges && (
+                <button
+                  onClick={handleCancel}
+                  className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg flex items-center gap-2"
+                >
+                  <X size={16} />
+                  Cancel
+                </button>
+              )}
               {selectedPage && (
                 <button
                   onClick={handleSave}
-                  className="px-3 py-2 text-sm bg-primary-600 hover:bg-primary-700 text-white rounded-lg flex items-center gap-2"
+                  disabled={!hasUnsavedChanges}
+                  className="px-3 py-2 text-sm bg-primary-600 hover:bg-primary-700 text-white rounded-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Save size={16} />
                   Save
@@ -219,16 +363,16 @@ export function ProjectWiki({ projectId, onClose }: ProjectWikiProps) {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 p-6 overflow-hidden">
             {selectedPage ? (
               <textarea
                 value={content}
                 onChange={(e) => onContentChange(e.target.value)}
-                className="w-full h-full min-h-[400px] p-4 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full h-full p-4 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Start writing..."
               />
             ) : (
-              <div className="text-center text-gray-500 dark:text-gray-400 mt-12">
+              <div className="flex items-center justify-center h-full text-center text-gray-500 dark:text-gray-400">
                 Select a page from the sidebar or create a new one
               </div>
             )}

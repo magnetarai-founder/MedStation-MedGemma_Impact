@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, Users, Copy, Check } from 'lucide-react'
 import { useUserStore } from '../stores/userStore'
 import { useTeamStore } from '../stores/teamStore'
@@ -17,6 +17,17 @@ export function CreateTeamModal({ isOpen, onClose }: CreateTeamModalProps) {
   const [isCreating, setIsCreating] = useState(false)
   const [inviteCode, setInviteCode] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleClose()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [])
 
   if (!isOpen) return null
 

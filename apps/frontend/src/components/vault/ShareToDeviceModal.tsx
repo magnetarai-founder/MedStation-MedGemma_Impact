@@ -45,6 +45,17 @@ export function ShareToDeviceModal({ isOpen, onClose, files }: ShareToDeviceModa
     })()
   }, [isOpen])
 
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onClose])
+
   const totalSize = useMemo(() => files.reduce((s, f) => s + (f.size || 0), 0), [files])
 
   const onShare = async () => {

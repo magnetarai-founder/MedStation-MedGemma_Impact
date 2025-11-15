@@ -89,14 +89,8 @@ export function SearchSessionsModal({ onClose }: SearchSessionsModalProps) {
   }
 
   return (
-    <div
-      className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-start justify-center z-50 p-4 pt-20"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-start justify-center z-50 p-4 pt-20">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col">
         {/* Search Header */}
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-3">

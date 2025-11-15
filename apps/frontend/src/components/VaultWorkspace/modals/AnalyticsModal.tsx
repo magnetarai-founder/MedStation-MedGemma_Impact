@@ -23,6 +23,17 @@ export function AnalyticsModal({ isOpen, vaultMode, onClose }: AnalyticsModalPro
     }
   }, [isOpen])
 
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onClose])
+
   const loadAnalytics = async () => {
     setIsLoading(true)
     try {
@@ -54,14 +65,8 @@ export function AnalyticsModal({ isOpen, vaultMode, onClose }: AnalyticsModalPro
   if (!isOpen) return null
 
   return (
-    <div
-      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded-lg w-[900px] max-h-[90vh] overflow-hidden flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded-lg w-[900px] max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-300 dark:border-zinc-700">
           <h3 className="text-lg font-semibold flex items-center gap-2 text-gray-900 dark:text-gray-100">

@@ -30,6 +30,17 @@ export function QueryHistoryModal({ isOpen, onClose, onRunQuery }: QueryHistoryM
     }
   }, [isOpen, sessionId])
 
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onClose])
+
   const loadHistory = async () => {
     setIsLoading(true)
     try {
@@ -67,7 +78,7 @@ export function QueryHistoryModal({ isOpen, onClose, onRunQuery }: QueryHistoryM
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose}></div>
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
 
       {/* Modal */}
       <div className="relative w-full max-w-4xl mx-4 max-h-[80vh] glass rounded-2xl border border-white/30 dark:border-gray-700/40 shadow-2xl flex flex-col">

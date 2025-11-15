@@ -3,7 +3,7 @@
  */
 
 import { Edit2, X } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { RenameTarget } from '../types'
 
 interface RenameModalProps {
@@ -22,6 +22,17 @@ export function RenameModal({
   const [newName, setNewName] = useState(renameTarget?.currentName || '')
 
   if (!isOpen || !renameTarget) return null
+
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onClose])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()

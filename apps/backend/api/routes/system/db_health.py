@@ -15,10 +15,11 @@ router = APIRouter()
 
 try:
     from api.config_paths import PATHS
-    from api.routes.auth import get_current_user, require_founder_rights
+    # Use founder rights dependency from admin_service
+    from api.admin_service import require_founder_rights
 except ImportError:
     from config_paths import PATHS
-    from routes.auth import get_current_user, require_founder_rights
+    from admin_service import require_founder_rights
 
 
 @router.get("/db-health")
