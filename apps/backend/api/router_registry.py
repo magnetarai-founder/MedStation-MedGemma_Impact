@@ -466,6 +466,15 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
         services_failed.append("Collab Snapshots API")
         logger.error("Failed to load collab snapshots router", exc_info=True)
 
+    # Collaboration ACL Admin API
+    try:
+        from api.routes import collab_acl_admin as _collab_acl_admin
+        app.include_router(_collab_acl_admin.router)  # prefix="/api/v1/collab"
+        services_loaded.append("Collab ACL API")
+    except Exception as e:
+        services_failed.append("Collab ACL API")
+        logger.error("Failed to load collab ACL router", exc_info=True)
+
     # Pattern Discovery (Data Profiler) API
     try:
         from api.routes.data import profiler as _profiler_routes
