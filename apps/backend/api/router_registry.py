@@ -448,4 +448,13 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
         services_failed.append("Pattern Discovery API")
         logger.error("Failed to load pattern discovery router", exc_info=True)
 
+    # Collaborative Editing WebSocket
+    try:
+        from api import collab_ws as _collab_ws
+        app.include_router(_collab_ws.router)  # Router already has prefix="/api/v1/collab"
+        services_loaded.append("Collaboration API")
+    except Exception as e:
+        services_failed.append("Collaboration API")
+        logger.error("Failed to load collaboration router", exc_info=True)
+
     return services_loaded, services_failed
