@@ -1,9 +1,10 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
-import { X, Settings as SettingsIcon, Zap, AlertTriangle, Cpu, User, Loader2, Shield, MessageSquare, Sparkles, Workflow, Crown, BarChart3 } from 'lucide-react'
+import { X, Settings as SettingsIcon, Zap, AlertTriangle, Cpu, User, Loader2, Shield, MessageSquare, Sparkles, Workflow, Crown, BarChart3, ArrowRight } from 'lucide-react'
 import { type NavTab } from '@/stores/navigationStore'
 import { usePermissions } from '@/hooks/usePermissions'
 import { ProfileSettings } from './ProfileSettings/index'
 import { ROLES } from '@/lib/roles'
+import { useNavigationStore } from '@/stores/navigationStore'
 
 // Lazy load heavy tab components for better performance
 const ChatTab = lazy(() => import('./settings/ChatTab'))
@@ -39,9 +40,11 @@ function LoadingFallback() {
 
 export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalProps) {
   const permissions = usePermissions()
+  const { setActiveTab: setNavTab } = useNavigationStore()
   const [activeTab, setActiveTab] = useState<'profile' | 'admin' | 'chat' | 'models' | 'permissions' | 'app' | 'automation' | 'advanced' | 'security' | 'danger' | 'analytics'>('profile')
   const [preloaded, setPreloaded] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
+  const [showAdminBanner, setShowAdminBanner] = useState(true)
 
   // Fetch user role on mount
   useEffect(() => {
@@ -284,6 +287,34 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
               <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
             </button>
           </div>
+
+          {/* Admin Page Banner */}
+          {showAdminBanner && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800 px-8 py-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm text-blue-800 dark:text-blue-200">
+                  <Shield className="w-4 h-4" />
+                  <span>Settings have moved to the Admin page for better organization.</span>
+                  <button
+                    onClick={() => {
+                      setNavTab('admin')
+                      onClose()
+                    }}
+                    className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                  >
+                    Open Admin
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <button
+                  onClick={() => setShowAdminBanner(false)}
+                  className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Content */}
           <div className="flex-1 overflow-auto p-8">

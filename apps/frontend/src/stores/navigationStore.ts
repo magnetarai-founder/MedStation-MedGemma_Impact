@@ -1,7 +1,7 @@
 import { createWithEqualityFn } from 'zustand/traditional'
 import { persist } from 'zustand/middleware'
 
-export type NavTab = 'team' | 'chat' | 'code' | 'database'
+export type NavTab = 'team' | 'chat' | 'code' | 'database' | 'admin'
 
 export interface NavItem {
   id: NavTab

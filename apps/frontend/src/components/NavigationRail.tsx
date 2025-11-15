@@ -1,4 +1,4 @@
-import { Database, SlidersHorizontal, MessageSquare, Briefcase, Code, Power } from 'lucide-react'
+import { Database, SlidersHorizontal, MessageSquare, Briefcase, Code, Power, Shield } from 'lucide-react'
 import { type NavTab } from '../stores/navigationStore'
 import { usePermissions } from '@/hooks/usePermissions'
 
@@ -15,10 +15,11 @@ const NAV_ITEMS = {
   chat: { icon: MessageSquare, label: 'AI Chat' },
   code: { icon: Code, label: 'Code' },
   database: { icon: Database, label: 'Database' },
+  admin: { icon: Shield, label: 'Admin' },
 } as const
 
-// Static navigation order
-const NAV_ORDER: NavTab[] = ['chat', 'team', 'code', 'database']
+// Static navigation order (Admin placed directly below Database)
+const NAV_ORDER: NavTab[] = ['chat', 'team', 'code', 'database', 'admin']
 
 export function NavigationRail({ activeTab, onTabChange, onOpenSettings, onOpenServerControls }: NavigationRailProps) {
   const permissions = usePermissions()
@@ -39,6 +40,9 @@ export function NavigationRail({ activeTab, onTabChange, onOpenSettings, onOpenS
         case 'database':
           // Database: Members and above only (no guests)
           return permissions.canAccessDocuments
+        case 'admin':
+          // Admin: All authenticated users can access
+          return true
         default:
           return true
       }

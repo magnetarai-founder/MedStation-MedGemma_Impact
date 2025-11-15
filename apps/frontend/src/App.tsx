@@ -28,6 +28,7 @@ const ChatWindow = lazyNamed(() => import('./components/ChatWindow'), 'ChatWindo
 const CodeWorkspace = lazyNamed(() => import('./components/CodeWorkspace'), 'CodeWorkspace')
 const CodeSidebar = lazyNamed(() => import('./components/CodeSidebar'), 'CodeSidebar')
 const TeamWorkspace = lazyNamed(() => import('./components/TeamWorkspace'), 'TeamWorkspace')
+const AdminPage = lazyNamed(() => import('./pages/AdminPage'), 'default')
 
 // Lazy load modals (only loaded when opened) with retry logic
 const SettingsModal = lazyNamed(() => import('./components/SettingsModal'), 'SettingsModal')
@@ -437,6 +438,18 @@ export default function App() {
               }
               right={<ResizablePanels />}
             />
+          </div>
+
+          {/* Admin Tab */}
+          <div
+            className="absolute inset-0 flex"
+            style={{
+              display: activeTab === 'admin' ? 'flex' : 'none'
+            }}
+          >
+            <Suspense fallback={<LoadingSpinner />}>
+              <AdminPage />
+            </Suspense>
           </div>
 
         </div>
