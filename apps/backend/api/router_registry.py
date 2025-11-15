@@ -475,6 +475,26 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
         services_failed.append("Collab ACL API")
         logger.error("Failed to load collab ACL router", exc_info=True)
 
+    # Kanban API
+    try:
+        from api.routes.kanban import projects as _kb_projects
+        from api.routes.kanban import boards as _kb_boards
+        from api.routes.kanban import columns as _kb_columns
+        from api.routes.kanban import tasks as _kb_tasks
+        from api.routes.kanban import comments as _kb_comments
+        from api.routes.kanban import wiki as _kb_wiki
+
+        app.include_router(_kb_projects.router)
+        app.include_router(_kb_boards.router)
+        app.include_router(_kb_columns.router)
+        app.include_router(_kb_tasks.router)
+        app.include_router(_kb_comments.router)
+        app.include_router(_kb_wiki.router)
+        services_loaded.append("Kanban API")
+    except Exception as e:
+        services_failed.append("Kanban API")
+        logger.error("Failed to load Kanban API", exc_info=True)
+
     # Pattern Discovery (Data Profiler) API
     try:
         from api.routes.data import profiler as _profiler_routes
