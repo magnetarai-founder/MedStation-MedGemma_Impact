@@ -1,18 +1,31 @@
 """
-Mission Diagnostics Endpoint (skeleton).
+Mission Diagnostics Endpoint.
 
-GET /api/v1/diagnostics - returns system, GPU/Metal, and P2P summary metrics.
+Provides comprehensive system health monitoring for Mission Dashboard:
+- System metrics (CPU, RAM, disk)
+- Metal/GPU status (macOS)
+- Ollama model information
+- P2P network status
+- Database health
+
+GET /api/v1/diagnostics - returns all diagnostics
 """
 
 from __future__ import annotations
 
+import logging
 import platform
-from typing import Any, Dict
+from pathlib import Path
+from typing import Any, Dict, Optional
 
 import psutil
 from fastapi import APIRouter, Depends
 
 from api.auth_middleware import get_current_user
+from api.config_paths import get_config_paths
+
+logger = logging.getLogger(__name__)
+PATHS = get_config_paths()
 
 
 router = APIRouter(prefix="/api/v1", tags=["diagnostics"], dependencies=[Depends(get_current_user)])
@@ -31,6 +44,7 @@ def _system_overview() -> Dict[str, Any]:
 
 
 def _metal_overview() -> Dict[str, Any]:
+    """Get Metal/GPU status (macOS only)"""
     try:
         from metal4_engine import get_metal4_engine
 
@@ -49,14 +63,106 @@ def _metal_overview() -> Dict[str, Any]:
         return {"available": False, "error": str(e)}
 
 
+def _ollama_overview() -> Dict[str, Any]:
+    """Get Ollama status and model count"""
+    try:
+        import httpx
+
+        # Quick health check
+        response = httpx.get("http://localhost:11434/api/tags", timeout=2.0)
+        if response.status_code == 200:
+            data = response.json()
+            models = data.get("models", [])
+            return {
+                "available": True,
+                "model_count": len(models),
+                "models": [m["name"] for m in models[:5]],  # First 5 models
+                "status": "running"
+            }
+        else:
+            return {"available": False, "status": "unreachable", "error": f"HTTP {response.status_code}"}
+    except Exception as e:
+        return {"available": False, "status": "offline", "error": str(e)}
+
+
+def _p2p_overview() -> Dict[str, Any]:
+    """Get P2P network status"""
+    try:
+        # Check if P2P service is available
+        # This is a placeholder - actual implementation would query the P2P service
+        from api.p2p_mesh_service import get_p2p_status
+        status = get_p2p_status()
+        return {
+            "status": status.get("status", "unknown"),
+            "peers": status.get("peer_count", 0),
+            "services": status.get("services", [])
+        }
+    except Exception as e:
+        # Fallback if P2P service not available
+        return {"status": "unavailable", "peers": 0, "error": str(e)}
+
+
+def _database_overview() -> Dict[str, Any]:
+    """Get database health metrics"""
+    try:
+        import sqlite3
+        from api.config_paths import get_config_paths
+
+        paths = get_config_paths()
+        db_path = paths.data_dir / "elohimos.db"
+
+        if not db_path.exists():
+            return {"status": "not_initialized", "size_mb": 0}
+
+        # Get database size
+        size_bytes = db_path.stat().st_size
+        size_mb = round(size_bytes / (1024**2), 2)
+
+        # Quick connection test
+        with sqlite3.connect(str(db_path), timeout=2.0) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table'")
+            table_count = cursor.fetchone()[0]
+
+        return {
+            "status": "healthy",
+            "size_mb": size_mb,
+            "table_count": table_count,
+            "path": str(db_path)
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
 @router.get("/diagnostics")
 async def get_diagnostics():
-    """Return system, GPU/Metal, and placeholder P2P summary."""
-    data: Dict[str, Any] = {
-        "system": _system_overview(),
-        "metal": _metal_overview(),
-        # P2P summary can be filled by querying p2p service if desired
-        "p2p": {"peers": None, "status": "n/a"},
-    }
-    return data
+    """Return comprehensive system diagnostics for Mission Dashboard.
+
+    Returns:
+        JSON with system, Metal, Ollama, P2P, and database metrics
+    """
+    try:
+        data: Dict[str, Any] = {
+            "system": _system_overview(),
+            "metal": _metal_overview(),
+            "ollama": _ollama_overview(),
+            "p2p": _p2p_overview(),
+            "database": _database_overview(),
+            "timestamp": psutil.boot_time(),  # System uptime reference
+        }
+
+        logger.debug("Diagnostics collected successfully")
+        return data
+
+    except Exception as e:
+        logger.error(f"Diagnostics collection failed: {e}", exc_info=True)
+        # Return partial diagnostics even on error
+        return {
+            "system": _system_overview(),
+            "metal": {"available": False, "error": "Collection failed"},
+            "ollama": {"available": False, "error": "Collection failed"},
+            "p2p": {"status": "error", "peers": 0, "error": str(e)},
+            "database": {"status": "error", "error": str(e)},
+            "error": str(e)
+        }
 
