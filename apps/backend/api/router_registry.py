@@ -403,6 +403,15 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
         services_failed.append("Vault API")
         logger.error("Failed to load vault router", exc_info=True)
 
+    # Vault Auth API (Biometric + Decoy)
+    try:
+        from api.routes import vault_auth as _vault_auth_routes
+        app.include_router(_vault_auth_routes.router)  # Router already has prefix="/api/v1/vault"
+        services_loaded.append("Vault Auth API")
+    except Exception as e:
+        services_failed.append("Vault Auth API")
+        logger.error("Failed to load vault auth router", exc_info=True)
+
     # Team API
     try:
         from api.routes import team as _team_routes
