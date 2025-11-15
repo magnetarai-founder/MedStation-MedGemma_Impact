@@ -223,14 +223,16 @@ async def get_metal4_stats(request: Request):
 
     Returns real-time metrics from Metal 4 diagnostics
     """
-    # Rate limit: 60 stats/min (300/min in development)
-    from rate_limiter import is_dev_mode
-    client_ip = get_client_ip(request)
-    max_per_min = 300 if is_dev_mode(request) else 60
-    if not rate_limiter.check_rate_limit(
-        f"monitoring:metal4:{client_ip}", max_requests=max_per_min, window_seconds=60
-    ):
-        raise HTTPException(status_code=429, detail=f"Rate limit exceeded. Max {max_per_min} requests per minute.")
+    # Rate limit: Disabled for lightweight stats endpoint (dev only, local access)
+    # Original: 60/min (prod), 300/min (dev) - caused issues with frontend polling
+    # This endpoint is read-only, low-cost, and only accessible locally
+    # from rate_limiter import is_dev_mode
+    # client_ip = get_client_ip(request)
+    # max_per_min = 300 if is_dev_mode(request) else 60
+    # if not rate_limiter.check_rate_limit(
+    #     f"monitoring:metal4:{client_ip}", max_requests=max_per_min, window_seconds=60
+    # ):
+    #     raise HTTPException(status_code=429, detail=f"Rate limit exceeded. Max {max_per_min} requests per minute.")
 
     try:
         from metal4_diagnostics import get_diagnostics
