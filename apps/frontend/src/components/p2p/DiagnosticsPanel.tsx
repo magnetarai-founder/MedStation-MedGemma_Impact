@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Loader2, X, AlertCircle, CheckCircle2, Activity, RefreshCw } from 'lucide-react'
-import api from '@/lib/api'
+import { api } from '@/lib/api'
 
 interface DiagnosticsPanelProps {
   onClose: () => void

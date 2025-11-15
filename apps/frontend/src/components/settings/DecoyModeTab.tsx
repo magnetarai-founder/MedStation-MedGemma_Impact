@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Loader2, Shield, AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react'
-import api from '@/lib/api'
+import { api } from '@/lib/api'
 
 interface DecoyModeTabProps {
   vaultId: string

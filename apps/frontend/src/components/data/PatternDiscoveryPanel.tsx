@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { Loader2, X, Download, HelpCircle, TrendingUp, BarChart3, AlertCircle, StopCircle } from 'lucide-react'
-import api from '@/lib/api'
+import { api } from '@/lib/api'
 
 interface PatternDiscoveryPanelProps {
   onClose: () => void

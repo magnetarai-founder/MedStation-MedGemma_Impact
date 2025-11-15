@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Loader2, X, Fingerprint, Lock, AlertCircle } from 'lucide-react'
-import api from '@/lib/api'
+import { api } from '@/lib/api'
 import { isBiometricAvailable, authenticateBiometric } from '@/lib/webauthn'
 
 interface VaultUnlockModalProps {

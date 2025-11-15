@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { askNLQ, NLQResponse } from '@/lib/nlqApi'
 import { Loader2, X, Copy, Check, HelpCircle, Play, History, StopCircle } from 'lucide-react'
-import api from '@/lib/api'
+import { api } from '@/lib/api'
 
 interface NLQueryPanelProps {
   onClose: () => void

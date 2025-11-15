@@ -1,27 +1,37 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { DragDropContext, DropResult } from '@hello-pangea/dnd'
 import toast from 'react-hot-toast'
-import { Plus, BookOpen } from 'lucide-react'
+import { Plus, BookOpen, Wifi, WifiOff } from 'lucide-react'
+import * as Y from 'yjs'
 import * as kanbanApi from '@/lib/kanbanApi'
 import type { ProjectItem, BoardItem, ColumnItem, TaskItem } from '@/lib/kanbanApi'
 import { BoardColumns } from '@/components/kanban/BoardColumns'
 import { TaskModal } from '@/components/kanban/TaskModal'
 import { ProjectWiki } from '@/components/kanban/ProjectWiki'
+import { createProviders } from '@/lib/collab/yProvider'
+import { applyMoveAndGetHints } from '@/lib/collab/yArrayOps'
 
 export default function KanbanWorkspace() {
   const [projects, setProjects] = useState<ProjectItem[]>([])
   const [boards, setBoards] = useState<BoardItem[]>([])
   const [columns, setColumns] = useState<ColumnItem[]>([])
-  const [tasks, setTasks] = useState<TaskItem[]>([])
+  const [tasksDict, setTasksDict] = useState<Record<string, TaskItem>>({})
+  const [tasksByColumn, setTasksByColumn] = useState<Record<string, TaskItem[]>>({})
 
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null)
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [connected, setConnected] = useState(false)
 
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [isWikiOpen, setIsWikiOpen] = useState(false)
+
+  // Yjs refs
+  const ydocRef = useRef<Y.Doc | null>(null)
+  const yColumnsRef = useRef<Y.Map<Y.Array<string>> | null>(null)
+  const providerRef = useRef<any>(null)
 
   // Load projects on mount
   useEffect(() => {
@@ -35,10 +45,109 @@ export default function KanbanWorkspace() {
     }
   }, [selectedProjectId])
 
-  // Load columns and tasks when board changes
+  // Load columns and tasks with Yjs when board changes
   useEffect(() => {
-    if (selectedBoardId) {
-      loadColumnsAndTasks(selectedBoardId)
+    if (!selectedBoardId) {
+      // Cleanup on board deselect
+      if (providerRef.current) {
+        providerRef.current.destroy?.()
+        providerRef.current = null
+      }
+      if (ydocRef.current) {
+        ydocRef.current.destroy()
+        ydocRef.current = null
+      }
+      yColumnsRef.current = null
+      setColumns([])
+      setTasksDict({})
+      setTasksByColumn({})
+      return
+    }
+
+    let cancelled = false
+
+    async function loadBoardWithYjs() {
+      try {
+        // Fetch REST data
+        const [columnsData, tasksData] = await Promise.all([
+          kanbanApi.listColumns(selectedBoardId!),
+          kanbanApi.listTasks(selectedBoardId!)
+        ])
+
+        if (cancelled) return
+
+        setColumns(columnsData)
+
+        // Build tasks dictionary
+        const dict: Record<string, TaskItem> = {}
+        for (const t of tasksData) {
+          dict[t.task_id] = t
+        }
+        setTasksDict(dict)
+
+        // Initialize Yjs
+        const ydoc = new Y.Doc()
+        ydocRef.current = ydoc
+
+        const providers = createProviders(`board:${selectedBoardId}`, ydoc)
+        providerRef.current = providers
+
+        // Monitor connection status
+        providers.wsProvider.on('status', (event: { status: string }) => {
+          setConnected(event.status === 'connected')
+        })
+
+        const yColumns = ydoc.getMap<Y.Array<string>>('columns')
+        yColumnsRef.current = yColumns
+
+        // Seed Y.Doc from REST if empty
+        const isEmpty = yColumns.size === 0
+        if (isEmpty) {
+          columnsData.forEach(col => {
+            const arr = new Y.Array<string>()
+            const colTasks = tasksData
+              .filter(t => t.column_id === col.column_id)
+              .sort((a, b) => a.position - b.position)
+              .map(t => t.task_id)
+            arr.insert(0, colTasks)
+            yColumns.set(col.column_id, arr)
+          })
+        }
+
+        // Subscribe to Y.Doc updates to rebuild tasksByColumn
+        const rebuild = () => {
+          const map: Record<string, TaskItem[]> = {}
+          for (const c of columnsData) {
+            const arr = yColumns.get(c.column_id)
+            const ids = arr ? arr.toArray() : []
+            map[c.column_id] = ids.map(id => dict[id]).filter(Boolean)
+          }
+          setTasksByColumn(map)
+        }
+
+        ydoc.on('update', rebuild)
+        rebuild() // Initial build
+      } catch (err) {
+        if (!cancelled) {
+          toast.error('Failed to load board data')
+        }
+      }
+    }
+
+    loadBoardWithYjs()
+
+    return () => {
+      cancelled = true
+      // Cleanup on board change or unmount
+      if (providerRef.current) {
+        providerRef.current.destroy?.()
+        providerRef.current = null
+      }
+      if (ydocRef.current) {
+        ydocRef.current.destroy()
+        ydocRef.current = null
+      }
+      yColumnsRef.current = null
     }
   }, [selectedBoardId])
 
@@ -70,24 +179,9 @@ export default function KanbanWorkspace() {
         setSelectedBoardId(data[0].board_id)
       } else {
         setSelectedBoardId(null)
-        setColumns([])
-        setTasks([])
       }
     } catch (err) {
       toast.error('Failed to load boards')
-    }
-  }
-
-  const loadColumnsAndTasks = async (boardId: string) => {
-    try {
-      const [columnsData, tasksData] = await Promise.all([
-        kanbanApi.listColumns(boardId),
-        kanbanApi.listTasks(boardId)
-      ])
-      setColumns(columnsData)
-      setTasks(tasksData)
-    } catch (err) {
-      toast.error('Failed to load board data')
     }
   }
 
@@ -136,6 +230,13 @@ export default function KanbanWorkspace() {
     try {
       const column = await kanbanApi.createColumn(selectedBoardId, name)
       setColumns([...columns, column])
+
+      // Add empty array to Yjs
+      if (yColumnsRef.current) {
+        const arr = new Y.Array<string>()
+        yColumnsRef.current.set(column.column_id, arr)
+      }
+
       toast.success('Column created')
     } catch (err) {
       toast.error('Failed to create column')
@@ -154,7 +255,18 @@ export default function KanbanWorkspace() {
         column_id: columnId,
         title
       })
-      setTasks([...tasks, task])
+
+      // Update tasks dict
+      setTasksDict(prev => ({ ...prev, [task.task_id]: task }))
+
+      // Add to Yjs column array
+      if (yColumnsRef.current) {
+        const arr = yColumnsRef.current.get(columnId)
+        if (arr) {
+          arr.push([task.task_id])
+        }
+      }
+
       toast.success('Task created')
     } catch (err) {
       toast.error('Failed to create task')
@@ -166,50 +278,38 @@ export default function KanbanWorkspace() {
 
     if (!destination) return
     if (destination.droppableId === source.droppableId && destination.index === source.index) return
+    if (!yColumnsRef.current) return
 
     const taskId = draggableId
-    const srcColumnId = source.droppableId
-    const dstColumnId = destination.droppableId
+    const fromColumnId = source.droppableId
+    const toColumnId = destination.droppableId
+    const fromIndex = source.index
+    const toIndex = destination.index
 
-    // Optimistic update
-    const task = tasks.find(t => t.task_id === taskId)
-    if (!task) return
+    const yColumns = yColumnsRef.current
 
-    const previousTasks = [...tasks]
-
-    // Remove from source
-    let updatedTasks = tasks.filter(t => t.task_id !== taskId)
-
-    // Get tasks in destination column
-    const dstTasks = updatedTasks.filter(t => t.column_id === dstColumnId)
-
-    // Insert at destination index
-    const before = dstTasks[destination.index - 1]
-    const after = dstTasks[destination.index]
-
-    // Update task object optimistically
-    const updatedTask = { ...task, column_id: dstColumnId }
-    updatedTasks.splice(
-      updatedTasks.findIndex(t => t.column_id === dstColumnId && t.position > (before?.position || 0)) || updatedTasks.length,
-      0,
-      updatedTask
-    )
-
-    setTasks(updatedTasks)
+    // Apply optimistic move and get neighbor hints
+    const { rollback, hints } = applyMoveAndGetHints(yColumns, {
+      taskId,
+      fromColumnId,
+      toColumnId,
+      fromIndex,
+      toIndex
+    })
 
     // Persist to backend
     try {
-      const persistedTask = await kanbanApi.updateTask(taskId, {
-        column_id: dstColumnId,
-        before_task_id: before?.task_id,
-        after_task_id: after?.task_id
+      const updatedTask = await kanbanApi.updateTask(taskId, {
+        column_id: toColumnId,
+        before_task_id: hints.before_task_id,
+        after_task_id: hints.after_task_id
       })
 
-      // Update with server position
-      setTasks(prev => prev.map(t => t.task_id === taskId ? persistedTask : t))
+      // Update tasks dict with server position
+      setTasksDict(prev => ({ ...prev, [taskId]: updatedTask }))
     } catch (err) {
-      // Revert on error
-      setTasks(previousTasks)
+      // Revert optimistic change
+      rollback()
       toast.error('Failed to move task')
     }
   }
@@ -219,7 +319,7 @@ export default function KanbanWorkspace() {
   }
 
   const handleTaskUpdate = (updatedTask: TaskItem) => {
-    setTasks(prev => prev.map(t => t.task_id === updatedTask.task_id ? updatedTask : t))
+    setTasksDict(prev => ({ ...prev, [updatedTask.task_id]: updatedTask }))
   }
 
   if (loading) {
@@ -280,6 +380,23 @@ export default function KanbanWorkspace() {
                 ))
               )}
             </select>
+
+            {/* Connection status */}
+            {selectedBoardId && (
+              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                {connected ? (
+                  <>
+                    <Wifi size={14} className="text-green-500" />
+                    <span>Live</span>
+                  </>
+                ) : (
+                  <>
+                    <WifiOff size={14} className="text-gray-400" />
+                    <span>Offline</span>
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
@@ -325,7 +442,7 @@ export default function KanbanWorkspace() {
           <DragDropContext onDragEnd={handleDragEnd}>
             <BoardColumns
               columns={columns}
-              tasks={tasks}
+              tasks={Object.values(tasksByColumn).flat()}
               onTaskClick={handleTaskClick}
               onCreateTask={handleCreateTask}
             />
