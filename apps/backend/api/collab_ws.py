@@ -27,6 +27,8 @@ from fastapi.responses import JSONResponse
 from api.config_paths import get_config_paths
 from api.rate_limiter import rate_limiter
 from api.utils import sanitize_for_log
+from api.services.collab_acl import user_can_access_doc
+from api.services.collab_state import set_snapshot_applier
 
 logger = logging.getLogger(__name__)
 
@@ -229,6 +231,61 @@ async def broadcast_to_doc(doc_id: str, message: bytes, exclude: Optional[WebSoc
                 collab_docs[doc_id]["connections"].discard(ws)
 
 
+def _apply_snapshot_impl(doc_id: str, snapshot_bytes: bytes) -> bool:
+    """
+    Apply a snapshot to the in-memory Y.Doc and broadcast to connected clients
+
+    Args:
+        doc_id: Document UUID
+        snapshot_bytes: Snapshot data to apply
+
+    Returns:
+        True on success
+
+    Note: This function is called from REST context (snapshot restore endpoint).
+    It's synchronous but safe because collab_docs is a simple dict accessed
+    from both WS and REST threads.
+    """
+    try:
+        if doc_id not in collab_docs:
+            # Create the doc if it doesn't exist yet
+            ydoc = get_or_create_ydoc(doc_id)
+        else:
+            ydoc = collab_docs[doc_id]["ydoc"]
+
+        # Check if using mock (ypy not available)
+        if collab_docs[doc_id].get("using_mock"):
+            logger.warning(f"Cannot apply snapshot to mock Y.Doc: {doc_id}")
+            return False
+
+        # Apply snapshot using ypy
+        try:
+            import ypy
+            ypy.apply_update(ydoc, snapshot_bytes)
+            logger.info(f"Applied snapshot to Y.Doc: {sanitize_for_log(doc_id)}")
+
+            # Note: Broadcasting will happen naturally when clients reconnect and sync,
+            # or we could trigger a manual broadcast here if needed. For now, relying
+            # on client reconnection is simpler and avoids asyncio context issues.
+
+            # Update last snapshot time
+            collab_docs[doc_id]["last_snapshot"] = time.time()
+
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to apply ypy snapshot: {e}", exc_info=True)
+            return False
+
+    except Exception as e:
+        logger.error(f"Snapshot apply failed for {doc_id}: {e}", exc_info=True)
+        return False
+
+
+# Register the snapshot applier on module load
+set_snapshot_applier(_apply_snapshot_impl)
+
+
 # ===== Background Tasks =====
 
 async def snapshot_task():
@@ -300,6 +357,23 @@ async def collab_websocket(
     user_id = payload.get("user_id")
     if not user_id:
         await websocket.close(code=1008, reason="Invalid token payload")
+        return
+
+    # ACL check: verify user has access to this document
+    try:
+        if not user_can_access_doc(user_id, doc_id, min_role="view"):
+            await websocket.close(code=1008, reason="Access denied")
+            logger.warning(
+                "WebSocket ACL denied",
+                extra={
+                    "user_id": user_id,
+                    "doc_id": sanitize_for_log(doc_id)
+                }
+            )
+            return
+    except Exception as e:
+        logger.error(f"ACL check failed: {e}", exc_info=True)
+        await websocket.close(code=1008, reason="Access control error")
         return
 
     # Rate limiting
