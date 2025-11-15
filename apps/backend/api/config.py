@@ -334,6 +334,22 @@ class ElohimOSSettings(BaseSettings):
         description="Memory limit for data processing in MB"
     )
 
+    # NLQ Performance Limits
+    nlq_default_limit: int = Field(
+        default=1000,
+        description="Default LIMIT for NL→SQL queries when not specified"
+    )
+
+    max_query_rows: int = Field(
+        default=10000,
+        description="Hard cap for query result rows (server-side)"
+    )
+
+    profiler_default_sample_rows: int = Field(
+        default=50000,
+        description="Default sample size for Pattern Discovery profiler"
+    )
+
     # ============================================
     # BACKUP AND SYNC SETTINGS
     # ============================================

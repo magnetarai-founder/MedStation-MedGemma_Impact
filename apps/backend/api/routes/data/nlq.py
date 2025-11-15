@@ -2,16 +2,19 @@
 Natural Language Query (NLQ) Routes
 
 POST /api/v1/data/nlq - Convert natural language to SQL and execute
+GET  /api/v1/data/nlq/recent - Get recent NL→SQL analyses
 """
 
 import logging
-from typing import Optional
+import sqlite3
+from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from api.auth_middleware import get_current_user, User
 from api.services.nlq_service import get_nlq_service
 from api.utils import sanitize_for_log
+from api.config_paths import PATHS
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +87,8 @@ async def natural_language_query(
             question=request.question,
             dataset_id=request.dataset_id,
             session_id=request.session_id,
-            model=request.model
+            model=request.model,
+            user_id=current_user.user_id
         )
 
         # Log result metadata
@@ -118,3 +122,55 @@ async def natural_language_query(
                 "suggestion": "Please try again or rephrase your question"
             }
         )
+
+
+class NLQHistoryItem(BaseModel):
+    """NLQ history item"""
+    id: str
+    question: str
+    sql: str
+    summary: Optional[str]
+    created_at: str
+
+
+@router.get("/nlq/recent", response_model=List[NLQHistoryItem])
+async def nlq_recent(
+    limit: int = 20,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get recent NL→SQL analyses for current user
+
+    Args:
+        limit: Maximum number of items to return (1-50, default 20)
+
+    Returns:
+        List of recent NLQ history items ordered by created_at DESC
+    """
+    # Clamp limit
+    limit = max(1, min(limit, 50))
+
+    items: List[NLQHistoryItem] = []
+    try:
+        with sqlite3.connect(str(PATHS.app_db)) as conn:
+            conn.row_factory = sqlite3.Row
+            cur = conn.execute(
+                "SELECT id, question, sql, summary, created_at FROM nlq_history "
+                "WHERE user_id = ? ORDER BY datetime(created_at) DESC LIMIT ?",
+                (current_user.user_id, limit)
+            )
+            rows = cur.fetchall()
+            for r in rows:
+                items.append(NLQHistoryItem(
+                    id=r["id"],
+                    question=r["question"],
+                    sql=r["sql"],
+                    summary=r["summary"],
+                    created_at=r["created_at"],
+                ))
+    except Exception as e:
+        # Return empty list on error; logs elsewhere if desired
+        logger.warning(f"Failed to fetch NLQ history: {e}")
+        return []
+
+    return items

@@ -9,21 +9,65 @@ import re
 import json
 import logging
 import asyncio
+import sqlite3
+import secrets
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime
 
+from api.config import get_settings
+from api.config_paths import PATHS
+
 logger = logging.getLogger(__name__)
+
+# Get settings
+settings = get_settings()
 
 # Configuration
 DEFAULT_NLQ_MODEL = os.getenv("ELOHIMOS_NLQ_MODEL", "qwen2.5:7b-instruct")
 FALLBACK_MODELS = ["llama3.1:8b-instruct", "mistral:7b-instruct", "qwen2.5:7b"]
 MAX_SQL_TIMEOUT = 30  # seconds
-MAX_RESULT_ROWS = 10000  # Hard cap server-side
-DEFAULT_LIMIT = 1000
+MAX_RESULT_ROWS = settings.max_query_rows  # From config
+DEFAULT_LIMIT = settings.nlq_default_limit  # From config
 
 # Schema introspection cache
 _SCHEMA_CACHE: Dict[str, Tuple[Dict, float]] = {}
 SCHEMA_CACHE_TTL = 3600  # 1 hour
+
+
+def _ensure_nlq_history_schema() -> None:
+    """Create nlq_history table if it doesn't exist"""
+    with sqlite3.connect(str(PATHS.app_db)) as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS nlq_history (
+                id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                question TEXT NOT NULL,
+                sql TEXT NOT NULL,
+                summary TEXT,
+                created_at TEXT NOT NULL
+            )
+        """)
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_nlq_history_user_created "
+            "ON nlq_history(user_id, created_at DESC)"
+        )
+        conn.commit()
+
+
+def _save_nlq_history(user_id: str, question: str, sql: str, summary: str | None) -> None:
+    """Save NLQ query to history (best-effort)"""
+    try:
+        _ensure_nlq_history_schema()
+        with sqlite3.connect(str(PATHS.app_db)) as conn:
+            conn.execute(
+                "INSERT INTO nlq_history (id, user_id, question, sql, summary, created_at) "
+                "VALUES (?, ?, ?, ?, ?, datetime('now'))",
+                (secrets.token_urlsafe(12), user_id, question, sql, summary or None),
+            )
+            conn.commit()
+    except Exception as e:
+        # History persistence is best-effort; do not fail the main request
+        logger.warning(f"Failed to save NLQ history: {e}")
 
 
 class NLQService:
@@ -60,7 +104,8 @@ class NLQService:
         question: str,
         dataset_id: Optional[str] = None,
         session_id: Optional[str] = None,
-        model: Optional[str] = None
+        model: Optional[str] = None,
+        user_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Process natural language question and return SQL + results
@@ -70,6 +115,7 @@ class NLQService:
             dataset_id: Target dataset ID
             session_id: Session ID for context
             model: LLM model to use (defaults to qwen2.5:7b-instruct)
+            user_id: User ID for history persistence
 
         Returns:
             {
@@ -149,6 +195,15 @@ class NLQService:
             )
 
             execution_time = (datetime.utcnow() - start_time).total_seconds()
+
+            # Persist to history (best-effort)
+            if user_id:
+                _save_nlq_history(
+                    user_id=user_id,
+                    question=question,
+                    sql=sql,
+                    summary=summary
+                )
 
             return {
                 "sql": sql,

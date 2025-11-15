@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Loader2, X, Download, HelpCircle, TrendingUp, BarChart3, AlertCircle } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { Loader2, X, Download, HelpCircle, TrendingUp, BarChart3, AlertCircle, StopCircle } from 'lucide-react'
 import api from '@/lib/api'
 
 interface PatternDiscoveryPanelProps {
@@ -30,15 +30,27 @@ interface PatternResponse {
   }
 }
 
+type SampleSize = '10000' | '50000' | '100000' | 'all'
+
 export function PatternDiscoveryPanel({ onClose }: PatternDiscoveryPanelProps) {
   const [sessionId, setSessionId] = useState('')
   const [datasetId, setDatasetId] = useState('')
   const [tableName, setTableName] = useState('')
-  const [sampleRows, setSampleRows] = useState('50000')
+  const [sampleSize, setSampleSize] = useState<SampleSize>('50000')
   const [loading, setLoading] = useState(false)
   const [response, setResponse] = useState<PatternResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [showHelp, setShowHelp] = useState(false)
+  const abortControllerRef = useRef<AbortController | null>(null)
+
+  const onCancelDiscover = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+      abortControllerRef.current = null
+    }
+    setLoading(false)
+    setError('Analysis cancelled')
+  }
 
   const onDiscover = async () => {
     if (!sessionId && !datasetId) {
@@ -55,16 +67,25 @@ export function PatternDiscoveryPanel({ onClose }: PatternDiscoveryPanelProps) {
     setError(null)
     setResponse(null)
 
+    // Create new AbortController for this request
+    abortControllerRef.current = new AbortController()
+
     try {
       const payload: any = {}
       if (sessionId) payload.session_id = sessionId
       if (datasetId) payload.dataset_id = datasetId
       if (tableName) payload.table_name = tableName
-      if (sampleRows) payload.sample_rows = parseInt(sampleRows, 10)
+      if (sampleSize !== 'all') payload.sample_rows = parseInt(sampleSize, 10)
 
-      const res = await api.post('/api/v1/data/discover-patterns', payload)
+      const res = await api.post('/api/v1/data/discover-patterns', payload, {
+        signal: abortControllerRef.current.signal
+      })
       setResponse(res.data)
     } catch (e: any) {
+      if (e.name === 'CanceledError' || e.code === 'ERR_CANCELED') {
+        // Request was cancelled, error already set by onCancelDiscover
+        return
+      }
       const detail = e?.response?.data?.detail
       if (typeof detail === 'string') {
         setError(detail)
@@ -75,6 +96,7 @@ export function PatternDiscoveryPanel({ onClose }: PatternDiscoveryPanelProps) {
       }
     } finally {
       setLoading(false)
+      abortControllerRef.current = null
     }
   }
 
@@ -360,31 +382,56 @@ export function PatternDiscoveryPanel({ onClose }: PatternDiscoveryPanelProps) {
                   className="rounded border px-3 py-2 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-sm"
                 />
               </div>
-              <div className="mt-2">
-                <input
-                  type="number"
-                  value={sampleRows}
-                  onChange={(e) => setSampleRows(e.target.value)}
-                  placeholder="Sample rows (default: 50000)"
-                  min="100"
-                  max="200000"
-                  className="w-full rounded border px-3 py-2 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-sm"
-                />
+            </div>
+
+            {/* Sampling Control */}
+            <div className="bg-gray-50/50 dark:bg-gray-800/10 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Sample Size
+              </label>
+              <div className="flex items-center gap-2">
+                {(['10000', '50000', '100000', 'all'] as SampleSize[]).map((size) => (
+                  <button
+                    key={size}
+                    onClick={() => setSampleSize(size)}
+                    className={`px-3 py-1.5 text-sm rounded border ${
+                      sampleSize === size
+                        ? 'bg-primary-600 text-white border-primary-600'
+                        : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+                    }`}
+                  >
+                    {size === 'all' ? 'All' : `${parseInt(size).toLocaleString()}`}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                <div>• Sampling reduces analysis time on large tables</div>
+                <div>• Some results may be partial due to time limits</div>
               </div>
             </div>
 
             {/* Action Buttons */}
             <div className="flex items-center gap-2">
-              <button
-                onClick={onDiscover}
-                disabled={loading || (!sessionId && !datasetId)}
-                className="px-4 py-2 rounded-md text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <BarChart3 className="w-4 h-4" />}
-                <span>{loading ? 'Analyzing…' : 'Discover Patterns'}</span>
-              </button>
+              {loading ? (
+                <button
+                  onClick={onCancelDiscover}
+                  className="px-4 py-2 rounded-md text-white bg-red-600 hover:bg-red-700 flex items-center gap-2"
+                >
+                  <StopCircle className="w-4 h-4" />
+                  <span>Cancel</span>
+                </button>
+              ) : (
+                <button
+                  onClick={onDiscover}
+                  disabled={!sessionId && !datasetId}
+                  className="px-4 py-2 rounded-md text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  <BarChart3 className="w-4 h-4" />
+                  <span>Discover Patterns</span>
+                </button>
+              )}
 
-              {response && (
+              {response && !loading && (
                 <>
                   <button
                     onClick={downloadJSON}

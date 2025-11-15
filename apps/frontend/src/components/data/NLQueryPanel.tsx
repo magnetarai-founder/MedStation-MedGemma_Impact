@@ -1,10 +1,18 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { askNLQ, NLQResponse } from '@/lib/nlqApi'
-import { Loader2, X, Copy, Check, HelpCircle, Play } from 'lucide-react'
+import { Loader2, X, Copy, Check, HelpCircle, Play, History, StopCircle } from 'lucide-react'
 import api from '@/lib/api'
 
 interface NLQueryPanelProps {
   onClose: () => void
+}
+
+interface HistoryItem {
+  id: string
+  question: string
+  sql: string
+  summary: string | null
+  created_at: string
 }
 
 export function NLQueryPanel({ onClose }: NLQueryPanelProps) {
@@ -19,6 +27,38 @@ export function NLQueryPanel({ onClose }: NLQueryPanelProps) {
   const [showSql, setShowSql] = useState(true)
   const [copied, setCopied] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
+  const [history, setHistory] = useState<HistoryItem[]>([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
+  const abortControllerRef = useRef<AbortController | null>(null)
+
+  // Fetch recent history
+  const fetchHistory = async () => {
+    setLoadingHistory(true)
+    try {
+      const response = await api.get('/api/v1/data/nlq/recent?limit=20')
+      setHistory(response.data || [])
+    } catch (e) {
+      console.error('Failed to fetch NLQ history:', e)
+      setHistory([])
+    } finally {
+      setLoadingHistory(false)
+    }
+  }
+
+  // Load history on mount
+  useEffect(() => {
+    fetchHistory()
+  }, [])
+
+  const onCancelAsk = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+      abortControllerRef.current = null
+    }
+    setLoading(false)
+    setError('Request cancelled')
+  }
 
   const onAsk = async () => {
     if (!question.trim() || question.trim().length < 3) {
@@ -34,13 +74,17 @@ export function NLQueryPanel({ onClose }: NLQueryPanelProps) {
     setLoading(true)
     setError(null)
     setResp(null)
+
+    // Create new AbortController for this request
+    abortControllerRef.current = new AbortController()
+
     try {
       const res = await askNLQ({
         question: question.trim(),
         session_id: sessionId || undefined,
         dataset_id: datasetId || undefined,
         model: model || undefined,
-      })
+      }, abortControllerRef.current.signal)
 
       // Check for backend error response
       if (res.error) {
@@ -49,10 +93,17 @@ export function NLQueryPanel({ onClose }: NLQueryPanelProps) {
       }
 
       setResp(res)
+      // Refresh history after successful query
+      fetchHistory()
     } catch (e: any) {
+      if (e.name === 'AbortError') {
+        // Request was cancelled, error already set by onCancelAsk
+        return
+      }
       setError(e?.message || 'Failed to process question. Please try again.')
     } finally {
       setLoading(false)
+      abortControllerRef.current = null
     }
   }
 
@@ -148,9 +199,17 @@ export function NLQueryPanel({ onClose }: NLQueryPanelProps) {
       <div className="w-[900px] max-w-[95vw] max-h-[90vh] overflow-auto rounded-xl shadow-xl border bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <h3 className="text-base font-semibold">Ask AI About Your Data</h3>
             <span className="text-xs text-gray-500">⌘K D</span>
+            {/* History Button */}
+            <button
+              onClick={() => setShowHistory(!showHistory)}
+              className="flex items-center gap-1.5 px-2 py-1 text-xs rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400"
+            >
+              <History className="w-3.5 h-3.5" />
+              Recent
+            </button>
           </div>
           <button onClick={onClose} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800">
             <X className="w-5 h-5" />
@@ -160,6 +219,42 @@ export function NLQueryPanel({ onClose }: NLQueryPanelProps) {
         {/* Body */}
         <div className="p-4">
           <div className="grid grid-cols-1 gap-3">
+            {/* Recent Analyses Dropdown */}
+            {showHistory && (
+              <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg p-3 max-h-60 overflow-auto">
+                <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Recent Analyses</div>
+                {loadingHistory ? (
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Loading...
+                  </div>
+                ) : history.length === 0 ? (
+                  <div className="text-sm text-gray-500">No recent analyses found</div>
+                ) : (
+                  <div className="space-y-2">
+                    {history.map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => {
+                          setQuestion(item.question)
+                          setShowSql(true)
+                          setShowHistory(false)
+                        }}
+                        className="w-full text-left p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600"
+                      >
+                        <div className="text-sm text-gray-800 dark:text-gray-200 mb-1">
+                          {item.question}
+                        </div>
+                        <div className="text-xs font-mono text-gray-500 dark:text-gray-400 truncate">
+                          {item.sql}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Dataset/Session Picker */}
             <div className="bg-blue-50/50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
               <div className="flex items-center justify-between mb-2">
@@ -227,16 +322,25 @@ export function NLQueryPanel({ onClose }: NLQueryPanelProps) {
 
             {/* Action Buttons */}
             <div className="flex items-center gap-2">
-              <button
-                onClick={onAsk}
-                disabled={loading || !question.trim() || (!sessionId && !datasetId)}
-                className={`px-4 py-2 rounded-md text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2`}
-              >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                <span>{loading ? 'Thinking…' : 'Ask AI'}</span>
-              </button>
+              {loading ? (
+                <button
+                  onClick={onCancelAsk}
+                  className="px-4 py-2 rounded-md text-white bg-red-600 hover:bg-red-700 flex items-center gap-2"
+                >
+                  <StopCircle className="w-4 h-4" />
+                  <span>Cancel</span>
+                </button>
+              ) : (
+                <button
+                  onClick={onAsk}
+                  disabled={!question.trim() || (!sessionId && !datasetId)}
+                  className={`px-4 py-2 rounded-md text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2`}
+                >
+                  <span>Ask AI</span>
+                </button>
+              )}
 
-              {resp?.sql && (
+              {resp?.sql && !loading && (
                 <button
                   onClick={onRunSQL}
                   disabled={runningSQL}

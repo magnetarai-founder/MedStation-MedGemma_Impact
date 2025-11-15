@@ -11,11 +11,16 @@ from typing import Dict, List, Any, Optional, Tuple
 import numpy as np
 import pandas as pd
 
+from api.config import get_settings
+
 logger = logging.getLogger(__name__)
+
+# Get settings
+settings = get_settings()
 
 # Performance constraints
 MAX_ANALYSIS_TIME_SECONDS = 30
-DEFAULT_SAMPLE_SIZE = 50000
+DEFAULT_SAMPLE_SIZE = settings.profiler_default_sample_rows  # From config
 MAX_OUTLIERS_PER_COLUMN = 50
 MAX_CORRELATION_PAIRS = 10
 
