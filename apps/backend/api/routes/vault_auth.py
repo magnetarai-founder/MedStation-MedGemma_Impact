@@ -23,6 +23,7 @@ from api.auth_middleware import get_current_user, User
 from api.config_paths import get_config_paths
 from api.utils import sanitize_for_log
 from api.rate_limiter import rate_limiter, get_client_ip
+from api.services.crypto_wrap import wrap_key, unwrap_key
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +72,9 @@ def _init_vault_auth_db():
                 wrapped_kek_decoy TEXT,
                 decoy_enabled INTEGER DEFAULT 0,
 
+                -- Key wrapping method (aes_kw, xchacha20p, xor_legacy)
+                wrap_method TEXT DEFAULT 'aes_kw',
+
                 -- Metadata
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
@@ -101,6 +105,16 @@ def _init_vault_auth_db():
             CREATE INDEX IF NOT EXISTS idx_unlock_attempts_user
             ON vault_unlock_attempts(user_id, vault_id, attempt_time DESC)
         """)
+
+        # Migration: Add wrap_method column if it doesn't exist
+        cursor.execute("PRAGMA table_info(vault_auth_metadata)")
+        columns = [row[1] for row in cursor.fetchall()]
+        if 'wrap_method' not in columns:
+            cursor.execute("""
+                ALTER TABLE vault_auth_metadata
+                ADD COLUMN wrap_method TEXT DEFAULT 'xor_legacy'
+            """)
+            logger.info("Migration: Added wrap_method column (defaulting existing entries to xor_legacy)")
 
         conn.commit()
 
@@ -175,18 +189,44 @@ def _derive_kek_from_passphrase(passphrase: str, salt: bytes) -> bytes:
     return hashlib.pbkdf2_hmac('sha256', passphrase.encode(), salt, iterations=100000, dklen=32)
 
 
-def _wrap_kek(kek: bytes, wrap_key: bytes) -> bytes:
+def _wrap_kek(kek: bytes, wrap_key: bytes, method: str = "aes_kw") -> bytes:
     """
-    Wrap KEK with a wrapping key (simple XOR for demo - use AES-KW in production)
-    In production, use proper AES Key Wrap (RFC 3394)
+    Wrap KEK with a wrapping key using AES-KW (RFC 3394)
+
+    Args:
+        kek: Key Encryption Key to wrap (32 bytes)
+        wrap_key: Wrapping key (derived from WebAuthn credential or passphrase, 32 bytes)
+        method: Wrapping method (aes_kw, xchacha20p, or xor_legacy)
+
+    Returns:
+        Wrapped KEK bytes
     """
-    # Simple XOR wrap (NOT production-ready, but demonstrates the concept)
-    return bytes(a ^ b for a, b in zip(kek, wrap_key[:len(kek)]))
+    if method == "xor_legacy":
+        # Legacy XOR wrap (kept for backward compatibility with existing vaults)
+        return bytes(a ^ b for a, b in zip(kek, wrap_key[:len(kek)]))
+
+    # Use crypto_wrap utilities (AES-KW or XChaCha20-Poly1305)
+    return wrap_key(kek, wrap_key[:32], method=method)
 
 
-def _unwrap_kek(wrapped_kek: bytes, wrap_key: bytes) -> bytes:
-    """Unwrap KEK (inverse of wrap)"""
-    return _wrap_kek(wrapped_kek, wrap_key)  # XOR is self-inverse
+def _unwrap_kek(wrapped_kek: bytes, wrap_key: bytes, method: str = "aes_kw") -> bytes:
+    """
+    Unwrap KEK (inverse of wrap)
+
+    Args:
+        wrapped_kek: Wrapped KEK bytes
+        wrap_key: Wrapping key (32 bytes)
+        method: Wrapping method (aes_kw, xchacha20p, or xor_legacy)
+
+    Returns:
+        Unwrapped KEK bytes
+    """
+    if method == "xor_legacy":
+        # Legacy XOR unwrap (XOR is self-inverse)
+        return bytes(a ^ b for a, b in zip(wrapped_kek, wrap_key[:len(wrapped_kek)]))
+
+    # Use crypto_wrap utilities
+    return unwrap_key(wrapped_kek, wrap_key[:32], method=method)
 
 
 # ===== Endpoints =====
@@ -224,10 +264,9 @@ async def setup_biometric(
         # Derive KEK from passphrase
         kek_real = _derive_kek_from_passphrase(request.passphrase, salt_real)
 
-        # Wrap KEK with WebAuthn credential ID (as wrap key)
-        # In production, use proper key wrapping algorithm
+        # Wrap KEK with WebAuthn credential ID (as wrap key) using AES-KW
         wrap_key = hashlib.sha256(request.webauthn_credential_id.encode()).digest()
-        wrapped_kek_real = _wrap_kek(kek_real, wrap_key)
+        wrapped_kek_real = _wrap_kek(kek_real, wrap_key, method="aes_kw")
 
         # Store in database
         with sqlite3.connect(str(VAULT_DB_PATH)) as conn:
@@ -249,6 +288,7 @@ async def setup_biometric(
                         webauthn_public_key = ?,
                         salt_real = ?,
                         wrapped_kek_real = ?,
+                        wrap_method = ?,
                         updated_at = ?
                     WHERE user_id = ? AND vault_id = ?
                 """, (
@@ -256,6 +296,7 @@ async def setup_biometric(
                     request.webauthn_public_key,
                     salt_real.hex(),
                     wrapped_kek_real.hex(),
+                    "aes_kw",
                     datetime.now().isoformat(),
                     current_user.user_id,
                     request.vault_id
@@ -267,8 +308,9 @@ async def setup_biometric(
                         id, user_id, vault_id,
                         webauthn_credential_id, webauthn_public_key,
                         salt_real, wrapped_kek_real,
+                        wrap_method,
                         created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     secrets.token_urlsafe(16),
                     current_user.user_id,
@@ -277,6 +319,7 @@ async def setup_biometric(
                     request.webauthn_public_key,
                     salt_real.hex(),
                     wrapped_kek_real.hex(),
+                    "aes_kw",
                     datetime.now().isoformat(),
                     datetime.now().isoformat()
                 ))
@@ -348,7 +391,7 @@ async def unlock_biometric(
         with sqlite3.connect(str(VAULT_DB_PATH)) as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT webauthn_credential_id, webauthn_public_key, wrapped_kek_real, salt_real
+                SELECT webauthn_credential_id, webauthn_public_key, wrapped_kek_real, salt_real, wrap_method
                 FROM vault_auth_metadata
                 WHERE user_id = ? AND vault_id = ?
             """, (current_user.user_id, req.vault_id))
@@ -362,7 +405,8 @@ async def unlock_biometric(
                     detail="Biometric unlock not configured for this vault"
                 )
 
-            credential_id, public_key, wrapped_kek_hex, salt_hex = row
+            credential_id, public_key, wrapped_kek_hex, salt_hex, wrap_method = row
+            wrap_method = wrap_method or "xor_legacy"  # Default for old entries
 
         # Verify WebAuthn assertion
         # In production, use py_webauthn library for full verification
@@ -371,10 +415,10 @@ async def unlock_biometric(
         # TODO: Full WebAuthn verification (challenge validation, signature verification)
         # For now, we trust the client has verified the credential
 
-        # Unwrap KEK
+        # Unwrap KEK using the stored wrap method
         wrap_key = hashlib.sha256(credential_id.encode()).digest()
         wrapped_kek = bytes.fromhex(wrapped_kek_hex)
-        kek_real = _unwrap_kek(wrapped_kek, wrap_key)
+        kek_real = _unwrap_kek(wrapped_kek, wrap_key, method=wrap_method)
 
         # Create session
         session_id = secrets.token_urlsafe(32)
@@ -450,13 +494,12 @@ async def setup_decoy(
         kek_real = _derive_kek_from_passphrase(request.password_real, salt_real)
         kek_decoy = _derive_kek_from_passphrase(request.password_decoy, salt_decoy)
 
-        # Wrap KEKs (with themselves for passphrase-only mode, or with WebAuthn if available)
-        # For simplicity, we'll use password-derived keys as wrap keys
+        # Wrap KEKs using AES-KW with password-derived wrap keys
         wrap_key_real = hashlib.sha256(request.password_real.encode()).digest()
         wrap_key_decoy = hashlib.sha256(request.password_decoy.encode()).digest()
 
-        wrapped_kek_real = _wrap_kek(kek_real, wrap_key_real)
-        wrapped_kek_decoy = _wrap_kek(kek_decoy, wrap_key_decoy)
+        wrapped_kek_real = _wrap_kek(kek_real, wrap_key_real, method="aes_kw")
+        wrapped_kek_decoy = _wrap_kek(kek_decoy, wrap_key_decoy, method="aes_kw")
 
         # Store in database
         with sqlite3.connect(str(VAULT_DB_PATH)) as conn:
@@ -479,6 +522,7 @@ async def setup_decoy(
                         salt_decoy = ?,
                         wrapped_kek_decoy = ?,
                         decoy_enabled = 1,
+                        wrap_method = ?,
                         updated_at = ?
                     WHERE user_id = ? AND vault_id = ?
                 """, (
@@ -486,6 +530,7 @@ async def setup_decoy(
                     wrapped_kek_real.hex(),
                     salt_decoy.hex(),
                     wrapped_kek_decoy.hex(),
+                    "aes_kw",
                     datetime.now().isoformat(),
                     current_user.user_id,
                     request.vault_id
@@ -498,8 +543,9 @@ async def setup_decoy(
                         salt_real, wrapped_kek_real,
                         salt_decoy, wrapped_kek_decoy,
                         decoy_enabled,
+                        wrap_method,
                         created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
                 """, (
                     secrets.token_urlsafe(16),
                     current_user.user_id,
@@ -508,6 +554,7 @@ async def setup_decoy(
                     wrapped_kek_real.hex(),
                     salt_decoy.hex(),
                     wrapped_kek_decoy.hex(),
+                    "aes_kw",
                     datetime.now().isoformat(),
                     datetime.now().isoformat()
                 ))
@@ -580,7 +627,7 @@ async def unlock_passphrase(
         with sqlite3.connect(str(VAULT_DB_PATH)) as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT salt_real, wrapped_kek_real, salt_decoy, wrapped_kek_decoy, decoy_enabled
+                SELECT salt_real, wrapped_kek_real, salt_decoy, wrapped_kek_decoy, decoy_enabled, wrap_method
                 FROM vault_auth_metadata
                 WHERE user_id = ? AND vault_id = ?
             """, (current_user.user_id, vault_id))
@@ -594,7 +641,8 @@ async def unlock_passphrase(
                     detail="Vault not configured"
                 )
 
-            salt_real_hex, wrapped_kek_real_hex, salt_decoy_hex, wrapped_kek_decoy_hex, decoy_enabled = row
+            salt_real_hex, wrapped_kek_real_hex, salt_decoy_hex, wrapped_kek_decoy_hex, decoy_enabled, wrap_method = row
+            wrap_method = wrap_method or "xor_legacy"  # Default for old entries
 
         # Derive KEK from passphrase
         salt_real = bytes.fromhex(salt_real_hex) if salt_real_hex else None
@@ -610,7 +658,7 @@ async def unlock_passphrase(
         kek_attempt = _derive_kek_from_passphrase(passphrase, salt_real)
         wrap_key = hashlib.sha256(passphrase.encode()).digest()
         wrapped_kek_real = bytes.fromhex(wrapped_kek_real_hex)
-        kek_real = _unwrap_kek(wrapped_kek_real, wrap_key)
+        kek_real = _unwrap_kek(wrapped_kek_real, wrap_key, method=wrap_method)
 
         vault_type = 'real'
         kek = kek_real
@@ -621,7 +669,7 @@ async def unlock_passphrase(
             kek_attempt_decoy = _derive_kek_from_passphrase(passphrase, salt_decoy)
             wrap_key_decoy = hashlib.sha256(passphrase.encode()).digest()
             wrapped_kek_decoy = bytes.fromhex(wrapped_kek_decoy_hex)
-            kek_decoy = _unwrap_kek(wrapped_kek_decoy, wrap_key_decoy)
+            kek_decoy = _unwrap_kek(wrapped_kek_decoy, wrap_key_decoy, method=wrap_method)
 
             # Check which KEK matches (constant-time comparison to avoid timing attacks)
             # In production, verify by attempting decryption of a known-encrypted value

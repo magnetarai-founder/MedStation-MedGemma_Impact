@@ -439,6 +439,24 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
         services_failed.append("NLQ API")
         logger.error("Failed to load NLQ router", exc_info=True)
 
+    # Diagnostics API (Mission Dashboard)
+    try:
+        from api.routes import diagnostics as _diag_routes
+        app.include_router(_diag_routes.router)  # prefix="/api/v1"
+        services_loaded.append("Diagnostics API")
+    except Exception as e:
+        services_failed.append("Diagnostics API")
+        logger.error("Failed to load diagnostics router", exc_info=True)
+
+    # P2P Transfer API (Chunked file transfer)
+    try:
+        from api.routes.p2p import transfer as _p2p_transfer_routes
+        app.include_router(_p2p_transfer_routes.router)  # prefix="/api/v1/p2p/transfer"
+        services_loaded.append("P2P Transfer API")
+    except Exception as e:
+        services_failed.append("P2P Transfer API")
+        logger.error("Failed to load P2P transfer router", exc_info=True)
+
     # Pattern Discovery (Data Profiler) API
     try:
         from api.routes.data import profiler as _profiler_routes
