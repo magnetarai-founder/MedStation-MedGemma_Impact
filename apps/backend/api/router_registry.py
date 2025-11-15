@@ -421,4 +421,22 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
         services_failed.append("Permissions API")
         logger.error("Failed to load permissions v1 router", exc_info=True)
 
+    # Natural Language Query (NLQ) API
+    try:
+        from api.routes.data import nlq as _nlq_routes
+        app.include_router(_nlq_routes.router)  # Router already has prefix="/api/v1/data"
+        services_loaded.append("NLQ API")
+    except Exception as e:
+        services_failed.append("NLQ API")
+        logger.error("Failed to load NLQ router", exc_info=True)
+
+    # Pattern Discovery (Data Profiler) API
+    try:
+        from api.routes.data import profiler as _profiler_routes
+        app.include_router(_profiler_routes.router)  # Router already has prefix="/api/v1/data"
+        services_loaded.append("Pattern Discovery API")
+    except Exception as e:
+        services_failed.append("Pattern Discovery API")
+        logger.error("Failed to load pattern discovery router", exc_info=True)
+
     return services_loaded, services_failed
