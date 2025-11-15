@@ -11,6 +11,7 @@ import { ROLES } from '@/lib/roles'
 import SystemHealthDashboard from '../SystemHealthDashboard'
 import AuditLogViewer from '../AuditLogViewer'
 import FounderSetupWizard from '../FounderSetupWizard'
+import { DatabaseHealthWidget } from './DatabaseHealthWidget'
 
 interface DeviceOverview {
   total_users: number
@@ -280,6 +281,9 @@ export default function AdminTab() {
                 )}
               </div>
             </div>
+
+            {/* Database Health Widget */}
+            <DatabaseHealthWidget />
           </>
         )}
 

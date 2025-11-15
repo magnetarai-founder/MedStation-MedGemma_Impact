@@ -115,6 +115,30 @@ def migrate(db_path: str):
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_kanban_comments_task ON kanban_comments(task_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_kanban_wiki_project ON kanban_wiki(project_id)")
 
+        # Seed sample project for better first-use UX
+        import uuid
+        sample_project_id = str(uuid.uuid4())
+        sample_board_id = str(uuid.uuid4())
+
+        cursor.execute("""
+            INSERT INTO kanban_projects (project_id, name, description)
+            VALUES (?, ?, ?)
+        """, (sample_project_id, "Welcome to Kanban", "Your first project - feel free to customize or delete"))
+
+        cursor.execute("""
+            INSERT INTO kanban_boards (board_id, project_id, name)
+            VALUES (?, ?, ?)
+        """, (sample_board_id, sample_project_id, "Main Board"))
+
+        # Create default columns
+        for idx, (col_name, pos) in enumerate([("To Do", 1.0), ("In Progress", 2.0), ("Done", 3.0)]):
+            cursor.execute("""
+                INSERT INTO kanban_columns (column_id, board_id, name, position)
+                VALUES (?, ?, ?, ?)
+            """, (str(uuid.uuid4()), sample_board_id, col_name, pos))
+
+        logger.info("✓ Seeded sample Kanban project and board")
+
         conn.commit()
         logger.info("✓ Phase B migration completed successfully")
 
