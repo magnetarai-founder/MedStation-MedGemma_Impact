@@ -18,9 +18,10 @@ import { AutomationWorkspace } from './AutomationWorkspace'
 import { NetworkSelector } from './NetworkSelector'
 import { CreateTeamModal } from './CreateTeamModal'
 import { JoinTeamModal } from './JoinTeamModal'
-import { MessageSquare, FileText, Lock, Workflow, Plus, UserPlus, Database, BarChart3 } from 'lucide-react'
+import { MessageSquare, FileText, Lock, Workflow, Plus, UserPlus, Database, BarChart3, Activity } from 'lucide-react'
 import { NLQueryPanel } from './data/NLQueryPanel'
 import { PatternDiscoveryPanel } from './data/PatternDiscoveryPanel'
+import { DiagnosticsPanel } from './p2p/DiagnosticsPanel'
 
 export function TeamWorkspace() {
   const { workspaceView, setWorkspaceView, vaultSetupComplete, vaultUnlocked } = useDocsStore()
@@ -31,6 +32,7 @@ export function TeamWorkspace() {
   const [showJoinTeam, setShowJoinTeam] = useState(false)
   const [showNLQ, setShowNLQ] = useState(false)
   const [showPatterns, setShowPatterns] = useState(false)
+  const [showDiagnostics, setShowDiagnostics] = useState(false)
 
   const handleVaultClick = () => {
     if (!vaultSetupComplete) {
@@ -46,6 +48,16 @@ export function TeamWorkspace() {
       <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30">
         {/* Network Selector - Globe Icon */}
         <NetworkSelector mode={networkMode} onModeChange={setNetworkMode} />
+
+        {/* P2P Diagnostics Button */}
+        <button
+          onClick={() => setShowDiagnostics(true)}
+          className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-md transition-all text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50"
+          title="P2P Diagnostics"
+        >
+          <Activity className="w-4 h-4" />
+          <span>Diagnostics</span>
+        </button>
 
         {/* Vertical Divider */}
         <div className="h-6 w-px bg-gray-300 dark:bg-gray-600"></div>
@@ -194,6 +206,9 @@ export function TeamWorkspace() {
 
       {/* Pattern Discovery Panel */}
       {showPatterns && <PatternDiscoveryPanel onClose={() => setShowPatterns(false)} />}
+
+      {/* P2P Diagnostics Panel */}
+      {showDiagnostics && <DiagnosticsPanel onClose={() => setShowDiagnostics(false)} />}
     </div>
   )
 }

@@ -400,3 +400,237 @@ async def get_p2p_mesh_status():
     except Exception as e:
         logger.error(f"Failed to get P2P mesh status: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== Diagnostics Endpoints =====
+
+class DiagnosticCheck(BaseModel):
+    """Single diagnostic check result"""
+    name: str
+    ok: bool
+    message: str
+    remediation: Optional[str] = None
+
+
+class DiagnosticsResponse(BaseModel):
+    """P2P diagnostics response"""
+    mdns_ok: bool
+    port_8000_open: bool
+    peer_count: int
+    hints: List[str]
+
+
+class RunChecksResponse(BaseModel):
+    """Detailed diagnostic checks response"""
+    checks: List[DiagnosticCheck]
+
+
+@router.get("/diagnostics", response_model=DiagnosticsResponse)
+async def get_diagnostics(request: Request):
+    """
+    Get P2P diagnostics overview
+
+    Returns high-level status of:
+    - mDNS availability
+    - Port 8000 accessibility
+    - Peer count
+    - Troubleshooting hints
+    """
+    import socket
+    import platform
+
+    service = get_p2p_chat_service()
+
+    # Check mDNS (platform-specific)
+    mdns_ok = False
+    try:
+        if platform.system() == "Darwin":
+            # macOS has native mDNS (Bonjour)
+            mdns_ok = True
+        else:
+            # Check if Avahi or similar is running
+            import subprocess
+            result = subprocess.run(["which", "avahi-daemon"], capture_output=True)
+            mdns_ok = result.returncode == 0
+    except Exception as e:
+        logger.warning(f"mDNS check failed: {e}")
+        mdns_ok = False
+
+    # Check port 8000 (simple socket check)
+    port_8000_open = False
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(1)
+        # Try to bind to port 8000
+        result = sock.connect_ex(('127.0.0.1', 8000))
+        port_8000_open = (result == 0)
+        sock.close()
+    except Exception as e:
+        logger.warning(f"Port 8000 check failed: {e}")
+        port_8000_open = False
+
+    # Get peer count
+    peer_count = 0
+    if service and service.is_running:
+        try:
+            all_peers = await service.list_peers()
+            online_peers = [p for p in all_peers if p.status == "online" and p.peer_id != service.peer_id]
+            peer_count = len(online_peers)
+        except Exception as e:
+            logger.warning(f"Peer count failed: {e}")
+
+    # Generate hints
+    hints = []
+    if not mdns_ok:
+        hints.append("mDNS may not be available - peer discovery might be limited")
+    if not port_8000_open:
+        hints.append("Port 8000 appears closed - ensure backend is running")
+    if peer_count == 0 and service and service.is_running:
+        hints.append("No peers found - check network connection and firewall")
+    if not service or not service.is_running:
+        hints.append("P2P service not running - click 'Start P2P' to begin discovery")
+
+    if not hints:
+        hints.append("All systems nominal ✅")
+
+    return DiagnosticsResponse(
+        mdns_ok=mdns_ok,
+        port_8000_open=port_8000_open,
+        peer_count=peer_count,
+        hints=hints
+    )
+
+
+@router.post("/diagnostics/run-checks", response_model=RunChecksResponse)
+async def run_diagnostic_checks(request: Request):
+    """
+    Run detailed P2P diagnostic checks
+
+    Returns individual checks with pass/fail and remediation steps
+    """
+    import socket
+    import platform
+    import subprocess
+
+    checks = []
+    service = get_p2p_chat_service()
+
+    # Check 1: P2P Service Running
+    if service and service.is_running:
+        checks.append(DiagnosticCheck(
+            name="P2P Service",
+            ok=True,
+            message="P2P service is running",
+            remediation=None
+        ))
+    else:
+        checks.append(DiagnosticCheck(
+            name="P2P Service",
+            ok=False,
+            message="P2P service is not running",
+            remediation="Click 'Start P2P' in the Network Selector to initialize peer discovery"
+        ))
+
+    # Check 2: mDNS/Bonjour
+    mdns_ok = False
+    mdns_message = ""
+    try:
+        if platform.system() == "Darwin":
+            mdns_ok = True
+            mdns_message = "Bonjour is available (macOS native)"
+        else:
+            result = subprocess.run(["which", "avahi-daemon"], capture_output=True)
+            if result.returncode == 0:
+                mdns_ok = True
+                mdns_message = "Avahi daemon found"
+            else:
+                mdns_message = "Avahi daemon not found"
+    except Exception as e:
+        mdns_message = f"mDNS check failed: {str(e)}"
+
+    checks.append(DiagnosticCheck(
+        name="mDNS Discovery",
+        ok=mdns_ok,
+        message=mdns_message,
+        remediation="Install Avahi (Linux) or ensure Bonjour is enabled (macOS/Windows)" if not mdns_ok else None
+    ))
+
+    # Check 3: Port 8000 Reachability
+    port_ok = False
+    port_message = ""
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(1)
+        result = sock.connect_ex(('127.0.0.1', 8000))
+        if result == 0:
+            port_ok = True
+            port_message = "Port 8000 is reachable on localhost"
+        else:
+            port_message = f"Port 8000 is not reachable (error code: {result})"
+        sock.close()
+    except Exception as e:
+        port_message = f"Port check failed: {str(e)}"
+
+    checks.append(DiagnosticCheck(
+        name="Backend Port (8000)",
+        ok=port_ok,
+        message=port_message,
+        remediation="Ensure FastAPI backend is running on port 8000" if not port_ok else None
+    ))
+
+    # Check 4: Peer Discovery
+    peer_count = 0
+    peer_message = ""
+    if service and service.is_running:
+        try:
+            all_peers = await service.list_peers()
+            online_peers = [p for p in all_peers if p.status == "online" and p.peer_id != service.peer_id]
+            peer_count = len(online_peers)
+            if peer_count > 0:
+                peer_message = f"Discovered {peer_count} peer(s)"
+            else:
+                peer_message = "No peers discovered yet"
+        except Exception as e:
+            peer_message = f"Peer discovery failed: {str(e)}"
+    else:
+        peer_message = "P2P service not running"
+
+    checks.append(DiagnosticCheck(
+        name="Peer Discovery",
+        ok=peer_count > 0,
+        message=peer_message,
+        remediation="Ensure other ElohimOS instances are running on the same network with P2P enabled" if peer_count == 0 else None
+    ))
+
+    # Check 5: Firewall
+    # This is a heuristic check - just provide guidance
+    firewall_message = "Firewall status cannot be auto-detected"
+    checks.append(DiagnosticCheck(
+        name="Firewall Check",
+        ok=True,  # Always pass but provide info
+        message=firewall_message,
+        remediation="If peer discovery fails, check firewall settings and allow port 8000 for local network"
+    ))
+
+    # Check 6: Network Interface
+    network_ok = False
+    network_message = ""
+    try:
+        # Try to get local IP
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+        network_ok = True
+        network_message = f"Local IP: {local_ip}"
+    except Exception as e:
+        network_message = f"Network check failed: {str(e)}"
+
+    checks.append(DiagnosticCheck(
+        name="Network Interface",
+        ok=network_ok,
+        message=network_message,
+        remediation="Ensure device is connected to a network (WiFi or Ethernet)" if not network_ok else None
+    ))
+
+    return RunChecksResponse(checks=checks)
