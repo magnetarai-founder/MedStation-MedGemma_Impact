@@ -50,6 +50,8 @@ async def run_startup_migrations() -> None:
             # Sprint 6 analytics migrations
             from .migrations import phase6_analytics as phase6_analytics_migration
             from .migrations import phase6_model_kpis as phase6_kpis_migration
+            # Phase B: Kanban workspace
+            from .migrations import phaseB_kanban as phaseB_kanban_migration
         except ImportError:
             from migrations import phase0_user_db as phase0_migration
             from migrations import phase1_workflows_user_id as phase1_migration
@@ -63,6 +65,8 @@ async def run_startup_migrations() -> None:
             # Sprint 6 analytics migrations
             from migrations import phase6_analytics as phase6_analytics_migration
             from migrations import phase6_model_kpis as phase6_kpis_migration
+            # Phase B: Kanban workspace
+            from migrations import phaseB_kanban as phaseB_kanban_migration
 
         # ===== Phase 0: Database Architecture Consolidation =====
         app_db = PATHS.app_db
@@ -185,6 +189,16 @@ async def run_startup_migrations() -> None:
             phase6_kpis_migration.migrate(str(app_db))
 
             logger.info("✓ Phase 6.1 model KPIs migration completed successfully")
+
+        # ===== Phase B: Kanban Workspace =====
+        try:
+            # Simple migration without state tracking (table check inside migrate())
+            phaseB_kanban_migration.migrate(str(app_db))
+            migrations_ran.append("Phase B: Kanban Workspace")
+        except Exception as e:
+            # If migration already applied, this is fine
+            if "already applied" not in str(e).lower():
+                logger.error(f"Phase B migration failed: {e}")
 
         # Summary output - only show if migrations ran
         if migrations_ran:
