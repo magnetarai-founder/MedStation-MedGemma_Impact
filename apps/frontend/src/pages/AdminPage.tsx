@@ -1,7 +1,6 @@
 import { useState, lazy, Suspense, useEffect } from 'react'
-import { Shield, Server, Users, Archive, Loader2, Activity, Lock, AlertTriangle, BarChart3 } from 'lucide-react'
+import { Shield, Server, Users, Archive, Loader2, Lock, AlertTriangle, BarChart3 } from 'lucide-react'
 import { usePermissions } from '@/hooks/usePermissions'
-import { ProfileSettings } from '../components/ProfileSettings/index'
 import { ROLES } from '@/lib/roles'
 
 // Lazy load tab components
@@ -24,7 +23,7 @@ function LoadingFallback() {
   )
 }
 
-type AdminTab = 'system' | 'security' | 'permissions' | 'backups' | 'profile' | 'analytics'
+type AdminTab = 'system' | 'security' | 'permissions' | 'backups' | 'analytics'
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<AdminTab>('system')
@@ -58,7 +57,6 @@ export default function AdminPage() {
     { id: 'security' as AdminTab, label: 'Security & Vault', icon: Lock, visible: true },
     { id: 'permissions' as AdminTab, label: 'Teams & Permissions', icon: Users, visible: true },
     { id: 'backups' as AdminTab, label: 'Backups & Logs', icon: Archive, visible: true },
-    { id: 'profile' as AdminTab, label: 'Profile', icon: Activity, visible: true },
     { id: 'analytics' as AdminTab, label: 'Analytics', icon: BarChart3, visible: userRole === ROLES.GOD_RIGHTS || userRole === 'admin' },
   ]
 
@@ -157,19 +155,6 @@ export default function AdminPage() {
               </h3>
               <DangerZoneTab />
             </div>
-          </div>
-        )}
-
-        {activeTab === 'profile' && (
-          <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900 p-6">
-            <div className="flex items-center gap-3 mb-6">
-              <Activity className="w-7 h-7 text-primary-500" />
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Profile Settings</h1>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Manage your account preferences and settings</p>
-              </div>
-            </div>
-            <ProfileSettings />
           </div>
         )}
 

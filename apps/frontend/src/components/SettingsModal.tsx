@@ -9,14 +9,9 @@ import { useNavigationStore } from '@/stores/navigationStore'
 // Lazy load heavy tab components for better performance
 const ChatTab = lazy(() => import('./settings/ChatTab'))
 const ModelsTab = lazy(() => import('./settings/ModelsTab'))
-const PermissionsTab = lazy(() => import('./settings/PermissionsTab'))
 const AppSettingsTab = lazy(() => import('./settings/AppSettingsTab'))
 const AutomationTab = lazy(() => import('./settings/AutomationTab'))
 const AdvancedTab = lazy(() => import('./settings/AdvancedTab'))
-const SecurityTab = lazy(() => import('./settings/SecurityTab'))
-const DangerZoneTab = lazy(() => import('./settings/DangerZoneTab'))
-const AdminTab = lazy(() => import('./settings/AdminTab'))
-const AnalyticsTab = lazy(() => import('./settings/AnalyticsTab'))
 
 
 interface SettingsModalProps {
@@ -41,10 +36,9 @@ function LoadingFallback() {
 export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalProps) {
   const permissions = usePermissions()
   const { setActiveTab: setNavTab } = useNavigationStore()
-  const [activeTab, setActiveTab] = useState<'profile' | 'admin' | 'chat' | 'models' | 'permissions' | 'app' | 'automation' | 'advanced' | 'security' | 'danger' | 'analytics'>('profile')
+  const [activeTab, setActiveTab] = useState<'profile' | 'chat' | 'models' | 'app' | 'automation' | 'advanced'>('profile')
   const [preloaded, setPreloaded] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
-  const [showAdminBanner, setShowAdminBanner] = useState(true)
 
   // Fetch user role on mount
   useEffect(() => {
@@ -129,33 +123,18 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
               <span>Profile</span>
             </button>
 
-            {/* Admin Dashboard - Founder Rights only */}
-            {userRole === ROLES.GOD_RIGHTS && (
-              <button
-                onClick={() => setActiveTab('admin')}
-                className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all rounded-lg ${
-                  activeTab === 'admin'
-                    ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50'
-                }`}
-              >
-                <Crown className="w-4 h-4" />
-                <span>Admin</span>
-              </button>
-            )}
-
-            {/* Analytics - Admin/Founder only (Sprint 6) */}
+            {/* Link to Admin Page - Founder/Admin only */}
             {(userRole === ROLES.GOD_RIGHTS || userRole === 'admin') && (
               <button
-                onClick={() => setActiveTab('analytics')}
-                className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all rounded-lg ${
-                  activeTab === 'analytics'
-                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50'
-                }`}
+                onClick={() => {
+                  setNavTab('admin')
+                  onClose()
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50 border border-dashed border-gray-300 dark:border-gray-600"
               >
-                <BarChart3 className="w-4 h-4" />
-                <span>Analytics</span>
+                <Shield className="w-4 h-4" />
+                <span>Open Admin Page</span>
+                <ArrowRight className="w-4 h-4 ml-auto" />
               </button>
             )}
 
@@ -181,18 +160,6 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
             >
               <Sparkles className="w-4 h-4" />
               <span>Models</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('permissions')}
-              className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all rounded-lg ${
-                activeTab === 'permissions'
-                  ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50'
-              }`}
-            >
-              <Shield className="w-4 h-4" />
-              <span>Permissions</span>
             </button>
 
             <button
@@ -237,29 +204,6 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
               </button>
             )}
 
-            <button
-              onClick={() => setActiveTab('security')}
-              className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all rounded-lg ${
-                activeTab === 'security'
-                  ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50'
-              }`}
-            >
-              <Shield className="w-4 h-4" />
-              <span>Security & Vault</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('danger')}
-              className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all rounded-lg ${
-                activeTab === 'danger'
-                  ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50'
-              }`}
-            >
-              <AlertTriangle className="w-4 h-4" />
-              <span>System Management</span>
-            </button>
           </nav>
         </div>
 
@@ -269,52 +213,18 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
           <div className="flex items-center justify-between px-8 py-5 border-b border-gray-200 dark:border-gray-700">
             <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
               {activeTab === 'profile' && 'Profile'}
-              {activeTab === 'admin' && 'Founder Rights Admin'}
-              {activeTab === 'analytics' && 'Analytics Dashboard'}
               {activeTab === 'chat' && 'Chat'}
               {activeTab === 'models' && 'Models'}
-              {activeTab === 'permissions' && 'Permissions'}
               {activeTab === 'app' && 'App'}
               {activeTab === 'automation' && 'Automation'}
               {activeTab === 'advanced' && 'Advanced'}
-              {activeTab === 'security' && 'Security & Vault'}
-              {activeTab === 'danger' && 'System Management'}
-            </h3>
-            <button
+            </h3>            <button
               onClick={onClose}
               className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             >
               <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
             </button>
           </div>
-
-          {/* Admin Page Banner */}
-          {showAdminBanner && (
-            <div className="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800 px-8 py-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm text-blue-800 dark:text-blue-200">
-                  <Shield className="w-4 h-4" />
-                  <span>Settings have moved to the Admin page for better organization.</span>
-                  <button
-                    onClick={() => {
-                      setNavTab('admin')
-                      onClose()
-                    }}
-                    className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline font-medium"
-                  >
-                    Open Admin
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-                <button
-                  onClick={() => setShowAdminBanner(false)}
-                  className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Content */}
           <div className="flex-1 overflow-auto p-8">
@@ -325,16 +235,6 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
               </div>
 
               {/* Render active tab immediately */}
-              {activeTab === 'admin' && (
-                <div>
-                  <AdminTab />
-                </div>
-              )}
-              {activeTab === 'analytics' && (
-                <div>
-                  <AnalyticsTab />
-                </div>
-              )}
               {activeTab === 'chat' && (
                 <div>
                   <ChatTab />
@@ -343,11 +243,6 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
               {activeTab === 'models' && (
                 <div>
                   <ModelsTab />
-                </div>
-              )}
-              {activeTab === 'permissions' && (
-                <div>
-                  <PermissionsTab />
                 </div>
               )}
               {activeTab === 'app' && (
@@ -365,17 +260,6 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
                   <AdvancedTab />
                 </div>
               )}
-              {activeTab === 'security' && (
-                <div>
-                  <SecurityTab />
-                </div>
-              )}
-              {activeTab === 'danger' && (
-                <div>
-                  <DangerZoneTab />
-                </div>
-              )}
-
               {/* Preload all other tabs in hidden state after first render */}
               {preloaded && (
                 <>
@@ -402,16 +286,6 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
                   {activeTab !== 'advanced' && (
                     <div className="hidden">
                       <AdvancedTab />
-                    </div>
-                  )}
-                  {activeTab !== 'security' && (
-                    <div className="hidden">
-                      <SecurityTab />
-                    </div>
-                  )}
-                  {activeTab !== 'danger' && (
-                    <div className="hidden">
-                      <DangerZoneTab />
                     </div>
                   )}
                 </>
