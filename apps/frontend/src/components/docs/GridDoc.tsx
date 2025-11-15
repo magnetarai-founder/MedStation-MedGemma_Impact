@@ -1,8 +1,14 @@
 import { useEffect, useState, useRef } from 'react'
-import { Wifi, WifiOff, Users, Loader2, Plus, Trash2, Download, Upload } from 'lucide-react'
+import { Wifi, WifiOff, Users, Loader2, Plus, Trash2, Download, Upload, History, RotateCcw } from 'lucide-react'
 import * as Y from 'yjs'
 import { getYDoc, destroyYDoc, getYArray } from '@/lib/collab/yDoc'
 import { createWebSocketProvider, destroyWebSocketProvider } from '@/lib/collab/yProvider'
+
+interface Snapshot {
+  id: string
+  size_bytes: number
+  modified_ts: number
+}
 
 interface GridDocProps {
   docId: string
@@ -24,6 +30,10 @@ export function GridDoc({ docId, token, className = '' }: GridDocProps) {
   const [activeCell, setActiveCell] = useState<CellPosition | null>(null)
   const [editingCell, setEditingCell] = useState<CellPosition | null>(null)
   const [cellValue, setCellValue] = useState('')
+  const [snapshots, setSnapshots] = useState<Snapshot[]>([])
+  const [showHistory, setShowHistory] = useState(false)
+  const [loadingSnapshots, setLoadingSnapshots] = useState(false)
+  const [restoringSnapshot, setRestoringSnapshot] = useState(false)
 
   const ydocRef = useRef<Y.Doc | null>(null)
   const yarrayRef = useRef<Y.Array<Y.Map<any>> | null>(null)
@@ -217,6 +227,65 @@ export function GridDoc({ docId, token, className = '' }: GridDocProps) {
     URL.revokeObjectURL(url)
   }
 
+  // Fetch snapshots
+  const fetchSnapshots = async () => {
+    setLoadingSnapshots(true)
+    try {
+      const response = await fetch(`/api/v1/collab/docs/${docId}/snapshots`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        // Sort by modified_ts descending
+        const sorted = data.sort((a: Snapshot, b: Snapshot) => b.modified_ts - a.modified_ts)
+        setSnapshots(sorted.slice(0, 10)) // Show last 10
+      } else {
+        console.error('Failed to fetch snapshots:', response.statusText)
+      }
+    } catch (error) {
+      console.error('Error fetching snapshots:', error)
+    } finally {
+      setLoadingSnapshots(false)
+    }
+  }
+
+  // Restore snapshot
+  const restoreSnapshot = async (snapshotId: string) => {
+    if (!confirm(`Restore this version? Current changes will be lost.`)) {
+      return
+    }
+
+    setRestoringSnapshot(true)
+    try {
+      const response = await fetch(`/api/v1/collab/docs/${docId}/restore`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ snapshot_id: snapshotId })
+      })
+
+      if (response.ok) {
+        alert('Snapshot restored successfully! Reconnecting...')
+        // Reconnect to sync the restored state
+        window.location.reload()
+      } else {
+        const error = await response.json()
+        alert(`Restore failed: ${error.detail || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Error restoring snapshot:', error)
+      alert('Restore failed. Check console for details.')
+    } finally {
+      setRestoringSnapshot(false)
+      setShowHistory(false)
+    }
+  }
+
   return (
     <div className={`flex flex-col h-full ${className}`}>
       {/* Toolbar */}
@@ -270,6 +339,77 @@ export function GridDoc({ docId, token, className = '' }: GridDocProps) {
             <Download className="w-3.5 h-3.5" />
             JSON
           </button>
+
+          {/* History Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => {
+                setShowHistory(!showHistory)
+                if (!showHistory && snapshots.length === 0) {
+                  fetchSnapshots()
+                }
+              }}
+              className="flex items-center gap-1 px-3 py-1.5 text-xs rounded bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300"
+            >
+              <History className="w-3.5 h-3.5" />
+              History
+            </button>
+
+            {/* Dropdown Menu */}
+            {showHistory && (
+              <div className="absolute right-0 mt-1 w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10 max-h-96 overflow-y-auto">
+                <div className="p-3 border-b border-gray-200 dark:border-gray-700">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    Version History
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Last 10 snapshots
+                  </p>
+                </div>
+
+                {loadingSnapshots ? (
+                  <div className="p-8 text-center">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto text-gray-400" />
+                    <p className="text-xs text-gray-500 mt-2">Loading...</p>
+                  </div>
+                ) : snapshots.length === 0 ? (
+                  <div className="p-8 text-center">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      No snapshots available yet
+                    </p>
+                  </div>
+                ) : (
+                  <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {snapshots.map((snapshot) => (
+                      <li
+                        key={snapshot.id}
+                        className="p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">
+                              {new Date(snapshot.modified_ts * 1000).toLocaleString()}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              {(snapshot.size_bytes / 1024).toFixed(1)} KB
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => restoreSnapshot(snapshot.id)}
+                            disabled={restoringSnapshot}
+                            className="ml-3 flex items-center gap-1 px-2 py-1 text-xs rounded bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white"
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                            Restore
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
