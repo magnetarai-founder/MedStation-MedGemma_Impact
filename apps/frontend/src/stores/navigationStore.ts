@@ -1,7 +1,7 @@
 import { createWithEqualityFn } from 'zustand/traditional'
 import { persist } from 'zustand/middleware'
 
-export type NavTab = 'team' | 'chat' | 'code' | 'database' | 'admin'
+export type NavTab = 'team' | 'chat' | 'code' | 'database' | 'admin' | 'kanban'
 
 export interface NavItem {
   id: NavTab
@@ -23,7 +23,8 @@ const defaultNavOrder: Array<NavItem['id']> = [
   'team',      // Workspace first
   'chat',      // AI Chat second
   'code',      // Code third
-  'database'   // Database last
+  'database',  // Database fourth
+  'kanban'     // Kanban fifth
 ]
 
 export const useNavigationStore = createWithEqualityFn<NavigationStore>()(
@@ -53,7 +54,7 @@ export const useNavigationStore = createWithEqualityFn<NavigationStore>()(
       onRehydrateStorage: () => (state) => {
         if (state) {
           // Check if navOrder has all required tabs
-          const requiredTabs: NavTab[] = ['team', 'chat', 'code', 'database']
+          const requiredTabs: NavTab[] = ['team', 'chat', 'code', 'database', 'kanban']
           const missingTabs = requiredTabs.filter(tab => !state.navOrder.includes(tab))
 
           if (missingTabs.length > 0) {

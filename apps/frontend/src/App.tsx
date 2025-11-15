@@ -29,6 +29,7 @@ const CodeWorkspace = lazyNamed(() => import('./components/CodeWorkspace'), 'Cod
 const CodeSidebar = lazyNamed(() => import('./components/CodeSidebar'), 'CodeSidebar')
 const TeamWorkspace = lazyNamed(() => import('./components/TeamWorkspace'), 'TeamWorkspace')
 const AdminPage = lazyNamed(() => import('./pages/AdminPage'), 'default')
+const KanbanWorkspace = lazyNamed(() => import('./pages/KanbanWorkspace'), 'default')
 
 // Lazy load modals (only loaded when opened) with retry logic
 const SettingsModal = lazyNamed(() => import('./components/SettingsModal'), 'SettingsModal')
@@ -449,6 +450,18 @@ export default function App() {
           >
             <Suspense fallback={<LoadingSpinner />}>
               <AdminPage />
+            </Suspense>
+          </div>
+
+          {/* Kanban Tab */}
+          <div
+            className="absolute inset-0 flex"
+            style={{
+              display: activeTab === 'kanban' ? 'flex' : 'none'
+            }}
+          >
+            <Suspense fallback={<LoadingSpinner />}>
+              <KanbanWorkspace />
             </Suspense>
           </div>
 
