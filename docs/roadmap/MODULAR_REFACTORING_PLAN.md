@@ -1193,7 +1193,363 @@ useEffect(() => {
 
 ---
 
-**Document Version**: 1.1
+## PHASE 9: Admin Tab RBAC & Multi-Profile System (Future)
+**Goal**: Implement proper role-based access control for Admin tab with multi-profile support
+**Duration**: 3-4 weeks
+**Risk**: HIGH
+**Priority**: DEFERRED - Requires deep architectural planning
+
+### Current State
+**Admin tab is currently unrestricted**:
+- Admin tab (Shield icon) moved to bottom of nav rail (above Settings)
+- **No RBAC enforcement**: All authenticated users can access Admin page
+- **No profile isolation**: Solo users can see/modify everything
+- **No multi-profile support**: Cannot restrict admin view to specific user profiles
+- **Setup wizard exists** but doesn't configure profile/admin boundaries
+
+### Problem Statement
+
+When using ElohimOS solo (single user), the Admin page shows **all system data**:
+- All users (even if you're the only one)
+- All teams (even non-existent ones)
+- All permissions (global view)
+- All system settings
+- Database health for ALL databases
+
+**The core issue**: In solo mode, you should only see/manage **your own profile's data**, not the entire system.
+
+**In team mode**, admin access should be restricted by:
+- User role (founder_rights, super_admin, admin, member, viewer)
+- Team membership (can only admin teams you're part of)
+- Permission scope (can only see users/data you have permission to manage)
+
+### Proposed Solution
+
+#### Conceptual Model: Solo Mode vs Team Mode
+
+**Solo Mode** (default for new users):
+- User is the "owner" of their local instance
+- Admin page shows only their profile's data
+- No access to other users' data (even if they exist in DB)
+- Settings are scoped to "my profile" not "system-wide"
+- Equivalent to a personal workspace
+
+**Team Mode** (enabled when joining/creating teams):
+- User role determines admin capabilities
+- founder_rights: Full system admin (all teams, all users)
+- super_admin: Multi-team admin (teams they're assigned to)
+- admin: Single team admin (their team only)
+- member/viewer: No admin access
+
+#### New RBAC Rules for Admin Tab
+
+**Frontend (NavigationRail.tsx)**:
+```typescript
+case 'admin':
+  // Admin tab visibility based on mode + role
+  if (userMode === 'solo') {
+    // Solo mode: Always show admin (for self-management)
+    return true
+  } else {
+    // Team mode: Role-based access
+    return permissions.canAccessAdmin // founder_rights, super_admin, admin
+  }
+```
+
+**Backend**:
+- New permission: `admin.access_panel`
+- New setting: `user_mode` (solo | team)
+- New concept: `profile_scope` (defines what data user can admin)
+
+#### Profile Scope System
+
+**Profile Scope Levels**:
+1. **Self Only** (solo mode default)
+   - Can only see/manage own user record
+   - Can only see own teams (if any)
+   - Can only see own settings
+   - Database health: Only shows databases with user's data
+
+2. **Team Scoped** (admin role in team mode)
+   - Can see/manage users in their team(s)
+   - Can see/manage their team(s) settings
+   - Can see team-level analytics
+   - Cannot see other teams
+
+3. **Multi-Team Scoped** (super_admin role)
+   - Can see/manage multiple teams
+   - Can see cross-team analytics
+   - Cannot create new system-level users (founder only)
+
+4. **System Scoped** (founder_rights only)
+   - Full system access (current Admin page behavior)
+   - Can see all users, teams, settings
+   - Can access all databases
+   - Can modify system-level settings
+
+#### Setup Wizard Enhancement
+
+**New "Profile Mode" step in setup wizard**:
+
+```
+┌─────────────────────────────────────────┐
+│  Choose Your ElohimOS Mode              │
+├─────────────────────────────────────────┤
+│                                         │
+│  ○ Solo Mode (Personal Use)            │
+│    • Just you, your data               │
+│    • Full control over your profile    │
+│    • Admin tab shows only your info    │
+│                                         │
+│  ○ Team Mode (Collaborative)           │
+│    • Multiple users/teams              │
+│    • Role-based permissions            │
+│    • Admin access based on role        │
+│                                         │
+│  [Continue]                             │
+└─────────────────────────────────────────┘
+```
+
+**What this controls**:
+- Sets `user_mode` in user preferences
+- Sets initial `profile_scope`
+- Determines Admin tab behavior
+- Affects permission checks across app
+
+**Can be changed later** in Settings → Profile → Account Type
+
+#### Settings Integration
+
+**New section in Profile Settings → Identity**:
+
+**Account Type**:
+- Current mode: Solo / Team
+- Change mode button (with migration warning)
+- Scope: Self Only / Team Scoped / System Scoped (read-only, based on role)
+
+**Migration Considerations**:
+- Solo → Team: Must create/join a team first
+- Team → Solo: Warning about losing team access
+- Data is never deleted, just scope of admin view changes
+
+#### Admin Page Changes
+
+**Dynamic Sections Based on Scope**:
+
+**Solo Mode Admin Page**:
+```
+Admin
+├── My Profile
+│   ├── User Information (read-only email, role)
+│   ├── Storage Usage (my data only)
+│   └── Activity Log (my actions only)
+├── My Settings
+│   ├── Preferences
+│   ├── Security
+│   └── Privacy
+└── System Health
+    ├── Ollama Status
+    ├── Backend Status
+    └── My Databases (only DBs with my data)
+```
+
+**Team Admin Page** (admin role):
+```
+Admin
+├── My Team
+│   ├── Team Members (can add/remove)
+│   ├── Team Settings
+│   └── Team Storage
+├── Permissions
+│   ├── Role Management (within team)
+│   └── Access Control (team scope)
+└── Analytics
+    └── Team Usage Stats
+```
+
+**System Admin Page** (founder_rights):
+```
+Admin
+├── All Users (current behavior)
+├── All Teams
+├── System Permissions
+├── Database Health (all DBs)
+├── Performance Metrics
+└── Audit Logs (all)
+```
+
+### Database Schema Changes
+
+**New columns in `users` table**:
+```sql
+ALTER TABLE users ADD COLUMN user_mode TEXT DEFAULT 'solo'; -- 'solo' | 'team'
+ALTER TABLE users ADD COLUMN profile_scope TEXT DEFAULT 'self'; -- 'self' | 'team' | 'multi_team' | 'system'
+```
+
+**New table: `user_profile_settings`**:
+```sql
+CREATE TABLE user_profile_settings (
+  id INTEGER PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  mode TEXT NOT NULL DEFAULT 'solo', -- 'solo' | 'team'
+  scope TEXT NOT NULL DEFAULT 'self', -- computed from role + mode
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(user_id)
+);
+```
+
+### API Changes
+
+**New endpoints**:
+- `GET /api/v1/users/me/mode` - Get current user mode
+- `PUT /api/v1/users/me/mode` - Change user mode (solo ↔ team)
+- `GET /api/v1/users/me/scope` - Get current profile scope
+- `GET /api/v1/admin/scoped` - Get admin data filtered by scope
+
+**Modified endpoints**:
+- All Admin endpoints must check `profile_scope` before returning data
+- Filter results based on scope (self, team, multi-team, system)
+
+### Frontend Components to Update
+
+1. **NavigationRail.tsx** - Admin tab visibility logic ✅ (partially done)
+2. **AdminPage.tsx** - Dynamic sections based on scope
+3. **ProfileSettings/IdentitySection.tsx** - Add Account Type section
+4. **SetupWizard** - Add Profile Mode selection step
+5. **PermissionsUI** - Scope-aware permission displays
+
+### Permissions to Add
+
+New permissions for granular admin control:
+- `admin.access_panel` - Can see Admin tab
+- `admin.view_self` - Can view own profile (always true)
+- `admin.view_team` - Can view team admin data
+- `admin.view_multi_team` - Can view multiple teams
+- `admin.view_system` - Can view all system data (founder only)
+- `admin.manage_team_users` - Can add/remove team users
+- `admin.manage_team_settings` - Can modify team settings
+- `admin.manage_system` - Can modify system settings (founder only)
+
+### Edge Cases & Considerations
+
+**Solo user who creates a team**:
+- Mode stays "solo" until they explicitly switch to "team"
+- If they invite others, they get prompted to switch modes
+- Switching to team mode gives them "admin" role in their team
+
+**Team member who leaves all teams**:
+- Suggested to switch back to solo mode
+- If they stay in team mode with no teams, Admin tab shows nothing
+- Can switch to solo mode to see self-admin view
+
+**Founder rights user in solo mode**:
+- Still sees full system (scope = system regardless of mode)
+- Mode is more of a UI preference for founders
+
+**Database health visibility**:
+- Solo mode: Only show DBs with user's data (vault.db if they have vault items, chat_memory.db if they have chats, etc.)
+- Team mode: Show team-relevant DBs
+- System mode: Show all DBs
+
+### Testing Requirements
+
+- [ ] Unit tests for scope calculation logic
+- [ ] API tests for scoped data filtering
+- [ ] E2E test: Solo user sees only their data in Admin
+- [ ] E2E test: Team admin sees only team data
+- [ ] E2E test: Founder sees everything
+- [ ] Migration test: Solo → Team mode transition
+- [ ] Migration test: Team → Solo mode transition
+- [ ] Permission tests for new admin.* permissions
+- [ ] Setup wizard flow test with mode selection
+
+### Success Criteria
+
+- [ ] Solo users cannot see other users' data in Admin page
+- [ ] Team admins can only see their team's data
+- [ ] Founder rights can see everything (current behavior preserved)
+- [ ] Setup wizard asks for mode preference
+- [ ] Users can switch modes in Settings
+- [ ] Admin tab visibility based on role + mode
+- [ ] No performance degradation from scope filtering
+- [ ] Clear UI indicators showing current scope
+- [ ] Migration path from current "everyone sees everything" state
+
+### Migration Strategy
+
+**Phase 1: Database Schema** (backward compatible)
+1. Add new columns (nullable, with defaults)
+2. Backfill existing users:
+   - If role = founder_rights → mode: team, scope: system
+   - If role = admin → mode: team, scope: team
+   - All others → mode: solo, scope: self
+
+**Phase 2: Backend Scope Logic**
+1. Implement scope calculation
+2. Add scoped filtering to Admin endpoints
+3. Add new mode/scope management endpoints
+4. Update permission checks
+
+**Phase 3: Frontend Updates**
+1. Update NavigationRail admin visibility
+2. Add Account Type to Profile Settings
+3. Update AdminPage to show scoped sections
+4. Add Setup Wizard mode selection
+
+**Phase 4: Gradual Rollout**
+1. Deploy backend changes (no UI changes yet)
+2. Deploy frontend with feature flag
+3. Prompt existing users to choose mode
+4. Enable feature flag for all users
+
+### Dependencies
+
+- **Requires**:
+  - Phase 2 (Backend Services refactor) for cleaner permission logic
+  - Phase 4 (Frontend refactor) for AdminPage modularization
+  - Existing RBAC system (phase2_permissions_rbac.py migration)
+  - Existing setup wizard framework
+
+- **Blocks**: None (standalone feature)
+
+### Estimated Effort
+
+- **Planning & Design**: 3 days (define all scope rules)
+- **Database migrations**: 2 days (schema + backfill)
+- **Backend scope logic**: 5 days (filtering, APIs, permissions)
+- **Frontend AdminPage refactor**: 5 days (dynamic sections by scope)
+- **Setup Wizard update**: 2 days (mode selection flow)
+- **Profile Settings update**: 2 days (Account Type section)
+- **Testing**: 5 days (unit, integration, E2E, migration)
+- **Documentation**: 2 days (user guide, admin guide)
+- **Buffer for edge cases**: 3 days
+- **Total**: ~29 days (4 weeks)
+
+### Priority Justification
+
+**Deferred to Phase 9** because:
+- Requires deep architectural thinking about scope model
+- Needs careful design of solo vs team mode UX
+- High complexity due to data filtering across all admin endpoints
+- Risk of breaking existing admin functionality
+- Should be done after core refactoring complete (Phases 1-6)
+- Not blocking other features
+- Current workaround: Solo users can manually ignore irrelevant admin data
+
+### Future Enhancements (Post-Phase 9)
+
+- **Multi-profile support**: One user, multiple personas (work, personal)
+- **Profile switching**: Quick switch between profiles without logout
+- **Profile-specific themes**: Different visual themes per profile
+- **Profile data isolation**: Separate vaults/chats/files per profile
+- **Cross-profile sharing**: Share data between your own profiles
+
+---
+
+**Document Version**: 1.2
 **Last Updated**: 2025-11-16
 **Status**: DRAFT - Awaiting team review
-**Recent Changes**: Added Phase 8 - Stealth Labels app-wide implementation plan
+**Recent Changes**:
+- Added Phase 8 - Stealth Labels app-wide implementation plan
+- Added Phase 9 - Admin Tab RBAC & Multi-Profile System
