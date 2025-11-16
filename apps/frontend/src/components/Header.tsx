@@ -321,8 +321,8 @@ export function Header({}: HeaderProps = {}) {
     <>
       <header className="glass border-b border-white/20 dark:border-gray-700/30 relative z-50 bg-gradient-to-r from-blue-50/80 via-purple-50/80 to-pink-50/80 dark:from-gray-900/80 dark:via-gray-850/80 dark:to-gray-900/80 backdrop-blur-xl">
         <div className="flex items-center justify-between py-3.5 px-6">
-          {/* Left: Neutron Star Logo */}
-          <div className="flex items-center gap-2">
+          {/* Left: Neutron Star Logo + Context Badge */}
+          <div className="flex items-center gap-3">
             <button
               onClick={handleLogoClick}
               className="relative w-10 h-10 cursor-pointer group transition-transform hover:scale-110 active:scale-95"
@@ -371,6 +371,9 @@ export function Header({}: HeaderProps = {}) {
                   : 'border-gray-400/50 group-hover:border-green-400/50'
               }`}></div>
             </button>
+
+            {/* Context Badge */}
+            <ContextBadge size="sm" />
           </div>
 
           {/* Center: Title */}
@@ -380,9 +383,6 @@ export function Header({}: HeaderProps = {}) {
 
           {/* Right: Controls */}
           <div className="flex items-center gap-3">
-            {/* Context Badge */}
-            <ContextBadge size="sm" />
-
             {/* Terminal Button + Counter */}
             <div className="flex items-center gap-2">
               <button
