@@ -57,9 +57,9 @@ class SimpleRateLimiter:
     """
 
     def __init__(self):
-        self.buckets: Dict[str, Dict[str, float]] = defaultdict(
-            lambda: {"tokens": 0, "last_update": time()}
-        )
+        # Use an explicit dict so we can properly initialize
+        # each bucket with a full token count on first use.
+        self.buckets: Dict[str, Dict[str, float]] = {}
 
     def check_rate_limit(self, key: str, max_requests: int, window_seconds: int) -> bool:
         """
@@ -74,7 +74,13 @@ class SimpleRateLimiter:
             True if request is allowed, False if rate limit exceeded
         """
         now = time()
-        bucket = self.buckets[key]
+        bucket = self.buckets.get(key)
+
+        # Initialize bucket on first use with a full token bucket so
+        # the very first request is always allowed for a new key.
+        if bucket is None:
+            bucket = {"tokens": float(max_requests), "last_update": now}
+            self.buckets[key] = bucket
 
         # Refill tokens based on time passed
         time_passed = now - bucket["last_update"]
