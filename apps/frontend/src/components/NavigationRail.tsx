@@ -19,7 +19,7 @@ const NAV_ITEMS = {
 } as const
 
 // Static navigation order
-const NAV_ORDER: NavTab[] = ['chat', 'team', 'kanban', 'code', 'database', 'admin']
+const NAV_ORDER: NavTab[] = ['chat', 'team', 'kanban', 'code', 'database']
 
 export function NavigationRail({ activeTab, onTabChange, onOpenSettings }: NavigationRailProps) {
   const permissions = usePermissions()
@@ -89,8 +89,17 @@ export function NavigationRail({ activeTab, onTabChange, onOpenSettings }: Navig
       {/* Spacer */}
       <div className="flex-1"></div>
 
-      {/* Bottom section - Settings */}
+      {/* Bottom section - Admin + Settings */}
       <div className="pb-4 flex flex-col gap-3">
+        {/* Admin button (all authenticated users can see) */}
+        <button
+          onClick={() => onTabChange('admin')}
+          className={getButtonClasses('admin')}
+          title="Admin"
+        >
+          <Shield size={22} />
+        </button>
+
         <button
           onClick={onOpenSettings}
           className="w-14 h-14 rounded-2xl flex items-center justify-center transition-all text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 hover:bg-white/60 dark:hover:bg-gray-700/60 hover:shadow-lg"
