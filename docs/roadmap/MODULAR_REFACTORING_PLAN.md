@@ -130,6 +130,13 @@ We'll tackle this in **6 phases**, prioritizing by:
 4. **Code Splitting**: Use React.lazy() for route-based splitting
 5. **Type Safety**: Maintain strong TypeScript typing
 
+## Non-Goals
+
+- No intentional changes to external API contracts (HTTP routes, request/response schemas, or auth flows).
+- No new product features shipped as part of refactor PRs; feature work lives on separate branches.
+- No functional changes to database schemas beyond mechanical migrations required to support module splits.
+- No performance optimizations that alter observable behavior; performance tuning happens after refactors stabilize.
+
 ---
 
 ## Detailed Refactoring Plans
@@ -138,6 +145,14 @@ We'll tackle this in **6 phases**, prioritizing by:
 **Goal**: Build momentum with low-complexity refactors
 **Duration**: 2-3 days
 **Risk**: LOW
+
+**Success Criteria**:
+- Template, NLP, and Automation template files are split into the new module structures with all imports updated.
+- Backend and frontend builds/tests pass with no public API or route changes.
+
+**Testing Requirements**:
+- Unit tests for each new template/NLP module.
+- Smoke tests (automated or manual) for Automation flows that consume the shared templates.
 
 #### Backend Tasks:
 
@@ -224,6 +239,14 @@ components/Automation/templates/
 **Goal**: Refactor largest backend service files
 **Duration**: 1 week
 **Risk**: MEDIUM-HIGH
+
+**Success Criteria**:
+- Team, Vault, and Chat services are decomposed into focused submodules with `core.py` files acting only as orchestration layers.
+- All related API endpoints behave identically in integration/E2E tests (permissions, audit trails, and data semantics unchanged).
+
+**Testing Requirements**:
+- Unit tests for each new service submodule.
+- Integration tests for critical team, vault, and chat workflows, including permission checks and audit logging.
 
 #### 2.1 Refactor `api/services/team/core.py` (2,872 lines)
 **Current**: Monolithic team service with everything
@@ -352,6 +375,13 @@ api/services/chat/
 **Duration**: 1 week
 **Risk**: MEDIUM
 
+**Success Criteria**:
+- `api/main.py` is reduced to a minimal entry point using `app_factory.py`, and route files are split as proposed without changing URL paths.
+- FastAPI startup, health checks, and route registration succeed locally and in CI environments.
+
+**Testing Requirements**:
+- Integration or smoke tests that cover app startup, core routes, and the most-used vault/team endpoints.
+
 #### 3.1 Refactor `api/main.py` (1,920 lines)
 **Current**: Everything in one file (app setup, middleware, routes, startup, shutdown)
 **Target Structure**:
@@ -446,6 +476,14 @@ api/routes/team/
 **Goal**: Refactor largest frontend components
 **Duration**: 1 week
 **Risk**: MEDIUM-HIGH
+
+**Success Criteria**:
+- VaultWorkspace, App shell, TeamChat, and WorkflowDesigner are split into smaller components/hooks that match the proposed structures.
+- Frontend builds with no TypeScript errors and E2E flows for vault, chat, workflows, and navigation continue to pass.
+
+**Testing Requirements**:
+- Component or unit tests where they already exist.
+- E2E or scripted smoke tests for core user journeys (vault, chat, workflows, login/navigation).
 
 #### 4.1 Complete `VaultWorkspace.tsx` Refactoring
 **Current**: Partially refactored (4,119 lines + 942 line index)
@@ -584,6 +622,13 @@ components/WorkflowDesigner/
 **Duration**: 5 days
 **Risk**: LOW-MEDIUM
 
+**Success Criteria**:
+- `SettingsTab` and large modal components are decomposed into layout + tab/modal subcomponents without changing settings behavior.
+- All settings panels and modals render and function as before in manual/E2E checks.
+
+**Testing Requirements**:
+- UI regression tests or scripted/manual checklists for each settings tab and modal.
+
 #### 5.1 Refactor `components/settings/SettingsTab.tsx` (862 lines)
 **Current**: Monolithic settings tab coordinator
 **Target Structure**:
@@ -647,6 +692,14 @@ components/ProfileSettings/
 **Goal**: Clean up remaining large backend files
 **Duration**: 5 days
 **Risk**: LOW-MEDIUM
+
+**Success Criteria**:
+- Permission, code editor, and other large backend utility files are reorganized into dedicated modules with stable public APIs.
+- All permission checks, code editor operations, and related endpoints pass integration tests, with no regressions in existing monitoring.
+
+**Testing Requirements**:
+- Unit tests for new utility modules.
+- Integration tests around permissions, code editing, and workflows that depend on these utilities.
 
 #### 6.1 Refactor Permission Files
 **Files**:
@@ -719,6 +772,14 @@ api/services/code_editor/
 **Duration**: 1 week
 **Risk**: HIGH (these are "dumb core" - must remain stable)
 
+**Success Criteria**:
+- `pulsar_core` and `neutron_core` engines are split into smaller modules with `engine.py` providing the only public API surface.
+- All existing consumers of these packages compile and pass regression and performance tests.
+
+**Testing Requirements**:
+- High-coverage unit and integration tests around core package behavior.
+- Targeted performance benchmarks to ensure no regressions in critical workloads.
+
 #### 7.1 `packages/pulsar_core/engine.py` (980 lines)
 **Current**: Monolithic JSON normalization engine
 **Target Structure**:
@@ -771,12 +832,14 @@ packages/neutron_core/
 2. **Commits**: Atomic commits with clear messages
 3. **PRs**: One PR per major file/component
 4. **Merging**: Squash merge to keep history clean
+5. **Isolation**: Refactor branches must not include unrelated feature work to keep rollbacks simple.
 
 ### Rollback Plan
-1. **Feature Flags**: Use flags for new module paths
-2. **Gradual Migration**: Keep old code until new code proven
-3. **Monitoring**: Watch error rates after each merge
-4. **Quick Revert**: Ability to revert any PR within 5 minutes
+1. **Feature Branches**: Keep refactors on short-lived `refactor/...` branches so they can be rolled back as a unit.
+2. **Feature Flags**: Use flags for new module paths that change runtime behavior so they can be disabled quickly if needed.
+3. **Gradual Migration**: Keep old code until new code proven
+4. **Monitoring**: Watch error rates after each merge
+5. **Quick Revert**: Ability to revert any PR within 5 minutes
 
 ---
 
@@ -959,6 +1022,178 @@ packages/neutron_core/
 
 ---
 
-**Document Version**: 1.0
+## PHASE 8: Stealth Labels - App-Wide Privacy Feature (Future)
+**Goal**: Implement comprehensive stealth label system across entire app
+**Duration**: 2 weeks
+**Risk**: MEDIUM
+**Priority**: DEFERRED - Requires Phase 1-6 completion first
+
+### Current State
+**Partially Implemented** (frontend only, Vault workspace only):
+- `stealth_labels` setting exists in `docsStore` (per-user preference)
+- `VaultWorkspace.tsx:313` has `getDisplayTitle()` that checks for stealth labels
+- Documents have optional `stealth_label` field
+- **NOT part of RBAC** - it's a user privacy preference
+- **NO backend storage** - purely frontend behavior
+
+### Problems with Current Implementation
+1. **Inconsistent coverage**: Only works in Vault, not in chat/team/search/files/etc.
+2. **No persistence**: Stealth labels not stored in backend database
+3. **App title exposure**: Window title always shows "ElohimOS" regardless of stealth mode
+4. **Search leakage**: Search results show real titles
+5. **Notification leakage**: Toasts/notifications show real titles
+6. **Recent files leakage**: File browsers show real titles
+7. **Chat history leakage**: Chat shows real document references
+
+### Proposed Solution
+
+#### Backend Changes
+**New database fields** (across all relevant tables):
+```sql
+-- Add to vault documents
+ALTER TABLE vault_documents ADD COLUMN stealth_label TEXT;
+
+-- Add to chat sessions
+ALTER TABLE chat_sessions ADD COLUMN stealth_label TEXT;
+
+-- Add to team files
+ALTER TABLE team_files ADD COLUMN stealth_label TEXT;
+
+-- Add to code files
+ALTER TABLE code_files ADD COLUMN stealth_label TEXT;
+
+-- Add to saved queries
+ALTER TABLE saved_queries ADD COLUMN stealth_label TEXT;
+```
+
+**New API endpoints**:
+- `PATCH /api/v1/vault/documents/{id}/stealth-label` - Set stealth label
+- `PATCH /api/v1/chat/sessions/{id}/stealth-label` - Set stealth label
+- `GET /api/v1/settings/stealth-mode` - Get user's stealth mode preference
+- `PUT /api/v1/settings/stealth-mode` - Update stealth mode preference
+
+**Backend services**:
+```
+api/services/stealth/
+├── __init__.py
+├── label_manager.py      # CRUD for stealth labels
+├── title_masker.py       # Apply stealth labels to responses
+└── types.py              # Type definitions
+```
+
+#### Frontend Changes
+
+**Global stealth context**:
+```typescript
+// New hook: useStealthMode
+export function useStealthMode() {
+  const { securitySettings } = useDocsStore()
+
+  const getDisplayTitle = (item: {
+    title: string
+    stealth_label?: string
+  }) => {
+    if (securitySettings.stealth_labels && item.stealth_label) {
+      return item.stealth_label
+    }
+    return item.title
+  }
+
+  const getAppTitle = () => {
+    if (securitySettings.stealth_labels) {
+      return 'Productivity Suite' // or user-configurable
+    }
+    return 'ElohimOS'
+  }
+
+  return { getDisplayTitle, getAppTitle, isStealthMode: securitySettings.stealth_labels }
+}
+```
+
+**Components to update**:
+1. **App.tsx** - Window title via `document.title`
+2. **ChatWindow.tsx** - Message content, file references
+3. **TeamWorkspace.tsx** - File lists, shared documents
+4. **CodeWorkspace.tsx** - File browser, recent files
+5. **SearchResults** (all) - Search result titles
+6. **Toast notifications** - Success/error messages
+7. **Header.tsx** - Breadcrumbs, current file name
+8. **FileUpload.tsx** - Uploaded file names
+9. **LibraryModal.tsx** - Query names
+10. **ProjectLibraryModal.tsx** - Project names
+
+**UI for setting stealth labels**:
+- Add "Set Stealth Label" button to all file/document/chat UIs
+- Modal to enter innocuous cover name
+- Auto-suggest generic labels ("Document 1", "Notes", "Report")
+
+#### App Title Bar Implementation
+**High Priority Sub-task**:
+```typescript
+// In App.tsx or root component
+useEffect(() => {
+  const { securitySettings } = useDocsStore.getState()
+  const appTitle = securitySettings.stealth_labels
+    ? (securitySettings.stealth_app_name || 'Productivity Suite')
+    : 'ElohimOS'
+
+  document.title = appTitle
+}, [securitySettings.stealth_labels, securitySettings.stealth_app_name])
+```
+
+**New setting**: `stealth_app_name` (user-configurable)
+- Default: "Productivity Suite"
+- Options: "Notes App", "Task Manager", "Project Tool", etc.
+- Stored in user preferences
+
+### Success Criteria
+- [ ] All file/document references use stealth labels when enabled
+- [ ] Window title changes based on stealth mode
+- [ ] Search results respect stealth labels
+- [ ] Notifications use stealth labels
+- [ ] Backend persists stealth labels for all entity types
+- [ ] Users can easily set/edit stealth labels
+- [ ] No performance degradation from stealth checks
+- [ ] Works consistently across all workspaces
+
+### Testing Requirements
+- [ ] Unit tests for `useStealthMode` hook
+- [ ] E2E test: Enable stealth mode, verify all titles masked
+- [ ] E2E test: Disable stealth mode, verify real titles shown
+- [ ] Backend tests for stealth label CRUD operations
+- [ ] Search tests with stealth labels
+- [ ] Notification tests with stealth labels
+
+### Migration Strategy
+1. Add database columns (backward compatible - nullable)
+2. Update backend APIs (backward compatible - optional fields)
+3. Roll out frontend hook to one workspace at a time
+4. Add UI for setting stealth labels
+5. Apply to remaining workspaces
+6. Add app title bar integration
+7. Final E2E validation
+
+### Dependencies
+- **Requires**: Phase 4 (Frontend refactoring) for cleaner component updates
+- **Blocks**: None (this is a standalone feature)
+
+### Estimated Effort
+- Backend: 3 days (migrations, APIs, services)
+- Frontend: 5 days (hook, component updates, UI)
+- Testing: 2 days (unit + E2E)
+- Documentation: 1 day
+- **Total**: 11 days (~2 weeks)
+
+### Priority Justification
+**Deferred to Phase 8** because:
+- Not critical for modular refactoring goals
+- Touches many components (easier after Phase 4 refactoring)
+- Standalone feature that doesn't block other work
+- User can manually avoid sensitive titles until implemented
+
+---
+
+**Document Version**: 1.1
 **Last Updated**: 2025-11-16
 **Status**: DRAFT - Awaiting team review
+**Recent Changes**: Added Phase 8 - Stealth Labels app-wide implementation plan
