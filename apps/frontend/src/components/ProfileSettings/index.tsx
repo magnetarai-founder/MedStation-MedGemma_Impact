@@ -9,6 +9,7 @@ import { useState } from 'react'
 import { User, Shield, Cloud, Eye, AlertTriangle } from 'lucide-react'
 import { useUserStore } from '@/stores/userStore'
 import { useDocsStore } from '@/stores/docsStore'
+import { useOllamaStore } from '@/stores/ollamaStore'
 import toast from 'react-hot-toast'
 
 // Hooks
@@ -89,6 +90,105 @@ export function ProfileSettings() {
       toast.error('Factory reset - Coming soon')
       // TODO: Implement factory reset
     }
+  }
+
+  // Server control handlers
+  const handleStartOllama = async () => {
+    try {
+      const response = await fetch('/api/v1/chat/ollama/server/restart', { method: 'POST' })
+      if (response.ok) {
+        toast.success('Ollama server started')
+      } else {
+        toast.error('Failed to start Ollama server')
+      }
+    } catch (error) {
+      toast.error('Error starting Ollama server')
+    }
+  }
+
+  const handleStopOllama = async () => {
+    try {
+      const response = await fetch('/api/v1/chat/ollama/server/shutdown', { method: 'POST' })
+      if (response.ok) {
+        toast.success('Ollama server stopped')
+      } else {
+        toast.error('Failed to stop Ollama server')
+      }
+    } catch (error) {
+      toast.error('Error stopping Ollama server')
+    }
+  }
+
+  const handleRestartOllama = async () => {
+    try {
+      const response = await fetch('/api/v1/chat/ollama/server/restart?reload_models=true', { method: 'POST' })
+      if (response.ok) {
+        toast.success('Ollama server restarted')
+      } else {
+        toast.error('Failed to restart Ollama server')
+      }
+    } catch (error) {
+      toast.error('Error restarting Ollama server')
+    }
+  }
+
+  const handleStartBackend = async () => {
+    toast('Backend start - Not applicable (already running)')
+  }
+
+  const handleStopBackend = async () => {
+    toast.error('Cannot stop backend from within the app')
+  }
+
+  const handleRestartBackend = async () => {
+    toast('Backend restart - Requires external restart')
+  }
+
+  const handleStartWebSocket = async () => {
+    toast('WebSocket start - Not yet implemented')
+  }
+
+  const handleStopWebSocket = async () => {
+    toast('WebSocket stop - Not yet implemented')
+  }
+
+  const handleRestartWebSocket = async () => {
+    toast('WebSocket restart - Not yet implemented')
+  }
+
+  // System refresh handlers
+  const handleRefreshOllama = async () => {
+    try {
+      const { fetchServerStatus, fetchModels } = useOllamaStore.getState()
+      await fetchServerStatus()
+      await fetchModels()
+      toast.success('Ollama refreshed - reconnected and reloaded models')
+    } catch (error) {
+      toast.error('Failed to refresh Ollama')
+    }
+  }
+
+  const handleRefreshDatabases = async () => {
+    toast('Database refresh - Coming soon')
+    // TODO: Implement database reconnection
+  }
+
+  const handleReloadBackend = async () => {
+    try {
+      const response = await fetch('/api/v1/diagnostics')
+      if (response.ok) {
+        toast.success('Backend connection refreshed')
+      } else {
+        toast.error('Failed to refresh backend connection')
+      }
+    } catch (error) {
+      toast.error('Failed to refresh backend connection')
+    }
+  }
+
+  const handleClearCache = async () => {
+    toast('Cache cleared - Coming soon')
+    // TODO: Implement cache clearing (query cache, request dedup cache, etc.)
   }
 
   // Tab configuration
@@ -196,6 +296,23 @@ export function ProfileSettings() {
               handleResetIdentity,
               handleDeleteAllData,
               handleFactoryReset,
+            }}
+            serverControlHandlers={{
+              handleStartOllama,
+              handleStopOllama,
+              handleRestartOllama,
+              handleStartBackend,
+              handleStopBackend,
+              handleRestartBackend,
+              handleStartWebSocket,
+              handleStopWebSocket,
+              handleRestartWebSocket,
+            }}
+            systemRefreshHandlers={{
+              handleRefreshOllama,
+              handleRefreshDatabases,
+              handleReloadBackend,
+              handleClearCache,
             }}
           />
         )}

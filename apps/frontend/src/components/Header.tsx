@@ -18,11 +18,9 @@ import { ActionsContext } from '../lib/actionsRegistry'
 import { authFetch } from '../lib/api'
 import { showToast } from '../lib/toast'
 
-interface HeaderProps {
-  onOpenServerControls: () => void
-}
+interface HeaderProps {}
 
-export function Header({ onOpenServerControls }: HeaderProps) {
+export function Header({}: HeaderProps = {}) {
   const [showModelSidebar, setShowModelSidebar] = useState(false)
   const [showDownloadsManager, setShowDownloadsManager] = useState(false)
   const [pendingDownloadModel, setPendingDownloadModel] = useState<string | undefined>(undefined)

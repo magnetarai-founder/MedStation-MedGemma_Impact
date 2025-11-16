@@ -1,4 +1,4 @@
-import { Database, SlidersHorizontal, MessageSquare, Briefcase, Code, Power, Shield, Kanban } from 'lucide-react'
+import { Database, SlidersHorizontal, MessageSquare, Briefcase, Code, Shield, Kanban } from 'lucide-react'
 import { type NavTab } from '../stores/navigationStore'
 import { usePermissions } from '@/hooks/usePermissions'
 
@@ -6,7 +6,6 @@ interface NavigationRailProps {
   activeTab: NavTab
   onTabChange: (tab: NavTab) => void
   onOpenSettings: () => void
-  onOpenServerControls: () => void
 }
 
 // Navigation item configuration
@@ -22,7 +21,7 @@ const NAV_ITEMS = {
 // Static navigation order
 const NAV_ORDER: NavTab[] = ['chat', 'team', 'kanban', 'code', 'database', 'admin']
 
-export function NavigationRail({ activeTab, onTabChange, onOpenSettings, onOpenServerControls }: NavigationRailProps) {
+export function NavigationRail({ activeTab, onTabChange, onOpenSettings }: NavigationRailProps) {
   const permissions = usePermissions()
 
   // Filter navigation items based on permissions
@@ -90,7 +89,7 @@ export function NavigationRail({ activeTab, onTabChange, onOpenSettings, onOpenS
       {/* Spacer */}
       <div className="flex-1"></div>
 
-      {/* Bottom section - Settings & Server Controls */}
+      {/* Bottom section - Settings */}
       <div className="pb-4 flex flex-col gap-3">
         <button
           onClick={onOpenSettings}
@@ -98,13 +97,6 @@ export function NavigationRail({ activeTab, onTabChange, onOpenSettings, onOpenS
           title="Settings"
         >
           <SlidersHorizontal size={22} />
-        </button>
-        <button
-          onClick={onOpenServerControls}
-          className="w-14 h-14 rounded-2xl flex items-center justify-center transition-all text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 hover:bg-white/60 dark:hover:bg-gray-700/60 hover:shadow-lg"
-          title="Ollama Server Controls"
-        >
-          <Power size={22} />
         </button>
       </div>
     </div>

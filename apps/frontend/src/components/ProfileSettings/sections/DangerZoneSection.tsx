@@ -4,15 +4,61 @@
  * Destructive actions and account management
  */
 
-import { User, RefreshCw, Trash2, AlertTriangle } from 'lucide-react'
+import { User, RefreshCw, Trash2, AlertTriangle, Power, Database } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import { SectionHeader } from '../components/SectionHeader'
-import type { DangerHandlers } from '../types'
+import type { DangerHandlers, ServerControlHandlers, SystemRefreshHandlers } from '../types'
 
 interface DangerZoneSectionProps {
   dangerHandlers: DangerHandlers
+  serverControlHandlers: ServerControlHandlers
+  systemRefreshHandlers: SystemRefreshHandlers
 }
 
-export function DangerZoneSection({ dangerHandlers }: DangerZoneSectionProps) {
+export function DangerZoneSection({ dangerHandlers, serverControlHandlers, systemRefreshHandlers }: DangerZoneSectionProps) {
+  const [serverStatuses, setServerStatuses] = useState({
+    ollama: 'unknown',
+    backend: 'unknown',
+    websocket: 'unknown'
+  })
+
+  useEffect(() => {
+    // Fetch initial server statuses
+    const fetchStatuses = async () => {
+      try {
+        const response = await fetch('/api/v1/diagnostics')
+        if (response.ok) {
+          const data = await response.json()
+          setServerStatuses({
+            ollama: data.ollama?.status || 'unknown',
+            backend: 'running', // If we got a response, backend is running
+            websocket: 'running' // TODO: Add actual WebSocket status check
+          })
+        }
+      } catch (error) {
+        console.error('Failed to fetch server statuses:', error)
+      }
+    }
+    fetchStatuses()
+  }, [])
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'running':
+        return 'text-green-500'
+      case 'offline':
+      case 'stopped':
+        return 'text-red-500'
+      default:
+        return 'text-yellow-500'
+    }
+  }
+
+  const getStatusDot = (status: string) => {
+    const colorClass = getStatusColor(status)
+    return <span className={`inline-block w-2 h-2 rounded-full ${colorClass.replace('text-', 'bg-')}`}></span>
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -25,6 +71,161 @@ export function DangerZoneSection({ dangerHandlers }: DangerZoneSectionProps) {
       </div>
 
       <div className="space-y-3">
+        {/* Server Controls Tile */}
+        <div className="p-4 border-2 border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+          <div className="flex items-start gap-3 mb-3">
+            <Power className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+            <div className="flex-1">
+              <div className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                Server Controls
+              </div>
+              <div className="text-xs text-blue-700 dark:text-blue-300 mb-4">
+                Start, stop, or restart individual services
+              </div>
+
+              {/* Ollama Server */}
+              <div className="space-y-2 mb-3">
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    {getStatusDot(serverStatuses.ollama)}
+                    <span className="text-gray-700 dark:text-gray-300">Ollama Server</span>
+                  </div>
+                  <span className={`font-medium ${getStatusColor(serverStatuses.ollama)}`}>
+                    {serverStatuses.ollama}
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={serverControlHandlers.handleStartOllama}
+                    className="flex-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium transition-colors"
+                  >
+                    Start
+                  </button>
+                  <button
+                    onClick={serverControlHandlers.handleStopOllama}
+                    className="flex-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-medium transition-colors"
+                  >
+                    Stop
+                  </button>
+                  <button
+                    onClick={serverControlHandlers.handleRestartOllama}
+                    className="flex-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors"
+                  >
+                    Restart
+                  </button>
+                </div>
+              </div>
+
+              {/* Backend API */}
+              <div className="space-y-2 mb-3">
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    {getStatusDot(serverStatuses.backend)}
+                    <span className="text-gray-700 dark:text-gray-300">Backend API</span>
+                  </div>
+                  <span className={`font-medium ${getStatusColor(serverStatuses.backend)}`}>
+                    {serverStatuses.backend}
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={serverControlHandlers.handleStartBackend}
+                    className="flex-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium transition-colors"
+                  >
+                    Start
+                  </button>
+                  <button
+                    onClick={serverControlHandlers.handleStopBackend}
+                    className="flex-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-medium transition-colors"
+                  >
+                    Stop
+                  </button>
+                  <button
+                    onClick={serverControlHandlers.handleRestartBackend}
+                    className="flex-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors"
+                  >
+                    Restart
+                  </button>
+                </div>
+              </div>
+
+              {/* WebSocket */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    {getStatusDot(serverStatuses.websocket)}
+                    <span className="text-gray-700 dark:text-gray-300">WebSocket</span>
+                  </div>
+                  <span className={`font-medium ${getStatusColor(serverStatuses.websocket)}`}>
+                    {serverStatuses.websocket}
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={serverControlHandlers.handleStartWebSocket}
+                    className="flex-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium transition-colors"
+                  >
+                    Start
+                  </button>
+                  <button
+                    onClick={serverControlHandlers.handleStopWebSocket}
+                    className="flex-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-medium transition-colors"
+                  >
+                    Stop
+                  </button>
+                  <button
+                    onClick={serverControlHandlers.handleRestartWebSocket}
+                    className="flex-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors"
+                  >
+                    Restart
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* System Refresh Tile */}
+        <div className="p-4 border-2 border-teal-200 dark:border-teal-900 bg-teal-50 dark:bg-teal-900/20 rounded-lg">
+          <div className="flex items-start gap-3 mb-3">
+            <Database className="w-5 h-5 text-teal-600 dark:text-teal-400 mt-0.5" />
+            <div className="flex-1">
+              <div className="text-sm font-semibold text-teal-900 dark:text-teal-100 mb-1">
+                Refresh & Reload
+              </div>
+              <div className="text-xs text-teal-700 dark:text-teal-300 mb-4">
+                Reset connections or reload data without full restart
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={systemRefreshHandlers.handleRefreshOllama}
+                  className="px-3 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-medium transition-colors"
+                >
+                  Refresh Ollama
+                </button>
+                <button
+                  onClick={systemRefreshHandlers.handleRefreshDatabases}
+                  className="px-3 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-medium transition-colors"
+                >
+                  Refresh Databases
+                </button>
+                <button
+                  onClick={systemRefreshHandlers.handleReloadBackend}
+                  className="px-3 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-medium transition-colors"
+                >
+                  Reload Backend
+                </button>
+                <button
+                  onClick={systemRefreshHandlers.handleClearCache}
+                  className="px-3 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-medium transition-colors"
+                >
+                  Clear Cache
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
         {/* Logout Button */}
         <div className="p-4 border-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
           <div className="flex items-start gap-3 mb-3">

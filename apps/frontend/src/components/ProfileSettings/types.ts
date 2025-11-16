@@ -64,6 +64,25 @@ export interface DangerHandlers {
   handleFactoryReset: () => void
 }
 
+export interface ServerControlHandlers {
+  handleStartOllama: () => Promise<void>
+  handleStopOllama: () => Promise<void>
+  handleRestartOllama: () => Promise<void>
+  handleStartBackend: () => Promise<void>
+  handleStopBackend: () => Promise<void>
+  handleRestartBackend: () => Promise<void>
+  handleStartWebSocket: () => Promise<void>
+  handleStopWebSocket: () => Promise<void>
+  handleRestartWebSocket: () => Promise<void>
+}
+
+export interface SystemRefreshHandlers {
+  handleRefreshOllama: () => Promise<void>
+  handleRefreshDatabases: () => Promise<void>
+  handleReloadBackend: () => Promise<void>
+  handleClearCache: () => Promise<void>
+}
+
 export interface PrivacyHandlers {
   handleExportData: () => void
   handleImportBackup: () => void

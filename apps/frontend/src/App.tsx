@@ -38,7 +38,6 @@ const ProjectLibraryModal = lazyNamed(() => import('./components/ProjectLibraryM
 const CodeChatSettingsModal = lazyNamed(() => import('./components/CodeChatSettingsModal'), 'CodeChatSettingsModal')
 const JsonConverterModal = lazyNamed(() => import('./components/JsonConverterModal'), 'JsonConverterModal')
 const QueryHistoryModal = lazyNamed(() => import('./components/QueryHistoryModal'), 'QueryHistoryModal')
-const ServerControlModal = lazyNamed(() => import('./components/ServerControlModal'), 'ServerControlModal')
 const SetupWizard = lazyNamed(() => import('./components/SetupWizard/SetupWizard'), 'default')
 
 // Loading spinner component for Suspense fallbacks
@@ -67,7 +66,6 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isJsonConverterOpen, setIsJsonConverterOpen] = useState(false)
   const [isQueryHistoryOpen, setIsQueryHistoryOpen] = useState(false)
-  const [isServerControlsOpen, setIsServerControlsOpen] = useState(false)
   const [libraryInitialCode, setLibraryInitialCode] = useState<{ name: string; content: string } | null>(null)
   const [authState, setAuthState] = useState<'welcome' | 'checking' | 'authenticated'>('welcome')
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
@@ -324,14 +322,13 @@ export default function App() {
 
   return (
     <div className="h-screen flex flex-col">
-      <Header onOpenServerControls={() => setIsServerControlsOpen(true)} />
+      <Header />
 
       <div className="flex-1 flex overflow-hidden min-h-0">
         <NavigationRail
           activeTab={activeTab}
           onTabChange={setActiveTab}
           onOpenSettings={() => setIsSettingsOpen(true)}
-          onOpenServerControls={() => setIsServerControlsOpen(true)}
         />
 
         <div className="flex-1 flex flex-col min-h-0 min-w-0 relative">
@@ -517,11 +514,6 @@ export default function App() {
       <Suspense fallback={null}>
         {isJsonConverterOpen && (
           <JsonConverterModal isOpen={isJsonConverterOpen} onClose={() => setIsJsonConverterOpen(false)} />
-        )}
-      </Suspense>
-      <Suspense fallback={null}>
-        {isServerControlsOpen && (
-          <ServerControlModal isOpen={isServerControlsOpen} onClose={() => setIsServerControlsOpen(false)} />
         )}
       </Suspense>
       <ClearWorkspaceDialog />
