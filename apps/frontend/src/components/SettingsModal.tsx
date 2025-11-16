@@ -121,21 +121,6 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
               <span>Profile</span>
             </button>
 
-            {/* Link to Admin Page - Founder/Admin only */}
-            {(userRole === ROLES.GOD_RIGHTS || userRole === 'admin') && (
-              <button
-                onClick={() => {
-                  setNavTab('admin')
-                  onClose()
-                }}
-                className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50 border border-dashed border-gray-300 dark:border-gray-600"
-              >
-                <Shield className="w-4 h-4" />
-                <span>Open Admin Page</span>
-                <ArrowRight className="w-4 h-4 ml-auto" />
-              </button>
-            )}
-
             <button
               onClick={() => setActiveTab('chat')}
               className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all rounded-lg ${
