@@ -26,14 +26,23 @@ export function DangerZoneSection({ dangerHandlers, serverControlHandlers, syste
     // Fetch initial server statuses
     const fetchStatuses = async () => {
       try {
-        const response = await fetch('/api/v1/diagnostics')
+        const token = localStorage.getItem('auth_token')
+        const response = await fetch('/api/v1/diagnostics', {
+          headers: {
+            'Authorization': token ? `Bearer ${token}` : '',
+            'Content-Type': 'application/json'
+          }
+        })
         if (response.ok) {
           const data = await response.json()
+          console.log('Diagnostics data:', data)
           setServerStatuses({
             ollama: data.ollama?.status || 'unknown',
             backend: 'running', // If we got a response, backend is running
             websocket: 'running' // TODO: Add actual WebSocket status check
           })
+        } else {
+          console.error('Failed to fetch diagnostics:', response.status, await response.text())
         }
       } catch (error) {
         console.error('Failed to fetch server statuses:', error)
