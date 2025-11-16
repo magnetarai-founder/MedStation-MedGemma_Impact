@@ -108,7 +108,7 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-1">
+          <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-1 scrollbar-macos-visible">
             <button
               onClick={() => setActiveTab('profile')}
               className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all rounded-lg ${
@@ -210,7 +210,7 @@ export function SettingsModal({ isOpen, onClose, activeNavTab }: SettingsModalPr
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-auto p-8">
+          <div className="flex-1 overflow-auto p-8 scrollbar-macos-visible">
             <Suspense fallback={<LoadingFallback />}>
               {/* Always render ProfileSettings (not lazy loaded) */}
               <div className={activeTab === 'profile' ? '' : 'hidden'}>

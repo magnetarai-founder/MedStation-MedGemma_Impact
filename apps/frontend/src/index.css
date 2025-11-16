@@ -55,6 +55,79 @@
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     @apply bg-gray-500 dark:bg-gray-500;
   }
+
+  /* macOS-style scrollbar - only visible on hover/scroll */
+  .scrollbar-macos {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+
+  .scrollbar-macos::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  .scrollbar-macos::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-macos::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0);
+    border-radius: 10px;
+    transition: background-color 0.2s ease;
+  }
+
+  .scrollbar-macos:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2);
+  }
+
+  .scrollbar-macos::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 0, 0, 0.4);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .scrollbar-macos:hover::-webkit-scrollbar-thumb {
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .scrollbar-macos::-webkit-scrollbar-thumb:hover {
+      background-color: rgba(255, 255, 255, 0.4);
+    }
+  }
+
+  /* Alternative: Always visible but subtle */
+  .scrollbar-macos-visible {
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-macos-visible::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-macos-visible::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-macos-visible::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.15);
+    border-radius: 10px;
+    transition: background-color 0.2s ease;
+  }
+
+  .scrollbar-macos-visible::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 0, 0, 0.3);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .scrollbar-macos-visible::-webkit-scrollbar-thumb {
+      background-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .scrollbar-macos-visible::-webkit-scrollbar-thumb:hover {
+      background-color: rgba(255, 255, 255, 0.3);
+    }
+  }
 }
 
 /* Button group animation */
