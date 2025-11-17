@@ -1,21 +1,41 @@
 # ElohimOS Modular Refactoring Plan
 
 **Created:** 2025-11-16
-**Status:** Planning Phase
+**Last Updated:** 2025-11-17
+**Status:** ✅ EXECUTION READY - Phase 0 starting
+**Version:** 2.0 (Aligned with current repo state)
 **Team:** Claude, User, Codex
-**Priority:** High - Foundation for future scalability
+**Priority:** HIGH - Foundation for future scalability
 
 ---
 
 ## Executive Summary
 
-This document outlines a comprehensive plan to refactor all large files in the ElohimOS codebase into smaller, more modular components. This refactoring will improve:
+This is the **single source of truth** for refactoring ElohimOS over the next 12 weeks. All large files will be split into smaller, modular components to improve:
 
 - **Maintainability**: Easier to understand and modify individual modules
 - **Testability**: Smaller units are easier to test in isolation
 - **Collaboration**: Multiple developers can work on different modules without conflicts
 - **Performance**: Better code splitting and lazy loading opportunities
 - **Onboarding**: New developers can understand individual modules faster
+
+**Constraints (NON-NEGOTIABLE)**:
+- ✅ No breaking changes to public HTTP APIs (routes, request/response schemas, auth flows)
+- ✅ No RBAC regressions - all permission checks must remain intact
+- ✅ No vault data corruption - encryption/decryption logic stays unchanged
+- ✅ All existing tests must continue to pass
+- ✅ Phase work is isolated - each phase can be completed and merged independently
+
+**Current Repo State** (as of 2025-11-17):
+- **Backend**: 144 Python files in `apps/backend/api/`, 2 critical files >2,500 lines (team/core.py: 2,872, vault/core.py: 2,780)
+- **Frontend**: 220 TS/TSX components, 14 Zustand stores, 10 files >500 lines
+- **Docs**: Consolidated to 6 core docs (most deleted in recent cleanup)
+- **Architecture**: FastAPI + 8 SQLite DBs + DuckDB + Ollama + Metal 4 + React/Zustand
+
+**References**:
+- Architecture: `docs/architecture/SYSTEM_ARCHITECTURE.md`
+- Permissions: `docs/architecture/PERMISSION_MODEL.md`
+- Philosophy: `docs/architecture/ARCHITECTURE_PHILOSOPHY.md`
 
 ---
 
@@ -87,7 +107,7 @@ This document outlines a comprehensive plan to refactor all large files in the E
 
 | File | Lines | Current Responsibility | Refactoring Complexity |
 |------|-------|------------------------|------------------------|
-| `App.tsx` | 555 | Main app component + routing | HIGH |
+| `App.tsx` | 547 | Main app component + routing | HIGH |
 | `components/SpreadsheetEditor.tsx` | 551 | Spreadsheet editor | MEDIUM |
 | `components/settings/AdminTab.tsx` | 542 | Admin settings tab | MEDIUM |
 | `stores/docsStore.ts` | 541 | Documents Zustand store | LOW |
@@ -108,7 +128,7 @@ This document outlines a comprehensive plan to refactor all large files in the E
 
 ### Phase-Based Approach
 
-We'll tackle this in **6 phases**, prioritizing by:
+We'll tackle this in **10 phases** (Phases 0–9), prioritizing by:
 1. **Impact**: High-traffic files first
 2. **Dependencies**: Leaf modules before core modules
 3. **Complexity**: Start with easier wins to build momentum
@@ -141,22 +161,86 @@ We'll tackle this in **6 phases**, prioritizing by:
 
 ## Detailed Refactoring Plans
 
+### PHASE 0: Docs & Roadmap Alignment
+**Goal**: Align docs with current minimal structure and establish this roadmap as single source of truth
+**Duration**: 1 day
+**Risk**: MINIMAL
+
+**Current State**:
+- 39 docs deleted in working tree (not committed yet)
+- `docs/README.md` still references deleted files (database/, development/, deployment/, monitoring/, multiple roadmaps)
+- Only 6 core docs remain: README, 4 architecture docs, this roadmap
+
+**Non-negotiable Constraints**:
+- Do not recreate deleted docs
+- Do not change architecture or codebase
+- Keep this roadmap as the master plan
+
+**Tasks**:
+
+#### Task 0.1: Commit Doc Cleanup
+**File**: Working tree (39 deleted files)
+**Acceptance Criteria**:
+- Run `git add -u docs/` to stage all deletions
+- Run `git commit -m "docs: Remove deprecated/duplicate documentation (39 files)"`
+- Verify: `git status docs/` shows clean
+**Estimated Time**: 15 minutes
+**Done When**: All doc deletions are committed to git history
+
+#### Task 0.2: Update docs/README.md
+**File**: `docs/README.md`
+**Acceptance Criteria**:
+- Remove all references to deleted docs (database/, development/, deployment/, monitoring/, roadmap/*)
+- Update structure to reflect current 6 docs:
+  - `README.md`
+  - `architecture/SYSTEM_ARCHITECTURE.md`
+  - `architecture/PERMISSION_MODEL.md`
+  - `architecture/ARCHITECTURE_PHILOSOPHY.md`
+  - `architecture/refactoring-guide.md`
+  - `roadmap/MODULAR_REFACTORING_PLAN.md` (THIS FILE)
+- Add prominent note: "MODULAR_REFACTORING_PLAN.md is the single source of truth for all refactoring work"
+- Link to SYSTEM_ARCHITECTURE.md for invariants
+- Link to PERMISSION_MODEL.md for RBAC constraints
+**Estimated Time**: 30 minutes
+**Done When**: `docs/README.md` accurately reflects current docs tree and has no broken links
+
+#### Task 0.3: Verify Core Architecture Docs
+**Files**:
+- `docs/architecture/SYSTEM_ARCHITECTURE.md`
+- `docs/architecture/PERMISSION_MODEL.md`
+**Acceptance Criteria**:
+- Read both files, verify they're up to date
+- Note any discrepancies with current codebase
+- If major discrepancies found, add TODO tasks to Phase 1 or 2 to update them
+**Estimated Time**: 20 minutes
+**Done When**: Both files reviewed and any TODOs documented
+
+**Phase 0 Complete When**:
+- ✅ All doc deletions committed
+- ✅ docs/README.md updated and committed
+- ✅ Core architecture docs verified
+- ✅ This roadmap established as master plan
+
+---
+
 ### PHASE 1: Quick Wins (Data/Template Files)
-**Goal**: Build momentum with low-complexity refactors
+**Goal**: Build momentum with low-complexity refactors - split static template/data files
 **Duration**: 2-3 days
 **Risk**: LOW
 
+**Non-negotiable Constraints**:
+- No changes to template functionality or SQL logic
+- All imports must be updated atomically (no broken imports)
+- Backend/frontend builds must pass after each task
+
 **Success Criteria**:
-- Template, NLP, and Automation template files are split into the new module structures with all imports updated.
-- Backend and frontend builds/tests pass with no public API or route changes.
+- Template, NLP, and Automation template files are split into the new module structures with all imports updated
+- Backend and frontend builds/tests pass with no public API or route changes
+- Each new module has basic unit tests
 
-**Testing Requirements**:
-- Unit tests for each new template/NLP module.
-- Smoke tests (automated or manual) for Automation flows that consume the shared templates.
+**Phase 1 Tasks**:
 
-#### Backend Tasks:
-
-##### 1.1 Split `api/template_library_full.py` (1,676 lines)
+#### Task 1.1: Split `api/template_library_full.py` → `api/templates/` (1,676 lines)
 **Current**: 256 SQL templates in one massive file
 **Target Structure**:
 ```
@@ -174,18 +258,25 @@ api/templates/
 └── utilities.py                # Utility templates (26 templates)
 ```
 
-**Refactoring Steps**:
-1. Create `api/templates/` directory
-2. Group templates by category (analytics, data quality, etc.)
-3. Create registry pattern in `__init__.py` for template discovery
-4. Add type hints for template parameters
-5. Update imports in dependent files
-6. Add unit tests for each template category
+**Acceptance Criteria**:
+1. Create `apps/backend/api/templates/` directory with 10 category modules (see structure above)
+2. Move all 256 templates to appropriate category files
+3. Create `__init__.py` with template registry (dict mapping template names → functions)
+4. Update imports in: `api/data_engine.py`, `api/routes/data/`, any other consumers
+5. Backend runs without import errors: `python -m pytest apps/backend/api/test_templates.py -v` (if tests exist)
+6. No changes to SQL template logic or function signatures
 
-**Dependencies**: None
-**Breaking Changes**: None (internal only)
+**Files Touched**:
+- NEW: `apps/backend/api/templates/*.py` (10 files)
+- DELETE: `apps/backend/api/template_library_full.py`
+- UPDATE: All files importing from `template_library_full`
 
-##### 1.2 Split `api/core_nlp_templates.py` (1,183 lines)
+**Estimated Time**: 1 day
+**Done When**: ✅ All templates moved, ✅ imports updated, ✅ backend tests pass
+
+---
+
+#### Task 1.2: Split `api/core_nlp_templates.py` → `api/nlp/` (1,183 lines)
 **Current**: Natural language to SQL templates
 **Target Structure**:
 ```
@@ -198,18 +289,25 @@ api/nlp/
 └── sql_generator.py            # SQL generation
 ```
 
-**Refactoring Steps**:
-1. Create `api/nlp/` directory
-2. Separate pattern definitions from logic
-3. Extract intent classification
-4. Extract entity extraction
-5. Extract template matching
-6. Update imports in `api/services/nlq_service.py`
+**Acceptance Criteria**:
+1. Create `apps/backend/api/nlp/` directory with 5 modules (patterns, intent_classifier, entity_extractor, template_matcher, sql_generator)
+2. Move all NLP logic to appropriate modules
+3. Create `__init__.py` with public API exports
+4. Update imports in: Check with `grep -r "core_nlp_templates" apps/backend/api/` to find all consumers
+5. Backend tests pass: `python -m pytest apps/backend/api/ -k nlp -v`
+6. No changes to NLP logic or query generation behavior
 
-**Dependencies**: None
-**Breaking Changes**: None
+**Files Touched**:
+- NEW: `apps/backend/api/nlp/*.py` (5 files)
+- DELETE: `apps/backend/api/core_nlp_templates.py`
+- UPDATE: All files importing from `core_nlp_templates`
 
-##### 1.3 Split `components/Automation/shared/templates.ts` (652 lines)
+**Estimated Time**: 0.5 day
+**Done When**: ✅ All NLP code moved, ✅ imports updated, ✅ NLP tests pass
+
+---
+
+#### Task 1.3: Split `components/Automation/shared/templates.ts` → `Automation/templates/` (652 lines)
 **Current**: Automation template data in one file
 **Target Structure**:
 ```
@@ -223,15 +321,30 @@ components/Automation/templates/
 └── scheduling.ts               # Scheduling templates
 ```
 
-**Refactoring Steps**:
-1. Create `components/Automation/templates/` directory
-2. Group templates by category
-3. Extract type definitions to `types.ts`
-4. Create registry in `index.ts`
-5. Update imports in `components/Automation/index.tsx`
+**Acceptance Criteria**:
+1. Create `apps/frontend/src/components/Automation/templates/` directory with 6 modules (see structure above)
+2. Move all automation template data to appropriate category files
+3. Create `types.ts` with all template type definitions
+4. Create `index.ts` with registry + exports
+5. Update imports in: `components/Automation/index.tsx` and any other consumers
+6. Frontend builds without errors: `npm run build`
+7. No changes to template structure or behavior
 
-**Dependencies**: None
-**Breaking Changes**: None
+**Files Touched**:
+- NEW: `apps/frontend/src/components/Automation/templates/*.ts` (6 files)
+- DELETE: `apps/frontend/src/components/Automation/shared/templates.ts`
+- UPDATE: `apps/frontend/src/components/Automation/index.tsx`
+
+**Estimated Time**: 0.5 day
+**Done When**: ✅ All templates moved, ✅ imports updated, ✅ frontend builds
+
+---
+
+**Phase 1 Complete When**:
+- ✅ All 3 tasks (1.1, 1.2, 1.3) completed
+- ✅ Backend tests pass: `pytest apps/backend/api/`
+- ✅ Frontend builds: `npm run build`
+- ✅ No import errors or broken templates
 
 ---
 
@@ -1012,13 +1125,172 @@ packages/neutron_core/
 
 ---
 
-## Next Steps
+## 🚀 IMMEDIATE EXECUTION PLAN - Next 3 Weeks
 
-1. **Review this plan** with User and Codex
-2. **Prioritize phases** based on current sprint goals
-3. **Set up tracking** (GitHub project board)
-4. **Create branch strategy** for refactor work
-5. **Begin Phase 1** with template file splits
+This section breaks down the highest-priority work into weekly sprints with concrete, bite-sized tasks.
+
+### **WEEK 1: Phase 0 + Phase 1 Start**
+**Goal**: Clean docs, align roadmap, begin template splits
+
+#### Day 1 (Monday) - Phase 0 Complete
+- [ ] **Morning**: Task 0.1 - Commit doc cleanup (39 files)
+  - `git add -u docs/`
+  - `git commit -m "docs: Remove deprecated/duplicate documentation (39 files)"`
+  - `git push`
+- [ ] **Afternoon**: Task 0.2 - Update docs/README.md
+  - Rewrite docs/README.md to reflect 6-doc structure
+  - Remove all broken links
+  - Add "MODULAR_REFACTORING_PLAN.md is source of truth" note
+  - Commit: `git commit -m "docs: Update README to reflect current minimal docs structure"`
+- [ ] **End of Day**: Task 0.3 - Verify architecture docs
+  - Read SYSTEM_ARCHITECTURE.md, PERMISSION_MODEL.md
+  - Note any TODOs
+  - **Phase 0 DONE ✅**
+
+#### Day 2-3 (Tuesday-Wednesday) - Task 1.1: Template Library Split
+- [ ] **Day 2 Morning**: Create `apps/backend/api/templates/` structure
+  - Create directory + 10 category files
+  - Copy all 256 templates to appropriate modules
+- [ ] **Day 2 Afternoon**: Create template registry in `__init__.py`
+  - Build dict: `{'template_name': func, ...}`
+  - Test import: `from api.templates import get_template`
+- [ ] **Day 3 Morning**: Update all imports
+  - Find: `grep -r "template_library_full" apps/backend/api/`
+  - Replace imports in all consumers
+- [ ] **Day 3 Afternoon**: Test + commit
+  - Run: `pytest apps/backend/api/ -v`
+  - Commit: `git commit -m "refactor(backend): Split template_library_full.py into modular templates/ (Phase 1.1)"`
+  - **Task 1.1 DONE ✅**
+
+#### Day 4 (Thursday) - Task 1.2: NLP Templates Split
+- [ ] **Morning**: Create `apps/backend/api/nlp/` structure
+  - 5 modules: patterns, intent_classifier, entity_extractor, template_matcher, sql_generator
+  - Move all NLP code
+- [ ] **Afternoon**: Update imports + test
+  - Find: `grep -r "core_nlp_templates" apps/backend/api/`
+  - Replace imports
+  - Test: `pytest apps/backend/api/ -k nlp -v`
+  - Commit: `git commit -m "refactor(backend): Split core_nlp_templates.py into nlp/ module (Phase 1.2)"`
+  - **Task 1.2 DONE ✅**
+
+#### Day 5 (Friday) - Task 1.3: Automation Templates Split
+- [ ] **Morning**: Create `apps/frontend/src/components/Automation/templates/`
+  - 6 modules: index, types, data-processing, api-integrations, file-operations, notifications, scheduling
+  - Move all automation template data
+- [ ] **Afternoon**: Update imports + build
+  - Update `components/Automation/index.tsx`
+  - Run: `npm run build`
+  - Commit: `git commit -m "refactor(frontend): Split Automation templates into modular structure (Phase 1.3)"`
+  - **Task 1.3 DONE ✅**
+  - **PHASE 1 COMPLETE ✅**
+
+**Week 1 End State**:
+- ✅ Docs cleaned and aligned
+- ✅ 3 large template files split into 21 modular files
+- ✅ All tests passing
+- ✅ Ready for Phase 2
+
+---
+
+### **WEEK 2: Phase 2 Start - Backend Services (Team)**
+**Goal**: Refactor `api/services/team/core.py` (2,872 lines → 9 modules)
+
+#### Day 6-7 (Monday-Tuesday) - Task 2.1.1-2.1.3: Team Service Foundation
+- [ ] **Day 6**: Create types.py + storage.py
+  - Extract all data models, type hints, Pydantic schemas → `types.py`
+  - Extract all DB operations (CRUD for teams table) → `storage.py`
+  - Test: Imports work, no circular dependencies
+- [ ] **Day 7**: Extract members.py + invitations.py
+  - Move member management logic (~400 lines) → `members.py`
+  - Move invitation logic (~300 lines) → `invitations.py`
+  - Update imports in `core.py`
+  - Test: `pytest apps/backend/api/routes/team.py -k member -v`
+
+#### Day 8-9 (Wednesday-Thursday) - Task 2.1.4-2.1.6: Team Permissions + Chat
+- [ ] **Day 8**: Extract permissions.py + workspaces.py
+  - Move team permissions logic (~350 lines) → `permissions.py`
+  - Move workspace management (~300 lines) → `workspaces.py`
+  - Cross-check with `docs/architecture/PERMISSION_MODEL.md`
+- [ ] **Day 9**: Extract chat.py + notifications.py
+  - Move team chat operations (~400 lines) → `chat.py`
+  - Move notification logic (~250 lines) → `notifications.py`
+  - Test: `pytest apps/backend/api/routes/team.py -k chat -v`
+
+#### Day 10 (Friday) - Task 2.1.7-2.1.8: Team Analytics + Core Reduction
+- [ ] **Morning**: Extract analytics.py
+  - Move team analytics (~200 lines) → `analytics.py`
+- [ ] **Afternoon**: Reduce core.py to orchestration
+  - `core.py` should now be ~200 lines (orchestration only)
+  - Update all imports in `api/routes/team.py`
+  - Run full test suite: `pytest apps/backend/api/services/team/ -v`
+  - Commit: `git commit -m "refactor(backend): Split team/core.py into 9 modular services (Phase 2.1)"`
+  - **Task 2.1 (Team Service) DONE ✅**
+
+**Week 2 End State**:
+- ✅ Team service refactored (2,872 lines → 9 files, ~300 lines each)
+- ✅ All team endpoints tested and working
+- ✅ Ready to tackle Vault service
+
+---
+
+### **WEEK 3: Phase 2 Continue - Backend Services (Vault)**
+**Goal**: Refactor `api/services/vault/core.py` (2,780 lines → 11 modules)
+
+#### Day 11-12 (Monday-Tuesday) - Task 2.2.1-2.2.4: Vault Foundation + Files
+- [ ] **Day 11**: Create types.py + storage.py + encryption.py
+  - Extract vault data models → `types.py`
+  - Extract DB operations → `storage.py`
+  - Extract crypto operations (~400 lines) → `encryption.py`
+  - **CRITICAL**: No changes to encryption logic (vault data corruption risk!)
+- [ ] **Day 12**: Extract files.py + folders.py
+  - Move file operations (~500 lines) → `files.py`
+  - Move folder operations (~300 lines) → `folders.py`
+  - Test: `pytest apps/backend/api/routes/vault/ -k file -v`
+
+#### Day 13-14 (Wednesday-Thursday) - Task 2.2.5-2.2.8: Vault Documents + Sharing
+- [ ] **Day 13**: Extract documents.py + sharing.py
+  - Move document operations (~400 lines) → `documents.py`
+  - Move sharing logic (~400 lines) → `sharing.py`
+  - Cross-check with RBAC permission checks
+- [ ] **Day 14**: Extract automation.py + search.py
+  - Move automation rules (~300 lines) → `automation.py`
+  - Move vault search (~200 lines) → `search.py`
+  - Test: `pytest apps/backend/api/routes/vault/ -k search -v`
+
+#### Day 15 (Friday) - Task 2.2.9-2.2.10: Vault WebSocket + Core Reduction
+- [ ] **Morning**: Extract websocket.py
+  - Move WebSocket handlers (~200 lines) → `websocket.py`
+- [ ] **Afternoon**: Reduce core.py to orchestration
+  - `core.py` should now be ~200 lines
+  - Update all imports in `api/routes/vault/`
+  - Run full vault test suite: `pytest apps/backend/api/services/vault/ -v`
+  - Test vault encryption/decryption still works (critical!)
+  - Commit: `git commit -m "refactor(backend): Split vault/core.py into 11 modular services (Phase 2.2)"`
+  - **Task 2.2 (Vault Service) DONE ✅**
+
+**Week 3 End State**:
+- ✅ Vault service refactored (2,780 lines → 11 files, ~250 lines each)
+- ✅ All vault endpoints tested and working
+- ✅ Encryption/decryption verified (no data corruption)
+- ✅ 2/3 of Phase 2 complete
+- ✅ Ready for Chat service refactor in Week 4
+
+---
+
+## NEXT PRIORITIES (Week 4+)
+
+**Week 4**: Complete Phase 2 (Chat service refactor)
+**Week 5**: Phase 3 (main.py + route files)
+**Week 6-7**: Phase 4 (Frontend core components)
+**Week 8**: Phase 5 (Settings & modals)
+**Week 9**: Phase 6 (Backend utilities)
+**Week 10-12**: Phase 7 (Packages - optional), Phases 8-9 (deferred features)
+
+**Key Metrics to Track**:
+- Lines of code per file (target: <800 backend, <500 frontend)
+- Test coverage (target: >80% for new modules)
+- Build time (target: <30s)
+- PR review time (target: <1 hour for refactor PRs)
 
 ---
 
@@ -1547,9 +1819,496 @@ New permissions for granular admin control:
 
 ---
 
-**Document Version**: 1.2
+## Phase 10 (Optional): Admin Dashboard Modernization - Real-Time Monitoring & Analytics
+**Status**: Post-Phase 9 Enhancement (Optional)
+**Priority**: DEFERRED - Can be implemented after Phase 9 RBAC system is complete
+**Note**: This phase extends the Admin RBAC work from Phase 9 with real-time monitoring and analytics features.
+
+### Overview
+
+Transform the Admin tab from a basic system overview into a **production-grade administrative dashboard** with real-time monitoring, comprehensive analytics, predictive insights, and proactive alerting. This phase addresses the current limitations where admin capabilities are scattered across multiple tabs with limited visibility, no real-time updates, and minimal actionable insights.
+
+**Relationship to Phase 9**: Phase 9 establishes the RBAC foundation and multi-profile system for the Admin tab. Phase 10 builds on that foundation to add real-time monitoring, metrics dashboards, and alerting capabilities.
+
+### Current State Analysis
+
+**Existing Admin Components** (`apps/frontend/src/pages/AdminPage.tsx` + nested tabs):
+
+1. **System Tab** (`AdminTab.tsx`, 543 lines):
+   - Device overview stats (total users, active users, chat sessions, workflows)
+   - User management (list, view details, view user chats)
+   - Database health widget (path, size, table counts)
+   - System health dashboard integration
+   - Audit log viewer integration
+   - Founder setup wizard integration
+   - **Limitations**: Static data, manual refresh, no trends, no alerts
+
+2. **Security & Vault Tab** (`SecurityTab.tsx`):
+   - Vault status monitoring
+   - Access control configuration
+   - **Limitations**: Unknown current capabilities (needs investigation)
+
+3. **Teams & Permissions Tab** (`PermissionsTab.tsx`):
+   - RBAC configuration
+   - Team access management
+   - **Limitations**: Unknown current capabilities (needs investigation)
+
+4. **Backups & Logs Tab** (`BackupsTab.tsx` + `DangerZoneTab.tsx`):
+   - Backup creation/restoration
+   - System logs viewing
+   - Danger zone operations
+   - **Limitations**: Unknown current capabilities (needs investigation)
+
+5. **Analytics Tab** (`AnalyticsTab.tsx`):
+   - Basic usage analytics
+   - **Limitations**: Founder/Admin only, static charts, no drill-down
+
+**Backend Admin Endpoints**:
+
+- **User Management**: `/api/v1/admin/device/overview`, `/api/v1/admin/users`, `/api/v1/admin/users/{user_id}/chats`
+- **Danger Zone**: `/api/v1/admin/reset-all`, `/api/v1/admin/uninstall`, `/api/v1/admin/clear-{chats,team-messages,query-library,etc}`
+- **Exports**: `/api/v1/admin/export-{all,chats,queries}`
+- **Permissions**: `/api/v1/permissions/*` (18+ endpoints for RBAC management)
+- **System Health**: `/api/v1/system/db-health`, `/api/v1/diagnostics`
+
+**Gaps Identified**:
+
+- ❌ **No Real-Time Updates**: All data requires manual refresh
+- ❌ **No Trending/Forecasting**: Static snapshots, no historical analysis
+- ❌ **No Alerting System**: Passive monitoring, no proactive notifications
+- ❌ **No Performance Metrics**: CPU, memory, GPU, Metal 4 utilization missing
+- ❌ **No Activity Heatmaps**: When/where users are active unclear
+- ❌ **Limited Database Insights**: Only table counts, no query performance, WAL status, or fragmentation metrics
+- ❌ **No Ollama Monitoring**: Model download progress, inference metrics, token usage invisible
+- ❌ **No P2P Mesh Status**: libp2p peer count, sync status, bandwidth usage unknown
+- ❌ **Fragmented UX**: Critical info scattered across 5+ tabs
+- ❌ **No Export/Report Generation**: Can't generate summary reports for stakeholders
+- ❌ **No Comparison Views**: Can't compare current vs. historical metrics
+
+### Proposed Solution
+
+**Redesign Admin Dashboard** with 3 primary views:
+
+#### 1. **Mission Control** (New Overview Dashboard)
+
+**Layout**: Apple-style card grid with live widgets
+
+**Widgets** (all with real-time WebSocket updates):
+
+- **System Vitals** (Hero Card, top-left):
+  - CPU usage (per core + overall) with sparkline graph
+  - RAM usage (active, wired, compressed) with visual bar
+  - GPU/Metal 4 utilization + active model inference count
+  - Disk usage + I/O rate (read/write MB/s)
+  - Network I/O (P2P mesh bandwidth)
+  - Temperature sensors (Apple Silicon thermal state)
+  - **Action Buttons**: View detailed metrics, Export diagnostics JSON
+
+- **User Activity** (Medium Card):
+  - Active users (last 5m, 1h, 24h, 7d) with trend arrows
+  - Concurrent sessions (current WebSocket connections)
+  - User activity heatmap (24-hour view, color-coded by intensity)
+  - Top active users today (ranked list with session count)
+  - **Action Buttons**: View user details, Export user activity CSV
+
+- **Database Health** (Medium Card - Enhanced):
+  - All 8 databases (app, vault, teams, workflows, chat, learning, datasets, audit)
+  - Per-DB metrics: Size, row count, WAL mode status, fragmentation %
+  - Query performance: Avg query time (last 1000 queries), slow query count (>100ms)
+  - Connection pool: Active/idle connections
+  - Checkpoint history: Last WAL checkpoint timestamp + size
+  - **Action Buttons**: Vacuum DB, Run integrity check, View slow queries, Export DB report
+
+- **AI/Ollama Status** (Medium Card):
+  - Ollama server status (running/offline) with uptime
+  - Active models: List of loaded models in VRAM with size
+  - Model downloads: Progress bars for in-flight downloads
+  - Inference metrics: Total requests today, avg tokens/sec, cache hit rate
+  - Token usage: Total tokens processed (7d trend graph)
+  - Model storage: Total disk usage by model
+  - **Action Buttons**: View model details, Restart Ollama, Clear model cache
+
+- **P2P Mesh Network** (Medium Card):
+  - Peer count: Connected peers (current + max seen today)
+  - Sync status: Last sync timestamp, pending messages
+  - Bandwidth: Upload/download rates (last 15min graph)
+  - Mesh health: Connection quality score (latency, packet loss)
+  - Discovered peers: List of available but unconnected peers
+  - **Action Buttons**: Force sync, View peer details, Export mesh topology
+
+- **Alerts & Notifications** (Sidebar Widget):
+  - Critical alerts (red badge count)
+  - Warnings (yellow badge count)
+  - Recent events timeline (last 10 events with timestamps)
+  - Alert categories: Security, Performance, Storage, Network
+  - **Action Buttons**: View all alerts, Configure alert rules, Acknowledge all
+
+- **Quick Actions Panel** (Bottom Toolbar):
+  - Buttons: User Management, Analytics, Audit Logs, System Health, Settings
+  - Search bar: Global search across users, logs, queries
+
+**Technical Implementation**:
+- WebSocket endpoint `/ws/admin/metrics` for real-time updates (1s interval)
+- Backend service: `api/services/admin_metrics.py` to aggregate data
+- Frontend store: `adminMetricsStore.ts` with Zustand + WebSocket sync
+- Chart library: Recharts or Chart.js for sparklines/graphs
+- Responsive grid: Tailwind + CSS Grid, collapses to single column on mobile
+
+#### 2. **Deep Analytics** (Enhanced Analytics Tab)
+
+**New Features**:
+
+- **Time-Series Analysis**:
+  - User growth chart (daily new users, last 90 days)
+  - Session duration trends (avg session length by user role)
+  - Feature adoption funnel (% users who used Chat → Kanban → Code → DB)
+  - Retention cohorts (users still active after 7/30/90 days)
+
+- **Usage Heatmaps**:
+  - Hour-of-day activity matrix (24x7 grid showing busiest times)
+  - Feature usage by role (RBAC role vs. feature matrix)
+  - Geographic distribution (if multi-device support added later)
+
+- **Performance Benchmarks**:
+  - API response time percentiles (p50, p90, p99)
+  - Database query performance (slowest queries with EXPLAIN plans)
+  - Ollama inference speed (tokens/sec by model)
+  - Frontend render metrics (Time to Interactive, Largest Contentful Paint)
+
+- **Predictive Insights** (ML-powered, future enhancement):
+  - Forecast user growth (next 30 days)
+  - Predict storage exhaustion date
+  - Anomaly detection (unusual activity patterns)
+
+- **Export Capabilities**:
+  - Generate PDF reports (summary dashboard for stakeholders)
+  - Export raw data (CSV/JSON for external BI tools)
+  - Schedule automated reports (daily/weekly email summaries)
+
+**Backend APIs**:
+- `/api/v1/admin/analytics/timeseries?metric=users&range=90d`
+- `/api/v1/admin/analytics/heatmap?type=activity&granularity=hourly`
+- `/api/v1/admin/analytics/performance?category=api&limit=50`
+- `/api/v1/admin/analytics/export?format=pdf&template=executive_summary`
+
+#### 3. **System Health Deep Dive** (Enhanced Health Tab)
+
+**New Sections**:
+
+- **Process Monitor**:
+  - Backend API server (PID, uptime, memory, CPU %)
+  - Ollama server (PID, uptime, GPU memory)
+  - WebSocket server (connection count, message rate)
+  - Nginx (if used, request rate, cache hit ratio)
+
+- **Log Aggregator**:
+  - Live log streaming (tail -f style) with filtering
+  - Log levels: DEBUG/INFO/WARN/ERROR with color coding
+  - Full-text search across logs
+  - Export logs (filtered subset or full archive)
+
+- **Diagnostic Tools**:
+  - Run health checks (one-click endpoint testing)
+  - Network diagnostics (ping libp2p peers, check NAT traversal)
+  - Database vacuum/analyze (optimize DB performance)
+  - Clear stale cache (Redis, if added)
+
+- **Incident Timeline**:
+  - Historical view of errors/alerts (last 7 days)
+  - Incident details: Error message, stack trace, affected users
+  - Resolution status: Open, Acknowledged, Resolved
+
+**Backend APIs**:
+- `/api/v1/admin/health/processes` (list all running processes)
+- `/api/v1/admin/health/logs?level=error&tail=100` (stream logs)
+- `/api/v1/admin/health/diagnostics/run` (trigger health checks)
+- `/api/v1/admin/health/incidents?range=7d` (historical incidents)
+
+#### 4. **Alerting & Notification System** (New Feature)
+
+**Alert Rules** (configurable in Settings):
+
+- **System Alerts**:
+  - CPU usage > 80% for 5 minutes → Warning
+  - Disk usage > 90% → Critical
+  - Database size growth > 1GB/day → Info
+  - Ollama server offline → Critical
+
+- **User Alerts**:
+  - Concurrent users > 10 → Info (scale planning)
+  - Failed login attempts > 5 in 10min → Security alert
+  - New user signup → Info
+
+- **Performance Alerts**:
+  - API response time > 2s (p95) → Warning
+  - Database query > 5s → Warning
+  - Ollama inference < 10 tokens/sec → Performance degradation
+
+**Notification Channels** (future):
+- In-app toast notifications (immediate)
+- Email digests (daily summary)
+- Slack/Discord webhooks (team notifications)
+- SMS (critical alerts only)
+
+**Backend**:
+- Alert engine: `api/services/alert_engine.py` (rule evaluation loop, runs every 30s)
+- Alert store: New `alerts` table in `audit.db`
+- WebSocket broadcast: Push alerts to connected admin clients
+- Alert history: Queryable via `/api/v1/admin/alerts?status=open&severity=critical`
+
+### Implementation Plan
+
+**Phase 10.1: Mission Control Dashboard** (2 weeks)
+
+1. **Backend**:
+   - Create `api/services/admin_metrics.py` service (aggregate system metrics)
+   - Implement WebSocket endpoint `/ws/admin/metrics`
+   - Add endpoints for real-time CPU/RAM/GPU monitoring (use `psutil`, `GPUtil`)
+   - Enhance DB health endpoint to return WAL status, fragmentation, query perf
+
+2. **Frontend**:
+   - Create `adminMetricsStore.ts` Zustand store with WebSocket sync
+   - Build Mission Control layout with responsive card grid
+   - Implement 6 core widgets (System Vitals, User Activity, DB Health, Ollama, P2P, Alerts)
+   - Add real-time chart updates (sparklines, bars, gauges)
+
+3. **Testing**:
+   - Load test WebSocket with 10 concurrent admin clients
+   - Verify metric accuracy (compare with macOS Activity Monitor)
+
+**Phase 10.2: Enhanced Analytics** (1.5 weeks)
+
+1. **Backend**:
+   - Build analytics aggregation queries (user growth, session duration, feature adoption)
+   - Implement heatmap data endpoints (activity by hour/day)
+   - Add performance benchmark queries (slow queries, API response times)
+   - Create PDF export service (use `reportlab` or `weasyprint`)
+
+2. **Frontend**:
+   - Build time-series charts (Recharts, line/bar/area charts)
+   - Create heatmap visualizations (day-of-week × hour-of-day grid)
+   - Add export UI (PDF, CSV, JSON download buttons)
+
+3. **Testing**:
+   - Verify analytics accuracy with known test data
+   - Test PDF generation with different templates
+
+**Phase 10.3: System Health Deep Dive** (1 week)
+
+1. **Backend**:
+   - Add process monitoring endpoint (list PIDs, resource usage)
+   - Implement log streaming endpoint (`tail -f` style with filters)
+   - Create diagnostic tool endpoints (health checks, vacuum, clear cache)
+
+2. **Frontend**:
+   - Build process monitor table (PID, uptime, CPU, RAM)
+   - Create log viewer with live streaming + search
+   - Add diagnostic tool UI (one-click actions)
+
+3. **Testing**:
+   - Test log streaming with high log volume (1000+ lines/sec)
+   - Verify diagnostic tools don't crash backend
+
+**Phase 10.4: Alerting System** (1.5 weeks)
+
+1. **Backend**:
+   - Design `alerts` table schema (id, rule, severity, status, timestamp, metadata)
+   - Implement alert engine service (rule evaluation loop)
+   - Add alert CRUD endpoints (create rule, list alerts, acknowledge, resolve)
+   - Integrate WebSocket broadcast for new alerts
+
+2. **Frontend**:
+   - Build alerts sidebar widget (badge count, timeline)
+   - Create alert configuration UI (rule builder)
+   - Add alert detail modal (view message, stack trace, affected users)
+
+3. **Testing**:
+   - Simulate alert conditions (e.g., spike CPU to 90%)
+   - Verify alerts fire correctly and appear in UI
+
+**Phase 10.5: Polish & Documentation** (1 week)
+
+1. **UX Refinement**:
+   - Consistent theming (colors, icons, spacing)
+   - Loading states, empty states, error states
+   - Accessibility (keyboard nav, ARIA labels, screen reader support)
+   - Mobile responsiveness (test on iPad, collapse cards on phone)
+
+2. **Documentation**:
+   - Admin guide: How to use Mission Control, interpret metrics
+   - Alert configuration guide: Setting thresholds, notification channels
+   - API docs: OpenAPI specs for new admin endpoints
+   - Troubleshooting guide: Common issues (slow DB, high CPU)
+
+3. **Performance Optimization**:
+   - Debounce WebSocket updates (avoid UI jank)
+   - Lazy-load charts (only render visible widgets)
+   - Cache metric history (reduce DB queries)
+
+### Success Criteria
+
+- **Real-Time Updates**: All Mission Control widgets update via WebSocket ≤1s latency
+- **Comprehensive Coverage**: 100% of system metrics visible (CPU, RAM, GPU, DB, Ollama, P2P)
+- **Actionable Insights**: Admins can identify and resolve performance issues in <5 minutes
+- **Alert Coverage**: 90%+ of critical issues trigger alerts before user impact
+- **Performance**: Dashboard loads in <2s, no UI jank during live updates
+- **Accessibility**: WCAG 2.1 AA compliant, keyboard navigable
+- **Documentation**: Complete admin guide + API docs + troubleshooting guide
+- **User Satisfaction**: Admins report 80%+ satisfaction with new dashboard (survey)
+
+### Testing Requirements
+
+**Unit Tests**:
+- Alert engine rule evaluation logic
+- Metric aggregation calculations (accuracy tests)
+- WebSocket message formatting
+
+**Integration Tests**:
+- WebSocket connection lifecycle (connect, update, disconnect, reconnect)
+- End-to-end alert flow (trigger → fire → notify → acknowledge)
+- PDF export generation (verify content, layout)
+
+**E2E Tests** (Playwright):
+- Load Mission Control → verify all widgets render
+- Simulate high CPU → verify alert fires in UI
+- Export analytics PDF → verify download succeeds
+- Stream logs → verify real-time updates
+- User journey: Admin investigates slow DB → runs vacuum → confirms improvement
+
+**Load Tests**:
+- 10 concurrent admin WebSocket connections (no dropped messages)
+- 1000 alerts/hour processing (no queue backlog)
+- Log streaming with 10,000 lines/sec (no lag)
+
+**Performance Benchmarks**:
+- Mission Control initial load: <2s (p95)
+- WebSocket update latency: <500ms (p95)
+- Analytics query response: <5s (p95)
+- PDF export generation: <10s (p95)
+
+### Dependencies
+
+- **Requires**:
+  - Phase 2 (Backend Services refactor) for cleaner service layer
+  - Phase 4 (Frontend refactor) for AdminPage modularization
+  - Existing diagnostics endpoint (`/api/v1/diagnostics`)
+  - Existing DB health endpoint (`/api/v1/system/db-health`)
+  - WebSocket infrastructure (already exists for chat)
+  - Python packages: `psutil`, `GPUtil` (or Metal API bindings)
+
+- **Blocks**: None (standalone enhancement)
+
+### Estimated Effort
+
+- **Phase 10.1 (Mission Control)**: 10 days
+- **Phase 10.2 (Analytics)**: 7 days
+- **Phase 10.3 (Health Deep Dive)**: 5 days
+- **Phase 10.4 (Alerting)**: 7 days
+- **Phase 10.5 (Polish & Docs)**: 5 days
+- **Buffer for edge cases**: 5 days
+- **Total**: ~39 days (6 weeks)
+
+### Priority Justification
+
+**Deferred to Phase 10** because:
+- Requires real-time infrastructure (WebSocket broadcasting)
+- Needs careful UX design to avoid overwhelming users with metrics
+- High complexity due to multi-source data aggregation (system, DB, Ollama, P2P)
+- Risk of performance issues if not optimized (polling overhead, chart rendering)
+- Should be done after core admin RBAC (Phase 9) to ensure proper access control
+- Not blocking other features (current admin dashboard is functional, just limited)
+- Current workaround: Admins can manually check logs, run CLI commands, use macOS Activity Monitor
+
+**High value once implemented**:
+- Dramatically improves admin productivity (proactive vs reactive monitoring)
+- Reduces mean time to resolution (MTTR) for incidents
+- Enables data-driven scaling decisions (forecast user growth, storage needs)
+- Professionalizes ElohimOS for production deployment
+
+### Future Enhancements (Post-Phase 10)
+
+- **Custom Dashboards**: Let admins create personalized views (drag-drop widgets)
+- **Historical Playback**: Scrub timeline to see metrics at any point in past
+- **Comparative Analysis**: Compare today vs. last week/month
+- **ML Anomaly Detection**: Auto-detect unusual patterns (sudden traffic spike, model drift)
+- **Multi-Device Fleet Management**: If ElohimOS expands to multi-device, show fleet dashboard
+- **Automated Remediation**: Auto-run fixes for common issues (e.g., auto-vacuum DB when fragmented >20%)
+- **Billing Integration**: If monetized, show revenue metrics, user tier distribution
+
+---
+
+**Document Version**: 1.3
 **Last Updated**: 2025-11-16
 **Status**: DRAFT - Awaiting team review
 **Recent Changes**:
 - Added Phase 8 - Stealth Labels app-wide implementation plan
 - Added Phase 9 - Admin Tab RBAC & Multi-Profile System
+- Added Phase 10 - Admin Dashboard Modernization with real-time monitoring, analytics, and alerting
+
+---
+
+## 📋 Document History
+
+**Document Version**: 2.0 (Execution Ready)
+**Last Updated**: 2025-11-17
+**Status**: ✅ READY TO EXECUTE - Start Phase 0 immediately
+
+### Version 2.0 Changes (2025-11-17):
+**Major Overhaul - Aligned with Current Repo State**
+
+1. **Added Phase 0**: Docs & Roadmap Alignment (NEW)
+   - Task 0.1: Commit 39 deleted docs
+   - Task 0.2: Update docs/README.md to reflect 6-doc structure
+   - Task 0.3: Verify core architecture docs
+
+2. **Updated All File Size Metrics**:
+   - Backend: Verified 22,669 lines across 15 critical files (accurate as of 2025-11-17)
+   - **Corrected**: 2 files >2,500 lines (team/core.py: 2,872, vault/core.py: 2,780), not 3
+   - Frontend: Verified 10,070 lines across 9 critical files (App.tsx corrected to 547 lines)
+   - Confirmed: 220 TS/TSX components, 14 Zustand stores
+
+3. **Normalized Phase Structure**: Phases 0-9 (was inconsistent)
+   - Phase 0: Docs alignment (NEW)
+   - Phases 1-7: Refactoring (existing, improved)
+   - Phases 8-9: Deferred features (Stealth Labels, Admin RBAC)
+   - Phase 10: Marked as "Optional - Post-Phase 9 Enhancement" to clarify relationship
+
+4. **Added Immediate Execution Plan**: 3-week day-by-day sprint breakdown
+   - Week 1: Phase 0 + Phase 1 (template splits)
+   - Week 2: Phase 2 Team service refactor
+   - Week 3: Phase 2 Vault service refactor
+   - Concrete tasks with acceptance criteria, file paths, test commands
+
+5. **Enhanced Phase 1**: Converted prose into discrete tasks with acceptance criteria
+   - Task 1.1: Template library split (1 day)
+   - Task 1.2: NLP templates split (0.5 day)
+   - Task 1.3: Automation templates split (0.5 day)
+   - Each task has "Files Touched", "Estimated Time", "Done When" checklist
+
+6. **Added Non-Negotiable Constraints** to each phase:
+   - No breaking API changes
+   - No RBAC regressions
+   - No vault data corruption
+   - All tests must pass
+
+7. **Updated Executive Summary**:
+   - Declared this document as "single source of truth"
+   - Added current repo state (2025-11-17)
+   - Linked to core architecture docs
+
+8. **Improved Navigability**:
+   - Clear phase headers (PHASE 0-9)
+   - Task breakdowns with checkboxes
+   - "Phase Complete When" checklists
+   - References to specific file paths
+
+### Version 1.3 Changes (2025-11-16):
+- Added Phase 8 - Stealth Labels app-wide implementation plan
+- Added Phase 9 - Admin Tab RBAC & Multi-Profile System
+- Added Phase 10 - Admin Dashboard Modernization
+
+### Version 1.0 (Initial - 2025-11-16):
+- Initial comprehensive refactoring plan
+- Phases 1-7 defined
+- Large file analysis tables
+- Implementation guidelines

@@ -2,170 +2,185 @@
 
 **"My God is my rock, in whom I take refuge"** - 2 Samuel 22:3
 
-Welcome to the ElohimOS documentation. This guide will help you navigate the codebase, understand the architecture, and contribute to the project.
+Welcome to the ElohimOS documentation. This streamlined guide provides everything you need to understand the architecture and contribute to the project.
 
 ---
 
 ## 📚 Documentation Structure
 
+**Current Status**: Consolidated to 6 core documents (as of 2025-11-17)
+
 ### 🏗️ Architecture
-System design, philosophy, and technical decisions.
+System design, philosophy, technical decisions, and constraints.
 
-- **[SYSTEM_ARCHITECTURE.md](architecture/SYSTEM_ARCHITECTURE.md)** - Complete system architecture (875 lines)
-- **[ARCHITECTURE_PHILOSOPHY.md](architecture/ARCHITECTURE_PHILOSOPHY.md)** - Design principles and philosophy
+- **[SYSTEM_ARCHITECTURE.md](architecture/SYSTEM_ARCHITECTURE.md)** - Complete system architecture
+  - Technology stack (FastAPI, SQLite, DuckDB, Ollama, React, Zustand)
+  - Component architecture (Neutron/Pulsar engines, services, routes)
+  - High-level data flow
+  - **Read this first for technical overview**
 
-### 💾 Database
-Schema documentation and database design.
+- **[PERMISSION_MODEL.md](architecture/PERMISSION_MODEL.md)** - RBAC permission system
+  - Salesforce-style role-based access control
+  - Founder rights, permission profiles, permission sets
+  - Permission keys and resolution order
+  - **Critical for understanding auth/security constraints**
 
-- **[SCHEMA.md](database/SCHEMA.md)** - Database schema (consolidated SQLite design)
+- **[ARCHITECTURE_PHILOSOPHY.md](architecture/ARCHITECTURE_PHILOSOPHY.md)** - Design principles
+  - "Dumb core that always works" philosophy
+  - Offline-first design patterns
+  - Battery efficiency (ANE routing)
+  - Field-ready constraints
 
-### 👨‍💻 Development
-Getting started, development workflow, and tools.
-
-- **[README.md](development/README.md)** - Getting started guide
-- **[ONBOARDING.md](development/ONBOARDING.md)** - New developer onboarding
-- **[API_REFERENCE.md](development/API_REFERENCE.md)** - Complete REST API documentation ⭐
-- **[PRE_COMMIT_SETUP.md](development/PRE_COMMIT_SETUP.md)** - Pre-commit hooks setup
-- **[FOUNDER_RIGHTS_LOGIN.md](development/FOUNDER_RIGHTS_LOGIN.md)** - Founder rights authentication
-- **[DEVELOPMENT_NOTES.md](development/DEVELOPMENT_NOTES.md)** - Development tips and notes
-- **[CODE_TAB.md](development/CODE_TAB.md)** - Code Tab feature guide (Monaco editor + terminal)
-
-### 🚀 Deployment
-Production deployment guides and checklists.
-
-- **[DEPLOYMENT_CHECKLIST.md](deployment/DEPLOYMENT_CHECKLIST.md)** - Pre-deployment checklist
-- **[GO_LIVE_CHECKLIST.md](deployment/GO_LIVE_CHECKLIST.md)** - 5-minute go-live validation guide
-- **[PRODUCTION_READINESS.md](deployment/PRODUCTION_READINESS.md)** - Complete production readiness checklist
-- **[DISCLAIMERS.md](deployment/DISCLAIMERS.md)** - Legal disclaimers and notices
-
-### 📊 Monitoring
-Production monitoring setup with Prometheus and Grafana.
-
-- **[README.md](monitoring/README.md)** - Monitoring setup guide
-- **[Prometheus Alerts](../ops/monitoring/alerts/)** - Alert rules and runbooks
-- **[Grafana Dashboard](monitoring/grafana_dashboards/elohimos_vault_ops.json)** - Vault & API overview dashboard
+- **[refactoring-guide.md](architecture/refactoring-guide.md)** - Code quality guidelines
+  - Refactoring best practices
+  - Testing strategies
+  - Module splitting patterns
 
 ### 🗺️ Roadmap
-Future plans, features, and optimization strategies.
+**Single source of truth for all refactoring and feature work.**
 
-- **[ELOHIMOS_FOUNDATION_ROADMAP.md](roadmap/ELOHIMOS_FOUNDATION_ROADMAP.md)** - Platform-wide development roadmap
-- **[CODE_TAB_ROADMAP.md](roadmap/CODE_TAB_ROADMAP.md)** - Code Tab phases 1-10 implementation plan
-- **[REFACTORING_ROADMAP.md](roadmap/REFACTORING_ROADMAP.md)** - Vault/Team service refactoring (R1-R11)
-- **[METAL4_OPTIMIZATION.md](roadmap/METAL4_OPTIMIZATION.md)** - Apple Silicon GPU optimization
-- **[P2P_MESH.md](roadmap/P2P_MESH.md)** - P2P mesh networking implementation
-- **[PERFORMANCE.md](roadmap/PERFORMANCE.md)** - Performance optimization strategies
-- **[ENHANCEMENT_PLAN.md](roadmap/ENHANCEMENT_PLAN.md)** - Future enhancements
-
-### 🔄 Migrations
-Completed and active migration projects.
-
-#### Completed
-- **[ROUTER_MIGRATION_STATUS.md](migrations/completed/ROUTER_MIGRATION_STATUS.md)** - Service layer pattern migration (5/5 routers)
-- **[PHASE_1_E2E_VALIDATION.md](migrations/completed/PHASE_1_E2E_VALIDATION.md)** - Phase 1 E2E validation
-- **[ElohimOS_Refactor_Progress.md](migrations/completed/ElohimOS_Refactor_Progress.md)** - SQL/JSON endpoint refactor (Phases 1-3)
-- **[ElohimOS_Refactor_Implementation_Plan_v2.md](migrations/completed/ElohimOS_Refactor_Implementation_Plan_v2.md)** - Refactor implementation plan
-- **[ElohimOS_Phase4_SQL_JSON_Migration_Spec.md](migrations/completed/ElohimOS_Phase4_SQL_JSON_Migration_Spec.md)** - SQL/JSON migration spec
-
-### 📝 Changelog
-Version history and release notes.
-
-- **[CHANGELOG.md](changelog/CHANGELOG.md)** - Version history and changes
-
-### 📦 Archive
-Old/duplicate documentation kept for reference.
-
-- **[archive/](archive/)** - Historical documents
+- **[MODULAR_REFACTORING_PLAN.md](roadmap/MODULAR_REFACTORING_PLAN.md)** ⭐ **PRIMARY ROADMAP**
+  - **THIS IS THE MASTER PLAN** for all refactoring work (Phases 0-9)
+  - 3-week execution plan with day-by-day tasks
+  - Backend service splits (Team, Vault, Chat)
+  - Frontend component modularization
+  - Deferred features (Stealth Labels, Admin RBAC)
+  - **All contributors should consult this document**
 
 ---
 
 ## 🚀 Quick Start
 
 ### For New Developers
-1. Read **[ONBOARDING.md](development/ONBOARDING.md)**
-2. Review **[SYSTEM_ARCHITECTURE.md](architecture/SYSTEM_ARCHITECTURE.md)**
-3. Set up **[PRE_COMMIT_SETUP.md](development/PRE_COMMIT_SETUP.md)**
+1. **Start here**: Read [SYSTEM_ARCHITECTURE.md](architecture/SYSTEM_ARCHITECTURE.md) - understand the tech stack and component architecture
+2. **Understand security**: Read [PERMISSION_MODEL.md](architecture/PERMISSION_MODEL.md) - learn RBAC constraints (critical!)
+3. **Learn philosophy**: Read [ARCHITECTURE_PHILOSOPHY.md](architecture/ARCHITECTURE_PHILOSOPHY.md) - understand design principles
+4. **Check roadmap**: Read [MODULAR_REFACTORING_PLAN.md](roadmap/MODULAR_REFACTORING_PLAN.md) - see what's being worked on
 
 ### For Contributors
-1. Check **[ELOHIMOS_FOUNDATION_ROADMAP.md](roadmap/ELOHIMOS_FOUNDATION_ROADMAP.md)** for platform roadmap
-2. Review **[ARCHITECTURE_PHILOSOPHY.md](architecture/ARCHITECTURE_PHILOSOPHY.md)** for design principles
-3. See **[DEVELOPMENT_NOTES.md](development/DEVELOPMENT_NOTES.md)** for tips
-4. Check **[CODE_TAB_ROADMAP.md](roadmap/CODE_TAB_ROADMAP.md)** or **[REFACTORING_ROADMAP.md](roadmap/REFACTORING_ROADMAP.md)** for specific workstreams
+1. **Review roadmap**: Check [MODULAR_REFACTORING_PLAN.md](roadmap/MODULAR_REFACTORING_PLAN.md) for current priorities (Phases 0-7)
+2. **Understand constraints**: All refactoring must respect:
+   - ✅ No breaking API changes
+   - ✅ No RBAC regressions (see PERMISSION_MODEL.md)
+   - ✅ No vault data corruption (encryption logic stays unchanged)
+   - ✅ All tests must pass
+3. **Follow patterns**: See [refactoring-guide.md](architecture/refactoring-guide.md) for best practices
+4. **Start with Phase 0-1**: Low-risk template file splits (see roadmap Week 1 plan)
 
-### For Deployers
-1. Follow **[DEPLOYMENT_CHECKLIST.md](deployment/DEPLOYMENT_CHECKLIST.md)**
-2. Review **[DISCLAIMERS.md](deployment/DISCLAIMERS.md)**
-
----
-
-## 📊 Project Status
-
-### Recent Achievements
-- ✅ **Frontend Large-File Refactor Complete** (R5-R7: 3 components, 55 modular files)
-  - VaultWorkspace: 4,119 → 30 files
-  - ProfileSettings: 982 → 13 files
-  - AutomationTab: 902 → 12 files (+ template consolidation)
-- ✅ **Code Tab Complete** (Monaco editor + terminal, production ready)
-- ✅ **Router Migration Complete** (5/5 routers to service layer pattern)
-- ✅ **SQL/JSON Endpoints Refactored** (Phases 1-3 complete)
-- ✅ **Metal 4 GPU Acceleration** (10x faster embeddings)
-- ✅ **P2P Mesh Networking** (Offline-first collaboration)
-
-### Active Development
-- ✅ **Router Registry** (R4) - Complete (centralized router management)
-- ✅ **Vault Service Split** (R1) - Complete (services/vault/* modules)
-- 🚧 **Team Service Split** (R2) - Partial (core.py exists; full split pending)
-- 🚧 **Chat Service Split** (R3) - Pending (legacy monolith still present)
-- 🚧 **Metal 4 Optimization** (Phase 4.1-4.2)
-- 🚧 **Database Tab AI Query Builder** (256 SQL templates)
+### For Architecture Decisions
+- **Consult**: [SYSTEM_ARCHITECTURE.md](architecture/SYSTEM_ARCHITECTURE.md) for invariants
+- **Consult**: [PERMISSION_MODEL.md](architecture/PERMISSION_MODEL.md) for RBAC rules
+- **Consult**: [ARCHITECTURE_PHILOSOPHY.md](architecture/ARCHITECTURE_PHILOSOPHY.md) for design principles
 
 ---
 
 ## 🎯 Key Features
 
 - **Offline-First AI** - Works without internet, all AI local (Ollama)
-- **Zero-Knowledge Vault** - Server cannot decrypt user data
-- **P2P Mesh** - Device-to-device sync without server
-- **Metal 4 GPU** - Apple Silicon GPU acceleration
+- **Zero-Knowledge Vault** - Server cannot decrypt user data (AES-256-GCM)
+- **P2P Mesh** - Device-to-device sync without server (libp2p)
+- **Metal 4 GPU** - Apple Silicon GPU acceleration (MPS)
 - **RBAC Hierarchy** - Salesforce-style permissions with Founder Rights
 - **Adaptive Learning** - System learns optimal model selection
 
+**Current Version**: v1.0.0-rc1 (Release Candidate)
+
 ---
 
-## 📖 Key Documents by Topic
+## 📊 Project Status (as of 2025-11-17)
 
-### Architecture & Design
-- [System Architecture](architecture/SYSTEM_ARCHITECTURE.md)
-- [Architecture Philosophy](architecture/ARCHITECTURE_PHILOSOPHY.md)
-- [Database Schema](database/SCHEMA.md)
+### Recent Achievements
+- ✅ **Documentation Consolidated** - 6 core docs (from 39+ files)
+- ✅ **Frontend Large-File Refactor** (R5-R7: VaultWorkspace, ProfileSettings, AutomationTab)
+- ✅ **Code Tab Complete** (Monaco editor + terminal, production ready)
+- ✅ **Router Migration Complete** (5/5 routers to service layer pattern)
+- ✅ **Metal 4 GPU Acceleration** (10x faster embeddings)
+- ✅ **P2P Mesh Networking** (Offline-first collaboration)
 
-### Development
-- [Getting Started](development/README.md)
-- [Onboarding Guide](development/ONBOARDING.md)
-- [API Reference](development/API_REFERENCE.md) ⭐
-- [Development Notes](development/DEVELOPMENT_NOTES.md)
+### Active Work (Phase 0-2)
+- 🚧 **Phase 0**: Docs alignment (you are here!)
+- 🚧 **Phase 1**: Template file splits (2-3 days)
+- 🚧 **Phase 2**: Backend service refactoring (Team: 2,872 lines → 9 files, Vault: 2,780 lines → 11 files)
 
-### Roadmap
-- [Platform Roadmap](roadmap/ELOHIMOS_FOUNDATION_ROADMAP.md)
-- [Code Tab Roadmap](roadmap/CODE_TAB_ROADMAP.md)
-- [Refactoring Roadmap](roadmap/REFACTORING_ROADMAP.md)
-- [Metal4 Optimization](roadmap/METAL4_OPTIMIZATION.md)
-- [Performance Optimization](roadmap/PERFORMANCE.md)
+### Critical Files Requiring Refactoring
+- `apps/backend/api/services/team/core.py` - **2,872 lines** (Phase 2.1)
+- `apps/backend/api/services/vault/core.py` - **2,780 lines** (Phase 2.2)
+- `apps/backend/api/services/chat/core.py` - **1,751 lines** (Phase 2.3)
+- `apps/backend/api/main.py` - **1,920 lines** (Phase 3.1)
+- `apps/frontend/src/components/VaultWorkspace.tsx` - **4,119 lines** (Phase 4.1)
+
+See [MODULAR_REFACTORING_PLAN.md](roadmap/MODULAR_REFACTORING_PLAN.md) for full breakdown.
+
+---
+
+## 📖 Documentation by Use Case
+
+### I want to understand the codebase
+1. [SYSTEM_ARCHITECTURE.md](architecture/SYSTEM_ARCHITECTURE.md) - Tech stack, components, data flow
+2. [ARCHITECTURE_PHILOSOPHY.md](architecture/ARCHITECTURE_PHILOSOPHY.md) - Design principles
+
+### I want to contribute code
+1. [MODULAR_REFACTORING_PLAN.md](roadmap/MODULAR_REFACTORING_PLAN.md) - Current priorities
+2. [refactoring-guide.md](architecture/refactoring-guide.md) - Best practices
+3. [PERMISSION_MODEL.md](architecture/PERMISSION_MODEL.md) - RBAC constraints
+
+### I want to understand security/permissions
+1. [PERMISSION_MODEL.md](architecture/PERMISSION_MODEL.md) - Complete RBAC model
+2. [SYSTEM_ARCHITECTURE.md](architecture/SYSTEM_ARCHITECTURE.md) - Encryption, auth flow
+
+### I want to see the roadmap
+1. [MODULAR_REFACTORING_PLAN.md](roadmap/MODULAR_REFACTORING_PLAN.md) - **SINGLE SOURCE OF TRUTH**
+   - Phases 0-9 (refactoring + deferred features)
+   - 3-week execution plan
+   - Task breakdowns with acceptance criteria
 
 ---
 
 ## 🔗 External Resources
 
 - **GitHub:** https://github.com/indiedevhipps/ElohimOS
-- **Documentation Site:** /docs
+- **Codebase**: `/Users/indiedevhipps/Documents/ElohimOS`
 - **Community:** Contact founder for access
 
 ---
 
-## 📄 License
+## 📝 Changelog Location
 
-[Your License Here]
+Version history is tracked in git commit messages using conventional commits:
+- `feat:` - New features
+- `fix:` - Bug fixes
+- `docs:` - Documentation changes
+- `refactor:` - Code refactoring
+- `test:` - Test changes
+
+Run `git log --oneline --graph` to see recent changes.
 
 ---
 
-**Last Updated:** 2025-11-14
-**Documentation Version:** 2.2 (v1.0.0-rc1 release, API reference added)
+## ⚠️ Important Notes
+
+### Documentation Philosophy
+- **Minimal & Focused**: Only 6 core docs to reduce duplication and maintenance burden
+- **Single Source of Truth**: MODULAR_REFACTORING_PLAN.md is the master roadmap
+- **Architecture First**: SYSTEM_ARCHITECTURE.md and PERMISSION_MODEL.md define invariants
+- **No Stale Docs**: Old/duplicate docs have been removed (as of 2025-11-17)
+
+### What Happened to Other Docs?
+Previously, ElohimOS had 39+ documentation files including:
+- `database/`, `development/`, `deployment/`, `monitoring/` directories
+- Multiple roadmap files (ELOHIMOS_FOUNDATION_ROADMAP.md, CODE_TAB_ROADMAP.md, etc.)
+- Duplicate/outdated migration docs
+
+**These have been consolidated or removed** (2025-11-17) to maintain a lean, up-to-date documentation set. If you need historical context, check git history: `git log --all --full-history -- docs/`
+
+### How to Contribute to Docs
+1. **Update existing docs** in place (no new files unless critical)
+2. **Update roadmap** via [MODULAR_REFACTORING_PLAN.md](roadmap/MODULAR_REFACTORING_PLAN.md)
+3. **Update architecture docs** if system invariants change
+4. **Keep docs DRY** - one source of truth per topic
+
+---
+
+**Last Updated:** 2025-11-17
+**Documentation Version:** 3.0 (Consolidated to 6 core docs)
+**Roadmap Version:** 2.0 (Execution Ready - see MODULAR_REFACTORING_PLAN.md)
