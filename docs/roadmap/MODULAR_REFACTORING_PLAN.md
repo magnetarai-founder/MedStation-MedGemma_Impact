@@ -2,8 +2,8 @@
 
 **Created:** 2025-11-16
 **Last Updated:** 2025-11-17
-**Status:** ✅ Phase 1 COMPLETED - Ready for Phase 2
-**Version:** 2.1 (Phase 1 Complete)
+**Status:** 🔄 Phase 2 IN PROGRESS - Team (✅ 2.1 + 2.1b), Vault (✅ 2.2 + 2.2b), Chat (✅ 2.3a)
+**Version:** 2.3 (Phase 2 Partial - Team Complete, Vault Partial, Chat Foundation)
 **Team:** Claude, User, Codex
 **Priority:** HIGH - Foundation for future scalability
 
@@ -27,7 +27,8 @@ This is the **single source of truth** for refactoring ElohimOS over the next 12
 - ✅ Phase work is isolated - each phase can be completed and merged independently
 
 **Current Repo State** (as of 2025-11-17):
-- **Backend**: 144 Python files in `apps/backend/api/`, 2 critical files >2,500 lines (team/core.py: 2,872, vault/core.py: 2,780)
+- **Backend**: 144 Python files in `apps/backend/api/`, modularization in progress (team: 1,784 lines, vault: 2,370 lines, chat: 1,751 lines)
+- **Phase 2 Progress**: Team service fully modular (6 modules), Vault partially modular (5 modules), Chat foundation started (2 modules)
 - **Frontend**: 220 TS/TSX components, 14 Zustand stores, 10 files >500 lines
 - **Docs**: Consolidated to 6 core docs (most deleted in recent cleanup)
 - **Architecture**: FastAPI + 8 SQLite DBs + DuckDB + Ollama + Metal 4 + React/Zustand
@@ -45,20 +46,20 @@ This is the **single source of truth** for refactoring ElohimOS over the next 12
 
 #### Critical Priority (>2000 lines)
 
-| File | Lines | Current Responsibility | Refactoring Complexity |
+| File | Lines | Current Responsibility | Refactoring Status |
 |------|-------|------------------------|------------------------|
-| `api/services/team/core.py` | 2,872 | Team collaboration services | HIGH |
-| `api/services/vault/core.py` | 2,780 | Encrypted vault operations | HIGH |
+| ~~`api/services/team/core.py`~~ | ~~2,872~~ → **1,784** | ✅ **REFACTORED** → `services/team/{types,storage,members,invitations,roles,founder_rights}.py` (Phase 2.1 + 2.1b) | ~~HIGH~~ → **COMPLETED** |
+| ~~`api/services/vault/core.py`~~ | ~~2,780~~ → **2,370** | 🔄 **PARTIAL REFACTOR** → `services/vault/{storage,encryption,sharing,permissions,schemas}.py` (Phase 2.2 + 2.2b, file/doc ops extracted) | ~~HIGH~~ → **IN PROGRESS** |
 
 #### High Priority (1500-2000 lines)
 
-| File | Lines | Current Responsibility | Refactoring Complexity |
+| File | Lines | Current Responsibility | Refactoring Status |
 |------|-------|------------------------|------------------------|
-| `api/main.py` | 1,920 | FastAPI app + all route registration | MEDIUM |
-| `api/services/chat/core.py` | 1,751 | AI chat orchestration | HIGH |
-| ~~`api/template_library_full.py`~~ | ~~1,676~~ | ✅ **REFACTORED** → `templates/` (Phase 1.1, 13 files) | ~~LOW~~ |
-| `api/routes/vault/files.py` | 1,565 | Vault file operations endpoints | MEDIUM |
-| `api/routes/team.py` | 1,443 | Team collaboration endpoints (52 routes) | MEDIUM |
+| `api/main.py` | 1,920 | FastAPI app + all route registration | MEDIUM (not started) |
+| ~~`api/services/chat/core.py`~~ | ~~1,751~~ → **1,698** | 🔄 **PARTIAL REFACTOR** → `services/chat/{types,storage,sessions}.py` (Phase 2.3a, sessions/messages extracted) | ~~HIGH~~ → **IN PROGRESS** |
+| ~~`api/template_library_full.py`~~ | ~~1,676~~ | ✅ **REFACTORED** → `templates/` (Phase 1.1, 13 files) | ~~LOW~~ → **COMPLETED** |
+| `api/routes/vault/files.py` | 1,565 | Vault file operations endpoints | MEDIUM (not started) |
+| `api/routes/team.py` | 1,443 | Team collaboration endpoints (52 routes) | MEDIUM (not started) |
 
 #### Medium Priority (1000-1500 lines)
 
@@ -565,40 +566,62 @@ api/services/vault/
 - `api/routes/vault/files.py` (1,565 lines)
 - `api/routes/vault/sharing.py` (624 lines)
 
-#### 2.3 Refactor `api/services/chat/core.py` (1,751 lines)
-**Current**: Monolithic chat service
-**Target Structure**:
+#### 2.3 Refactor `api/services/chat/core.py` (1,751 lines) - 🔄 PARTIAL (Phase 2.3a sessions/storage complete)
+**Status**: 🔄 PARTIAL - Sessions and storage extracted, streaming/model/routing/analytics remain in core.py
+**Current**: Session/message persistence modularized, AI/streaming logic in core.py
+**Achieved Structure**:
 ```
 api/services/chat/
-├── __init__.py                 # Public API exports
-├── core.py                     # Orchestration layer (200 lines)
-├── ollama_client.py            # Ollama API client
-├── session_manager.py          # Session management
-├── message_handler.py          # Message processing
-├── streaming.py                # WebSocket streaming
-├── context_manager.py          # Context window management
-├── model_selector.py           # Model selection logic
-├── file_processor.py           # File attachment processing
-├── storage.py                  # Database operations
-└── types.py                    # Type definitions
+├── __init__.py                 # Public API exports (232 lines)
+├── core.py                     # Orchestration + AI/streaming (1,698 lines)
+├── types.py                    # Type definitions ✅ COMPLETED (123 lines)
+├── storage.py                  # Database operations ✅ COMPLETED (410 lines)
+├── sessions.py                 # Session orchestration ✅ COMPLETED (360 lines)
+└── streaming.py                # Ollama streaming client (154 lines, existing)
 ```
 
-**Refactoring Steps**:
-1. Create `types.py` with all models
-2. Extract Ollama client to `ollama_client.py` (~300 lines)
-3. Extract session logic to `session_manager.py` (~250 lines)
-4. Extract message handling to `message_handler.py` (~300 lines)
-5. Extract streaming to `streaming.py` (~250 lines)
-6. Extract context to `context_manager.py` (~200 lines)
-7. Extract model selection to `model_selector.py` (~200 lines)
-8. Extract file processing to `file_processor.py` (~200 lines)
-9. Extract DB ops to `storage.py` (~250 lines)
-10. Reduce `core.py` to orchestration (~200 lines)
-11. Update route imports
+**Phase 2.3a Completion Summary** (2025-11-17):
+
+✅ **Completed Modules**:
+- `types.py` (123 lines) - Enums (RouterMode, MessageRole), type aliases (SessionDict, MessageDict), constants (DEFAULT_MODEL, MAX_CONTEXT_MESSAGES, HOT_SLOT_COUNT)
+- `storage.py` (410 lines) - Database access layer wrapping NeutronChatMemory:
+  * Session ops (7 functions): create/get/list/delete/update_model/update_title/set_archived
+  * Message ops (4 functions): add_message, update_summary, get_messages, get_summary
+  * Document ops (3 functions): has_documents, store_document_chunks, search_document_chunks
+  * Search/Analytics (2 functions): search_messages_semantic, get_analytics
+- `sessions.py` (360 lines) - Session lifecycle and context orchestration:
+  * Session lifecycle (5 functions): create_new_session, get_session_by_id, list_user_sessions, delete_session_by_id, update_session_metadata
+  * Context assembly (1 function): get_conversation_context (handles history truncation, summary inclusion)
+  * Message handling (2 functions): save_message_to_session, auto_title_session_if_needed
+  * Document ops (3 functions): check_session_has_documents, search_session_documents, store_uploaded_documents
+- `core.py` updated (-53 lines refactored) - 6 methods now delegate to sessions.py
+
+✅ **Methods Delegated** (6 total):
+- `create_session()` → `sessions.create_new_session()`
+- `get_session()` → `sessions.get_session_by_id()`
+- `list_sessions()` → `sessions.list_user_sessions()`
+- `delete_session()` → `sessions.delete_session_by_id()`
+- `append_message()` → `sessions.save_message_to_session()`
+- `send_message_stream()` - Auto-title section → `sessions.auto_title_session_if_needed()`
+
+✅ **Pattern Applied**:
+- Thread-local SQLite connections via NeutronChatMemory (WAL mode, per-thread connections)
+- Storage layer wraps existing chat_memory.py (16 DB functions)
+- Sessions layer orchestrates lifecycle + context assembly
+- Core.py delegates session CRUD, preserves streaming/AI logic
+
+🔄 **Remaining Work** (Phase 2.3b+ - future):
+- Extract model management to `models.py` (~250 lines)
+- Extract Ollama server ops to `ollama_ops.py` (~180 lines)
+- Extract routing to `routing.py` (~150 lines)
+- Extract AI features to `ai_features.py` (ANE, Metal4, recursive, learning - ~250 lines)
+- Extract analytics to `analytics.py` (~100 lines)
+- Extract system monitoring to `system.py` (~100 lines)
+- Reduce `core.py` to pure orchestration (~300 lines)
 
 **Dependencies**:
 - `api/routes/chat/` (28 endpoints)
-- `api/chat_memory.py` (891 lines - may also need refactoring)
+- `api/chat_memory.py` (891 lines - NeutronChatMemory, stays as DB layer)
 
 **Breaking Changes**: None
 
@@ -2360,9 +2383,66 @@ Transform the Admin tab from a basic system overview into a **production-grade a
 
 ## 📋 Document History
 
-**Document Version**: 2.1 (Phase 1 Complete)
+**Document Version**: 2.3 (Phase 2 Partial - Team/Vault/Chat)
 **Last Updated**: 2025-11-17
-**Status**: ✅ Phase 1 COMPLETED - Ready for Phase 2
+**Status**: 🔄 Phase 2 IN PROGRESS - Team (✅ Complete), Vault (✅ Partial), Chat (✅ Foundation)
+
+### Version 2.3 Changes (2025-11-17):
+**Phase 2.3a (Chat Sessions + Storage) Completion Update**
+
+1. **Marked Phase 2.3a as COMPLETED** (Chat Sessions + Storage):
+   - Commits: `50295d7f` + `8863b418` - refactor(chat): Phase 2.3a foundation + session delegation
+   - Created `types.py` (123 lines) - Enums, type aliases, constants for chat service
+   - Created `storage.py` (410 lines) - 16 DB functions wrapping NeutronChatMemory (sessions, messages, documents, search)
+   - Created `sessions.py` (360 lines) - 11 orchestration functions (session lifecycle, context assembly, message handling)
+   - Updated `core.py` (-53 lines refactored) - 6 methods now delegate to sessions.py
+   - Chat service now follows types + storage + orchestration pattern (same as Team/Vault)
+
+2. **Updated Large Files Analysis**:
+   - `api/services/chat/core.py`: 1,751 → 1,698 lines (-3% reduction, sessions/messages extracted)
+   - Marked as "PARTIAL REFACTOR" with module breakdown
+
+3. **Chat Service Architecture Documented**:
+   - Session/message persistence now in sessions.py + storage.py
+   - Streaming, routing, model selection, analytics remain in core.py (Phase 2.3b+)
+   - Thread-local SQLite connections via NeutronChatMemory (WAL mode)
+   - 6 methods delegated: create/get/list/delete session, append_message, auto-title
+
+4. **Updated Repo State**:
+   - Phase 2 progress now shows: Team (6 modules), Vault (5 modules), Chat (3 modules)
+
+### Version 2.2 Changes (2025-11-17):
+**Phase 2.1b & 2.2b Completion Update**
+
+1. **Marked Phase 2.1b as COMPLETED** (Team Roles/Promotions + Founder Rights):
+   - Commit: `19fdac03` - refactor(team): Phase 2.1b - Extract Roles/Promotions + Founder Rights
+   - Created `roles.py` (490 lines) - 11 role/promotion orchestration functions (auto-promotion, delayed promotions, temp promotions)
+   - Created `founder_rights.py` (204 lines) - 5 Founder Rights (God Rights) management functions
+   - Extended `storage.py` (+531 lines) - Added 17 DB functions for 3 tables (delayed_promotions, temp_promotions, god_rights_auth)
+   - Updated `core.py` (-1,236 lines refactored) - 19 methods now delegate to roles.py and founder_rights.py
+   - Team service now fully modular: core.py (1,784 lines) + 6 modules
+
+2. **Marked Phase 2.2b as COMPLETED** (Vault File Operations + Encryption Helpers):
+   - Commit: `0f91293c` - refactor(vault): Phase 2.2b - Extract file operations + encryption helpers
+   - Extended `encryption.py` (+15 lines) - Moved `get_encryption_key()` and `generate_file_key()` from core.py
+   - Extended `storage.py` (+259 lines) - Added file CRUD operations (create, list, delete, rename, move)
+   - Updated `core.py` (-147 lines refactored) - 5 file methods now delegate to storage.py + encryption.py
+   - Vault service partially modular: core.py (2,370 lines) + 5 modules, remaining work in Phase 2.2c
+
+3. **Updated Large Files Analysis**:
+   - `api/services/team/core.py`: 2,872 → 1,784 lines (-38% reduction, fully modular)
+   - `api/services/vault/core.py`: 2,780 → 2,370 lines (-15% reduction, partially modular)
+   - Marked both as "REFACTORED" with module breakdowns
+
+4. **Added Modularization Pattern Documentation**:
+   - Documented "manager parameter" pattern for cross-module calls
+   - Documented `_get_app_conn()` / `_get_vault_conn()` per-function connection pattern
+   - Documented zero `self.conn` usage in refactored paths
+   - Documented backward-compatible public API preservation
+
+5. **Updated Repo State Metrics**:
+   - Backend now shows modularization progress (Team: 6 modules, Vault: 5 modules, Chat: 2 modules)
+   - Status updated to reflect Phase 2 in progress
 
 ### Version 2.1 Changes (2025-11-17):
 **Phase 1 Completion Update**
