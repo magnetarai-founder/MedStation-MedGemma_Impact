@@ -237,13 +237,16 @@ export function ProfileSettingsModal({ isOpen, onClose }: ProfileSettingsModalPr
               <div className="max-w-2xl space-y-6">
                 {/* Display Name */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label htmlFor="display-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Display Name
                   </label>
                   <input
+                    id="display-name"
                     type="text"
+                    name="display_name"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
+                    autoComplete="name"
                     className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900 dark:text-gray-100"
                     placeholder="Field Worker"
                   />
@@ -254,13 +257,16 @@ export function ProfileSettingsModal({ isOpen, onClose }: ProfileSettingsModalPr
 
                 {/* Device Name */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label htmlFor="device-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Device Name
                   </label>
                   <input
+                    id="device-name"
                     type="text"
+                    name="device_name"
                     value={deviceName}
                     onChange={(e) => setDeviceName(e.target.value)}
+                    autoComplete="off"
                     className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900 dark:text-gray-100"
                     placeholder="Mac-1251.lan"
                   />
@@ -271,12 +277,14 @@ export function ProfileSettingsModal({ isOpen, onClose }: ProfileSettingsModalPr
 
                 {/* Avatar Color */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label htmlFor="avatar-color" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Avatar Color
                   </label>
                   <div className="flex items-center gap-3">
                     <input
+                      id="avatar-color"
                       type="color"
+                      name="avatar_color"
                       value={avatarColor}
                       onChange={(e) => setAvatarColor(e.target.value)}
                       className="h-12 w-20 rounded-lg cursor-pointer border border-gray-300 dark:border-gray-600"

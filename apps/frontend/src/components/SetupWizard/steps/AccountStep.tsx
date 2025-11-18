@@ -131,14 +131,16 @@ export default function AccountStep(props: StepProps) {
 
         {/* Username Field */}
         <div>
-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label htmlFor="setup-username" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Username
           </label>
           <input
-            id="username"
+            id="setup-username"
             type="text"
+            name="username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
+            autoComplete="username"
             className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 ${
               validationErrors.username ? 'border-red-500' : ''
             }`}
@@ -154,14 +156,16 @@ export default function AccountStep(props: StepProps) {
 
         {/* Password Field */}
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label htmlFor="setup-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Password
           </label>
           <input
-            id="password"
+            id="setup-password"
             type="password"
+            name="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            autoComplete="new-password"
             className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 ${
               validationErrors.password ? 'border-red-500' : ''
             }`}
@@ -177,14 +181,16 @@ export default function AccountStep(props: StepProps) {
 
         {/* Confirm Password Field */}
         <div>
-          <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label htmlFor="setup-confirm-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Confirm Password
           </label>
           <input
-            id="confirmPassword"
+            id="setup-confirm-password"
             type="password"
+            name="confirm_password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
+            autoComplete="new-password"
             className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 ${
               validationErrors.confirmPassword ? 'border-red-500' : ''
             }`}
@@ -202,14 +208,15 @@ export default function AccountStep(props: StepProps) {
         <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
           <div className="flex items-center gap-3 mb-4">
             <input
-              id="enableFounder"
+              id="enable-founder"
               type="checkbox"
+              name="enable_founder"
               checked={enableFounder}
               onChange={(e) => setEnableFounder(e.target.checked)}
               className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
               disabled={isLoading}
             />
-            <label htmlFor="enableFounder" className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label htmlFor="enable-founder" className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
               <Lock className="w-4 h-4" />
               Enable Founder Password (Optional)
             </label>
@@ -227,10 +234,12 @@ export default function AccountStep(props: StepProps) {
               </div>
 
               <input
-                id="founderPassword"
+                id="founder-password"
                 type="password"
+                name="founder_password"
                 value={founderPassword}
                 onChange={(e) => setFounderPassword(e.target.value)}
+                autoComplete="new-password"
                 className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 ${
                   validationErrors.founderPassword ? 'border-red-500' : ''
                 }`}

@@ -142,16 +142,19 @@ export function PasswordChangeModal({ isOpen, username, onClose, onSuccess }: Pa
 
           {/* Temporary Password */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label htmlFor="temp-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Temporary Password
             </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
+                id="temp-password"
                 type="password"
+                name="temp_password"
                 value={tempPassword}
                 onChange={(e) => setTempPassword(e.target.value)}
                 placeholder="Enter temporary password"
+                autoComplete="current-password"
                 className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 disabled={isLoading}
                 autoFocus
@@ -161,16 +164,19 @@ export function PasswordChangeModal({ isOpen, username, onClose, onSuccess }: Pa
 
           {/* New Password */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               New Password
             </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
+                id="new-password"
                 type="password"
+                name="new_password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Enter new password"
+                autoComplete="new-password"
                 className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 disabled={isLoading}
               />
@@ -179,16 +185,19 @@ export function PasswordChangeModal({ isOpen, username, onClose, onSuccess }: Pa
 
           {/* Confirm Password */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Confirm New Password
             </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
+                id="confirm-password"
                 type="password"
+                name="confirm_password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Confirm new password"
+                autoComplete="new-password"
                 className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 disabled={isLoading}
               />

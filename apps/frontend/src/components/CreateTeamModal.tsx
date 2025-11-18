@@ -139,14 +139,17 @@ export function CreateTeamModal({ isOpen, onClose }: CreateTeamModalProps) {
               <div className="space-y-4">
                 {/* Team Name */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label htmlFor="team-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Team Name <span className="text-red-500">*</span>
                   </label>
                   <input
+                    id="team-name"
                     type="text"
+                    name="team_name"
                     value={teamName}
                     onChange={(e) => setTeamName(e.target.value)}
                     placeholder="e.g., Medical Mission Trip 2025"
+                    autoComplete="organization"
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     disabled={isCreating}
                     maxLength={100}
@@ -155,10 +158,12 @@ export function CreateTeamModal({ isOpen, onClose }: CreateTeamModalProps) {
 
                 {/* Team Description */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label htmlFor="team-description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Description (Optional)
                   </label>
                   <textarea
+                    id="team-description"
+                    name="team_description"
                     value={teamDescription}
                     onChange={(e) => setTeamDescription(e.target.value)}
                     placeholder="Brief description of your team's purpose..."
