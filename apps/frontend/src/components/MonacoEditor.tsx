@@ -30,12 +30,15 @@ export function MonacoEditor({
   const handleEditorDidMount: OnMount = (editor, monaco) => {
     editorRef.current = editor
 
-    // Function to add name attribute to Monaco textareas
+    // Function to add name and id attributes to Monaco textareas
     const addNameToTextareas = (node: HTMLElement) => {
       const textareas = node.querySelectorAll('textarea.inputarea') as NodeListOf<HTMLTextAreaElement>
-      textareas.forEach((ta) => {
+      textareas.forEach((ta, index) => {
         if (!ta.getAttribute('name')) {
           ta.setAttribute('name', 'monaco_editor_content')
+        }
+        if (!ta.getAttribute('id')) {
+          ta.setAttribute('id', `monaco_editor_textarea_${index}`)
         }
       })
     }
@@ -49,9 +52,10 @@ export function MonacoEditor({
       setTimeout(() => addNameToTextareas(domNode), 500)
 
       // Periodic check as fallback (Monaco can recreate textareas at any time)
+      // Run aggressively every 500ms to catch Monaco's textarea recreation
       intervalRef.current = window.setInterval(() => {
         addNameToTextareas(domNode)
-      }, 2000) // Check every 2 seconds
+      }, 500) // Check every 500ms
 
       // Observe for dynamically added textareas (Monaco recreates them)
       observerRef.current = new MutationObserver((mutations) => {
@@ -63,6 +67,9 @@ export function MonacoEditor({
                 if (node.matches?.('textarea.inputarea')) {
                   if (!node.getAttribute('name')) {
                     node.setAttribute('name', 'monaco_editor_content')
+                  }
+                  if (!node.getAttribute('id')) {
+                    node.setAttribute('id', `monaco_editor_textarea_${Date.now()}`)
                   }
                 } else {
                   addNameToTextareas(node)
