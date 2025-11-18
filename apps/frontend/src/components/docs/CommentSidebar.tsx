@@ -258,9 +258,13 @@ export function CommentSidebar({ docId, isOpen = true, onClose }: CommentSidebar
             </div>
           )}
           <textarea
+            id="new-comment-text"
+            name="comment_text"
             value={newCommentText}
             onChange={(e) => setNewCommentText(e.target.value)}
             placeholder="Write your comment..."
+            aria-label="New comment"
+            autoComplete="off"
             className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none mb-2"
             rows={3}
             autoFocus

@@ -145,6 +145,8 @@ export function ChatInput({ onSend, disabled = false, placeholder = 'Type a mess
 
         {/* Text Input */}
         <textarea
+          id="chat-message-input"
+          name="message"
           ref={textareaRef}
           value={input}
           onChange={handleInput}
@@ -152,6 +154,8 @@ export function ChatInput({ onSend, disabled = false, placeholder = 'Type a mess
           placeholder={placeholder}
           disabled={disabled}
           rows={1}
+          aria-label="Chat message"
+          autoComplete="off"
           className="flex-1 resize-none bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ maxHeight: '200px' }}
         />

@@ -356,8 +356,12 @@ export default function KanbanWorkspace() {
       <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30">
         {/* Project Selector */}
         <select
+          id="kanban-project-select"
+          name="kanban_project"
           value={selectedProjectId || ''}
           onChange={(e) => setSelectedProjectId(e.target.value)}
+          aria-label="Select project"
+          autoComplete="off"
           className="px-2 py-0.5 text-xs rounded border-0 bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none text-gray-700 dark:text-gray-300 font-medium cursor-pointer"
         >
           {projects.map(p => (
@@ -369,8 +373,12 @@ export default function KanbanWorkspace() {
 
         {/* Board Selector */}
         <select
+          id="kanban-board-select"
+          name="kanban_board"
           value={selectedBoardId || ''}
           onChange={(e) => setSelectedBoardId(e.target.value)}
+          aria-label="Select board"
+          autoComplete="off"
           className="px-2 py-0.5 text-xs rounded border-0 bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300 cursor-pointer"
           disabled={boards.length === 0}
         >

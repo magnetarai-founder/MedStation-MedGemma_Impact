@@ -219,8 +219,12 @@ export function CommentThread({ comment, onReply, onResolve, onDelete }: Comment
         {isEditing ? (
           <div className="space-y-2">
             <textarea
+              id={`edit-comment-${comment.comment_id}`}
+              name="comment_text"
               value={editText}
               onChange={(e) => setEditText(e.target.value)}
+              aria-label="Edit comment"
+              autoComplete="off"
               className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
               rows={3}
             />

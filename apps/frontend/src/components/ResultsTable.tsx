@@ -123,9 +123,13 @@ export function ResultsTable() {
           <div className="flex items-center px-1.5 py-0.5 rounded-md bg-gray-100/50 dark:bg-gray-800/50 gap-1">
             {/* Export format dropdown */}
             <select
+              id="results-export-format"
+              name="export_format"
               value={exportFormat}
               onChange={(e) => setExportFormat(e.target.value as 'excel' | 'csv' | 'json' | 'parquet')}
               disabled={!hasExecuted || !currentQuery}
+              aria-label="Export format"
+              autoComplete="off"
               className="px-2 py-0.5 text-xs rounded border-0 bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300"
             >
               {formatOptions.map(opt => (
