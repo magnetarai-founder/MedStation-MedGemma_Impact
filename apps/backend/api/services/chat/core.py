@@ -16,6 +16,9 @@ from datetime import datetime
 
 # Phase 2.3a - Session/storage delegation
 from . import sessions as sessions_mod
+# Phase 2.3b - Model/hot-slot delegation
+from . import models as models_mod
+from . import hot_slots as hot_slots_mod
 
 logger = logging.getLogger(__name__)
 
@@ -649,83 +652,21 @@ async def upload_file_to_chat(chat_id: str, filename: str, content: bytes, conte
     return file_info
 
 
-# ===== Model Management =====
+# ===== Model Management (Phase 2.3b - delegated to models.py) =====
 
 async def list_ollama_models() -> List[Dict[str, Any]]:
     """List available Ollama models"""
-    ollama_client = _get_ollama_client()
-    models = await ollama_client.list_models()
-
-    if not models:
-        return [{
-            "name": "qwen2.5-coder:7b-instruct",
-            "size": "4.7GB",
-            "modified_at": datetime.utcnow().isoformat()
-        }]
-
-    # Filter out non-chat models
-    excluded_patterns = ['embed', 'embedding', '-vision']
-
-    chat_models = []
-    for model in models:
-        model_name_lower = model["name"].lower()
-        if not any(pattern in model_name_lower for pattern in excluded_patterns):
-            chat_models.append(model)
-
-    return chat_models
+    return await models_mod.list_ollama_models()
 
 
 async def preload_model(model: str, keep_alive: str = "1h", source: str = "unknown") -> bool:
-    """
-    Pre-load a model into memory
-
-    Args:
-        model: Model name to preload
-        keep_alive: How long to keep model in memory (default: 1h)
-        source: Source of preload request (e.g., "frontend_default", "hot_slot", "user_manual")
-
-    Returns:
-        True if successful, False otherwise
-    """
-    logger.info(f"🔄 Preloading model '{model}' from source: {source} (keep_alive: {keep_alive})")
-    ollama_client = _get_ollama_client()
-    result = await ollama_client.preload_model(model, keep_alive)
-
-    if result:
-        logger.info(f"✅ Model '{model}' preloaded successfully (source: {source})")
-    else:
-        logger.warning(f"⚠️ Failed to preload model '{model}' (source: {source})")
-
-    return result
+    """Pre-load a model into memory"""
+    return await models_mod.preload_model(model, keep_alive, source)
 
 
 async def unload_model(model_name: str) -> bool:
     """Unload a specific model from memory"""
-    ollama_client = _get_ollama_client()
-
-    try:
-        import httpx
-
-        payload = {
-            "model": model_name,
-            "prompt": "",
-            "stream": False,
-            "keep_alive": 0
-        }
-
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.post(
-                f"{ollama_client.base_url}/api/generate",
-                json=payload
-            )
-            response.raise_for_status()
-
-        logger.info(f"✓ Unloaded model '{model_name}'")
-        return True
-
-    except Exception as e:
-        logger.error(f"Failed to unload model '{model_name}': {e}")
-        return False
+    return await models_mod.unload_model(model_name)
 
 
 # ===== Search & Analytics =====
@@ -906,9 +847,7 @@ async def check_health() -> Dict[str, Any]:
 
 async def get_models_status() -> Dict[str, Any]:
     """Get status of all models"""
-    model_manager = _get_model_manager()
-    ollama_client = _get_ollama_client()
-    return await model_manager.get_model_status(ollama_client)
+    return await models_mod.get_models_status()
 
 
 async def get_ollama_server_status() -> Dict[str, Any]:
@@ -1245,97 +1184,31 @@ What would you like to know about this data?"""
     }
 
 
-# ===== Model Hot Slots =====
+# ===== Model Hot Slots (Phase 2.3b - delegated to hot_slots.py) =====
 
 async def get_hot_slots() -> Dict[int, Optional[str]]:
     """Get current hot slot assignments"""
-    model_manager = _get_model_manager()
-    return model_manager.get_hot_slots()
+    return await hot_slots_mod.get_hot_slots()
 
 
 async def assign_to_hot_slot(slot_number: int, model_name: str) -> Dict[str, Any]:
     """Assign a model to a specific hot slot"""
-    model_manager = _get_model_manager()
-    ollama_client = _get_ollama_client()
-
-    # Check if model already in another slot
-    existing_slot = model_manager.get_slot_for_model(model_name)
-    if existing_slot and existing_slot != slot_number:
-        model_manager.remove_from_slot(existing_slot)
-
-    # Assign to new slot
-    success = model_manager.assign_to_slot(slot_number, model_name)
-
-    # Preload the model
-    await ollama_client.preload_model(model_name, "1h")
-
-    return {
-        "success": success,
-        "model": model_name,
-        "slot_number": slot_number,
-        "hot_slots": model_manager.get_hot_slots()
-    }
+    return await hot_slots_mod.assign_to_hot_slot(slot_number, model_name)
 
 
 async def remove_from_hot_slot(slot_number: int) -> Dict[str, Any]:
     """Remove a model from a specific hot slot"""
-    model_manager = _get_model_manager()
-    ollama_client = _get_ollama_client()
-
-    current_slots = model_manager.get_hot_slots()
-    model_name = current_slots[slot_number]
-
-    # Unload the model
-    await ollama_client.preload_model(model_name, "0")
-
-    # Remove from slot
-    success = model_manager.remove_from_slot(slot_number)
-
-    return {
-        "success": success,
-        "slot_number": slot_number,
-        "model": model_name,
-        "hot_slots": model_manager.get_hot_slots()
-    }
+    return await hot_slots_mod.remove_from_hot_slot(slot_number)
 
 
 async def load_hot_slot_models(keep_alive: str = "1h") -> Dict[str, Any]:
     """Load all hot slot models into memory"""
-    model_manager = _get_model_manager()
-    ollama_client = _get_ollama_client()
-
-    hot_slots = model_manager.get_hot_slots()
-    results = []
-
-    for slot_num, model_name in hot_slots.items():
-        if model_name:
-            success = await ollama_client.preload_model(model_name, keep_alive)
-            results.append({
-                "slot": slot_num,
-                "model": model_name,
-                "loaded": success
-            })
-
-    return {
-        "total": len([m for m in hot_slots.values() if m is not None]),
-        "results": results,
-        "keep_alive": keep_alive
-    }
+    return await hot_slots_mod.load_hot_slot_models(keep_alive)
 
 
 async def get_orchestrator_suitable_models() -> List[Dict[str, Any]]:
     """Get models suitable for orchestrator use"""
-    from model_manager import is_orchestrator_suitable
-
-    ollama_client = _get_ollama_client()
-    models = await ollama_client.list_models()
-
-    suitable_models = []
-    for model in models:
-        if is_orchestrator_suitable(model["name"], model["size"]):
-            suitable_models.append(model)
-
-    return suitable_models
+    return await models_mod.get_orchestrator_suitable_models()
 
 
 # ===== Adaptive Router =====
