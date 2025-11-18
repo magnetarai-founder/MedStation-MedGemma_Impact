@@ -14,6 +14,9 @@ from pathlib import Path
 from typing import Optional, List, Dict, Any, AsyncGenerator
 from datetime import datetime
 
+# Phase 2.3a - Session/storage delegation
+from . import sessions as sessions_mod
+
 logger = logging.getLogger(__name__)
 
 
@@ -196,92 +199,44 @@ def _get_chat_uploads_dir():
 
 async def create_session(title: str, model: str, user_id: str, team_id: Optional[str] = None) -> Dict[str, Any]:
     """Create a new chat session"""
-    from api.schemas.chat_models import ChatSession
-
-    memory = _get_memory()
-    chat_id = f"chat_{uuid.uuid4().hex[:12]}"
-
-    session_data = await asyncio.to_thread(
-        memory.create_session,
-        chat_id,
-        title,
-        model,
-        user_id,
-        team_id
-    )
-
-    return session_data
+    return await sessions_mod.create_new_session(title, model, user_id, team_id)
 
 
 async def get_session(chat_id: str, user_id: str, role: str = None, team_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
     """Get session by ID (user-filtered unless Founder Rights)"""
-    memory = _get_memory()
-
-    session_data = await asyncio.to_thread(
-        memory.get_session,
-        chat_id,
-        user_id=user_id,
-        role=role,
-        team_id=team_id
-    )
-
-    return session_data
+    return await sessions_mod.get_session_by_id(chat_id, user_id, role, team_id)
 
 
 async def list_sessions(user_id: str, role: str = None, team_id: Optional[str] = None) -> List[Dict[str, Any]]:
     """List all chat sessions for user (Founder Rights sees all)"""
-    memory = _get_memory()
-
-    sessions_data = await asyncio.to_thread(
-        memory.list_sessions,
-        user_id=user_id,
-        role=role,
-        team_id=team_id
-    )
-
-    return sessions_data
+    return await sessions_mod.list_user_sessions(user_id, role, team_id)
 
 
 async def delete_session(chat_id: str, user_id: str, role: str = None) -> bool:
     """Delete a chat session (user-filtered unless Founder Rights)"""
-    memory = _get_memory()
-
-    return await asyncio.to_thread(
-        memory.delete_session,
-        chat_id,
-        user_id=user_id,
-        role=role
-    )
+    return await sessions_mod.delete_session_by_id(chat_id, user_id, role)
 
 
 # ===== Message Management =====
 
 async def append_message(chat_id: str, role: str, content: str, timestamp: str, model: Optional[str] = None, tokens: Optional[int] = None, files: Optional[List[Dict]] = None):
     """Append a message to chat history"""
-    from api.chat_memory import ConversationEvent
-
-    memory = _get_memory()
-
-    event = ConversationEvent(
-        timestamp=timestamp,
+    # Save message via sessions module
+    await sessions_mod.save_message_to_session(
+        chat_id=chat_id,
         role=role,
         content=content,
         model=model,
         tokens=tokens,
-        files=files or []
+        files=files
     )
-
-    await asyncio.to_thread(memory.add_message, chat_id, event)
-
-    # Update rolling summary every message
-    await asyncio.to_thread(memory.update_summary, chat_id)
 
     # Index message for search (Sprint 6 Theme B)
     try:
         from api.services.search_indexer import get_search_indexer
 
         # Get session to find user_id
-        session_data = await asyncio.to_thread(memory.get_session, chat_id)
+        session_data = await sessions_mod.get_session_by_id(chat_id, user_id=None)
         if session_data:
             user_id = session_data.get('user_id', 'unknown')
 
@@ -352,16 +307,8 @@ async def send_message_stream(
     metal4_engine = _get_metal4_engine()
     ollama_client = _get_ollama_client()
 
-    # Auto-generate title from first message
-    session_data = await asyncio.to_thread(memory.get_session, chat_id)
-    if session_data and session_data.get("message_count", 0) == 0:
-        title = await asyncio.to_thread(
-            ChatTitleGenerator.generate_from_first_message,
-            content
-        )
-        await asyncio.to_thread(memory.update_session_title, chat_id, title, auto_titled=True)
-        safe_title = sanitize_for_log(title)
-        logger.info(f"Auto-generated title for {chat_id}: {safe_title}")
+    # Auto-generate title from first message (Phase 2.3a - use sessions module)
+    await sessions_mod.auto_title_session_if_needed(chat_id, content)
 
     # Save user message
     timestamp = datetime.utcnow().isoformat()
