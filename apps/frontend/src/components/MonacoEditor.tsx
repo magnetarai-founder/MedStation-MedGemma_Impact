@@ -25,6 +25,7 @@ export function MonacoEditor({
 }: MonacoEditorProps) {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
   const observerRef = useRef<MutationObserver | null>(null)
+  const intervalRef = useRef<number | null>(null)
 
   const handleEditorDidMount: OnMount = (editor, monaco) => {
     editorRef.current = editor
@@ -42,17 +43,24 @@ export function MonacoEditor({
     // Ensure internal textarea has a name attribute for accessibility/autofill tools
     const domNode = editor.getDomNode()
     if (domNode) {
-      // Initial setup
+      // Initial setup (run immediately and after a short delay to catch async creation)
       addNameToTextareas(domNode)
+      setTimeout(() => addNameToTextareas(domNode), 100)
+      setTimeout(() => addNameToTextareas(domNode), 500)
+
+      // Periodic check as fallback (Monaco can recreate textareas at any time)
+      intervalRef.current = window.setInterval(() => {
+        addNameToTextareas(domNode)
+      }, 2000) // Check every 2 seconds
 
       // Observe for dynamically added textareas (Monaco recreates them)
       observerRef.current = new MutationObserver((mutations) => {
         for (const mutation of mutations) {
-          if (mutation.type === 'childList') {
+          if (mutation.type === 'childList' || mutation.type === 'attributes') {
             mutation.addedNodes.forEach((node) => {
               if (node instanceof HTMLElement) {
                 // Check if the added node is a textarea or contains textareas
-                if (node.matches('textarea.inputarea')) {
+                if (node.matches?.('textarea.inputarea')) {
                   if (!node.getAttribute('name')) {
                     node.setAttribute('name', 'monaco_editor_content')
                   }
@@ -61,14 +69,20 @@ export function MonacoEditor({
                 }
               }
             })
+            // Also check the mutation target in case attributes changed
+            if (mutation.target instanceof HTMLElement) {
+              addNameToTextareas(mutation.target)
+            }
           }
         }
       })
 
-      // Start observing
+      // Start observing with broader configuration
       observerRef.current.observe(domNode, {
         childList: true,
-        subtree: true
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['class', 'style'] // Monaco might change these when recreating
       })
     }
 
@@ -114,11 +128,14 @@ export function MonacoEditor({
     }
   }, [theme])
 
-  // Cleanup observer on unmount
+  // Cleanup observer and interval on unmount
   useEffect(() => {
     return () => {
       if (observerRef.current) {
         observerRef.current.disconnect()
+      }
+      if (intervalRef.current !== null) {
+        window.clearInterval(intervalRef.current)
       }
     }
   }, [])
