@@ -24,18 +24,51 @@ export function MonacoEditor({
   theme = 'vs-dark'
 }: MonacoEditorProps) {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
+  const observerRef = useRef<MutationObserver | null>(null)
 
   const handleEditorDidMount: OnMount = (editor, monaco) => {
     editorRef.current = editor
 
-    // Ensure internal textarea has a name attribute for accessibility/autofill tools
-    const domNode = editor.getDomNode()
-    if (domNode) {
-      const textareas = domNode.querySelectorAll('textarea.inputarea') as NodeListOf<HTMLTextAreaElement>
+    // Function to add name attribute to Monaco textareas
+    const addNameToTextareas = (node: HTMLElement) => {
+      const textareas = node.querySelectorAll('textarea.inputarea') as NodeListOf<HTMLTextAreaElement>
       textareas.forEach((ta) => {
         if (!ta.getAttribute('name')) {
           ta.setAttribute('name', 'monaco_editor_content')
         }
+      })
+    }
+
+    // Ensure internal textarea has a name attribute for accessibility/autofill tools
+    const domNode = editor.getDomNode()
+    if (domNode) {
+      // Initial setup
+      addNameToTextareas(domNode)
+
+      // Observe for dynamically added textareas (Monaco recreates them)
+      observerRef.current = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+          if (mutation.type === 'childList') {
+            mutation.addedNodes.forEach((node) => {
+              if (node instanceof HTMLElement) {
+                // Check if the added node is a textarea or contains textareas
+                if (node.matches('textarea.inputarea')) {
+                  if (!node.getAttribute('name')) {
+                    node.setAttribute('name', 'monaco_editor_content')
+                  }
+                } else {
+                  addNameToTextareas(node)
+                }
+              }
+            })
+          }
+        }
+      })
+
+      // Start observing
+      observerRef.current.observe(domNode, {
+        childList: true,
+        subtree: true
       })
     }
 
@@ -80,6 +113,15 @@ export function MonacoEditor({
       }
     }
   }, [theme])
+
+  // Cleanup observer on unmount
+  useEffect(() => {
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect()
+      }
+    }
+  }, [])
 
   return (
     <Editor
