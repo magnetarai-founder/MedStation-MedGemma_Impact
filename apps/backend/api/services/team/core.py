@@ -26,6 +26,14 @@ import base64
 
 from api.config_paths import get_config_paths
 
+# Import modular team service components
+from . import storage
+from . import members as members_mod
+from . import invitations as invitations_mod
+from . import roles as roles_mod
+from . import founder_rights as founder_mod
+from .types import SuccessResult, SuccessResultWithId
+
 logger = logging.getLogger(__name__)
 
 # Database path
@@ -264,9 +272,7 @@ class TeamManager:
         team_id = f"{clean_name}-{suffix}"
 
         # Ensure uniqueness
-        cursor = self.conn.cursor()
-        cursor.execute("SELECT team_id FROM teams WHERE team_id = ?", (team_id,))
-        if cursor.fetchone():
+        if storage.team_id_exists(team_id):
             # Collision, try again with different suffix
             return self.generate_team_id(team_name)
 
@@ -277,30 +283,7 @@ class TeamManager:
         Generate a shareable invite code
         Format: XXXXX-XXXXX-XXXXX (e.g., A7B3C-D9E2F-G1H4I)
         """
-        # Generate 3 groups of 5 characters
-        parts = []
-        for _ in range(3):
-            part = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(5))
-            parts.append(part)
-
-        code = '-'.join(parts)
-
-        # Calculate expiration
-        expires_at = None
-        if expires_days:
-            expires_at = datetime.now() + timedelta(days=expires_days)
-
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute("""
-                INSERT INTO invite_codes (code, team_id, expires_at)
-                VALUES (?, ?, ?)
-            """, (code, team_id, expires_at))
-            self.conn.commit()
-            return code
-        except sqlite3.IntegrityError:
-            # Code collision, try again
-            return self.generate_invite_code(team_id, expires_days)
+        return invitations_mod.generate_invite_code(team_id, expires_days)
 
     def create_team(self, name: str, creator_user_id: str, description: Optional[str] = None) -> Dict:
         """
@@ -319,40 +302,21 @@ class TeamManager:
             team_id = self.generate_team_id(name)
 
             # Create team
-            cursor = self.conn.cursor()
-            cursor.execute("""
-                INSERT INTO teams (team_id, name, description, created_by)
-                VALUES (?, ?, ?, ?)
-            """, (team_id, name, description, creator_user_id))
+            storage.create_team_record(team_id, name, creator_user_id, description)
 
             # Add creator as Super Admin member
-            cursor.execute("""
-                INSERT INTO team_members (team_id, user_id, role)
-                VALUES (?, ?, ?)
-            """, (team_id, creator_user_id, 'super_admin'))
-
-            self.conn.commit()
+            storage.add_member_record(team_id, creator_user_id, 'super_admin')
 
             # Generate invite code (expires in 30 days)
             invite_code = self.generate_invite_code(team_id, expires_days=30)
 
             # Get created team details
-            cursor.execute("""
-                SELECT team_id, name, description, created_at, created_by
-                FROM teams
-                WHERE team_id = ?
-            """, (team_id,))
+            team_details = storage.get_team_by_id(team_id)
+            if team_details:
+                team_details['invite_code'] = invite_code
+                return team_details
 
-            team_row = cursor.fetchone()
-
-            return {
-                'team_id': team_row['team_id'],
-                'name': team_row['name'],
-                'description': team_row['description'],
-                'created_at': team_row['created_at'],
-                'created_by': team_row['created_by'],
-                'invite_code': invite_code
-            }
+            raise Exception("Failed to retrieve created team")
 
         except Exception as e:
             logger.error(f"Failed to create team: {e}")
@@ -360,82 +324,15 @@ class TeamManager:
 
     def get_team(self, team_id: str) -> Optional[Dict]:
         """Get team details by ID"""
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute("""
-                SELECT team_id, name, description, created_at, created_by
-                FROM teams
-                WHERE team_id = ?
-            """, (team_id,))
-
-            row = cursor.fetchone()
-            if not row:
-                return None
-
-            return {
-                'team_id': row['team_id'],
-                'name': row['name'],
-                'description': row['description'],
-                'created_at': row['created_at'],
-                'created_by': row['created_by']
-            }
-
-        except Exception as e:
-            logger.error(f"Failed to get team: {e}")
-            return None
+        return storage.get_team_by_id(team_id)
 
     def get_team_members(self, team_id: str) -> List[Dict]:
         """Get all members of a team"""
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute("""
-                SELECT user_id, role, joined_at
-                FROM team_members
-                WHERE team_id = ?
-                ORDER BY joined_at ASC
-            """, (team_id,))
-
-            members = []
-            for row in cursor.fetchall():
-                members.append({
-                    'user_id': row['user_id'],
-                    'role': row['role'],
-                    'joined_at': row['joined_at']
-                })
-
-            return members
-
-        except Exception as e:
-            logger.error(f"Failed to get team members: {e}")
-            return []
+        return members_mod.get_team_members(team_id)
 
     def get_user_teams(self, user_id: str) -> List[Dict]:
         """Get all teams a user is a member of"""
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute("""
-                SELECT t.team_id, t.name, t.description, t.created_at, tm.role
-                FROM teams t
-                JOIN team_members tm ON t.team_id = tm.team_id
-                WHERE tm.user_id = ?
-                ORDER BY tm.joined_at DESC
-            """, (user_id,))
-
-            teams = []
-            for row in cursor.fetchall():
-                teams.append({
-                    'team_id': row['team_id'],
-                    'name': row['name'],
-                    'description': row['description'],
-                    'created_at': row['created_at'],
-                    'user_role': row['role']
-                })
-
-            return teams
-
-        except Exception as e:
-            logger.error(f"Failed to get user teams: {e}")
-            return []
+        return members_mod.get_user_teams(user_id)
 
     # ========================================================================
     # INVITE CODE MANAGEMENT
@@ -443,55 +340,15 @@ class TeamManager:
 
     def get_active_invite_code(self, team_id: str) -> Optional[str]:
         """Get active (non-expired, unused) invite code for team"""
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute("""
-                SELECT code, expires_at
-                FROM invite_codes
-                WHERE team_id = ?
-                  AND used = FALSE
-                  AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
-                ORDER BY created_at DESC
-                LIMIT 1
-            """, (team_id,))
-
-            row = cursor.fetchone()
-            return row['code'] if row else None
-
-        except Exception as e:
-            logger.error(f"Failed to get invite code: {e}")
-            return None
+        return invitations_mod.get_active_invite_code(team_id)
 
     def regenerate_invite_code(self, team_id: str, expires_days: int = 30) -> str:
         """Generate a new invite code for team (invalidates old ones)"""
-        try:
-            # Mark existing codes as used
-            cursor = self.conn.cursor()
-            cursor.execute("""
-                UPDATE invite_codes
-                SET used = TRUE
-                WHERE team_id = ? AND used = FALSE
-            """, (team_id,))
-            self.conn.commit()
-
-            # Generate new code
-            return self.generate_invite_code(team_id, expires_days)
-
-        except Exception as e:
-            logger.error(f"Failed to regenerate invite code: {e}")
-            raise
+        return invitations_mod.regenerate_invite_code(team_id, expires_days)
 
     def record_invite_attempt(self, invite_code: str, ip_address: str, success: bool):
         """Record an invite code validation attempt (HIGH-05)"""
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute("""
-                INSERT INTO invite_attempts (invite_code, ip_address, success)
-                VALUES (?, ?, ?)
-            """, (invite_code, ip_address, success))
-            self.conn.commit()
-        except Exception as e:
-            logger.error(f"Failed to record invite attempt: {e}")
+        invitations_mod.record_invite_attempt(invite_code, ip_address, success)
 
     def check_brute_force_lockout(self, invite_code: str, ip_address: str) -> bool:
         """
@@ -500,30 +357,7 @@ class TeamManager:
         Returns:
             True if locked (too many failures), False if attempts are allowed
         """
-        try:
-            cursor = self.conn.cursor()
-            # Count failed attempts in last hour for this code+IP combination
-            cursor.execute("""
-                SELECT COUNT(*) as failed_count
-                FROM invite_attempts
-                WHERE invite_code = ?
-                AND ip_address = ?
-                AND success = FALSE
-                AND attempt_timestamp > datetime('now', '-1 hour')
-            """, (invite_code, ip_address))
-
-            row = cursor.fetchone()
-            failed_count = row['failed_count'] if row else 0
-
-            if failed_count >= 10:
-                logger.warning(f"Invite code locked: {invite_code} from {ip_address} ({failed_count} failed attempts)")
-                return True
-
-            return False
-
-        except Exception as e:
-            logger.error(f"Failed to check brute force lockout: {e}")
-            return False  # Fail open to avoid blocking legitimate users
+        return invitations_mod.check_brute_force_lockout(invite_code, ip_address)
 
     def validate_invite_code(self, invite_code: str, ip_address: Optional[str] = None) -> Optional[str]:
         """
@@ -536,53 +370,7 @@ class TeamManager:
         Returns:
             team_id if code is valid and not expired/used, None otherwise
         """
-        # Check for brute-force lockout (HIGH-05)
-        if ip_address and self.check_brute_force_lockout(invite_code, ip_address):
-            if ip_address:
-                self.record_invite_attempt(invite_code, ip_address, False)
-            return None
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute("""
-                SELECT team_id, expires_at, used
-                FROM invite_codes
-                WHERE code = ?
-            """, (invite_code,))
-
-            row = cursor.fetchone()
-
-            if not row:
-                logger.warning(f"Invite code not found: {invite_code}")
-                if ip_address:
-                    self.record_invite_attempt(invite_code, ip_address, False)
-                return None
-
-            # Check if already used
-            if row['used']:
-                logger.warning(f"Invite code already used: {invite_code}")
-                if ip_address:
-                    self.record_invite_attempt(invite_code, ip_address, False)
-                return None
-
-            # Check if expired
-            if row['expires_at']:
-                from datetime import datetime
-                expires_at = datetime.fromisoformat(row['expires_at'])
-                if datetime.now() > expires_at:
-                    logger.warning(f"Invite code expired: {invite_code}")
-                    if ip_address:
-                        self.record_invite_attempt(invite_code, ip_address, False)
-                    return None
-
-            # Success - record attempt
-            if ip_address:
-                self.record_invite_attempt(invite_code, ip_address, True)
-
-            return row['team_id']
-
-        except Exception as e:
-            logger.error(f"Failed to validate invite code: {e}")
-            return None
+        return invitations_mod.validate_invite_code(invite_code, ip_address)
 
     def join_team(self, team_id: str, user_id: str, role: str = 'member') -> bool:
         """
@@ -596,32 +384,7 @@ class TeamManager:
         Returns:
             True if successful, False otherwise
         """
-        try:
-            cursor = self.conn.cursor()
-
-            # Check if user is already a member
-            cursor.execute("""
-                SELECT id FROM team_members
-                WHERE team_id = ? AND user_id = ?
-            """, (team_id, user_id))
-
-            if cursor.fetchone():
-                logger.warning(f"User {user_id} already member of team {team_id}")
-                return False
-
-            # Add user as member
-            cursor.execute("""
-                INSERT INTO team_members (team_id, user_id, role)
-                VALUES (?, ?, ?)
-            """, (team_id, user_id, role))
-
-            self.conn.commit()
-            logger.info(f"User {user_id} joined team {team_id} as {role}")
-            return True
-
-        except Exception as e:
-            logger.error(f"Failed to join team: {e}")
-            return False
+        return members_mod.join_team(team_id, user_id, role)
 
     # ========================================================================
     # ROLE MANAGEMENT & PROMOTIONS
@@ -629,25 +392,8 @@ class TeamManager:
 
     @staticmethod
     def get_max_super_admins(team_size: int) -> int:
-        """
-        Calculate maximum allowed Super Admins based on team size
-
-        Args:
-            team_size: Total number of team members
-
-        Returns:
-            Maximum number of Super Admins allowed
-        """
-        if team_size <= 5:
-            return 1
-        elif team_size <= 15:
-            return 2
-        elif team_size <= 30:
-            return 3
-        elif team_size <= 50:
-            return 4
-        else:
-            return 5
+        """Calculate maximum allowed Super Admins based on team size"""
+        return roles_mod.get_max_super_admins(team_size)
 
     def count_role(self, team_id: str, role: str) -> int:
         """
@@ -660,70 +406,19 @@ class TeamManager:
         Returns:
             Number of members with that role
         """
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute("""
-                SELECT COUNT(*) as count
-                FROM team_members
-                WHERE team_id = ? AND role = ?
-            """, (team_id, role))
-
-            row = cursor.fetchone()
-            return row['count'] if row else 0
-
-        except Exception as e:
-            logger.error(f"Failed to count role {role}: {e}")
-            return 0
+        return members_mod.count_role(team_id, role)
 
     def count_super_admins(self, team_id: str) -> int:
         """Count current Super Admins in team"""
-        return self.count_role(team_id, 'super_admin')
+        return members_mod.count_super_admins(team_id)
 
     def get_team_size(self, team_id: str) -> int:
         """Get total number of members in team"""
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute("""
-                SELECT COUNT(*) as count
-                FROM team_members
-                WHERE team_id = ?
-            """, (team_id,))
-
-            row = cursor.fetchone()
-            return row['count'] if row else 0
-
-        except Exception as e:
-            logger.error(f"Failed to get team size: {e}")
-            return 0
+        return members_mod.get_team_size(team_id)
 
     def can_promote_to_super_admin(self, team_id: str, requesting_user_role: str = None) -> tuple[bool, str]:
-        """
-        Check if team can have another Super Admin
-
-        Args:
-            team_id: Team to check
-            requesting_user_role: Role of user making the request (optional)
-
-        Returns:
-            Tuple of (can_promote: bool, reason: str)
-        """
-        try:
-            # Founder Rights can always override
-            if requesting_user_role == 'god_rights':
-                return True, "Founder Rights override"
-
-            team_size = self.get_team_size(team_id)
-            current_super_admins = self.count_super_admins(team_id)
-            max_super_admins = self.get_max_super_admins(team_size)
-
-            if current_super_admins >= max_super_admins:
-                return False, f"Team size {team_size} allows max {max_super_admins} Super Admin(s), currently have {current_super_admins}"
-
-            return True, "Promotion allowed"
-
-        except Exception as e:
-            logger.error(f"Failed to check Super Admin limit: {e}")
-            return False, str(e)
+        """Check if team can have another Super Admin"""
+        return roles_mod.can_promote_to_super_admin(self, team_id, requesting_user_role)
 
     def update_member_role(self, team_id: str, user_id: str, new_role: str, requesting_user_role: str = None, requesting_user_id: str = None) -> tuple[bool, str]:
         """
@@ -739,62 +434,7 @@ class TeamManager:
         Returns:
             Tuple of (success: bool, message: str)
         """
-        try:
-            # Check if user is member
-            cursor = self.conn.cursor()
-            cursor.execute("""
-                SELECT role FROM team_members
-                WHERE team_id = ? AND user_id = ?
-            """, (team_id, user_id))
-
-            row = cursor.fetchone()
-            if not row:
-                return False, f"User {user_id} is not a member of team {team_id}"
-
-            current_role = row['role']
-
-            # Founder Rights Protection (Phase 6.1)
-            # Check if target user has Founder Rights - only Founder Rights can modify Founder Rights users
-            target_has_god_rights, _ = self.check_god_rights(user_id)
-            if target_has_god_rights:
-                # Check if requester has Founder Rights
-                requester_has_god_rights = False
-                if requesting_user_id:
-                    requester_has_god_rights, _ = self.check_god_rights(requesting_user_id)
-                elif requesting_user_role == 'god_rights':
-                    requester_has_god_rights = True
-
-                if not requester_has_god_rights:
-                    return False, "Only users with Founder Rights can modify other Founder Rights users"
-
-            # If promoting to Super Admin, check limits
-            if new_role == 'super_admin' and current_role != 'super_admin':
-                can_promote, reason = self.can_promote_to_super_admin(team_id, requesting_user_role)
-                if not can_promote:
-                    return False, reason
-
-            # If demoting a Super Admin, check if they're the last one
-            if current_role == 'super_admin' and new_role != 'super_admin':
-                # Founder Rights can override
-                if requesting_user_role != 'god_rights':
-                    current_super_admins = self.count_super_admins(team_id)
-                    if current_super_admins <= 1:
-                        return False, "You're the last Super Admin. Promote an Admin first."
-
-            # Update role
-            cursor.execute("""
-                UPDATE team_members
-                SET role = ?
-                WHERE team_id = ? AND user_id = ?
-            """, (new_role, team_id, user_id))
-
-            self.conn.commit()
-            logger.info(f"Updated {user_id} role from {current_role} to {new_role} in team {team_id}")
-            return True, f"Role updated to {new_role}"
-
-        except Exception as e:
-            logger.error(f"Failed to update member role: {e}")
-            return False, str(e)
+        return members_mod.update_member_role_impl(self, team_id, user_id, new_role, requesting_user_role, requesting_user_id)
 
     # ========================================================================
     # GUEST AUTO-PROMOTION & DELAYED PROMOTIONS
@@ -811,291 +451,24 @@ class TeamManager:
         Returns:
             Number of days since joining, or None if user not found
         """
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute("""
-                SELECT joined_at FROM team_members
-                WHERE team_id = ? AND user_id = ?
-            """, (team_id, user_id))
-
-            row = cursor.fetchone()
-            if not row:
-                return None
-
-            from datetime import datetime
-            joined_at = datetime.fromisoformat(row['joined_at'])
-            days_elapsed = (datetime.now() - joined_at).days
-
-            return days_elapsed
-
-        except Exception as e:
-            logger.error(f"Failed to calculate days since joined: {e}")
-            return None
+        return members_mod.get_days_since_joined(team_id, user_id)
 
     def check_auto_promotion_eligibility(self, team_id: str, user_id: str, required_days: int = 7) -> tuple[bool, str, int]:
-        """
-        Check if a guest is eligible for auto-promotion to member
-
-        Args:
-            team_id: Team ID
-            user_id: User ID
-            required_days: Days required for auto-promotion (default: 7)
-
-        Returns:
-            Tuple of (is_eligible: bool, reason: str, days_elapsed: int)
-        """
-        try:
-            # Check current role
-            cursor = self.conn.cursor()
-            cursor.execute("""
-                SELECT role, joined_at FROM team_members
-                WHERE team_id = ? AND user_id = ?
-            """, (team_id, user_id))
-
-            row = cursor.fetchone()
-            if not row:
-                return False, "User not found in team", 0
-
-            current_role = row['role']
-
-            # Only guests are eligible for auto-promotion
-            if current_role != 'guest':
-                return False, f"User is already {current_role}, not a guest", 0
-
-            # Calculate days
-            days_elapsed = self.get_days_since_joined(team_id, user_id)
-            if days_elapsed is None:
-                return False, "Failed to calculate days elapsed", 0
-
-            if days_elapsed >= required_days:
-                return True, f"Eligible after {days_elapsed} days (required: {required_days})", days_elapsed
-            else:
-                return False, f"Not eligible yet: {days_elapsed} days (required: {required_days})", days_elapsed
-
-        except Exception as e:
-            logger.error(f"Failed to check auto-promotion eligibility: {e}")
-            return False, str(e), 0
+        """Check if a guest is eligible for auto-promotion to member"""
+        return roles_mod.check_auto_promotion_eligibility(self, team_id, user_id, required_days)
 
     def auto_promote_guests(self, team_id: str, required_days: int = 7) -> List[Dict]:
-        """
-        Auto-promote all eligible guests in a team to members
-
-        Args:
-            team_id: Team ID
-            required_days: Days required for auto-promotion (default: 7)
-
-        Returns:
-            List of dictionaries with promotion results
-        """
-        try:
-            # Find all guests in team
-            cursor = self.conn.cursor()
-            cursor.execute("""
-                SELECT user_id, joined_at FROM team_members
-                WHERE team_id = ? AND role = 'guest'
-            """, (team_id,))
-
-            guests = cursor.fetchall()
-            results = []
-
-            from datetime import datetime
-            for guest in guests:
-                user_id = guest['user_id']
-                joined_at = datetime.fromisoformat(guest['joined_at'])
-                days_elapsed = (datetime.now() - joined_at).days
-
-                if days_elapsed >= required_days:
-                    # Auto-promote to member
-                    success, message = self.update_member_role(team_id, user_id, 'member')
-                    results.append({
-                        'user_id': user_id,
-                        'days_elapsed': days_elapsed,
-                        'promoted': success,
-                        'message': message if success else f"Failed: {message}"
-                    })
-                    logger.info(f"Auto-promoted {user_id} to member after {days_elapsed} days")
-
-            return results
-
-        except Exception as e:
-            logger.error(f"Failed to auto-promote guests: {e}")
-            return []
-
+        """Auto-promote all eligible guests in a team to members"""
+        return roles_mod.auto_promote_guests(self, team_id, required_days)
     def instant_promote_guest(self, team_id: str, user_id: str, approved_by_user_id: str, auth_type: str = 'real_password') -> tuple[bool, str]:
-        """
-        Instantly promote a guest to member (Phase 4.2)
-
-        Bypasses 7-day wait when Super Admin approves with real password + biometric
-        Access granted: Vault, Chat, Automation from now forward
-
-        Args:
-            team_id: Team ID
-            user_id: Guest user to promote
-            approved_by_user_id: Super Admin who approved
-            auth_type: 'real_password' or 'decoy_password' (for audit)
-
-        Returns:
-            Tuple of (success: bool, message: str)
-        """
-        try:
-            # Verify guest exists
-            cursor = self.conn.cursor()
-            cursor.execute("""
-                SELECT role FROM team_members
-                WHERE team_id = ? AND user_id = ?
-            """, (team_id, user_id))
-
-            row = cursor.fetchone()
-            if not row:
-                return False, f"User {user_id} not found in team"
-
-            if row['role'] != 'guest':
-                return False, f"User is already {row['role']}, not a guest"
-
-            # Promote immediately
-            success, message = self.update_member_role(team_id, user_id, 'member')
-
-            if success:
-                logger.info(f"Instant-promoted {user_id} to member (approved by {approved_by_user_id}, auth: {auth_type})")
-                return True, f"Instantly promoted to member. Access granted from now forward."
-
-            return False, message
-
-        except Exception as e:
-            logger.error(f"Failed instant promotion: {e}")
-            return False, str(e)
-
+        """Instantly promote a guest to member (Phase 4.2)"""
+        return roles_mod.instant_promote_guest(self, team_id, user_id, approved_by_user_id, auth_type)
     def schedule_delayed_promotion(self, team_id: str, user_id: str, delay_days: int = 21, approved_by_user_id: str = None, reason: str = "Decoy password delay") -> tuple[bool, str]:
-        """
-        Schedule a delayed promotion (Phase 4.3)
-
-        Used when Super Admin approves with decoy password + biometric
-        Promotion delayed by X days (default 21) as safety mechanism
-        Access: Chat & Automation from now, Vault delayed
-
-        Args:
-            team_id: Team ID
-            user_id: Guest user to promote
-            delay_days: Days to delay promotion (default: 21)
-            approved_by_user_id: Super Admin who approved
-            reason: Reason for delay
-
-        Returns:
-            Tuple of (success: bool, message: str)
-        """
-        try:
-            # Verify guest exists
-            cursor = self.conn.cursor()
-            cursor.execute("""
-                SELECT role FROM team_members
-                WHERE team_id = ? AND user_id = ?
-            """, (team_id, user_id))
-
-            row = cursor.fetchone()
-            if not row:
-                return False, f"User {user_id} not found in team"
-
-            if row['role'] != 'guest':
-                return False, f"User is already {row['role']}, not a guest"
-
-            # Check if already has pending delayed promotion
-            cursor.execute("""
-                SELECT id FROM delayed_promotions
-                WHERE team_id = ? AND user_id = ? AND executed = FALSE
-            """, (team_id, user_id))
-
-            if cursor.fetchone():
-                return False, f"User already has a pending delayed promotion"
-
-            # Schedule delayed promotion
-            from datetime import datetime, timedelta
-            execute_at = datetime.now() + timedelta(days=delay_days)
-
-            cursor.execute("""
-                INSERT INTO delayed_promotions (team_id, user_id, from_role, to_role, execute_at, reason)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (team_id, user_id, 'guest', 'member', execute_at, reason))
-
-            self.conn.commit()
-            logger.info(f"Scheduled delayed promotion for {user_id} (execute at {execute_at}, approved by {approved_by_user_id})")
-
-            return True, f"Promotion scheduled for {execute_at.strftime('%Y-%m-%d')} ({delay_days} days). Chat & Automation access granted now. Vault access on promotion date."
-
-        except Exception as e:
-            logger.error(f"Failed to schedule delayed promotion: {e}")
-            return False, str(e)
-
+        """Schedule a delayed promotion (Phase 4.3)"""
+        return roles_mod.schedule_delayed_promotion(team_id, user_id, delay_days, approved_by_user_id, reason)
     def execute_delayed_promotions(self, team_id: str = None) -> List[Dict]:
-        """
-        Execute all pending delayed promotions that are due
-
-        Can be called by cron job or manually
-
-        Args:
-            team_id: Optional team ID to limit execution to specific team
-
-        Returns:
-            List of execution results
-        """
-        try:
-            from datetime import datetime
-            cursor = self.conn.cursor()
-
-            # Find all pending promotions that are due
-            if team_id:
-                cursor.execute("""
-                    SELECT id, team_id, user_id, from_role, to_role, execute_at
-                    FROM delayed_promotions
-                    WHERE team_id = ? AND executed = FALSE AND execute_at <= ?
-                """, (team_id, datetime.now()))
-            else:
-                cursor.execute("""
-                    SELECT id, team_id, user_id, from_role, to_role, execute_at
-                    FROM delayed_promotions
-                    WHERE executed = FALSE AND execute_at <= ?
-                """, (datetime.now(),))
-
-            pending = cursor.fetchall()
-            results = []
-
-            for promo in pending:
-                # Execute promotion
-                success, message = self.update_member_role(
-                    promo['team_id'],
-                    promo['user_id'],
-                    promo['to_role']
-                )
-
-                if success:
-                    # Mark as executed
-                    cursor.execute("""
-                        UPDATE delayed_promotions
-                        SET executed = TRUE, executed_at = ?
-                        WHERE id = ?
-                    """, (datetime.now(), promo['id']))
-                    self.conn.commit()
-
-                results.append({
-                    'user_id': promo['user_id'],
-                    'team_id': promo['team_id'],
-                    'from_role': promo['from_role'],
-                    'to_role': promo['to_role'],
-                    'executed': success,
-                    'message': message
-                })
-
-                logger.info(f"Executed delayed promotion: {promo['user_id']} -> {promo['to_role']}")
-
-            return results
-
-        except Exception as e:
-            logger.error(f"Failed to execute delayed promotions: {e}")
-            return []
-
-    # ========================================================================
-    # ONLINE/OFFLINE STATUS & TEMPORARY PROMOTIONS
-    # ========================================================================
-
+        """Execute all pending delayed promotions (cron job)"""
+        return roles_mod.execute_delayed_promotions(self, team_id)
     def update_last_seen(self, team_id: str, user_id: str) -> tuple[bool, str]:
         """
         Update last_seen timestamp for a team member (Phase 3.3)
@@ -1109,26 +482,7 @@ class TeamManager:
         Returns:
             Tuple of (success: bool, message: str)
         """
-        try:
-            from datetime import datetime
-            cursor = self.conn.cursor()
-
-            cursor.execute("""
-                UPDATE team_members
-                SET last_seen = ?
-                WHERE team_id = ? AND user_id = ?
-            """, (datetime.now(), team_id, user_id))
-
-            self.conn.commit()
-
-            if cursor.rowcount == 0:
-                return False, "User not found in team"
-
-            return True, "Last seen updated"
-
-        except Exception as e:
-            logger.error(f"Failed to update last_seen: {e}")
-            return False, str(e)
+        return members_mod.update_last_seen(team_id, user_id)
 
     def check_super_admin_offline(self, team_id: str, offline_threshold_minutes: int = 5) -> List[Dict]:
         """
@@ -1174,209 +528,17 @@ class TeamManager:
             return []
 
     def promote_admin_temporarily(self, team_id: str, offline_super_admin_id: str, requesting_user_role: str = None) -> tuple[bool, str]:
-        """
-        Temporarily promote an admin to super_admin when original is offline (Phase 3.3)
-
-        Finds the most senior admin (earliest joined_at) and promotes them temporarily
-        Logs the promotion in temp_promotions table for later approval/revert
-
-        Args:
-            team_id: Team ID
-            offline_super_admin_id: The super_admin who went offline
-            requesting_user_role: Role of requester (for Founder Rights override)
-
-        Returns:
-            Tuple of (success: bool, message: str)
-        """
-        try:
-            from datetime import datetime
-            cursor = self.conn.cursor()
-
-            # Find most senior admin (earliest joined_at)
-            cursor.execute("""
-                SELECT user_id, joined_at FROM team_members
-                WHERE team_id = ? AND role = 'admin'
-                ORDER BY joined_at ASC
-                LIMIT 1
-            """, (team_id,))
-
-            admin = cursor.fetchone()
-            if not admin:
-                return False, "No admins available for temporary promotion"
-
-            promoted_admin_id = admin['user_id']
-
-            # Check if this admin already has an active temp promotion
-            cursor.execute("""
-                SELECT id FROM temp_promotions
-                WHERE team_id = ? AND promoted_admin_id = ? AND status = 'active'
-            """, (team_id, promoted_admin_id))
-
-            if cursor.fetchone():
-                return False, f"Admin {promoted_admin_id} already has active temp promotion"
-
-            # Promote admin to super_admin
-            success, message = self.update_member_role(team_id, promoted_admin_id, 'super_admin', requesting_user_role)
-
-            if not success:
-                return False, f"Failed to promote: {message}"
-
-            # Log in temp_promotions table
-            cursor.execute("""
-                INSERT INTO temp_promotions (team_id, original_super_admin_id, promoted_admin_id, reason, status)
-                VALUES (?, ?, ?, ?, 'active')
-            """, (team_id, offline_super_admin_id, promoted_admin_id, "Super Admin offline failsafe"))
-
-            self.conn.commit()
-
-            logger.info(f"Temporarily promoted {promoted_admin_id} to super_admin (original: {offline_super_admin_id})")
-
-            return True, f"Temporarily promoted {promoted_admin_id} to Super Admin"
-
-        except Exception as e:
-            logger.error(f"Failed temporary promotion: {e}")
-            return False, str(e)
-
+        """Temporarily promote admin to super_admin (offline failsafe)"""
+        return roles_mod.promote_admin_temporarily(self, team_id, offline_super_admin_id, requesting_user_role)
     def get_pending_temp_promotions(self, team_id: str) -> List[Dict]:
-        """
-        Get all pending temporary promotions for a team (Phase 3.3)
-
-        Args:
-            team_id: Team ID
-
-        Returns:
-            List of active temp promotions awaiting approval
-        """
-        try:
-            cursor = self.conn.cursor()
-
-            cursor.execute("""
-                SELECT id, original_super_admin_id, promoted_admin_id, promoted_at, reason, status
-                FROM temp_promotions
-                WHERE team_id = ? AND status = 'active'
-            """, (team_id,))
-
-            promotions = []
-            for row in cursor.fetchall():
-                promotions.append({
-                    'id': row['id'],
-                    'original_super_admin_id': row['original_super_admin_id'],
-                    'promoted_admin_id': row['promoted_admin_id'],
-                    'promoted_at': row['promoted_at'],
-                    'reason': row['reason'],
-                    'status': row['status']
-                })
-
-            return promotions
-
-        except Exception as e:
-            logger.error(f"Failed to get temp promotions: {e}")
-            return []
-
+        """Get all pending temporary promotions for a team"""
+        return roles_mod.get_pending_temp_promotions(team_id)
     def approve_temp_promotion(self, team_id: str, temp_promotion_id: int, approved_by: str) -> tuple[bool, str]:
-        """
-        Approve a temporary promotion, making it permanent (Phase 3.3)
-
-        Args:
-            team_id: Team ID
-            temp_promotion_id: ID from temp_promotions table
-            approved_by: User ID who approved (typically the returning super admin)
-
-        Returns:
-            Tuple of (success: bool, message: str)
-        """
-        try:
-            from datetime import datetime
-            cursor = self.conn.cursor()
-
-            # Get promotion details
-            cursor.execute("""
-                SELECT promoted_admin_id, original_super_admin_id, status
-                FROM temp_promotions
-                WHERE id = ? AND team_id = ?
-            """, (temp_promotion_id, team_id))
-
-            promo = cursor.fetchone()
-            if not promo:
-                return False, "Temporary promotion not found"
-
-            if promo['status'] != 'active':
-                return False, f"Promotion already {promo['status']}"
-
-            # Mark as approved
-            cursor.execute("""
-                UPDATE temp_promotions
-                SET status = 'approved', approved_by = ?
-                WHERE id = ?
-            """, (approved_by, temp_promotion_id))
-
-            self.conn.commit()
-
-            logger.info(f"Approved temp promotion for {promo['promoted_admin_id']} (approved by {approved_by})")
-
-            return True, f"Temporary promotion approved. {promo['promoted_admin_id']} remains Super Admin."
-
-        except Exception as e:
-            logger.error(f"Failed to approve temp promotion: {e}")
-            return False, str(e)
-
+        """Approve a temporary promotion (make permanent)"""
+        return roles_mod.approve_temp_promotion(temp_promotion_id, approved_by)
     def revert_temp_promotion(self, team_id: str, temp_promotion_id: int, reverted_by: str) -> tuple[bool, str]:
-        """
-        Revert a temporary promotion, demoting admin back to admin (Phase 3.3)
-
-        Args:
-            team_id: Team ID
-            temp_promotion_id: ID from temp_promotions table
-            reverted_by: User ID who reverted (typically the returning super admin)
-
-        Returns:
-            Tuple of (success: bool, message: str)
-        """
-        try:
-            from datetime import datetime
-            cursor = self.conn.cursor()
-
-            # Get promotion details
-            cursor.execute("""
-                SELECT promoted_admin_id, original_super_admin_id, status
-                FROM temp_promotions
-                WHERE id = ? AND team_id = ?
-            """, (temp_promotion_id, team_id))
-
-            promo = cursor.fetchone()
-            if not promo:
-                return False, "Temporary promotion not found"
-
-            if promo['status'] != 'active':
-                return False, f"Promotion already {promo['status']}"
-
-            # Demote back to admin
-            success, message = self.update_member_role(team_id, promo['promoted_admin_id'], 'admin')
-
-            if not success:
-                return False, f"Failed to demote: {message}"
-
-            # Mark as reverted
-            cursor.execute("""
-                UPDATE temp_promotions
-                SET status = 'reverted', reverted_at = ?, approved_by = ?
-                WHERE id = ?
-            """, (datetime.now(), reverted_by, temp_promotion_id))
-
-            self.conn.commit()
-
-            logger.info(f"Reverted temp promotion for {promo['promoted_admin_id']} (reverted by {reverted_by})")
-
-            return True, f"Temporary promotion reverted. {promo['promoted_admin_id']} demoted back to Admin."
-
-        except Exception as e:
-            logger.error(f"Failed to revert temp promotion: {e}")
-            return False, str(e)
-
-    # ========================================================================
-    # JOB ROLES (Phase 5.1)
-    # ========================================================================
-
+        """Revert a temporary promotion (demote back to admin)"""
+        return roles_mod.revert_temp_promotion(self, temp_promotion_id, reverted_by)
     def update_job_role(self, team_id: str, user_id: str, job_role: str) -> tuple[bool, str]:
         """
         Update a team member's job role (Phase 5.1)
@@ -1392,44 +554,7 @@ class TeamManager:
         Returns:
             Tuple of (success: bool, message: str)
         """
-        valid_job_roles = ['doctor', 'pastor', 'nurse', 'admin_staff', 'volunteer', 'unassigned']
-
-        # Allow custom job roles (anything not in the predefined list that's not 'unassigned')
-        if job_role not in valid_job_roles and job_role != 'unassigned':
-            # Treat as custom role, validate it's reasonable
-            if len(job_role) > 50:
-                return False, "Custom job role must be 50 characters or less"
-            if not job_role.strip():
-                return False, "Job role cannot be empty"
-
-        try:
-            cursor = self.conn.cursor()
-
-            # Verify user exists in team
-            cursor.execute("""
-                SELECT role FROM team_members
-                WHERE team_id = ? AND user_id = ?
-            """, (team_id, user_id))
-
-            if not cursor.fetchone():
-                return False, f"User {user_id} not found in team"
-
-            # Update job role
-            cursor.execute("""
-                UPDATE team_members
-                SET job_role = ?
-                WHERE team_id = ? AND user_id = ?
-            """, (job_role, team_id, user_id))
-
-            self.conn.commit()
-
-            logger.info(f"Updated job role for {user_id} in team {team_id} to {job_role}")
-
-            return True, f"Job role updated to {job_role}"
-
-        except Exception as e:
-            logger.error(f"Failed to update job role: {e}")
-            return False, str(e)
+        return members_mod.update_job_role(team_id, user_id, job_role)
 
     def get_member_job_role(self, team_id: str, user_id: str) -> Optional[str]:
         """
@@ -1442,23 +567,7 @@ class TeamManager:
         Returns:
             Job role string or None if not found
         """
-        try:
-            cursor = self.conn.cursor()
-
-            cursor.execute("""
-                SELECT job_role FROM team_members
-                WHERE team_id = ? AND user_id = ?
-            """, (team_id, user_id))
-
-            row = cursor.fetchone()
-            if row:
-                return row['job_role']
-
-            return None
-
-        except Exception as e:
-            logger.error(f"Failed to get job role: {e}")
-            return None
+        return members_mod.get_member_job_role(team_id, user_id)
 
     # ========================================================================
     # WORKFLOW PERMISSIONS (Phase 5.2)
@@ -2084,217 +1193,20 @@ class TeamManager:
     # ========================================================================
 
     def grant_god_rights(self, user_id: str, delegated_by: str = None, auth_key: str = None, notes: str = None) -> tuple[bool, str]:
-        """
-        Grant Founder Rights to a user (Phase 6.1)
-
-        Args:
-            user_id: User ID to grant Founder Rights
-            delegated_by: User ID who is delegating (must have Founder Rights), NULL if founder
-            auth_key: Optional authentication key for Founder Rights access
-            notes: Reason for granting Founder Rights
-
-        Returns:
-            Tuple of (success: bool, message: str)
-        """
-        try:
-            import hashlib
-
-            cursor = self.conn.cursor()
-
-            # If delegated_by is specified, verify they have active Founder Rights
-            if delegated_by:
-                has_rights, _ = self.check_god_rights(delegated_by)
-                if not has_rights:
-                    return False, "Delegator does not have active Founder Rights"
-
-            # Check if user already has Founder Rights
-            cursor.execute("""
-                SELECT is_active FROM god_rights_auth
-                WHERE user_id = ?
-            """, (user_id,))
-
-            existing = cursor.fetchone()
-            if existing and existing['is_active']:
-                return False, "User already has active Founder Rights"
-
-            # Hash auth key if provided
-            auth_key_hash = None
-            if auth_key:
-                auth_key_hash = hashlib.sha256(auth_key.encode()).hexdigest()
-
-            # Grant Founder Rights
-            if existing:
-                # Reactivate previously revoked Founder Rights
-                cursor.execute("""
-                    UPDATE god_rights_auth
-                    SET is_active = 1, revoked_at = NULL, delegated_by = ?, auth_key_hash = ?, notes = ?
-                    WHERE user_id = ?
-                """, (delegated_by, auth_key_hash, notes, user_id))
-            else:
-                # New Founder Rights grant
-                cursor.execute("""
-                    INSERT INTO god_rights_auth (user_id, delegated_by, auth_key_hash, notes)
-                    VALUES (?, ?, ?, ?)
-                """, (user_id, delegated_by, auth_key_hash, notes))
-
-            self.conn.commit()
-
-            logger.info(f"Granted Founder Rights to {user_id}" + (f" by {delegated_by}" if delegated_by else " (founder)"))
-
-            return True, f"Founder Rights granted to {user_id}"
-
-        except Exception as e:
-            logger.error(f"Failed to grant Founder Rights: {e}")
-            return False, str(e)
-
+        """Grant Founder Rights to a user"""
+        return founder_mod.grant_god_rights(self, user_id, delegated_by, auth_key, notes)
     def revoke_god_rights(self, user_id: str, revoked_by: str) -> tuple[bool, str]:
-        """
-        Revoke Founder Rights from a user (Phase 6.1)
-
-        Only other Founder Rights users can revoke Founder Rights.
-
-        Args:
-            user_id: User ID to revoke Founder Rights from
-            revoked_by: User ID who is revoking (must have Founder Rights)
-
-        Returns:
-            Tuple of (success: bool, message: str)
-        """
-        try:
-            cursor = self.conn.cursor()
-
-            # Verify revoker has Founder Rights
-            has_rights, _ = self.check_god_rights(revoked_by)
-            if not has_rights:
-                return False, "Only Founder Rights users can revoke Founder Rights"
-
-            # Check if user has Founder Rights
-            cursor.execute("""
-                SELECT is_active FROM god_rights_auth
-                WHERE user_id = ?
-            """, (user_id,))
-
-            existing = cursor.fetchone()
-            if not existing or not existing['is_active']:
-                return False, "User does not have active Founder Rights"
-
-            # Revoke Founder Rights
-            cursor.execute("""
-                UPDATE god_rights_auth
-                SET is_active = 0, revoked_at = CURRENT_TIMESTAMP
-                WHERE user_id = ?
-            """, (user_id,))
-
-            self.conn.commit()
-
-            logger.info(f"Revoked Founder Rights from {user_id} by {revoked_by}")
-
-            return True, f"Founder Rights revoked from {user_id}"
-
-        except Exception as e:
-            logger.error(f"Failed to revoke Founder Rights: {e}")
-            return False, str(e)
-
+        """Revoke Founder Rights from a user"""
+        return founder_mod.revoke_god_rights(self, user_id, revoked_by)
     def check_god_rights(self, user_id: str) -> tuple[bool, str]:
-        """
-        Check if a user has active Founder Rights (Phase 6.1)
-
-        Args:
-            user_id: User ID to check
-
-        Returns:
-            Tuple of (has_rights: bool, message: str)
-        """
-        try:
-            cursor = self.conn.cursor()
-
-            cursor.execute("""
-                SELECT is_active, delegated_by, created_at FROM god_rights_auth
-                WHERE user_id = ? AND is_active = 1
-            """, (user_id,))
-
-            result = cursor.fetchone()
-
-            if result:
-                delegated_by = result['delegated_by'] or 'Founder'
-                return True, f"Active Founder Rights (granted by {delegated_by})"
-            else:
-                return False, "No active Founder Rights"
-
-        except Exception as e:
-            logger.error(f"Failed to check Founder Rights: {e}")
-            return False, str(e)
-
+        """Check if a user has active Founder Rights"""
+        return founder_mod.check_god_rights(user_id)
     def get_god_rights_users(self) -> List[Dict]:
-        """
-        Get all users with active Founder Rights (Phase 6.1)
-
-        Returns:
-            List of Founder Rights users with details
-        """
-        try:
-            cursor = self.conn.cursor()
-
-            cursor.execute("""
-                SELECT user_id, delegated_by, created_at, notes
-                FROM god_rights_auth
-                WHERE is_active = 1
-                ORDER BY created_at
-            """)
-
-            users = []
-            for row in cursor.fetchall():
-                users.append({
-                    'user_id': row['user_id'],
-                    'delegated_by': row['delegated_by'],
-                    'created_at': row['created_at'],
-                    'notes': row['notes'],
-                    'is_founder': row['delegated_by'] is None
-                })
-
-            return users
-
-        except Exception as e:
-            logger.error(f"Failed to get Founder Rights users: {e}")
-            return []
-
+        """Get all users with active Founder Rights"""
+        return founder_mod.get_god_rights_users()
     def get_revoked_god_rights(self) -> List[Dict]:
-        """
-        Get all users with revoked Founder Rights (Phase 6.1)
-
-        Returns:
-            List of revoked Founder Rights users
-        """
-        try:
-            cursor = self.conn.cursor()
-
-            cursor.execute("""
-                SELECT user_id, delegated_by, created_at, revoked_at, notes
-                FROM god_rights_auth
-                WHERE is_active = 0
-                ORDER BY revoked_at DESC
-            """)
-
-            users = []
-            for row in cursor.fetchall():
-                users.append({
-                    'user_id': row['user_id'],
-                    'delegated_by': row['delegated_by'],
-                    'created_at': row['created_at'],
-                    'revoked_at': row['revoked_at'],
-                    'notes': row['notes']
-                })
-
-            return users
-
-        except Exception as e:
-            logger.error(f"Failed to get revoked Founder Rights: {e}")
-            return []
-
-    # ========================================================================
-    # TEAM VAULT METHODS (Phase 6.2)
-    # ========================================================================
-
+        """Get all users with revoked Founder Rights"""
+        return founder_mod.get_revoked_god_rights()
     def _get_vault_encryption_key(self, team_id: str) -> bytes:
         """
         Get or generate encryption key for team vault (Phase 6.2)
