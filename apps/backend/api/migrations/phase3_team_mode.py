@@ -222,13 +222,13 @@ def add_team_id_to_workflows(workflows_db_path: Path) -> None:
         else:
             raise
 
-    # Add team_id to transitions
+    # Add team_id to stage_transitions
     try:
-        cursor.execute("ALTER TABLE transitions ADD COLUMN team_id TEXT")
-        logger.info("  ✅ Added team_id to transitions")
+        cursor.execute("ALTER TABLE stage_transitions ADD COLUMN team_id TEXT")
+        logger.info("  ✅ Added team_id to stage_transitions")
     except sqlite3.OperationalError as e:
         if "duplicate column" in str(e).lower():
-            logger.info("  ⚠️  team_id already exists in transitions")
+            logger.info("  ⚠️  team_id already exists in stage_transitions")
         else:
             raise
 
@@ -245,7 +245,7 @@ def add_team_id_to_workflows(workflows_db_path: Path) -> None:
     # Create indexes for team-scoped queries
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_workflows_team ON workflows(team_id)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_work_items_team ON work_items(team_id)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_transitions_team ON transitions(team_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_stage_transitions_team ON stage_transitions(team_id)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_attachments_team ON attachments(team_id)")
 
     conn.commit()
