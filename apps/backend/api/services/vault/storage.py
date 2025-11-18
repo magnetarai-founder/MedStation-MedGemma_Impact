@@ -10,7 +10,7 @@ import logging
 from datetime import datetime
 from typing import Optional, List, Dict, Any, Tuple
 
-from .schemas import VaultDocument, VaultDocumentCreate, VaultDocumentUpdate
+from .schemas import VaultDocument, VaultDocumentCreate, VaultDocumentUpdate, VaultFile
 
 logger = logging.getLogger(__name__)
 
@@ -404,3 +404,263 @@ def get_vault_stats_record(user_id: str, vault_type: str) -> Dict[str, Any]:
         "total_size_bytes": row[1] or 0,
         "vault_type": vault_type
     }
+
+# ========================================================================
+# FILE CRUD OPERATIONS
+# ========================================================================
+
+def create_file_record(
+    file_id: str,
+    user_id: str,
+    vault_type: str,
+    filename: str,
+    file_size: int,
+    mime_type: str,
+    encrypted_path: str,
+    folder_path: str,
+    created_at: str,
+    updated_at: str
+) -> VaultFile:
+    """
+    Store file metadata in database
+
+    Args:
+        file_id: Unique file identifier
+        user_id: User ID
+        vault_type: 'real' or 'decoy'
+        filename: Original filename
+        file_size: File size in bytes
+        mime_type: MIME type
+        encrypted_path: Path to encrypted file on disk
+        folder_path: Folder path in vault
+        created_at: Creation timestamp
+        updated_at: Update timestamp
+
+    Returns:
+        VaultFile object
+    """
+    conn = _get_vault_conn()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            INSERT INTO vault_files
+            (id, user_id, vault_type, filename, file_size, mime_type,
+             encrypted_path, folder_path, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            file_id,
+            user_id,
+            vault_type,
+            filename,
+            file_size,
+            mime_type,
+            encrypted_path,
+            folder_path,
+            created_at,
+            updated_at
+        ))
+
+        conn.commit()
+
+        return VaultFile(
+            id=file_id,
+            user_id=user_id,
+            vault_type=vault_type,
+            filename=filename,
+            file_size=file_size,
+            mime_type=mime_type,
+            encrypted_path=encrypted_path,
+            folder_path=folder_path,
+            created_at=created_at,
+            updated_at=updated_at
+        )
+
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Failed to create file record: {e}")
+        raise
+    finally:
+        conn.close()
+
+
+def list_files_records(
+    user_id: str,
+    vault_type: str,
+    folder_path: Optional[str] = None
+) -> List[VaultFile]:
+    """
+    List vault files, optionally filtered by folder
+
+    Args:
+        user_id: User ID
+        vault_type: 'real' or 'decoy'
+        folder_path: Optional folder path to filter by
+
+    Returns:
+        List of VaultFile objects
+    """
+    conn = _get_vault_conn()
+    cursor = conn.cursor()
+
+    if folder_path is not None:
+        # List files in specific folder only
+        cursor.execute("""
+            SELECT id, user_id, vault_type, filename, file_size, mime_type,
+                   encrypted_path, folder_path, created_at, updated_at
+            FROM vault_files
+            WHERE user_id = ? AND vault_type = ? AND folder_path = ? AND is_deleted = 0
+            ORDER BY created_at DESC
+        """, (user_id, vault_type, folder_path))
+    else:
+        # List all files
+        cursor.execute("""
+            SELECT id, user_id, vault_type, filename, file_size, mime_type,
+                   encrypted_path, folder_path, created_at, updated_at
+            FROM vault_files
+            WHERE user_id = ? AND vault_type = ? AND is_deleted = 0
+            ORDER BY created_at DESC
+        """, (user_id, vault_type))
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    return [
+        VaultFile(
+            id=row[0],
+            user_id=row[1],
+            vault_type=row[2],
+            filename=row[3],
+            file_size=row[4],
+            mime_type=row[5],
+            encrypted_path=row[6],
+            folder_path=row[7],
+            created_at=row[8],
+            updated_at=row[9]
+        )
+        for row in rows
+    ]
+
+
+def delete_file_record(
+    file_id: str,
+    user_id: str,
+    vault_type: str,
+    deleted_at: str
+) -> bool:
+    """
+    Soft-delete a file
+
+    Args:
+        file_id: File ID
+        user_id: User ID
+        vault_type: 'real' or 'decoy'
+        deleted_at: Deletion timestamp
+
+    Returns:
+        True if file was deleted, False otherwise
+    """
+    conn = _get_vault_conn()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            UPDATE vault_files
+            SET is_deleted = 1, deleted_at = ?
+            WHERE id = ? AND user_id = ? AND vault_type = ? AND is_deleted = 0
+        """, (deleted_at, file_id, user_id, vault_type))
+
+        conn.commit()
+        success = cursor.rowcount > 0
+        return success
+
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Failed to delete file: {e}")
+        raise
+    finally:
+        conn.close()
+
+
+def rename_file_record(
+    file_id: str,
+    user_id: str,
+    vault_type: str,
+    new_filename: str,
+    updated_at: str
+) -> bool:
+    """
+    Rename a file
+
+    Args:
+        file_id: File ID
+        user_id: User ID
+        vault_type: 'real' or 'decoy'
+        new_filename: New filename
+        updated_at: Update timestamp
+
+    Returns:
+        True if file was renamed, False otherwise
+    """
+    conn = _get_vault_conn()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            UPDATE vault_files
+            SET filename = ?, updated_at = ?
+            WHERE id = ? AND user_id = ? AND vault_type = ? AND is_deleted = 0
+        """, (new_filename, updated_at, file_id, user_id, vault_type))
+
+        conn.commit()
+        success = cursor.rowcount > 0
+        return success
+
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Failed to rename file: {e}")
+        raise
+    finally:
+        conn.close()
+
+
+def move_file_record(
+    file_id: str,
+    user_id: str,
+    vault_type: str,
+    new_folder_path: str,
+    updated_at: str
+) -> bool:
+    """
+    Move a file to a different folder
+
+    Args:
+        file_id: File ID
+        user_id: User ID
+        vault_type: 'real' or 'decoy'
+        new_folder_path: New folder path
+        updated_at: Update timestamp
+
+    Returns:
+        True if file was moved, False otherwise
+    """
+    conn = _get_vault_conn()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            UPDATE vault_files
+            SET folder_path = ?, updated_at = ?
+            WHERE id = ? AND user_id = ? AND vault_type = ? AND is_deleted = 0
+        """, (new_folder_path, updated_at, file_id, user_id, vault_type))
+
+        conn.commit()
+        success = cursor.rowcount > 0
+        return success
+
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Failed to move file: {e}")
+        raise
+    finally:
+        conn.close()

@@ -30,6 +30,7 @@ from .schemas import (
     VaultFolder,
 )
 from . import storage
+from . import encryption
 
 logger = logging.getLogger(__name__)
 
@@ -602,34 +603,6 @@ class VaultService:
         """Get vault statistics"""
         return storage.get_vault_stats_record(user_id, vault_type)
 
-    def _get_encryption_key(self, passphrase: str, salt: Optional[bytes] = None) -> tuple[bytes, bytes]:
-        """
-        Generate encryption key from passphrase using PBKDF2
-
-        Returns:
-            tuple: (encryption_key, salt) - Both as bytes
-        """
-        # Use provided salt or generate new one
-        if salt is None:
-            salt = hashlib.sha256(b"elohimos_vault_salt_v1").digest()[:16]
-
-        # Use PBKDF2 with 600,000 iterations (OWASP 2023 recommendation)
-        key_material = hashlib.pbkdf2_hmac(
-            'sha256',
-            passphrase.encode('utf-8'),
-            salt,
-            600000,  # iterations
-            dklen=32  # 256-bit key
-        )
-        key = base64.urlsafe_b64encode(key_material)
-        return key, salt
-
-    def _generate_file_key(self) -> bytes:
-        """Generate a random 256-bit key for file-level encryption"""
-        import os
-        file_key = os.urandom(32)  # 256 bits
-        return base64.urlsafe_b64encode(file_key)
-
     def upload_file(
         self,
         user_id: str,
@@ -661,7 +634,7 @@ class VaultService:
         now = datetime.utcnow().isoformat()
 
         # Encrypt file data
-        key, salt = self._get_encryption_key(passphrase)
+        key, salt = encryption.get_encryption_key(passphrase)
         fernet = Fernet(key)
         encrypted_data = fernet.encrypt(file_data)
 
@@ -673,32 +646,9 @@ class VaultService:
             f.write(encrypted_data)
 
         # Store metadata in database
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
         try:
-            cursor.execute("""
-                INSERT INTO vault_files
-                (id, user_id, vault_type, filename, file_size, mime_type,
-                 encrypted_path, folder_path, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                file_id,
-                user_id,
-                vault_type,
-                filename,
-                len(file_data),
-                mime_type,
-                str(encrypted_path),
-                folder_path,
-                now,
-                now
-            ))
-
-            conn.commit()
-
-            return VaultFile(
-                id=file_id,
+            return storage.create_file_record(
+                file_id=file_id,
                 user_id=user_id,
                 vault_type=vault_type,
                 filename=filename,
@@ -709,59 +659,16 @@ class VaultService:
                 created_at=now,
                 updated_at=now
             )
-
         except Exception as e:
-            conn.rollback()
             # Clean up file if database insert fails
             if encrypted_path.exists():
                 encrypted_path.unlink()
             logger.error(f"Failed to upload file: {e}")
             raise
-        finally:
-            conn.close()
 
     def list_files(self, user_id: str, vault_type: str, folder_path: str = None) -> List[VaultFile]:
         """List vault files, optionally filtered by folder"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        if folder_path is not None:
-            # List files in specific folder only
-            cursor.execute("""
-                SELECT id, user_id, vault_type, filename, file_size, mime_type,
-                       encrypted_path, folder_path, created_at, updated_at
-                FROM vault_files
-                WHERE user_id = ? AND vault_type = ? AND folder_path = ? AND is_deleted = 0
-                ORDER BY created_at DESC
-            """, (user_id, vault_type, folder_path))
-        else:
-            # List all files
-            cursor.execute("""
-                SELECT id, user_id, vault_type, filename, file_size, mime_type,
-                       encrypted_path, folder_path, created_at, updated_at
-                FROM vault_files
-                WHERE user_id = ? AND vault_type = ? AND is_deleted = 0
-                ORDER BY created_at DESC
-            """, (user_id, vault_type))
-
-        rows = cursor.fetchall()
-        conn.close()
-
-        return [
-            VaultFile(
-                id=row[0],
-                user_id=row[1],
-                vault_type=row[2],
-                filename=row[3],
-                file_size=row[4],
-                mime_type=row[5],
-                encrypted_path=row[6],
-                folder_path=row[7],
-                created_at=row[8],
-                updated_at=row[9]
-            )
-            for row in rows
-        ]
+        return storage.list_files_records(user_id, vault_type, folder_path)
 
     def create_folder(
         self,
@@ -902,49 +809,13 @@ class VaultService:
 
     def delete_file(self, user_id: str, vault_type: str, file_id: str) -> bool:
         """Soft-delete a file"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
         now = datetime.utcnow().isoformat()
-
-        try:
-            cursor.execute("""
-                UPDATE vault_files
-                SET is_deleted = 1, deleted_at = ?
-                WHERE id = ? AND user_id = ? AND vault_type = ? AND is_deleted = 0
-            """, (now, file_id, user_id, vault_type))
-
-            conn.commit()
-            return cursor.rowcount > 0
-
-        except Exception as e:
-            conn.rollback()
-            logger.error(f"Failed to delete file: {e}")
-            raise
-        finally:
-            conn.close()
+        return storage.delete_file_record(file_id, user_id, vault_type, now)
 
     def rename_file(self, user_id: str, vault_type: str, file_id: str, new_filename: str) -> bool:
         """Rename a file"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
         now = datetime.utcnow().isoformat()
-
-        try:
-            cursor.execute("""
-                UPDATE vault_files
-                SET filename = ?, updated_at = ?
-                WHERE id = ? AND user_id = ? AND vault_type = ? AND is_deleted = 0
-            """, (new_filename, now, file_id, user_id, vault_type))
-
-            conn.commit()
-            return cursor.rowcount > 0
-
-        except Exception as e:
-            conn.rollback()
-            logger.error(f"Failed to rename file: {e}")
-            raise
-        finally:
-            conn.close()
+        return storage.rename_file_record(file_id, user_id, vault_type, new_filename, now)
 
     def rename_folder(self, user_id: str, vault_type: str, old_path: str, new_name: str) -> bool:
         """Rename a folder and update all nested paths"""
@@ -999,26 +870,8 @@ class VaultService:
 
     def move_file(self, user_id: str, vault_type: str, file_id: str, new_folder_path: str) -> bool:
         """Move a file to a different folder"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
         now = datetime.utcnow().isoformat()
-
-        try:
-            cursor.execute("""
-                UPDATE vault_files
-                SET folder_path = ?, updated_at = ?
-                WHERE id = ? AND user_id = ? AND vault_type = ? AND is_deleted = 0
-            """, (new_folder_path, now, file_id, user_id, vault_type))
-
-            conn.commit()
-            return cursor.rowcount > 0
-
-        except Exception as e:
-            conn.rollback()
-            logger.error(f"Failed to move file: {e}")
-            raise
-        finally:
-            conn.close()
+        return storage.move_file_record(file_id, user_id, vault_type, new_folder_path, now)
 
     # ===== Tags Management =====
 
