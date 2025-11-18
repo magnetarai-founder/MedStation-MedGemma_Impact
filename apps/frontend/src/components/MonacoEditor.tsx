@@ -28,6 +28,17 @@ export function MonacoEditor({
   const handleEditorDidMount: OnMount = (editor, monaco) => {
     editorRef.current = editor
 
+    // Ensure internal textarea has a name attribute for accessibility/autofill tools
+    const domNode = editor.getDomNode()
+    if (domNode) {
+      const textareas = domNode.querySelectorAll('textarea.inputarea') as NodeListOf<HTMLTextAreaElement>
+      textareas.forEach((ta) => {
+        if (!ta.getAttribute('name')) {
+          ta.setAttribute('name', 'monaco_editor_content')
+        }
+      })
+    }
+
     // Configure Monaco (Continue's patterns)
     monaco.editor.defineTheme('elohim-dark', {
       base: 'vs-dark',

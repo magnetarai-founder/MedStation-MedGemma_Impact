@@ -237,8 +237,12 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
     <div className="flex items-center gap-1">
       <div className="relative flex items-center">
         <select
+          id="model-selector"
+          name="model_name"
           value={value}
           onChange={(e) => handleChange(e.target.value)}
+          aria-label="Select model"
+          autoComplete="off"
           className="appearance-none bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 pl-3 pr-8 py-1 rounded border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-1 focus:ring-primary-500 cursor-pointer text-xs hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
         >
           <option value="">Select Model</option>
