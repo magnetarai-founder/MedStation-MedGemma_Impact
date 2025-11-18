@@ -22,7 +22,7 @@ def _get_db_connection() -> sqlite3.Connection:
     try:
         from auth_middleware import auth_service
     except ImportError:
-        from .auth_middleware import auth_service
+        from ..auth_middleware import auth_service
 
     conn = sqlite3.connect(str(auth_service.db_path))
     conn.row_factory = sqlite3.Row

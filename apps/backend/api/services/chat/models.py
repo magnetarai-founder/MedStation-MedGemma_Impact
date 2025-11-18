@@ -36,7 +36,7 @@ def _get_ollama_client():
     """Lazy init for Ollama client"""
     global _ollama_client
     if _ollama_client is None:
-        from ..streaming import OllamaClient
+        from .streaming import OllamaClient
         _ollama_client = OllamaClient()
     return _ollama_client
 

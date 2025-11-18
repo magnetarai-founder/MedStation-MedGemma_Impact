@@ -11,9 +11,9 @@ from typing import Optional, Dict, Any, List
 from uuid import uuid4
 
 try:
-    from .config_paths import PATHS
-except ImportError:
     from config_paths import PATHS
+except ImportError:
+    from ..config_paths import PATHS
 
 DB_PATH = str(PATHS.app_db)
 

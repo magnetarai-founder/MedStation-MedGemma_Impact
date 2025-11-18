@@ -13,12 +13,12 @@ import logging
 try:
     from auth_middleware import get_current_user
 except ImportError:
-    from .auth_middleware import get_current_user
+    from ..auth_middleware import get_current_user
 
 try:
     from permission_engine import require_perm_team
 except ImportError:
-    from .permission_engine import require_perm_team
+    from ..permission_engine import require_perm_team
 
 logger = logging.getLogger(__name__)
 
