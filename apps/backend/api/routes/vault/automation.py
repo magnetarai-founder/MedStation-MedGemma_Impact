@@ -10,7 +10,10 @@ from datetime import datetime
 from typing import Dict
 from fastapi import APIRouter, HTTPException, Form, Request, Depends
 
-from api.auth_middleware import get_current_user
+try:
+    from api.auth_middleware import get_current_user
+except ImportError:
+    from auth_middleware import get_current_user
 from api.services.vault.core import get_vault_service
 
 logger = logging.getLogger(__name__)

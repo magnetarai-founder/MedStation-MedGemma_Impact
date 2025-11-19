@@ -46,8 +46,8 @@ async def get_usage_analytics(
         - Requires 'analytics.view' permission (founder/admin only)
         - Non-admins can only view their own analytics (user_id filter enforced)
     """
-    # Check permissions
-    await require_perm("analytics.view", current_user)
+    # Check permissions (require_perm is a decorator, not async)
+    require_perm("analytics.view")(lambda: None)()
 
     # Parse range to days
     range_map = {
@@ -110,8 +110,8 @@ async def export_analytics(
         - Requires 'analytics.view' permission
         - Non-admins restricted to own data
     """
-    # Check permissions
-    await require_perm("analytics.view", current_user)
+    # Check permissions (require_perm is a decorator, not async)
+    require_perm("analytics.view")(lambda: None)()
 
     # Parse range to days
     range_map = {

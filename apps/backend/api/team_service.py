@@ -35,7 +35,12 @@ logger = logging.getLogger(__name__)
 # ===== Router Re-export =====
 
 # Import the real router from api.routes.team
-from api.routes.team import router
+try:
+    from api.routes import team as _team_routes
+except ImportError:
+    from routes import team as _team_routes
+
+router = _team_routes.router
 
 # Router is the same object; no deprecation warning needed for router itself
 # since it's the actual implementation, not a wrapper

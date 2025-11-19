@@ -3,7 +3,10 @@ Chat routes package - Aggregates all chat sub-routers
 """
 
 from fastapi import APIRouter, Depends
-from api.auth_middleware import get_current_user
+try:
+    from api.auth_middleware import get_current_user
+except ImportError:
+    from auth_middleware import get_current_user
 
 from . import sessions, messages, files, models
 

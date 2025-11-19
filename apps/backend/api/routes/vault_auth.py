@@ -19,7 +19,10 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException, Depends, Request, status
 from pydantic import BaseModel, Field
 
-from api.auth_middleware import get_current_user, User
+try:
+    from api.auth_middleware import get_current_user, User
+except ImportError:
+    from auth_middleware import get_current_user, User
 from api.config_paths import get_config_paths
 from api.config import get_settings
 from api.utils import sanitize_for_log

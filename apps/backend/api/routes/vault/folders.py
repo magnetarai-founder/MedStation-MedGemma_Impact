@@ -6,7 +6,10 @@ import logging
 from typing import List, Dict
 from fastapi import APIRouter, HTTPException, Form, Depends
 
-from api.auth_middleware import get_current_user
+try:
+    from api.auth_middleware import get_current_user
+except ImportError:
+    from auth_middleware import get_current_user
 from api.services.vault.core import get_vault_service
 from api.services.vault.schemas import VaultFolder
 

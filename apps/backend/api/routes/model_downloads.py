@@ -9,7 +9,10 @@ import logging
 from fastapi import APIRouter, HTTPException, Body, Depends, Request
 from typing import List
 
-from auth_middleware import get_current_user
+try:
+    from api.auth_middleware import get_current_user
+except ImportError:
+    from auth_middleware import get_current_user
 from api.services.model_download_queue import get_download_queue
 
 logger = logging.getLogger(__name__)

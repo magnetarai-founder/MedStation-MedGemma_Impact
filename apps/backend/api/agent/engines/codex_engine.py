@@ -72,39 +72,28 @@ class CodexEngine:
             except Exception:
                 pass
 
-        # Backup target files mentioned in diff (best-effort)
-        targets = self._extract_targets(diff_text)
-        for t in targets:
-            tp = (self.repo_root / t).resolve()
-            if tp.exists() and tp.is_file():
-                try:
-                    bd = backup_dir / t
-                    bd.parent.mkdir(parents=True, exist_ok=True)
-                    bd.write_text(tp.read_text())
-                except Exception:
-                    continue
+            # Backup target files mentioned in diff (best-effort)
+            targets = self._extract_targets(diff_text)
+            for t in targets:
+                tp = (self.repo_root / t).resolve()
+                if tp.exists() and tp.is_file():
+                    try:
+                        bd = backup_dir / t
+                        bd.parent.mkdir(parents=True, exist_ok=True)
+                        bd.write_text(tp.read_text())
+                    except Exception:
+                        continue
 
-        # Detect patch strip level (-p0 vs -p1)
-        # Check if headers have a/ b/ prefixes (typical git diff format)
-        patch_level = self._detect_patch_level(diff_text)
+            # Detect patch strip level (-p0 vs -p1)
+            # Check if headers have a/ b/ prefixes (typical git diff format)
+            patch_level = self._detect_patch_level(diff_text)
 
-        try:
-            # Try system patch if available
-            if shutil.which('patch'):
-                # Try with detected patch level
-                dry = subprocess.run(
-                    f"patch -p{patch_level} --dry-run < '{tmp.name}'",
-                    shell=True,
-                    cwd=self.repo_root,
-                    capture_output=True,
-                    text=True,
-                    timeout=10,
-                )
-                if dry.returncode != 0:
-                    # If detected level fails, try the opposite
-                    alternate_level = 1 if patch_level == 0 else 0
+            try:
+                # Try system patch if available
+                if shutil.which('patch'):
+                    # Try with detected patch level
                     dry = subprocess.run(
-                        f"patch -p{alternate_level} --dry-run < '{tmp.name}'",
+                        f"patch -p{patch_level} --dry-run < '{tmp.name}'",
                         shell=True,
                         cwd=self.repo_root,
                         capture_output=True,
@@ -112,41 +101,52 @@ class CodexEngine:
                         timeout=10,
                     )
                     if dry.returncode != 0:
-                        raise RuntimeError(dry.stderr.strip() or dry.stdout.strip())
-                    patch_level = alternate_level
+                        # If detected level fails, try the opposite
+                        alternate_level = 1 if patch_level == 0 else 0
+                        dry = subprocess.run(
+                            f"patch -p{alternate_level} --dry-run < '{tmp.name}'",
+                            shell=True,
+                            cwd=self.repo_root,
+                            capture_output=True,
+                            text=True,
+                            timeout=10,
+                        )
+                        if dry.returncode != 0:
+                            raise RuntimeError(dry.stderr.strip() or dry.stdout.strip())
+                        patch_level = alternate_level
 
-                applied = subprocess.run(
-                    f"patch -p{patch_level} < '{tmp.name}'",
-                    shell=True,
-                    cwd=self.repo_root,
-                    capture_output=True,
-                    text=True,
-                    timeout=30,
-                )
-                if applied.returncode != 0:
-                    raise RuntimeError(applied.stderr.strip() or applied.stdout.strip())
-            else:
-                raise RuntimeError('patch command not available')
-        except Exception as e:
-            # Create parent dirs for added files before retry
-            try:
-                for f in self._extract_targets(diff_text):
-                    if '/dev/null' in f:
-                        continue
-                    p = self.repo_root / f
-                    p.parent.mkdir(parents=True, exist_ok=True)
-            except Exception:
-                pass
+                    applied = subprocess.run(
+                        f"patch -p{patch_level} < '{tmp.name}'",
+                        shell=True,
+                        cwd=self.repo_root,
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
+                    )
+                    if applied.returncode != 0:
+                        raise RuntimeError(applied.stderr.strip() or applied.stdout.strip())
+                else:
+                    raise RuntimeError('patch command not available')
+            except Exception as e:
+                # Create parent dirs for added files before retry
+                try:
+                    for f in self._extract_targets(diff_text):
+                        if '/dev/null' in f:
+                            continue
+                        p = self.repo_root / f
+                        p.parent.mkdir(parents=True, exist_ok=True)
+                except Exception:
+                    pass
 
-            # Fallback 1: per-file application using system patch
-            ok, msg = self._apply_per_file(diff_text)
-            if not ok:
-                # Fallback 2: minimal Python applier for simple single-hunk replacements
-                ok2, msg2 = self._apply_simple_diff(diff_text)
-                if not ok2:
-                    os.unlink(tmp.name)
-                    return False, f"Apply failed: {e}; per-file: {msg}; fallback: {msg2}"
-            os.unlink(tmp.name)
+                # Fallback 1: per-file application using system patch
+                ok, msg = self._apply_per_file(diff_text)
+                if not ok:
+                    # Fallback 2: minimal Python applier for simple single-hunk replacements
+                    ok2, msg2 = self._apply_simple_diff(diff_text)
+                    if not ok2:
+                        os.unlink(tmp.name)
+                        return False, f"Apply failed: {e}; per-file: {msg}; fallback: {msg2}"
+                os.unlink(tmp.name)
 
             # Save patch to log for potential rollback
             patch_file = self._patch_log_dir / f"{patch_id}.diff"

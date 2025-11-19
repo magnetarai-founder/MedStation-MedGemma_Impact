@@ -14,7 +14,11 @@ import secrets
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime
 
-from api.config import get_settings
+try:
+    from api.config import get_settings
+except ImportError:
+    from config import get_settings
+
 from api.config_paths import PATHS
 
 logger = logging.getLogger(__name__)

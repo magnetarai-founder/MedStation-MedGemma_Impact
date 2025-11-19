@@ -10,7 +10,10 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict
 from fastapi import APIRouter, HTTPException, Form, Depends, Request
 
-from api.auth_middleware import get_current_user
+try:
+    from api.auth_middleware import get_current_user
+except ImportError:
+    from auth_middleware import get_current_user
 from api.services.vault.core import get_vault_service
 from api.rate_limiter import get_client_ip, rate_limiter
 from api.audit_logger import get_audit_logger

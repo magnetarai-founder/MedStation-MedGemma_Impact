@@ -9,7 +9,10 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-from api.auth_middleware import get_current_user, User
+try:
+    from api.auth_middleware import get_current_user, User
+except ImportError:
+    from auth_middleware import get_current_user, User
 from api.services.data_profiler import get_data_profiler
 from api.utils import sanitize_for_log
 

@@ -10,6 +10,12 @@ This file has been modularized into:
 All endpoints are now aggregated in api/routes/chat/__init__.py
 """
 
-from api.routes.chat import router, public_router
+try:
+    from api.routes import chat as _chat_routes
+except ImportError:
+    from routes import chat as _chat_routes
+
+router = _chat_routes.router
+public_router = _chat_routes.public_router
 
 __all__ = ['router', 'public_router']

@@ -6,7 +6,10 @@ import logging
 from typing import Optional, Dict
 from fastapi import APIRouter, HTTPException, Request, Depends
 
-from api.auth_middleware import get_current_user
+try:
+    from api.auth_middleware import get_current_user
+except ImportError:
+    from auth_middleware import get_current_user
 from api.permission_engine import require_perm_team
 
 logger = logging.getLogger(__name__)

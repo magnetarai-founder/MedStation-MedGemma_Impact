@@ -324,8 +324,15 @@ async def send_message_stream(
 
     # Add to unified context for cross-component persistence
     try:
-        from .unified_context import get_unified_context
-        from .workspace_session import get_workspace_session_manager
+        try:
+            from api.unified_context import get_unified_context
+        except ImportError:
+            from unified_context import get_unified_context
+
+        try:
+            from api.workspace_session import get_workspace_session_manager
+        except ImportError:
+            from workspace_session import get_workspace_session_manager
 
         unified_ctx = get_unified_context()
         ws_mgr = get_workspace_session_manager()

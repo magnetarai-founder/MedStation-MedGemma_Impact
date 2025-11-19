@@ -34,8 +34,13 @@ logger = logging.getLogger(__name__)
 
 # ===== Router Re-export =====
 
-# Import the real router from api.vault.routes
-from api.vault.routes import router
+# Import the real router from api.routes.vault (via api.vault.routes shim)
+try:
+    from api.routes import vault as _vault_routes
+except ImportError:
+    from routes import vault as _vault_routes
+
+router = _vault_routes.router
 
 # Router is the same object; no deprecation warning needed for router itself
 # since it's the actual implementation, not a wrapper

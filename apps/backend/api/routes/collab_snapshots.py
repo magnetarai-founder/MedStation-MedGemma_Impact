@@ -16,7 +16,10 @@ from typing import Any, Dict, List
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
-from api.auth_middleware import get_current_user, User
+try:
+    from api.auth_middleware import get_current_user, User
+except ImportError:
+    from auth_middleware import get_current_user, User
 from api.config_paths import PATHS
 from api.services.collab_state import apply_snapshot
 from api.services.collab_acl import upsert_acl, list_acl

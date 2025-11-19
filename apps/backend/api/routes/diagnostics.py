@@ -21,7 +21,10 @@ from typing import Any, Dict, Optional
 import psutil
 from fastapi import APIRouter, Depends
 
-from api.auth_middleware import get_current_user
+try:
+    from api.auth_middleware import get_current_user
+except ImportError:
+    from auth_middleware import get_current_user
 from api.config_paths import get_config_paths
 
 logger = logging.getLogger(__name__)

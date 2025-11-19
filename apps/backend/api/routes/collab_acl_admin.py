@@ -14,7 +14,10 @@ from typing import Any, List
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-from api.auth_middleware import get_current_user
+try:
+    from api.auth_middleware import get_current_user
+except ImportError:
+    from auth_middleware import get_current_user
 from api.services.collab_acl import (
     user_can_access_doc,
     list_acl,

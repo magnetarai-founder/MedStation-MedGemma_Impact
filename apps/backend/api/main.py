@@ -1,6 +1,9 @@
 """
 Neutron Star Web API
 FastAPI backend wrapper for the existing SQL engine
+
+This is the main entry point that creates the FastAPI app and defines endpoints.
+App creation and configuration logic has been extracted to app_factory.py.
 """
 
 import asyncio
@@ -10,11 +13,7 @@ import logging
 import math
 import os
 import re
-import signal
 import uuid
-import uuid as uuid_lib
-from contextlib import asynccontextmanager
-from contextvars import ContextVar
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -23,10 +22,8 @@ import aiofiles
 import pandas as pd
 from fastapi import (
     Depends,
-    FastAPI,
     File,
     Form,
-    Header,
     HTTPException,
     Query,
     Request,
@@ -34,12 +31,8 @@ from fastapi import (
     WebSocket,
     WebSocketDisconnect,
 )
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
 from starlette.background import BackgroundTask
 
 # Suppress DEBUG logs from httpcore and httpx to reduce terminal noise
@@ -73,9 +66,6 @@ except ImportError:
 
 # MED-02: Compile frequently-used regex patterns once at module load
 _TABLE_NAME_VALIDATOR = re.compile(r'^[a-zA-Z0-9_]+$')
-
-# Initialize rate limiter
-limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
 # Import shared rate limiter to avoid code duplication
 try:
@@ -240,443 +230,10 @@ elohimos_memory = ElohimOSMemory()
 # Initialize Data Engine
 data_engine = get_data_engine()
 
+# Create FastAPI app using factory
+from api.app_factory import create_app
 
-
-def cleanup_sessions():
-    """Clean up all active sessions and close database connections"""
-    logger.info("Cleaning up sessions...")
-    try:
-        # Clean up session engines
-        # Use list() to avoid RuntimeError if sessions dict is modified during iteration
-        for session_id, session in list(sessions.items()):
-            if 'engine' in session:
-                try:
-                    session['engine'].close()
-                    logger.debug(f"Closed engine for session {session_id}")
-                except Exception as e:
-                    logger.error(f"Error closing engine for session {session_id}: {e}")
-
-        logger.info("Session cleanup complete")
-    except Exception as e:
-        logger.error(f"Error during session cleanup: {e}")
-
-
-def handle_shutdown_signal(signum, frame):
-    """Handle SIGTERM/SIGINT for graceful shutdown"""
-    sig_name = signal.Signals(signum).name
-    logger.warning(f"Received {sig_name} - initiating graceful shutdown...")
-    cleanup_sessions()
-    logger.info("Graceful shutdown complete")
-    # Exit cleanly
-    os._exit(0)
-
-
-async def cleanup_old_temp_files():
-    """Background task to clean up old temporary files"""
-    import asyncio
-    from datetime import datetime, timedelta
-
-    while True:
-        try:
-            await asyncio.sleep(3600)  # Run every hour
-
-            api_dir = Path(__file__).parent
-            cutoff_time = datetime.now() - timedelta(hours=24)  # Delete files older than 24 hours
-
-            for temp_dir in [api_dir / "temp_uploads", api_dir / "temp_exports"]:
-                if temp_dir.exists():
-                    for file_path in temp_dir.glob("*"):
-                        if file_path.is_file():
-                            file_mtime = datetime.fromtimestamp(file_path.stat().st_mtime)
-                            if file_mtime < cutoff_time:
-                                file_path.unlink()
-                                logger.debug(f"Cleaned up old temp file: {file_path.name}")
-        except Exception as e:
-            logger.error(f"Temp file cleanup error: {e}")
-
-
-async def vacuum_databases():
-    """
-    Background task to VACUUM SQLite databases weekly
-
-    Runs weekly to:
-    - Defragment database files
-    - Reclaim deleted space
-    - Rebuild indexes
-    - Reduce file size
-
-    Critical for long-running offline deployments
-    """
-    import asyncio
-
-    while True:
-        try:
-            # Run once per week
-            await asyncio.sleep(7 * 24 * 3600)  # 7 days
-
-            logger.info("Starting weekly database VACUUM maintenance...")
-
-            # VACUUM auth database
-            try:
-                from auth_middleware import auth_service
-                await asyncio.to_thread(lambda: _vacuum_db(auth_service.db_path, "auth"))
-            except Exception as e:
-                logger.error(f"Failed to VACUUM auth database: {e}")
-
-            # VACUUM data engine database
-            try:
-                from data_engine import get_data_engine
-                engine = get_data_engine()
-                if engine and engine.db_path:
-                    await asyncio.to_thread(lambda: _vacuum_db(engine.db_path, "data"))
-            except Exception as e:
-                logger.error(f"Failed to VACUUM data engine: {e}")
-
-            # VACUUM P2P codes database
-            try:
-                from p2p_mesh_service import CODES_DB_PATH
-                if CODES_DB_PATH.exists():
-                    await asyncio.to_thread(lambda: _vacuum_db(CODES_DB_PATH, "p2p_codes"))
-            except Exception as e:
-                logger.error(f"Failed to VACUUM P2P codes: {e}")
-
-            logger.info("✅ Database VACUUM maintenance completed")
-
-        except Exception as e:
-            logger.error(f"Database VACUUM error: {e}")
-
-
-def _vacuum_db(db_path: Path, db_name: str):
-    """Helper to VACUUM a single database"""
-    with sqlite3.connect(str(db_path)) as conn:
-        conn.isolation_level = None  # Autocommit mode required for VACUUM
-        conn.execute("VACUUM")
-        conn.execute("ANALYZE")  # Update query planner statistics
-    logger.info(f"✅ VACUUMed {db_name} database")
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup
-    print("Starting ElohimOS API...")
-
-    # macOS-only check
-    import platform
-    if platform.system() != "Darwin":
-        raise RuntimeError(f"ElohimOS is macOS-only. Detected OS: {platform.system()}")
-
-    # Register signal handlers for graceful shutdown
-    signal.signal(signal.SIGTERM, handle_shutdown_signal)
-    signal.signal(signal.SIGINT, handle_shutdown_signal)
-    logger.info("Registered SIGTERM/SIGINT handlers for graceful shutdown")
-
-    # Create necessary directories
-    api_dir = Path(__file__).parent
-    (api_dir / "temp_uploads").mkdir(exist_ok=True)
-    (api_dir / "temp_exports").mkdir(exist_ok=True)
-
-    # Phase 0: Run startup migrations (database consolidation)
-    try:
-        from startup_migrations import run_startup_migrations
-        await run_startup_migrations()
-        logger.info("✓ Startup migrations completed")
-    except Exception as e:
-        logger.error(f"✗ Startup migrations failed: {e}", exc_info=True)
-        # Re-raise to prevent app from starting with broken DB state
-        raise
-
-    # Phase 1.5: Initialize per-user model storage
-    try:
-        from config_paths import PATHS
-
-        # Prefer relative imports when running as a package; if running as a script,
-        # fall back to absolute package imports after adding the backend dir to sys.path
-        try:
-            from .services.model_catalog import init_model_catalog, get_model_catalog
-            from .services.model_preferences_storage import init_model_preferences_storage
-            from .services.hot_slots_storage import init_hot_slots_storage
-        except Exception:
-            import sys as _sys
-            from pathlib import Path as _Path
-            # Ensure 'apps/backend' is on sys.path so 'api.services' is importable
-            _sys.path.insert(0, str(_Path(__file__).parent.parent))
-            from api.services.model_catalog import init_model_catalog, get_model_catalog  # type: ignore
-            from api.services.model_preferences_storage import init_model_preferences_storage  # type: ignore
-            from api.services.hot_slots_storage import init_hot_slots_storage  # type: ignore
-
-        # Initialize storage singletons
-        init_model_catalog(PATHS.app_db, ollama_base_url="http://localhost:11434")
-        init_model_preferences_storage(PATHS.app_db)
-        # Determine a config directory for legacy JSON; prefer backend_dir/config if available
-        cfg_dir = getattr(PATHS, 'backend_dir', None)
-        if cfg_dir is not None:
-            config_dir = cfg_dir / "config"
-        else:
-            # Fallback to data_dir
-            config_dir = PATHS.data_dir
-        init_hot_slots_storage(PATHS.app_db, config_dir)
-
-        # Sync model catalog from Ollama on startup
-        catalog = get_model_catalog()
-        await catalog.sync_from_ollama()
-
-        logger.info("✓ Per-user model storage initialized")
-    except Exception as e:
-        logger.warning(f"Failed to initialize per-user model storage: {e}")
-        # Don't fail startup - endpoints will handle missing storage gracefully
-
-    # Start background cleanup tasks
-    cleanup_task = asyncio.create_task(cleanup_old_temp_files())
-    vacuum_task = asyncio.create_task(vacuum_databases())
-    logger.info("Started background maintenance tasks (cleanup + VACUUM)")
-
-    # Auto-load favorite models from per-user hot slots (Phase 1.6)
-    try:
-        import sqlite3
-        import json
-        # Avoid shadowing the module-level Path import; no local Path import here
-        from chat_service import ollama_client
-        from .services.hot_slots_storage import get_hot_slots_storage
-
-        # Step 1: Find preload user (founder first, then first active user)
-        preload_user_id = None
-        try:
-            conn = sqlite3.connect(str(PATHS.app_db))
-            cursor = conn.cursor()
-
-            # Try founder user first
-            cursor.execute(
-                "SELECT user_id FROM users WHERE role='founder_rights' AND is_active=1 LIMIT 1"
-            )
-            row = cursor.fetchone()
-
-            if row:
-                preload_user_id = row[0]
-                logger.debug(f"Found founder user for preload: {preload_user_id}")
-            else:
-                # Fallback to first active user
-                cursor.execute(
-                    "SELECT user_id FROM users WHERE is_active=1 ORDER BY created_at ASC LIMIT 1"
-                )
-                row = cursor.fetchone()
-                if row:
-                    preload_user_id = row[0]
-                    logger.debug(f"Using first active user for preload: {preload_user_id}")
-
-            conn.close()
-        except Exception as db_error:
-            logger.debug(f"Could not query preload user: {db_error}")
-
-        # Step 2: Load hot slots from DB or fallback to JSON
-        favorites = []
-
-        if preload_user_id:
-            # Try per-user hot slots from DB
-            try:
-                hot_slots_storage = get_hot_slots_storage()
-                slots = hot_slots_storage.get_slots(preload_user_id)
-
-                # Extract non-null model names from slots
-                favorites = [
-                    slots[slot_key]
-                    for slot_key in ['slot_1', 'slot_2', 'slot_3', 'slot_4']
-                    if slots.get(slot_key)
-                ]
-
-                if favorites:
-                    logger.info(f"Preloading {len(favorites)} model(s) from per-user hot slots: user_id={preload_user_id}, models={favorites}")
-            except Exception as slot_error:
-                logger.debug(f"Could not load per-user hot slots: {slot_error}")
-
-        # Step 3: Fallback to legacy JSON if no DB slots found
-        if not favorites:
-            json_path = PATHS.data_dir / "model_hot_slots.json"
-            if json_path.exists():
-                try:
-                    with open(json_path, 'r') as f:
-                        legacy_data = json.load(f)
-                        favorites = [
-                            legacy_data.get(f'slot_{i}')
-                            for i in range(1, 5)
-                            if legacy_data.get(f'slot_{i}')
-                        ]
-
-                    if favorites:
-                        logger.warning(f"Deprecated JSON hot slots used for preload; migrate to per-user hot slots. Models: {favorites}")
-                except Exception as json_error:
-                    logger.debug(f"Could not read legacy JSON hot slots: {json_error}")
-
-        # Step 4: Preload models
-        if favorites:
-            for model_name in favorites:
-                try:
-                    # Preload model by sending a minimal request
-                    # This warms up the model without blocking startup
-                    await ollama_client.generate(model_name, prompt="", stream=False)
-                    logger.debug(f"✓ Preloaded model: {model_name}")
-                except Exception as model_error:
-                    # Don't fail startup if a model can't be loaded
-                    logger.warning(f"Could not preload model '{model_name}': {model_error}")
-
-            logger.info("✓ Model preloading completed")
-        else:
-            logger.debug("No per-user hot slots found; skipping startup preload")
-
-    except Exception as e:
-        # Don't fail startup if model preloading fails entirely
-        logger.warning(f"Model auto-loading disabled: {e}")
-
-    # Register analytics aggregation jobs (Sprint 6 Theme A)
-    try:
-        from api.background_jobs import register_analytics_jobs, get_job_manager
-
-        register_analytics_jobs()
-
-        # Start the background job manager
-        job_manager = get_job_manager()
-        await job_manager.start()
-
-        logger.info("✓ Analytics aggregation jobs started")
-    except Exception as e:
-        logger.warning(f"Failed to start analytics jobs: {e}")
-
-    yield
-    # Shutdown (clean shutdown via lifespan)
-    print("Shutting down...")
-    cleanup_task.cancel()
-
-    # Stop background jobs
-    try:
-        from api.background_jobs import get_job_manager
-        job_manager = get_job_manager()
-        await job_manager.stop()
-    except Exception as e:
-        logger.warning(f"Error stopping background jobs: {e}")
-
-    cleanup_sessions()
-
-# Request ID context for structured logging
-request_id_ctx: ContextVar[str] = ContextVar("request_id", default="")
-
-app = FastAPI(
-    title="ElohimOS API",
-    description="""
-## ElohimOS - Offline-First AI Operating System
-
-ElohimOS is a secure, privacy-first AI platform designed for mission-critical operations
-in disconnected environments.
-
-### Core Features
-* **Local AI Inference** - Ollama integration with Metal 4 GPU acceleration
-* **Agent Orchestrator** - Integrated Aider + Continue + Codex for AI coding
-* **Secure Data Processing** - SQL engine with AES-256-GCM encryption
-* **P2P Mesh Networking** - Offline device-to-device collaboration
-* **RBAC Permissions** - Salesforce-style role-based access control
-* **Zero-Trust Security** - End-to-end encryption, audit logging, panic mode
-
-### Authentication
-All endpoints require JWT authentication via `Authorization: Bearer <token>` header.
-Get your token via `/api/v1/auth/login`.
-
-### Rate Limiting
-Global limit: 100 requests/minute. Endpoint-specific limits documented below.
-    """,
-    version="1.0.0",
-    lifespan=lifespan,
-    docs_url="/api/docs",  # Swagger UI at /api/docs
-    redoc_url="/api/redoc",  # ReDoc at /api/redoc
-    openapi_url="/api/openapi.json",  # OpenAPI schema
-    contact={
-        "name": "ElohimOS Support",
-        "url": "https://github.com/yourusername/elohimos",  # Update with actual URL
-    },
-    license_info={
-        "name": "Proprietary",
-        "url": "https://elohimos.local/license",  # Update with actual license
-    },
-)
-
-# Middleware to add request ID to all requests
-@app.middleware("http")
-async def add_request_id(request: Request, call_next):
-    """Add unique request ID for tracing and structured logging"""
-    request_id = request.headers.get("X-Request-ID", str(uuid_lib.uuid4()))
-    request_id_ctx.set(request_id)
-
-    response = await call_next(request)
-    response.headers["X-Request-ID"] = request_id
-    return response
-
-# Add rate limiter to app state
-# Disabled slowapi due to compatibility issues with multipart file uploads
-# The global 100/minute limit and specific endpoint limits caused errors
-# File size limits and session-based access control provide adequate protection
-# app.state.limiter = limiter
-# app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-
-# CORS for development
-# Security (HIGH-04): CSRF Protection provided by:
-# 1. JWT tokens in Authorization header (not cookies - no automatic sending)
-# 2. CORS restricts origins to trusted dev servers
-# 3. Browsers enforce SOP - malicious sites can't read responses
-# Parse CORS origins from environment or use defaults
-cors_origins_env = os.getenv('ELOHIM_CORS_ORIGINS', '')
-if cors_origins_env:
-    # Parse comma-separated list from environment
-    allowed_origins = [origin.strip() for origin in cors_origins_env.split(',') if origin.strip()]
-else:
-    # Default dev origins - include common Vite fallback ports
-    allowed_origins = [
-        "http://localhost:4200",
-        "http://localhost:4201",  # Vite fallback when 4200 is busy
-        "http://127.0.0.1:4200",
-        "http://localhost:5173",  # Vite default
-        "http://localhost:5174",  # Vite fallback
-        "http://localhost:5175",  # Vite fallback
-        "http://127.0.0.1:5173",  # 127.0.0.1 equivalents for Vite
-        "http://127.0.0.1:5174",
-        "http://127.0.0.1:5175",
-        "http://localhost:3000"
-    ]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    max_age=3600,  # LOW-03: Cache preflight requests for 1 hour
-)
-
-# Register all routers using centralized router registry
-from api.router_registry import register_routers
-
-services_loaded, services_failed = register_routers(app)
-
-# Prometheus Metrics API (Phase 5.2: Monitoring & Observability)
-# Note: This is not a router, just a service initialization
-try:
-    from prometheus_metrics import get_prometheus_exporter
-    prometheus_exporter = get_prometheus_exporter()
-    services_loaded.append("Prometheus Metrics")
-except ImportError as e:
-    logger.warning(f"Could not import prometheus_metrics: {e}")
-    prometheus_exporter = None
-
-# Health Diagnostics (Phase 5.4: Comprehensive health checks)
-# Note: This is not a router, just a service initialization
-try:
-    from health_diagnostics import get_health_diagnostics
-    health_diagnostics = get_health_diagnostics()
-    services_loaded.append("Health Diagnostics")
-except ImportError as e:
-    logger.warning(f"Could not import health_diagnostics: {e}")
-    health_diagnostics = None
-
-# Log summary of loaded services
-if services_loaded:
-    logger.info(f"✓ Services: {', '.join(services_loaded)}")
-if services_failed:
-    logger.warning(f"✗ Failed: {', '.join(services_failed)}")
+app = create_app()
 
 # Initialize Metal 4 engine (silent - already shown in banner)
 try:
@@ -787,6 +344,12 @@ async def prometheus_metrics():
 
     Response format: text/plain (Prometheus format)
     """
+    try:
+        from prometheus_metrics import get_prometheus_exporter
+        prometheus_exporter = get_prometheus_exporter()
+    except ImportError:
+        raise HTTPException(status_code=503, detail="Prometheus metrics not available")
+
     if not prometheus_exporter:
         raise HTTPException(status_code=503, detail="Prometheus metrics not available")
 
@@ -817,6 +380,12 @@ async def health_check():
     Returns:
         JSON with health status
     """
+    try:
+        from health_diagnostics import get_health_diagnostics
+        health_diagnostics = get_health_diagnostics()
+    except ImportError:
+        raise HTTPException(status_code=503, detail="Health diagnostics not available")
+
     if not health_diagnostics:
         raise HTTPException(status_code=503, detail="Health diagnostics not available")
 
@@ -850,6 +419,12 @@ async def system_diagnostics(force_refresh: bool = False):
     Returns:
         JSON with comprehensive diagnostics
     """
+    try:
+        from health_diagnostics import get_health_diagnostics
+        health_diagnostics = get_health_diagnostics()
+    except ImportError:
+        raise HTTPException(status_code=503, detail="Health diagnostics not available")
+
     if not health_diagnostics:
         raise HTTPException(status_code=503, detail="Health diagnostics not available")
 
@@ -926,380 +501,12 @@ async def _fallback_spawn_system_terminal(current_user: dict = Depends(get_curre
 # ============================================================================
 # MIGRATED TO: api/routes/sessions.py
 # ============================================================================
-# @app.post("/api/sessions/create", response_model=SessionResponse)
-# async def create_session(request: Request):
-#     """Create a new session with isolated engine"""
-#     session_id = str(uuid.uuid4())
-#     sessions[session_id] = {
-#         "id": session_id,
-#         "created_at": datetime.now(),
-#         "engine": NeutronEngine(),
-#         "files": {},
-#         "queries": {}
-#     }
-#     return SessionResponse(session_id=session_id, created_at=sessions[session_id]["created_at"])
-#
-# @app.delete("/api/sessions/{session_id}")
-# async def delete_session(request: Request, session_id: str):
-#     """Clean up session and its resources"""
-#     if session_id not in sessions:
-#         raise HTTPException(status_code=404, detail="Session not found")
-#
-#     session = sessions[session_id]
-#
-#     # Close engine
-#     if 'engine' in session:
-#         session['engine'].close()
-#
-#     # Clean up temp files
-#     for file_info in session.get('files', {}).values():
-#         if 'path' in file_info and Path(file_info['path']).exists():
-#             Path(file_info['path']).unlink()
-#
-#     # Clean up query results
-#     for query_id in session.get('queries', {}):
-#         query_results.pop(query_id, None)
-#
-#     del sessions[session_id]
-#     return {"message": "Session deleted"}
+# Session endpoints migrated
+
 # ============================================================================
 # MIGRATED TO: api/routes/sql_json.py (Phase 4 - Upload Endpoint)
 # ============================================================================
-# @app.post("/api/sessions/{session_id}/upload", response_model=FileUploadResponse)
-# async def upload_file(
-#     session_id: str,
-#     file: UploadFile = File(...),
-#     sheet_name: str | None = Form(None)
-# ):
-#     """Upload and load an Excel file"""
-#     if session_id not in sessions:
-#         raise HTTPException(status_code=404, detail="Session not found")
-#
-#     if not file.filename.lower().endswith(('.xlsx', '.xls', '.xlsm', '.csv')):
-#         raise HTTPException(status_code=400, detail="Only Excel (.xlsx, .xls, .xlsm) and CSV files are supported")
-#
-#     # Save file (streamed) and enforce max size
-#     file_path = await save_upload(file)
-#     size_mb = file_path.stat().st_size / (1024 * 1024)
-#     max_mb = float(config.get("max_file_size_mb", 1000))
-#     if size_mb > max_mb:
-#         try:
-#             file_path.unlink()
-#         except Exception:
-#             pass
-#         raise HTTPException(status_code=413, detail=f"File too large: {size_mb:.1f} MB (limit {int(max_mb)} MB)")
-#
-#     try:
-#         engine = sessions[session_id]['engine']
-#
-#         # Load into engine based on file type
-#         lower_name = file.filename.lower()
-#         if lower_name.endswith('.csv'):
-#             result = engine.load_csv(file_path, table_name="excel_file")
-#         else:
-#             result = engine.load_excel(file_path, table_name="excel_file", sheet_name=sheet_name)
-#
-#         # Defensive checks in case engine returns unexpected value
-#         if result is None or not isinstance(result, QueryResult):
-#             raise HTTPException(status_code=500, detail="Internal error: invalid engine result during load")
-#
-#         if result.error:
-#             raise HTTPException(status_code=400, detail=result.error)
-#
-#         # Get preview data
-#         preview_result = engine.execute_sql("SELECT * FROM excel_file LIMIT 20")
-#
-#         if preview_result is None or not isinstance(preview_result, QueryResult):
-#             raise HTTPException(status_code=500, detail="Internal error: invalid engine result during preview")
-#
-#         if preview_result.error:
-#             raise HTTPException(status_code=500, detail=preview_result.error)
-#
-#         # Store file info
-#         file_info = {
-#             "filename": file.filename,
-#             "path": str(file_path),
-#             "size_mb": file_path.stat().st_size / (1024 * 1024),
-#             "loaded_at": datetime.now()
-#         }
-#         sessions[session_id]['files'][file.filename] = file_info
-#
-#         # Get column info
-#         columns = get_column_info(preview_result.data)
-#
-#         # JSON-safe preview
-#         preview_records = _df_to_jsonsafe_records(preview_result.data)
-#
-#         return FileUploadResponse(
-#             filename=file.filename,
-#             size_mb=file_info['size_mb'],
-#             row_count=result.row_count,
-#             column_count=len(result.column_names),
-#             columns=columns,
-#             preview=preview_records
-#         )
-#
-#     except HTTPException:
-#         raise
-#     except Exception as e:
-#         # Clean up file on error
-#         if file_path.exists():
-#             file_path.unlink()
-#         raise HTTPException(status_code=500, detail=str(e))
-# ============================================================================
-
-# ============================================================================
-# MIGRATED TO: api/routes/sql_json.py (Quick Wins - Validate Endpoint)
-# ============================================================================
-# @app.post("/api/sessions/{session_id}/validate", response_model=ValidationResponse)
-# async def validate_sql(request: Request, session_id: str, body: ValidationRequest):
-#     """Validate SQL syntax before execution"""
-#     if session_id not in sessions:
-#         raise HTTPException(status_code=404, detail="Session not found")
-#
-#     validator = SQLValidator()
-#     is_valid, errors, warnings = validator.validate_sql(
-#         body.sql,
-#         expected_table="excel_file"
-#     )
-#
-#     return ValidationResponse(
-#         is_valid=is_valid,
-#         errors=errors,
-#         warnings=warnings
-#     )
-
-# ============================================================================
-# MIGRATED TO: api/routes/sql_json.py (Phase 4 - Query Endpoint)
-# ============================================================================
-# @app.post("/api/sessions/{session_id}/query", response_model=QueryResponse)
-# async def execute_query(
-#     req: Request,
-#     session_id: str,
-#     request: QueryRequest,
-#     idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key")
-# ):
-#     """Execute SQL query with deduplication support"""
-#
-#     # Request deduplication: Check if this is a duplicate request
-#     if idempotency_key:
-#         if _is_duplicate_request(f"query:{idempotency_key}"):
-#             logger.warning(f"Duplicate query request detected: {idempotency_key}")
-#             raise HTTPException(
-#                 status_code=409,
-#                 detail="Duplicate request detected. This query was already executed recently. Please wait 60 seconds or use a different idempotency key."
-#             )
-#
-#     # Rate limit: 60 queries per minute
-#     client_ip = get_client_ip(req)
-#     if not rate_limiter.check_rate_limit(f"query:{client_ip}", max_requests=60, window_seconds=60):
-#         raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 60 queries per minute.")
-#
-#     # Sanitize SQL for logging (redact potential sensitive data)
-#     sanitized_sql = sanitize_for_log(request.sql[:100])
-#     logger.info(f"Executing query for session {session_id}: {sanitized_sql}...")
-#
-#     if session_id not in sessions:
-#         raise HTTPException(status_code=404, detail="Session not found")
-#
-#     engine = sessions[session_id]['engine']
-#     logger.info(f"Engine found for session {session_id}")
-#
-#     # Clean SQL (strip comments/trailing semicolons) to avoid parsing issues when embedding in LIMIT wrapper
-#     cleaned_sql = SQLProcessor.clean_sql(request.sql)
-#     sanitized_cleaned = sanitize_for_log(cleaned_sql[:100])
-#     logger.info(f"Cleaned SQL: {sanitized_cleaned}...")
-#
-#     # Security: Validate query only accesses allowed tables (session's uploaded file)
-#     from neutron_utils.sql_utils import SQLProcessor as SQLUtil
-#     referenced_tables = SQLUtil.extract_table_names(cleaned_sql)
-#
-#     # Only allow queries to reference the excel_file table (or explicitly allowed tables)
-#     allowed_tables = {'excel_file'}  # Default table for uploaded files
-#     # TODO: Add support for multi-file sessions with explicit table names
-#
-#     unauthorized_tables = set(referenced_tables) - allowed_tables
-#     if unauthorized_tables:
-#         raise HTTPException(
-#             status_code=403,
-#             detail=f"Query references unauthorized tables: {', '.join(unauthorized_tables)}. Only 'excel_file' is allowed."
-#         )
-#
-#     # Execute query with timeout protection
-#     # NOTE: True async cancellation requires aiosqlite (MED-06)
-#     # For now, we use asyncio.wait_for to enforce max query time
-#     timeout = request.timeout_seconds if hasattr(request, 'timeout_seconds') and request.timeout_seconds else 300  # 5min default
-#
-#     try:
-#         result = await asyncio.wait_for(
-#             asyncio.to_thread(
-#                 engine.execute_sql,
-#                 cleaned_sql,
-#                 dialect=request.dialect,
-#                 limit=request.limit
-#             ),
-#             timeout=timeout
-#         )
-#         logger.info(f"Query execution completed, rows: {result.row_count if result else 'error'}")
-#     except asyncio.TimeoutError:
-#         logger.error(f"Query execution timed out after {timeout}s")
-#         raise HTTPException(
-#             status_code=408,
-#             detail=f"Query execution exceeded timeout of {timeout} seconds. Consider adding a LIMIT clause or optimizing your query."
-#         )
-#     except Exception as e:
-#         logger.error(f"Query execution failed: {str(e)}")
-#         raise
-#
-#     if result.error:
-#         raise HTTPException(status_code=400, detail=result.error)
-#
-#     # Store full result for export (with size limits)
-#     query_id = str(uuid.uuid4())
-#     cached = _store_query_result(query_id, result.data)
-#
-#     if not cached:
-#         logger.warning(f"Query result not cached (too large), export will be unavailable")
-#
-#     # Store query info
-#     sessions[session_id]['queries'][query_id] = {
-#         "sql": request.sql,
-#         "executed_at": datetime.now(),
-#         "row_count": result.row_count
-#     }
-#
-#     # Return preview (random sample of 100 rows if dataset is large) — JSON-safe
-#     preview_limit = 100
-#     if result.row_count > preview_limit:
-#         # Random sample for better data representation
-#         preview_df = result.data.sample(n=preview_limit, random_state=None)
-#     else:
-#         preview_df = result.data
-#
-#     preview_data = _df_to_jsonsafe_records(preview_df)
-#
-#     return QueryResponse(
-#         query_id=query_id,
-#         row_count=result.row_count,
-#         column_count=len(result.column_names),
-#         columns=result.column_names,
-#         execution_time_ms=result.execution_time_ms,
-#         preview=preview_data,
-#         has_more=result.row_count > preview_limit
-#     )
-# ============================================================================
-
-# ============================================================================
-# MIGRATED TO: api/routes/sql_json.py (Quick Wins - Query History Endpoints)
-# ============================================================================
-# @app.get("/api/sessions/{session_id}/query-history", response_model=QueryHistoryResponse)
-# async def get_query_history(session_id: str):
-#     """Get query history for a session"""
-#     if session_id not in sessions:
-#         raise HTTPException(status_code=404, detail="Session not found")
-#
-#     queries = sessions[session_id].get('queries', {})
-#     history = []
-#
-#     for query_id, query_info in queries.items():
-#         history.append({
-#             "id": query_id,
-#             "query": query_info["sql"],
-#             "timestamp": query_info["executed_at"].isoformat(),
-#             "executionTime": query_info.get("execution_time_ms"),
-#             "rowCount": query_info.get("row_count"),
-#             "status": "success"  # We only store successful queries
-#         })
-#
-#     # Sort by timestamp descending (most recent first)
-#     history.sort(key=lambda x: x["timestamp"], reverse=True)
-#
-#     return {"history": history}
-#
-# @app.delete("/api/sessions/{session_id}/query-history/{query_id}", response_model=SuccessResponse)
-# async def delete_query_from_history(request: Request, session_id: str, query_id: str):
-#     """Delete a query from history"""
-#     if session_id not in sessions:
-#         raise HTTPException(status_code=404, detail="Session not found")
-#
-#     queries = sessions[session_id].get('queries', {})
-#     if query_id not in queries:
-#         raise HTTPException(status_code=404, detail="Query not found")
-#
-#     del queries[query_id]
-#
-#     # Also remove from query_results cache if it exists
-#     if query_id in query_results:
-#         global _total_cache_size
-#         size = _query_result_sizes.get(query_id, 0)
-#         del query_results[query_id]
-#         if query_id in _query_result_sizes:
-#             del _query_result_sizes[query_id]
-#         _total_cache_size -= size
-#
-#     return SuccessResponse(success=True, message="Query deleted successfully")
-
-# ============================================================================
-# MIGRATED TO: api/routes/sql_json.py
-# ============================================================================
-# @app.post("/api/sessions/{session_id}/export")
-# @require_perm("data.export")
-# async def export_results(req: Request, session_id: str, request: ExportRequest, current_user: dict = Depends(get_current_user)):
-#     """Export query results"""
-
-# ============================================================================
-# MIGRATED TO: api/routes/sql_json.py (Quick Wins - Sheet Names & Tables Endpoints)
-# ============================================================================
-# @app.get("/api/sessions/{session_id}/sheet-names")
-# async def sheet_names(session_id: str, filename: str | None = Query(None)):
-#     """List Excel sheet names for an uploaded file in this session."""
-#     if session_id not in sessions:
-#         raise HTTPException(status_code=404, detail="Session not found")
-#     try:
-#         from neutron_utils.excel_ops import ExcelReader
-#     except Exception:
-#         raise HTTPException(status_code=500, detail="Excel utilities unavailable")
-#
-#     files = sessions[session_id].get('files', {})
-#     file_info = None
-#     if filename and filename in files:
-#         file_info = files[filename]
-#     else:
-#         # Pick first Excel file in session
-#         for info in files.values():
-#             if str(info.get('path', '')).lower().endswith(('.xlsx', '.xls', '.xlsm')):
-#                 file_info = info
-#                 break
-#     if not file_info:
-#         raise HTTPException(status_code=404, detail="No Excel file found in session")
-#     path = Path(file_info['path'])
-#     if not path.exists():
-#         raise HTTPException(status_code=404, detail="File not found on server")
-#     try:
-#         sheets = ExcelReader.get_sheet_names(str(path))
-#         return {"filename": file_info.get('filename', path.name), "sheets": sheets}
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
-#
-# @app.get("/api/sessions/{session_id}/tables")
-# async def list_tables(session_id: str):
-#     """List loaded tables in session"""
-#     if session_id not in sessions:
-#         raise HTTPException(status_code=404, detail="Session not found")
-#
-#     engine = sessions[session_id]['engine']
-#     tables = []
-#
-#     for table_name, file_path in engine.tables.items():
-#         table_info = engine.get_table_info(table_name)
-#         tables.append({
-#             "name": table_name,
-#             "file": Path(file_path).name,
-#             "row_count": table_info.get('row_count', 0),
-#             "column_count": len(table_info.get('columns', []))
-#         })
-#
-#     return {"tables": tables}
+# Upload endpoints migrated
 
 @app.websocket("/api/sessions/{session_id}/ws")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
@@ -1366,63 +573,8 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
 
 ###############################################################################
 # MIGRATED TO: api/routes/sql_json.py (Phase 5 - JSON Upload)
-# @app.post("/api/sessions/{session_id}/json/upload", response_model=JsonUploadResponse)
-# async def upload_json(request: Request, session_id: str, file: UploadFile = File(...)):
-#     """Upload and analyze JSON file"""
-###############################################################################
 # MIGRATED TO: api/routes/sql_json.py (Phase 5 - JSON Convert)
-# @app.post("/api/sessions/{session_id}/json/convert", response_model=JsonConvertResponse)
-# async def convert_json(request: Request, session_id: str, body: JsonConvertRequest):
-#     """Convert JSON data to Excel format"""
-#     query_type: str | None = Query(None)
-# ):
-#     """Get all saved queries"""
-#     try:
-#         queries = elohimos_memory.get_saved_queries(
-#             folder=folder,
-#             query_type=query_type
-#         )
-#         return {"queries": queries}
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
-#
-# @app.put("/api/saved-queries/{query_id}")
-# async def update_saved_query(request: Request, query_id: int, body: SavedQueryUpdateRequest):
-#     """Update a saved query (partial updates supported)"""
-#     try:
-#         # Get existing query
-#         all_queries = elohimos_memory.get_saved_queries()
-#         existing = next((q for q in all_queries if q['id'] == query_id), None)
-#
-#         if not existing:
-#             raise HTTPException(status_code=404, detail="Query not found")
-#
-#         # Merge updates with existing data
-#         elohimos_memory.update_saved_query(
-#             query_id=query_id,
-#             name=body.name if body.name is not None else existing['name'],
-#             query=body.query if body.query is not None else existing['query'],
-#             query_type=body.query_type if body.query_type is not None else existing['query_type'],
-#             folder=body.folder if body.folder is not None else existing.get('folder'),
-#             description=body.description if body.description is not None else existing.get('description'),
-#             tags=body.tags if body.tags is not None else (json.loads(existing.get('tags', '[]')) if existing.get('tags') else None)
-#         )
-#         return {"success": True}
-#     except HTTPException:
-#         raise
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
-#
-# @app.delete("/api/saved-queries/{query_id}")
-# async def delete_saved_query(request: Request, query_id: int):
-#     """Delete a saved query"""
-#     try:
-#         elohimos_memory.delete_saved_query(query_id)
-#         return {"success": True}
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
-# ============================================================================
-
+###############################################################################
 
 # ============================================================================
 # Settings API Endpoints
@@ -1498,68 +650,12 @@ app_settings = load_app_settings()
 # ============================================================================
 # MIGRATED TO: api/routes/settings.py
 # ============================================================================
-# @app.get("/api/settings")
-# async def get_settings():
-#     """Get current app settings"""
-#     return app_settings.dict()
-#
-# @app.post("/api/settings")
-# async def update_settings(request: Request, settings: AppSettings):
-#     """Update app settings"""
-#     global app_settings
-#     app_settings = settings
-#     save_app_settings(settings)
-#     return {"success": True, "settings": app_settings.dict()}
-#
-# @app.get("/api/settings/memory-status")
-# async def get_memory_status():
-#     """Get current memory usage and allocation"""
-#     try:
-#         import psutil
-#         process = psutil.Process()
-#         mem_info = process.memory_info()
-#         system_mem = psutil.virtual_memory()
-#
-#         return {
-#             "process_memory_mb": mem_info.rss / (1024 * 1024),
-#             "system_total_mb": system_mem.total / (1024 * 1024),
-#             "system_available_mb": system_mem.available / (1024 * 1024),
-#             "system_percent_used": system_mem.percent,
-#             "settings": {
-#                 "app_percent": app_settings.app_memory_percent,
-#                 "processing_percent": app_settings.processing_memory_percent,
-#                 "cache_percent": app_settings.cache_memory_percent,
-#             }
-#         }
-#     except ImportError:
-#         return {
-#             "error": "psutil not available",
-#             "settings": {
-#                 "app_percent": app_settings.app_memory_percent,
-#                 "processing_percent": app_settings.processing_memory_percent,
-#                 "cache_percent": app_settings.cache_memory_percent,
-#             }
-#         }
-# ============================================================================
+# Settings endpoints migrated
 
 # ============================================================================
 # MIGRATED TO: api/routes/admin.py
 # ============================================================================
 # Danger Zone Admin Endpoints - All 13 endpoints migrated to api/routes/admin.py
-# - /api/admin/reset-all
-# - /api/admin/uninstall
-# - /api/admin/clear-chats
-# - /api/admin/clear-team-messages
-# - /api/admin/clear-query-library
-# - /api/admin/clear-query-history
-# - /api/admin/clear-temp-files
-# - /api/admin/clear-code-files
-# - /api/admin/reset-settings
-# - /api/admin/reset-data
-# - /api/admin/export-all
-# - /api/admin/export-chats
-# - /api/admin/export-queries
-# ============================================================================
 
 
 # ============================================================================

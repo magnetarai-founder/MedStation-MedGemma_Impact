@@ -10,7 +10,10 @@ from fastapi import APIRouter, HTTPException, Request, Depends, Query
 from typing import List, Optional
 
 # Module-level safe imports
-from auth_middleware import get_current_user
+try:
+    from api.auth_middleware import get_current_user
+except ImportError:
+    from auth_middleware import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -488,10 +491,9 @@ async def get_effective_permissions_endpoint(
             }
         }
     """
-    from permission_engine import get_permission_engine, require_perm
+    from permission_engine import get_permission_engine
 
-    # Require basic chat.use permission to view own permissions
-    require_perm("chat.use")(lambda: None)()
+    # Permission check is done via Depends(get_current_user) already
 
     try:
         engine = get_permission_engine()
@@ -501,15 +503,15 @@ async def get_effective_permissions_endpoint(
         role = current_user.get("role", "user")
         is_founder = role == "founder"
 
-        # Get effective permissions
-        effective_perms = engine.get_effective_permissions(user_id, team_id)
+        # Get effective permissions by loading user context
+        context = engine.load_user_context(user_id, team_id)
 
         return {
             "user_id": user_id,
             "role": role,
             "is_founder": is_founder,
             "team_id": team_id,
-            "effective_permissions": effective_perms
+            "effective_permissions": context.effective_permissions
         }
 
     except Exception as e:

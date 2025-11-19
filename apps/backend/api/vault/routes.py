@@ -12,6 +12,11 @@ This file has been modularized into:
 All endpoints are now aggregated in api/routes/vault/__init__.py
 """
 
-from api.routes.vault import router
+try:
+    from api.routes import vault as _vault_routes
+except ImportError:
+    from routes import vault as _vault_routes
+
+router = _vault_routes.router
 
 __all__ = ['router']

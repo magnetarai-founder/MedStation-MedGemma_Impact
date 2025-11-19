@@ -11,7 +11,10 @@ from typing import Dict, List, Any, Optional, Tuple
 import numpy as np
 import pandas as pd
 
-from api.config import get_settings
+try:
+    from api.config import get_settings
+except ImportError:
+    from config import get_settings
 
 logger = logging.getLogger(__name__)
 

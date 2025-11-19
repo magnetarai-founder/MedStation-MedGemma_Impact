@@ -1,43 +1,15 @@
 import { useState, useEffect, Suspense } from 'react'
-import { Toaster } from 'react-hot-toast'
-import { FileUpload } from './components/FileUpload'
-import { SidebarTabs } from './components/SidebarTabs'
-import { Header } from './components/Header'
-import { ResizablePanels } from './components/ResizablePanels'
-import { ResizableSidebar } from './components/ResizableSidebar'
-import { NavigationRail } from './components/NavigationRail'
-import { Login } from './components/Login'
 import { WelcomeScreen } from './components/WelcomeScreen'
-import { useSessionStore } from './stores/sessionStore'
 import { useNavigationStore } from './stores/navigationStore'
 import { useEditorStore } from './stores/editorStore'
-import { useChatStore } from './stores/chatStore'
-import { useUserStore } from './stores/userStore'
-import { api } from './lib/api'
-import { ClearWorkspaceDialog } from './components/ClearWorkspaceDialog'
-import { OfflineIndicator } from './components/OfflineIndicator'
-import * as settingsApi from './lib/settingsApi'
-import { FolderOpen, Clock, FileJson } from 'lucide-react'
 import { initializeSecurityMonitor, cleanupSecurityMonitor } from './lib/securityMonitor'
 import { useModelSync } from './hooks/useModelSync'
+import { useAppBootstrap } from './hooks/useAppBootstrap'
+import { useModelPreload } from './hooks/useModelPreload'
+import { AppShell } from './components/layout/AppShell'
 import { lazyNamed } from './utils/lazyWithRetry'
+import * as settingsApi from './lib/settingsApi'
 
-// Lazy load heavy components for code splitting with retry logic
-const ChatSidebar = lazyNamed(() => import('./components/ChatSidebar'), 'ChatSidebar')
-const ChatWindow = lazyNamed(() => import('./components/ChatWindow'), 'ChatWindow')
-const CodeWorkspace = lazyNamed(() => import('./components/CodeWorkspace'), 'CodeWorkspace')
-const CodeSidebar = lazyNamed(() => import('./components/CodeSidebar'), 'CodeSidebar')
-const TeamWorkspace = lazyNamed(() => import('./components/TeamWorkspace'), 'TeamWorkspace')
-const AdminPage = lazyNamed(() => import('./pages/AdminPage'), 'default')
-const KanbanWorkspace = lazyNamed(() => import('./pages/KanbanWorkspace'), 'default')
-
-// Lazy load modals (only loaded when opened) with retry logic
-const SettingsModal = lazyNamed(() => import('./components/SettingsModal'), 'SettingsModal')
-const LibraryModal = lazyNamed(() => import('./components/LibraryModal'), 'LibraryModal')
-const ProjectLibraryModal = lazyNamed(() => import('./components/ProjectLibraryModal'), 'ProjectLibraryModal')
-const CodeChatSettingsModal = lazyNamed(() => import('./components/CodeChatSettingsModal'), 'CodeChatSettingsModal')
-const JsonConverterModal = lazyNamed(() => import('./components/JsonConverterModal'), 'JsonConverterModal')
-const QueryHistoryModal = lazyNamed(() => import('./components/QueryHistoryModal'), 'QueryHistoryModal')
 const SetupWizard = lazyNamed(() => import('./components/SetupWizard/SetupWizard'), 'default')
 
 // Loading spinner component for Suspense fallbacks
@@ -54,12 +26,24 @@ export default function App() {
   // Enable global model syncing (polls every 5 seconds for model changes)
   useModelSync()
 
-  const { sessionId, setSessionId, clearSession } = useSessionStore()
+  // Bootstrap auth and session
+  const {
+    authState,
+    setAuthState,
+    isLoading,
+    userSetupComplete,
+    setUserSetupComplete,
+    currentUserId,
+    setCurrentUserId,
+  } = useAppBootstrap()
+
+  // Enable model preloading
+  useModelPreload()
+
   const { activeTab, setActiveTab } = useNavigationStore()
   const { setCode } = useEditorStore()
-  const { settings } = useChatStore()
-  const { fetchUser, user } = useUserStore()
-  const [isLoading, setIsLoading] = useState(true)
+
+  // Modal state
   const [isLibraryOpen, setIsLibraryOpen] = useState(false)
   const [isProjectLibraryOpen, setIsProjectLibraryOpen] = useState(false)
   const [isCodeChatSettingsOpen, setIsCodeChatSettingsOpen] = useState(false)
@@ -67,10 +51,7 @@ export default function App() {
   const [isJsonConverterOpen, setIsJsonConverterOpen] = useState(false)
   const [isQueryHistoryOpen, setIsQueryHistoryOpen] = useState(false)
   const [libraryInitialCode, setLibraryInitialCode] = useState<{ name: string; content: string } | null>(null)
-  const [authState, setAuthState] = useState<'welcome' | 'checking' | 'authenticated'>('welcome')
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
-  const [userSetupComplete, setUserSetupComplete] = useState<boolean | null>(null) // null = checking, true/false = per-user setup status
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   // Handle loading query from library into editor
   const handleLoadQuery = (query: settingsApi.SavedQuery) => {
@@ -96,153 +77,11 @@ export default function App() {
     }
   }
 
-  // Check authentication status on mount
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        // Check if we have a stored token
-        const token = localStorage.getItem('auth_token')
-
-        if (token) {
-          // Token exists - validate it by fetching user
-          try {
-            await fetchUser()
-            const userStr = localStorage.getItem('user')
-            const user = userStr ? JSON.parse(userStr) : null
-            const userId = user?.user_id || user?.id || ''
-
-            setCurrentUserId(userId)
-            setAuthState('checking') // Will check per-user setup next
-          } catch (error) {
-            // Token invalid - clear and show welcome
-            localStorage.removeItem('auth_token')
-            localStorage.removeItem('user')
-            setAuthState('welcome')
-            setIsLoading(false)
-          }
-        } else {
-          // No token - show welcome
-          setAuthState('welcome')
-          setIsLoading(false)
-        }
-      } catch (error) {
-        console.error('Failed to check auth:', error)
-        setAuthState('welcome')
-        setIsLoading(false)
-      }
-    }
-
-    checkAuth()
-  }, [])
-
-  // Check per-user setup status after authentication
-  useEffect(() => {
-    if (authState !== 'checking') return
-
-    const checkUserSetup = async () => {
-      try {
-        // Check if this is the founder account (bypass setup wizard)
-        const userStr = localStorage.getItem('user')
-        const user = userStr ? JSON.parse(userStr) : null
-        const isFounder = user?.role === 'founder_rights' || user?.username === 'elohim_founder'
-
-        if (isFounder) {
-          // Founder account always goes straight to authenticated
-          setUserSetupComplete(true)
-          setAuthState('authenticated')
-          setIsLoading(false)
-          return
-        }
-
-        // Check per-user setup status for regular users
-        const response = await fetch('/api/v1/users/me/setup/status', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-          }
-        })
-
-        if (response.ok) {
-          const status = await response.json()
-          setUserSetupComplete(status.user_setup_completed)
-
-          if (status.user_setup_completed) {
-            setAuthState('authenticated')
-          } else {
-            // Setup incomplete - change state so we exit loading screen and show wizard
-            setAuthState('setup_needed')
-          }
-        } else {
-          // If status check fails, assume setup incomplete (show wizard)
-          setUserSetupComplete(false)
-          setAuthState('setup_needed')
-        }
-      } catch (error) {
-        console.error('Failed to check user setup status:', error)
-        // If check fails, assume setup incomplete (show wizard to be safe)
-        setUserSetupComplete(false)
-        setAuthState('setup_needed')
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    checkUserSetup()
-  }, [authState])
-
-  // Initialize user and session after authentication
-  useEffect(() => {
-    if (authState !== 'authenticated') return
-
-    const initApp = async () => {
-      try {
-        // Fetch or create user identity
-        await fetchUser()
-
-        // Create session
-        const response = await api.createSession()
-        setSessionId(response.session_id)
-      } catch (error) {
-        console.error('Failed to initialize app:', error)
-      }
-    }
-
-    initApp()
-
-    // Cleanup on unmount
-    return () => {
-      if (sessionId) {
-        api.deleteSession(sessionId).catch(console.error)
-      }
-    }
-  }, [authState])
-
-  // Pre-load default AI model after session is created (if enabled)
-  useEffect(() => {
-    // Only preload if enabled in settings
-    if (!settings.autoPreloadModel) {
-      console.debug('Auto-preload disabled in settings')
-      return
-    }
-
-    // Only preload if we have a valid session
-    if (!sessionId) return
-    if (!localStorage.getItem('auth_token')) return
-
-    const preloadDefaultModel = async () => {
-      try {
-        console.log(`🔄 Auto-preloading default model: ${settings.defaultModel} (source: frontend_default)`)
-        await api.preloadModel(settings.defaultModel, '1h', 'frontend_default')
-        console.log(`✅ Model '${settings.defaultModel}' pre-loaded successfully (source: frontend_default)`)
-      } catch (error: any) {
-        // Non-critical - models load on first use anyway
-        console.debug('⚠️ Model preload failed (non-critical):', error?.response?.status || error.message)
-      }
-    }
-
-    // Delay to ensure Ollama server is ready
-    const timeoutId = setTimeout(preloadDefaultModel, 3000)
-    return () => clearTimeout(timeoutId)
-  }, [sessionId, settings.defaultModel, settings.autoPreloadModel])
+  // Handle run query from query history modal
+  const handleRunQuery = (query: string) => {
+    setCode(query)
+    setActiveTab('database')
+  }
 
   // Handle open library with pre-filled code from CodeEditor
   useEffect(() => {
@@ -321,227 +160,27 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen flex flex-col">
-      <Header />
-
-      <div className="flex-1 flex overflow-hidden min-h-0">
-        <NavigationRail
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          onOpenSettings={() => setIsSettingsOpen(true)}
-        />
-
-        <div className="flex-1 flex flex-col min-h-0 min-w-0 relative">
-          {/* Team Workspace Tab */}
-          <div
-            className="absolute inset-0 flex"
-            style={{
-              display: activeTab === 'team' ? 'flex' : 'none'
-            }}
-          >
-            <Suspense fallback={<LoadingSpinner />}>
-              <TeamWorkspace />
-            </Suspense>
-          </div>
-
-          {/* AI Chat Tab */}
-          <div
-            className="absolute inset-0 flex"
-            style={{
-              display: activeTab === 'chat' ? 'flex' : 'none'
-            }}
-          >
-            <Suspense fallback={<LoadingSpinner />}>
-              <ResizableSidebar
-                initialWidth={320}
-                minWidth={280}
-                storageKey="ns.chatSidebarWidth"
-                left={<ChatSidebar />}
-                right={<ChatWindow />}
-              />
-            </Suspense>
-          </div>
-
-          {/* Code Tab */}
-          <div
-            className="absolute inset-0 flex"
-            style={{
-              display: activeTab === 'code' ? 'flex' : 'none'
-            }}
-          >
-            <Suspense fallback={<LoadingSpinner />}>
-              <ResizableSidebar
-                initialWidth={320}
-                minWidth={320}
-                storageKey="ns.codeSidebarWidth"
-                left={
-                  <CodeSidebar
-                    onFileSelect={handleFileSelect}
-                    selectedFile={selectedFile}
-                    onOpenLibrary={() => setIsProjectLibraryOpen(true)}
-                    onOpenSettings={() => setIsCodeChatSettingsOpen(true)}
-                  />
-                }
-                right={<CodeWorkspace />}
-              />
-            </Suspense>
-          </div>
-
-          {/* Database Tab */}
-          <div
-            className="absolute inset-0 flex"
-            style={{
-              display: activeTab === 'database' ? 'flex' : 'none'
-            }}
-          >
-            <ResizableSidebar
-              initialWidth={320}
-              minWidth={320}
-              storageKey="ns.editorSidebarWidth"
-              left={
-                <div className="h-full flex flex-col">
-                  <div className="p-4 pb-3 border-b border-gray-200 dark:border-gray-700">
-                    <FileUpload />
-                  </div>
-
-                  {/* Icon Row - Library, Query History, JSON */}
-                  <div className="flex items-center justify-center gap-2 py-2 border-b border-gray-200 dark:border-gray-700">
-                    <button
-                      onClick={() => setIsLibraryOpen(true)}
-                      className="p-2 hover:bg-white/60 dark:hover:bg-gray-700/60 rounded-lg transition-all text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400"
-                      title="Query Library"
-                    >
-                      <FolderOpen size={18} />
-                    </button>
-                    <button
-                      onClick={() => setIsQueryHistoryOpen(true)}
-                      className="p-2 hover:bg-white/60 dark:hover:bg-gray-700/60 rounded-lg transition-all text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400"
-                      title="Query History"
-                    >
-                      <Clock size={18} />
-                    </button>
-                    <button
-                      onClick={() => setIsJsonConverterOpen(true)}
-                      className="p-2 hover:bg-white/60 dark:hover:bg-gray-700/60 rounded-lg transition-all text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400"
-                      title="JSON Converter"
-                    >
-                      <FileJson size={18} />
-                    </button>
-                  </div>
-
-                  <div className="flex-1 overflow-hidden">
-                    <SidebarTabs />
-                  </div>
-                </div>
-              }
-              right={<ResizablePanels />}
-            />
-          </div>
-
-          {/* Admin Tab */}
-          <div
-            className="absolute inset-0 flex"
-            style={{
-              display: activeTab === 'admin' ? 'flex' : 'none'
-            }}
-          >
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminPage />
-            </Suspense>
-          </div>
-
-          {/* Kanban Tab */}
-          <div
-            className="absolute inset-0 flex"
-            style={{
-              display: activeTab === 'kanban' ? 'flex' : 'none'
-            }}
-          >
-            <Suspense fallback={<LoadingSpinner />}>
-              <KanbanWorkspace />
-            </Suspense>
-          </div>
-
-        </div>
-      </div>
-
-      <Suspense fallback={null}>
-        {isLibraryOpen && (
-          <LibraryModal
-            isOpen={isLibraryOpen}
-            onClose={() => {
-              setIsLibraryOpen(false)
-              setLibraryInitialCode(null)
-            }}
-            initialCodeData={libraryInitialCode}
-            onLoadQuery={handleLoadQuery}
-          />
-        )}
-      </Suspense>
-      <Suspense fallback={null}>
-        {isProjectLibraryOpen && (
-          <ProjectLibraryModal
-            isOpen={isProjectLibraryOpen}
-            onClose={() => setIsProjectLibraryOpen(false)}
-          />
-        )}
-      </Suspense>
-      <Suspense fallback={null}>
-        {isCodeChatSettingsOpen && (
-          <CodeChatSettingsModal
-            isOpen={isCodeChatSettingsOpen}
-            onClose={() => setIsCodeChatSettingsOpen(false)}
-          />
-        )}
-      </Suspense>
-      <Suspense fallback={null}>
-        {isQueryHistoryOpen && (
-          <QueryHistoryModal
-            isOpen={isQueryHistoryOpen}
-            onClose={() => setIsQueryHistoryOpen(false)}
-            onRunQuery={(query) => {
-              setCode(query)
-              setActiveTab('database')
-            }}
-          />
-        )}
-      </Suspense>
-      <Suspense fallback={null}>
-        {isSettingsOpen && (
-          <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} activeNavTab={activeTab} />
-        )}
-      </Suspense>
-      <Suspense fallback={null}>
-        {isJsonConverterOpen && (
-          <JsonConverterModal isOpen={isJsonConverterOpen} onClose={() => setIsJsonConverterOpen(false)} />
-        )}
-      </Suspense>
-      <ClearWorkspaceDialog />
-      <OfflineIndicator />
-      <Toaster
-        position="bottom-right"
-        toastOptions={{
-          duration: 3000,
-          style: {
-            background: '#363636',
-            color: '#fff',
-          },
-          success: {
-            duration: 3000,
-            iconTheme: {
-              primary: '#10b981',
-              secondary: '#fff',
-            },
-          },
-          error: {
-            duration: 4000,
-            iconTheme: {
-              primary: '#ef4444',
-              secondary: '#fff',
-            },
-          },
-        }}
-      />
-    </div>
+    <AppShell
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+      isSettingsOpen={isSettingsOpen}
+      setIsSettingsOpen={setIsSettingsOpen}
+      isLibraryOpen={isLibraryOpen}
+      setIsLibraryOpen={setIsLibraryOpen}
+      isProjectLibraryOpen={isProjectLibraryOpen}
+      setIsProjectLibraryOpen={setIsProjectLibraryOpen}
+      isCodeChatSettingsOpen={isCodeChatSettingsOpen}
+      setIsCodeChatSettingsOpen={setIsCodeChatSettingsOpen}
+      isJsonConverterOpen={isJsonConverterOpen}
+      setIsJsonConverterOpen={setIsJsonConverterOpen}
+      isQueryHistoryOpen={isQueryHistoryOpen}
+      setIsQueryHistoryOpen={setIsQueryHistoryOpen}
+      selectedFile={selectedFile}
+      onFileSelect={handleFileSelect}
+      onLoadQuery={handleLoadQuery}
+      libraryInitialCode={libraryInitialCode}
+      setLibraryInitialCode={setLibraryInitialCode}
+      onRunQuery={handleRunQuery}
+    />
   )
 }
