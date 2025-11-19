@@ -1183,8 +1183,53 @@ api/services/p2p_chat/
 - `api/services/chat/core.py` - Uses LearningSystem for chat features
 - `api/services/chat/system.py` - Uses LearningSystem for system chat
 
+**6.3d: Agent Orchestrator ✅ COMPLETED**
+
+**File**:
+- `api/agent/orchestrator.py` (961 → 358 lines) - 63% reduction
+
+**New Orchestration Package**:
+- `api/agent/orchestration/` package (9 modules totaling ~1,266 lines)
+  - `models.py` (127 lines) - Pydantic request/response models for all endpoints
+  - `config.py` (125 lines) - Agent config loading, updating, persistence
+  - `capabilities.py` (159 lines) - Engine capability detection (Aider, Continue, Codex, Ollama)
+  - `model_settings.py` (213 lines) - Model configuration, validation, auto-fix
+  - `routing.py` (68 lines) - Intent classification and routing decisions
+  - `planning.py` (69 lines) - Plan generation via EnhancedPlanner
+  - `context_bundle.py` (160 lines) - Context building with security validation
+  - `apply.py` (185 lines) - Plan application via engines + PatchBus integration
+  - `__init__.py` (116 lines) - Package exports and public API
+
+**Responsibilities Modularized**:
+- **Models**: All Pydantic models (RouteRequest/Response, PlanRequest/Response, ContextRequest/Response, ApplyRequest/Response, EngineCapability, CapabilitiesResponse)
+- **Config**: YAML config loading/reloading, safe config updates, config path resolution
+- **Capabilities**: Aider/Continue/Codex/Ollama detection, feature flags (unified_context, bash_intelligence, git_integration)
+- **Model Settings**: Get models overview, update settings, validate config, auto-fix with intelligent defaults
+- **Routing**: Intent classification (shell, code_edit, question), model hints, next action suggestions
+- **Planning**: EnhancedPlanner integration, plan generation, risk assessment, time estimation
+- **Context Bundle**: File tree slicing (max 50 files), git history/diffs (last 3 commits), chat snippets from unified_context, security validation (workspace/home dir)
+- **Apply**: Engine iteration (Aider→Continue→Codex), patch generation, dry_run vs real apply, PatchBus integration, unified_context persistence
+
+**orchestrator.py Now Handles**:
+- Thin HTTP routing with FastAPI
+- Security enforcement: @require_perm decorators ("code.use", "code.edit", "settings.update")
+- Audit logging via audit_logger (CODE_ASSIST, CODE_EDIT actions)
+- Rate limiting: route (60/min), plan (30/min), context (60/min), apply (10/min)
+- Request/response handling and HTTPException wrappers
+
+**Key Achievements**:
+- Clear separation: Router handles HTTP/auth/audit/rate-limiting, orchestration handles business logic
+- Preserved all 9 endpoints: /capabilities, /models, /models/update, /route, /plan, /context, /apply, /models/validate, /models/auto-fix
+- Maintained security: repo_root validation against workspace/home dirs (matching code_operations.py pattern)
+- Preserved rate limiting behavior (production limits unchanged)
+- Import validation passed ✓
+- All existing consumers continue to work (router_registry.py imports router from api.agent)
+- No breaking changes to /api/v1/agent/* endpoints
+
+**Existing Consumers** (all verified working):
+- `router_registry.py` - Registers agent router via `from api.agent import router`
+
 **Remaining Files**:
-- `api/agent/orchestrator.py` (961 lines) → Split into `agent/orchestration/`
 - `api/workflow_orchestrator.py` (917 lines) → Merge with workflow_service.py
 
 **Approach**: Apply same patterns as above phases
