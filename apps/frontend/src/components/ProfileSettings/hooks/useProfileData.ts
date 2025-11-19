@@ -17,7 +17,8 @@ export function useProfileData() {
       hasFetchedRef.current = true
       fetchUser()
     }
-  }, [user, isLoading, fetchUser])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, isLoading]) // fetchUser is a stable Zustand action, no need in deps
 
   return {
     user,

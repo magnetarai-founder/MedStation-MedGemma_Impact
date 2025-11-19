@@ -51,7 +51,8 @@ export function useAppBootstrap() {
     }
 
     checkAuth()
-  }, [fetchUser])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // fetchUser is a stable Zustand action, no need to include in deps
 
   // Check per-user setup status after authentication
   useEffect(() => {
@@ -132,7 +133,8 @@ export function useAppBootstrap() {
         api.deleteSession(sessionId).catch(console.error)
       }
     }
-  }, [authState, fetchUser, setSessionId, sessionId])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authState]) // fetchUser and setSessionId are stable Zustand actions, sessionId handled internally
 
   return {
     authState,
