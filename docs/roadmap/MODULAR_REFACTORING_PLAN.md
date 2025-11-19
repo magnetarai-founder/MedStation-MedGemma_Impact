@@ -77,8 +77,9 @@ This is the **single source of truth** for refactoring ElohimOS over the next 12
 | `api/code_editor_service.py` | 1,064 | Code editor backend logic | MEDIUM |
 | `api/permission_engine.py` | 1,052 | RBAC permission engine | MEDIUM |
 | `api/services/permissions.py` | 1,050 | Permission service layer | MEDIUM |
-| `api/admin_service.py` | 1,049 | Admin operations | MEDIUM |
+| ~~`api/admin_service.py`~~ | ~~1,049~~ → **494** | ✅ **REFACTORED** → `services/admin_support.py` (Phase 6.3b) | ~~MEDIUM~~ → **COMPLETED** |
 | `api/code_operations.py` | 1,036 | Code file operations | MEDIUM |
+| ~~`api/learning_system.py`~~ | ~~979~~ → **133** | ✅ **REFACTORED** → `learning/` package (Phase 6.3c) | ~~MEDIUM~~ → **COMPLETED** |
 
 ### Frontend Files (Threshold: >500 lines)
 
@@ -1134,8 +1135,55 @@ api/services/p2p_chat/
 - `api/services/admin.py` (272 lines) - "Danger Zone" operations (reset/uninstall/clear/export)
 - `api/routes/admin.py` (149 lines) - Router for "Danger Zone" endpoints
 
+**6.3c: Learning System ✅ COMPLETED**
+
+**File**:
+- `api/learning_system.py` (979 → 133 lines) - 86% reduction
+
+**New Learning Package**:
+- `api/learning/` package (9 modules totaling ~900 lines)
+  - `models.py` (58 lines) - UserPreference, CodingStyle, ProjectContext, Recommendation dataclasses
+  - `storage.py` (154 lines) - DB connection, schema setup, migrations
+  - `patterns.py` (104 lines) - Pattern detection rules and helpers
+  - `success.py` (119 lines) - Success tracking and execution recording
+  - `preferences.py` (169 lines) - Preference learning from execution patterns
+  - `style.py` (248 lines) - Coding style detection (Python, JS/TS, Java)
+  - `context.py` (254 lines) - Project context detection and management
+  - `recommendations.py` (166 lines) - Learning-based recommendation engine
+  - `system.py` (343 lines) - Main LearningSystem orchestrator
+  - `__init__.py` (54 lines) - Package exports
+
+**Responsibilities Modularized**:
+- **Storage**: DB path resolution, connection management, table creation with migrations
+- **Pattern Detection**: Tool/workflow/style preference rules, helper functions
+- **Success Tracking**: Execution tracking, success rate calculation, pattern hashing
+- **Preference Learning**: User preference inference from commands, confidence scoring
+- **Style Detection**: Language detection, Python/JS/Java style analysis, style storage
+- **Context Management**: Project type detection, framework discovery, activity tracking
+- **Recommendations**: Tool/workflow/style recommendations based on learned patterns
+- **System Orchestrator**: Main LearningSystem class coordinating all modules
+
+**learning_system.py Now Handles**:
+- Backwards compatibility shim with re-exports from `api.learning` package
+- Test function preserved for compatibility
+- All existing imports from adaptive_router.py, jarvis_adaptive_router.py, chat services work unchanged
+
+**Key Achievements**:
+- Clear separation: Each learning component is independent and testable
+- Preserved all learning features: success tracking, preferences, coding style detection, recommendations
+- Maintained identical DB schema (learning.db with 6 tables)
+- Import validation passed ✓
+- All existing consumers continue to work without changes
+- No breaking changes to LearningSystem API
+
+**Existing Consumers** (all verified working):
+- `api/adaptive_router.py` - Uses LearningSystem for routing decisions
+- `api/jarvis_adaptive_router.py` - Uses LearningSystem and Recommendation
+- `api/agent/adaptive_router.py` - Uses LearningSystem
+- `api/services/chat/core.py` - Uses LearningSystem for chat features
+- `api/services/chat/system.py` - Uses LearningSystem for system chat
+
 **Remaining Files**:
-- `api/learning_system.py` (979 lines) → Split into `learning/`
 - `api/agent/orchestrator.py` (961 lines) → Split into `agent/orchestration/`
 - `api/workflow_orchestrator.py` (917 lines) → Merge with workflow_service.py
 
