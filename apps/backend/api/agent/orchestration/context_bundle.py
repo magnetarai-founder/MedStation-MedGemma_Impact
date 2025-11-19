@@ -139,14 +139,11 @@ def build_context_bundle(
     chat_snippets = []
     if body.session_id:
         try:
-            # Try different import paths
+            # Import from parent api directory (two levels up from orchestration/)
             try:
-                from ...unified_context import get_unified_context
+                from api.unified_context import get_unified_context
             except ImportError:
-                try:
-                    from ..unified_context import get_unified_context
-                except ImportError:
-                    from unified_context import get_unified_context
+                from unified_context import get_unified_context
 
             context_mgr = get_unified_context()
             recent_entries = context_mgr.get_recent_context(

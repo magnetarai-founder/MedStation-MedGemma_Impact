@@ -150,17 +150,13 @@ def apply_plan_logic(
 
         # Add to unified context for persistence
         try:
-            # Try different import paths
+            # Import from parent api directory (two levels up from orchestration/)
             try:
-                from ...unified_context import get_unified_context
-                from ...workspace_session import get_workspace_session_manager
+                from api.unified_context import get_unified_context
+                from api.workspace_session import get_workspace_session_manager
             except ImportError:
-                try:
-                    from ..unified_context import get_unified_context
-                    from ..workspace_session import get_workspace_session_manager
-                except ImportError:
-                    from unified_context import get_unified_context
-                    from workspace_session import get_workspace_session_manager
+                from unified_context import get_unified_context
+                from workspace_session import get_workspace_session_manager
 
             context_mgr = get_unified_context()
             ws_mgr = get_workspace_session_manager()

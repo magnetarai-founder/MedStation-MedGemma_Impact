@@ -1229,10 +1229,47 @@ api/services/p2p_chat/
 **Existing Consumers** (all verified working):
 - `router_registry.py` - Registers agent router via `from api.agent import router`
 
-**Remaining Files**:
-- `api/workflow_orchestrator.py` (917 lines) → Merge with workflow_service.py
+**6.3e: Workflow Orchestrator ✅ COMPLETED**
 
-**Approach**: Apply same patterns as above phases
+**File**:
+- `api/workflow_orchestrator.py` (917 → 28 lines) - 97% reduction
+
+**New Service Module**:
+- `api/services/workflow_orchestrator.py` (917 lines) - Complete WorkflowOrchestrator class implementation
+
+**Refactoring Applied**:
+- Moved entire `WorkflowOrchestrator` class from `api/workflow_orchestrator.py` to `api/services/workflow_orchestrator.py`
+- Converted `workflow_orchestrator.py` to backwards compatibility shim (re-exports from services)
+- Fixed all import paths: changed from relative imports (`from .workflow_models`) to absolute imports (`from api.workflow_models`)
+- Maintained identical behavior for all workflow engine features:
+  - State machine for work item lifecycle (7 states: backlog, ready, in_progress, review, testing, done, blocked)
+  - Stage transition logic with dependency resolution
+  - Conditional routing based on data
+  - SLA tracking and overdue detection
+  - Queue management and assignment
+  - Stats aggregation (by stage, user, priority)
+- Preserved all existing imports from consumers:
+  - `workflow_service.py` - Uses WorkflowOrchestrator for workflow execution
+  - `workflow_p2p_sync.py` - Uses WorkflowOrchestrator for P2P workflow sync
+  - `n8n_router.py` - Uses WorkflowOrchestrator for n8n integration
+
+**Key Achievements**:
+- Clean separation: WorkflowOrchestrator now lives in services layer with other business logic
+- Backwards compatibility maintained via shim pattern (all existing imports work unchanged)
+- Import validation passed ✓
+- All workflow endpoints continue to work identically: /api/v1/workflow/*
+- No breaking changes to workflow engine behavior
+- Consistent pattern with other service modules (vault, chat, team)
+
+**Existing Consumers** (all verified working):
+- `api/workflow_service.py` - Imports WorkflowOrchestrator for workflow execution
+- `api/workflow_p2p_sync.py` - Imports WorkflowOrchestrator for P2P workflow sync
+- `api/n8n_router.py` - Imports WorkflowOrchestrator for n8n integration
+
+**Remaining Files**:
+- None in Phase 6.3 - all large orchestrator files refactored!
+
+**Phase 6.3 Complete** ✅
 
 ---
 
@@ -1443,10 +1480,10 @@ packages/neutron_core/
 | 13 | `api/services/permissions.py` | 1,050 | Service |
 | 14 | `api/admin_service.py` | 1,049 | Service |
 | 15 | `api/code_operations.py` | 1,036 | Service |
-| 16 | `api/learning_system.py` | 979 | Service |
-| 17 | `api/agent/orchestrator.py` | 961 | Service |
+| 16 | ~~`api/learning_system.py`~~ | ~~979~~ → **133** | ✅ **REFACTORED** → `learning/` package (Phase 6.3c) |
+| 17 | ~~`api/agent/orchestrator.py`~~ | ~~961~~ → **358** | ✅ **REFACTORED** → `agent/orchestration/` package (Phase 6.3d) |
 | 18 | `api/routes/sql_json.py` | 948 | Routes |
-| 19 | `api/workflow_orchestrator.py` | 917 | Service |
+| 19 | ~~`api/workflow_orchestrator.py`~~ | ~~917~~ → **28** | ✅ **REFACTORED** → `services/workflow_orchestrator.py` (Phase 6.3e) |
 | 20 | `api/agent/engines/codex_engine.py` | 910 | Service |
 
 **Total Lines in Top 20**: 28,363 lines
