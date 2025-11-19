@@ -1,5 +1,15 @@
 """
 Main JSON to Excel conversion engine
+
+This module provides the public API facade for the pulsar_core package.
+Heavy lifting is delegated to specialized modules:
+- json_parser: Basic JSON parsing
+- json_parser_v2: Advanced parsing with array expansion
+- json_normalizer: Feed JSON normalization
+- excel_writer: Excel output
+- json_streamer: Streaming for large files
+- type_utils: Type/size estimation helpers
+- column_utils: Column selection/manipulation helpers
 """
 import os
 import math
@@ -13,6 +23,9 @@ from .json_parser import JsonParser
 from .json_parser_v2 import JsonParserV2
 from .excel_writer import ExcelWriter
 from .json_normalizer import JsonNormalizer
+from .type_utils import quick_size_estimate, estimate_rows, get_memory_usage_mb
+from .column_utils import strip_indices, select_columns, adapt_patterns_for_array, sanitize_sheet_name
+
 try:
     from .json_streamer import JsonStreamer
     STREAMING_AVAILABLE = True
@@ -58,154 +71,6 @@ class JsonToExcelEngine:
             env_mem = 0
         self._MEMORY_SOFT_LIMIT_MB = env_mem if env_mem > 0 else None
 
-    @staticmethod
-    def _quick_size_estimate(data: Any, limit: int) -> int:
-        """Conservative upper-bound estimate by multiplying lengths of lists encountered.
-
-        Short-circuits when product reaches limit.
-        """
-        product = 1
-
-        def walk(obj: Any):
-            nonlocal product
-            if product >= limit:
-                return
-            if isinstance(obj, list):
-                try:
-                    n = len(obj) or 1
-                except Exception:
-                    n = 1
-                product *= n
-                for it in obj[:2]:  # sample a few items
-                    walk(it)
-            elif isinstance(obj, dict):
-                for v in obj.values():
-                    walk(v)
-
-        walk(data)
-        return product
-
-    @staticmethod
-    def _estimate_rows(data: Any, threshold: int = 100_000, max_inspect: int = 2) -> int:
-        """Roughly estimate expanded row count, with early cutoff.
-
-        Heuristic rules:
-        - For dict: multiply factors of values.
-        - For list: multiply by length, then inspect up to max_inspect items to account for nested arrays.
-        - For scalars: factor 1.
-        Overestimates are fine (we only use this to decide fallbacks).
-        """
-        estimate = 1
-
-        def rec(obj: Any):
-            nonlocal estimate
-            if estimate >= threshold:
-                return
-            if isinstance(obj, dict):
-                for v in obj.values():
-                    rec(v)
-                    if estimate >= threshold:
-                        return
-            elif isinstance(obj, list):
-                try:
-                    length = len(obj)
-                except Exception:
-                    length = 1
-                estimate *= max(1, length)
-                # Inspect a few items to catch nested arrays
-                for item in obj[:max_inspect]:
-                    rec(item)
-                    if estimate >= threshold:
-                        return
-            else:
-                return
-
-        rec(data)
-        return estimate
-    
-    @staticmethod
-    def _strip_indices(name: str) -> str:
-        """Remove array index tokens like [0] from a column path."""
-        import re
-        return re.sub(r"\[\d+\]", "", name)
-
-    @staticmethod
-    def _select_columns(df: pd.DataFrame,
-                        patterns: Optional[List[str]],
-                        preserve_indices: bool = False) -> List[str]:
-        """Select columns from df using patterns with index-aware matching.
-
-        Rules:
-        - Supports exact names and simple prefix wildcard with trailing '*'.
-        - If preserve_indices=True, patterns without indices (e.g., users.name)
-          match columns that have indices (e.g., users[0].name). Matching is
-          performed against an index-stripped view of column names and then
-          mapped back to actual columns in original order.
-        - Also accepts patterns containing explicit indices or [*]/[] which are
-          treated as index-agnostic and match any numeric index.
-        """
-        if not patterns:
-            return list(df.columns)
-
-        cols = list(df.columns)
-        deindexed = [JsonToExcelEngine._strip_indices(c) for c in cols]
-
-        selected: List[str] = []
-        for pattern in patterns:
-            # Normalize wildcard prefix patterns X*
-            if pattern.endswith('*'):
-                prefix = pattern[:-1]
-                if preserve_indices:
-                    for c, d in zip(cols, deindexed):
-                        if d.startswith(prefix):
-                            selected.append(c)
-                else:
-                    selected.extend([c for c in cols if c.startswith(prefix)])
-                continue
-
-            # Handle explicit [*] or [] in pattern as index-agnostic
-            pat = pattern.replace('[*]', '').replace('[]', '')
-
-            if preserve_indices:
-                if pattern in cols:
-                    selected.append(pattern)
-                    continue
-                for c, d in zip(cols, deindexed):
-                    if d == pat:
-                        selected.append(c)
-            else:
-                if pattern in cols:
-                    selected.append(pattern)
-
-        # Deduplicate while preserving order
-        seen = set()
-        return [c for c in selected if not (c in seen or seen.add(c))]
-
-    @staticmethod
-    def _sanitize_sheet_name(name: str) -> str:
-        """Sanitize sheet name using ExcelWriter's implementation for consistency."""
-        return ExcelWriter._sanitize_sheet_name(name)
-
-    @staticmethod
-    def _adapt_patterns_for_array(patterns: List[str], array_path: Optional[str]) -> List[str]:
-        """Expand patterns to also include variants relative to the array path.
-
-        If a pattern starts with the array_path prefix, also include a version
-        with that prefix removed so it can match columns flattened relative to
-        the array root.
-        """
-        if not array_path or array_path == '(root)':
-            return patterns
-        out: List[str] = []
-        prefix = f"{array_path}."
-        for p in patterns:
-            out.append(p)
-            if p.startswith(prefix):
-                out.append(p[len(prefix):])
-        # Deduplicate while preserving order
-        seen = set()
-        return [p for p in out if not (p in seen or seen.add(p))]
-    
     def load_json(self, file_path: Union[str, Path]) -> Dict[str, Any]:
         """
         Load JSON file and analyze structure
@@ -348,7 +213,7 @@ class JsonToExcelEngine:
                 df = self._current_df
                 # Apply column filtering if specified (make behavior consistent with flatten mode)
                 if columns:
-                    selected_cols = self._select_columns(df, columns, preserve_indices=bool(preserve_indices))
+                    selected_cols = select_columns(df, columns, preserve_indices=bool(preserve_indices))
                     if selected_cols:
                         df = df[selected_cols]
                 method = 'normalize'
@@ -359,7 +224,7 @@ class JsonToExcelEngine:
                 if use_expand_arrays:
                     # Warn if multiple arrays may cause explosive row growth
                     try:
-                        est = self._estimate_rows(self._current_data, self._AUTO_SAFE_ROW_THRESHOLD)
+                        est = estimate_rows(self._current_data, self._AUTO_SAFE_ROW_THRESHOLD)
                         if est >= self._AUTO_SAFE_ROW_THRESHOLD:
                             logger.warning(
                                 "Detected many array combinations; falling back to non-expanding flatten in flatten(). "
@@ -431,7 +296,7 @@ class JsonToExcelEngine:
                         method = 'flatten-v1-fallback'
                     # Apply column filtering if specified (index-aware)
                     if columns:
-                        selected_cols = self._select_columns(df, columns, preserve_indices=bool(preserve_indices))
+                        selected_cols = select_columns(df, columns, preserve_indices=bool(preserve_indices))
                         if selected_cols:
                             df = df[selected_cols]
                         else:
@@ -644,7 +509,7 @@ class JsonToExcelEngine:
             # Optional memory soft limit check before heavy processing
             eff_mem_limit = memory_soft_limit_mb or self._MEMORY_SOFT_LIMIT_MB
             if eff_mem_limit:
-                used = self._get_memory_usage_mb()
+                used = get_memory_usage_mb()
                 if used is not None and used >= 0.9 * eff_mem_limit:
                     if auto_safe:
                         if progress_callback:
@@ -676,9 +541,9 @@ class JsonToExcelEngine:
             if expand_arrays:
                 try:
                     # Use robust estimator instead of relying on detected arrays only
-                    product_size = self._estimate_rows(self._current_data, threshold)
+                    product_size = estimate_rows(self._current_data, threshold)
                     # Combine with a conservative product to avoid underestimation edge cases
-                    product_size = max(product_size, self._quick_size_estimate(self._current_data, threshold))
+                    product_size = max(product_size, quick_size_estimate(self._current_data, threshold))
 
                     # Hard guard as well: never attempt to exceed Excel limits
                     exceeds_excel = product_size >= self.excel_writer.EXCEL_MAX_ROWS
@@ -775,24 +640,6 @@ class JsonToExcelEngine:
         """Get information about detected arrays in the JSON"""
         return self._detected_arrays.copy()
 
-    @staticmethod
-    def _get_memory_usage_mb() -> Optional[int]:
-        """Best-effort current process memory usage in MB (psutil if available)."""
-        try:
-            import psutil
-            process = psutil.Process()
-            return int(process.memory_info().rss / (1024 * 1024))
-        except Exception:
-            try:
-                import resource
-                usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-                # On Linux, ru_maxrss is in KB; on macOS it's bytes
-                if usage < 10_000_000:  # likely KB
-                    return int(usage / 1024)
-                return int(usage / (1024 * 1024))
-            except Exception:
-                return None
-    
     def process_all_arrays(self,
                          output_path: Union[str, Path],
                          sheet_prefix: str = 'Array',
@@ -842,13 +689,13 @@ class JsonToExcelEngine:
                     if include_index:
                         try:
                             index_df = pd.DataFrame([
-                                {'sheet_name': self._sanitize_sheet_name(f"{sheet_prefix}_{i+1}"),
+                                {'sheet_name': sanitize_sheet_name(f"{sheet_prefix}_{i+1}"),
                                  'array_path': ap,
                                  'rows': info.get('length', None)}
                                 for i, (ap, info) in enumerate(self._detected_arrays.items())
                             ])
                             if not index_df.empty:
-                                index_df.to_excel(writer, sheet_name=self._sanitize_sheet_name('Index'), index=False)
+                                index_df.to_excel(writer, sheet_name=sanitize_sheet_name('Index'), index=False)
                         except Exception:
                             # Non-fatal; continue without index sheet
                             pass
@@ -868,35 +715,35 @@ class JsonToExcelEngine:
                     
                     # Always use safe, deterministic sheet names to avoid invalid characters from JSON keys
                     # Keep a mapping via sheets_written for user reference.
-                    base_safe = self._sanitize_sheet_name(sheet_prefix)
+                    base_safe = sanitize_sheet_name(sheet_prefix)
                     candidate = f"{base_safe}_{idx+1}"
-                    candidate = self._sanitize_sheet_name(candidate)
+                    candidate = sanitize_sheet_name(candidate)
                     # Ensure uniqueness just in case
                     if candidate in used_names:
                         counter = 2
                         while True:
-                            c2 = self._sanitize_sheet_name(f"{base_safe}_{idx+1}_{counter}")
+                            c2 = sanitize_sheet_name(f"{base_safe}_{idx+1}_{counter}")
                             if c2 not in used_names:
                                 candidate = c2
                                 break
                             counter += 1
                     used_names.add(candidate)
                     sheet_name = candidate
-                    
+
                     # Optional column filtering per sheet
                     if columns:
-                        adj_patterns = self._adapt_patterns_for_array(columns, None if array_path == '(root)' else array_path)
-                        selected_cols = self._select_columns(df, adj_patterns, preserve_indices=preserve_indices)
+                        adj_patterns = adapt_patterns_for_array(columns, None if array_path == '(root)' else array_path)
+                        selected_cols = select_columns(df, adj_patterns, preserve_indices=preserve_indices)
                         if selected_cols:
                             df = df[selected_cols]
 
                     # Write to Excel with sanitized final name
-                    safe_name = self._sanitize_sheet_name(sheet_name)
+                    safe_name = sanitize_sheet_name(sheet_name)
                     try:
                         df.to_excel(writer, sheet_name=safe_name, index=False)
                     except Exception:
                         # As a last resort, use a deterministic fallback name
-                        fallback = self._sanitize_sheet_name(f"{base_safe}_{idx+1}")
+                        fallback = sanitize_sheet_name(f"{base_safe}_{idx+1}")
                         df.to_excel(writer, sheet_name=fallback, index=False)
                     sheets_written.append({
                         'sheet_name': sheet_name,
