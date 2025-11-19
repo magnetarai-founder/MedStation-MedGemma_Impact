@@ -1097,8 +1097,44 @@ api/services/p2p_chat/
 - Import validation passed ✓
 - No breaking changes
 
+**6.3b: Admin Service ✅ COMPLETED**
+
+**File**:
+- `api/admin_service.py` (1,049 → 494 lines) - 53% reduction
+
+**New Service Module**:
+- `api/services/admin_support.py` (783 lines) - Founder Rights support capabilities
+
+**Responsibilities Moved to admin_support.py**:
+- User metadata operations: `list_all_users()`, `get_user_details()`
+- Chat metadata operations: `get_user_chats()`, `list_all_chats()`
+- Account remediation: `reset_user_password()`, `unlock_user_account()`
+- Vault status metadata: `get_vault_status()` (document counts only, no decrypted content)
+- Device overview metrics: `get_device_overview_metrics()`
+- Workflow metadata: `get_user_workflows()` (workflows and work_items)
+- Audit log operations: `get_audit_logs()`, `export_audit_logs()`
+- DB helpers: `get_admin_db_connection()`, `_get_memory()`, `_get_auth_service()`
+
+**admin_service.py Now Handles**:
+- HTTP routing and FastAPI integration
+- Security enforcement: `require_founder_rights`, `@require_perm` decorators
+- Audit logging via `audit_logger`
+- Rate limiting (device/overview endpoint: 20/min production, 300/min dev)
+- Request/response handling and HTTPException raising
+
+**Key Achievements**:
+- Clear separation: routers handle HTTP/auth/audit, services handle business logic
+- Preserved all Founder Rights security checks
+- Preserved Salesforce model: admins can manage accounts but NOT see encrypted user data
+- No vault content exposure: only metadata (document counts, last access time)
+- Import validation passed ✓
+- No breaking changes to /api/v1/admin/* endpoints
+
+**Existing Admin Files** (unchanged):
+- `api/services/admin.py` (272 lines) - "Danger Zone" operations (reset/uninstall/clear/export)
+- `api/routes/admin.py` (149 lines) - Router for "Danger Zone" endpoints
+
 **Remaining Files**:
-- `api/admin_service.py` (1,049 lines) → Split by admin operation type
 - `api/learning_system.py` (979 lines) → Split into `learning/`
 - `api/agent/orchestrator.py` (961 lines) → Split into `agent/orchestration/`
 - `api/workflow_orchestrator.py` (917 lines) → Merge with workflow_service.py
