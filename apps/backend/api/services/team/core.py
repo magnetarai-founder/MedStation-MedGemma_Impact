@@ -17,6 +17,7 @@ import hashlib
 import secrets
 import random
 import string
+import asyncio
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Tuple
 from cryptography.hazmat.primitives import hashes
@@ -258,7 +259,7 @@ class TeamManager:
     # TEAM CREATION & BASIC MANAGEMENT
     # ========================================================================
 
-    def generate_team_id(self, team_name: str) -> str:
+    async def generate_team_id(self, team_name: str) -> str:
         """
         Generate a unique team ID based on team name
         Format: TEAMNAME-XXXXX (e.g., MEDICALMISSION-A7B3C)
@@ -278,14 +279,14 @@ class TeamManager:
 
         return team_id
 
-    def generate_invite_code(self, team_id: str, expires_days: Optional[int] = None) -> str:
+    async def generate_invite_code(self, team_id: str, expires_days: Optional[int] = None) -> str:
         """
         Generate a shareable invite code
         Format: XXXXX-XXXXX-XXXXX (e.g., A7B3C-D9E2F-G1H4I)
         """
-        return invitations_mod.generate_invite_code(team_id, expires_days)
+        return await asyncio.to_thread(invitations_mod.generate_invite_code(team_id, expires_days))
 
-    def create_team(self, name: str, creator_user_id: str, description: Optional[str] = None) -> Dict:
+    async def create_team(self, name: str, creator_user_id: str, description: Optional[str] = None) -> Dict:
         """
         Create a new team
 
@@ -322,44 +323,44 @@ class TeamManager:
             logger.error(f"Failed to create team: {e}")
             raise
 
-    def get_team(self, team_id: str) -> Optional[Dict]:
+    async def get_team(self, team_id: str) -> Optional[Dict]:
         """Get team details by ID"""
-        return storage.get_team_by_id(team_id)
+        return await asyncio.to_thread(storage.get_team_by_id, team_id)
 
-    def get_team_members(self, team_id: str) -> List[Dict]:
+    async def get_team_members(self, team_id: str) -> List[Dict]:
         """Get all members of a team"""
-        return members_mod.get_team_members(team_id)
+        return await asyncio.to_thread(members_mod.get_team_members, team_id)
 
-    def get_user_teams(self, user_id: str) -> List[Dict]:
+    async def get_user_teams(self, user_id: str) -> List[Dict]:
         """Get all teams a user is a member of"""
-        return members_mod.get_user_teams(user_id)
+        return await asyncio.to_thread(members_mod.get_user_teams, user_id)
 
     # ========================================================================
     # INVITE CODE MANAGEMENT
     # ========================================================================
 
-    def get_active_invite_code(self, team_id: str) -> Optional[str]:
+    async def get_active_invite_code(self, team_id: str) -> Optional[str]:
         """Get active (non-expired, unused) invite code for team"""
-        return invitations_mod.get_active_invite_code(team_id)
+        return await asyncio.to_thread(invitations_mod.get_active_invite_code, team_id)
 
-    def regenerate_invite_code(self, team_id: str, expires_days: int = 30) -> str:
+    async def regenerate_invite_code(self, team_id: str, expires_days: int = 30) -> str:
         """Generate a new invite code for team (invalidates old ones)"""
-        return invitations_mod.regenerate_invite_code(team_id, expires_days)
+        return await asyncio.to_thread(invitations_mod.regenerate_invite_code, team_id, expires_days)
 
-    def record_invite_attempt(self, invite_code: str, ip_address: str, success: bool):
+    async def record_invite_attempt(self, invite_code: str, ip_address: str, success: bool):
         """Record an invite code validation attempt (HIGH-05)"""
-        invitations_mod.record_invite_attempt(invite_code, ip_address, success)
+        await asyncio.to_thread(invitations_mod.record_invite_attempt, invite_code, ip_address, success)
 
-    def check_brute_force_lockout(self, invite_code: str, ip_address: str) -> bool:
+    async def check_brute_force_lockout(self, invite_code: str, ip_address: str) -> bool:
         """
         Check if invite code is locked due to too many failed attempts (HIGH-05)
 
         Returns:
             True if locked (too many failures), False if attempts are allowed
         """
-        return invitations_mod.check_brute_force_lockout(invite_code, ip_address)
+        return await asyncio.to_thread(invitations_mod.check_brute_force_lockout, invite_code, ip_address)
 
-    def validate_invite_code(self, invite_code: str, ip_address: Optional[str] = None) -> Optional[str]:
+    async def validate_invite_code(self, invite_code: str, ip_address: Optional[str] = None) -> Optional[str]:
         """
         Validate invite code and return team_id if valid
 
@@ -370,9 +371,9 @@ class TeamManager:
         Returns:
             team_id if code is valid and not expired/used, None otherwise
         """
-        return invitations_mod.validate_invite_code(invite_code, ip_address)
+        return await asyncio.to_thread(invitations_mod.validate_invite_code, invite_code, ip_address)
 
-    def join_team(self, team_id: str, user_id: str, role: str = 'member') -> bool:
+    async def join_team(self, team_id: str, user_id: str, role: str = 'member') -> bool:
         """
         Add user to team
 
@@ -384,7 +385,7 @@ class TeamManager:
         Returns:
             True if successful, False otherwise
         """
-        return members_mod.join_team(team_id, user_id, role)
+        return await asyncio.to_thread(members_mod.join_team(team_id, user_id, role))
 
     # ========================================================================
     # ROLE MANAGEMENT & PROMOTIONS
@@ -395,7 +396,7 @@ class TeamManager:
         """Calculate maximum allowed Super Admins based on team size"""
         return roles_mod.get_max_super_admins(team_size)
 
-    def count_role(self, team_id: str, role: str) -> int:
+    async def count_role(self, team_id: str, role: str) -> int:
         """
         Count members with a specific role in a team
 
@@ -406,21 +407,21 @@ class TeamManager:
         Returns:
             Number of members with that role
         """
-        return members_mod.count_role(team_id, role)
+        return await asyncio.to_thread(members_mod.count_role(team_id, role))
 
-    def count_super_admins(self, team_id: str) -> int:
+    async def count_super_admins(self, team_id: str) -> int:
         """Count current Super Admins in team"""
-        return members_mod.count_super_admins(team_id)
+        return await asyncio.to_thread(members_mod.count_super_admins(team_id))
 
-    def get_team_size(self, team_id: str) -> int:
+    async def get_team_size(self, team_id: str) -> int:
         """Get total number of members in team"""
-        return members_mod.get_team_size(team_id)
+        return await asyncio.to_thread(members_mod.get_team_size(team_id))
 
-    def can_promote_to_super_admin(self, team_id: str, requesting_user_role: str = None) -> tuple[bool, str]:
+    async def can_promote_to_super_admin(self, team_id: str, requesting_user_role: str = None) -> tuple[bool, str]:
         """Check if team can have another Super Admin"""
-        return roles_mod.can_promote_to_super_admin(self, team_id, requesting_user_role)
+        return await asyncio.to_thread(roles_mod.can_promote_to_super_admin(self, team_id, requesting_user_role))
 
-    def update_member_role(self, team_id: str, user_id: str, new_role: str, requesting_user_role: str = None, requesting_user_id: str = None) -> tuple[bool, str]:
+    async def update_member_role(self, team_id: str, user_id: str, new_role: str, requesting_user_role: str = None, requesting_user_id: str = None) -> tuple[bool, str]:
         """
         Update a team member's role with validation
 
@@ -434,13 +435,13 @@ class TeamManager:
         Returns:
             Tuple of (success: bool, message: str)
         """
-        return members_mod.update_member_role_impl(self, team_id, user_id, new_role, requesting_user_role, requesting_user_id)
+        return await asyncio.to_thread(members_mod.update_member_role_impl(self, team_id, user_id, new_role, requesting_user_role, requesting_user_id))
 
     # ========================================================================
     # GUEST AUTO-PROMOTION & DELAYED PROMOTIONS
     # ========================================================================
 
-    def get_days_since_joined(self, team_id: str, user_id: str) -> Optional[int]:
+    async def get_days_since_joined(self, team_id: str, user_id: str) -> Optional[int]:
         """
         Calculate days since user joined the team
 
@@ -451,25 +452,25 @@ class TeamManager:
         Returns:
             Number of days since joining, or None if user not found
         """
-        return members_mod.get_days_since_joined(team_id, user_id)
+        return await asyncio.to_thread(members_mod.get_days_since_joined(team_id, user_id))
 
-    def check_auto_promotion_eligibility(self, team_id: str, user_id: str, required_days: int = 7) -> tuple[bool, str, int]:
+    async def check_auto_promotion_eligibility(self, team_id: str, user_id: str, required_days: int = 7) -> tuple[bool, str, int]:
         """Check if a guest is eligible for auto-promotion to member"""
-        return roles_mod.check_auto_promotion_eligibility(self, team_id, user_id, required_days)
+        return await asyncio.to_thread(roles_mod.check_auto_promotion_eligibility(self, team_id, user_id, required_days))
 
-    def auto_promote_guests(self, team_id: str, required_days: int = 7) -> List[Dict]:
+    async def auto_promote_guests(self, team_id: str, required_days: int = 7) -> List[Dict]:
         """Auto-promote all eligible guests in a team to members"""
-        return roles_mod.auto_promote_guests(self, team_id, required_days)
-    def instant_promote_guest(self, team_id: str, user_id: str, approved_by_user_id: str, auth_type: str = 'real_password') -> tuple[bool, str]:
+        return await asyncio.to_thread(roles_mod.auto_promote_guests(self, team_id, required_days))
+    async def instant_promote_guest(self, team_id: str, user_id: str, approved_by_user_id: str, auth_type: str = 'real_password') -> tuple[bool, str]:
         """Instantly promote a guest to member (Phase 4.2)"""
-        return roles_mod.instant_promote_guest(self, team_id, user_id, approved_by_user_id, auth_type)
-    def schedule_delayed_promotion(self, team_id: str, user_id: str, delay_days: int = 21, approved_by_user_id: str = None, reason: str = "Decoy password delay") -> tuple[bool, str]:
+        return await asyncio.to_thread(roles_mod.instant_promote_guest(self, team_id, user_id, approved_by_user_id, auth_type))
+    async def schedule_delayed_promotion(self, team_id: str, user_id: str, delay_days: int = 21, approved_by_user_id: str = None, reason: str = "Decoy password delay") -> tuple[bool, str]:
         """Schedule a delayed promotion (Phase 4.3)"""
-        return roles_mod.schedule_delayed_promotion(team_id, user_id, delay_days, approved_by_user_id, reason)
-    def execute_delayed_promotions(self, team_id: str = None) -> List[Dict]:
+        return await asyncio.to_thread(roles_mod.schedule_delayed_promotion(team_id, user_id, delay_days, approved_by_user_id, reason))
+    async def execute_delayed_promotions(self, team_id: str = None) -> List[Dict]:
         """Execute all pending delayed promotions (cron job)"""
-        return roles_mod.execute_delayed_promotions(self, team_id)
-    def update_last_seen(self, team_id: str, user_id: str) -> tuple[bool, str]:
+        return await asyncio.to_thread(roles_mod.execute_delayed_promotions(self, team_id))
+    async def update_last_seen(self, team_id: str, user_id: str) -> tuple[bool, str]:
         """
         Update last_seen timestamp for a team member (Phase 3.3)
 
@@ -482,9 +483,9 @@ class TeamManager:
         Returns:
             Tuple of (success: bool, message: str)
         """
-        return members_mod.update_last_seen(team_id, user_id)
+        return await asyncio.to_thread(members_mod.update_last_seen(team_id, user_id))
 
-    def check_super_admin_offline(self, team_id: str, offline_threshold_minutes: int = 5) -> List[Dict]:
+    async def check_super_admin_offline(self, team_id: str, offline_threshold_minutes: int = 5) -> List[Dict]:
         """
         Check for offline Super Admins (Phase 3.3)
 
@@ -527,19 +528,19 @@ class TeamManager:
             logger.error(f"Failed to check super admin offline: {e}")
             return []
 
-    def promote_admin_temporarily(self, team_id: str, offline_super_admin_id: str, requesting_user_role: str = None) -> tuple[bool, str]:
+    async def promote_admin_temporarily(self, team_id: str, offline_super_admin_id: str, requesting_user_role: str = None) -> tuple[bool, str]:
         """Temporarily promote admin to super_admin (offline failsafe)"""
-        return roles_mod.promote_admin_temporarily(self, team_id, offline_super_admin_id, requesting_user_role)
-    def get_pending_temp_promotions(self, team_id: str) -> List[Dict]:
+        return await asyncio.to_thread(roles_mod.promote_admin_temporarily(self, team_id, offline_super_admin_id, requesting_user_role))
+    async def get_pending_temp_promotions(self, team_id: str) -> List[Dict]:
         """Get all pending temporary promotions for a team"""
-        return roles_mod.get_pending_temp_promotions(team_id)
-    def approve_temp_promotion(self, team_id: str, temp_promotion_id: int, approved_by: str) -> tuple[bool, str]:
+        return await asyncio.to_thread(roles_mod.get_pending_temp_promotions(team_id))
+    async def approve_temp_promotion(self, team_id: str, temp_promotion_id: int, approved_by: str) -> tuple[bool, str]:
         """Approve a temporary promotion (make permanent)"""
-        return roles_mod.approve_temp_promotion(temp_promotion_id, approved_by)
-    def revert_temp_promotion(self, team_id: str, temp_promotion_id: int, reverted_by: str) -> tuple[bool, str]:
+        return await asyncio.to_thread(roles_mod.approve_temp_promotion(temp_promotion_id, approved_by))
+    async def revert_temp_promotion(self, team_id: str, temp_promotion_id: int, reverted_by: str) -> tuple[bool, str]:
         """Revert a temporary promotion (demote back to admin)"""
-        return roles_mod.revert_temp_promotion(self, temp_promotion_id, reverted_by)
-    def update_job_role(self, team_id: str, user_id: str, job_role: str) -> tuple[bool, str]:
+        return await asyncio.to_thread(roles_mod.revert_temp_promotion(self, temp_promotion_id, reverted_by))
+    async def update_job_role(self, team_id: str, user_id: str, job_role: str) -> tuple[bool, str]:
         """
         Update a team member's job role (Phase 5.1)
 
@@ -554,9 +555,9 @@ class TeamManager:
         Returns:
             Tuple of (success: bool, message: str)
         """
-        return members_mod.update_job_role(team_id, user_id, job_role)
+        return await asyncio.to_thread(members_mod.update_job_role(team_id, user_id, job_role))
 
-    def get_member_job_role(self, team_id: str, user_id: str) -> Optional[str]:
+    async def get_member_job_role(self, team_id: str, user_id: str) -> Optional[str]:
         """
         Get a team member's job role (Phase 5.1)
 
@@ -567,13 +568,13 @@ class TeamManager:
         Returns:
             Job role string or None if not found
         """
-        return members_mod.get_member_job_role(team_id, user_id)
+        return await asyncio.to_thread(members_mod.get_member_job_role(team_id, user_id))
 
     # ========================================================================
     # WORKFLOW PERMISSIONS (Phase 5.2)
     # ========================================================================
 
-    def add_workflow_permission(self, workflow_id: str, team_id: str, permission_type: str, grant_type: str, grant_value: str, created_by: str) -> tuple[bool, str]:
+    async def add_workflow_permission(self, workflow_id: str, team_id: str, permission_type: str, grant_type: str, grant_value: str, created_by: str) -> tuple[bool, str]:
         """
         Add a workflow permission grant (Phase 5.2)
 
@@ -617,7 +618,7 @@ class TeamManager:
             logger.error(f"Failed to add workflow permission: {e}")
             return False, str(e)
 
-    def remove_workflow_permission(self, workflow_id: str, team_id: str, permission_type: str, grant_type: str, grant_value: str) -> tuple[bool, str]:
+    async def remove_workflow_permission(self, workflow_id: str, team_id: str, permission_type: str, grant_type: str, grant_value: str) -> tuple[bool, str]:
         """
         Remove a workflow permission grant (Phase 5.2)
 
@@ -652,7 +653,7 @@ class TeamManager:
             logger.error(f"Failed to remove workflow permission: {e}")
             return False, str(e)
 
-    def check_workflow_permission(self, workflow_id: str, team_id: str, user_id: str, permission_type: str) -> tuple[bool, str]:
+    async def check_workflow_permission(self, workflow_id: str, team_id: str, user_id: str, permission_type: str) -> tuple[bool, str]:
         """
         Check if a user has a specific workflow permission (Phase 5.2)
 
@@ -781,7 +782,7 @@ class TeamManager:
         else:
             return False, f"Unknown permission type: {permission_type}"
 
-    def get_workflow_permissions(self, workflow_id: str, team_id: str) -> List[Dict]:
+    async def get_workflow_permissions(self, workflow_id: str, team_id: str) -> List[Dict]:
         """
         Get all permission grants for a workflow (Phase 5.2)
 
@@ -822,7 +823,7 @@ class TeamManager:
     # QUEUE ACCESS CONTROL METHODS (Phase 5.3)
     # ========================================================================
 
-    def create_queue(self, team_id: str, queue_name: str, queue_type: str, description: str, created_by: str) -> tuple[bool, str, str]:
+    async def create_queue(self, team_id: str, queue_name: str, queue_type: str, description: str, created_by: str) -> tuple[bool, str, str]:
         """
         Create a new queue (Phase 5.3)
 
@@ -860,7 +861,7 @@ class TeamManager:
             logger.error(f"Failed to create queue: {e}")
             return False, str(e), ""
 
-    def add_queue_permission(self, queue_id: str, team_id: str, access_type: str, grant_type: str, grant_value: str, created_by: str) -> tuple[bool, str]:
+    async def add_queue_permission(self, queue_id: str, team_id: str, access_type: str, grant_type: str, grant_value: str, created_by: str) -> tuple[bool, str]:
         """
         Add queue access permission (Phase 5.3)
 
@@ -904,7 +905,7 @@ class TeamManager:
             logger.error(f"Failed to add queue permission: {e}")
             return False, str(e)
 
-    def remove_queue_permission(self, queue_id: str, team_id: str, access_type: str, grant_type: str, grant_value: str) -> tuple[bool, str]:
+    async def remove_queue_permission(self, queue_id: str, team_id: str, access_type: str, grant_type: str, grant_value: str) -> tuple[bool, str]:
         """
         Remove queue access permission (Phase 5.3)
 
@@ -939,7 +940,7 @@ class TeamManager:
             logger.error(f"Failed to remove queue permission: {e}")
             return False, str(e)
 
-    def check_queue_access(self, queue_id: str, team_id: str, user_id: str, access_type: str) -> tuple[bool, str]:
+    async def check_queue_access(self, queue_id: str, team_id: str, user_id: str, access_type: str) -> tuple[bool, str]:
         """
         Check if a user has access to a queue (Phase 5.3)
 
@@ -1065,7 +1066,7 @@ class TeamManager:
 
         return False, f"Invalid access type: {access_type}"
 
-    def get_accessible_queues(self, team_id: str, user_id: str, access_type: str = 'view') -> List[Dict]:
+    async def get_accessible_queues(self, team_id: str, user_id: str, access_type: str = 'view') -> List[Dict]:
         """
         Get all queues a user can access (Phase 5.3)
 
@@ -1112,7 +1113,7 @@ class TeamManager:
             logger.error(f"Failed to get accessible queues: {e}")
             return []
 
-    def get_queue_permissions(self, queue_id: str, team_id: str) -> List[Dict]:
+    async def get_queue_permissions(self, queue_id: str, team_id: str) -> List[Dict]:
         """
         Get all permission grants for a queue (Phase 5.3)
 
@@ -1150,7 +1151,7 @@ class TeamManager:
             logger.error(f"Failed to get queue permissions: {e}")
             return []
 
-    def get_queue(self, queue_id: str, team_id: str) -> Optional[Dict]:
+    async def get_queue(self, queue_id: str, team_id: str) -> Optional[Dict]:
         """
         Get queue details (Phase 5.3)
 
@@ -1192,21 +1193,21 @@ class TeamManager:
     # GOD RIGHTS AUTHORIZATION METHODS (Phase 6.1)
     # ========================================================================
 
-    def grant_god_rights(self, user_id: str, delegated_by: str = None, auth_key: str = None, notes: str = None) -> tuple[bool, str]:
+    async def grant_god_rights(self, user_id: str, delegated_by: str = None, auth_key: str = None, notes: str = None) -> tuple[bool, str]:
         """Grant Founder Rights to a user"""
-        return founder_mod.grant_god_rights(self, user_id, delegated_by, auth_key, notes)
-    def revoke_god_rights(self, user_id: str, revoked_by: str) -> tuple[bool, str]:
+        return await asyncio.to_thread(founder_mod.grant_god_rights(self, user_id, delegated_by, auth_key, notes))
+    async def revoke_god_rights(self, user_id: str, revoked_by: str) -> tuple[bool, str]:
         """Revoke Founder Rights from a user"""
-        return founder_mod.revoke_god_rights(self, user_id, revoked_by)
-    def check_god_rights(self, user_id: str) -> tuple[bool, str]:
+        return await asyncio.to_thread(founder_mod.revoke_god_rights(self, user_id, revoked_by))
+    async def check_god_rights(self, user_id: str) -> tuple[bool, str]:
         """Check if a user has active Founder Rights"""
-        return founder_mod.check_god_rights(user_id)
-    def get_god_rights_users(self) -> List[Dict]:
+        return await asyncio.to_thread(founder_mod.check_god_rights(user_id))
+    async def get_god_rights_users(self) -> List[Dict]:
         """Get all users with active Founder Rights"""
-        return founder_mod.get_god_rights_users()
-    def get_revoked_god_rights(self) -> List[Dict]:
+        return await asyncio.to_thread(founder_mod.get_god_rights_users())
+    async def get_revoked_god_rights(self) -> List[Dict]:
         """Get all users with revoked Founder Rights"""
-        return founder_mod.get_revoked_god_rights()
+        return await asyncio.to_thread(founder_mod.get_revoked_god_rights())
     def _get_vault_encryption_key(self, team_id: str) -> bytes:
         """
         Get or generate encryption key for team vault (Phase 6.2)
@@ -1778,7 +1779,7 @@ class TeamManager:
             logger.error(f"Failed to get vault permissions: {e}")
             return []
 
-    def close(self):
+    async def close(self) -> None:
         """Close database connection"""
         if self.conn:
-            self.conn.close()
+            await asyncio.to_thread(self.conn.close)

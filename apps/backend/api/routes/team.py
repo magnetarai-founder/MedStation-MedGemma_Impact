@@ -261,10 +261,11 @@ async def get_user_teams_endpoint(request: Request, user_id: str):
     """Get all teams a user is a member of"""
     # Lazy imports
     from api.services.team import get_team_manager
+    import asyncio
 
     try:
         tm = get_team_manager()
-        teams = await tm.get_user_teams(user_id)
+        teams = await asyncio.to_thread(tm.get_user_teams, user_id)
         return {"user_id": user_id, "teams": teams}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
