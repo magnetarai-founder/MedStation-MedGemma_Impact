@@ -31,6 +31,11 @@ from .schemas import (
 )
 from . import storage
 from . import encryption
+from . import documents as documents_mod
+from . import files as files_mod
+from . import folders as folders_mod
+from . import search as search_mod
+from . import automation as automation_mod
 
 logger = logging.getLogger(__name__)
 
@@ -561,11 +566,11 @@ class VaultService:
         Returns:
             Stored vault document
         """
-        return storage.store_document_record(user_id, doc, team_id)
+        return documents_mod.store_document(self, user_id, doc, team_id)
 
     def get_document(self, user_id: str, doc_id: str, vault_type: str, team_id: Optional[str] = None) -> Optional[VaultDocument]:
         """Get encrypted vault document by ID (Phase 3: optional team scope)"""
-        return storage.get_document_record(user_id, doc_id, vault_type, team_id)
+        return documents_mod.get_document(self, user_id, doc_id, vault_type, team_id)
 
     def list_documents(self, user_id: str, vault_type: str, team_id: Optional[str] = None) -> VaultListResponse:
         """
@@ -573,35 +578,19 @@ class VaultService:
 
         Phase 3: if team_id is provided, return team-scoped documents.
         """
-        documents = storage.list_documents_records(user_id, vault_type, team_id)
-        return VaultListResponse(
-            documents=documents,
-            total_count=len(documents)
-        )
+        return documents_mod.list_documents(self, user_id, vault_type, team_id)
 
     def update_document(self, user_id: str, doc_id: str, vault_type: str, update: VaultDocumentUpdate, team_id: Optional[str] = None) -> VaultDocument:
         """Update encrypted vault document (Phase 3: optional team scope)"""
-        from fastapi import HTTPException
-
-        success, rowcount = storage.update_document_record(user_id, doc_id, vault_type, update, team_id)
-
-        if rowcount == 0:
-            raise HTTPException(status_code=404, detail="Document not found")
-
-        # Fetch updated document
-        updated_doc = self.get_document(user_id, doc_id, vault_type, team_id=team_id)
-        if not updated_doc:
-            raise HTTPException(status_code=500, detail="Failed to retrieve updated document")
-
-        return updated_doc
+        return documents_mod.update_document(self, user_id, doc_id, vault_type, update, team_id)
 
     def delete_document(self, user_id: str, doc_id: str, vault_type: str, team_id: Optional[str] = None) -> bool:
         """Soft-delete vault document (Phase 3: optional team scope)"""
-        return storage.delete_document_record(user_id, doc_id, vault_type, team_id)
+        return documents_mod.delete_document(self, user_id, doc_id, vault_type, team_id)
 
     def get_vault_stats(self, user_id: str, vault_type: str) -> Dict[str, Any]:
         """Get vault statistics"""
-        return storage.get_vault_stats_record(user_id, vault_type)
+        return documents_mod.get_vault_stats(self, user_id, vault_type)
 
     def upload_file(
         self,
@@ -627,48 +616,11 @@ class VaultService:
         Returns:
             VaultFile metadata
         """
-        import uuid
-
-        # Generate unique file ID
-        file_id = str(uuid.uuid4())
-        now = datetime.utcnow().isoformat()
-
-        # Encrypt file data
-        key, salt = encryption.get_encryption_key(passphrase)
-        fernet = Fernet(key)
-        encrypted_data = fernet.encrypt(file_data)
-
-        # Save encrypted file to disk
-        encrypted_filename = f"{file_id}_{hashlib.sha256(filename.encode()).hexdigest()}.enc"
-        encrypted_path = self.files_path / encrypted_filename
-
-        with open(encrypted_path, 'wb') as f:
-            f.write(encrypted_data)
-
-        # Store metadata in database
-        try:
-            return storage.create_file_record(
-                file_id=file_id,
-                user_id=user_id,
-                vault_type=vault_type,
-                filename=filename,
-                file_size=len(file_data),
-                mime_type=mime_type,
-                encrypted_path=str(encrypted_path),
-                folder_path=folder_path,
-                created_at=now,
-                updated_at=now
-            )
-        except Exception as e:
-            # Clean up file if database insert fails
-            if encrypted_path.exists():
-                encrypted_path.unlink()
-            logger.error(f"Failed to upload file: {e}")
-            raise
+        return files_mod.upload_file(self, user_id, file_data, filename, mime_type, vault_type, passphrase, folder_path)
 
     def list_files(self, user_id: str, vault_type: str, folder_path: str = None) -> List[VaultFile]:
         """List vault files, optionally filtered by folder"""
-        return storage.list_files_records(user_id, vault_type, folder_path)
+        return files_mod.list_files(self, user_id, vault_type, folder_path)
 
     def create_folder(
         self,
@@ -678,200 +630,31 @@ class VaultService:
         parent_path: str = "/"
     ) -> VaultFolder:
         """Create a new folder in the vault"""
-        import uuid
-
-        # Build full folder path
-        if parent_path == "/":
-            folder_path = f"/{folder_name}"
-        else:
-            folder_path = f"{parent_path}/{folder_name}"
-
-        folder_id = str(uuid.uuid4())
-        now = datetime.utcnow().isoformat()
-
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        try:
-            cursor.execute("""
-                INSERT INTO vault_folders
-                (id, user_id, vault_type, folder_name, folder_path, parent_path,
-                 created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                folder_id,
-                user_id,
-                vault_type,
-                folder_name,
-                folder_path,
-                parent_path,
-                now,
-                now
-            ))
-
-            conn.commit()
-
-            return VaultFolder(
-                id=folder_id,
-                user_id=user_id,
-                vault_type=vault_type,
-                folder_name=folder_name,
-                folder_path=folder_path,
-                parent_path=parent_path,
-                created_at=now,
-                updated_at=now
-            )
-
-        except Exception as e:
-            conn.rollback()
-            logger.error(f"Failed to create folder: {e}")
-            raise
-        finally:
-            conn.close()
+        return folders_mod.create_folder(self, user_id, vault_type, folder_name, parent_path)
 
     def list_folders(self, user_id: str, vault_type: str, parent_path: str = None) -> List[VaultFolder]:
         """List folders, optionally filtered by parent path"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        if parent_path is not None:
-            cursor.execute("""
-                SELECT id, user_id, vault_type, folder_name, folder_path, parent_path,
-                       created_at, updated_at
-                FROM vault_folders
-                WHERE user_id = ? AND vault_type = ? AND parent_path = ? AND is_deleted = 0
-                ORDER BY folder_name ASC
-            """, (user_id, vault_type, parent_path))
-        else:
-            cursor.execute("""
-                SELECT id, user_id, vault_type, folder_name, folder_path, parent_path,
-                       created_at, updated_at
-                FROM vault_folders
-                WHERE user_id = ? AND vault_type = ? AND is_deleted = 0
-                ORDER BY folder_name ASC
-            """, (user_id, vault_type))
-
-        rows = cursor.fetchall()
-        conn.close()
-
-        return [
-            VaultFolder(
-                id=row[0],
-                user_id=row[1],
-                vault_type=row[2],
-                folder_name=row[3],
-                folder_path=row[4],
-                parent_path=row[5],
-                created_at=row[6],
-                updated_at=row[7]
-            )
-            for row in rows
-        ]
+        return folders_mod.list_folders(self, user_id, vault_type, parent_path)
 
     def delete_folder(self, user_id: str, vault_type: str, folder_path: str) -> bool:
         """Soft-delete a folder (and all files/subfolders in it)"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-        now = datetime.utcnow().isoformat()
-
-        try:
-            # Delete folder
-            cursor.execute("""
-                UPDATE vault_folders
-                SET is_deleted = 1, deleted_at = ?
-                WHERE user_id = ? AND vault_type = ? AND folder_path = ? AND is_deleted = 0
-            """, (now, user_id, vault_type, folder_path))
-
-            # Delete all files in this folder
-            cursor.execute("""
-                UPDATE vault_files
-                SET is_deleted = 1, deleted_at = ?
-                WHERE user_id = ? AND vault_type = ? AND folder_path = ? AND is_deleted = 0
-            """, (now, user_id, vault_type, folder_path))
-
-            # Delete all subfolders (folders that start with this path)
-            cursor.execute("""
-                UPDATE vault_folders
-                SET is_deleted = 1, deleted_at = ?
-                WHERE user_id = ? AND vault_type = ?
-                AND folder_path LIKE ? AND is_deleted = 0
-            """, (now, user_id, vault_type, f"{folder_path}/%"))
-
-            conn.commit()
-            return True
-
-        except Exception as e:
-            conn.rollback()
-            logger.error(f"Failed to delete folder: {e}")
-            raise
-        finally:
-            conn.close()
+        return folders_mod.delete_folder(self, user_id, vault_type, folder_path)
 
     def delete_file(self, user_id: str, vault_type: str, file_id: str) -> bool:
         """Soft-delete a file"""
-        now = datetime.utcnow().isoformat()
-        return storage.delete_file_record(file_id, user_id, vault_type, now)
+        return files_mod.delete_file(self, user_id, vault_type, file_id)
 
     def rename_file(self, user_id: str, vault_type: str, file_id: str, new_filename: str) -> bool:
         """Rename a file"""
-        now = datetime.utcnow().isoformat()
-        return storage.rename_file_record(file_id, user_id, vault_type, new_filename, now)
+        return files_mod.rename_file(self, user_id, vault_type, file_id, new_filename)
 
     def rename_folder(self, user_id: str, vault_type: str, old_path: str, new_name: str) -> bool:
         """Rename a folder and update all nested paths"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-        now = datetime.utcnow().isoformat()
-
-        try:
-            # Calculate new path
-            parent_path = old_path.rsplit('/', 1)[0] if old_path.count('/') > 0 else '/'
-            new_path = f"{parent_path}/{new_name}" if parent_path != '/' else f"/{new_name}"
-
-            # Update the folder itself
-            cursor.execute("""
-                UPDATE vault_folders
-                SET folder_name = ?, folder_path = ?, updated_at = ?
-                WHERE user_id = ? AND vault_type = ? AND folder_path = ? AND is_deleted = 0
-            """, (new_name, new_path, now, user_id, vault_type, old_path))
-
-            # Update all subfolders
-            cursor.execute("""
-                UPDATE vault_folders
-                SET folder_path = REPLACE(folder_path, ?, ?), updated_at = ?
-                WHERE user_id = ? AND vault_type = ?
-                AND folder_path LIKE ? AND is_deleted = 0
-            """, (old_path, new_path, now, user_id, vault_type, f"{old_path}/%"))
-
-            # Update all files in this folder
-            cursor.execute("""
-                UPDATE vault_files
-                SET folder_path = ?, updated_at = ?
-                WHERE user_id = ? AND vault_type = ? AND folder_path = ? AND is_deleted = 0
-            """, (new_path, now, user_id, vault_type, old_path))
-
-            # Update files in subfolders
-            cursor.execute("""
-                UPDATE vault_files
-                SET folder_path = REPLACE(folder_path, ?, ?), updated_at = ?
-                WHERE user_id = ? AND vault_type = ?
-                AND folder_path LIKE ? AND is_deleted = 0
-            """, (old_path, new_path, now, user_id, vault_type, f"{old_path}/%"))
-
-            conn.commit()
-            return True
-
-        except Exception as e:
-            conn.rollback()
-            logger.error(f"Failed to rename folder: {e}")
-            raise
-        finally:
-            conn.close()
+        return folders_mod.rename_folder(self, user_id, vault_type, old_path, new_name)
 
     def move_file(self, user_id: str, vault_type: str, file_id: str, new_folder_path: str) -> bool:
         """Move a file to a different folder"""
-        now = datetime.utcnow().isoformat()
-        return storage.move_file_record(file_id, user_id, vault_type, new_folder_path, now)
+        return files_mod.move_file(self, user_id, vault_type, file_id, new_folder_path)
 
     # ===== Tags Management =====
 
@@ -1126,55 +909,7 @@ class VaultService:
 
     def secure_delete_file(self, user_id: str, vault_type: str, file_id: str) -> bool:
         """Securely delete a file by overwriting with random data before deletion"""
-        import os
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        try:
-            # Get file path
-            cursor.execute("""
-                SELECT encrypted_path
-                FROM vault_files
-                WHERE id = ? AND user_id = ? AND vault_type = ? AND is_deleted = 0
-            """, (file_id, user_id, vault_type))
-
-            result = cursor.fetchone()
-            if not result:
-                return False
-
-            encrypted_path = result[0]
-            file_path = self.files_path / encrypted_path
-
-            # Securely overwrite file with random data (3 passes)
-            if file_path.exists():
-                file_size = file_path.stat().st_size
-                with open(file_path, 'wb') as f:
-                    for _ in range(3):
-                        f.seek(0)
-                        f.write(os.urandom(file_size))
-                        f.flush()
-                        os.fsync(f.fileno())
-
-                # Delete the file
-                os.remove(file_path)
-
-            # Mark as deleted in database
-            now = datetime.utcnow().isoformat()
-            cursor.execute("""
-                UPDATE vault_files
-                SET is_deleted = 1, deleted_at = ?
-                WHERE id = ? AND user_id = ? AND vault_type = ?
-            """, (now, file_id, user_id, vault_type))
-
-            conn.commit()
-            return True
-
-        except Exception as e:
-            conn.rollback()
-            logger.error(f"Failed to securely delete file: {e}")
-            raise
-        finally:
-            conn.close()
+        return files_mod.secure_delete_file(self, user_id, vault_type, file_id)
 
     # ===== Day 4: File Versioning =====
 
@@ -1182,335 +917,38 @@ class VaultService:
                            encrypted_path: str, file_size: int, mime_type: str,
                            comment: str = None) -> Dict[str, Any]:
         """Create a new version of a file"""
-        import uuid
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        try:
-            # Get current version count
-            cursor.execute("""
-                SELECT COALESCE(MAX(version_number), 0)
-                FROM vault_file_versions
-                WHERE file_id = ?
-            """, (file_id,))
-
-            current_version = cursor.fetchone()[0]
-            new_version = current_version + 1
-
-            # Create version record
-            version_id = str(uuid.uuid4())
-            now = datetime.utcnow().isoformat()
-
-            cursor.execute("""
-                INSERT INTO vault_file_versions (
-                    id, file_id, user_id, vault_type, version_number,
-                    encrypted_path, file_size, mime_type, created_at,
-                    created_by, comment
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (version_id, file_id, user_id, vault_type, new_version,
-                  encrypted_path, file_size, mime_type, now, user_id, comment))
-
-            conn.commit()
-
-            return {
-                "id": version_id,
-                "file_id": file_id,
-                "version_number": new_version,
-                "file_size": file_size,
-                "mime_type": mime_type,
-                "created_at": now,
-                "comment": comment
-            }
-
-        except Exception as e:
-            conn.rollback()
-            logger.error(f"Failed to create file version: {e}")
-            raise
-        finally:
-            conn.close()
+        return files_mod.create_file_version(self, user_id, vault_type, file_id, encrypted_path, file_size, mime_type, comment)
 
     def get_file_versions(self, user_id: str, vault_type: str, file_id: str) -> List[Dict[str, Any]]:
         """Get all versions of a file"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        try:
-            cursor.execute("""
-                SELECT id, version_number, file_size, mime_type,
-                       created_at, created_by, comment
-                FROM vault_file_versions
-                WHERE file_id = ? AND user_id = ? AND vault_type = ?
-                ORDER BY version_number DESC
-            """, (file_id, user_id, vault_type))
-
-            versions = []
-            for row in cursor.fetchall():
-                versions.append({
-                    "id": row[0],
-                    "version_number": row[1],
-                    "file_size": row[2],
-                    "mime_type": row[3],
-                    "created_at": row[4],
-                    "created_by": row[5],
-                    "comment": row[6]
-                })
-
-            return versions
-
-        finally:
-            conn.close()
+        return files_mod.get_file_versions(self, user_id, vault_type, file_id)
 
     def restore_file_version(self, user_id: str, vault_type: str, file_id: str,
                             version_id: str) -> Dict[str, Any]:
         """Restore a file to a previous version"""
-        import shutil
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        try:
-            # Get version details
-            cursor.execute("""
-                SELECT encrypted_path, file_size, mime_type, version_number
-                FROM vault_file_versions
-                WHERE id = ? AND file_id = ? AND user_id = ? AND vault_type = ?
-            """, (version_id, file_id, user_id, vault_type))
-
-            version_data = cursor.fetchone()
-            if not version_data:
-                raise ValueError("Version not found")
-
-            version_encrypted_path, version_size, version_mime, version_number = version_data
-
-            # Get current file details
-            cursor.execute("""
-                SELECT encrypted_path
-                FROM vault_files
-                WHERE id = ? AND user_id = ? AND vault_type = ?
-            """, (file_id, user_id, vault_type))
-
-            current_data = cursor.fetchone()
-            if not current_data:
-                raise ValueError("File not found")
-
-            current_encrypted_path = current_data[0]
-
-            # Copy version file to current file location
-            version_path = self.files_path / version_encrypted_path
-            current_path = self.files_path / current_encrypted_path
-
-            if version_path.exists():
-                shutil.copy2(version_path, current_path)
-
-            # Update file record
-            now = datetime.utcnow().isoformat()
-            cursor.execute("""
-                UPDATE vault_files
-                SET file_size = ?, mime_type = ?, updated_at = ?
-                WHERE id = ? AND user_id = ? AND vault_type = ?
-            """, (version_size, version_mime, now, file_id, user_id, vault_type))
-
-            conn.commit()
-
-            return {
-                "id": file_id,
-                "restored_version": version_number,
-                "file_size": version_size,
-                "updated_at": now
-            }
-
-        except Exception as e:
-            conn.rollback()
-            logger.error(f"Failed to restore file version: {e}")
-            raise
-        finally:
-            conn.close()
+        return files_mod.restore_file_version(self, user_id, vault_type, file_id, version_id)
 
     def delete_file_version(self, user_id: str, vault_type: str, version_id: str) -> bool:
         """Delete a specific file version"""
-        import os
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        try:
-            # Get version file path
-            cursor.execute("""
-                SELECT encrypted_path
-                FROM vault_file_versions
-                WHERE id = ? AND user_id = ? AND vault_type = ?
-            """, (version_id, user_id, vault_type))
-
-            result = cursor.fetchone()
-            if not result:
-                return False
-
-            encrypted_path = result[0]
-
-            # Delete physical file
-            file_path = self.files_path / encrypted_path
-            if file_path.exists():
-                os.remove(file_path)
-
-            # Delete version record
-            cursor.execute("""
-                DELETE FROM vault_file_versions
-                WHERE id = ? AND user_id = ? AND vault_type = ?
-            """, (version_id, user_id, vault_type))
-
-            conn.commit()
-            return True
-
-        except Exception as e:
-            conn.rollback()
-            logger.error(f"Failed to delete file version: {e}")
-            raise
-        finally:
-            conn.close()
+        return files_mod.delete_file_version(self, user_id, vault_type, version_id)
 
     # ===== Day 4: Trash/Recycle Bin =====
 
     def move_to_trash(self, user_id: str, vault_type: str, file_id: str) -> Dict[str, Any]:
         """Move a file to trash (soft delete)"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        try:
-            now = datetime.utcnow().isoformat()
-
-            cursor.execute("""
-                UPDATE vault_files
-                SET is_deleted = 1, deleted_at = ?
-                WHERE id = ? AND user_id = ? AND vault_type = ? AND is_deleted = 0
-            """, (now, file_id, user_id, vault_type))
-
-            if cursor.rowcount == 0:
-                raise ValueError("File not found or already deleted")
-
-            conn.commit()
-
-            return {
-                "id": file_id,
-                "deleted_at": now,
-                "status": "moved to trash"
-            }
-
-        except Exception as e:
-            conn.rollback()
-            logger.error(f"Failed to move file to trash: {e}")
-            raise
-        finally:
-            conn.close()
+        return files_mod.move_to_trash(self, user_id, vault_type, file_id)
 
     def restore_from_trash(self, user_id: str, vault_type: str, file_id: str) -> Dict[str, Any]:
         """Restore a file from trash"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        try:
-            cursor.execute("""
-                UPDATE vault_files
-                SET is_deleted = 0, deleted_at = NULL
-                WHERE id = ? AND user_id = ? AND vault_type = ? AND is_deleted = 1
-            """, (file_id, user_id, vault_type))
-
-            if cursor.rowcount == 0:
-                raise ValueError("File not found in trash")
-
-            conn.commit()
-
-            return {
-                "id": file_id,
-                "status": "restored from trash"
-            }
-
-        except Exception as e:
-            conn.rollback()
-            logger.error(f"Failed to restore file from trash: {e}")
-            raise
-        finally:
-            conn.close()
+        return files_mod.restore_from_trash(self, user_id, vault_type, file_id)
 
     def get_trash_files(self, user_id: str, vault_type: str) -> List[Dict[str, Any]]:
         """Get all files in trash"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        try:
-            cursor.execute("""
-                SELECT id, filename, file_size, mime_type, folder_path,
-                       deleted_at,
-                       CASE
-                           WHEN mime_type LIKE 'image/%' THEN 'images'
-                           WHEN mime_type LIKE 'video/%' THEN 'videos'
-                           WHEN mime_type LIKE 'audio/%' THEN 'audio'
-                           WHEN mime_type LIKE 'application/pdf' THEN 'documents'
-                           WHEN mime_type LIKE 'text/%' THEN 'documents'
-                           ELSE 'other'
-                       END as category
-                FROM vault_files
-                WHERE user_id = ? AND vault_type = ? AND is_deleted = 1
-                ORDER BY deleted_at DESC
-            """, (user_id, vault_type))
-
-            trash_files = []
-            for row in cursor.fetchall():
-                trash_files.append({
-                    "id": row[0],
-                    "filename": row[1],
-                    "file_size": row[2],
-                    "mime_type": row[3],
-                    "folder_path": row[4],
-                    "deleted_at": row[5],
-                    "category": row[6]
-                })
-
-            return trash_files
-
-        finally:
-            conn.close()
+        return files_mod.get_trash_files(self, user_id, vault_type)
 
     def empty_trash(self, user_id: str, vault_type: str) -> Dict[str, Any]:
         """Permanently delete all files in trash"""
-        import os
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        try:
-            # Get all trashed files
-            cursor.execute("""
-                SELECT id, encrypted_path
-                FROM vault_files
-                WHERE user_id = ? AND vault_type = ? AND is_deleted = 1
-            """, (user_id, vault_type))
-
-            trashed_files = cursor.fetchall()
-            deleted_count = 0
-
-            # Delete physical files
-            for file_id, encrypted_path in trashed_files:
-                file_path = self.files_path / encrypted_path
-                if file_path.exists():
-                    os.remove(file_path)
-                deleted_count += 1
-
-            # Delete from database
-            cursor.execute("""
-                DELETE FROM vault_files
-                WHERE user_id = ? AND vault_type = ? AND is_deleted = 1
-            """, (user_id, vault_type))
-
-            conn.commit()
-
-            return {
-                "deleted_count": deleted_count,
-                "status": "trash emptied"
-            }
-
-        except Exception as e:
-            conn.rollback()
-            logger.error(f"Failed to empty trash: {e}")
-            raise
-        finally:
-            conn.close()
+        return files_mod.empty_trash(self, user_id, vault_type)
 
     # ===== Day 4: Advanced Search =====
 
@@ -1520,88 +958,19 @@ class VaultService:
                     min_size: int = None, max_size: int = None,
                     folder_path: str = None) -> List[Dict[str, Any]]:
         """Advanced file search with multiple filters"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        try:
-            # Build dynamic query
-            sql = """
-                SELECT DISTINCT f.id, f.filename, f.file_size, f.mime_type,
-                       f.folder_path, f.created_at, f.updated_at,
-                       CASE
-                           WHEN f.mime_type LIKE 'image/%' THEN 'images'
-                           WHEN f.mime_type LIKE 'video/%' THEN 'videos'
-                           WHEN f.mime_type LIKE 'audio/%' THEN 'audio'
-                           WHEN f.mime_type LIKE 'application/pdf' THEN 'documents'
-                           WHEN f.mime_type LIKE 'text/%' THEN 'documents'
-                           ELSE 'other'
-                       END as category
-                FROM vault_files f
-            """
-
-            conditions = ["f.user_id = ?", "f.vault_type = ?", "f.is_deleted = 0"]
-            params = [user_id, vault_type]
-
-            # Add tag join if searching by tags
-            if tags:
-                sql += " LEFT JOIN vault_file_tags t ON f.id = t.file_id"
-                tag_conditions = " OR ".join(["t.tag_name = ?"] * len(tags))
-                conditions.append(f"({tag_conditions})")
-                params.extend(tags)
-
-            # Text search
-            if query:
-                conditions.append("f.filename LIKE ?")
-                params.append(f"%{query}%")
-
-            # MIME type filter
-            if mime_type:
-                conditions.append("f.mime_type LIKE ?")
-                params.append(f"{mime_type}%")
-
-            # Date range
-            if date_from:
-                conditions.append("f.created_at >= ?")
-                params.append(date_from)
-            if date_to:
-                conditions.append("f.created_at <= ?")
-                params.append(date_to)
-
-            # Size range
-            if min_size is not None:
-                conditions.append("f.file_size >= ?")
-                params.append(min_size)
-            if max_size is not None:
-                conditions.append("f.file_size <= ?")
-                params.append(max_size)
-
-            # Folder filter
-            if folder_path:
-                conditions.append("f.folder_path = ?")
-                params.append(folder_path)
-
-            sql += " WHERE " + " AND ".join(conditions)
-            sql += " ORDER BY f.updated_at DESC"
-
-            cursor.execute(sql, params)
-
-            results = []
-            for row in cursor.fetchall():
-                results.append({
-                    "id": row[0],
-                    "filename": row[1],
-                    "file_size": row[2],
-                    "mime_type": row[3],
-                    "folder_path": row[4],
-                    "created_at": row[5],
-                    "updated_at": row[6],
-                    "category": row[7]
-                })
-
-            return results
-
-        finally:
-            conn.close()
+        return search_mod.search_files(
+            self,
+            user_id=user_id,
+            vault_type=vault_type,
+            query=query,
+            mime_type=mime_type,
+            tags=tags,
+            date_from=date_from,
+            date_to=date_to,
+            min_size=min_size,
+            max_size=max_size,
+            folder_path=folder_path,
+        )
 
     # ===== Day 4: File Sharing =====
 
@@ -2082,231 +1451,30 @@ class VaultService:
     def pin_file(self, user_id: str, vault_type: str, file_id: str,
                 pin_order: int = 0) -> Dict[str, Any]:
         """Pin a file for quick access"""
-        import uuid
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        try:
-            pin_id = str(uuid.uuid4())
-            now = datetime.utcnow().isoformat()
-
-            cursor.execute("""
-                INSERT INTO vault_pinned_files (
-                    id, file_id, user_id, vault_type, pin_order, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?)
-            """, (pin_id, file_id, user_id, vault_type, pin_order, now))
-
-            conn.commit()
-
-            return {
-                "id": pin_id,
-                "file_id": file_id,
-                "pin_order": pin_order,
-                "created_at": now
-            }
-
-        except Exception as e:
-            conn.rollback()
-            logger.error(f"Failed to pin file: {e}")
-            raise
-        finally:
-            conn.close()
+        return automation_mod.pin_file(self, user_id, vault_type, file_id, pin_order)
 
     def unpin_file(self, user_id: str, vault_type: str, file_id: str) -> bool:
         """Unpin a file"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        try:
-            cursor.execute("""
-                DELETE FROM vault_pinned_files
-                WHERE file_id = ? AND user_id = ? AND vault_type = ?
-            """, (file_id, user_id, vault_type))
-
-            conn.commit()
-            return cursor.rowcount > 0
-
-        except Exception as e:
-            conn.rollback()
-            logger.error(f"Failed to unpin file: {e}")
-            raise
-        finally:
-            conn.close()
+        return automation_mod.unpin_file(self, user_id, vault_type, file_id)
 
     def get_pinned_files(self, user_id: str, vault_type: str) -> List[Dict[str, Any]]:
         """Get all pinned files"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        try:
-            cursor.execute("""
-                SELECT f.id, f.filename, f.file_size, f.mime_type,
-                       f.folder_path, p.pin_order, p.created_at
-                FROM vault_pinned_files p
-                JOIN vault_files f ON p.file_id = f.id
-                WHERE p.user_id = ? AND p.vault_type = ? AND f.is_deleted = 0
-                ORDER BY p.pin_order ASC, p.created_at DESC
-            """, (user_id, vault_type))
-
-            pinned = []
-            for row in cursor.fetchall():
-                pinned.append({
-                    "id": row[0],
-                    "filename": row[1],
-                    "file_size": row[2],
-                    "mime_type": row[3],
-                    "folder_path": row[4],
-                    "pin_order": row[5],
-                    "pinned_at": row[6]
-                })
-
-            return pinned
-
-        finally:
-            conn.close()
+        return automation_mod.get_pinned_files(self, user_id, vault_type)
 
     def set_folder_color(self, user_id: str, vault_type: str, folder_id: str,
                         color: str) -> Dict[str, Any]:
         """Set color for a folder"""
-        import uuid
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        try:
-            now = datetime.utcnow().isoformat()
-
-            # Try to update existing color
-            cursor.execute("""
-                UPDATE vault_folder_colors
-                SET color = ?
-                WHERE folder_id = ? AND user_id = ? AND vault_type = ?
-            """, (color, folder_id, user_id, vault_type))
-
-            # If no rows updated, insert new color
-            if cursor.rowcount == 0:
-                color_id = str(uuid.uuid4())
-                cursor.execute("""
-                    INSERT INTO vault_folder_colors (
-                        id, folder_id, user_id, vault_type, color, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?)
-                """, (color_id, folder_id, user_id, vault_type, color, now))
-
-            conn.commit()
-
-            return {
-                "folder_id": folder_id,
-                "color": color
-            }
-
-        except Exception as e:
-            conn.rollback()
-            logger.error(f"Failed to set folder color: {e}")
-            raise
-        finally:
-            conn.close()
+        return automation_mod.set_folder_color(self, user_id, vault_type, folder_id, color)
 
     def get_folder_colors(self, user_id: str, vault_type: str) -> Dict[str, str]:
         """Get all folder colors"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        try:
-            cursor.execute("""
-                SELECT folder_id, color
-                FROM vault_folder_colors
-                WHERE user_id = ? AND vault_type = ?
-            """, (user_id, vault_type))
-
-            colors = {}
-            for row in cursor.fetchall():
-                colors[row[0]] = row[1]
-
-            return colors
-
-        finally:
-            conn.close()
+        return automation_mod.get_folder_colors(self, user_id, vault_type)
 
     # ===== Day 4: Backup & Export =====
 
     def export_vault_data(self, user_id: str, vault_type: str) -> Dict[str, Any]:
         """Export vault metadata for backup"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        try:
-            # Export files metadata
-            cursor.execute("""
-                SELECT id, filename, file_size, mime_type, folder_path,
-                       encrypted_path,
-                       CASE
-                           WHEN mime_type LIKE 'image/%' THEN 'images'
-                           WHEN mime_type LIKE 'video/%' THEN 'videos'
-                           WHEN mime_type LIKE 'audio/%' THEN 'audio'
-                           WHEN mime_type LIKE 'application/pdf' THEN 'documents'
-                           WHEN mime_type LIKE 'text/%' THEN 'documents'
-                           ELSE 'other'
-                       END as category,
-                       created_at, updated_at
-                FROM vault_files
-                WHERE user_id = ? AND vault_type = ? AND is_deleted = 0
-            """, (user_id, vault_type))
-
-            files = []
-            for row in cursor.fetchall():
-                files.append({
-                    "id": row[0],
-                    "filename": row[1],
-                    "file_size": row[2],
-                    "mime_type": row[3],
-                    "folder_path": row[4],
-                    "encrypted_path": row[5],
-                    "category": row[6],
-                    "created_at": row[7],
-                    "updated_at": row[8]
-                })
-
-            # Export folders
-            cursor.execute("""
-                SELECT id, folder_name, folder_path, parent_path, created_at
-                FROM vault_folders
-                WHERE user_id = ? AND vault_type = ?
-            """, (user_id, vault_type))
-
-            folders = []
-            for row in cursor.fetchall():
-                folders.append({
-                    "id": row[0],
-                    "folder_name": row[1],
-                    "folder_path": row[2],
-                    "parent_path": row[3],
-                    "created_at": row[4]
-                })
-
-            # Export tags
-            cursor.execute("""
-                SELECT file_id, tag_name, tag_color
-                FROM vault_file_tags
-                WHERE user_id = ? AND vault_type = ?
-            """, (user_id, vault_type))
-
-            tags = []
-            for row in cursor.fetchall():
-                tags.append({
-                    "file_id": row[0],
-                    "tag_name": row[1],
-                    "tag_color": row[2]
-                })
-
-            return {
-                "vault_type": vault_type,
-                "export_date": datetime.utcnow().isoformat(),
-                "files": files,
-                "folders": folders,
-                "tags": tags
-            }
-
-        finally:
-            conn.close()
+        return automation_mod.export_vault_data(self, user_id, vault_type)
 
     # ===== Day 5: Performance Features =====
 

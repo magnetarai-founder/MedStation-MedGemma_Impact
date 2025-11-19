@@ -19,6 +19,11 @@ from . import sessions as sessions_mod
 # Phase 2.3b - Model/hot-slot delegation
 from . import models as models_mod
 from . import hot_slots as hot_slots_mod
+# Phase 2.3b+ - Analytics and system monitoring delegation
+from . import analytics as analytics_mod
+from . import system as system_mod
+# Phase 2.3c - Ollama server operations delegation
+from . import ollama_ops as ollama_ops_mod
 
 logger = logging.getLogger(__name__)
 
@@ -673,126 +678,43 @@ async def unload_model(model_name: str) -> bool:
 
 async def semantic_search(query: str, limit: int, user_id: str, team_id: Optional[str] = None) -> Dict[str, Any]:
     """Search across conversations using semantic similarity"""
-    memory = _get_memory()
-
-    results = await asyncio.to_thread(
-        memory.search_messages_semantic,
-        query,
-        limit,
-        user_id=user_id,
-        team_id=team_id
-    )
-
-    return {
-        "query": query,
-        "results": results,
-        "count": len(results),
-        "team_id": team_id
-    }
+    return await analytics_mod.semantic_search(query, limit, user_id, team_id)
 
 
 async def get_analytics(session_id: Optional[str], user_id: str, team_id: Optional[str] = None) -> Dict[str, Any]:
     """Get analytics for a session or scoped analytics"""
-    memory = _get_memory()
-
-    analytics = await asyncio.to_thread(
-        memory.get_analytics,
-        session_id,
-        user_id=user_id,
-        team_id=team_id
-    )
-
-    return analytics
+    return await analytics_mod.get_analytics(session_id, user_id, team_id)
 
 
 async def get_session_analytics(chat_id: str) -> Dict[str, Any]:
     """Get detailed analytics for a specific session"""
-    from api.chat_enhancements import ConversationAnalytics
-
-    messages = await get_messages(chat_id)
-
-    stats = await asyncio.to_thread(
-        ConversationAnalytics.calculate_session_stats,
-        messages
-    )
-
-    topics = await asyncio.to_thread(
-        ConversationAnalytics.get_conversation_topics,
-        messages
-    )
-
-    return {
-        "stats": stats,
-        "topics": topics
-    }
+    return await analytics_mod.get_session_analytics(chat_id)
 
 
 # ===== ANE Context =====
 
 async def get_ane_stats() -> Dict[str, Any]:
     """Get Apple Neural Engine context stats"""
-    ane_engine = _get_ane_engine()
-    stats = await asyncio.to_thread(ane_engine.stats)
-    return stats
+    return await system_mod.get_ane_stats()
 
 
 async def search_ane_context(query: str, top_k: int = 5, threshold: float = 0.5) -> Dict[str, Any]:
     """Search for similar chat contexts using ANE-accelerated embeddings"""
-    ane_engine = _get_ane_engine()
-
-    results = await asyncio.to_thread(
-        ane_engine.search_similar,
-        query,
-        top_k,
-        threshold
-    )
-
-    return {
-        "query": query,
-        "results": results,
-        "count": len(results)
-    }
+    return await system_mod.search_ane_context(query, top_k, threshold)
 
 
 # ===== Embedding Info =====
 
 async def get_embedding_info() -> Dict[str, Any]:
     """Get information about the embedding backend"""
-    try:
-        from api.unified_embedder import get_backend_info
-        info = await asyncio.to_thread(get_backend_info)
-        return info
-    except Exception as e:
-        logger.error(f"Failed to get embedding info: {e}")
-        return {
-            "error": str(e),
-            "backend": "unknown"
-        }
+    return await system_mod.get_embedding_info()
 
 
 # ===== Token Counting =====
 
 async def get_token_count(chat_id: str) -> Dict[str, Any]:
     """Get token count for a chat session"""
-    token_counter = _get_token_counter()
-    messages = await get_messages(chat_id, limit=None)
-
-    message_list = [
-        {"role": msg["role"], "content": msg["content"]}
-        for msg in messages
-    ]
-
-    total_tokens = await asyncio.to_thread(
-        token_counter.count_message_tokens,
-        message_list
-    )
-
-    return {
-        "chat_id": chat_id,
-        "total_tokens": total_tokens,
-        "max_tokens": 200000,
-        "percentage": round((total_tokens / 200000) * 100, 2)
-    }
+    return await system_mod.get_token_count(chat_id)
 
 
 async def update_session_model(chat_id: str, model: str) -> Dict[str, Any]:
@@ -838,11 +760,7 @@ async def set_session_archived(chat_id: str, archived: bool) -> Dict[str, Any]:
 
 async def check_health() -> Dict[str, Any]:
     """Check Ollama health status"""
-    try:
-        from api.error_handler import ErrorHandler
-    except ImportError:
-        from error_handler import ErrorHandler
-    return await ErrorHandler.check_ollama_health()
+    return await system_mod.check_health()
 
 
 async def get_models_status() -> Dict[str, Any]:
@@ -852,28 +770,7 @@ async def get_models_status() -> Dict[str, Any]:
 
 async def get_ollama_server_status() -> Dict[str, Any]:
     """Check if Ollama server is running"""
-    ollama_client = _get_ollama_client()
-
-    try:
-        import httpx
-        async with httpx.AsyncClient(timeout=2.0) as client:
-            response = await client.get(f"{ollama_client.base_url}/api/ps")
-
-            if response.status_code == 200:
-                data = response.json()
-                loaded_models = [model.get("name") for model in data.get("models", [])]
-
-                return {
-                    "running": True,
-                    "loaded_models": loaded_models,
-                    "model_count": len(loaded_models)
-                }
-            else:
-                return {"running": False, "loaded_models": [], "model_count": 0}
-
-    except Exception as e:
-        logger.debug(f"Ollama server check failed: {e}")
-        return {"running": False, "loaded_models": [], "model_count": 0}
+    return await ollama_ops_mod.get_ollama_server_status()
 
 
 # ===== System Management =====
@@ -910,137 +807,17 @@ async def get_system_memory() -> Dict[str, Any]:
 
 async def shutdown_ollama_server() -> Dict[str, Any]:
     """Shutdown Ollama server"""
-    import subprocess
-    import httpx
-
-    ollama_client = _get_ollama_client()
-
-    # Get list of currently loaded models
-    loaded_models = []
-    try:
-        async with httpx.AsyncClient(timeout=2.0) as client:
-            response = await client.get(f"{ollama_client.base_url}/api/ps")
-            if response.status_code == 200:
-                data = response.json()
-                loaded_models = [model.get("name") for model in data.get("models", [])]
-    except:
-        pass
-
-    # Kill ollama process
-    try:
-        subprocess.run(["killall", "-9", "ollama"], check=False, capture_output=True)
-        logger.info("🔴 Ollama server shutdown requested - all models unloaded")
-
-        return {
-            "status": "shutdown",
-            "message": "Ollama server stopped successfully",
-            "previously_loaded_models": loaded_models,
-            "model_count": len(loaded_models)
-        }
-    except Exception as e:
-        logger.error(f"Failed to shutdown Ollama: {e}")
-        raise
+    return await ollama_ops_mod.shutdown_ollama_server()
 
 
 async def start_ollama_server() -> Dict[str, Any]:
     """Start Ollama server in background"""
-    import subprocess
-    import httpx
-
-    ollama_client = _get_ollama_client()
-
-    # Start ollama serve in background
-    process = subprocess.Popen(
-        ["ollama", "serve"],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        start_new_session=True
-    )
-
-    # Wait a moment for startup
-    await asyncio.sleep(2)
-
-    # Check if it started successfully
-    try:
-        async with httpx.AsyncClient(timeout=3.0) as client:
-            response = await client.get(f"{ollama_client.base_url}/api/tags")
-            if response.status_code == 200:
-                logger.info("🟢 Ollama server started successfully")
-                return {
-                    "status": "started",
-                    "message": "Ollama server started successfully",
-                    "pid": process.pid
-                }
-    except:
-        pass
-
-    raise Exception("Ollama server started but not responding. Check logs.")
+    return await ollama_ops_mod.start_ollama_server()
 
 
 async def restart_ollama_server(reload_models: bool = False, models_to_load: Optional[List[str]] = None) -> Dict[str, Any]:
     """Restart Ollama server and optionally reload specific models"""
-    import subprocess
-    import httpx
-
-    ollama_client = _get_ollama_client()
-
-    # Get currently loaded models before shutdown
-    previous_models = []
-    try:
-        async with httpx.AsyncClient(timeout=2.0) as client:
-            response = await client.get(f"{ollama_client.base_url}/api/ps")
-            if response.status_code == 200:
-                data = response.json()
-                previous_models = [model.get("name") for model in data.get("models", [])]
-    except:
-        pass
-
-    # Shutdown first
-    subprocess.run(["killall", "-9", "ollama"], check=False, capture_output=True)
-    logger.info("🔄 Restarting Ollama server...")
-
-    # Wait a moment
-    await asyncio.sleep(1)
-
-    # Start server
-    process = subprocess.Popen(
-        ["ollama", "serve"],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        start_new_session=True
-    )
-
-    # Wait for startup
-    await asyncio.sleep(3)
-
-    # Reload models if requested
-    loaded_results = []
-    if reload_models:
-        models = models_to_load if models_to_load else previous_models
-
-        for model in models:
-            try:
-                success = await ollama_client.preload_model(model, "1h")
-                loaded_results.append({
-                    "model": model,
-                    "loaded": success
-                })
-            except Exception as e:
-                logger.error(f"Failed to reload model {model}: {e}")
-                loaded_results.append({
-                    "model": model,
-                    "loaded": False,
-                    "error": str(e)
-                })
-
-    return {
-        "status": "restarted",
-        "message": "Ollama server restarted successfully",
-        "pid": process.pid,
-        "models_reloaded": reload_models,
-        "reload_results": loaded_results,
-        "previously_loaded": previous_models
-    }
+    return await ollama_ops_mod.restart_ollama_server(reload_models, models_to_load)
 
 
 # ===== Data Export =====
@@ -1215,113 +992,29 @@ async def get_orchestrator_suitable_models() -> List[Dict[str, Any]]:
 
 async def submit_router_feedback(command: str, tool_used: str, success: bool, execution_time: float, user_satisfaction: Optional[int] = None):
     """Submit feedback for adaptive router to learn from"""
-    adaptive_router = _get_adaptive_router()
-
-    await asyncio.to_thread(
-        adaptive_router.record_execution_result,
-        command,
-        tool_used,
-        success,
-        execution_time
-    )
-
-    logger.info(f"📊 Router feedback: {command[:50]}... → {tool_used} ({'✓' if success else '✗'})")
-
-    return {
-        "status": "recorded",
-        "message": "Feedback recorded successfully"
-    }
+    return await system_mod.submit_router_feedback(command, tool_used, success, execution_time, user_satisfaction)
 
 
 async def get_router_stats() -> Dict[str, Any]:
     """Get adaptive router statistics"""
-    adaptive_router = _get_adaptive_router()
-
-    try:
-        from api.learning_system import LearningSystem
-        from api.jarvis_memory import JarvisMemory
-
-        jarvis_memory = JarvisMemory()
-        learning_system = LearningSystem(memory=jarvis_memory)
-    except ImportError:
-        from learning_system import LearningSystem
-        from jarvis_memory import JarvisMemory
-
-        jarvis_memory = JarvisMemory()
-        learning_system = LearningSystem(memory=jarvis_memory)
-
-    routing_stats = adaptive_router.get_routing_stats() if hasattr(adaptive_router, 'get_routing_stats') else {}
-    learning_stats = await asyncio.to_thread(learning_system.get_statistics)
-    memory_stats = await asyncio.to_thread(jarvis_memory.get_statistics)
-    learned_patterns = await asyncio.to_thread(learning_system.get_learned_patterns) if hasattr(learning_system, 'get_learned_patterns') else []
-    preferences = await asyncio.to_thread(learning_system.get_preferences)
-
-    return {
-        "routing": routing_stats,
-        "learning": learning_stats,
-        "memory": memory_stats,
-        "top_patterns": learned_patterns[:10],
-        "preferences": [
-            {
-                "category": p.category,
-                "preference": p.preference,
-                "confidence": p.confidence,
-                "evidence_count": p.evidence_count
-            }
-            for p in preferences[:10]
-        ]
-    }
+    return await system_mod.get_router_stats()
 
 
 async def explain_routing(command: str) -> Dict[str, Any]:
     """Explain how a command would be routed"""
-    adaptive_router = _get_adaptive_router()
-
-    explanation = await asyncio.to_thread(
-        adaptive_router.explain_routing if hasattr(adaptive_router, 'explain_routing') else adaptive_router.route_task,
-        command
-    )
-
-    if isinstance(explanation, str):
-        return {"explanation": explanation}
-    else:
-        return {
-            "task_type": explanation.task_type.value,
-            "tool_type": explanation.tool_type.value,
-            "confidence": explanation.confidence,
-            "reasoning": explanation.reasoning,
-            "learning_insights": explanation.learning_insights if hasattr(explanation, 'learning_insights') else {}
-        }
+    return await system_mod.explain_routing(command)
 
 
 # ===== Router Mode =====
 
 def get_router_mode() -> Dict[str, Any]:
     """Get current router mode"""
-    global current_router_mode
-    return {
-        "mode": current_router_mode,
-        "description": "adaptive (GPU, learns)" if current_router_mode == 'adaptive' else "ane (ultra-low power <0.1W)",
-        "power_estimate": "5-10W" if current_router_mode == 'adaptive' else "<0.1W"
-    }
+    return system_mod.get_router_mode()
 
 
 def set_router_mode(mode: str) -> Dict[str, Any]:
     """Set router mode"""
-    global current_router_mode
-
-    if mode not in ['adaptive', 'ane']:
-        raise ValueError("Mode must be 'adaptive' or 'ane'")
-
-    current_router_mode = mode
-    logger.info(f"🔄 Router mode changed to: {mode}")
-
-    return {
-        "mode": mode,
-        "description": "adaptive (GPU, learns)" if mode == 'adaptive' else "ane (ultra-low power <0.1W)",
-        "power_estimate": "5-10W" if mode == 'adaptive' else "<0.1W",
-        "message": f"Router mode set to {mode}"
-    }
+    return system_mod.set_router_mode(mode)
 
 
 async def get_combined_router_stats() -> Dict[str, Any]:
@@ -1393,33 +1086,17 @@ async def get_recursive_stats() -> Dict[str, Any]:
 
 def get_ollama_configuration() -> Dict[str, Any]:
     """Get current Ollama configuration"""
-    ollama_config = _get_ollama_config()
-    return ollama_config.get_config_summary()
+    return ollama_ops_mod.get_ollama_configuration()
 
 
 def set_ollama_mode(mode: str) -> Dict[str, Any]:
     """Set Ollama performance mode"""
-    ollama_config = _get_ollama_config()
-    ollama_config.set_mode(mode)
-    return {
-        "status": "success",
-        "mode": mode,
-        "config": ollama_config.get_config_summary()
-    }
+    return ollama_ops_mod.set_ollama_mode(mode)
 
 
 def auto_detect_ollama_config() -> Dict[str, Any]:
     """Auto-detect optimal Ollama settings"""
-    ollama_config = _get_ollama_config()
-    optimal_config = ollama_config.detect_optimal_settings()
-    ollama_config.config = optimal_config
-    ollama_config.save_config()
-
-    return {
-        "status": "success",
-        "message": "Auto-detected optimal settings",
-        "config": ollama_config.get_config_summary()
-    }
+    return ollama_ops_mod.auto_detect_ollama_config()
 
 
 # ===== Performance Monitoring =====
