@@ -1,3 +1,19 @@
+/**
+ * SettingsTab - DEPRECATED
+ *
+ * This component has been replaced by the new modular settings architecture.
+ * Use the following components instead:
+ * - SettingsModal: Main settings modal with tabbed interface
+ * - AppSettingsTab: App settings (replaces most of this file's functionality)
+ * - ChatTab: Chat and AI settings
+ * - ModelsTab: AI model management
+ * - AutomationTab: Automation settings
+ * - AdvancedTab: Advanced settings
+ * - ProfileSettings: Profile settings
+ *
+ * @deprecated Import from '@/components/SettingsModal' or individual tab components instead
+ */
+
 import { useState, useEffect } from 'react'
 import { Save, Settings, Zap, Database, FileJson, Users, Clock, Cpu } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
