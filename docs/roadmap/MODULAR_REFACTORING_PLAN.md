@@ -34,7 +34,7 @@ This is the **single source of truth** for refactoring ElohimOS over the next 12
   - `main.py` now uses `app_factory.py` + `middleware/` + `startup/` + centralized `router_registry`
 - **Frontend**: 220 TS/TSX components, 14 Zustand stores
   - Major workspaces modularized: `VaultWorkspace/`, `AppShell` + `useAppBootstrap`, `TeamChat/`, `WorkflowDesigner/`
-  - Settings & profile: `SettingsModal` uses modular tabs; `ProfileSettings` package is source of truth for profile; `ProfileSettingsModal` is now a thin wrapper around `ProfileSettings`; legacy `SettingsTab` (862 lines) is now deprecated
+  - Settings & profile: `SettingsModal` uses modular tabs; `ProfileSettings` package is source of truth for profile; `ProfileSettingsModal` is thin wrapper (62 lines); legacy `SettingsTab` (862 → 28 lines) is now a thin wrapper around `AppSettingsTab`
   - Library modals: `LibraryModal` (726 → 11 lines) and `ProjectLibraryModal` (798 → 13 lines) are fully modularized with backwards compatibility shims
 - **Docs**: Consolidated to 6 core docs (most deleted in recent cleanup)
 - **Architecture**: FastAPI + 8 SQLite DBs + DuckDB + Ollama + Metal 4 + React/Zustand
@@ -894,34 +894,34 @@ components/WorkflowDesigner/
 - UI regression tests or scripted/manual checklists for each settings tab and modal.
 
 #### 5.1 Align `SettingsTab` with new Settings architecture ✅ **COMPLETED**
-**Current**:
-- ~~`components/settings/SettingsTab.tsx`~~ (862 lines) is a legacy monolithic coordinator from the old settings UI.
-- New modular settings live in:
-  - `components/SettingsModal.tsx` (main settings modal with sidebar navigation)
-  - `components/settings/AppSettingsTab.tsx` (replaces most SettingsTab functionality)
-  - `components/settings/AdvancedTab.tsx`
-  - `components/settings/ChatTab.tsx` / `ChatSettingsContent.tsx`
-  - `components/settings/ModelsTab.tsx`
-  - `components/settings/AutomationTab.tsx`
-  - `components/ProfileSettings/` (Profile tab content used by `SettingsModal`)
+**Status**: ✅ COMPLETED (2025-11-19)
+**Old**: Monolithic settings tab coordinator (~~862 lines~~) duplicating app settings logic.
+**New**: ~~`components/settings/SettingsTab.tsx`~~ (862 → **28 lines**) - Thin, deprecated wrapper around `AppSettingsTab`.
 
-**Goal**: ✅ **ACHIEVED**
-- Ensured single, clear entrypoint for application settings (the new `SettingsModal` + tab components).
-- Deprecated `SettingsTab.tsx` as it is no longer used anywhere in the codebase.
+**Implementation**:
+- `SettingsTab.tsx` is now a minimal wrapper component:
+  - Clear `@deprecated` JSDoc comment explaining the new architecture
+  - Exposes the same `SettingsTabProps { activeNavTab: NavTab }` interface
+  - Delegates entirely to `AppSettingsTab`, which is the single source of truth for app settings
+  - No business logic remains - all logic lives in modular tabs
 
-**Result**:
-- Added comprehensive deprecation notice at top of `SettingsTab.tsx` (862 lines kept intact for reference).
-- Notice clearly directs developers to use:
-  - `SettingsModal` for the main settings UI
-  - `AppSettingsTab` for app settings (replaces SettingsTab functionality)
-  - Individual tab components (`ChatTab`, `ModelsTab`, `AutomationTab`, `AdvancedTab`)
-  - `ProfileSettings` for profile settings
-- No imports or usages of `SettingsTab` found in codebase.
-- Build succeeds with no errors.
-- File remains functional but clearly marked as deprecated with `@deprecated` JSDoc tag.
+- New modular settings architecture:
+  - `components/SettingsModal.tsx` - Main settings modal with sidebar navigation
+  - `components/settings/AppSettingsTab.tsx` - App settings (single source of truth)
+  - `components/settings/AdvancedTab.tsx` - Advanced settings
+  - `components/settings/ChatTab.tsx` / `ChatSettingsContent.tsx` - Chat/AI settings
+  - `components/settings/ModelsTab.tsx` - Model management
+  - `components/settings/AutomationTab.tsx` - Automation settings
+  - `components/ProfileSettings/` - Profile settings module
 
-**Dependencies**: `SettingsModal`, `AppSettingsTab`, `AdvancedTab`, `ChatTab`, `ProfileSettings`
-**Breaking Changes**: None – this is a structural cleanup and deprecation only.
+**Impact**:
+- Legacy imports of `SettingsTab` (if any existed) would continue to work via the wrapper
+- New code should import `SettingsModal` or individual tab components directly
+- No usages of `SettingsTab` found in the codebase - component is purely legacy
+- Build succeeds with no errors
+
+**Dependencies**: `AppSettingsTab`, `SettingsModal`, `AdvancedTab`, `ChatTab`, `ProfileSettings`
+**Breaking Changes**: None - thin wrapper maintains backwards compatibility
 
 #### 5.2 Refactor Large Modals (Profile & Library)
 **Files**:
