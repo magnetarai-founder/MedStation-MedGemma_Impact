@@ -293,7 +293,7 @@ class Workflow(BaseModel):
 class StageTransition(BaseModel):
     """Record of stage change"""
     from_stage_id: Optional[str] = None  # None if first stage
-    to_stage_id: str
+    to_stage_id: Optional[str] = None    # None if workflow completed (terminal transition)
     transitioned_at: datetime = Field(default_factory=datetime.utcnow)
     transitioned_by: Optional[str] = None  # User ID or "system"
     notes: Optional[str] = None

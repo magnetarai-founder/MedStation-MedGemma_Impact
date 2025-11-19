@@ -91,9 +91,12 @@ def track_execution(
 
         conn.commit()
 
-        # Learn from this execution (if callback provided)
-        if learn_callback:
-            learn_callback(command, tool, success, execution_time)
+    # IMPORTANT: Learn callback MUST be called OUTSIDE the lock
+    # The callback (learn_from_execution in preferences.py) acquires the same lock,
+    # so calling it here would cause a deadlock (nested lock acquisition).
+    # This was caught by test_learning_system.py tests - see REFACTORING_POSTMORTEM.md
+    if learn_callback:
+        learn_callback(command, tool, success, execution_time)
 
 
 def get_success_rate(conn: sqlite3.Connection, command: str, tool: str) -> float:
