@@ -1067,8 +1067,37 @@ api/services/code_editor/
 **Breaking Changes**: None
 
 #### 6.3 Refactor Other Large Files
-**Files**:
-- `api/p2p_chat_service.py` (1,151 lines) → Split into `p2p/chat/`
+
+**6.3a: P2P Chat Service ✅ COMPLETED**
+
+**File**:
+- `api/p2p_chat_service.py` (1,151 → 41 lines) - 96% reduction
+
+**Final Structure**:
+```
+api/services/p2p_chat/
+├── __init__.py          (38 lines)   - Public API exports
+├── types.py             (16 lines)   - Protocol constants & config
+├── storage.py           (429 lines)  - SQLite DB operations (peers, channels, messages, file transfers, keys)
+├── encryption.py        (241 lines)  - E2E encryption integration & safety numbers
+├── network.py           (509 lines)  - libp2p host, mDNS discovery, stream handlers, auto-reconnect
+├── channels.py          (134 lines)  - Channel operations (create/list/get)
+├── messages.py          (192 lines)  - Message send/retrieve with E2E encryption
+├── files.py             (110 lines)  - File transfer operations (metadata, progress)
+└── service.py           (333 lines)  - Main orchestrator
+```
+**Total service package**: 2,002 lines
+
+**Key Achievements**:
+- Separated networking, encryption, storage, and business logic
+- Preserved all E2E encryption behavior: device keys, peer keys, safety number tracking
+- Preserved libp2p networking: mDNS discovery, auto-reconnect, heartbeat
+- Maintained behavior when libp2p not installed (LIBP2P_AVAILABLE gating)
+- Router (p2p_chat_router.py) continues using same public API
+- Import validation passed ✓
+- No breaking changes
+
+**Remaining Files**:
 - `api/admin_service.py` (1,049 lines) → Split by admin operation type
 - `api/learning_system.py` (979 lines) → Split into `learning/`
 - `api/agent/orchestrator.py` (961 lines) → Split into `agent/orchestration/`
