@@ -133,8 +133,8 @@ export const useUserStore = createWithEqualityFn<UserStore>()(
       getUserId: () => {
         const user = get().user
         if (!user) {
-          // Fetch user if not loaded
-          get().fetchUser()
+          // Don't automatically fetch here - causes infinite loop
+          // Components should fetch explicitly via useEffect
           return 'loading'
         }
         return user.user_id
