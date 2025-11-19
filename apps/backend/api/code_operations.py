@@ -1,17 +1,19 @@
 """
-Code Operations API - File browsing and operations for Code Tab
-Uses patterns from Continue's proven file operations
+Code Operations API - Thin Router Layer
+File browsing and operations for Code Tab
+Delegates to services/code_editor for business logic
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from typing import List, Dict, Any, Optional
 from pathlib import Path
-import os
 import logging
 
 from config_paths import PATHS
 
-# Import auth middleware
+logger = logging.getLogger(__name__)
+
+# Import auth middleware with try/except pattern
 try:
     from auth_middleware import get_current_user
 except ImportError:
@@ -29,22 +31,22 @@ except ImportError:
     async def log_action(**kwargs):
         pass
 
+# Import service layer
+try:
+    from api.services import code_editor as code_service
+except ImportError:
+    from services import code_editor as code_service
+
+# Import permission layer and rate limiter
 from permission_layer import PermissionLayer, RiskLevel
 
-logger = logging.getLogger(__name__)
+try:
+    from api.rate_limiter import rate_limiter
+except ImportError:
+    from rate_limiter import rate_limiter
 
+# Initialize router
 router = APIRouter(prefix="/api/v1/code", tags=["code"])
-
-
-@router.get("/health")
-async def health_check():
-    """Health check endpoint"""
-    return {
-        "status": "ok",
-        "service": "code_operations",
-        "workspace_base": str(get_code_workspace_base())
-    }
-
 
 # Initialize permission layer for file operations
 permission_layer = PermissionLayer(
@@ -53,157 +55,48 @@ permission_layer = PermissionLayer(
     non_interactive_policy="conservative"
 )
 
-# Code workspace base path (under .neutron_data)
-def get_code_workspace_base() -> Path:
-    """Get the base path for code workspaces"""
-    workspace_path = PATHS.data_dir / "code_workspaces"
-    workspace_path.mkdir(exist_ok=True, parents=True)
-    return workspace_path
+
+# ============================================================================
+# HEALTH CHECK
+# ============================================================================
+
+@router.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "ok",
+        "service": "code_operations",
+        "workspace_base": str(code_service.get_code_workspace_base())
+    }
 
 
-def get_user_workspace(user_id: str) -> Path:
-    """Get user's code workspace directory"""
-    user_workspace = get_code_workspace_base() / user_id
-    user_workspace.mkdir(exist_ok=True, parents=True)
-    return user_workspace
-
-
-def is_safe_path(path: Path, base: Path) -> bool:
-    """
-    Prevent directory traversal attacks
-    From Continue's security patterns
-    """
-    try:
-        path.resolve().relative_to(base.resolve())
-        return True
-    except ValueError:
-        return False
-
-
-def should_ignore(path: Path) -> bool:
-    """
-    Check if path should be ignored (adapted from Continue's shouldIgnore)
-    """
-    ignore_patterns = [
-        'node_modules',
-        '.git',
-        '__pycache__',
-        '.venv',
-        'venv',
-        '.env',
-        'dist',
-        'build',
-        '.next',
-        '.cache',
-        'coverage',
-        '.DS_Store',
-        '*.pyc',
-        '*.pyo',
-        '*.so',
-        '*.dylib',
-        '.egg-info'
-    ]
-
-    path_str = str(path)
-    for pattern in ignore_patterns:
-        if pattern in path_str:
-            return True
-
-    return False
-
-
-def walk_directory(
-    directory: Path,
-    recursive: bool = True,
-    include_files: bool = True,
-    include_dirs: bool = False,
-    base_path: Path = None
-) -> List[Dict[str, Any]]:
-    """
-    Walk directory and return file tree (adapted from Continue's walkDir)
-    """
-    items = []
-
-    # Use provided base_path or default to workspace base
-    if base_path is None:
-        base_path = directory
-
-    try:
-        for entry in directory.iterdir():
-            # Skip ignored paths
-            if should_ignore(entry):
-                continue
-
-            is_dir = entry.is_dir()
-
-            # Skip symlinks (security)
-            if entry.is_symlink():
-                continue
-
-            item = {
-                'name': entry.name,
-                'type': 'directory' if is_dir else 'file',
-                'path': str(entry.relative_to(base_path)),
-            }
-
-            if is_dir:
-                # Recursively get children if recursive mode
-                if recursive:
-                    item['children'] = walk_directory(
-                        entry,
-                        recursive=True,
-                        include_files=include_files,
-                        include_dirs=True,  # Always include dirs in children
-                        base_path=base_path
-                    )
-                # Always add directories to items
-                items.append(item)
-            else:
-                if include_files:
-                    # Add file metadata
-                    try:
-                        stat = entry.stat()
-                        item['size'] = stat.st_size
-                        item['modified'] = stat.st_mtime
-                    except Exception:
-                        pass
-                    items.append(item)
-
-    except PermissionError:
-        logger.warning(f"Permission denied accessing {directory}")
-    except Exception as e:
-        logger.error(f"Error walking directory {directory}: {e}")
-
-    # Sort: directories first, then files, both alphabetically
-    items.sort(key=lambda x: (x['type'] != 'directory', x['name'].lower()))
-
-    return items
-
+# ============================================================================
+# FILE TREE OPERATIONS
+# ============================================================================
 
 @router.get("/files")
 async def get_file_tree(
     path: str = ".",
     recursive: bool = True,
-    absolute_path: str = None,  # Allow absolute path only within allowed roots
+    absolute_path: str = None,
     current_user: Dict = Depends(get_current_user)
 ):
     """
     Get file tree for user's code workspace or validated absolute path
-
-    Security: absolute_path is restricted to code_workspaces and home directory
+    Security: absolute_path is restricted to code_workspaces
     """
     try:
         user_id = current_user["user_id"]
         logger.info(f"[CODE] GET /files - user_id={user_id}, path={path}, absolute_path={absolute_path}, recursive={recursive}")
 
         # Get user workspace for validation
-        user_workspace = get_user_workspace(user_id)
+        user_workspace = code_service.get_user_workspace(user_id)
 
-        # If absolute_path provided, validate it's within allowed roots
+        # Determine target path
         if absolute_path:
             target_path = Path(absolute_path).resolve()
 
-            # Security: Validate absolute_path is within allowed roots
+            # Security: Validate absolute_path is within workspace
             try:
                 from .config_paths import get_config_paths
             except ImportError:
@@ -212,7 +105,6 @@ async def get_file_tree(
             PATHS = get_config_paths()
             user_workspace_root = PATHS.data_dir / "code_workspaces" / user_id
 
-            # Security: Restrict to workspace only (stricter than workspace + home)
             try:
                 target_path.relative_to(user_workspace_root)
             except ValueError:
@@ -230,19 +122,19 @@ async def get_file_tree(
             target_path = user_workspace if path == "." else user_workspace / path
 
             # Security: validate path within workspace
-            if not is_safe_path(target_path, user_workspace):
+            if not code_service.is_safe_path(target_path, user_workspace):
                 raise HTTPException(400, "Invalid path")
 
         if not target_path.exists():
             raise HTTPException(404, "Path not found")
 
-        # Walk directory
-        tree = walk_directory(
+        # Delegate to service
+        tree = code_service.walk_directory(
             target_path,
             recursive=recursive,
             include_files=True,
             include_dirs=True,
-            base_path=target_path  # Use target as base for relative paths
+            base_path=target_path
         )
 
         # Audit log
@@ -265,29 +157,32 @@ async def get_file_tree(
         raise HTTPException(500, f"Failed to get file tree: {str(e)}")
 
 
+# ============================================================================
+# FILE READ OPERATIONS
+# ============================================================================
+
 @router.get("/read")
 async def read_file(
     path: str,
     offset: int = 1,
     limit: int = 2000,
-    absolute_path: bool = False,  # Allow absolute path only within allowed roots
+    absolute_path: bool = False,
     current_user: Dict = Depends(get_current_user)
 ):
     """
-    Read file content (adapted from Codex's read_file with line numbers)
+    Read file content with line numbers
     Supports offset and limit for large files
-
-    Security: absolute_path is restricted to code_workspaces and home directory
+    Security: absolute_path is restricted to code_workspaces
     """
     try:
         user_id = current_user["user_id"]
-        user_workspace = get_user_workspace(user_id)
+        user_workspace = code_service.get_user_workspace(user_id)
 
         # Resolve file path
         if absolute_path or path.startswith('/'):
             file_path = Path(path).resolve()
 
-            # Security: Validate absolute path is within allowed roots
+            # Security: Validate absolute path is within workspace
             try:
                 from .config_paths import get_config_paths
             except ImportError:
@@ -296,7 +191,6 @@ async def read_file(
             PATHS = get_config_paths()
             user_workspace_root = PATHS.data_dir / "code_workspaces" / user_id
 
-            # Security: Restrict to workspace only (stricter than workspace + home)
             try:
                 file_path.relative_to(user_workspace_root)
             except ValueError:
@@ -309,7 +203,7 @@ async def read_file(
             file_path = user_workspace / path
 
             # Security: validate path within workspace
-            if not is_safe_path(file_path, user_workspace):
+            if not code_service.is_safe_path(file_path, user_workspace):
                 raise HTTPException(400, "Invalid path")
 
         if not file_path.exists():
@@ -318,7 +212,7 @@ async def read_file(
         if not file_path.is_file():
             raise HTTPException(400, "Not a file")
 
-        # Check permissions using Jarvis permission layer
+        # Risk assessment (orchestration layer)
         risk_level, risk_reason = permission_layer.assess_risk(
             f"read {file_path}",
             "file_read"
@@ -327,24 +221,20 @@ async def read_file(
         if risk_level == RiskLevel.CRITICAL:
             raise HTTPException(403, f"File access denied: {risk_reason}")
 
-        # Read file with line numbers (Codex pattern)
+        # Read file with line numbers
         lines = []
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 for line_num, line in enumerate(f, start=1):
-                    # Skip lines before offset
                     if line_num < offset:
                         continue
 
-                    # Stop at limit
                     if len(lines) >= limit:
                         break
 
-                    # Add line with number (Codex format: "L123: content")
                     lines.append(f"L{line_num}: {line.rstrip()}")
 
         except UnicodeDecodeError:
-            # Binary file
             raise HTTPException(400, "Cannot read binary file")
 
         # Audit log
@@ -376,24 +266,27 @@ async def read_file(
         raise HTTPException(500, f"Failed to read file: {str(e)}")
 
 
+# ============================================================================
+# WORKSPACE INFO
+# ============================================================================
+
 @router.get("/workspace/info")
 async def get_workspace_info(current_user: Dict = Depends(get_current_user)):
-    """
-    Get information about user's code workspace
-    """
+    """Get information about user's code workspace"""
     try:
         user_id = current_user["user_id"]
-        user_workspace = get_user_workspace(user_id)
+        user_workspace = code_service.get_user_workspace(user_id)
 
         # Count files and directories
+        import os
         file_count = 0
         dir_count = 0
         total_size = 0
 
         for root, dirs, files in os.walk(user_workspace):
             # Filter ignored paths
-            dirs[:] = [d for d in dirs if not should_ignore(Path(root) / d)]
-            files = [f for f in files if not should_ignore(Path(root) / f)]
+            dirs[:] = [d for d in dirs if not code_service.should_ignore(Path(root) / d)]
+            files = [f for f in files if not code_service.should_ignore(Path(root) / f)]
 
             dir_count += len(dirs)
             file_count += len(files)
@@ -418,58 +311,25 @@ async def get_workspace_info(current_user: Dict = Depends(get_current_user)):
 
 
 # ============================================================================
-# PHASE 3: WRITE OPERATIONS (with Diff Preview)
+# DIFF OPERATIONS
 # ============================================================================
-
-from pydantic import BaseModel
-import difflib
-
-
-class WriteFileRequest(BaseModel):
-    path: str
-    content: str
-    create_if_missing: bool = False
-
-
-class DiffPreviewRequest(BaseModel):
-    path: str
-    new_content: str
-
-
-def generate_unified_diff(original: str, modified: str, filepath: str) -> str:
-    """
-    Generate unified diff (Continue's streamDiff pattern)
-    """
-    original_lines = original.splitlines(keepends=True)
-    modified_lines = modified.splitlines(keepends=True)
-
-    diff = difflib.unified_diff(
-        original_lines,
-        modified_lines,
-        fromfile=f"a/{filepath}",
-        tofile=f"b/{filepath}",
-        lineterm=''
-    )
-
-    return ''.join(diff)
-
 
 @router.post("/diff/preview")
 async def preview_diff(
-    request: DiffPreviewRequest,
+    request: code_service.DiffPreviewRequest,
     current_user: Dict = Depends(get_current_user)
 ):
     """
-    Preview changes before saving (Continue's diff pattern)
+    Preview changes before saving
     Shows unified diff of changes
     """
     try:
         user_id = current_user["user_id"]
-        user_workspace = get_user_workspace(user_id)
+        user_workspace = code_service.get_user_workspace(user_id)
         file_path = user_workspace / request.path
 
         # Security check
-        if not is_safe_path(file_path, user_workspace):
+        if not code_service.is_safe_path(file_path, user_workspace):
             raise HTTPException(400, "Invalid path")
 
         # Read original content
@@ -479,8 +339,8 @@ async def preview_diff(
         else:
             original_content = ""
 
-        # Generate diff
-        diff_text = generate_unified_diff(
+        # Delegate diff generation to service
+        diff_text = code_service.generate_unified_diff(
             original_content,
             request.new_content,
             request.path
@@ -509,20 +369,22 @@ async def preview_diff(
         raise HTTPException(500, f"Failed to generate diff: {str(e)}")
 
 
+# ============================================================================
+# WRITE OPERATIONS
+# ============================================================================
+
 @router.post("/write")
 async def write_file(
-    request: WriteFileRequest,
+    request: code_service.WriteFileRequest,
     current_user: Dict = Depends(get_current_user)
 ):
     """
-    Write file with permission checking (Jarvis pattern)
-    Phase 3: Full write operations
-
+    Write file with permission checking and rate limiting
     Rate limited: 30 writes/min per user
     """
     user_id = current_user["user_id"]
 
-    # Rate limiting
+    # Rate limiting (orchestration layer)
     if not rate_limiter.check_rate_limit(
         f"code:write:{user_id}",
         max_requests=30,
@@ -531,11 +393,11 @@ async def write_file(
         raise HTTPException(status_code=429, detail="Too many write requests. Please slow down.")
 
     try:
-        user_workspace = get_user_workspace(user_id)
+        user_workspace = code_service.get_user_workspace(user_id)
         file_path = user_workspace / request.path
 
         # Security check
-        if not is_safe_path(file_path, user_workspace):
+        if not code_service.is_safe_path(file_path, user_workspace):
             raise HTTPException(400, "Invalid path")
 
         # Check if creating new file
@@ -544,7 +406,7 @@ async def write_file(
         if is_new_file and not request.create_if_missing:
             raise HTTPException(404, "File does not exist. Set create_if_missing=true to create.")
 
-        # Jarvis permission check with risk assessment
+        # Risk assessment (orchestration layer)
         operation = "create file" if is_new_file else "modify file"
         risk_level, risk_reason = permission_layer.assess_risk(
             f"{operation} {file_path}",
@@ -554,16 +416,11 @@ async def write_file(
         if risk_level == RiskLevel.CRITICAL:
             raise HTTPException(403, f"Write operation denied: {risk_reason}")
 
-        # High risk operations require explicit approval
         if risk_level in [RiskLevel.HIGH, RiskLevel.MEDIUM]:
             logger.warning(f"High/medium risk write operation: {file_path} - {risk_reason}")
 
-        # Create parent directories if needed
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-
-        # Write file
-        with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(request.content)
+        # Delegate to service
+        code_service.write_file_to_disk(file_path, request.content)
 
         # Audit log
         await log_action(
@@ -596,20 +453,22 @@ async def write_file(
         raise HTTPException(500, f"Failed to write file: {str(e)}")
 
 
+# ============================================================================
+# DELETE OPERATIONS
+# ============================================================================
+
 @router.delete("/delete")
 async def delete_file(
     path: str,
     current_user: Dict = Depends(get_current_user)
 ):
     """
-    Delete file with Jarvis permission checking
-    Phase 3: Destructive operations
-
+    Delete file with permission checking and rate limiting
     Rate limited: 20 deletes/min per user
     """
     user_id = current_user["user_id"]
 
-    # Rate limiting (lower than writes for safety)
+    # Rate limiting (orchestration layer)
     if not rate_limiter.check_rate_limit(
         f"code:delete:{user_id}",
         max_requests=20,
@@ -618,17 +477,17 @@ async def delete_file(
         raise HTTPException(status_code=429, detail="Too many delete requests. Please slow down.")
 
     try:
-        user_workspace = get_user_workspace(user_id)
+        user_workspace = code_service.get_user_workspace(user_id)
         file_path = user_workspace / path
 
         # Security check
-        if not is_safe_path(file_path, user_workspace):
+        if not code_service.is_safe_path(file_path, user_workspace):
             raise HTTPException(400, "Invalid path")
 
         if not file_path.exists():
             raise HTTPException(404, "File not found")
 
-        # Jarvis permission check - DELETE is HIGH risk
+        # Risk assessment (orchestration layer)
         risk_level, risk_reason = permission_layer.assess_risk(
             f"rm {file_path}",
             "file_delete"
@@ -637,9 +496,9 @@ async def delete_file(
         if risk_level == RiskLevel.CRITICAL:
             raise HTTPException(403, f"Delete operation denied: {risk_reason}")
 
-        # Delete file
+        # Delegate to service
         if file_path.is_file():
-            file_path.unlink()
+            code_service.delete_file_from_disk(file_path)
         else:
             raise HTTPException(400, "Path is not a file")
 
@@ -672,17 +531,18 @@ async def delete_file(
 
 
 # ============================================================================
-# PROJECT LIBRARY: Knowledge Base for Code Projects
+# PROJECT LIBRARY
 # ============================================================================
 
 import sqlite3
 from datetime import datetime
+from pydantic import BaseModel
 
 class ProjectLibraryDocument(BaseModel):
     name: str
     content: str
     tags: List[str] = []
-    file_type: str = "markdown"  # "markdown" or "text"
+    file_type: str = "markdown"
 
 
 class UpdateDocumentRequest(BaseModel):
@@ -709,7 +569,7 @@ def init_library_db():
             user_id TEXT NOT NULL,
             name TEXT NOT NULL,
             content TEXT NOT NULL,
-            tags TEXT NOT NULL,  -- JSON array
+            tags TEXT NOT NULL,
             file_type TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -728,6 +588,7 @@ init_library_db()
 async def get_library_documents(current_user: Dict = Depends(get_current_user)):
     """Get all project library documents"""
     try:
+        import json
         user_id = current_user["user_id"]
         db_path = get_library_db_path()
         conn = sqlite3.connect(str(db_path))
@@ -742,7 +603,6 @@ async def get_library_documents(current_user: Dict = Depends(get_current_user)):
 
         documents = []
         for row in cursor.fetchall():
-            import json
             documents.append({
                 'id': row[0],
                 'name': row[1],
@@ -765,12 +625,12 @@ async def get_library_documents(current_user: Dict = Depends(get_current_user)):
 async def create_library_document(doc: ProjectLibraryDocument, current_user: Dict = Depends(get_current_user)):
     """Create new project library document"""
     try:
+        import json
         user_id = current_user["user_id"]
         db_path = get_library_db_path()
         conn = sqlite3.connect(str(db_path))
         cursor = conn.cursor()
 
-        import json
         cursor.execute("""
             INSERT INTO documents (user_id, name, content, tags, file_type, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -807,6 +667,7 @@ async def create_library_document(doc: ProjectLibraryDocument, current_user: Dic
 async def update_library_document(doc_id: int, update: UpdateDocumentRequest, current_user: Dict = Depends(get_current_user)):
     """Update project library document"""
     try:
+        import json
         user_id = current_user["user_id"]
         db_path = get_library_db_path()
         conn = sqlite3.connect(str(db_path))
@@ -825,7 +686,6 @@ async def update_library_document(doc_id: int, update: UpdateDocumentRequest, cu
             params.append(update.content)
 
         if update.tags is not None:
-            import json
             updates.append("tags = ?")
             params.append(json.dumps(update.tags))
 
@@ -890,7 +750,7 @@ async def delete_library_document(doc_id: int, current_user: Dict = Depends(get_
 
 
 # ============================================================================
-# GIT OPERATIONS: Repository info for opened project folders
+# GIT OPERATIONS
 # ============================================================================
 
 import subprocess
@@ -942,14 +802,9 @@ async def get_git_log(current_user: Dict = Depends(get_current_user)):
     try:
         user_id = current_user["user_id"]
 
-        # Try to get workspace root from environment or use default
-        # The frontend stores this in localStorage as 'ns.code.workspaceRoot'
-        # For backend, we'll look for a git repo in the user's workspace
-
-        # Try common locations or use a marker file
+        # Get workspace root from marker file
         workspace_root = None
 
-        # Option 1: Check for a marker file that frontend writes
         marker_file = PATHS.data_dir / "current_workspace.txt"
         if marker_file.exists():
             workspace_root = marker_file.read_text().strip()
@@ -1013,8 +868,8 @@ async def get_git_log(current_user: Dict = Depends(get_current_user)):
                     'message': parts[2],
                     'author': parts[3],
                     'author_email': parts[4],
-                    'date': parts[5],  # relative (e.g., "2 hours ago")
-                    'timestamp': int(parts[6]),  # unix timestamp
+                    'date': parts[5],
+                    'timestamp': int(parts[6]),
                     'branch': current_branch
                 })
 

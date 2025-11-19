@@ -1033,28 +1033,35 @@ Compatibility layers:
 **Dependencies**: Nearly all routes
 **Breaking Changes**: None (decorator API stays same)
 
-#### 6.2 Refactor Code Editor Files
+#### 6.2 Refactor Code Editor Files ✅ COMPLETED
 **Files**:
-- `api/code_editor_service.py` (1,064 lines)
-- `api/code_operations.py` (1,036 lines)
+- `api/code_editor_service.py` (1,064 → 564 lines) - 47% reduction
+- `api/code_operations.py` (1,036 → 891 lines) - 14% reduction
+- Total: **644 lines removed from routers**
 
-**Target Structure**:
+**Final Structure**:
 ```
 api/services/code_editor/
-├── __init__.py
-├── service.py                  # Main service (300 lines)
-├── file_operations.py          # File ops
-├── git_operations.py           # Git integration
-├── linting.py                  # Linting operations
-├── formatting.py               # Code formatting
-└── language_server.py          # LSP integration
+├── __init__.py              (192 lines) - Public API exports
+├── models.py                (106 lines) - All Pydantic models
+├── security.py              (88 lines)  - Path security & traversal prevention
+├── db_workspaces.py         (251 lines) - Database CRUD operations
+├── file_tree.py             (68 lines)  - Tree builder
+├── disk_scan.py             (69 lines)  - Directory scanner with language detection
+├── diff_service.py          (119 lines) - Diff generation with truncation
+├── fs_workspace.py          (112 lines) - Workspace filesystem helpers
+├── fs_diff.py               (24 lines)  - FS diff helper
+└── fs_write.py              (161 lines) - Write/delete with risk assessment & rate limiting
 ```
+**Total service package**: 1,190 lines
 
-**Refactoring Steps**:
-1. Create `code_editor/` service directory
-2. Split by operation type
-3. Consolidate duplicate code
-4. Add type hints
+**Key Achievements**:
+- Separated business logic from HTTP layer
+- Routers now handle: HTTP, auth, audit logging only
+- Services handle: workspace management, file operations, diffs, security, risk assessment
+- Preserved all security checks: path validation, risk assessment, rate limiting
+- Maintained backwards compatibility with existing routes
+- Import validation passed ✓
 
 **Dependencies**: Code workspace routes
 **Breaking Changes**: None

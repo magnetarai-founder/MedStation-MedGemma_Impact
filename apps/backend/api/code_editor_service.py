@@ -1,321 +1,57 @@
 """
-Code Editor Service
-Manages workspaces and files for the code editor
+Code Editor Service - Thin Router Layer
+Delegates to services/code_editor for all business logic
 """
 
-import os
-import uuid
-from pathlib import Path
-from typing import Optional, List, Dict, Any
-from datetime import datetime
 import logging
-import json
-import difflib
-import hashlib
+from typing import Optional
+from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Request, Header
-from pydantic import BaseModel, Field
-
-from elohimos_memory import ElohimOSMemory
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Request, Depends
 
 logger = logging.getLogger(__name__)
 
+# Import service layer with fallback
+try:
+    from api.services import code_editor as code_service
+except ImportError:
+    from services import code_editor as code_service
+
+# Import auth and permissions
 from fastapi import Depends
 from auth_middleware import get_current_user
 from permission_engine import require_perm
 from audit_logger import get_audit_logger, AuditAction
 
+# Initialize router
 router = APIRouter(
     prefix="/api/v1/code-editor",
     tags=["code-editor"],
     dependencies=[Depends(get_current_user)]  # Require auth
 )
 
-# Initialize memory system
-memory = ElohimOSMemory()
-
-# Ensure code editor tables exist
-def init_code_editor_db():
-    """Initialize code editor database tables"""
-    conn = memory.memory.conn
-
-    # Workspaces table
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS code_editor_workspaces (
-            id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
-            source_type TEXT NOT NULL CHECK(source_type IN ('disk', 'database')),
-            disk_path TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-
-    # Files table
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS code_editor_files (
-            id TEXT PRIMARY KEY,
-            workspace_id TEXT NOT NULL,
-            name TEXT NOT NULL,
-            path TEXT NOT NULL,
-            content TEXT NOT NULL,
-            language TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (workspace_id) REFERENCES code_editor_workspaces(id) ON DELETE CASCADE
-        )
-    """)
-
-    conn.commit()
-    logger.info("✓ Code editor database tables initialized")
-
-# Initialize on import
-init_code_editor_db()
+# Initialize code editor database tables
+code_service.init_code_editor_db()
 
 
-# Security: Path traversal guard
-def ensure_under_root(root: Path, candidate: Path) -> None:
-    """
-    Ensure candidate path is under root directory.
-    Prevents path traversal attacks.
+# ============================================================================
+# WORKSPACE ENDPOINTS
+# ============================================================================
 
-    Raises HTTPException(400) if validation fails.
-    """
-    try:
-        root_resolved = root.resolve()
-        candidate_resolved = candidate.resolve()
-
-        # Check if candidate is relative to root
-        if not candidate_resolved.is_relative_to(root_resolved):
-            logger.warning(f"Path traversal attempt: {candidate} not under {root}")
-            raise HTTPException(
-                status_code=400,
-                detail=f"Path must be under workspace root"
-            )
-    except (ValueError, OSError) as e:
-        logger.error(f"Path validation error: {e}")
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid path"
-        )
-
-
-# Models
-class WorkspaceCreate(BaseModel):
-    name: str
-    source_type: str  # 'disk' or 'database'
-    disk_path: Optional[str] = None
-
-
-class WorkspaceResponse(BaseModel):
-    id: str
-    name: str
-    source_type: str
-    disk_path: Optional[str]
-    created_at: datetime
-    updated_at: datetime
-
-
-class FileCreate(BaseModel):
-    workspace_id: str
-    name: str
-    path: str
-    content: str
-    language: str
-
-
-class FileUpdate(BaseModel):
-    name: Optional[str] = None
-    path: Optional[str] = None
-    content: Optional[str] = None
-    language: Optional[str] = None
-    base_updated_at: Optional[str] = Field(None, description="Base timestamp for optimistic concurrency")
-
-
-class FileDiffRequest(BaseModel):
-    new_content: str
-    base_updated_at: Optional[str] = Field(None, description="Base timestamp to check for conflicts")
-
-
-class FileDiffResponse(BaseModel):
-    diff: str
-    current_hash: str
-    current_updated_at: str
-    conflict: bool = False
-    truncated: bool = False
-    max_lines: Optional[int] = None
-    shown_head: Optional[int] = None
-    shown_tail: Optional[int] = None
-    message: Optional[str] = None
-
-
-class FileResponse(BaseModel):
-    id: str
-    workspace_id: str
-    name: str
-    path: str
-    content: str
-    language: str
-    created_at: datetime
-    updated_at: datetime
-
-
-class FileTreeNode(BaseModel):
-    id: str
-    name: str
-    path: str
-    is_directory: bool
-    children: Optional[List['FileTreeNode']] = None
-
-
-# Helper functions
-def build_file_tree(workspace_id: str) -> List[FileTreeNode]:
-    """Build hierarchical file tree from flat file list"""
-    conn = memory.memory.conn
-
-    files = conn.execute("""
-        SELECT id, name, path, content
-        FROM code_editor_files
-        WHERE workspace_id = ?
-        ORDER BY path
-    """, (workspace_id,)).fetchall()
-
-    # Build tree structure
-    root_nodes = []
-    path_map = {}
-
-    for file_row in files:
-        file_id, name, path, content = file_row
-        parts = path.split('/')
-
-        # Handle root files
-        if len(parts) == 1:
-            root_nodes.append(FileTreeNode(
-                id=file_id,
-                name=name,
-                path=path,
-                is_directory=False
-            ))
-            continue
-
-        # Build directory structure
-        current_path = ""
-        for i, part in enumerate(parts[:-1]):
-            current_path = f"{current_path}/{part}" if current_path else part
-
-            if current_path not in path_map:
-                node = FileTreeNode(
-                    id=f"dir_{current_path}",
-                    name=part,
-                    path=current_path,
-                    is_directory=True,
-                    children=[]
-                )
-                path_map[current_path] = node
-
-                # Add to parent or root
-                if i == 0:
-                    root_nodes.append(node)
-                else:
-                    parent_path = "/".join(parts[:i])
-                    if parent_path in path_map:
-                        path_map[parent_path].children.append(node)
-
-        # Add file to parent directory
-        file_node = FileTreeNode(
-            id=file_id,
-            name=name,
-            path=path,
-            is_directory=False
-        )
-
-        parent_path = "/".join(parts[:-1])
-        if parent_path in path_map:
-            path_map[parent_path].children.append(file_node)
-
-    return root_nodes
-
-
-def scan_disk_directory(dir_path: str) -> List[Dict[str, Any]]:
-    """Recursively scan directory and return file list"""
-    files = []
-    base_path = Path(dir_path)
-
-    # Ignore patterns
-    ignore_patterns = {
-        '.git', 'node_modules', '__pycache__', '.venv', 'venv',
-        '.DS_Store', '.vscode', '.idea', 'dist', 'build'
-    }
-
-    for file_path in base_path.rglob('*'):
-        # Skip ignored directories
-        if any(ignored in file_path.parts for ignored in ignore_patterns):
-            continue
-
-        # Skip directories themselves
-        if file_path.is_dir():
-            continue
-
-        # Get relative path
-        rel_path = file_path.relative_to(base_path)
-
-        # Detect language from extension
-        ext = file_path.suffix.lower()
-        lang_map = {
-            '.js': 'javascript', '.jsx': 'javascript',
-            '.ts': 'typescript', '.tsx': 'typescript',
-            '.py': 'python',
-            '.java': 'java',
-            '.cpp': 'cpp', '.cc': 'cpp', '.cxx': 'cpp',
-            '.c': 'c',
-            '.go': 'go',
-            '.rs': 'rust',
-            '.rb': 'ruby',
-            '.php': 'php',
-            '.html': 'html',
-            '.css': 'css',
-            '.json': 'json',
-            '.yaml': 'yaml', '.yml': 'yaml',
-            '.md': 'markdown',
-            '.sql': 'sql',
-            '.sh': 'shell',
-        }
-        language = lang_map.get(ext, 'plaintext')
-
-        try:
-            content = file_path.read_text(encoding='utf-8')
-        except Exception:
-            # Skip binary files or files that can't be read
-            continue
-
-        files.append({
-            'name': file_path.name,
-            'path': str(rel_path).replace('\\', '/'),
-            'content': content,
-            'language': language
-        })
-
-    return files
-
-
-# Endpoints
-@router.post("/workspaces", response_model=WorkspaceResponse)
+@router.post("/workspaces", response_model=code_service.WorkspaceResponse)
 @require_perm("code.edit")
-async def create_workspace(request: Request, workspace: WorkspaceCreate, current_user: dict = Depends(get_current_user)):
+async def create_workspace(
+    request: Request,
+    workspace: code_service.WorkspaceCreate,
+    current_user: dict = Depends(get_current_user)
+):
     """Create a new database workspace"""
     try:
         if workspace.source_type != 'database':
             raise HTTPException(status_code=400, detail="Only database workspaces can be created this way")
 
-        workspace_id = str(uuid.uuid4())
-        conn = memory.memory.conn
-
-        conn.execute("""
-            INSERT INTO code_editor_workspaces (id, name, source_type)
-            VALUES (?, ?, 'database')
-        """, (workspace_id, workspace.name))
-
-        conn.commit()
+        # Delegate to service
+        result = code_service.create_workspace(workspace.name, workspace.source_type)
 
         # Audit log
         try:
@@ -324,27 +60,13 @@ async def create_workspace(request: Request, workspace: WorkspaceCreate, current
                 user_id=current_user.get("user_id"),
                 action=AuditAction.CODE_WORKSPACE_CREATED,
                 resource="code_workspace",
-                resource_id=workspace_id,
+                resource_id=result.id,
                 details={"name": workspace.name, "source_type": "database"}
             )
         except Exception as audit_error:
             logger.warning(f"Audit logging failed: {audit_error}")
 
-        # Return workspace info
-        created_workspace = conn.execute("""
-            SELECT id, name, source_type, disk_path, created_at, updated_at
-            FROM code_editor_workspaces
-            WHERE id = ?
-        """, (workspace_id,)).fetchone()
-
-        return WorkspaceResponse(
-            id=created_workspace[0],
-            name=created_workspace[1],
-            source_type=created_workspace[2],
-            disk_path=created_workspace[3],
-            created_at=created_workspace[4],
-            updated_at=created_workspace[5]
-        )
+        return result
 
     except HTTPException:
         raise
@@ -353,44 +75,34 @@ async def create_workspace(request: Request, workspace: WorkspaceCreate, current
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/workspaces/open-disk", response_model=WorkspaceResponse)
+@router.post("/workspaces/open-disk", response_model=code_service.WorkspaceResponse)
 @require_perm("code.edit")
-async def open_disk_workspace(request: Request, name: str = Form(...), disk_path: str = Form(...), current_user: dict = Depends(get_current_user)):
+async def open_disk_workspace(
+    request: Request,
+    name: str = Form(...),
+    disk_path: str = Form(...),
+    current_user: dict = Depends(get_current_user)
+):
     """Open folder from disk and create workspace"""
     try:
+        from pathlib import Path
+
         # Validate path exists
         path = Path(disk_path)
         if not path.exists() or not path.is_dir():
             raise HTTPException(status_code=400, detail="Invalid directory path")
 
-        # Create workspace
-        workspace_id = str(uuid.uuid4())
-        conn = memory.memory.conn
-
-        conn.execute("""
-            INSERT INTO code_editor_workspaces (id, name, source_type, disk_path)
-            VALUES (?, ?, 'disk', ?)
-        """, (workspace_id, name, str(path.absolute())))
-
         # Scan and import files
-        files = scan_disk_directory(str(path))
+        files = code_service.scan_disk_directory(str(path))
         logger.info(f"Found {len(files)} files in {disk_path}")
 
-        for file_data in files:
-            file_id = str(uuid.uuid4())
-            conn.execute("""
-                INSERT INTO code_editor_files (id, workspace_id, name, path, content, language)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (
-                file_id,
-                workspace_id,
-                file_data['name'],
-                file_data['path'],
-                file_data['content'],
-                file_data['language']
-            ))
-
-        conn.commit()
+        # Create workspace with files
+        result = code_service.create_workspace(
+            name=name,
+            source_type='disk',
+            disk_path=str(path.absolute()),
+            files=files
+        )
 
         # Audit log
         try:
@@ -399,27 +111,18 @@ async def open_disk_workspace(request: Request, name: str = Form(...), disk_path
                 user_id=current_user.get("user_id"),
                 action=AuditAction.CODE_WORKSPACE_CREATED,
                 resource="code_workspace",
-                resource_id=workspace_id,
-                details={"name": name, "source_type": "disk", "disk_path": str(path.absolute()), "files_imported": len(files)}
+                resource_id=result.id,
+                details={
+                    "name": name,
+                    "source_type": "disk",
+                    "disk_path": str(path.absolute()),
+                    "files_imported": len(files)
+                }
             )
         except Exception as audit_error:
             logger.warning(f"Audit logging failed: {audit_error}")
 
-        # Return workspace info
-        workspace = conn.execute("""
-            SELECT id, name, source_type, disk_path, created_at, updated_at
-            FROM code_editor_workspaces
-            WHERE id = ?
-        """, (workspace_id,)).fetchone()
-
-        return WorkspaceResponse(
-            id=workspace[0],
-            name=workspace[1],
-            source_type=workspace[2],
-            disk_path=workspace[3],
-            created_at=workspace[4],
-            updated_at=workspace[5]
-        )
+        return result
 
     except HTTPException:
         raise
@@ -428,30 +131,22 @@ async def open_disk_workspace(request: Request, name: str = Form(...), disk_path
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/workspaces/open-database", response_model=WorkspaceResponse)
+@router.post("/workspaces/open-database", response_model=code_service.WorkspaceResponse)
 @require_perm("code.use")
-async def open_database_workspace(request: Request, workspace_id: str = Form(...), current_user: dict = Depends(get_current_user)):
+async def open_database_workspace(
+    request: Request,
+    workspace_id: str = Form(...),
+    current_user: dict = Depends(get_current_user)
+):
     """Open existing workspace from database"""
     try:
-        conn = memory.memory.conn
-
-        workspace = conn.execute("""
-            SELECT id, name, source_type, disk_path, created_at, updated_at
-            FROM code_editor_workspaces
-            WHERE id = ?
-        """, (workspace_id,)).fetchone()
+        # Delegate to service
+        workspace = code_service.get_workspace(workspace_id)
 
         if not workspace:
             raise HTTPException(status_code=404, detail="Workspace not found")
 
-        return WorkspaceResponse(
-            id=workspace[0],
-            name=workspace[1],
-            source_type=workspace[2],
-            disk_path=workspace[3],
-            created_at=workspace[4],
-            updated_at=workspace[5]
-        )
+        return workspace
 
     except HTTPException:
         raise
@@ -464,23 +159,18 @@ async def open_database_workspace(request: Request, workspace_id: str = Form(...
 async def list_workspaces(current_user: dict = Depends(get_current_user)):
     """Get all workspaces"""
     try:
-        conn = memory.memory.conn
-
-        workspaces = conn.execute("""
-            SELECT id, name, source_type, disk_path, created_at, updated_at
-            FROM code_editor_workspaces
-            ORDER BY updated_at DESC
-        """).fetchall()
+        # Delegate to service
+        workspaces = code_service.list_workspaces()
 
         return {
             "workspaces": [
                 {
-                    "id": w[0],
-                    "name": w[1],
-                    "source_type": w[2],
-                    "disk_path": w[3],
-                    "created_at": w[4],
-                    "updated_at": w[5]
+                    "id": w.id,
+                    "name": w.name,
+                    "source_type": w.source_type,
+                    "disk_path": w.disk_path,
+                    "created_at": w.created_at,
+                    "updated_at": w.updated_at
                 }
                 for w in workspaces
             ]
@@ -495,39 +185,67 @@ async def list_workspaces(current_user: dict = Depends(get_current_user)):
 async def get_workspace_files(workspace_id: str, current_user: dict = Depends(get_current_user)):
     """Get file tree for workspace"""
     try:
-        tree = build_file_tree(workspace_id)
+        # Delegate to service
+        tree = code_service.build_file_tree(workspace_id)
         return {"files": [node.dict() for node in tree]}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/files/{file_id}", response_model=FileResponse)
-@require_perm("code.use")
-async def get_file(file_id: str, current_user: dict = Depends(get_current_user)):
-    """Get file content"""
+@router.post("/workspaces/{workspace_id}/sync")
+@require_perm("code.edit")
+async def sync_workspace(
+    request: Request,
+    workspace_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Sync disk workspace with filesystem"""
     try:
-        conn = memory.memory.conn
+        # Get workspace
+        workspace = code_service.get_workspace(workspace_id)
 
-        file = conn.execute("""
-            SELECT id, workspace_id, name, path, content, language, created_at, updated_at
-            FROM code_editor_files
-            WHERE id = ?
-        """, (file_id,)).fetchone()
+        if not workspace:
+            raise HTTPException(status_code=404, detail="Workspace not found")
 
-        if not file:
-            raise HTTPException(status_code=404, detail="File not found")
+        if workspace.source_type != 'disk':
+            raise HTTPException(status_code=400, detail="Only disk workspaces can be synced")
 
-        return FileResponse(
-            id=file[0],
-            workspace_id=file[1],
-            name=file[2],
-            path=file[3],
-            content=file[4],
-            language=file[5],
-            created_at=file[6],
-            updated_at=file[7]
-        )
+        if not workspace.disk_path:
+            raise HTTPException(status_code=400, detail="No disk path configured")
+
+        # Rescan directory
+        files = code_service.scan_disk_directory(workspace.disk_path)
+
+        # Clear and re-import files
+        code_service.delete_files_by_workspace(workspace_id)
+
+        for file_data in files:
+            code_service.create_file(
+                workspace_id=workspace_id,
+                name=file_data['name'],
+                path=file_data['path'],
+                content=file_data['content'],
+                language=file_data['language']
+            )
+
+        # Update workspace timestamp
+        code_service.update_workspace_timestamp(workspace_id)
+
+        # Audit log
+        try:
+            audit_logger = get_audit_logger()
+            audit_logger.log(
+                user_id=current_user.get("user_id"),
+                action=AuditAction.CODE_WORKSPACE_SYNCED,
+                resource="code_workspace",
+                resource_id=workspace_id,
+                details={"files_synced": len(files), "disk_path": workspace.disk_path}
+            )
+        except Exception as audit_error:
+            logger.warning(f"Audit logging failed: {audit_error}")
+
+        return {"success": True, "files_synced": len(files)}
 
     except HTTPException:
         raise
@@ -535,116 +253,50 @@ async def get_file(file_id: str, current_user: dict = Depends(get_current_user))
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# Diff size limits (configurable)
-MAX_DIFF_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
-MAX_DIFF_LINES = 10_000  # Max lines in diff
-TRUNCATE_HEAD_LINES = 200  # Head lines to show when truncated
-TRUNCATE_TAIL_LINES = 200  # Tail lines to show when truncated
+# ============================================================================
+# FILE ENDPOINTS
+# ============================================================================
 
-
-@router.post("/files/{file_id}/diff", response_model=FileDiffResponse)
+@router.get("/files/{file_id}", response_model=code_service.FileResponse)
 @require_perm("code.use")
-async def get_file_diff(file_id: str, diff_request: FileDiffRequest, current_user: dict = Depends(get_current_user)):
+async def get_file(file_id: str, current_user: dict = Depends(get_current_user)):
+    """Get file content"""
+    try:
+        # Delegate to service
+        file = code_service.get_file(file_id)
+
+        if not file:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        return file
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/files/{file_id}/diff", response_model=code_service.FileDiffResponse)
+@require_perm("code.use")
+async def get_file_diff(
+    file_id: str,
+    diff_request: code_service.FileDiffRequest,
+    current_user: dict = Depends(get_current_user)
+):
     """
     Generate unified diff between current file content and proposed new content.
     Optionally detects conflicts if base_updated_at is provided.
     Truncates large diffs with flags.
     """
     try:
-        conn = memory.memory.conn
-
-        # Get current file
-        file = conn.execute("""
-            SELECT content, updated_at
-            FROM code_editor_files
-            WHERE id = ?
-        """, (file_id,)).fetchone()
-
-        if not file:
-            raise HTTPException(status_code=404, detail="File not found")
-
-        current_content = file[0] or ""
-        current_updated_at = file[1]
-
-        # Check for conflict if base timestamp provided
-        conflict = False
-        if diff_request.base_updated_at and diff_request.base_updated_at != current_updated_at:
-            conflict = True
-            logger.warning(f"File {file_id} has been modified since base timestamp")
-
-        # Check file size limits
-        if len(current_content) > MAX_DIFF_FILE_SIZE or len(diff_request.new_content) > MAX_DIFF_FILE_SIZE:
-            logger.warning(
-                f"File {file_id} exceeds size limit: current={len(current_content)} bytes, new={len(diff_request.new_content)} bytes"
-            )
-            # Generate hash of current content
-            current_hash = hashlib.sha256(current_content.encode('utf-8')).hexdigest()
-
-            return FileDiffResponse(
-                diff=f"""[Diff unavailable - file exceeds {MAX_DIFF_FILE_SIZE / 1024 / 1024:.1f}MB limit]
-
-Current: {len(current_content):,} bytes
-Proposed: {len(diff_request.new_content):,} bytes""",
-                current_hash=current_hash,
-                current_updated_at=current_updated_at,
-                conflict=conflict,
-                truncated=True,
-                max_lines=0,
-                shown_head=0,
-                shown_tail=0,
-                message="Diff unavailable for files exceeding size limit"
-            )
-
-        # Generate unified diff
-        current_lines = current_content.splitlines(keepends=True)
-        new_lines = diff_request.new_content.splitlines(keepends=True)
-
-        diff = difflib.unified_diff(
-            current_lines,
-            new_lines,
-            fromfile='current',
-            tofile='proposed',
-            lineterm=''
+        # Delegate to service
+        result = code_service.generate_file_diff(
+            file_id=file_id,
+            new_content=diff_request.new_content,
+            base_updated_at=diff_request.base_updated_at
         )
 
-        diff_lines = list(diff)
-
-        # Check if diff exceeds line limit
-        if len(diff_lines) > MAX_DIFF_LINES:
-            logger.warning(f"Diff for file {file_id} exceeds {MAX_DIFF_LINES} lines, truncating")
-
-            # Take head and tail
-            head = diff_lines[:TRUNCATE_HEAD_LINES]
-            tail = diff_lines[-TRUNCATE_TAIL_LINES:]
-
-            truncated_diff = '\n'.join(head) + f"\n\n... [Truncated: {len(diff_lines) - TRUNCATE_HEAD_LINES - TRUNCATE_TAIL_LINES:,} lines omitted] ...\n\n" + '\n'.join(tail)
-
-            # Generate hash of current content
-            current_hash = hashlib.sha256(current_content.encode('utf-8')).hexdigest()
-
-            return FileDiffResponse(
-                diff=truncated_diff,
-                current_hash=current_hash,
-                current_updated_at=current_updated_at,
-                conflict=conflict,
-                truncated=True,
-                max_lines=MAX_DIFF_LINES,
-                shown_head=TRUNCATE_HEAD_LINES,
-                shown_tail=TRUNCATE_TAIL_LINES,
-                message=f"Diff truncated: showing first {TRUNCATE_HEAD_LINES} and last {TRUNCATE_TAIL_LINES} lines of {len(diff_lines):,} total"
-            )
-
-        diff_str = '\n'.join(diff_lines)
-
-        # Generate hash of current content
-        current_hash = hashlib.sha256(current_content.encode('utf-8')).hexdigest()
-
-        return FileDiffResponse(
-            diff=diff_str,
-            current_hash=current_hash,
-            current_updated_at=current_updated_at,
-            conflict=conflict
-        )
+        return result
 
     except HTTPException:
         raise
@@ -653,48 +305,37 @@ Proposed: {len(diff_request.new_content):,} bytes""",
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/files", response_model=FileResponse)
+@router.post("/files", response_model=code_service.FileResponse)
 @require_perm("code.edit")
-async def create_file(request: Request, file: FileCreate, current_user: dict = Depends(get_current_user)):
+async def create_file(
+    request: Request,
+    file: code_service.FileCreate,
+    current_user: dict = Depends(get_current_user)
+):
     """Create new file in workspace"""
     try:
-        file_id = str(uuid.uuid4())
-        conn = memory.memory.conn
+        from pathlib import Path
 
-        conn.execute("""
-            INSERT INTO code_editor_files (id, workspace_id, name, path, content, language)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (
-            file_id,
-            file.workspace_id,
-            file.name,
-            file.path,
-            file.content,
-            file.language
-        ))
+        # Create file in database
+        result = code_service.create_file(
+            workspace_id=file.workspace_id,
+            name=file.name,
+            path=file.path,
+            content=file.content,
+            language=file.language
+        )
 
         # Update workspace timestamp
-        conn.execute("""
-            UPDATE code_editor_workspaces
-            SET updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-        """, (file.workspace_id,))
-
-        conn.commit()
+        code_service.update_workspace_timestamp(file.workspace_id)
 
         # If disk workspace, also write to disk
-        workspace = conn.execute("""
-            SELECT source_type, disk_path
-            FROM code_editor_workspaces
-            WHERE id = ?
-        """, (file.workspace_id,)).fetchone()
-
-        if workspace and workspace[0] == 'disk' and workspace[1]:
-            workspace_root = Path(workspace[1])
+        workspace = code_service.get_workspace(file.workspace_id)
+        if workspace and workspace.source_type == 'disk' and workspace.disk_path:
+            workspace_root = Path(workspace.disk_path)
             disk_file_path = workspace_root / file.path
 
             # Path guard: ensure file is under workspace root
-            ensure_under_root(workspace_root, disk_file_path)
+            code_service.ensure_under_root(workspace_root, disk_file_path)
 
             disk_file_path.parent.mkdir(parents=True, exist_ok=True)
             disk_file_path.write_text(file.content, encoding='utf-8')
@@ -706,122 +347,79 @@ async def create_file(request: Request, file: FileCreate, current_user: dict = D
                 user_id=current_user.get("user_id"),
                 action=AuditAction.CODE_FILE_CREATED,
                 resource="code_file",
-                resource_id=file_id,
+                resource_id=result.id,
                 details={"workspace_id": file.workspace_id, "path": file.path, "name": file.name}
             )
         except Exception as audit_error:
             logger.warning(f"Audit logging failed: {audit_error}")
 
-        # Return created file
-        created_file = conn.execute("""
-            SELECT id, workspace_id, name, path, content, language, created_at, updated_at
-            FROM code_editor_files
-            WHERE id = ?
-        """, (file_id,)).fetchone()
-
-        return FileResponse(
-            id=created_file[0],
-            workspace_id=created_file[1],
-            name=created_file[2],
-            path=created_file[3],
-            content=created_file[4],
-            language=created_file[5],
-            created_at=created_file[6],
-            updated_at=created_file[7]
-        )
+        return result
 
     except Exception as e:
         logger.error(f"Failed to create file: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.put("/files/{file_id}", response_model=FileResponse)
+@router.put("/files/{file_id}", response_model=code_service.FileResponse)
 @require_perm("code.edit")
-async def update_file(request: Request, file_id: str, file_update: FileUpdate, current_user: dict = Depends(get_current_user)):
+async def update_file(
+    request: Request,
+    file_id: str,
+    file_update: code_service.FileUpdate,
+    current_user: dict = Depends(get_current_user)
+):
     """Update file"""
     try:
-        conn = memory.memory.conn
+        from pathlib import Path
 
-        # Get current file (include updated_at for optimistic concurrency)
-        current = conn.execute("""
-            SELECT workspace_id, name, path, content, language, updated_at
-            FROM code_editor_files
-            WHERE id = ?
-        """, (file_id,)).fetchone()
+        # Get current file state for optimistic concurrency
+        current = code_service.get_file_current_state(file_id)
 
         if not current:
             raise HTTPException(status_code=404, detail="File not found")
 
-        # Optimistic concurrency: check if file was modified since base timestamp
-        if file_update.base_updated_at and file_update.base_updated_at != current[5]:
+        # Optimistic concurrency check
+        if file_update.base_updated_at and file_update.base_updated_at != current['updated_at']:
             raise HTTPException(
                 status_code=409,
                 detail={
                     "error": "Conflict: File has been modified by another user",
-                    "current_updated_at": current[5],
+                    "current_updated_at": current['updated_at'],
                     "your_base_updated_at": file_update.base_updated_at
                 }
             )
 
-        # Build update
-        updates = []
-        values = []
-
-        if file_update.name is not None:
-            updates.append("name = ?")
-            values.append(file_update.name)
-        if file_update.path is not None:
-            updates.append("path = ?")
-            values.append(file_update.path)
-        if file_update.content is not None:
-            updates.append("content = ?")
-            values.append(file_update.content)
-        if file_update.language is not None:
-            updates.append("language = ?")
-            values.append(file_update.language)
-
-        updates.append("updated_at = CURRENT_TIMESTAMP")
-        values.append(file_id)
-
-        conn.execute(f"""
-            UPDATE code_editor_files
-            SET {', '.join(updates)}
-            WHERE id = ?
-        """, values)
+        # Update file
+        result = code_service.update_file(
+            file_id=file_id,
+            name=file_update.name,
+            path=file_update.path,
+            content=file_update.content,
+            language=file_update.language
+        )
 
         # Update workspace timestamp
-        conn.execute("""
-            UPDATE code_editor_workspaces
-            SET updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-        """, (current[0],))
-
-        conn.commit()
+        code_service.update_workspace_timestamp(current['workspace_id'])
 
         # If disk workspace, also write to disk
-        workspace = conn.execute("""
-            SELECT source_type, disk_path
-            FROM code_editor_workspaces
-            WHERE id = ?
-        """, (current[0],)).fetchone()
-
-        if workspace and workspace[0] == 'disk' and workspace[1]:
-            workspace_root = Path(workspace[1])
-            new_path = file_update.path if file_update.path is not None else current[2]
-            new_content = file_update.content if file_update.content is not None else current[3]
+        workspace = code_service.get_workspace(current['workspace_id'])
+        if workspace and workspace.source_type == 'disk' and workspace.disk_path:
+            workspace_root = Path(workspace.disk_path)
+            new_path = file_update.path if file_update.path is not None else current['path']
+            new_content = file_update.content if file_update.content is not None else current['content']
 
             disk_file_path = workspace_root / new_path
 
             # Path guard: ensure file is under workspace root
-            ensure_under_root(workspace_root, disk_file_path)
+            code_service.ensure_under_root(workspace_root, disk_file_path)
 
             disk_file_path.parent.mkdir(parents=True, exist_ok=True)
             disk_file_path.write_text(new_content, encoding='utf-8')
 
             # If path changed, delete old file
-            if file_update.path is not None and file_update.path != current[2]:
-                old_path = workspace_root / current[2]
-                ensure_under_root(workspace_root, old_path)  # Guard old path too
+            if file_update.path is not None and file_update.path != current['path']:
+                old_path = workspace_root / current['path']
+                code_service.ensure_under_root(workspace_root, old_path)
                 if old_path.exists():
                     old_path.unlink()
 
@@ -833,28 +431,12 @@ async def update_file(request: Request, file_id: str, file_update: FileUpdate, c
                 action=AuditAction.CODE_FILE_UPDATED,
                 resource="code_file",
                 resource_id=file_id,
-                details={"workspace_id": current[0], "path": new_path if file_update.path else current[2]}
+                details={"workspace_id": current['workspace_id'], "path": new_path if file_update.path else current['path']}
             )
         except Exception as audit_error:
             logger.warning(f"Audit logging failed: {audit_error}")
 
-        # Return updated file
-        updated_file = conn.execute("""
-            SELECT id, workspace_id, name, path, content, language, created_at, updated_at
-            FROM code_editor_files
-            WHERE id = ?
-        """, (file_id,)).fetchone()
-
-        return FileResponse(
-            id=updated_file[0],
-            workspace_id=updated_file[1],
-            name=updated_file[2],
-            path=updated_file[3],
-            content=updated_file[4],
-            language=updated_file[5],
-            created_at=updated_file[6],
-            updated_at=updated_file[7]
-        )
+        return result
 
     except HTTPException:
         raise
@@ -865,17 +447,17 @@ async def update_file(request: Request, file_id: str, file_update: FileUpdate, c
 
 @router.delete("/files/{file_id}")
 @require_perm("code.edit")
-async def delete_file(request: Request, file_id: str, current_user: dict = Depends(get_current_user)):
+async def delete_file(
+    request: Request,
+    file_id: str,
+    current_user: dict = Depends(get_current_user)
+):
     """Delete file"""
     try:
-        conn = memory.memory.conn
+        from pathlib import Path
 
         # Get file info before deletion
-        file_info = conn.execute("""
-            SELECT workspace_id, path
-            FROM code_editor_files
-            WHERE id = ?
-        """, (file_id,)).fetchone()
+        file_info = code_service.get_file_info_before_delete(file_id)
 
         if not file_info:
             raise HTTPException(status_code=404, detail="File not found")
@@ -883,30 +465,19 @@ async def delete_file(request: Request, file_id: str, current_user: dict = Depen
         workspace_id, file_path = file_info
 
         # Delete from database
-        conn.execute("DELETE FROM code_editor_files WHERE id = ?", (file_id,))
+        code_service.delete_file(file_id)
 
         # Update workspace timestamp
-        conn.execute("""
-            UPDATE code_editor_workspaces
-            SET updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-        """, (workspace_id,))
-
-        conn.commit()
+        code_service.update_workspace_timestamp(workspace_id)
 
         # If disk workspace, also delete from disk
-        workspace = conn.execute("""
-            SELECT source_type, disk_path
-            FROM code_editor_workspaces
-            WHERE id = ?
-        """, (workspace_id,)).fetchone()
-
-        if workspace and workspace[0] == 'disk' and workspace[1]:
-            workspace_root = Path(workspace[1])
+        workspace = code_service.get_workspace(workspace_id)
+        if workspace and workspace.source_type == 'disk' and workspace.disk_path:
+            workspace_root = Path(workspace.disk_path)
             disk_file_path = workspace_root / file_path
 
             # Path guard
-            ensure_under_root(workspace_root, disk_file_path)
+            code_service.ensure_under_root(workspace_root, disk_file_path)
 
             if disk_file_path.exists():
                 disk_file_path.unlink()
@@ -942,8 +513,10 @@ async def import_file(
 ):
     """Import file into workspace"""
     try:
-        # Sanitize filename to prevent path traversal (HIGH-01)
+        from pathlib import Path
         from utils import sanitize_filename
+
+        # Sanitize filename to prevent path traversal
         safe_filename = sanitize_filename(file.filename or "untitled")
 
         # Read file content
@@ -961,7 +534,7 @@ async def import_file(
         language = lang_map.get(ext, 'plaintext')
 
         # Create file
-        file_create = FileCreate(
+        file_create = code_service.FileCreate(
             workspace_id=workspace_id,
             name=safe_filename,
             path=safe_filename,
@@ -971,7 +544,7 @@ async def import_file(
 
         result = await create_file(request, file_create, current_user)
 
-        # Audit log for import action (in addition to create_file's audit log)
+        # Audit log for import action
         try:
             audit_logger = get_audit_logger()
             audit_logger.log(
@@ -988,77 +561,4 @@ async def import_file(
 
     except Exception as e:
         logger.error(f"Failed to import file: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/workspaces/{workspace_id}/sync")
-@require_perm("code.edit")
-async def sync_workspace(request: Request, workspace_id: str, current_user: dict = Depends(get_current_user)):
-    """Sync disk workspace with filesystem"""
-    try:
-        conn = memory.memory.conn
-
-        workspace = conn.execute("""
-            SELECT source_type, disk_path
-            FROM code_editor_workspaces
-            WHERE id = ?
-        """, (workspace_id,)).fetchone()
-
-        if not workspace:
-            raise HTTPException(status_code=404, detail="Workspace not found")
-
-        if workspace[0] != 'disk':
-            raise HTTPException(status_code=400, detail="Only disk workspaces can be synced")
-
-        if not workspace[1]:
-            raise HTTPException(status_code=400, detail="No disk path configured")
-
-        # Rescan directory
-        files = scan_disk_directory(workspace[1])
-
-        # Clear existing files
-        conn.execute("DELETE FROM code_editor_files WHERE workspace_id = ?", (workspace_id,))
-
-        # Re-import files
-        for file_data in files:
-            file_id = str(uuid.uuid4())
-            conn.execute("""
-                INSERT INTO code_editor_files (id, workspace_id, name, path, content, language)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (
-                file_id,
-                workspace_id,
-                file_data['name'],
-                file_data['path'],
-                file_data['content'],
-                file_data['language']
-            ))
-
-        # Update workspace timestamp
-        conn.execute("""
-            UPDATE code_editor_workspaces
-            SET updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-        """, (workspace_id,))
-
-        conn.commit()
-
-        # Audit log
-        try:
-            audit_logger = get_audit_logger()
-            audit_logger.log(
-                user_id=current_user.get("user_id"),
-                action=AuditAction.CODE_WORKSPACE_SYNCED,
-                resource="code_workspace",
-                resource_id=workspace_id,
-                details={"files_synced": len(files), "disk_path": workspace[1]}
-            )
-        except Exception as audit_error:
-            logger.warning(f"Audit logging failed: {audit_error}")
-
-        return {"success": True, "files_synced": len(files)}
-
-    except HTTPException:
-        raise
-    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
