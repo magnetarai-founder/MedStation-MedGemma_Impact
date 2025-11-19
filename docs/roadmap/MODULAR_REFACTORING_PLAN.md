@@ -1,8 +1,8 @@
 # ElohimOS Modular Refactoring Plan
 
 **Created:** 2025-11-16
-**Last Updated:** 2025-11-18
-**Status:** ✅ Phases 1–4 COMPLETE – Backend services + routes modular; core frontend workspaces modular. Phase 5 (settings/modals) is NEXT.
+**Last Updated:** 2025-11-19
+**Status:** ✅ Phases 1–4 COMPLETE – Backend services + routes modular; core frontend workspaces modular. Phase 5 (settings/modals) is NEXT (Profile settings + library modals).
 **Version:** 3.0 (Backend + routes + core frontend modularized)
 **Team:** Claude, User, Codex
 **Priority:** HIGH - Foundation for future scalability
@@ -26,7 +26,7 @@ This is the **single source of truth** for refactoring ElohimOS over the next 12
 - ✅ All existing tests must continue to pass
 - ✅ Phase work is isolated - each phase can be completed and merged independently
 
-**Current Repo State** (as of 2025-11-18):
+**Current Repo State** (as of 2025-11-19):
 - **Backend**: 144 Python files in `apps/backend/api/`, Phase 2–3 complete:
   - Team service fully modular (6 modules)
   - Vault service modular (`core.py` + `storage,encryption,sharing,permissions,schemas,documents,files,folders,search,automation`)
@@ -34,7 +34,8 @@ This is the **single source of truth** for refactoring ElohimOS over the next 12
   - `main.py` now uses `app_factory.py` + `middleware/` + `startup/` + centralized `router_registry`
 - **Frontend**: 220 TS/TSX components, 14 Zustand stores
   - Major workspaces modularized: `VaultWorkspace/`, `AppShell` + `useAppBootstrap`, `TeamChat/`, `WorkflowDesigner/`
-  - Large settings/modals (SettingsTab, ProfileSettingsModal, ProjectLibraryModal) remain to be refactored in Phase 5
+  - Settings & profile: `SettingsModal` uses modular tabs; `ProfileSettings` package is source of truth for profile; `ProfileSettingsModal` is now a thin wrapper around `ProfileSettings`
+  - Library modals: `LibraryModal` modularized into `LibraryModal/` with a top-level shim; `ProjectLibraryModal` remains to be refactored in Phase 5
 - **Docs**: Consolidated to 6 core docs (most deleted in recent cleanup)
 - **Architecture**: FastAPI + 8 SQLite DBs + DuckDB + Ollama + Metal 4 + React/Zustand
 
@@ -88,9 +89,9 @@ This is the **single source of truth** for refactoring ElohimOS over the next 12
 | ~~`components/VaultWorkspace.tsx`~~ | ~~4,119~~ | ✅ **REFACTORED** → `components/VaultWorkspace/` (Toolbar, grids, modals, hooks, helpers) – original kept as backup only | MEDIUM → **COMPLETED** |
 | ~~`components/VaultWorkspace/index.tsx`~~ | ~~942~~ | ✅ **REFACTORED** → `VaultWorkspace/index.tsx` + subcomponents (Phase 4.1) | LOW → **COMPLETED** |
 | `components/settings/SettingsTab.tsx` | 862 | Settings tab coordination | MEDIUM |
-| `components/ProjectLibraryModal.tsx` | 798 | Project library modal | MEDIUM |
-| `components/ProfileSettingsModal.tsx` | 773 | User profile settings | MEDIUM |
-| `components/LibraryModal.tsx` | 726 | Library modal | MEDIUM |
+| ~~`components/ProjectLibraryModal.tsx`~~ | ~~798~~ → **13** | ✅ **REFACTORED** → `ProjectLibraryModal/{ProjectLibraryModal,DocumentRow,TagInput,NewDocumentEditor,EditDocumentEditor,DeleteConfirmDialog,types}.tsx` (Phase 5.2) | ~~MEDIUM~~ → **COMPLETED** |
+| ~~`components/ProfileSettingsModal.tsx`~~ | ~~773~~ → **62** | ✅ **REFACTORED** → Thin wrapper around `ProfileSettings/` module (Phase 5.2) | ~~MEDIUM~~ → **COMPLETED** |
+| ~~`components/LibraryModal.tsx`~~ | ~~726~~ → **11** | ✅ **REFACTORED** → `LibraryModal/{LibraryModal,QueryRow,NewQueryEditor,EditQueryEditor,DeleteConfirmDialog}.tsx` (Phase 5.2) | ~~MEDIUM~~ → **COMPLETED** |
 | ~~`components/TeamChatWindow.tsx`~~ | ~~725~~ | ✅ **REFACTORED** → `components/TeamChat/{TeamChatWindow,MessageList,MessageInput,EmojiPicker,types}.tsx` (Phase 4.3) | HIGH → **COMPLETED** |
 
 #### High Priority (600-900 lines)
@@ -880,72 +881,109 @@ components/WorkflowDesigner/
 ---
 
 ### PHASE 5: Settings & Modals
-**Goal**: Modularize settings and modal components
+**Goal**: Modularize settings and modal components, with a focus on reusing the new `ProfileSettings` package and untangling large library/profile modals.
 **Duration**: 5 days
 **Risk**: LOW-MEDIUM
 
 **Success Criteria**:
-- `SettingsTab` and large modal components are decomposed into layout + tab/modal subcomponents without changing settings behavior.
+- Legacy settings entrypoints (`SettingsTab`, `ProfileSettingsModal`) become thin coordinators/wrappers around the new modular settings components.
+- Large modal components (library/profile modals) are decomposed into layout + tab/modal subcomponents without changing behavior.
 - All settings panels and modals render and function as before in manual/E2E checks.
 
 **Testing Requirements**:
 - UI regression tests or scripted/manual checklists for each settings tab and modal.
 
-#### 5.1 Refactor `components/settings/SettingsTab.tsx` (862 lines)
-**Current**: Monolithic settings tab coordinator
-**Target Structure**:
-```
-components/settings/
-├── SettingsTab.tsx             # Tab coordinator (200 lines)
-├── SettingsLayout.tsx          # Layout wrapper
-├── tabs/
-│   ├── AppSettingsTab.tsx      # App settings (516 lines - keep as is)
-│   ├── AdminTab.tsx            # Admin (542 lines - keep as is)
-│   ├── DangerZoneTab.tsx       # Danger zone (587 lines - may split)
-│   ├── AnalyticsTab.tsx        # Analytics (495 lines)
-│   ├── BackupsTab.tsx          # Backups (482 lines)
-│   ├── AuditLogsTab.tsx        # Audit logs (467 lines)
-│   ├── LegalDisclaimersTab.tsx # Legal (467 lines)
-│   └── ChatSettingsContent.tsx # Chat settings (458 lines)
-└── shared/
-    ├── SettingSection.tsx      # Section component
-    ├── SettingRow.tsx          # Row component
-    └── SettingToggle.tsx       # Toggle component
-```
+#### 5.1 Align `SettingsTab` with new Settings architecture
+**Current**:
+- `components/settings/SettingsTab.tsx` is a legacy monolithic coordinator from the old settings UI.
+- New modular settings live in:
+  - `components/SettingsModal.tsx`
+  - `components/settings/AppSettingsTab.tsx`
+  - `components/settings/AdvancedTab.tsx`
+  - `components/settings/ChatTab.tsx` / `ChatSettingsContent.tsx`
+  - `components/ProfileSettings/` (Profile tab content used by `SettingsModal`)
+
+**Goal**:
+- Ensure there is a single, clear entrypoint for application settings (the new `SettingsModal` + tab components).
+- Either deprecate `SettingsTab.tsx` or convert it into a thin wrapper that composes the new modular tabs without duplicating logic.
+
+**Refactoring Options** (choose based on current usage):
+1. If `SettingsTab.tsx` is still used:
+   - Reduce it to a simple coordinator that:
+     - Renders `SettingsModal` or the individual tab components (`AppSettingsTab`, `AdvancedTab`, `ChatTab`, `ProfileSettings`, etc.).
+     - Contains no business logic of its own.
+2. If `SettingsTab.tsx` is no longer used:
+   - Add a clear deprecation notice at the top of the file.
+   - Optionally keep a shim that re-exports the new settings entrypoint for backwards compatibility.
 
 **Refactoring Steps**:
-1. Extract shared UI components
-2. Simplify tab coordinator
-3. Review individual tabs for further splitting
-4. Create reusable setting components
+1. Search for all usages of `SettingsTab` in the codebase.
+2. Decide between “wrapper” vs “deprecated shim” based on real usage.
+3. If used, update `SettingsTab.tsx` to delegate entirely to the new settings components.
+4. If unused, mark as deprecated and avoid future dependencies on it.
 
-**Dependencies**: All settings tabs
-**Breaking Changes**: None
+**Dependencies**: `SettingsModal`, `AppSettingsTab`, `AdvancedTab`, `ChatTab`, `ProfileSettings`
+**Breaking Changes**: None – this is a structural cleanup and/or deprecation only.
 
-#### 5.2 Refactor Large Modals
+#### 5.2 Refactor Large Modals (Profile & Library)
 **Files**:
 - `components/ProjectLibraryModal.tsx` (798 lines)
-- `components/ProfileSettingsModal.tsx` (773 lines)
-- `components/LibraryModal.tsx` (726 lines)
+- ~~`components/ProfileSettingsModal.tsx`~~ (~~773~~ → **62 lines**) ✅ **COMPLETED**
+- ~~`components/LibraryModal.tsx`~~ (~~726~~ → **11 lines**) ✅ **COMPLETED**
 
-**Target Structure** (example for ProfileSettingsModal):
+**ProfileSettingsModal** ✅ **COMPLETED**:
+- `ProfileSettings` is now a modular package under `components/ProfileSettings/` with:
+  - `index.tsx` entrypoint
+  - Sections: `IdentitySection`, `SecuritySection`, `CloudSection`, `UpdatesSection`, `PrivacySection`, `DangerZoneSection`
+  - Hooks: `useProfileData`, `useProfileForm`, `useBiometricSetup`
+- `ProfileSettingsModal.tsx` has been refactored to a **thin modal wrapper** (62 lines):
+  - Renders standard modal chrome (title bar, close button, ESC-to-close behavior).
+  - Hosts `<ProfileSettings />` as its body content.
+  - Preserves all existing props and external behavior (open/close callbacks, size, keyboard handling).
+  - Added `CloudSection` to support the Cloud & SaaS tab from the legacy modal.
+
+**LibraryModal** ✅ **COMPLETED**:
+- Original `components/LibraryModal.tsx` (726 lines) has been split into a focused module structure:
+  - `components/LibraryModal/LibraryModal.tsx` (~291 lines) – orchestrator component:
+    - Manages query list, selection, create/edit/delete flows, and interactions with the editor.
+  - `components/LibraryModal/QueryRow.tsx` (~123 lines) – single query row with actions.
+  - `components/LibraryModal/NewQueryEditor.tsx` (~121 lines) – “new query” form/editor.
+  - `components/LibraryModal/EditQueryEditor.tsx` (~136 lines) – “edit existing query” form/editor.
+  - `components/LibraryModal/DeleteConfirmDialog.tsx` (~49 lines) – delete confirmation dialog.
+  - `components/LibraryModal/index.tsx` (~12 lines) – public barrel export.
+  - `components/LibraryModal.tsx` (~11 lines) – backwards compatibility shim that re-exports from `LibraryModal/`.
+- Behavior is unchanged:
+  - All query CRUD flows, search/filter, and interactions with the SQL editor work as before.
+  - Public imports like `import LibraryModal from '@/components/LibraryModal'` still function.
+
+**ProjectLibraryModal – Target Structure** (NEXT):
 ```
-components/ProfileSettings/
-├── Modal.tsx                   # Modal wrapper (100 lines)
-├── AccountTab.tsx              # Account settings
-├── SecurityTab.tsx             # Security settings
-├── PreferencesTab.tsx          # User preferences
-├── AppearanceTab.tsx           # Appearance settings
-└── NotificationsTab.tsx        # Notification settings
+components/ProjectLibraryModal/
+├── index.tsx                   # Modal entrypoint (composition only)
+├── ProjectLibraryModal.tsx     # Orchestrator (selection + routing)
+├── QueryRow.tsx                # Project query row with actions
+├── NewQueryEditor.tsx          # Create project-scoped query
+├── EditQueryEditor.tsx         # Edit project-scoped query
+├── DeleteConfirmDialog.tsx     # Confirm deletion
+└── hooks/
+    ├── useProjectLibrary.ts    # Project-scoped fetching + filters
+    └── useProjectSelection.ts  # Selection state + keyboard nav
 ```
 
 **Refactoring Steps**:
-1. Split each modal into tab components
-2. Extract reusable modal wrapper
-3. Create shared form components
-4. Reduce main modal to composition
+1. **ProjectLibraryModal** ✅ **COMPLETED**:
+   - ✅ Created `components/ProjectLibraryModal/` directory.
+   - ✅ Extracted DocumentRow component (document list item with tags and actions).
+   - ✅ Extracted TagInput component (tag management with hash pills, ENTER-to-add, hover-to-remove).
+   - ✅ Extracted NewDocumentEditor component (create new document with Monaco editor, tags, file type).
+   - ✅ Extracted EditDocumentEditor component (edit existing document).
+   - ✅ Extracted DeleteConfirmDialog component (type DELETE to confirm).
+   - ✅ Extracted types.ts for shared ProjectDocument interface.
+   - ✅ Refactored ProjectLibraryModal.tsx into ProjectLibraryModal/ProjectLibraryModal.tsx (orchestrator).
+   - ✅ Created backwards compatibility shim at original location.
+   - ✅ Preserved all behaviors: tag search, .md/.txt upload, bulk ZIP export, onLoadDocument callback.
 
-**Dependencies**: User stores
+**Dependencies**: User/profile stores, library/project library stores
 **Breaking Changes**: None
 
 ---
