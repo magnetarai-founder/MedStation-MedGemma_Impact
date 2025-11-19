@@ -1000,29 +1000,35 @@ components/ProjectLibraryModal/
 - Integration tests around permissions, code editing, and workflows that depend on these utilities.
 
 #### 6.1 Refactor Permission Files
-**Files**:
-- `api/permissions_admin.py` (1,077 lines)
-- `api/permission_engine.py` (1,052 lines)
-- `api/services/permissions.py` (1,050 lines)
-- `api/permission_layer.py` (757 lines)
+**Status**: ✅ COMPLETED (2025-11-19)
 
-**Target Structure**:
-```
-api/permissions/
-├── __init__.py                 # Public API
-├── engine.py                   # Core RBAC engine (300 lines)
-├── admin.py                    # Admin operations (300 lines)
-├── decorators.py               # @require_perm decorator
-├── hierarchy.py                # Permission hierarchy
-├── storage.py                  # Database operations
-└── types.py                    # Type definitions
-```
+**Old Structure**:
+- permission_engine.py (~1052 lines) - Core RBAC engine
+- services/permissions.py (~1050 lines) - Service layer with inline logic
+- permissions_admin.py (~1077 lines) - Legacy admin router
+- permission_layer.py (~757 lines) - CLI permission layer (unchanged)
 
-**Refactoring Steps**:
-1. Consolidate 4 files into single `permissions/` module
-2. Remove duplication between files
-3. Create clear separation of concerns
-4. Maintain same decorator API
+**New Structure**:
+api/permissions/ package (modular):
+- types.py - PermissionLevel, UserPermissionContext
+- hierarchy.py - LEVEL_HIERARCHY
+- storage.py - DB connection helpers
+- engine.py (836 lines) - PermissionEngine class
+- decorators.py (172 lines) - require_perm, require_perm_team
+- admin.py (1040 lines) - Admin/service functions
+- __init__.py - Public API exports
+
+Compatibility layers:
+- permission_engine.py (1052 → 73 lines) - Shim re-exporting from api.permissions
+- services/permissions.py (1050 → 292 lines) - Thin façade delegating to api.permissions.admin
+- permissions_admin.py - Deprecated with clear notice (router not registered)
+
+**Key Achievements**:
+- Eliminated ~1700 lines of duplicate code
+- Single source of truth: api.permissions package
+- Backwards compatible - all existing imports work
+- Import validation passes ✓
+- No RBAC behavior changes
 
 **Dependencies**: Nearly all routes
 **Breaking Changes**: None (decorator API stays same)

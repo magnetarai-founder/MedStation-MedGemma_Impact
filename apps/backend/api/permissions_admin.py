@@ -1,15 +1,23 @@
 """
-Permission Administration API
+DEPRECATED: Legacy Permission Administration API (Phase 1/2)
 
-Admin endpoints for managing RBAC system:
-- Permission registry
-- Permission profiles
-- Permission sets
-- User assignments
+This router has been superseded by the modular permissions system:
+- **Current HTTP API**: api/routes/permissions.py (active in router registry)
+- **Business Logic**: api/services/permissions.py → api.permissions.admin
+- **Core Engine**: api.permissions.{engine,decorators,types,hierarchy,storage}
 
+This module is kept only for backwards compatibility and should NOT be extended.
+The router defined here is NOT registered in router_registry.py.
+
+Original implementation: Phase 2 (Admin endpoints for RBAC)
 Phase 2.5: Added permission-set grants, audit logging, cache invalidation
+Phase 6.1: Deprecated in favor of modular api.permissions package
 
-All endpoints require system.manage_permissions permission (Super Admin/Founder only by default).
+All permission management should now use:
+- Routes: api/routes/permissions.py (registered as /api/v1/permissions/*)
+- Service: api/services/permissions.py (delegates to api.permissions.admin)
+- Engine: api.permissions.engine (PermissionEngine, get_permission_engine)
+- Decorators: api.permissions.decorators (require_perm, require_perm_team)
 """
 
 import sqlite3
