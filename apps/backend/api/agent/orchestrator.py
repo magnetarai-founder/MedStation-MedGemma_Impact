@@ -174,13 +174,15 @@ async def route_input(
         raise HTTPException(status_code=429, detail="Too many route requests")
 
     try:
-        resp = route_input_logic(body.input)
+        # Pass user_id for learning-aware routing
+        user_id = current_user.get('user_id')
+        resp = route_input_logic(body.input, user_id=user_id)
 
         # Audit log
         audit_logger = get_audit_logger()
         if audit_logger:
             audit_logger.log(
-                user_id=current_user['user_id'],
+                user_id=user_id,
                 action=AuditAction.CODE_ASSIST,
                 details={'intent': resp.intent, 'input_preview': body.input[:100]}
             )

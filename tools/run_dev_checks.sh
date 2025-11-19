@@ -13,7 +13,11 @@ python3 scripts/check_imports.py
 echo
 echo "==> Running backend tests..."
 cd "$ROOT_DIR/apps/backend"
+# Temporarily disable nounset for PYTHONPATH expansion
+set +u
 export PYTHONPATH="$ROOT_DIR/packages:$ROOT_DIR/apps/backend:${PYTHONPATH:-}"
+set -u
+export ELOHIM_ENV=development
 "$ROOT_DIR/venv/bin/python3" -m pytest tests/
 
 echo
