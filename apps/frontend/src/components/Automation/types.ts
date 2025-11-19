@@ -1,4 +1,4 @@
-import { WorkflowTemplateMetadata } from './shared/templates'
+import { WorkflowTemplateMetadata } from './templates'
 import { TemplateCategory } from './shared/categories'
 
 export type ViewMode = 'library' | 'builder' | 'queue' | 'tracker' | 'designer'

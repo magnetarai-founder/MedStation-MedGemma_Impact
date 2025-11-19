@@ -11,7 +11,7 @@ from datetime import datetime
 import json
 import logging
 
-from template_library_full import get_full_template_library, TemplateCategory, SQLTemplate
+from templates import get_full_template_library, TemplateCategory, SQLTemplate
 from bigquery_engine import BigQueryAIEngine
 
 logger = logging.getLogger(__name__)

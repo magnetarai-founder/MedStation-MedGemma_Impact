@@ -1,0 +1,42 @@
+export const nodeStyles = {
+  trigger: {
+    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+    color: 'white',
+    border: '2px solid #059669',
+    borderRadius: '12px',
+    padding: '16px',
+    minWidth: '200px',
+  },
+  action: {
+    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+    color: 'white',
+    border: '2px solid #2563eb',
+    borderRadius: '12px',
+    padding: '16px',
+    minWidth: '200px',
+  },
+  ai: {
+    background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+    color: 'white',
+    border: '2px solid #7c3aed',
+    borderRadius: '12px',
+    padding: '16px',
+    minWidth: '200px',
+  },
+  output: {
+    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+    color: 'white',
+    border: '2px solid #d97706',
+    borderRadius: '12px',
+    padding: '16px',
+    minWidth: '200px',
+  },
+  condition: {
+    background: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
+    color: 'white',
+    border: '2px solid #db2777',
+    borderRadius: '12px',
+    padding: '16px',
+    minWidth: '200px',
+  },
+}

@@ -16,8 +16,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css'
 import { ArrowLeft, Play, Save, HelpCircle, Info, ZoomIn, ZoomOut, Maximize2, Edit2 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { WORKFLOW_DEFINITIONS } from './Automation/shared/templates'
-import { nodeStyles } from './Automation/shared/styles'
+import { WORKFLOW_DEFINITIONS, nodeStyles } from './Automation/templates'
 
 interface WorkflowBuilderProps {
   templateId: string

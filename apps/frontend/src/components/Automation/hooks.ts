@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { WorkflowTemplate, SortOption } from './types'
 import { TemplateCategory } from './shared/categories'
-import { WORKFLOW_METADATA } from './shared/templates'
+import { WORKFLOW_METADATA } from './templates'
 import { WORKFLOW_ICONS } from './shared/icons'
 
 export function useAutomationTemplates() {
