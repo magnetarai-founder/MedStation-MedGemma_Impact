@@ -424,7 +424,7 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
     # Permissions API (v1)
     try:
         from api.routes import permissions as _perm_routes
-        app.include_router(_perm_routes.router, prefix="/api/v1/permissions")
+        app.include_router(_perm_routes.router)  # Router already has prefix="/api/v1/permissions"
         services_loaded.append("Permissions API")
     except Exception as e:
         services_failed.append("Permissions API")
