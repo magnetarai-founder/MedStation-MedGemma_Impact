@@ -53,10 +53,30 @@ export function ProfileSettings() {
   }
 
   // Danger zone handlers
-  const handleLogout = () => {
-    localStorage.removeItem('auth_token')
-    localStorage.removeItem('user')
-    window.location.reload()
+  const handleLogout = async () => {
+    try {
+      // Call backend logout endpoint to delete session
+      const token = localStorage.getItem('auth_token')
+      if (token) {
+        try {
+          await fetch('http://localhost:8000/api/v1/auth/logout', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          })
+          // Ignore errors - we'll clear local storage anyway
+        } catch (err) {
+          console.log('Logout API call failed (expected if token expired):', err)
+        }
+      }
+    } finally {
+      // Always clear local storage and reload, even if API call fails
+      localStorage.removeItem('auth_token')
+      localStorage.removeItem('user')
+      window.location.reload()
+    }
   }
 
   const handleResetIdentity = async () => {
