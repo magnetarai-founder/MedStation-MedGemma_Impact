@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - name: Check for oversized files
         continue-on-error: true
@@ -42,6 +44,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
@@ -77,13 +81,8 @@ jobs:
         working-directory: apps/frontend
     steps:
       - uses: actions/checkout@v4
-
-      - name: Debug - List frontend files
-        run: |
-          pwd
-          ls -la
-          echo "Checking for package-lock.json:"
-          ls -la package-lock.json || echo "package-lock.json not found!"
+        with:
+          lfs: true
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
