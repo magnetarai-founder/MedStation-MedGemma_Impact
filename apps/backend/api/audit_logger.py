@@ -144,6 +144,26 @@ class AuditAction:
     MODEL_POLICY_VIOLATED = "model.policy.violated"
     MODEL_POLICY_UPDATED = "model.policy.updated"
 
+    # Agent Session Operations (Obs-1)
+    AGENT_SESSION_CREATED = "agent.session.created"
+    AGENT_SESSION_CLOSED = "agent.session.closed"
+    AGENT_SESSION_PLAN_UPDATED = "agent.session.plan.updated"
+    AGENT_SESSION_ERROR = "agent.session.error"
+
+    # Agent Orchestration Operations (Obs-1)
+    AGENT_ROUTE_COMPLETED = "agent.route.completed"
+    AGENT_PLAN_GENERATED = "agent.plan.generated"
+    AGENT_CONTEXT_BUILT = "agent.context.built"
+    AGENT_APPLY_SUCCESS = "agent.apply.success"
+    AGENT_APPLY_FAILURE = "agent.apply.failure"
+
+    # Workflow Agent Integration (Obs-1)
+    WORKFLOW_AGENT_ASSIST_STARTED = "workflow.agent_assist.started"
+    WORKFLOW_AGENT_ASSIST_COMPLETED = "workflow.agent_assist.completed"
+    WORKFLOW_AGENT_ASSIST_ERROR = "workflow.agent_assist.error"
+    WORKFLOW_TRIGGER_FIRED = "workflow.trigger.fired"
+    WORKFLOW_ANALYTICS_COMPUTED = "workflow.analytics.computed"
+
 
 class AuditLogger:
     """
@@ -162,7 +182,10 @@ class AuditLogger:
             db_path: Path to audit database (defaults to data dir)
         """
         if db_path is None:
-            from config_paths import get_data_dir
+            try:
+                from api.config_paths import get_data_dir
+            except ImportError:
+                from config_paths import get_data_dir
             data_dir = get_data_dir()
             db_path = data_dir / "audit.db"
 

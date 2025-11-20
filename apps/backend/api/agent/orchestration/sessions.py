@@ -13,11 +13,22 @@ from typing import Optional, Dict, Any, List
 try:
     from api.agent.orchestration.models import AgentSession
     from api.agent.orchestration import session_storage
+    from api.audit_logger import AuditAction, audit_log_sync
+    from api.metrics import get_metrics
 except ImportError:
     from .models import AgentSession
     from . import session_storage
+    try:
+        from ...audit_logger import AuditAction, audit_log_sync
+        from ...metrics import get_metrics
+    except ImportError:
+        # Fallback for test environments
+        AuditAction = None
+        audit_log_sync = lambda *args, **kwargs: None
+        get_metrics = lambda: None
 
 logger = logging.getLogger(__name__)
+metrics = get_metrics() if get_metrics() else None
 
 
 def create_agent_session(
@@ -61,6 +72,24 @@ def create_agent_session(
         f"Created agent session {session_id} for user {user_id}",
         extra={"session_id": session_id, "user_id": user_id, "repo_root": repo_root}
     )
+
+    # Audit log
+    if AuditAction:
+        audit_log_sync(
+            user_id=user_id,
+            action=AuditAction.AGENT_SESSION_CREATED,
+            resource="agent_session",
+            resource_id=session_id,
+            details={
+                "repo_root": repo_root,
+                "attached_work_item_id": attached_work_item_id,
+                "status": "active"
+            }
+        )
+
+    # Metrics
+    if metrics:
+        metrics.record("agent.sessions.created", 0, error=False)
 
     return session
 
@@ -130,9 +159,23 @@ def update_session_plan(session_id: str, plan_payload: Dict[str, Any]) -> None:
             },
         )
         logger.info(f"Updated plan for session {session_id}")
+
+        # Get session to retrieve user_id for audit
+        session = session_storage.get_session(session_id)
+        if session and AuditAction:
+            num_steps = len(plan_payload.get("steps", [])) if isinstance(plan_payload, dict) else 0
+            audit_log_sync(
+                user_id=session.user_id,
+                action=AuditAction.AGENT_SESSION_PLAN_UPDATED,
+                resource="agent_session",
+                resource_id=session_id,
+                details={"num_steps": num_steps}
+            )
     except Exception as e:
         # Graceful degradation - log but don't fail
         logger.warning(f"Failed to update session plan for {session_id}: {e}")
+        if metrics:
+            metrics.record("agent.sessions.errors", 0, error=True)
 
 
 def touch_session(session_id: str) -> None:
@@ -200,7 +243,22 @@ def close_session(session_id: str) -> None:
     Example:
         >>> close_session("session_a1b2c3d4")
     """
+    # Get session before closing for audit
+    session = session_storage.get_session(session_id)
+
     session_storage.archive_session(session_id)
+
+    if session and AuditAction:
+        audit_log_sync(
+            user_id=session.user_id,
+            action=AuditAction.AGENT_SESSION_CLOSED,
+            resource="agent_session",
+            resource_id=session_id,
+            details={"final_status": "archived"}
+        )
+
+    if metrics:
+        metrics.record("agent.sessions.closed", 0, error=False)
 
 
 def reactivate_session(session_id: str) -> None:

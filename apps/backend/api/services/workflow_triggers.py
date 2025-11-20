@@ -15,6 +15,8 @@ try:
         WorkItemPriority,
     )
     from ..workflow_storage import WorkflowStorage
+    from ..audit_logger import AuditAction, audit_log_sync
+    from ..metrics import get_metrics
 except ImportError:
     from workflow_models import (
         WorkflowTriggerType,
@@ -23,8 +25,16 @@ except ImportError:
         WorkItemPriority,
     )
     from workflow_storage import WorkflowStorage
+    try:
+        from audit_logger import AuditAction, audit_log_sync
+        from metrics import get_metrics
+    except ImportError:
+        AuditAction = None
+        audit_log_sync = lambda *args, **kwargs: None
+        get_metrics = lambda: None
 
 logger = logging.getLogger(__name__)
+metrics = get_metrics() if get_metrics() else None
 
 
 def handle_agent_event(
@@ -137,6 +147,25 @@ def handle_agent_event(
                 f"✅ Created WorkItem {work_item.id} in workflow '{workflow.name}' "
                 f"(stage: {initial_stage.name}) from event: {event_type}"
             )
+
+            # Audit log trigger fired
+            if AuditAction:
+                audit_log_sync(
+                    user_id=user_id,
+                    action=AuditAction.WORKFLOW_TRIGGER_FIRED,
+                    resource="workflow",
+                    resource_id=workflow.id,
+                    details={
+                        "trigger_type": WorkflowTriggerType.ON_AGENT_EVENT,
+                        "event_type": event_type,
+                        "work_item_id": work_item.id,
+                        "workflow_name": workflow.name
+                    }
+                )
+
+            # Metrics
+            if metrics:
+                metrics.record("workflow.triggers.agent_event.fired", 0, error=False)
 
         return created_work_item_ids
 

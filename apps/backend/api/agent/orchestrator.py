@@ -21,6 +21,7 @@ All existing imports and /api/v1/agent/* endpoints continue to work unchanged.
 """
 
 import logging
+import time
 from fastapi import APIRouter, HTTPException, Depends, Request
 from typing import Dict, Any
 
@@ -31,14 +32,17 @@ try:
     from ..permission_engine import require_perm
     from ..audit_logger import get_audit_logger, AuditAction
     from ..config_paths import get_config_paths
+    from ..metrics import get_metrics
 except ImportError:
     from auth_middleware import get_current_user
     from rate_limiter import rate_limiter, get_client_ip
     from permission_engine import require_perm
     from audit_logger import get_audit_logger, AuditAction
     from config_paths import get_config_paths
+    from metrics import get_metrics
 
 PATHS = get_config_paths()
+metrics = get_metrics()
 
 # Import all orchestration components
 try:
@@ -185,9 +189,12 @@ async def route_input(
     Rate limited: 60 requests/min per user
     Permission required: code.use
     """
+    start_time = time.perf_counter()
+    user_id = current_user.get('user_id')
+
     # Rate limit
     if not rate_limiter.check_rate_limit(
-        f"agent:route:{current_user['user_id']}",
+        f"agent:route:{user_id}",
         max_requests=60,
         window_seconds=60
     ):
@@ -195,25 +202,35 @@ async def route_input(
 
     try:
         # Pass user_id for learning-aware routing
-        user_id = current_user.get('user_id')
         resp = route_input_logic(body.input, user_id=user_id)
 
         # Phase C: Touch session if provided
         if body.session_id:
             touch_session(body.session_id)
 
-        # Audit log
+        # Audit log (enhanced)
         audit_logger = get_audit_logger()
         if audit_logger:
             audit_logger.log(
                 user_id=user_id,
-                action=AuditAction.CODE_ASSIST,
-                details={'intent': resp.intent, 'input_preview': body.input[:100]}
+                action=AuditAction.AGENT_ROUTE_COMPLETED,
+                resource="agent_session" if body.session_id else "agent",
+                resource_id=body.session_id,
+                details={
+                    'intent': resp.intent,
+                    'model_hint': resp.model_hint,
+                    'learning_used': resp.learning_used if hasattr(resp, 'learning_used') else None
+                }
             )
+
+        # Metrics
+        duration_ms = (time.perf_counter() - start_time) * 1000
+        metrics.record("agent.route.calls", duration_ms, error=False)
 
         return resp
     except Exception as e:
         logger.error(f"Routing failed: {e}", exc_info=True)
+        metrics.record("agent.route.calls", (time.perf_counter() - start_time) * 1000, error=True)
         raise HTTPException(status_code=500, detail="Failed to route input")
 
 
@@ -230,9 +247,12 @@ async def generate_plan(
     Rate limited: 30 requests/min per user
     Permission required: code.use
     """
+    start_time = time.perf_counter()
+    user_id = current_user['user_id']
+
     # Rate limit
     if not rate_limiter.check_rate_limit(
-        f"agent:plan:{current_user['user_id']}",
+        f"agent:plan:{user_id}",
         max_requests=30,
         window_seconds=60
     ):
@@ -245,23 +265,30 @@ async def generate_plan(
         if body.session_id:
             update_session_plan(body.session_id, resp.model_dump())
 
-        # Audit log
+        # Audit log (enhanced)
         audit_logger = get_audit_logger()
         if audit_logger:
             audit_logger.log(
-                user_id=current_user['user_id'],
-                action=AuditAction.CODE_ASSIST,
+                user_id=user_id,
+                action=AuditAction.AGENT_PLAN_GENERATED,
+                resource="agent_session" if body.session_id else "agent",
+                resource_id=body.session_id,
                 details={
-                    'action': 'plan_generated',
-                    'steps': len(resp.steps),
-                    'risks': len(resp.risks)
+                    'num_steps': len(resp.steps),
+                    'estimated_time_min': resp.estimated_time_min,
+                    'risks_count': len(resp.risks)
                 }
             )
+
+        # Metrics
+        duration_ms = (time.perf_counter() - start_time) * 1000
+        metrics.record("agent.plan.calls", duration_ms, error=False)
 
         return resp
     except Exception as e:
         # Log full error server-side, return generic message to client
         logger.error(f"Planning failed: {e}", exc_info=True)
+        metrics.record("agent.plan.calls", (time.perf_counter() - start_time) * 1000, error=True)
         raise HTTPException(status_code=500, detail="Failed to generate plan. Please try again.")
 
 
@@ -278,9 +305,12 @@ async def get_context_bundle(
     Rate limited: 60 requests/min per user
     Permission required: code.use
     """
+    start_time = time.perf_counter()
+    user_id = current_user['user_id']
+
     # Rate limit
     if not rate_limiter.check_rate_limit(
-        f"agent:context:{current_user['user_id']}",
+        f"agent:context:{user_id}",
         max_requests=60,
         window_seconds=60
     ):
@@ -293,12 +323,34 @@ async def get_context_bundle(
         if body.session_id:
             touch_session(body.session_id)
 
+        # Audit log
+        audit_logger = get_audit_logger()
+        if audit_logger:
+            num_files = len(resp.relevant_files) if resp.relevant_files else 0
+            audit_logger.log(
+                user_id=user_id,
+                action=AuditAction.AGENT_CONTEXT_BUILT,
+                resource="agent_session" if body.session_id else "agent",
+                resource_id=body.session_id,
+                details={
+                    'repo_root': body.repo_root,
+                    'num_files_in_bundle': num_files,
+                    'has_git_history': hasattr(resp, 'git_info') and resp.git_info is not None
+                }
+            )
+
+        # Metrics
+        duration_ms = (time.perf_counter() - start_time) * 1000
+        metrics.record("agent.context.calls", duration_ms, error=False)
+
         return resp
     except PermissionError as e:
+        metrics.record("agent.context.calls", (time.perf_counter() - start_time) * 1000, error=True)
         raise HTTPException(status_code=403, detail=str(e))
     except Exception as e:
         # Log full error server-side, return generic message to client
         logger.error(f"Context building failed: {e}", exc_info=True)
+        metrics.record("agent.context.calls", (time.perf_counter() - start_time) * 1000, error=True)
         raise HTTPException(status_code=500, detail="Failed to build context. Please check repository path.")
 
 
@@ -316,9 +368,12 @@ async def apply_plan(
     Rate limited: 10 requests/min per user (heavyweight operation)
     Permissions required: code.use + code.edit
     """
+    start_time = time.perf_counter()
+    user_id = current_user['user_id']
+
     # Rate limit (more restrictive for apply)
     if not rate_limiter.check_rate_limit(
-        f"agent:apply:{current_user['user_id']}",
+        f"agent:apply:{user_id}",
         max_requests=10,
         window_seconds=60
     ):
@@ -331,19 +386,27 @@ async def apply_plan(
         if body.session_id:
             touch_session(body.session_id)
 
-        # Audit log
+        # Audit log (enhanced)
         audit_logger = get_audit_logger()
         if audit_logger:
             audit_logger.log(
-                user_id=current_user['user_id'],
-                action=AuditAction.CODE_EDIT,
+                user_id=user_id,
+                action=AuditAction.AGENT_APPLY_SUCCESS,
+                resource="agent_session" if body.session_id else "agent",
+                resource_id=body.session_id,
                 details={
-                    'patches': len(patches),
-                    'dry_run': body.dry_run,
+                    'repo_root': body.repo_root,
+                    'files_changed_count': len(patches),
+                    'engine_used': engine_used,
+                    'model_used': body.model if hasattr(body, 'model') else None,
                     'patch_id': patch_id,
-                    'files': [p.path for p in patches]
+                    'dry_run': body.dry_run
                 }
             )
+
+        # Metrics
+        duration_ms = (time.perf_counter() - start_time) * 1000
+        metrics.record("agent.apply.calls", duration_ms, error=False)
 
         return ApplyResponse(
             success=True,
@@ -357,6 +420,26 @@ async def apply_plan(
     except Exception as e:
         # Log full error server-side, return generic message to client
         logger.error(f"Apply failed: {e}", exc_info=True)
+
+        # Audit log failure
+        audit_logger = get_audit_logger()
+        if audit_logger:
+            audit_logger.log(
+                user_id=user_id,
+                action=AuditAction.AGENT_APPLY_FAILURE,
+                resource="agent_session" if body.session_id else "agent",
+                resource_id=body.session_id,
+                details={
+                    'repo_root': body.repo_root,
+                    'error_type': type(e).__name__,
+                    'message': str(e)[:200]
+                }
+            )
+
+        # Metrics
+        metrics.record("agent.apply.calls", (time.perf_counter() - start_time) * 1000, error=True)
+        metrics.record("agent.apply.failures", 0, error=True)
+
         raise HTTPException(status_code=500, detail="Failed to apply changes. Please check logs for details.")
 
 

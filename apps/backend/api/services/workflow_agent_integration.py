@@ -9,6 +9,7 @@ When a WorkItem enters an AGENT_ASSIST stage, this service:
 """
 
 import logging
+import time
 from typing import Optional, Dict, Any
 from pathlib import Path
 
@@ -19,6 +20,8 @@ try:
     from api.agent.orchestration import context_bundle as context_mod
     from api.agent.orchestration import planning as planning_mod
     from api.config_paths import get_config_paths
+    from api.audit_logger import AuditAction, audit_log_sync
+    from api.metrics import get_metrics
 except ImportError:
     from workflow_models import WorkItem, Stage
     from workflow_storage import WorkflowStorage
@@ -26,8 +29,16 @@ except ImportError:
     from agent.orchestration import context_bundle as context_mod
     from agent.orchestration import planning as planning_mod
     from config_paths import get_config_paths
+    try:
+        from audit_logger import AuditAction, audit_log_sync
+        from metrics import get_metrics
+    except ImportError:
+        AuditAction = None
+        audit_log_sync = lambda *args, **kwargs: None
+        get_metrics = lambda: None
 
 logger = logging.getLogger(__name__)
+metrics = get_metrics() if get_metrics() else None
 
 
 def run_agent_assist_for_stage(
@@ -59,6 +70,8 @@ def run_agent_assist_for_stage(
         - Saves work_item to storage
         - Logs errors to work_item.data["agent_recommendation_error"] if agent fails
     """
+    start_time = time.perf_counter()
+
     try:
         # Determine repo_root from work item data or fallback to config
         paths = get_config_paths()
@@ -71,6 +84,21 @@ def run_agent_assist_for_stage(
             f"Agent Assist starting for work item {work_item.id} in stage {stage.name}",
             extra={"work_item_id": work_item.id, "stage_name": stage.name, "repo_root": repo_root}
         )
+
+        # Audit log start
+        if AuditAction:
+            audit_log_sync(
+                user_id=user_id,
+                action=AuditAction.WORKFLOW_AGENT_ASSIST_STARTED,
+                resource="workflow_work_item",
+                resource_id=work_item.id,
+                details={
+                    "workflow_id": work_item.workflow_id,
+                    "stage_id": stage.id,
+                    "stage_name": stage.name,
+                    "agent_auto_apply": stage.agent_auto_apply
+                }
+            )
 
         # Build context request for agent
         ctx_req = ContextRequest(
@@ -195,8 +223,36 @@ def run_agent_assist_for_stage(
                     "error": str(auto_apply_error),
                 })
 
+                # Metrics for auto-apply failure
+                if metrics:
+                    metrics.record("workflow.agent_auto_apply.failures", 0, error=True)
+
         # Persist work item (with auto-apply results if applicable)
         storage.save_work_item(work_item, user_id=user_id)
+
+        # Audit log completion
+        if AuditAction:
+            audit_log_sync(
+                user_id=user_id,
+                action=AuditAction.WORKFLOW_AGENT_ASSIST_COMPLETED,
+                resource="workflow_work_item",
+                resource_id=work_item.id,
+                details={
+                    "workflow_id": work_item.workflow_id,
+                    "stage_id": stage.id,
+                    "engine_used": work_item.data.get("agent_recommendation", {}).get("engine_used"),
+                    "model_used": work_item.data.get("agent_recommendation", {}).get("model_used"),
+                    "steps_count": len(work_item.data.get("agent_recommendation", {}).get("steps", [])),
+                    "risks_count": len(work_item.data.get("agent_recommendation", {}).get("risks", []))
+                }
+            )
+
+        # Metrics
+        duration_ms = (time.perf_counter() - start_time) * 1000
+        if metrics:
+            metrics.record("workflow.agent_assist.runs", duration_ms, error=False)
+            if stage.agent_auto_apply:
+                metrics.record("workflow.agent_auto_apply.attempts", 0, error=False)
 
         logger.info(
             f"Agent Assist completed for work item {work_item.id} in stage {stage.name}",
@@ -221,3 +277,24 @@ def run_agent_assist_for_stage(
         if "agent_recommendation" in work_item.data:
             del work_item.data["agent_recommendation"]
         storage.save_work_item(work_item, user_id=user_id)
+
+        # Audit log error
+        if AuditAction:
+            audit_log_sync(
+                user_id=user_id,
+                action=AuditAction.WORKFLOW_AGENT_ASSIST_ERROR,
+                resource="workflow_work_item",
+                resource_id=work_item.id,
+                details={
+                    "workflow_id": work_item.workflow_id,
+                    "stage_id": stage.id,
+                    "error_type": type(e).__name__,
+                    "message": str(e)[:200]
+                }
+            )
+
+        # Metrics
+        if metrics:
+            duration_ms = (time.perf_counter() - start_time) * 1000
+            metrics.record("workflow.agent_assist.runs", duration_ms, error=True)
+            metrics.record("workflow.agent_assist.failures", 0, error=True)
