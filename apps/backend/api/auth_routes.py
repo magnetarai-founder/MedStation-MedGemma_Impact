@@ -411,18 +411,63 @@ async def refresh_token(request: Request, body: RefreshRequest):
 
 
 @router.post("/logout")
-async def logout(request: Request, user: dict = Depends(get_current_user)):
+async def logout(request: Request):
     """
-    Logout current user
+    Logout current user - works even with expired tokens
+
+    This endpoint extracts the token without validation so users can log out
+    even if their token is expired. The session is deleted from the database.
     """
     try:
-        # Extract token from request
-        # Note: In production, you'd get this from the Authorization header
-        # For now, we just invalidate based on user_id
-        logger.info(f"User logged out: {user['username']}")
+        # Extract token from Authorization header
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith("Bearer "):
+            raise HTTPException(
+                status_code=401,
+                detail="No token provided",
+                headers={"WWW-Authenticate": "Bearer"}
+            )
 
-        return {"message": "Logged out successfully"}
+        token = auth_header.replace("Bearer ", "")
 
+        # Decode token WITHOUT verification (allows expired tokens to logout)
+        import jwt
+        try:
+            # Decode without verification to get session_id
+            payload = jwt.decode(token, options={"verify_signature": False})
+            session_id = payload.get('session_id')
+            username = payload.get('username', 'unknown')
+
+            if not session_id:
+                # Old token format without session_id - just return success
+                logger.info(f"User logged out (old token format): {username}")
+                return {"message": "Logged out successfully"}
+
+            # Delete session from database
+            import sqlite3
+            from config_paths import PATHS
+
+            conn = sqlite3.connect(str(PATHS.app_db))
+            cursor = conn.cursor()
+
+            cursor.execute("DELETE FROM sessions WHERE session_id = ?", (session_id,))
+            deleted = cursor.rowcount
+            conn.commit()
+            conn.close()
+
+            if deleted > 0:
+                logger.info(f"User logged out and session deleted: {username} (session: {session_id})")
+            else:
+                logger.info(f"User logged out (session not found): {username} (session: {session_id})")
+
+            return {"message": "Logged out successfully"}
+
+        except jwt.DecodeError:
+            # Token is completely malformed
+            raise HTTPException(status_code=401, detail="Invalid token format")
+
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception("Logout failed")
         raise internal_error(ErrorCode.SYSTEM_INTERNAL_ERROR, technical_detail=str(e))
