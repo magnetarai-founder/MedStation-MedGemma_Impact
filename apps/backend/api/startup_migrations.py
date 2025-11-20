@@ -52,6 +52,8 @@ async def run_startup_migrations() -> None:
             from .migrations import phase6_model_kpis as phase6_kpis_migration
             # Phase B: Kanban workspace
             from .migrations import phaseB_kanban as phaseB_kanban_migration
+            # Auth migrations (AUTH-P1)
+            from .migrations.auth import run_auth_migrations
         except ImportError:
             from migrations import phase0_user_db as phase0_migration
             from migrations import phase1_workflows_user_id as phase1_migration
@@ -67,9 +69,25 @@ async def run_startup_migrations() -> None:
             from migrations import phase6_model_kpis as phase6_kpis_migration
             # Phase B: Kanban workspace
             from migrations import phaseB_kanban as phaseB_kanban_migration
+            # Auth migrations (AUTH-P1)
+            from migrations.auth import run_auth_migrations
+
+        # ===== AUTH: Consolidated Auth Schema (AUTH-P1) =====
+        # Run auth migrations FIRST - ensures auth schema is always in place
+        # before other migrations that depend on it
+        app_db = PATHS.app_db
+        import sqlite3
+        try:
+            conn = sqlite3.connect(str(app_db))
+            run_auth_migrations(conn)
+            conn.close()
+            # Note: Auth migrations track their own completion state
+            # Only log if migrations actually ran (auth runner logs this internally)
+        except Exception as e:
+            logger.error(f"Auth migrations failed: {e}", exc_info=True)
+            raise
 
         # ===== Phase 0: Database Architecture Consolidation =====
-        app_db = PATHS.app_db
         legacy_users_db = PATHS.data_dir / "users.db"  # Legacy location
 
         if not phase0_migration.check_migration_applied(app_db):

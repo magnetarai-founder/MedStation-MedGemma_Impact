@@ -135,7 +135,17 @@ class AuthService:
         self._init_db()
 
     def _init_db(self):
-        """Initialize authentication database with optimized settings for concurrency"""
+        """
+        Initialize authentication database with optimized settings for concurrency
+
+        TODO (AUTH-P1): Table creation is transitioning to migrations system.
+        The CREATE TABLE IF NOT EXISTS calls below are kept for backward compatibility
+        during the migration transition. Once AUTH-P1 is complete and all deployments
+        have run auth migrations, these can be removed.
+
+        For now, migrations run first at startup (see startup_migrations.py),
+        and these serve as a safety net.
+        """
         with sqlite3.connect(str(self.db_path)) as conn:
             cursor = conn.cursor()
 
