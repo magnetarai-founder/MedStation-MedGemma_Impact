@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { useWorkItem, useWorkflow, useCompleteStage, useCancelWorkItem } from '../hooks/useWorkflowQueue';
 import type { WorkItem, Stage } from '../types/workflow';
+import { AgentAssistPanel } from './WorkItem/AgentAssistPanel';
 
 interface ActiveWorkItemProps {
   workItemId: string;
@@ -15,7 +16,7 @@ interface ActiveWorkItemProps {
 }
 
 export function ActiveWorkItem({ workItemId, userId, onClose, onCompleted }: ActiveWorkItemProps) {
-  const { data: workItem, isLoading: loadingWorkItem } = useWorkItem(workItemId);
+  const { data: workItem, isLoading: loadingWorkItem, refetch } = useWorkItem(workItemId);
   const { data: workflow } = useWorkflow(workItem?.workflow_id || '');
 
   const [formData, setFormData] = useState<Record<string, any>>({});
@@ -132,6 +133,15 @@ export function ActiveWorkItem({ workItemId, userId, onClose, onCompleted }: Act
               ))}
             </div>
           </div>
+
+          {/* Agent Assist Panel - Show for AGENT_ASSIST stages */}
+          {currentStage && (
+            <AgentAssistPanel
+              workItem={workItem}
+              stage={currentStage}
+              onRefresh={() => refetch()}
+            />
+          )}
 
           {/* Stage Form */}
           {currentStage?.form && (

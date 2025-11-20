@@ -210,6 +210,12 @@ export interface Stage {
   ai_suggestions_enabled?: boolean
   ai_suggestion_prompt?: string
 
+  // Agent Assist (Phase B & E)
+  agent_prompt?: string
+  agent_target_path?: string
+  agent_model_hint?: string
+  agent_auto_apply?: boolean
+
   // Metadata
   order?: number
   color?: string
@@ -432,6 +438,45 @@ export interface WorkflowAnalytics {
   average_cycle_time_seconds: number | null
   median_cycle_time_seconds: number | null
   stages: WorkflowStageAnalytics[]
+}
+
+// ============================================
+// AGENT ASSIST DATA (Phase B & E)
+// ============================================
+
+export interface AgentRecommendationStep {
+  description: string
+  risk_level?: string | null
+  estimated_files?: number | null
+  estimated_time_min?: number | null
+  requires_confirmation?: boolean | null
+}
+
+export interface AgentRecommendation {
+  plan_summary: string
+  engine_used?: string | null
+  model_used?: string | null
+  steps?: AgentRecommendationStep[]
+  risks?: string[] | null
+  requires_confirmation?: boolean | null
+  estimated_time_min?: number | null
+}
+
+export interface AgentAutoApplyResult {
+  success: boolean
+  files_changed?: string[] | null
+  summary?: string | null
+  error?: string | null
+  patch_id?: string | null
+  engine_used?: string | null
+}
+
+export interface AgentEventInfo {
+  type: string
+  summary?: string | null
+  files?: string[] | null
+  session_id?: string | null
+  engine_used?: string | null
 }
 
 // Legacy types (kept for backward compatibility)
