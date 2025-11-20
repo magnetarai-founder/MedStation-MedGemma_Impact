@@ -201,6 +201,12 @@ async def route_input(
         raise HTTPException(status_code=429, detail="Too many route requests")
 
     try:
+        # T3-1: Validate session ownership if provided
+        if body.session_id:
+            session = get_agent_session(body.session_id)
+            if not session or session.user_id != user_id:
+                raise HTTPException(status_code=404, detail="Session not found")
+
         # Pass user_id for learning-aware routing
         resp = route_input_logic(body.input, user_id=user_id)
 
@@ -259,6 +265,12 @@ async def generate_plan(
         raise HTTPException(status_code=429, detail="Too many plan requests")
 
     try:
+        # T3-1: Validate session ownership if provided
+        if body.session_id:
+            session = get_agent_session(body.session_id)
+            if not session or session.user_id != user_id:
+                raise HTTPException(status_code=404, detail="Session not found")
+
         resp = generate_plan_logic(body.input, body.context_bundle)
 
         # Phase C: Update session plan if provided
@@ -317,6 +329,12 @@ async def get_context_bundle(
         raise HTTPException(status_code=429, detail="Too many context requests")
 
     try:
+        # T3-1: Validate session ownership if provided
+        if body.session_id:
+            session = get_agent_session(body.session_id)
+            if not session or session.user_id != user_id:
+                raise HTTPException(status_code=404, detail="Session not found")
+
         resp = build_context_bundle(body, current_user, PATHS)
 
         # Phase C: Touch session if provided
@@ -380,6 +398,12 @@ async def apply_plan(
         raise HTTPException(status_code=429, detail="Too many apply requests")
 
     try:
+        # T3-1: Validate session ownership if provided
+        if body.session_id:
+            session = get_agent_session(body.session_id)
+            if not session or session.user_id != user_id:
+                raise HTTPException(status_code=404, detail="Session not found")
+
         patches, patch_id, engine_used = apply_plan_logic(body, current_user)
 
         # Phase C: Touch session if provided

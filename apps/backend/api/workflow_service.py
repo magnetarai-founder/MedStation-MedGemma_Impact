@@ -94,6 +94,23 @@ def setup_p2p_sync(peer_id: str):
         logger.info(f"🔄 Workflow P2P sync initialized for peer {peer_id}")
 
 
+# T3-1: Helper to get user's team_id for visibility checks
+def get_user_team_id(user_id: str) -> Optional[str]:
+    """
+    Get user's primary team ID for visibility checks.
+
+    Returns first team if user has multiple teams.
+    Most users are in one team, so this is a reasonable default.
+    """
+    try:
+        from api.services.team.members import get_user_teams
+    except ImportError:
+        from services.team.members import get_user_teams
+
+    user_teams = get_user_teams(user_id)
+    return user_teams[0]['id'] if user_teams else None
+
+
 # ============================================
 # WORKFLOW CRUD
 # ============================================
@@ -167,29 +184,35 @@ async def list_workflows(
     current_user: Dict = Depends(get_current_user)
 ):
     """
-    List all workflows (Phase 3: team-aware)
+    List all workflows visible to user (T3-1: visibility-aware)
 
-    Phase 3: If team_id is provided, lists team workflows.
-    Otherwise lists personal workflows.
+    Returns workflows based on visibility:
+    - Personal workflows owned by the user
+    - Team workflows for all teams the user is a member of
+    - Global/system workflows
 
     Args:
         category: Filter by category
         enabled_only: Only return enabled workflows
-        team_id: Optional team ID for team workflows
+        team_id: Optional specific team ID to filter (backward compat)
         workflow_type: Filter by workflow type ('local' or 'team')
         current_user: Authenticated user
 
     Returns:
-        List of workflows
+        List of workflows visible to this user
     """
     user_id = current_user["user_id"]
 
-    # Phase 3: Check team membership if listing team workflows
+    # T3-1: Get user's team for visibility (use helper)
+    if not team_id:
+        team_id = get_user_team_id(user_id)
+
+    # Check team membership if team_id is specified
     if team_id:
         if not is_team_member(team_id, user_id):
             raise HTTPException(status_code=403, detail="Not a member of this team")
 
-    # Use orchestrator method that filters by user_id and team_id (Phase 3.5: team-aware)
+    # Use orchestrator method with visibility-aware filtering
     workflows = orchestrator.list_workflows(
         user_id=user_id,
         category=category,
@@ -208,7 +231,7 @@ async def get_workflow(
     current_user: Dict = Depends(get_current_user)
 ):
     """
-    Get workflow by ID
+    Get workflow by ID with visibility check (T3-1)
 
     Args:
         workflow_id: Workflow ID
@@ -221,7 +244,9 @@ async def get_workflow(
         HTTPException: If workflow not found or access denied
     """
     user_id = current_user["user_id"]
-    workflow = orchestrator.get_workflow(workflow_id, user_id=user_id)
+    team_id = get_user_team_id(user_id)  # T3-1: Get user's team for visibility
+
+    workflow = orchestrator.get_workflow(workflow_id, user_id=user_id, team_id=team_id)
     if not workflow:
         raise HTTPException(status_code=404, detail=f"Workflow not found or access denied: {workflow_id}")
 
@@ -246,7 +271,9 @@ async def delete_workflow(
         Success status
     """
     user_id = current_user["user_id"]
-    workflow = orchestrator.get_workflow(workflow_id, user_id=user_id)
+    team_id = get_user_team_id(user_id)  # T3-1
+
+    workflow = orchestrator.get_workflow(workflow_id, user_id=user_id, team_id=team_id)
     if not workflow:
         raise HTTPException(status_code=404, detail=f"Workflow not found or access denied: {workflow_id}")
 
@@ -793,12 +820,16 @@ async def list_workflow_templates(
     """
     user_id = current_user["user_id"]
 
-    # Check team membership if listing team templates
+    # T3-1: Get user's team for visibility
+    if not team_id:
+        team_id = get_user_team_id(user_id)
+
+    # Check team membership if team_id is specified
     if team_id:
         if not is_team_member(team_id, user_id):
             raise HTTPException(status_code=403, detail="Not a member of this team")
 
-    # List all workflows, then filter for templates
+    # T3-1: List all visible workflows, then filter for templates
     all_workflows = storage.list_workflows(
         user_id=user_id,
         category=category,
@@ -832,7 +863,9 @@ async def get_workflow_template(
         HTTPException: If not found or not a template
     """
     user_id = current_user["user_id"]
-    workflow = storage.get_workflow(template_id, user_id=user_id)
+    team_id = get_user_team_id(user_id)  # T3-1
+
+    workflow = storage.get_workflow(template_id, user_id=user_id, team_id=team_id)
 
     if not workflow:
         raise HTTPException(status_code=404, detail="Template not found or access denied")
@@ -873,9 +906,10 @@ async def instantiate_template(
         HTTPException: If template not found or instantiation fails
     """
     user_id = current_user["user_id"]
+    user_team_id = get_user_team_id(user_id)  # T3-1
 
-    # Get template
-    template = storage.get_workflow(template_id, user_id=user_id)
+    # T3-1: Get template with visibility check
+    template = storage.get_workflow(template_id, user_id=user_id, team_id=user_team_id)
     if not template:
         raise HTTPException(status_code=404, detail="Template not found or access denied")
 
@@ -938,9 +972,10 @@ async def get_workflow_analytics(
         Analytics dictionary
     """
     user_id = current_user["user_id"]
+    team_id = get_user_team_id(user_id)  # T3-1
 
-    # Verify access to workflow
-    workflow = storage.get_workflow(workflow_id, user_id=user_id)
+    # T3-1: Verify access to workflow with visibility check
+    workflow = storage.get_workflow(workflow_id, user_id=user_id, team_id=team_id)
     if not workflow:
         raise HTTPException(status_code=404, detail="Workflow not found or access denied")
 

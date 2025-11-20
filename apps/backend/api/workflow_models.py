@@ -293,8 +293,12 @@ class Workflow(BaseModel):
     require_approval_to_start: bool = False
     is_template: bool = False                    # Phase D: Template workflow for instantiation
 
+    # Ownership & Multi-tenancy (T3-1)
+    created_by: str                               # User who created it
+    owner_team_id: Optional[str] = None           # Team scope (None = personal/global)
+    visibility: Literal["personal", "team", "global"] = "personal"  # Visibility level
+
     # Metadata
-    created_by: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     version: int = 1

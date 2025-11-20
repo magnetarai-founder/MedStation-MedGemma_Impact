@@ -202,6 +202,17 @@ class WorkflowStorage:
         except sqlite3.OperationalError:
             pass  # Column already exists
 
+        # T3-1: Add owner_team_id and visibility for multi-tenant hardening
+        try:
+            cursor.execute("ALTER TABLE workflows ADD COLUMN owner_team_id TEXT")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
+        try:
+            cursor.execute("ALTER TABLE workflows ADD COLUMN visibility TEXT DEFAULT 'personal'")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
         # Phase 3: Team isolation indexes
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_workflows_team ON workflows(team_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_work_items_team ON work_items(team_id)")
@@ -234,8 +245,8 @@ class WorkflowStorage:
             INSERT OR REPLACE INTO workflows
             (id, name, description, icon, category, workflow_type, stages, triggers, enabled,
              allow_manual_creation, require_approval_to_start, is_template, created_by,
-             created_at, updated_at, version, tags, user_id, team_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             created_at, updated_at, version, tags, user_id, team_id, owner_team_id, visibility)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             workflow.id,
             workflow.name,
@@ -255,7 +266,9 @@ class WorkflowStorage:
             workflow.version,
             json.dumps(workflow.tags),
             user_id,
-            team_id,  # Phase 3: team_id
+            team_id,  # Phase 3: team_id (legacy, kept for compatibility)
+            workflow.owner_team_id,  # T3-1: New team ownership field
+            workflow.visibility,  # T3-1: Visibility level
         ))
 
         conn.commit()
@@ -266,39 +279,52 @@ class WorkflowStorage:
 
     def get_workflow(self, workflow_id: str, user_id: str, team_id: Optional[str] = None) -> Optional[Workflow]:
         """
-        Get workflow by ID (Phase 3: team-aware)
+        Get workflow by ID with visibility check (T3-1: visibility-aware)
+
+        Visibility rules:
+        - Personal: only owner can see
+        - Team: all team members can see
+        - Global: everyone can see
 
         Args:
             workflow_id: Workflow ID
             user_id: User ID for isolation
-            team_id: Optional team ID (None for personal workflows)
+            team_id: Optional team ID for the user's team
 
         Returns:
-            Workflow or None if not found
+            Workflow or None if not found/not visible
         """
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
-        # Phase 3: Filter by team_id
-        if team_id:
-            # Team workflow: filter by team_id
-            cursor.execute("""
-                SELECT * FROM workflows
-                WHERE id = ? AND team_id = ?
-            """, (workflow_id, team_id))
-        else:
-            # Personal workflow: filter by user_id and team_id IS NULL
-            cursor.execute("""
-                SELECT * FROM workflows
-                WHERE id = ? AND user_id = ? AND team_id IS NULL
-            """, (workflow_id, user_id))
-
+        # T3-1: Fetch workflow and check visibility
+        cursor.execute("SELECT * FROM workflows WHERE id = ?", (workflow_id,))
         row = cursor.fetchone()
         conn.close()
 
         if not row:
             return None
+
+        # Check visibility
+        visibility = row['visibility'] if row['visibility'] else 'personal'
+
+        if visibility == 'personal':
+            # Only owner can see
+            if row['created_by'] != user_id:
+                return None
+        elif visibility == 'team':
+            # Team members can see
+            owner_team = row['owner_team_id']
+            if not owner_team or owner_team != team_id:
+                return None
+        elif visibility == 'global':
+            # Everyone can see
+            pass
+        else:
+            # Unknown visibility, treat as personal
+            if row['created_by'] != user_id:
+                return None
 
         return self._row_to_workflow(row)
 
@@ -311,30 +337,54 @@ class WorkflowStorage:
         workflow_type: Optional[str] = None
     ) -> List[Workflow]:
         """
-        List all workflows (Phase 3: team-aware)
+        List all workflows visible to user (T3-1: visibility-aware)
+
+        Visibility rules:
+        - Personal: only owner can see
+        - Team: all team members can see
+        - Global: everyone can see (system templates)
 
         Args:
             user_id: User ID for isolation
             category: Filter by category
             enabled_only: Only return enabled workflows
-            team_id: Optional team ID (None for personal workflows)
+            team_id: Optional team ID for the user's team
             workflow_type: Filter by workflow type ('local' or 'team')
 
         Returns:
-            List of workflows
+            List of workflows visible to this user
         """
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
-        # Phase 3: Filter by team_id
+        # T3-1: Build visibility query
+        # User can see:
+        # 1. Their own personal workflows (created_by = user_id AND visibility = 'personal')
+        # 2. Team workflows if they're in that team (owner_team_id = team_id AND visibility = 'team')
+        # 3. Global workflows (visibility = 'global')
+        # 4. Legacy workflows with no visibility set (treated as personal, owned by created_by)
+
         if team_id:
-            # Team workflows: filter by team_id
-            query = "SELECT * FROM workflows WHERE team_id = ?"
-            params = [team_id]
+            # User is in a team: show personal + team + global
+            query = """
+                SELECT * FROM workflows
+                WHERE (
+                    (created_by = ? AND (visibility = 'personal' OR visibility IS NULL))
+                    OR (owner_team_id = ? AND visibility = 'team')
+                    OR visibility = 'global'
+                )
+            """
+            params = [user_id, team_id]
         else:
-            # Personal workflows: filter by user_id and team_id IS NULL
-            query = "SELECT * FROM workflows WHERE user_id = ? AND team_id IS NULL"
+            # User not in a team: show only personal + global
+            query = """
+                SELECT * FROM workflows
+                WHERE (
+                    (created_by = ? AND (visibility = 'personal' OR visibility IS NULL))
+                    OR visibility = 'global'
+                )
+            """
             params = [user_id]
 
         if category:
@@ -584,6 +634,17 @@ class WorkflowStorage:
         except (KeyError, IndexError):
             is_template_value = False  # Default for backward compatibility
 
+        # T3-1: Handle owner_team_id and visibility with backward compatibility
+        try:
+            owner_team_id_value = row['owner_team_id']
+        except (KeyError, IndexError):
+            owner_team_id_value = None  # Default for backward compatibility
+
+        try:
+            visibility_value = row['visibility'] or 'personal'
+        except (KeyError, IndexError):
+            visibility_value = 'personal'  # Default for backward compatibility
+
         return Workflow(
             id=row['id'],
             name=row['name'],
@@ -598,6 +659,8 @@ class WorkflowStorage:
             require_approval_to_start=bool(row['require_approval_to_start']),
             is_template=is_template_value,  # Phase D
             created_by=row['created_by'],
+            owner_team_id=owner_team_id_value,  # T3-1
+            visibility=visibility_value,  # T3-1
             created_at=datetime.fromisoformat(row['created_at']),
             updated_at=datetime.fromisoformat(row['updated_at']),
             version=row['version'],
