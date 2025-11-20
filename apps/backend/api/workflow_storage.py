@@ -561,7 +561,10 @@ class WorkflowStorage:
         triggers_data = json.loads(row['triggers'])
 
         # Handle workflow_type with backward compatibility
-        workflow_type_value = row.get('workflow_type', 'team')
+        try:
+            workflow_type_value = row['workflow_type']
+        except (KeyError, IndexError):
+            workflow_type_value = 'team'  # Default for backward compatibility
         workflow_type = WorkflowType.LOCAL_AUTOMATION if workflow_type_value == 'local' else WorkflowType.TEAM_WORKFLOW
 
         return Workflow(

@@ -32,6 +32,7 @@ class StageType(str, Enum):
     HYBRID = "hybrid"             # Person + automation
     AI = "ai"                     # Local AI processing
     APPROVAL = "approval"         # Simple approve/reject
+    AGENT_ASSIST = "agent_assist" # AI agent provides suggestions (Phase B)
 
 
 class WorkItemStatus(str, Enum):
@@ -225,6 +226,11 @@ class Stage(BaseModel):
     # AI assistance
     ai_suggestions_enabled: bool = False
     ai_suggestion_prompt: Optional[str] = None
+
+    # Agent Assist configuration (Phase B - used when stage_type == AGENT_ASSIST)
+    agent_prompt: Optional[str] = None           # Prompt to send to agent
+    agent_target_path: Optional[str] = None      # Repo path (relative) to focus on
+    agent_model_hint: Optional[str] = None       # Optional override for agent model
 
     # Metadata
     order: int = 0                     # Display order

@@ -22,6 +22,7 @@ try:
         ContextRequest, ContextResponse,
         ApplyRequest, FilePatch, ApplyResponse,
         EngineCapability, CapabilitiesResponse,
+        AgentSession, AgentSessionCreateRequest,  # Phase C
     )
 except ImportError:
     from models import (
@@ -30,6 +31,7 @@ except ImportError:
         ContextRequest, ContextResponse,
         ApplyRequest, FilePatch, ApplyResponse,
         EngineCapability, CapabilitiesResponse,
+        AgentSession, AgentSessionCreateRequest,  # Phase C
     )
 
 # Config
@@ -92,6 +94,7 @@ __all__ = [
     'ContextRequest', 'ContextResponse',
     'ApplyRequest', 'FilePatch', 'ApplyResponse',
     'EngineCapability', 'CapabilitiesResponse',
+    'AgentSession', 'AgentSessionCreateRequest',  # Phase C
 
     # Config
     'get_agent_config', 'reload_config', 'CONFIG_PATH',

@@ -37,6 +37,7 @@ try:
         RoutingCondition,
         ConditionalRoute,
     )
+    from api.services.workflow_agent_integration import run_agent_assist_for_stage
 except ImportError:
     from workflow_models import (
         WorkItem,
@@ -51,6 +52,7 @@ except ImportError:
         RoutingCondition,
         ConditionalRoute,
     )
+    from services.workflow_agent_integration import run_agent_assist_for_stage
 
 logger = logging.getLogger(__name__)
 
@@ -699,6 +701,24 @@ class WorkflowOrchestrator:
         if next_stage.stage_type == StageType.AUTOMATION and next_stage.automation:
             logger.info(f"🤖 Auto-executing automation stage: {next_stage.name}")
             # TODO: Trigger automation (n8n, local AI, etc.)
+
+        # Agent Assist stage hook (Phase B - non-destructive, advisory only)
+        if next_stage.stage_type == StageType.AGENT_ASSIST:
+            logger.info(f"🤖 Agent Assist triggered for stage: {next_stage.name}")
+            if self.storage:
+                try:
+                    # Run agent assist synchronously in Phase B
+                    # Phase C+ can make this async/background if needed
+                    run_agent_assist_for_stage(
+                        storage=self.storage,
+                        work_item=work_item,
+                        stage=next_stage,
+                        user_id=user_id,
+                    )
+                except Exception as e:
+                    # Agent assist errors are already logged and stored in work_item.data
+                    # Don't let them break the transition
+                    logger.warning(f"Agent Assist encountered error (graceful degradation): {e}")
 
     # ============================================
     # ASSIGNMENT LOGIC

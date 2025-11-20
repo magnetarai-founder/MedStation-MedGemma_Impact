@@ -49,6 +49,7 @@ try:
         ContextRequest, ContextResponse,
         ApplyRequest, ApplyResponse,
         CapabilitiesResponse,
+        AgentSession, AgentSessionCreateRequest,  # Phase C
         # Logic functions
         get_capabilities_logic,
         get_agent_config,
@@ -62,6 +63,15 @@ try:
         build_context_bundle,
         apply_plan_logic,
     )
+    # Phase C: Session management
+    from .orchestration.sessions import (
+        create_agent_session,
+        get_agent_session,
+        list_agent_sessions_for_user,
+        close_session,
+        touch_session,
+        update_session_plan,
+    )
 except ImportError:
     from orchestration import (
         # Models
@@ -70,6 +80,7 @@ except ImportError:
         ContextRequest, ContextResponse,
         ApplyRequest, ApplyResponse,
         CapabilitiesResponse,
+        AgentSession, AgentSessionCreateRequest,  # Phase C
         # Logic functions
         get_capabilities_logic,
         get_agent_config,
@@ -82,6 +93,15 @@ except ImportError:
         generate_plan_logic,
         build_context_bundle,
         apply_plan_logic,
+    )
+    # Phase C: Session management
+    from orchestration.sessions import (
+        create_agent_session,
+        get_agent_session,
+        list_agent_sessions_for_user,
+        close_session,
+        touch_session,
+        update_session_plan,
     )
 
 logger = logging.getLogger(__name__)
@@ -178,6 +198,10 @@ async def route_input(
         user_id = current_user.get('user_id')
         resp = route_input_logic(body.input, user_id=user_id)
 
+        # Phase C: Touch session if provided
+        if body.session_id:
+            touch_session(body.session_id)
+
         # Audit log
         audit_logger = get_audit_logger()
         if audit_logger:
@@ -216,6 +240,10 @@ async def generate_plan(
 
     try:
         resp = generate_plan_logic(body.input, body.context_bundle)
+
+        # Phase C: Update session plan if provided
+        if body.session_id:
+            update_session_plan(body.session_id, resp.model_dump())
 
         # Audit log
         audit_logger = get_audit_logger()
@@ -260,6 +288,11 @@ async def get_context_bundle(
 
     try:
         resp = build_context_bundle(body, current_user, PATHS)
+
+        # Phase C: Touch session if provided
+        if body.session_id:
+            touch_session(body.session_id)
+
         return resp
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
@@ -293,6 +326,10 @@ async def apply_plan(
 
     try:
         patches, patch_id, engine_used = apply_plan_logic(body, current_user)
+
+        # Phase C: Touch session if provided
+        if body.session_id:
+            touch_session(body.session_id)
 
         # Audit log
         audit_logger = get_audit_logger()
@@ -358,3 +395,145 @@ async def auto_fix_models(
     except Exception as e:
         logger.error(f"Auto-fix failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to auto-fix models")
+
+
+# ==================== Agent Sessions (Phase C) ====================
+
+@router.post("/sessions", response_model=AgentSession)
+@require_perm("code.use")
+async def create_agent_session_endpoint(
+    request: Request,
+    body: AgentSessionCreateRequest,
+    current_user: Dict = Depends(get_current_user),
+):
+    """
+    Create a new agent workspace session (Phase C).
+
+    Sessions provide stateful context for agent operations:
+    - Tie together user, repo_root, and ongoing plans
+    - Track activity and workspace state
+    - Enable session-aware agent calls
+
+    Args:
+        body: Session creation request with repo_root and optional work_item
+
+    Returns:
+        Created AgentSession with unique session ID
+    """
+    user_id = current_user["user_id"]
+
+    try:
+        session = create_agent_session(
+            user_id=user_id,
+            repo_root=body.repo_root,
+            attached_work_item_id=body.attached_work_item_id,
+        )
+        logger.info(f"Created agent session {session.id} for user {user_id}")
+        return session
+    except Exception as e:
+        logger.error(f"Failed to create agent session: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/sessions", response_model=list[AgentSession])
+@require_perm("code.use")
+async def list_agent_sessions_endpoint(
+    request: Request,
+    current_user: Dict = Depends(get_current_user),
+    active_only: bool = False,
+):
+    """
+    List all agent sessions for current user.
+
+    Args:
+        active_only: If true, only return sessions with status='active'
+
+    Returns:
+        List of AgentSession objects, ordered by last_activity_at DESC
+    """
+    user_id = current_user["user_id"]
+
+    try:
+        sessions = list_agent_sessions_for_user(user_id, active_only=active_only)
+        return sessions
+    except Exception as e:
+        logger.error(f"Failed to list agent sessions: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/sessions/{session_id}", response_model=AgentSession)
+@require_perm("code.use")
+async def get_agent_session_endpoint(
+    session_id: str,
+    request: Request,
+    current_user: Dict = Depends(get_current_user),
+):
+    """
+    Get a specific agent session by ID.
+
+    Args:
+        session_id: Session identifier
+
+    Returns:
+        AgentSession object
+
+    Raises:
+        404: If session not found or user doesn't have access
+    """
+    user_id = current_user["user_id"]
+
+    try:
+        session = get_agent_session(session_id)
+
+        if not session or session.user_id != user_id:
+            raise HTTPException(status_code=404, detail="Session not found")
+
+        return session
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get agent session {session_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/sessions/{session_id}/close", response_model=AgentSession)
+@require_perm("code.use")
+async def close_agent_session_endpoint(
+    session_id: str,
+    request: Request,
+    current_user: Dict = Depends(get_current_user),
+):
+    """
+    Close (archive) an agent session.
+
+    Sets session status to 'archived' and updates last_activity_at.
+
+    Args:
+        session_id: Session identifier
+
+    Returns:
+        Updated AgentSession object
+
+    Raises:
+        404: If session not found or user doesn't have access
+    """
+    user_id = current_user["user_id"]
+
+    try:
+        # Verify ownership
+        session = get_agent_session(session_id)
+        if not session or session.user_id != user_id:
+            raise HTTPException(status_code=404, detail="Session not found")
+
+        # Close the session
+        close_session(session_id)
+
+        # Reload updated session
+        updated = get_agent_session(session_id)
+        logger.info(f"Closed agent session {session_id}")
+        return updated
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to close agent session {session_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))

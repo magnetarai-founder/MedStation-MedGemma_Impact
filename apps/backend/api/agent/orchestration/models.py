@@ -14,6 +14,7 @@ Extracted from orchestrator.py during Phase 6.3d modularization.
 
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any, List
+from datetime import datetime
 
 
 # ==================== Route Models ====================
@@ -23,6 +24,7 @@ class RouteRequest(BaseModel):
     input: str = Field(..., description="User's natural language input")
     cwd: Optional[str] = Field(None, description="Current working directory")
     repo_root: Optional[str] = Field(None, description="Repository root path")
+    session_id: Optional[str] = Field(None, description="Agent session ID for stateful workspace (Phase C)")
 
 
 class RouteResponse(BaseModel):
@@ -40,6 +42,7 @@ class PlanRequest(BaseModel):
     input: str = Field(..., description="User requirement")
     context_bundle: Optional[Dict[str, Any]] = Field(None, description="Context from /agent/context")
     model: Optional[str] = Field(None, description="Model to use for planning")
+    session_id: Optional[str] = Field(None, description="Agent session ID for stateful workspace (Phase C)")
 
 
 class PlanStep(BaseModel):
@@ -120,3 +123,28 @@ class CapabilitiesResponse(BaseModel):
     """Agent capabilities response"""
     engines: List[EngineCapability]
     features: Dict[str, bool]
+
+
+# ==================== Agent Session Models (Phase C) ====================
+
+class AgentSession(BaseModel):
+    """
+    Stateful agent workspace session (Phase C).
+
+    Ties together a user, repo_root, and ongoing agent context.
+    Enables tracking of plans, activity, and workspace state.
+    """
+    id: str = Field(..., description="Unique session identifier")
+    user_id: str = Field(..., description="Owner user ID")
+    repo_root: str = Field(..., description="Workspace repository root path")
+    created_at: datetime = Field(..., description="Session creation timestamp")
+    last_activity_at: datetime = Field(..., description="Last activity timestamp")
+    status: str = Field(..., description="Session status: active, completed, archived")
+    current_plan: Optional[Dict[str, Any]] = Field(None, description="Current plan data (PlanResponse dict)")
+    attached_work_item_id: Optional[str] = Field(None, description="Linked workflow work item ID (Phase D+)")
+
+
+class AgentSessionCreateRequest(BaseModel):
+    """Request to create a new agent session"""
+    repo_root: str = Field(..., description="Workspace repository root path")
+    attached_work_item_id: Optional[str] = Field(None, description="Optional workflow work item to attach")
