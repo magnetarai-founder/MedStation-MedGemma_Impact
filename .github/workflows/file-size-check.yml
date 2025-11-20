@@ -72,6 +72,9 @@ jobs:
 
   frontend-build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/frontend
     steps:
       - uses: actions/checkout@v4
 
@@ -83,14 +86,11 @@ jobs:
           cache-dependency-path: apps/frontend/package-lock.json
 
       - name: Install frontend dependencies
-        working-directory: apps/frontend
         run: npm ci
 
       - name: Build frontend
-        working-directory: apps/frontend
         run: npm run build
 
       - name: Run frontend linter (if available)
-        working-directory: apps/frontend
         continue-on-error: true
         run: npm run lint || echo "Lint script not critical for CI"
