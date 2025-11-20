@@ -78,6 +78,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Debug - List frontend files
+        run: |
+          pwd
+          ls -la
+          echo "Checking for package-lock.json:"
+          ls -la package-lock.json || echo "package-lock.json not found!"
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
