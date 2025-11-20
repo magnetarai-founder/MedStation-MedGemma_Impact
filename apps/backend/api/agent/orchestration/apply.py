@@ -10,6 +10,8 @@ Plan application via Aider/Continue/Codex engines:
 - Workspace session management
 
 Extracted from orchestrator.py during Phase 6.3d modularization.
+
+AUTH-P5: Agent auto-apply operations now audited for security accountability.
 """
 
 import logging
@@ -147,6 +149,29 @@ def apply_plan_logic(
             patch_text=proposal.diff,
             summary=f"Applied changes to {f}"
         ) for f in apply_result.get('files', [])]
+
+        # AUTH-P5: Audit agent auto-apply operation
+        try:
+            from api.audit_helper import record_audit_event
+            from api.audit_logger import AuditAction
+
+            files_changed = apply_result.get('files', [])
+            record_audit_event(
+                user_id=current_user.get('user_id', 'system'),
+                action=AuditAction.AGENT_AUTO_APPLY,
+                resource='repository',
+                resource_id=str(repo_root),
+                details={
+                    'engine': engine_used,
+                    'files_changed': len(files_changed),
+                    'files': files_changed[:10],  # First 10 files only
+                    'patch_id': patch_id,
+                    'session_id': body.session_id
+                }
+            )
+        except Exception as audit_err:
+            # Log but don't fail the apply operation
+            logger.warning(f"Failed to audit agent auto-apply: {audit_err}")
 
         # Add to unified context for persistence
         try:

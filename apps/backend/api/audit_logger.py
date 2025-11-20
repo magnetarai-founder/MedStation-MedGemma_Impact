@@ -70,6 +70,8 @@ class AuditAction:
     WORKFLOW_UPDATED = "workflow.updated"
     WORKFLOW_DELETED = "workflow.deleted"
     WORKFLOW_EXECUTED = "workflow.executed"
+    WORKFLOW_VISIBILITY_CHANGED = "workflow.visibility.changed"  # AUTH-P5
+    WORKFLOW_OWNERSHIP_CHANGED = "workflow.ownership.changed"    # AUTH-P5
 
     # File Operations
     FILE_UPLOADED = "file.uploaded"
@@ -118,6 +120,23 @@ class AuditAction:
     ADMIN_VIEW_USER_WORKFLOWS = "admin.view.user_workflows"
     FOUNDER_RIGHTS_LOGIN = "founder_rights.login"
 
+    # Admin Danger Zone Operations (AUTH-P5)
+    ADMIN_RESET_ALL = "admin.reset_all"
+    ADMIN_UNINSTALL = "admin.uninstall"
+    ADMIN_CLEAR_CHATS = "admin.clear_chats"
+    ADMIN_CLEAR_TEAM_MESSAGES = "admin.clear_team_messages"
+    ADMIN_CLEAR_QUERY_LIBRARY = "admin.clear_query_library"
+    ADMIN_CLEAR_QUERY_HISTORY = "admin.clear_query_history"
+    ADMIN_CLEAR_TEMP_FILES = "admin.clear_temp_files"
+    ADMIN_CLEAR_CODE_FILES = "admin.clear_code_files"
+    ADMIN_RESET_SETTINGS = "admin.reset_settings"
+    ADMIN_RESET_DATA = "admin.reset_data"
+
+    # Admin Export Operations (AUTH-P5)
+    ADMIN_EXPORT_ALL = "admin.export_all"
+    ADMIN_EXPORT_CHATS = "admin.export_chats"
+    ADMIN_EXPORT_QUERIES = "admin.export_queries"
+
     # Permission Operations (Phase 5.1 - LOW-07)
     PERMISSION_GRANTED = "permission.granted"
     PERMISSION_REVOKED = "permission.revoked"
@@ -150,12 +169,13 @@ class AuditAction:
     AGENT_SESSION_PLAN_UPDATED = "agent.session.plan.updated"
     AGENT_SESSION_ERROR = "agent.session.error"
 
-    # Agent Orchestration Operations (Obs-1)
+    # Agent Orchestration Operations (Obs-1, AUTH-P5)
     AGENT_ROUTE_COMPLETED = "agent.route.completed"
     AGENT_PLAN_GENERATED = "agent.plan.generated"
     AGENT_CONTEXT_BUILT = "agent.context.built"
     AGENT_APPLY_SUCCESS = "agent.apply.success"
     AGENT_APPLY_FAILURE = "agent.apply.failure"
+    AGENT_AUTO_APPLY = "agent.auto_apply"  # AUTH-P5 - Agent auto-apply with file changes
 
     # Workflow Agent Integration (Obs-1)
     WORKFLOW_AGENT_ASSIST_STARTED = "workflow.agent_assist.started"

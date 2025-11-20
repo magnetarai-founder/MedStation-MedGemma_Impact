@@ -1,8 +1,20 @@
 # ElohimOS Authorization & Identity Roadmap
 
-**Status:** Planning  
-**Scope:** Turn ElohimOS into a “local IAM appliance” – a robust, offline‑first authorization system with durable DB schema, clear roles, strong audit, and safe update behavior.  
+**Status:** Phase 1-6 Complete ✅ (as of 2025-11-20)
+**Scope:** Turn ElohimOS into a "local IAM appliance" – a robust, offline‑first authorization system with durable DB schema, clear roles, strong audit, and safe update behavior.
 **Audience:** You / future backend + security engineers working on auth/permissions in ElohimOS.
+
+## Implementation Status
+
+- ✅ **AUTH-P1**: Auth DB schema & migrations (Complete - 2025-11-20)
+- ✅ **AUTH-P2**: Normalize Founder account (Complete - 2025-11-20)
+- ✅ **AUTH-P3**: RBAC coverage & policy tests (Complete - 2025-11-20)
+- ✅ **AUTH-P4**: Token & session hardening (Complete - 2025-11-20)
+- ✅ **AUTH-P5**: Audit log coverage & consistency (Complete - 2025-11-20)
+- ✅ **AUTH-P6**: Update safety & device identity (Complete - 2025-11-20)
+- 🔜 **Future**: Update server/client for automatic updates
+
+---
 
 This roadmap assumes:
 
@@ -324,52 +336,83 @@ Tests:
 
 ---
 
-## 7. Phase 6 – Update Safety & Device Identity (High)
+## 7. Phase 6 – Update Safety & Device Identity ✅ (Complete)
 
-**Goal:** Ensure software updates never accidentally break or reset auth data, and define a safe “device identity” story for the update channel.
+**Goal:** Ensure software updates never accidentally break or reset auth data, and define a safe "device identity" story for the update channel.
 
-### 7.1 Update‑safe migrations
+**Status:** Complete (2025-11-20)
 
-Backend:
+### 7.1 Update‑safe migrations ✅
 
-- Integrate auth migrations into the existing update process:
-  - On update:
-    - Download new code.
-    - Run DB migrations (including auth DB).
-    - Rollback if something fails (if possible).
+**Implementation:**
 
-Guidelines:
+- Auth migrations integrated into startup via `startup_migrations.py`:
+  - Auth migrations run **first** (before other migrations)
+  - Migration tracking via shared `migrations` table
+  - Each migration checks if already applied before running
+  - All migrations use `CREATE TABLE IF NOT EXISTS` for idempotency
 
-- Never drop auth tables in place without a migration from old → new.
-- Never auto‑reset admin/founder credentials during a normal update.
+**Guidelines followed:**
 
-### 7.2 Device identity for update channel
+- ✅ Never drop auth tables without migration path
+- ✅ Never auto-reset credentials during updates
+- ✅ Migrations are additive and non-destructive
+- ✅ Update flow = Normal startup with new migrations
 
-Design:
+**Files:**
+- `api/migrations/auth/runner.py` - Migration orchestration
+- `api/migrations/auth/0001_initial.py` - Consolidated auth schema
+- `api/migrations/auth/0002_founder_role.py` - Founder role normalization
+- `api/migrations/auth/0003_device_identity.py` - Device identity (NEW)
 
-- Each device has an offline **device identity**:
-  - Could be:
-    - A generated device ID.
-    - A keypair used to authenticate to the update server.
-- This is separate from user accounts:
-  - Device identity is about “which box is this,” not “who is logged in.”
+### 7.2 Device identity for update channel ✅
 
-Update client:
+**Implementation:**
 
-- When user explicitly requests an update:
-  - Use device identity to authenticate to update server.
-  - Fetch update manifests + signed bundles.
+- Device identity table created: `device_identity`
+  - `device_id` (UUID) - Primary identifier for this machine
+  - `machine_id` (hardware-based) - Stable across reboots
+  - Persists across user account changes/deletions
+  - Tracked: first boot, last boot, platform metadata
 
-Security:
+- Machine ID generation:
+  - Based on: hostname, platform, MAC address, processor
+  - Cached to `~/.elohimos/machine_id` for stability
+  - Fallback: UUID based on `uuid.getnode()`
 
-- No user credentials or tokens are sent to the update server.
-- Only device metadata and version info as necessary.
+- Integration:
+  - `ensure_device_identity()` called on every startup
+  - Creates device identity if missing
+  - Updates `last_boot_at` on each boot
 
-Tests:
+**Security:**
 
-- Migration tests with “old” and “new” schemas.
-- Simulated update runs that ensure:
-  - Existing users/roles/permissions are preserved.
+- ✅ Device identity separate from user accounts
+- ✅ No user credentials in device identity
+- ✅ Stable machine identification for future update server
+
+**Files:**
+- `api/device_identity.py` - Device identity helpers
+- `api/startup_migrations.py` - Calls `ensure_device_identity()` on startup
+
+### 7.3 Tests ✅
+
+**Test suite:** `tests/test_auth_update_safety.py` (7 tests)
+
+**Coverage:**
+1. ✅ `test_existing_user_survives_migration` - User data preserved across migrations
+2. ✅ `test_all_auth_migrations_preserve_users` - Complete migration path preserves users
+3. ✅ `test_device_identity_is_stable` - Device ID stable across restarts
+4. ✅ `test_device_identity_persists_after_user_deletion` - Independent of user accounts
+5. ✅ `test_migrations_are_idempotent` - Safe to run multiple times
+6. ✅ `test_device_identity_migration_is_idempotent` - Migration 0003 idempotent
+7. ✅ `test_complete_update_flow` - Full update simulation (old → new schema)
+
+**Results:** All 7 tests passing
+
+**Documentation:**
+- `docs/architecture/AUTH_DB_SCHEMA.md` - Updated with device_identity table
+- `docs/roadmap/AUTHORIZATION_SYSTEM_ROADMAP.md` - This file
 
 ---
 

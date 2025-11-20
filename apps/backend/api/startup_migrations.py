@@ -91,6 +91,15 @@ async def run_startup_migrations() -> None:
 
             ensure_dev_founder_user(conn)
 
+            # AUTH-P6: Ensure device identity exists
+            try:
+                from .device_identity import ensure_device_identity
+            except ImportError:
+                from device_identity import ensure_device_identity
+
+            device_id = ensure_device_identity(conn)
+            logger.info(f"Device identity confirmed: {device_id}")
+
             conn.close()
             # Note: Auth migrations track their own completion state
             # Only log if migrations actually ran (auth runner logs this internally)

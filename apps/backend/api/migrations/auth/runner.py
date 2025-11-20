@@ -106,6 +106,7 @@ def run_auth_migrations(conn: sqlite3.Connection) -> None:
         migrations = [
             ("0001_initial", "auth_0001_initial", "Initial auth/permissions schema consolidation"),
             ("0002_founder_role", "auth_0002_founder_role", "Normalize Founder account role"),
+            ("0003_device_identity", "auth_0003_device_identity", "Device identity for update safety (AUTH-P6)"),
         ]
 
         applied_count = 0

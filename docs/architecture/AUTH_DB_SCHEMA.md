@@ -1,7 +1,7 @@
 # Auth Database Schema
 
 **Status**: Stabilized (AUTH-P1)
-**Last Updated**: 2025-11-20
+**Last Updated**: 2025-11-20 (AUTH-P6: Added device_identity)
 
 ## Overview
 
@@ -261,7 +261,44 @@ CREATE TABLE user_permissions_cache (
 
 ---
 
-### 8. Migration Tracking
+### 8. Device Identity (AUTH-P6)
+
+#### `device_identity` - Stable machine identification
+```sql
+CREATE TABLE device_identity (
+    device_id TEXT PRIMARY KEY,              -- UUID for this device
+    machine_id TEXT NOT NULL UNIQUE,         -- Hardware-based stable identifier
+    created_at TEXT NOT NULL,                -- First time device was identified
+    last_boot_at TEXT NOT NULL,              -- Most recent startup
+    hostname TEXT,                           -- For debugging
+    platform TEXT,                           -- darwin, linux, win32
+    architecture TEXT,                       -- x86_64, arm64
+    metadata_json TEXT                       -- JSON for extensibility
+)
+```
+
+**Purpose**: Provides a stable identifier for "this machine" that is independent of user accounts. This identity:
+- Persists across user account changes (creation, deletion, all users deleted)
+- Survives auth data resets
+- Enables future update server integration (device checks for updates)
+- Is hardware-stable (based on MAC address, hostname, platform)
+
+**Machine ID Generation**:
+- Cached to `~/.elohimos/machine_id` for stability across database resets
+- Based on: hostname, platform, MAC address, processor
+- Fallback: UUID based on `uuid.getnode()` if hardware detection fails
+
+**Lifecycle**:
+- Created automatically on first startup (via `ensure_device_identity()`)
+- Updated on every startup (updates `last_boot_at`)
+- Never deleted, even if all user accounts are removed
+
+**Indexes**:
+- `idx_device_identity_machine_id` on `(machine_id)`
+
+---
+
+### 9. Migration Tracking
 
 #### `migrations` - Schema version tracking
 ```sql
@@ -274,6 +311,8 @@ CREATE TABLE migrations (
 
 **Auth Migrations**:
 - `auth_0001_initial` - Consolidated auth/permissions schema (AUTH-P1)
+- `auth_0002_founder_role` - Normalize Founder account role (AUTH-P2)
+- `auth_0003_device_identity` - Device identity for update safety (AUTH-P6)
 
 ---
 
@@ -304,9 +343,11 @@ CREATE TABLE migrations (
 **Structure**:
 ```
 api/migrations/auth/
-├── __init__.py           # Exports run_auth_migrations
-├── runner.py             # Migration runner
-└── 0001_initial.py       # Initial schema migration
+├── __init__.py              # Exports run_auth_migrations
+├── runner.py                # Migration runner
+├── 0001_initial.py          # Initial schema migration (AUTH-P1)
+├── 0002_founder_role.py     # Founder role normalization (AUTH-P2)
+└── 0003_device_identity.py  # Device identity (AUTH-P6)
 ```
 
 **Running Migrations**:
@@ -335,8 +376,10 @@ conn.close()
 | `api/permissions/engine.py` | Permission evaluation engine |
 | `api/permissions/storage.py` | Database connection helpers |
 | `api/migrations/auth/` | Auth schema migrations |
+| `api/device_identity.py` | Device identity helpers (AUTH-P6) |
 | `api/startup_migrations.py` | Migration runner (startup) |
 | `tests/test_auth_migrations.py` | Auth migration tests |
+| `tests/test_auth_update_safety.py` | Update safety tests (AUTH-P6) |
 
 ---
 
@@ -351,9 +394,37 @@ conn.close()
 
 ---
 
-## Next Steps (AUTH-P2+)
+## Update Safety (AUTH-P6)
 
-- [ ] **AUTH-P2**: Normalize Founder into DB (no more hardcoded backdoor)
-- [ ] **AUTH-P3**: Tighten RBAC boundaries (audit all `@require_perm` usage)
-- [ ] **AUTH-P4**: Harden tokens & sessions (stable secrets, explicit expiry)
-- [ ] **AUTH-P5**: Expand audit coverage (all admin/RBAC operations)
+ElohimOS update mechanism uses the migration system to ensure auth data survives updates:
+
+**Update Flow**:
+1. New code deployed (via git pull or update client)
+2. Application starts
+3. `startup_migrations.py` runs all pending migrations
+4. Auth migrations run **first** (before other migrations)
+5. Device identity ensured (creates if missing, updates last_boot_at if exists)
+6. Application continues startup
+
+**Update Safety Guarantees**:
+- ✅ **Existing users survive updates** - Migrations preserve all user data
+- ✅ **Device identity is stable** - Machine identifier persists across updates
+- ✅ **Migrations are idempotent** - Safe to run multiple times
+- ✅ **Device identity survives user deletion** - Independent of user accounts
+- ✅ **Auth migrations run first** - Ensures auth schema ready before other migrations
+
+**Testing**:
+- See `tests/test_auth_update_safety.py` for comprehensive update simulation tests
+- Tests verify: user survival, device identity stability, migration idempotency
+
+---
+
+## Next Steps
+
+- [x] **AUTH-P1**: Consolidate auth schema into migrations ✅
+- [x] **AUTH-P2**: Normalize Founder into DB ✅
+- [x] **AUTH-P3**: Tighten RBAC boundaries ✅
+- [x] **AUTH-P4**: Harden tokens & sessions ✅
+- [x] **AUTH-P5**: Expand audit coverage ✅
+- [x] **AUTH-P6**: Update safety & device identity ✅
+- [ ] **Future**: Update server/client for automatic updates
