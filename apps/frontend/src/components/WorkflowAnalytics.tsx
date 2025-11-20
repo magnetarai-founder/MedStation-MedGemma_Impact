@@ -94,8 +94,11 @@ export function WorkflowAnalytics({ workflowId }: WorkflowAnalyticsProps) {
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
             Workflow Analytics
           </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
             {analytics.workflow_name}
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-500">
+            These metrics summarize how work items flow through this workflow over time. They help you spot bottlenecks and slow stages.
           </p>
         </div>
 

@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react'
-import { Copy, Wand2, Zap, Users, Layers, AlertCircle, Loader2 } from 'lucide-react'
+import { Copy, Wand2, Zap, Users, Layers, AlertCircle, Loader2, Info } from 'lucide-react'
 import { useWorkflowTemplates } from '@/hooks/useWorkflowQueue'
 import type { Workflow, StageType } from '@/types/workflow'
 import { InstantiateTemplateModal } from './InstantiateTemplateModal'
@@ -17,11 +17,19 @@ interface TemplatesListProps {
 export function TemplatesList({ automationType, onTemplateInstantiated }: TemplatesListProps) {
   const { data: templates = [], isLoading, error, refetch } = useWorkflowTemplates()
   const [selectedTemplate, setSelectedTemplate] = useState<Workflow | null>(null)
+  const [showFirstRunHint, setShowFirstRunHint] = useState(() => {
+    return !localStorage.getItem('elohim_workflow_templates_hint_dismissed')
+  })
 
   // Filter templates by automation type if provided
   const filteredTemplates = automationType
     ? templates.filter(t => t.workflow_type === automationType)
     : templates
+
+  const dismissFirstRunHint = () => {
+    localStorage.setItem('elohim_workflow_templates_hint_dismissed', 'true')
+    setShowFirstRunHint(false)
+  }
 
   const handleInstantiateClick = (template: Workflow) => {
     setSelectedTemplate(template)
@@ -125,9 +133,32 @@ export function TemplatesList({ automationType, onTemplateInstantiated }: Templa
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
               Workflow Templates
             </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Start from a template to quickly create new workflows
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Templates are reusable workflow blueprints. Instantiating a template creates a new workflow you can edit freely.
             </p>
+
+            {/* First-Run Hint */}
+            {showFirstRunHint && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-blue-900 dark:text-blue-300 mb-1 flex items-center gap-2">
+                      <Info className="w-4 h-4" />
+                      Start quickly with workflow templates
+                    </h4>
+                    <p className="text-sm text-blue-800 dark:text-blue-200/80">
+                      Use templates as starting points instead of building workflows from scratch.
+                    </p>
+                  </div>
+                  <button
+                    onClick={dismissFirstRunHint}
+                    className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium"
+                  >
+                    Got it
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Templates Grid */}
