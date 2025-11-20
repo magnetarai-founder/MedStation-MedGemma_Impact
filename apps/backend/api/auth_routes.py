@@ -153,43 +153,46 @@ async def login(request: Request, body: LoginRequest):
     """
     # Rate limit login attempts (prevent brute force)
     # BUT: Skip rate limiting for privileged accounts:
-    # - Founder Rights: Always exempt (hardcoded)
-    # - Super Admin: Always exempt (hardcoded)
+    # - Founder Rights: Always exempt (role='founder_rights')
+    # - Super Admin: Always exempt (role='super_admin')
     # - Admin: Exempt if granted auth.bypass_rate_limit permission
-    from auth_middleware import FOUNDER_RIGHTS_USERNAME
+    #
+    # AUTH-P2: Check role from DB for all users (including Founder)
 
-    # First check if this is a privileged login attempt
-    is_privileged = body.username == FOUNDER_RIGHTS_USERNAME
+    is_privileged = False
 
-    # If not founder, check role and permissions
-    if not is_privileged:
-        try:
-            import sqlite3
-            conn = sqlite3.connect(str(auth_service.db_path))
-            cursor = conn.cursor()
-            cursor.execute("SELECT user_id, role FROM users WHERE username = ?", (body.username,))
-            row = cursor.fetchone()
-            conn.close()
+    # Check user role from DB to determine if rate limiting should be skipped
+    try:
+        import sqlite3
+        conn = sqlite3.connect(str(auth_service.db_path))
+        cursor = conn.cursor()
+        cursor.execute("SELECT user_id, role FROM users WHERE username = ?", (body.username,))
+        row = cursor.fetchone()
+        conn.close()
 
-            if row:
-                user_id, role = row
+        if row:
+            user_id, role = row
 
-                # Super Admin: always privileged (hardcoded)
-                if role == 'super_admin':
-                    is_privileged = True
+            # Founder Rights: always privileged (AUTH-P2: role-based check)
+            if role == 'founder_rights':
+                is_privileged = True
 
-                # Admin: check for bypass permission
-                elif role == 'admin':
-                    try:
-                        perm_engine = get_permission_engine()
-                        context = perm_engine.get_user_context(user_id)
-                        # Check if admin has been granted bypass permission
-                        if context.effective_permissions.get('auth.bypass_rate_limit', False):
-                            is_privileged = True
-                    except:
-                        pass  # If permission check fails, apply rate limiting
-        except:
-            pass  # If check fails, apply rate limiting as normal
+            # Super Admin: always privileged
+            elif role == 'super_admin':
+                is_privileged = True
+
+            # Admin: check for bypass permission
+            elif role == 'admin':
+                try:
+                    perm_engine = get_permission_engine()
+                    context = perm_engine.get_user_context(user_id)
+                    # Check if admin has been granted bypass permission
+                    if context.effective_permissions.get('auth.bypass_rate_limit', False):
+                        is_privileged = True
+                except:
+                    pass  # If permission check fails, apply rate limiting
+    except:
+        pass  # If check fails, apply rate limiting as normal
 
     # Apply rate limiting only to non-privileged accounts
     if not is_privileged:

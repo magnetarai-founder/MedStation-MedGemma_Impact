@@ -72,14 +72,25 @@ async def run_startup_migrations() -> None:
             # Auth migrations (AUTH-P1)
             from migrations.auth import run_auth_migrations
 
-        # ===== AUTH: Consolidated Auth Schema (AUTH-P1) =====
+        # ===== AUTH: Consolidated Auth Schema (AUTH-P1 + AUTH-P2) =====
         # Run auth migrations FIRST - ensures auth schema is always in place
         # before other migrations that depend on it
         app_db = PATHS.app_db
         import sqlite3
         try:
             conn = sqlite3.connect(str(app_db))
+
+            # AUTH-P1: Run auth migrations
             run_auth_migrations(conn)
+
+            # AUTH-P2: Bootstrap Founder user in dev mode
+            try:
+                from .auth_bootstrap import ensure_dev_founder_user
+            except ImportError:
+                from auth_bootstrap import ensure_dev_founder_user
+
+            ensure_dev_founder_user(conn)
+
             conn.close()
             # Note: Auth migrations track their own completion state
             # Only log if migrations actually ran (auth runner logs this internally)
@@ -217,6 +228,16 @@ async def run_startup_migrations() -> None:
             # If migration already applied, this is fine
             if "already applied" not in str(e).lower():
                 logger.error(f"Phase B migration failed: {e}")
+
+        # ===== AUTH-P3: Session Cleanup =====
+        # Clean up expired sessions on startup (housekeeping)
+        try:
+            from api.auth_middleware import AuthService
+            auth_service = AuthService(db_path=app_db)
+            auth_service.cleanup_expired_sessions()
+        except Exception as e:
+            # Non-fatal: log but don't block startup
+            logger.warning(f"Session cleanup failed (non-fatal): {e}")
 
         # Summary output - only show if migrations ran
         if migrations_ran:

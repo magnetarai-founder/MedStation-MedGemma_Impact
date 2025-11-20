@@ -83,27 +83,26 @@ def _get_or_create_jwt_secret() -> str:
 
 JWT_SECRET = _get_or_create_jwt_secret()
 
+# ===== AUTH-P3: Token & Session Configuration =====
+# These constants define the security boundaries for authentication tokens and sessions.
+# Changing these values affects all new logins (existing sessions honor their original expiry).
+
 JWT_ALGORITHM = "HS256"
-JWT_EXPIRATION_HOURS = 24 * 7  # 7 days
-# LOW-02: Refresh token configuration
+
+# Access token lifetime: 7 days absolute expiry from creation
+JWT_EXPIRATION_HOURS = 24 * 7  # 168 hours = 7 days
+
+# Refresh token lifetime: 30 days absolute expiry (used for token refresh without re-login)
 REFRESH_TOKEN_EXPIRATION_DAYS = 30  # 30 days (longer-lived)
 
-# Founder Rights Credentials - Hardcoded backdoor for field support
-# This account always exists and cannot be locked out
-FOUNDER_RIGHTS_USERNAME = os.getenv("ELOHIM_FOUNDER_USERNAME", "elohim_founder")
-FOUNDER_RIGHTS_PASSWORD = os.getenv("ELOHIM_FOUNDER_PASSWORD")  # Must be set in production
+# Idle timeout: Maximum inactivity period before session expires
+# Sessions with no activity for longer than this are invalidated even if not expired
+IDLE_TIMEOUT_HOURS = 1  # 1 hour of inactivity
 
-if not FOUNDER_RIGHTS_PASSWORD:
-    if os.getenv("ELOHIM_ENV") == "development":
-        logger.warning("="*80)
-        logger.warning("⚠️  SECURITY WARNING: Development Mode Active")
-        logger.warning("⚠️  Using default Founder Rights password for development.")
-        logger.warning("⚠️  This is INSECURE and should ONLY be used on localhost!")
-        logger.warning("⚠️  SET ELOHIM_FOUNDER_PASSWORD in production!")
-        logger.warning("="*80)
-        FOUNDER_RIGHTS_PASSWORD = "ElohimOS_2024_Founder"  # Dev-only default
-    else:
-        raise RuntimeError("ELOHIM_FOUNDER_PASSWORD environment variable is required in production for Founder Rights account.")
+# AUTH-P2: Founder credentials removed from auth_middleware
+# Founder is now a DB-backed user with role='founder_rights'
+# Bootstrap handled by auth_bootstrap.py in development mode
+# Production setup requires explicit Founder creation via setup wizard
 
 # Security bearer
 security = HTTPBearer()
@@ -291,66 +290,14 @@ class AuthService:
         )
 
     def authenticate(self, username: str, password: str, device_fingerprint: Optional[str] = None) -> Optional[Dict]:
-        """Authenticate user and return JWT token with user info"""
+        """
+        Authenticate user and return JWT token with user info
 
-        # Check if this is Founder Rights login
-        if username == FOUNDER_RIGHTS_USERNAME:
-            if password == FOUNDER_RIGHTS_PASSWORD:
-                # Founder Rights login successful
-                logger.info("🔐 Founder Rights login")
+        AUTH-P2: Founder is now a DB-backed user with role='founder_rights'
+        instead of a hardcoded env-based backdoor.
+        """
 
-                # Audit log Founder Rights login
-                try:
-                    audit_logger = get_audit_logger()
-                    audit_logger.log(
-                        user_id="founder_rights",
-                        action=AuditAction.FOUNDER_RIGHTS_LOGIN,
-                        details={
-                            "username": FOUNDER_RIGHTS_USERNAME,
-                            "device_fingerprint": device_fingerprint
-                        }
-                    )
-                except Exception as e:
-                    logger.error(f"Failed to log Founder Rights login audit: {e}")
-
-                # Create JWT token with founder_rights flag
-                expiration = datetime.utcnow() + timedelta(hours=JWT_EXPIRATION_HOURS)
-                token_payload = {
-                    "user_id": "founder_rights",
-                    "username": FOUNDER_RIGHTS_USERNAME,
-                    "device_id": "founder_device",
-                    "role": "founder_rights",
-                    "exp": expiration.timestamp(),
-                    "iat": datetime.utcnow().timestamp()
-                }
-
-                token = jwt.encode(token_payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
-
-                return {
-                    "token": token,
-                    "user_id": "founder_rights",
-                    "username": FOUNDER_RIGHTS_USERNAME,
-                    "device_id": "founder_device",
-                    "role": "founder_rights"
-                }
-            else:
-                logger.warning("❌ Failed Founder Rights login attempt")
-                # Audit log failed attempt
-                try:
-                    audit_logger = get_audit_logger()
-                    audit_logger.log(
-                        user_id="founder_rights",
-                        action=AuditAction.USER_LOGIN_FAILED,
-                        details={
-                            "username": username,
-                            "reason": "invalid_password"
-                        }
-                    )
-                except Exception as e:
-                    logger.error(f"Failed to log failed Founder Rights login audit: {e}")
-                return None
-
-        # Regular user authentication
+        # AUTH-P2: All users (including Founder) authenticate via DB
         with sqlite3.connect(str(self.db_path)) as conn:
             cursor = conn.cursor()
 
@@ -434,7 +381,17 @@ class AuthService:
         }
 
     def verify_token(self, token: str) -> Optional[Dict]:
-        """Verify JWT token and return payload"""
+        """
+        Verify JWT token and return payload
+
+        AUTH-P3: All users (including Founder) go through session checks for hardening.
+        Validates:
+        1. JWT signature and expiry
+        2. Session exists in database
+        3. Session not expired (expires_at)
+        4. Session not idle (last_activity within IDLE_TIMEOUT_HOURS)
+        5. Updates last_activity on successful verification
+        """
         try:
             # Disable iat validation for development to avoid clock skew issues
             payload = jwt.decode(
@@ -445,9 +402,8 @@ class AuthService:
                 leeway=60
             )
 
-            # Founder Rights bypass - no session check needed
-            if payload.get('role') == 'founder_rights':
-                return payload
+            # AUTH-P3: No more Founder bypass - all users go through session checks
+            # This ensures Founder tokens can be revoked and idle timeout applies
 
             # Check if session exists and is valid
             with sqlite3.connect(str(self.db_path)) as conn:
@@ -476,8 +432,7 @@ class AuthService:
                     logger.warning(f"Token expired: {safe_username}")
                     return None
 
-                # Check idle timeout (1 hour of inactivity)
-                IDLE_TIMEOUT_HOURS = 1
+                # AUTH-P3: Check idle timeout using module-level constant
                 if last_activity:
                     last_active = datetime.fromisoformat(last_activity)
                     idle_time = datetime.utcnow() - last_active

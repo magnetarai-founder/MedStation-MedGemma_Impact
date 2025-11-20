@@ -24,7 +24,6 @@ try:
 except ImportError:
     from auth_middleware import get_current_user, User
 from api.config_paths import get_config_paths
-from api.config import get_settings
 from api.utils import sanitize_for_log
 from api.rate_limiter import rate_limiter, get_client_ip
 from api.services.crypto_wrap import wrap_key, unwrap_key
