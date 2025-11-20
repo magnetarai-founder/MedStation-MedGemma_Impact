@@ -90,6 +90,7 @@ class WorkflowStorage:
                 enabled INTEGER DEFAULT 1,
                 allow_manual_creation INTEGER DEFAULT 1,
                 require_approval_to_start INTEGER DEFAULT 0,
+                is_template INTEGER DEFAULT 0,  -- Phase D: Template workflow
                 created_by TEXT NOT NULL,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
@@ -195,11 +196,20 @@ class WorkflowStorage:
             except sqlite3.OperationalError:
                 pass  # Column already exists
 
+        # Phase D: Add is_template column if it doesn't exist (migration for existing DBs)
+        try:
+            cursor.execute("ALTER TABLE workflows ADD COLUMN is_template INTEGER DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
         # Phase 3: Team isolation indexes
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_workflows_team ON workflows(team_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_work_items_team ON work_items(team_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_transitions_team ON stage_transitions(team_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_attachments_team ON attachments(team_id)")
+
+        # Phase D: Template index
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_workflows_template ON workflows(is_template)")
 
         conn.commit()
         conn.close()
@@ -223,9 +233,9 @@ class WorkflowStorage:
         cursor.execute("""
             INSERT OR REPLACE INTO workflows
             (id, name, description, icon, category, workflow_type, stages, triggers, enabled,
-             allow_manual_creation, require_approval_to_start, created_by,
+             allow_manual_creation, require_approval_to_start, is_template, created_by,
              created_at, updated_at, version, tags, user_id, team_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             workflow.id,
             workflow.name,
@@ -238,6 +248,7 @@ class WorkflowStorage:
             1 if workflow.enabled else 0,
             1 if workflow.allow_manual_creation else 0,
             1 if workflow.require_approval_to_start else 0,
+            1 if workflow.is_template else 0,  # Phase D
             workflow.created_by,
             workflow.created_at.isoformat(),
             workflow.updated_at.isoformat(),
@@ -567,6 +578,12 @@ class WorkflowStorage:
             workflow_type_value = 'team'  # Default for backward compatibility
         workflow_type = WorkflowType.LOCAL_AUTOMATION if workflow_type_value == 'local' else WorkflowType.TEAM_WORKFLOW
 
+        # Handle is_template with backward compatibility
+        try:
+            is_template_value = bool(row['is_template'])
+        except (KeyError, IndexError):
+            is_template_value = False  # Default for backward compatibility
+
         return Workflow(
             id=row['id'],
             name=row['name'],
@@ -579,6 +596,7 @@ class WorkflowStorage:
             enabled=bool(row['enabled']),
             allow_manual_creation=bool(row['allow_manual_creation']),
             require_approval_to_start=bool(row['require_approval_to_start']),
+            is_template=is_template_value,  # Phase D
             created_by=row['created_by'],
             created_at=datetime.fromisoformat(row['created_at']),
             updated_at=datetime.fromisoformat(row['updated_at']),

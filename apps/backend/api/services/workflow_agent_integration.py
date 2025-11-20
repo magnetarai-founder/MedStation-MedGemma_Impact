@@ -39,22 +39,23 @@ def run_agent_assist_for_stage(
     """
     Run Agent Assist for a given work item & stage.
 
-    Behavior (Phase B - Advisory Only):
+    Behavior (Phase B - Advisory Only, Phase E - Optional Auto-Apply):
     - Build context for the agent using repo_root from work item data or config paths
     - Call agent context logic to gather file tree, recent diffs, etc.
     - Call agent planning logic to generate plan and recommendations
     - Store results under work_item.data["agent_recommendation"]
     - Persist work item via storage
-    - Does NOT auto-apply any patches or changes
+    - Phase E: If stage.agent_auto_apply=True, applies patches automatically (requires code.edit permission)
 
     Args:
         storage: WorkflowStorage instance for persisting work item
         work_item: WorkItem entering the Agent Assist stage
-        stage: Stage configuration with agent_prompt and other settings
+        stage: Stage configuration with agent_prompt, agent_auto_apply, and other settings
         user_id: User ID for audit/permissions
 
     Side Effects:
         - Updates work_item.data["agent_recommendation"] with plan summary, steps, risks
+        - Phase E: If auto-apply enabled, updates work_item.data["agent_auto_apply_result"]
         - Saves work_item to storage
         - Logs errors to work_item.data["agent_recommendation_error"] if agent fails
     """
@@ -132,7 +133,69 @@ def run_agent_assist_for_stage(
         if "agent_recommendation_error" in work_item.data:
             del work_item.data["agent_recommendation_error"]
 
-        # Persist work item
+        # Phase E: Auto-apply if stage.agent_auto_apply is True
+        if stage.agent_auto_apply:
+            logger.info(
+                f"🤖 Phase E: Auto-apply enabled for stage {stage.name}, applying agent patches",
+                extra={"work_item_id": work_item.id, "stage_name": stage.name}
+            )
+
+            try:
+                # Import apply logic
+                try:
+                    from api.agent.orchestration.apply import apply_plan_logic
+                    from api.agent.orchestration.models import ApplyRequest
+                except ImportError:
+                    from agent.orchestration.apply import apply_plan_logic
+                    from agent.orchestration.models import ApplyRequest
+
+                # Build apply request from plan
+                apply_req = ApplyRequest(
+                    input=prompt,
+                    repo_root=repo_root,
+                    files=[],  # Let agent determine files
+                    session_id=None,  # No session for workflow-triggered applies
+                    model=stage.agent_model_hint,  # Use stage hint if specified
+                    dry_run=False,  # Real apply
+                )
+
+                # Apply the plan (this may raise exceptions)
+                current_user = {"user_id": user_id}
+                patches, patch_id, engine_used = apply_plan_logic(apply_req, current_user)
+
+                # Record auto-apply result
+                work_item.data.setdefault("agent_auto_apply_result", {})
+                work_item.data["agent_auto_apply_result"].update({
+                    "success": True,
+                    "patch_id": patch_id,
+                    "files_changed": [p.path for p in patches],
+                    "engine_used": engine_used,
+                    "summary": f"Auto-applied {len(patches)} patch(es)",
+                })
+
+                logger.info(
+                    f"✅ Auto-apply succeeded for work item {work_item.id}: patch_id={patch_id}",
+                    extra={
+                        "work_item_id": work_item.id,
+                        "patch_id": patch_id,
+                        "files_changed": len(patches),
+                    }
+                )
+
+            except Exception as auto_apply_error:
+                # Log error but don't fail the entire Agent Assist operation
+                logger.warning(
+                    f"⚠ Auto-apply failed for work item {work_item.id}: {auto_apply_error}",
+                    exc_info=True,
+                    extra={"work_item_id": work_item.id}
+                )
+                work_item.data.setdefault("agent_auto_apply_result", {})
+                work_item.data["agent_auto_apply_result"].update({
+                    "success": False,
+                    "error": str(auto_apply_error),
+                })
+
+        # Persist work item (with auto-apply results if applicable)
         storage.save_work_item(work_item, user_id=user_id)
 
         logger.info(
@@ -142,6 +205,7 @@ def run_agent_assist_for_stage(
                 "stage_name": stage.name,
                 "steps_count": len(plan_response.steps),
                 "model_used": plan_response.model_used,
+                "auto_apply": stage.agent_auto_apply,
             }
         )
 

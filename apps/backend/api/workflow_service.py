@@ -40,6 +40,7 @@ try:
     )
     from .workflow_orchestrator import WorkflowOrchestrator
     from .workflow_storage import WorkflowStorage
+    from .services.workflow_analytics import WorkflowAnalytics
 except ImportError:
     from workflow_models import (
         Workflow,
@@ -58,6 +59,7 @@ except ImportError:
     )
     from workflow_orchestrator import WorkflowOrchestrator
     from workflow_storage import WorkflowStorage
+    from services.workflow_analytics import WorkflowAnalytics
 
 try:
     from .workflow_p2p_sync import init_workflow_sync, get_workflow_sync
@@ -79,6 +81,7 @@ router = APIRouter(
 # Initialize storage and orchestrator
 storage = WorkflowStorage()
 orchestrator = WorkflowOrchestrator(storage=storage)
+analytics = WorkflowAnalytics(db_path=storage.db_path)
 
 # P2P sync (will be initialized when P2P service starts)
 workflow_sync = None
@@ -761,6 +764,193 @@ async def get_starred_workflows(
     starred_ids = orchestrator.storage.get_starred_workflows(user_id, workflow_type)
 
     return {"starred_workflows": starred_ids}
+
+
+# ============================================
+# PHASE D: TEMPLATES
+# ============================================
+
+@router.get("/templates", response_model=List[Workflow])
+@require_perm("workflows.view", level="read")
+async def list_workflow_templates(
+    category: Optional[str] = None,
+    team_id: Optional[str] = None,
+    current_user: Dict = Depends(get_current_user)
+):
+    """
+    List workflow templates (Phase D).
+
+    Templates are workflows with is_template=True that can be instantiated
+    into new workflows.
+
+    Args:
+        category: Optional category filter
+        team_id: Optional team ID for team templates
+        current_user: Authenticated user
+
+    Returns:
+        List of template workflows
+    """
+    user_id = current_user["user_id"]
+
+    # Check team membership if listing team templates
+    if team_id:
+        if not is_team_member(team_id, user_id):
+            raise HTTPException(status_code=403, detail="Not a member of this team")
+
+    # List all workflows, then filter for templates
+    all_workflows = storage.list_workflows(
+        user_id=user_id,
+        category=category,
+        enabled_only=True,
+        team_id=team_id,
+    )
+
+    templates = [w for w in all_workflows if w.is_template]
+
+    logger.info(f"📋 Listed {len(templates)} template(s)")
+    return templates
+
+
+@router.get("/templates/{template_id}", response_model=Workflow)
+@require_perm("workflows.view", level="read")
+async def get_workflow_template(
+    template_id: str,
+    current_user: Dict = Depends(get_current_user)
+):
+    """
+    Get a specific workflow template (Phase D).
+
+    Args:
+        template_id: Template workflow ID
+        current_user: Authenticated user
+
+    Returns:
+        Template workflow
+
+    Raises:
+        HTTPException: If not found or not a template
+    """
+    user_id = current_user["user_id"]
+    workflow = storage.get_workflow(template_id, user_id=user_id)
+
+    if not workflow:
+        raise HTTPException(status_code=404, detail="Template not found or access denied")
+
+    if not workflow.is_template:
+        raise HTTPException(status_code=400, detail="Workflow is not a template")
+
+    return workflow
+
+
+class InstantiateTemplateRequest(BaseModel):
+    """Request to instantiate a template"""
+    name: Optional[str] = None  # Override template name
+    description: Optional[str] = None  # Override template description
+    team_id: Optional[str] = None  # Optional team ID for team workflow
+
+
+@router.post("/templates/{template_id}/instantiate", response_model=Workflow)
+@require_perm("workflows.create", level="write")
+async def instantiate_template(
+    request: Request,
+    template_id: str,
+    body: InstantiateTemplateRequest,
+    current_user: Dict = Depends(get_current_user)
+):
+    """
+    Create a new workflow from a template (Phase D).
+
+    Args:
+        template_id: Template workflow ID
+        body: Instantiation request
+        current_user: Authenticated user
+
+    Returns:
+        New workflow instance
+
+    Raises:
+        HTTPException: If template not found or instantiation fails
+    """
+    user_id = current_user["user_id"]
+
+    # Get template
+    template = storage.get_workflow(template_id, user_id=user_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found or access denied")
+
+    if not template.is_template:
+        raise HTTPException(status_code=400, detail="Workflow is not a template")
+
+    # Check team membership if creating team workflow
+    if body.team_id:
+        if not is_team_member(body.team_id, user_id):
+            raise HTTPException(status_code=403, detail="Not a member of this team")
+
+    # Create new workflow from template
+    new_workflow = Workflow(
+        name=body.name or f"{template.name} (Copy)",
+        description=body.description or template.description,
+        icon=template.icon,
+        category=template.category,
+        workflow_type=template.workflow_type,
+        stages=template.stages.copy(),  # Deep copy stages
+        triggers=template.triggers.copy(),  # Deep copy triggers
+        enabled=True,
+        allow_manual_creation=template.allow_manual_creation,
+        require_approval_to_start=template.require_approval_to_start,
+        is_template=False,  # Instance is not a template
+        created_by=user_id,
+        tags=template.tags.copy() if template.tags else [],
+    )
+
+    # Register with orchestrator
+    orchestrator.register_workflow(new_workflow, user_id=user_id, team_id=body.team_id)
+
+    logger.info(f"✨ Instantiated workflow from template {template_id}: {new_workflow.name} (ID: {new_workflow.id})")
+
+    return new_workflow
+
+
+# ============================================
+# PHASE D: ANALYTICS
+# ============================================
+
+@router.get("/analytics/{workflow_id}")
+@require_perm("workflows.view", level="read")
+async def get_workflow_analytics(
+    workflow_id: str,
+    current_user: Dict = Depends(get_current_user)
+):
+    """
+    Get comprehensive analytics for a workflow (Phase D).
+
+    Returns metrics including:
+    - Total/completed/in-progress items
+    - Average cycle time
+    - Per-stage metrics (entered, completed, avg time)
+
+    Args:
+        workflow_id: Workflow ID
+        current_user: Authenticated user
+
+    Returns:
+        Analytics dictionary
+    """
+    user_id = current_user["user_id"]
+
+    # Verify access to workflow
+    workflow = storage.get_workflow(workflow_id, user_id=user_id)
+    if not workflow:
+        raise HTTPException(status_code=404, detail="Workflow not found or access denied")
+
+    # Compute analytics
+    analytics_data = analytics.get_workflow_analytics(
+        workflow_id=workflow_id,
+        user_id=user_id,
+    )
+
+    return analytics_data
 
 
 # ============================================

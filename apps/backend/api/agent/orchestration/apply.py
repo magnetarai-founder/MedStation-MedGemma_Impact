@@ -188,4 +188,38 @@ def apply_plan_logic(
         except Exception as e:
             logger.warning(f"Failed to add patch to unified context: {e}")
 
+        # Phase E: Trigger workflow events for successful agent apply
+        try:
+            try:
+                from api.services.workflow_triggers import handle_agent_event
+                from api.workflow_storage import WorkflowStorage
+            except ImportError:
+                from services.workflow_triggers import handle_agent_event
+                from workflow_storage import WorkflowStorage
+
+            # Build agent event
+            agent_event = {
+                "type": "agent.apply.success",
+                "user_id": current_user['user_id'],
+                "repo_root": body.repo_root or str(repo_root),
+                "files": apply_result.get('files', []),
+                "patch_id": patch_id,
+                "summary": proposal.description,
+                "session_id": body.session_id,
+                "engine_used": engine_used,
+            }
+
+            # Fire workflow triggers
+            workflow_storage = WorkflowStorage()
+            handle_agent_event(
+                event=agent_event,
+                storage=workflow_storage,
+                user_id=current_user['user_id'],
+            )
+            logger.debug(f"🔔 Fired agent event: agent.apply.success")
+
+        except Exception as e:
+            # Graceful degradation - don't break apply on workflow trigger errors
+            logger.warning(f"Failed to fire agent event for workflow triggers: {e}")
+
     return (patches, patch_id, engine_used)

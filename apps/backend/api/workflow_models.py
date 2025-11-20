@@ -23,6 +23,8 @@ class WorkflowTriggerType(str, Enum):
     EMAIL = "email"                # Email received
     FILE_UPLOAD = "file_upload"   # File dropped
     EVENT = "event"                # System event
+    ON_AGENT_EVENT = "on_agent_event"  # Triggered by agent events (Phase D)
+    ON_FILE_PATTERN = "on_file_pattern"  # Triggered by file patterns (Phase D)
 
 
 class StageType(str, Enum):
@@ -231,6 +233,7 @@ class Stage(BaseModel):
     agent_prompt: Optional[str] = None           # Prompt to send to agent
     agent_target_path: Optional[str] = None      # Repo path (relative) to focus on
     agent_model_hint: Optional[str] = None       # Optional override for agent model
+    agent_auto_apply: bool = False               # Phase E: Auto-apply agent patches (opt-in, requires code.edit)
 
     # Metadata
     order: int = 0                     # Display order
@@ -259,6 +262,13 @@ class WorkflowTrigger(BaseModel):
     email_address: Optional[str] = None
     email_filter: Optional[Dict[str, Any]] = None
 
+    # For agent event triggers (Phase D)
+    agent_event_type: Optional[str] = None  # e.g. "agent.apply.success", "agent.plan.complete"
+
+    # For file pattern triggers (Phase D)
+    file_pattern: Optional[str] = None      # Glob or regex pattern
+    pattern_repo_root: Optional[str] = None # Repository root for pattern matching
+
     enabled: bool = True
 
 
@@ -281,6 +291,7 @@ class Workflow(BaseModel):
     enabled: bool = True
     allow_manual_creation: bool = True
     require_approval_to_start: bool = False
+    is_template: bool = False                    # Phase D: Template workflow for instantiation
 
     # Metadata
     created_by: str
