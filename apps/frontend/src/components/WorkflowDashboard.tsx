@@ -7,11 +7,13 @@
  * - Centered Create button
  */
 
-import { Plus, Star, Clock, Zap, Users, Layers, Wand2, Info } from 'lucide-react'
+import { Plus, Star, Clock, Zap, Users, Layers, Wand2, Info, Filter } from 'lucide-react'
 import { useWorkflows, useStarredWorkflows, useStarWorkflow, useUnstarWorkflow } from '@/hooks/useWorkflowQueue'
-import type { Workflow } from '@/types/workflow'
+import type { Workflow, WorkflowVisibility } from '@/types/workflow'
 import type { AutomationType } from './AutomationWorkspace'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import VisibilityBadge from './Automation/components/VisibilityBadge'
+import { useUserStore } from '@/stores/userStore'
 
 interface WorkflowDashboardProps {
   automationType: AutomationType
@@ -19,6 +21,9 @@ interface WorkflowDashboardProps {
   onCreateWorkflow: () => void
   onViewTemplates?: () => void
 }
+
+// T3-2: Scope filter type
+type ScopeFilter = 'all' | 'personal' | 'team' | 'global'
 
 export function WorkflowDashboard({
   automationType,
@@ -31,18 +36,39 @@ export function WorkflowDashboard({
   const { data: starredIds = [] } = useStarredWorkflows(automationType)
   const starMutation = useStarWorkflow()
   const unstarMutation = useUnstarWorkflow()
+  const user = useUserStore((state) => state.user)
 
-  // Filter starred and recent workflows
-  const starredWorkflows: Workflow[] = workflows.filter(w => starredIds.includes(w.id))
-  const recentWorkflows: Workflow[] = workflows.filter(w => !starredIds.includes(w.id)).slice(0, 10)
+  // T3-2: Scope filter state
+  const [scopeFilter, setScopeFilter] = useState<ScopeFilter>('all')
+  const [showAgentLearnMore, setShowAgentLearnMore] = useState(false)
+
+  // T3-2: Apply scope filter
+  const filteredWorkflows = useMemo(() => {
+    if (scopeFilter === 'all') return workflows
+
+    return workflows.filter(workflow => {
+      const visibility = workflow.visibility || 'personal' // Default to personal for backward compatibility
+
+      if (scopeFilter === 'personal') {
+        return visibility === 'personal' && workflow.owner_user_id === user?.userId
+      } else if (scopeFilter === 'team') {
+        return visibility === 'team'
+      } else if (scopeFilter === 'global') {
+        return visibility === 'global'
+      }
+      return true
+    })
+  }, [workflows, scopeFilter, user?.userId])
+
+  // Filter starred and recent workflows from filtered set
+  const starredWorkflows: Workflow[] = filteredWorkflows.filter(w => starredIds.includes(w.id))
+  const recentWorkflows: Workflow[] = filteredWorkflows.filter(w => !starredIds.includes(w.id)).slice(0, 10)
 
   // Check if user has any agent-enabled workflows
   const agentWorkflows = workflows.filter(w =>
     !w.is_template && w.stages?.some(s => s.stage_type === 'agent_assist')
   )
   const hasNoAgentWorkflows = workflows.length > 0 && agentWorkflows.length === 0
-
-  const [showAgentLearnMore, setShowAgentLearnMore] = useState(false)
 
   const handleToggleStar = async (e: React.MouseEvent, workflowId: string) => {
     e.stopPropagation()
@@ -88,6 +114,31 @@ export function WorkflowDashboard({
   return (
     <div className="h-full w-full flex flex-col items-center justify-center p-8 bg-gray-50/30 dark:bg-gray-900/30">
       <div className="w-full max-w-4xl space-y-8">
+        {/* T3-2: Scope Filter */}
+        {workflows.length > 0 && (
+          <div className="flex items-center gap-3 pb-2">
+            <Filter className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+            <label htmlFor="scope-filter" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Scope:
+            </label>
+            <select
+              id="scope-filter"
+              value={scopeFilter}
+              onChange={(e) => setScopeFilter(e.target.value as ScopeFilter)}
+              className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+              aria-label="Filter workflows by scope"
+            >
+              <option value="all">All Workflows</option>
+              <option value="personal">My Workflows</option>
+              <option value="team">Team Workflows</option>
+              <option value="global">Global Workflows</option>
+            </select>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              ({filteredWorkflows.length} {filteredWorkflows.length === 1 ? 'workflow' : 'workflows'})
+            </span>
+          </div>
+        )}
+
         {/* Starred Section */}
         {starredWorkflows.length > 0 && (
           <div>
@@ -129,9 +180,13 @@ export function WorkflowDashboard({
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-2">
                     {workflow.description}
                   </p>
+                  {/* T3-2: Visibility Badge */}
+                  <div className="mt-auto">
+                    <VisibilityBadge visibility={workflow.visibility} />
+                  </div>
                 </button>
               ))}
             </div>
@@ -179,9 +234,13 @@ export function WorkflowDashboard({
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-2">
                     {workflow.description}
                   </p>
+                  {/* T3-2: Visibility Badge */}
+                  <div className="mt-auto">
+                    <VisibilityBadge visibility={workflow.visibility} />
+                  </div>
                 </button>
               ))}
             </div>

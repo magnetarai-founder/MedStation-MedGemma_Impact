@@ -79,6 +79,55 @@ npm run build
 npm run lint
 ```
 
+## E2E Smoke Tests
+
+ElohimOS includes end-to-end smoke tests that validate the complete Agent + Workflow integration path. These tests run as part of the standard backend test suite.
+
+### Test Suite: `apps/backend/tests/test_e2e_agent_workflow_smoke.py`
+
+**Coverage**: 7 comprehensive E2E scenarios (169 total backend tests)
+
+1. **Template instantiation** - Global templates → team workflows with correct visibility
+2. **Agent Assist flow** - Work items reach AGENT_ASSIST stages and receive recommendations
+3. **Agent Assist with auto-apply** - Patches automatically applied when enabled
+4. **Workflow triggers (single)** - Agent events create work items in listening workflows
+5. **Workflow triggers (multiple)** - Single event triggers multiple workflows
+6. **Team workflow isolation** - Team boundaries respected (currently skipped, requires orchestrator team_id support)
+7. **Personal workflow privacy** - Personal workflows remain private to owner
+
+### Running E2E Tests
+
+**Run only E2E tests:**
+```bash
+# From repo root
+cd apps/backend
+ELOHIM_ENV=development PYTHONPATH="../packages:.:$PYTHONPATH" \
+  ../venv/bin/python3 -m pytest tests/test_e2e_agent_workflow_smoke.py -v
+```
+
+**Run all backend tests (includes E2E):**
+```bash
+# From repo root
+./tools/run_dev_checks.sh
+```
+
+### What E2E Tests Validate
+
+These tests exercise the full stack:
+- **Workflow orchestration** - Stage transitions, work item lifecycle
+- **Agent integration** - Planning, auto-apply, error handling
+- **Event triggers** - agent.apply.success → workflow creation
+- **Multi-tenancy** - Personal/team/global visibility isolation
+- **Storage layer** - SQLite persistence and retrieval
+- **Graceful degradation** - Agent failures don't break workflows
+
+### CI Integration
+
+E2E tests run automatically in CI as part of `backend-dev-checks`:
+- Included in `pytest tests/` invocation
+- No additional configuration needed
+- ~1.3 seconds runtime (lightweight, uses mocks)
+
 ## Extending CI
 
 ### Adding New Tests
@@ -131,5 +180,5 @@ Potential additions:
 - Code coverage reporting
 - Performance benchmarking
 - Security scanning (Dependabot, CodeQL)
-- E2E tests with Playwright
+- Frontend E2E tests with Playwright (backend E2E tests already implemented - see above)
 - Docker image building for deployments

@@ -18,14 +18,16 @@ import { useCreateWorkflow } from '../../hooks/useWorkflowQueue';
 import { StageEditor } from './StageEditor';
 import { StageList } from './StageList';
 import { WorkflowAnalytics } from '../WorkflowAnalytics';
+import VisibilityBadge from '../Automation/components/VisibilityBadge';
 
 interface WorkflowDesignerProps {
   workflowId?: string; // For editing existing workflow
+  workflow?: Workflow; // T3-2: Full workflow object for displaying metadata
   onSave?: (workflow: Workflow) => void;
   onCancel?: () => void;
 }
 
-export function WorkflowDesigner({ workflowId, onSave, onCancel }: WorkflowDesignerProps) {
+export function WorkflowDesigner({ workflowId, workflow, onSave, onCancel }: WorkflowDesignerProps) {
   const [workflowName, setWorkflowName] = useState('New Workflow');
   const [workflowDescription, setWorkflowDescription] = useState('');
   const [workflowIcon, setWorkflowIcon] = useState('⚡');
@@ -302,6 +304,22 @@ export function WorkflowDesigner({ workflowId, onSave, onCancel }: WorkflowDesig
                 placeholder="e.g., Healthcare, Legal, Ministry"
               />
             </div>
+
+            {/* T3-2: Visibility Display (for existing workflows) */}
+            {workflow?.visibility && (
+              <div>
+                <label className="block text-sm font-medium mb-2">Visibility</label>
+                <VisibilityBadge visibility={workflow.visibility} showIcon={true} showTooltip={false} />
+                <p className="mt-2 text-xs text-gray-400">
+                  {workflow.visibility === 'personal' &&
+                    'This workflow is only visible to you. Work items in this workflow are also visible only to you.'}
+                  {workflow.visibility === 'team' &&
+                    'This workflow is visible to all members of your team. Work items created here are shared within your team.'}
+                  {workflow.visibility === 'global' &&
+                    'This is a global workflow/template, available to all users.'}
+                </p>
+              </div>
+            )}
           </div>
         </div>
 

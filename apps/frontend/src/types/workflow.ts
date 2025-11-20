@@ -43,6 +43,9 @@ export enum WorkItemPriority {
   URGENT = 'urgent',
 }
 
+// T3-2: Workflow visibility levels for multi-tenant scoping
+export type WorkflowVisibility = 'personal' | 'team' | 'global'
+
 export enum AssignmentType {
   ROLE = 'role',
   SPECIFIC_USER = 'user',
@@ -259,6 +262,11 @@ export interface Workflow {
   require_approval_to_start?: boolean
   is_template?: boolean  // Phase D: Template workflow for instantiation
 
+  // T3-2: Multi-tenant ownership and visibility
+  visibility?: WorkflowVisibility  // personal/team/global
+  owner_user_id?: string | null   // User who created it
+  owner_team_id?: string | null   // Team scope (null for personal/global)
+
   // Metadata
   created_by: string
   created_at: string
@@ -331,6 +339,9 @@ export interface WorkItem {
 
   // Reference
   reference_number?: string
+
+  // T3-2: Inherited workflow visibility (for display purposes)
+  workflow_visibility?: WorkflowVisibility
 }
 
 // ============================================

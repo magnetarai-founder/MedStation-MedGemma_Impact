@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { useWorkItem, useWorkflow, useCompleteStage, useCancelWorkItem } from '../hooks/useWorkflowQueue';
 import type { WorkItem, Stage } from '../types/workflow';
 import { AgentAssistPanel } from './WorkItem/AgentAssistPanel';
+import VisibilityBadge from './Automation/components/VisibilityBadge';
 
 interface ActiveWorkItemProps {
   workItemId: string;
@@ -90,9 +91,29 @@ export function ActiveWorkItem({ workItemId, userId, onClose, onCompleted }: Act
             <h2 className="text-xl font-semibold">
               {workItem.reference_number || `Work Item ${workItem.id.slice(0, 8)}`}
             </h2>
-            <div className="text-sm text-gray-400">
-              {workItem.workflow_name} • {workItem.current_stage_name}
+            <div className="flex items-center gap-2 text-sm text-gray-400">
+              <span>{workItem.workflow_name} • {workItem.current_stage_name}</span>
+              {/* T3-2: Show inherited workflow visibility */}
+              {workflow?.visibility && (
+                <VisibilityBadge
+                  visibility={workflow.visibility}
+                  showIcon={true}
+                  showTooltip={false}
+                  className="ml-2"
+                />
+              )}
             </div>
+            {/* T3-2: Explanatory text for workflow visibility */}
+            {workflow?.visibility && (
+              <div className="text-xs text-gray-500 mt-1">
+                {workflow.visibility === 'personal' &&
+                  'Visible only to you. Work items in this workflow are private.'}
+                {workflow.visibility === 'team' &&
+                  'Visible to your team. Work items in this workflow are shared within your team.'}
+                {workflow.visibility === 'global' &&
+                  'Visible to all users with workflow access.'}
+              </div>
+            )}
           </div>
         </div>
 

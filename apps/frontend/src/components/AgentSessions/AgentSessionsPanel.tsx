@@ -164,6 +164,24 @@ export function AgentSessionsPanel() {
         )}
       </div>
 
+      {/* T3-2: Per-User Scope Banner */}
+      <div className="mx-4 mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+        <div className="flex items-start gap-2">
+          <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-1">
+              Your agent sessions
+            </h4>
+            <p className="text-xs text-blue-800 dark:text-blue-200/80 mb-2">
+              Sessions are tied to your account and are not shared with your team.
+            </p>
+            <div className="text-xs text-blue-700 dark:text-blue-300/80 font-medium">
+              Active sessions: {activeSessions().length} · Archived: {archivedSessions().length}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* First-Run Hint Banner */}
       {showFirstRunHint && (
         <div className="mx-4 mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">

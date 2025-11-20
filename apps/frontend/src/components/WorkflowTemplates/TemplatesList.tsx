@@ -3,16 +3,21 @@
  * Browse and instantiate workflow templates
  */
 
-import { useState, useEffect } from 'react'
-import { Copy, Wand2, Zap, Users, Layers, AlertCircle, Loader2, Info, CheckCircle, X } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Copy, Wand2, Zap, Users, Layers, AlertCircle, Loader2, Info, CheckCircle, X, Filter } from 'lucide-react'
 import { useWorkflowTemplates } from '@/hooks/useWorkflowQueue'
-import type { Workflow, StageType } from '@/types/workflow'
+import type { Workflow, StageType, WorkflowVisibility } from '@/types/workflow'
 import { InstantiateTemplateModal } from './InstantiateTemplateModal'
+import VisibilityBadge from '../Automation/components/VisibilityBadge'
+import { useUserStore } from '@/stores/userStore'
 
 interface TemplatesListProps {
   automationType?: 'local' | 'team'
   onTemplateInstantiated?: (workflow: Workflow) => void
 }
+
+// T3-2: Scope filter type for templates
+type ScopeFilter = 'all' | 'personal' | 'team' | 'global'
 
 export function TemplatesList({ automationType, onTemplateInstantiated }: TemplatesListProps) {
   const { data: templates = [], isLoading, error, refetch } = useWorkflowTemplates()
@@ -21,11 +26,35 @@ export function TemplatesList({ automationType, onTemplateInstantiated }: Templa
     return !localStorage.getItem('elohim_workflow_templates_hint_dismissed')
   })
   const [successMessage, setSuccessMessage] = useState<{ workflowName: string } | null>(null)
+  const user = useUserStore((state) => state.user)
 
-  // Filter templates by automation type if provided
-  const filteredTemplates = automationType
-    ? templates.filter(t => t.workflow_type === automationType)
-    : templates
+  // T3-2: Scope filter state
+  const [scopeFilter, setScopeFilter] = useState<ScopeFilter>('all')
+
+  // Filter templates by automation type and visibility scope
+  const filteredTemplates = useMemo(() => {
+    let filtered = automationType
+      ? templates.filter(t => t.workflow_type === automationType)
+      : templates
+
+    // T3-2: Apply scope filter
+    if (scopeFilter !== 'all') {
+      filtered = filtered.filter(template => {
+        const visibility = template.visibility || 'personal' // Default to personal for backward compatibility
+
+        if (scopeFilter === 'personal') {
+          return visibility === 'personal' && template.owner_user_id === user?.userId
+        } else if (scopeFilter === 'team') {
+          return visibility === 'team'
+        } else if (scopeFilter === 'global') {
+          return visibility === 'global'
+        }
+        return true
+      })
+    }
+
+    return filtered
+  }, [templates, automationType, scopeFilter, user?.userId])
 
   const dismissFirstRunHint = () => {
     localStorage.setItem('elohim_workflow_templates_hint_dismissed', 'true')
@@ -148,6 +177,31 @@ export function TemplatesList({ automationType, onTemplateInstantiated }: Templa
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
               Templates are reusable workflow blueprints. Instantiating a template creates a new workflow you can edit freely.
             </p>
+
+            {/* T3-2: Scope Filter */}
+            {templates.length > 0 && (
+              <div className="flex items-center gap-3 mb-4">
+                <Filter className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                <label htmlFor="template-scope-filter" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Scope:
+                </label>
+                <select
+                  id="template-scope-filter"
+                  value={scopeFilter}
+                  onChange={(e) => setScopeFilter(e.target.value as ScopeFilter)}
+                  className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                  aria-label="Filter templates by scope"
+                >
+                  <option value="all">All Templates</option>
+                  <option value="personal">Personal Templates</option>
+                  <option value="team">Team Templates</option>
+                  <option value="global">Global Templates</option>
+                </select>
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  ({filteredTemplates.length} {filteredTemplates.length === 1 ? 'template' : 'templates'})
+                </span>
+              </div>
+            )}
 
             {/* Success Message */}
             {successMessage && (
@@ -289,6 +343,17 @@ export function TemplatesList({ automationType, onTemplateInstantiated }: Templa
                       {template.triggers.map(t => t.trigger_type).join(', ')}
                     </div>
                   )}
+
+                  {/* T3-2: Visibility Badge & Explanation */}
+                  <div className="mb-3 space-y-1">
+                    <VisibilityBadge visibility={template.visibility} showIcon={true} showTooltip={false} />
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {template.visibility === 'personal' && 'Only you can see this template.'}
+                      {template.visibility === 'team' && 'Shared with your team.'}
+                      {template.visibility === 'global' && 'System template available to all users.'}
+                      {!template.visibility && 'Only you can see this template.'}
+                    </p>
+                  </div>
 
                   {/* Instantiate Button */}
                   <button
