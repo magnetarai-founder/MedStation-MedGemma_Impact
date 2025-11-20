@@ -7,10 +7,11 @@
  * - Centered Create button
  */
 
-import { Plus, Star, Clock, Zap, Users, Layers } from 'lucide-react'
+import { Plus, Star, Clock, Zap, Users, Layers, Wand2, Info } from 'lucide-react'
 import { useWorkflows, useStarredWorkflows, useStarWorkflow, useUnstarWorkflow } from '@/hooks/useWorkflowQueue'
 import type { Workflow } from '@/types/workflow'
 import type { AutomationType } from './AutomationWorkspace'
+import { useState } from 'react'
 
 interface WorkflowDashboardProps {
   automationType: AutomationType
@@ -34,6 +35,14 @@ export function WorkflowDashboard({
   // Filter starred and recent workflows
   const starredWorkflows: Workflow[] = workflows.filter(w => starredIds.includes(w.id))
   const recentWorkflows: Workflow[] = workflows.filter(w => !starredIds.includes(w.id)).slice(0, 10)
+
+  // Check if user has any agent-enabled workflows
+  const agentWorkflows = workflows.filter(w =>
+    !w.is_template && w.stages?.some(s => s.stage_type === 'agent_assist')
+  )
+  const hasNoAgentWorkflows = workflows.length > 0 && agentWorkflows.length === 0
+
+  const [showAgentLearnMore, setShowAgentLearnMore] = useState(false)
 
   const handleToggleStar = async (e: React.MouseEvent, workflowId: string) => {
     e.stopPropagation()
@@ -175,6 +184,52 @@ export function WorkflowDashboard({
                   </p>
                 </button>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Agent Workflow CTA */}
+        {hasNoAgentWorkflows && onViewTemplates && (
+          <div className="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border-2 border-purple-200 dark:border-purple-800 rounded-xl p-6 shadow-lg">
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-purple-100 dark:bg-purple-900/40 rounded-lg">
+                <Wand2 className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2 flex items-center gap-2">
+                  Create your first Agent-enabled workflow
+                </h3>
+                <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
+                  Pick a template with Agent Assist, then customize it. Agent Assist stages let AI propose code changes while you stay in control.
+                </p>
+
+                {showAgentLearnMore && (
+                  <div className="mb-4 p-3 bg-white dark:bg-gray-800/50 rounded-lg border border-purple-200 dark:border-purple-700">
+                    <p className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                      <span className="block">• <strong>Agent Assist stages</strong> ask AI to propose plans or patches for work items</span>
+                      <span className="block">• <strong>You review and approve</strong> all changes before they're applied</span>
+                      <span className="block">• <strong>Auto-apply mode</strong> can be enabled per-stage for trusted workflows</span>
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={onViewTemplates}
+                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg shadow hover:shadow-lg transition-all font-medium"
+                  >
+                    <Layers className="w-4 h-4" />
+                    Browse templates
+                  </button>
+                  <button
+                    onClick={() => setShowAgentLearnMore(!showAgentLearnMore)}
+                    className="flex items-center gap-2 px-4 py-2 border border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-lg transition-colors text-sm"
+                  >
+                    <Info className="w-4 h-4" />
+                    {showAgentLearnMore ? 'Hide details' : 'Learn about Agent Assist'}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}

@@ -9,8 +9,9 @@
 
 import { useState, useEffect } from 'react'
 import { FileBrowser } from './FileBrowser'
-import { FolderOpen, MessageSquarePlus, FolderPlus, FilePlus, Trash2, Package, Folder, MessageCircle, Clock, Settings } from 'lucide-react'
+import { FolderOpen, MessageSquarePlus, FolderPlus, FilePlus, Trash2, Package, Folder, MessageCircle, Clock, Settings, Wand2 } from 'lucide-react'
 import { authFetch } from '@/lib/api'
+import { AgentSessionsPanel } from './AgentSessions/AgentSessionsPanel'
 
 interface CodeSidebarProps {
   onFileSelect: (path: string, isAbsolute?: boolean) => void
@@ -20,7 +21,7 @@ interface CodeSidebarProps {
 }
 
 export function CodeSidebar({ onFileSelect, selectedFile, onOpenLibrary, onOpenSettings }: CodeSidebarProps) {
-  const [activeTab, setActiveTab] = useState<'files' | 'chat'>('files')
+  const [activeTab, setActiveTab] = useState<'files' | 'chat' | 'agent'>('files')
   const [chatView, setChatView] = useState<'history' | 'git'>('history') // Toggle between chat history and git view
   const [projectName, setProjectName] = useState<string | null>(null)
 
@@ -72,9 +73,17 @@ export function CodeSidebar({ onFileSelect, selectedFile, onOpenLibrary, onOpenS
       }
     }
 
+    // Listen for open agent sessions event
+    const handleOpenAgentSessions = () => {
+      setActiveTab('agent')
+    }
+
     window.addEventListener('workspace-changed', handleWorkspaceChange as EventListener)
+    window.addEventListener('open-agent-sessions', handleOpenAgentSessions)
+
     return () => {
       window.removeEventListener('workspace-changed', handleWorkspaceChange as EventListener)
+      window.removeEventListener('open-agent-sessions', handleOpenAgentSessions)
     }
   }, [])
 
@@ -85,7 +94,7 @@ export function CodeSidebar({ onFileSelect, selectedFile, onOpenLibrary, onOpenS
         <button
           onClick={() => setActiveTab('files')}
           className={`
-            flex-1 px-4 py-2 text-sm font-medium transition-colors
+            flex-1 px-3 py-2 text-sm font-medium transition-colors
             ${activeTab === 'files'
               ? 'text-primary-600 dark:text-primary-400 border-b-2 border-primary-600 dark:border-primary-400'
               : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
@@ -101,7 +110,7 @@ export function CodeSidebar({ onFileSelect, selectedFile, onOpenLibrary, onOpenS
         <button
           onClick={() => setActiveTab('chat')}
           className={`
-            flex-1 px-4 py-2 text-sm font-medium transition-colors
+            flex-1 px-3 py-2 text-sm font-medium transition-colors
             ${activeTab === 'chat'
               ? 'text-primary-600 dark:text-primary-400 border-b-2 border-primary-600 dark:border-primary-400'
               : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
@@ -110,36 +119,55 @@ export function CodeSidebar({ onFileSelect, selectedFile, onOpenLibrary, onOpenS
         >
           Chat
         </button>
+
+        {/* Vertical divider */}
+        <div className="w-px bg-gray-200 dark:bg-gray-700 my-2" />
+
+        <button
+          onClick={() => setActiveTab('agent')}
+          className={`
+            flex-1 px-3 py-2 text-sm font-medium transition-colors
+            ${activeTab === 'agent'
+              ? 'text-primary-600 dark:text-primary-400 border-b-2 border-primary-600 dark:border-primary-400'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+            }
+          `}
+        >
+          Agent
+        </button>
       </div>
 
       {/* Context-dependent action button */}
-      <div className="flex items-center justify-center gap-2 py-2 border-b border-gray-200 dark:border-gray-700">
-        {activeTab === 'files' ? (
-          <button
-            onClick={handleOpenFolder}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium hover:bg-white/60 dark:hover:bg-gray-700/60 rounded-lg transition-all text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 truncate max-w-full"
-            title={projectName ? `Project: ${projectName}` : "Open Project or Folder"}
-          >
-            <FolderOpen size={16} className="flex-shrink-0" />
-            <span className="truncate">
-              {projectName || 'Open Project or Folder'}
-            </span>
-          </button>
-        ) : (
-          <button
-            onClick={handleNewChat}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium hover:bg-white/60 dark:hover:bg-gray-700/60 rounded-lg transition-all text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400"
-            title="New Chat"
-          >
-            <MessageSquarePlus size={16} />
-            <span>New Chat</span>
-          </button>
-        )}
-      </div>
+      {activeTab !== 'agent' && (
+        <div className="flex items-center justify-center gap-2 py-2 border-b border-gray-200 dark:border-gray-700">
+          {activeTab === 'files' ? (
+            <button
+              onClick={handleOpenFolder}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium hover:bg-white/60 dark:hover:bg-gray-700/60 rounded-lg transition-all text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 truncate max-w-full"
+              title={projectName ? `Project: ${projectName}` : "Open Project or Folder"}
+            >
+              <FolderOpen size={16} className="flex-shrink-0" />
+              <span className="truncate">
+                {projectName || 'Open Project or Folder'}
+              </span>
+            </button>
+          ) : (
+            <button
+              onClick={handleNewChat}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium hover:bg-white/60 dark:hover:bg-gray-700/60 rounded-lg transition-all text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400"
+              title="New Chat"
+            >
+              <MessageSquarePlus size={16} />
+              <span>New Chat</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Icon Row - Tab-dependent buttons */}
-      <div className="flex items-center justify-center gap-2 py-2 border-b border-gray-200 dark:border-gray-700">
-        {activeTab === 'files' ? (
+      {activeTab !== 'agent' && (
+        <div className="flex items-center justify-center gap-2 py-2 border-b border-gray-200 dark:border-gray-700">
+          {activeTab === 'files' ? (
           <>
             {/* Code Tab: 4 buttons */}
             <button
@@ -212,7 +240,8 @@ export function CodeSidebar({ onFileSelect, selectedFile, onOpenLibrary, onOpenS
             </button>
           </>
         )}
-      </div>
+        </div>
+      )}
 
       {/* Tab Content */}
       <div className="flex-1 overflow-hidden">
@@ -229,6 +258,9 @@ export function CodeSidebar({ onFileSelect, selectedFile, onOpenLibrary, onOpenS
           <div className={chatView === 'git' ? '' : 'hidden'}>
             <GitRepository />
           </div>
+        </div>
+        <div className={activeTab === 'agent' ? '' : 'hidden'}>
+          <AgentSessionsPanel />
         </div>
       </div>
     </div>

@@ -234,7 +234,10 @@ export function WorkflowDesigner({ workflowId, onSave, onCancel }: WorkflowDesig
       {/* Analytics View */}
       {workflowId && activeView === 'analytics' ? (
         <div className="flex-1 min-h-0">
-          <WorkflowAnalytics workflowId={workflowId} />
+          <WorkflowAnalytics
+            workflowId={workflowId}
+            onSwitchToDesign={() => setActiveView('design')}
+          />
         </div>
       ) : (
         /* Design View */

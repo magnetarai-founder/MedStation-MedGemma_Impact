@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { AlertCircle, Bot, CheckCircle, XCircle, AlertTriangle, Clock, FileCode, Zap, Loader2 } from 'lucide-react';
+import { AlertCircle, Bot, CheckCircle, XCircle, AlertTriangle, Clock, FileCode, Zap, Loader2, ExternalLink } from 'lucide-react';
 import type {
   WorkItem,
   Stage,
@@ -351,12 +351,20 @@ export function AgentAssistPanel({ workItem, stage, onRefresh }: AgentAssistPane
                 )}
                 <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
                   {agentEvent.session_id && (
-                    <span>Session: {agentEvent.session_id.slice(0, 8)}</span>
+                    <div className="flex items-center gap-1 text-blue-400">
+                      <ExternalLink className="w-3 h-3" />
+                      <span className="font-medium">Session: {agentEvent.session_id.slice(0, 12)}</span>
+                    </div>
                   )}
                   {agentEvent.engine_used && (
                     <span>Engine: {agentEvent.engine_used}</span>
                   )}
                 </div>
+                {agentEvent.session_id && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    View this session in the Agent tab to see full context
+                  </p>
+                )}
               </div>
             </div>
           )}

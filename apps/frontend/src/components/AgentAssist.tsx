@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Wand2, CheckCircle, AlertCircle, Info, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
 import { api } from '../lib/api'
+import { useAgentSessionsStore } from '../stores/agentSessionsStore'
 
 interface AgentAssistProps {
   workspaceRoot?: string
@@ -21,6 +22,9 @@ interface FilePatch {
 }
 
 export function AgentAssist({ workspaceRoot, sessionId, openFiles = [] }: AgentAssistProps) {
+  const { activeSessionId } = useAgentSessionsStore()
+  const effectiveSessionId = sessionId || activeSessionId || undefined
+
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [plan, setPlan] = useState<{
@@ -70,16 +74,18 @@ export function AgentAssist({ workspaceRoot, sessionId, openFiles = [] }: AgentA
     try {
       // Get context first
       const context = await api.agentContext({
-        sessionId,
+        sessionId: effectiveSessionId,
         repoRoot: workspaceRoot,
         openFiles
       })
 
       // Generate plan
-      const planResult = await api.agentPlan({
-        input: input.trim(),
-        contextBundle: context
-      })
+      const planResult = await api.agentPlan(
+        input.trim(),
+        context,
+        undefined,
+        effectiveSessionId
+      )
 
       setPlan(planResult)
     } catch (err: any) {
@@ -100,7 +106,8 @@ export function AgentAssist({ workspaceRoot, sessionId, openFiles = [] }: AgentA
       const result = await api.agentApply({
         input: input.trim(),
         repoRoot: workspaceRoot,
-        dryRun
+        dryRun,
+        sessionId: effectiveSessionId
       })
 
       if (result.success) {
@@ -165,6 +172,33 @@ export function AgentAssist({ workspaceRoot, sessionId, openFiles = [] }: AgentA
               </div>
             </div>
           )}
+
+          {/* Active Session Indicator */}
+          <div className="bg-blue-50 border border-blue-200 rounded p-2 text-xs">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Info className="w-3 h-3 text-blue-600" />
+                <span className="text-blue-900 font-medium">
+                  Agent Session: {effectiveSessionId ? effectiveSessionId.substring(0, 12) : 'None'}
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  // Navigate to Agent tab in Code sidebar
+                  const event = new CustomEvent('open-agent-sessions')
+                  window.dispatchEvent(event)
+                }}
+                className="text-blue-600 hover:text-blue-800 underline"
+              >
+                {effectiveSessionId ? 'View' : 'Create'}
+              </button>
+            </div>
+            {!effectiveSessionId && (
+              <p className="text-blue-700 mt-1">
+                Create a session to track workspace context across agent operations
+              </p>
+            )}
+          </div>
 
           {/* Input */}
           <div>

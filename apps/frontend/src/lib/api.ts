@@ -368,7 +368,7 @@ class NeutronAPI {
   }
 
   // Agent Orchestrator endpoints
-  async agentRoute(input: string, cwd?: string, repoRoot?: string): Promise<{
+  async agentRoute(input: string, cwd?: string, repoRoot?: string, sessionId?: string): Promise<{
     intent: string
     confidence: number
     model_hint?: string
@@ -377,12 +377,13 @@ class NeutronAPI {
     const { data } = await this.client.post('/v1/agent/route', {
       input,
       cwd,
-      repo_root: repoRoot
+      repo_root: repoRoot,
+      session_id: sessionId
     })
     return data
   }
 
-  async agentPlan(input: string, contextBundle?: any, model?: string): Promise<{
+  async agentPlan(input: string, contextBundle?: any, model?: string, sessionId?: string): Promise<{
     steps: Array<{
       description: string
       risk_level: string
@@ -396,7 +397,8 @@ class NeutronAPI {
     const { data } = await this.client.post('/v1/agent/plan', {
       input,
       context_bundle: contextBundle,
-      model
+      model,
+      session_id: sessionId
     })
     return data
   }
@@ -442,6 +444,7 @@ class NeutronAPI {
     repoRoot?: string
     model?: string
     dryRun?: boolean
+    sessionId?: string
   }): Promise<{
     success: boolean
     patches: Array<{
@@ -457,7 +460,8 @@ class NeutronAPI {
       input: params.input,
       repo_root: params.repoRoot,
       model: params.model,
-      dry_run: params.dryRun || false
+      dry_run: params.dryRun || false,
+      session_id: params.sessionId
     })
     return data
   }

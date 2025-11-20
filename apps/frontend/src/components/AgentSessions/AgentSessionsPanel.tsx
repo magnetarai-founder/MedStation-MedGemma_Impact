@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useState } from 'react'
-import { Plus, X, AlertCircle, Loader2, FolderOpen, CheckCircle2, Info, HelpCircle } from 'lucide-react'
+import { Plus, X, AlertCircle, Loader2, FolderOpen, CheckCircle2, Info, HelpCircle, ExternalLink } from 'lucide-react'
 import { useAgentSessionsStore } from '@/stores/agentSessionsStore'
 import type { AgentSession } from '@/types/agentSession'
 
@@ -116,8 +116,9 @@ export function AgentSessionsPanel() {
             )}
 
             {session.attached_work_item_id && (
-              <div className="mt-1 text-xs text-blue-600 dark:text-blue-400">
-                Work Item: {session.attached_work_item_id.substring(0, 8)}
+              <div className="mt-2 flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
+                <ExternalLink className="w-3 h-3" />
+                <span className="font-medium">Linked Work Item: {session.attached_work_item_id.substring(0, 12)}</span>
               </div>
             )}
           </div>

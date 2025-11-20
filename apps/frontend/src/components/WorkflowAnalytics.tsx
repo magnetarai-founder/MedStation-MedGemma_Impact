@@ -3,12 +3,13 @@
  * Displays comprehensive analytics for a workflow
  */
 
-import { TrendingUp, Clock, CheckCircle, XCircle, Loader2, AlertCircle, BarChart3, PlayCircle } from 'lucide-react'
+import { TrendingUp, Clock, CheckCircle, XCircle, Loader2, AlertCircle, BarChart3, PlayCircle, Settings } from 'lucide-react'
 import { useWorkflowAnalytics } from '@/hooks/useWorkflowQueue'
 import type { WorkflowAnalytics as AnalyticsType, WorkflowStageAnalytics } from '@/types/workflow'
 
 interface WorkflowAnalyticsProps {
   workflowId: string
+  onSwitchToDesign?: () => void
 }
 
 // Format seconds into human-readable duration
@@ -31,7 +32,7 @@ function formatDuration(seconds: number | null): string {
   return parts.length > 0 ? parts.join(' ') : '—'
 }
 
-export function WorkflowAnalytics({ workflowId }: WorkflowAnalyticsProps) {
+export function WorkflowAnalytics({ workflowId, onSwitchToDesign }: WorkflowAnalyticsProps) {
   const { data: analytics, isLoading, error, refetch } = useWorkflowAnalytics(workflowId)
 
   // Loading state
@@ -91,15 +92,28 @@ export function WorkflowAnalytics({ workflowId }: WorkflowAnalyticsProps) {
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <div className="mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-            Workflow Analytics
-          </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-            {analytics.workflow_name}
-          </p>
-          <p className="text-xs text-gray-500 dark:text-gray-500">
-            These metrics summarize how work items flow through this workflow over time. They help you spot bottlenecks and slow stages.
-          </p>
+          <div className="flex items-start justify-between mb-2">
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                Workflow Analytics
+              </h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                {analytics.workflow_name}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-500">
+                These metrics summarize how work items flow through this workflow over time. They help you spot bottlenecks and slow stages.
+              </p>
+            </div>
+            {onSwitchToDesign && (
+              <button
+                onClick={onSwitchToDesign}
+                className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors text-sm font-medium"
+              >
+                <Settings className="w-4 h-4" />
+                Adjust this workflow
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Overall Metrics Cards */}
