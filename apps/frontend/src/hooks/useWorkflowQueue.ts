@@ -11,6 +11,7 @@ import type {
   WorkItemPriority,
   CreateWorkItemRequest,
   CompleteStageRequest,
+  WorkflowAnalytics,
 } from '../types/workflow';
 
 // Use relative base so it works with any backend port and in production
@@ -396,5 +397,103 @@ export function useUnstarWorkflow() {
       queryClient.invalidateQueries({ queryKey: ['starredWorkflows'] });
       queryClient.invalidateQueries({ queryKey: ['workflows'] });
     },
+  });
+}
+
+// ============================================
+// WORKFLOW TEMPLATES (Phase D)
+// ============================================
+
+/**
+ * Fetch all workflow templates
+ */
+export function useWorkflowTemplates(filters?: { category?: string; team_id?: string }) {
+  return useQuery({
+    queryKey: ['workflowTemplates', filters],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (filters?.category) params.append('category', filters.category);
+      if (filters?.team_id) params.append('team_id', filters.team_id);
+
+      const res = await fetch(`${API_BASE}/templates?${params}`, { headers: { ...authHeaders() } });
+      if (!res.ok) throw new Error('Failed to fetch workflow templates');
+      return res.json() as Promise<Workflow[]>;
+    },
+  });
+}
+
+/**
+ * Fetch a specific workflow template by ID
+ */
+export function useWorkflowTemplate(templateId: string) {
+  return useQuery({
+    queryKey: ['workflowTemplate', templateId],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/templates/${templateId}`, { headers: { ...authHeaders() } });
+      if (!res.ok) throw new Error('Failed to fetch workflow template');
+      return res.json() as Promise<Workflow>;
+    },
+    enabled: !!templateId,
+  });
+}
+
+/**
+ * Instantiate a workflow from a template
+ */
+export function useInstantiateTemplate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      templateId,
+      name,
+      description,
+      team_id,
+    }: {
+      templateId: string;
+      name?: string;
+      description?: string;
+      team_id?: string;
+    }) => {
+      const res = await fetch(`${API_BASE}/templates/${templateId}/instantiate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({
+          name,
+          description,
+          team_id,
+        }),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.detail || 'Failed to instantiate template');
+      }
+
+      return res.json() as Promise<Workflow>;
+    },
+    onSuccess: () => {
+      // Invalidate workflows list so new workflow appears
+      queryClient.invalidateQueries({ queryKey: ['workflows'] });
+    },
+  });
+}
+
+// ============================================
+// WORKFLOW ANALYTICS (Phase D)
+// ============================================
+
+/**
+ * Fetch workflow analytics
+ */
+export function useWorkflowAnalytics(workflowId: string) {
+  return useQuery({
+    queryKey: ['workflowAnalytics', workflowId],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/analytics/${workflowId}`, { headers: { ...authHeaders() } });
+      if (!res.ok) throw new Error('Failed to fetch workflow analytics');
+      return res.json() as Promise<WorkflowAnalytics>;
+    },
+    enabled: !!workflowId,
   });
 }

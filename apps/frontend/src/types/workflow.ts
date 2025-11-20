@@ -23,6 +23,7 @@ export enum StageType {
   HYBRID = 'hybrid',
   AI = 'ai',
   APPROVAL = 'approval',
+  AGENT_ASSIST = 'agent_assist',  // Phase B: AI agent provides suggestions
 }
 
 export enum WorkItemStatus {
@@ -250,6 +251,7 @@ export interface Workflow {
   enabled?: boolean
   allow_manual_creation?: boolean
   require_approval_to_start?: boolean
+  is_template?: boolean  // Phase D: Template workflow for instantiation
 
   // Metadata
   created_by: string
@@ -407,9 +409,32 @@ export interface UserRoleAssignment {
 }
 
 // ============================================
-// ANALYTICS & METRICS
+// ANALYTICS & METRICS (Phase D)
 // ============================================
 
+export interface WorkflowStageAnalytics {
+  stage_id: string
+  stage_name: string
+  entered_count: number
+  completed_count: number
+  avg_time_seconds: number | null
+  median_time_seconds: number | null
+}
+
+export interface WorkflowAnalytics {
+  workflow_id: string
+  workflow_name: string
+  total_items: number
+  completed_items: number
+  in_progress_items: number
+  cancelled_items: number
+  failed_items: number
+  average_cycle_time_seconds: number | null
+  median_cycle_time_seconds: number | null
+  stages: WorkflowStageAnalytics[]
+}
+
+// Legacy types (kept for backward compatibility)
 export interface WorkflowMetrics {
   workflow_id: string
   workflow_name: string

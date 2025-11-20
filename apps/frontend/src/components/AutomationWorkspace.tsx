@@ -13,6 +13,7 @@ import { WorkflowDesigner } from './WorkflowDesigner'
 import { WorkflowQueue } from './WorkflowQueue'
 import { ActiveWorkItem } from './ActiveWorkItem'
 import { WorkflowStatusTracker } from './WorkflowStatusTracker'
+import { TemplatesList } from './WorkflowTemplates/TemplatesList'
 import { useUserStore } from '@/stores/userStore'
 import type { Workflow, WorkItem } from '@/types/workflow'
 
@@ -26,7 +27,7 @@ export function AutomationWorkspace() {
   })
 
   // Current view state
-  const [currentView, setCurrentView] = useState<'dashboard' | 'designer' | 'queue' | 'tracker'>('dashboard')
+  const [currentView, setCurrentView] = useState<'dashboard' | 'designer' | 'queue' | 'tracker' | 'templates'>('dashboard')
   const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null)
   const [selectedWorkItem, setSelectedWorkItem] = useState<WorkItem | null>(null)
 
@@ -62,6 +63,7 @@ export function AutomationWorkspace() {
           automationType={automationType}
           onWorkflowSelect={handleWorkflowSelect}
           onCreateWorkflow={handleCreateWorkflow}
+          onViewTemplates={() => setCurrentView('templates')}
         />
       )
     }
@@ -121,6 +123,20 @@ export function AutomationWorkspace() {
       )
     }
 
+    // Templates view (Phase D)
+    if (currentView === 'templates') {
+      return (
+        <TemplatesList
+          automationType={automationType}
+          onTemplateInstantiated={(workflow) => {
+            // Navigate to the newly created workflow in designer
+            setSelectedWorkflow(workflow)
+            setCurrentView('designer')
+          }}
+        />
+      )
+    }
+
     return null
   }
 
@@ -135,6 +151,12 @@ export function AutomationWorkspace() {
               className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 rounded-md transition-colors"
             >
               Dashboard
+            </button>
+            <button
+              onClick={() => setCurrentView('templates')}
+              className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 rounded-md transition-colors"
+            >
+              Templates
             </button>
             <button
               onClick={() => setCurrentView('queue')}

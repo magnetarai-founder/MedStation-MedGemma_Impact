@@ -7,7 +7,7 @@
  * - Centered Create button
  */
 
-import { Plus, Star, Clock, Zap, Users } from 'lucide-react'
+import { Plus, Star, Clock, Zap, Users, Layers } from 'lucide-react'
 import { useWorkflows, useStarredWorkflows, useStarWorkflow, useUnstarWorkflow } from '@/hooks/useWorkflowQueue'
 import type { Workflow } from '@/types/workflow'
 import type { AutomationType } from './AutomationWorkspace'
@@ -16,12 +16,14 @@ interface WorkflowDashboardProps {
   automationType: AutomationType
   onWorkflowSelect: (workflow: Workflow) => void
   onCreateWorkflow: () => void
+  onViewTemplates?: () => void
 }
 
 export function WorkflowDashboard({
   automationType,
   onWorkflowSelect,
-  onCreateWorkflow
+  onCreateWorkflow,
+  onViewTemplates
 }: WorkflowDashboardProps) {
   // Fetch workflows from backend filtered by type
   const { data: workflows = [], isLoading } = useWorkflows({ workflow_type: automationType })
@@ -107,9 +109,17 @@ export function WorkflowDashboard({
                       <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                     </button>
                   </div>
-                  <h3 className="font-medium text-sm text-gray-900 dark:text-gray-100 mb-1 truncate">
-                    {workflow.name}
-                  </h3>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate flex-1">
+                      {workflow.name}
+                    </h3>
+                    {workflow.is_template && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 text-[10px] font-medium rounded">
+                        <Layers className="w-2.5 h-2.5" />
+                        TEMPLATE
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
                     {workflow.description}
                   </p>
@@ -149,9 +159,17 @@ export function WorkflowDashboard({
                       <Star className="w-4 h-4 text-gray-400 hover:text-yellow-400" />
                     </button>
                   </div>
-                  <h3 className="font-medium text-sm text-gray-900 dark:text-gray-100 mb-1 truncate">
-                    {workflow.name}
-                  </h3>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate flex-1">
+                      {workflow.name}
+                    </h3>
+                    {workflow.is_template && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 text-[10px] font-medium rounded">
+                        <Layers className="w-2.5 h-2.5" />
+                        TEMPLATE
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
                     {workflow.description}
                   </p>
@@ -161,8 +179,8 @@ export function WorkflowDashboard({
           </div>
         )}
 
-        {/* Create Button - Centered */}
-        <div className="flex items-center justify-center pt-8">
+        {/* Action Buttons - Centered */}
+        <div className="flex items-center justify-center gap-4 pt-8">
           <button
             onClick={onCreateWorkflow}
             className={`flex items-center gap-3 px-6 py-4 bg-${typeColor}-600 hover:bg-${typeColor}-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all font-medium text-lg`}
@@ -170,6 +188,16 @@ export function WorkflowDashboard({
             <Plus className="w-6 h-6" />
             <span>Create {automationType === 'local' ? 'Automation' : 'Workflow'}</span>
           </button>
+
+          {onViewTemplates && (
+            <button
+              onClick={onViewTemplates}
+              className="flex items-center gap-3 px-6 py-4 border-2 border-amber-500 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-xl shadow-lg hover:shadow-xl transition-all font-medium text-lg"
+            >
+              <Layers className="w-6 h-6" />
+              <span>Browse Templates</span>
+            </button>
+          )}
         </div>
 
         {/* Empty State */}

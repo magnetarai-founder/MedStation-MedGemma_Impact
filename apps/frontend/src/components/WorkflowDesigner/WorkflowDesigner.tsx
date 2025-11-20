@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Plus, Save, Settings, Trash2, FileText, GitBranch, Loader2, X } from 'lucide-react';
+import { Plus, Save, Settings, Trash2, FileText, GitBranch, Loader2, X, BarChart3 } from 'lucide-react';
 import type {
   Workflow,
   Stage,
@@ -17,6 +17,7 @@ import type {
 import { useCreateWorkflow } from '../../hooks/useWorkflowQueue';
 import { StageEditor } from './StageEditor';
 import { StageList } from './StageList';
+import { WorkflowAnalytics } from '../WorkflowAnalytics';
 
 interface WorkflowDesignerProps {
   workflowId?: string; // For editing existing workflow
@@ -37,6 +38,9 @@ export function WorkflowDesigner({ workflowId, onSave, onCancel }: WorkflowDesig
   const [triggers, setTriggers] = useState<{ trigger_type: WorkflowTriggerType; enabled: boolean }[]>([
     { trigger_type: 'manual', enabled: true },
   ]);
+
+  // View state - only show tabs if editing existing workflow
+  const [activeView, setActiveView] = useState<'design' | 'analytics'>('design');
 
   const createWorkflowMutation = useCreateWorkflow();
 
@@ -198,9 +202,45 @@ export function WorkflowDesigner({ workflowId, onSave, onCancel }: WorkflowDesig
   // ============================================
 
   return (
-    <div className="flex h-full bg-[#0a0a0a] text-white">
-      {/* Left Sidebar - Workflow Properties */}
-      <div className="w-80 border-r border-gray-800 flex flex-col">
+    <div className="flex flex-col h-full bg-[#0a0a0a] text-white">
+      {/* View Tabs - Only show if editing existing workflow */}
+      {workflowId && (
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-800 bg-gray-900/50">
+          <button
+            onClick={() => setActiveView('design')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              activeView === 'design'
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-400 hover:text-white hover:bg-gray-800'
+            }`}
+          >
+            <FileText className="w-4 h-4 inline-block mr-2" />
+            Design
+          </button>
+          <button
+            onClick={() => setActiveView('analytics')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              activeView === 'analytics'
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-400 hover:text-white hover:bg-gray-800'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4 inline-block mr-2" />
+            Analytics
+          </button>
+        </div>
+      )}
+
+      {/* Analytics View */}
+      {workflowId && activeView === 'analytics' ? (
+        <div className="flex-1 min-h-0">
+          <WorkflowAnalytics workflowId={workflowId} />
+        </div>
+      ) : (
+        /* Design View */
+        <div className="flex flex-1 min-h-0">
+          {/* Left Sidebar - Workflow Properties */}
+          <div className="w-80 border-r border-gray-800 flex flex-col">
         <div className="p-4 border-b border-gray-800">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">Workflow Properties</h2>
@@ -344,6 +384,8 @@ export function WorkflowDesigner({ workflowId, onSave, onCancel }: WorkflowDesig
           </div>
         )}
       </div>
+        </div>
+      )}
     </div>
   );
 }
