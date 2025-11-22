@@ -2,7 +2,7 @@
 
 **Status:** Planning  
 **Scope:** New agent engines, opinionated stage types, high‑quality global templates, and richer automation paths on top of the existing Agent ↔ Workflow system.  
-**Audience:** You / future maintainers designing and implementing advanced automation features in ElohimOS.
+**Audience:** You / future maintainers designing and implementing advanced automation features in MagnetarStudio.
 
 This roadmap assumes the current foundation is in place:
 

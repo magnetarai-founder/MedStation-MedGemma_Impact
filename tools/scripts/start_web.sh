@@ -1,20 +1,23 @@
 #!/bin/bash
-# ElohimOS Startup Script
+# MagnetarStudio Startup Script
 # Clean, minimal, production-grade
 
 set -e  # Exit on error
 
 # macOS-only check
 if [[ "$(uname -s)" != "Darwin" ]]; then
-    echo "❌ ElohimOS requires macOS"
+    echo "❌ MagnetarStudio requires macOS"
     exit 1
 fi
 
-# Set development environment
-export ELOHIM_ENV=development
-export ELOHIM_JWT_SECRET="dev_secret_do_not_use_in_production_12345678"
+# Set development environment (MagnetarStudio with Elohim compatibility)
+export MAGNETAR_ENV="${MAGNETAR_ENV:-${ELOHIM_ENV:-development}}"
+export MAGNETAR_JWT_SECRET="${MAGNETAR_JWT_SECRET:-${ELOHIM_JWT_SECRET:-dev_secret_do_not_use_in_production_12345678}}"
+# Keep legacy names for compatibility
+export ELOHIM_ENV="${ELOHIM_ENV:-$MAGNETAR_ENV}"
+export ELOHIM_JWT_SECRET="${ELOHIM_JWT_SECRET:-$MAGNETAR_JWT_SECRET}"
 
-echo "🚀 Starting ElohimOS..."
+echo "🚀 Starting MagnetarStudio..."
 
 # Find Python
 PYTHON_CMD=""
@@ -84,7 +87,7 @@ cd ../..
 # Wait for frontend
 sleep 2
 
-echo "✓ ElohimOS running"
+echo "✓ MagnetarStudio running"
 echo "  Backend:  http://localhost:8000"
 echo "  Frontend: http://localhost:4200"
 echo ""

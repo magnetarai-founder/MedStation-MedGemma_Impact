@@ -110,7 +110,7 @@ export function MedicalDisclaimerModal({
                 Not Medical Advice
               </h3>
               <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                The information provided by ElohimOS, including AI-generated insights, is for
+                The information provided by MagnetarStudio, including AI-generated insights, is for
                 <strong> educational and informational purposes only</strong>. It is not intended
                 to be a substitute for professional medical advice, diagnosis, or treatment.
               </p>
@@ -162,7 +162,7 @@ export function MedicalDisclaimerModal({
                 No Doctor-Patient Relationship
               </h3>
               <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                Use of this application does not create a doctor-patient relationship. ElohimOS
+                Use of this application does not create a doctor-patient relationship. MagnetarStudio
                 and its AI features are not a substitute for professional medical care, and no
                 warranties or guarantees are made regarding the accuracy or completeness of
                 health-related information.
@@ -174,9 +174,9 @@ export function MedicalDisclaimerModal({
           <div className="mb-6 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
             <p className="text-xs text-blue-800 dark:text-blue-300 leading-relaxed">
               <strong>Legal Notice:</strong> By accepting this disclaimer, you acknowledge that
-              you have read and understood these terms. You agree to use ElohimOS's health insights
+              you have read and understood these terms. You agree to use MagnetarStudio's health insights
               at your own risk and will consult with appropriate healthcare professionals for all
-              medical decisions. ElohimOS, its developers, and affiliates assume no liability for
+              medical decisions. MagnetarStudio, its developers, and affiliates assume no liability for
               any decisions made based on AI-generated information.
             </p>
           </div>

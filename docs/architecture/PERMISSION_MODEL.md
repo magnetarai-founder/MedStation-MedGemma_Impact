@@ -1,4 +1,4 @@
-# ElohimOS Permission Model
+# MagnetarStudio Permission Model
 
 **Version**: 1.0
 **Last Updated**: 2025-11-12
@@ -6,7 +6,7 @@
 
 ## Overview
 
-ElohimOS uses a **Salesforce-style RBAC (Role-Based Access Control)** permission engine with:
+MagnetarStudio uses a **Salesforce-style RBAC (Role-Based Access Control)** permission engine with:
 
 - **Role-based baselines** (founder_rights, super_admin, admin, member, guest)
 - **Permission profiles** (reusable role-based permission bundles)

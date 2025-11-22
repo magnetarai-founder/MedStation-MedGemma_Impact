@@ -55,7 +55,7 @@ export function BackupCodes({ onGenerate }: BackupCodesProps) {
 
   async function downloadCodes() {
     const text = [
-      'ElohimOS Vault Backup Codes',
+      'MagnetarStudio Vault Backup Codes',
       '============================',
       '',
       'Save these codes securely. Each code can be used once to access your vault.',
@@ -66,7 +66,7 @@ export function BackupCodes({ onGenerate }: BackupCodesProps) {
       ...codes.map((code, i) => `${i + 1}.  ${code}`),
       '',
       '============================',
-      'ElohimOS - Secure Field Intelligence Platform',
+      'MagnetarStudio - Secure Field Intelligence Platform',
     ].join('\n')
 
     const blob = new Blob([text], { type: 'text/plain' })
@@ -74,7 +74,7 @@ export function BackupCodes({ onGenerate }: BackupCodesProps) {
 
     const a = document.createElement('a')
     a.href = url
-    a.download = `elohimos-backup-codes-${Date.now()}.txt`
+    a.download = `magnetarstudio-backup-codes-${Date.now()}.txt`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)

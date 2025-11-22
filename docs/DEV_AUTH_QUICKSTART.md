@@ -17,7 +17,7 @@ In repo root create `.env` (or export vars) with at least:
 ```bash
 ELOHIM_ENV=development
 # optional but recommended:
-# ELOHIM_FOUNDER_PASSWORD=ElohimOS_2024_Founder
+# ELOHIM_FOUNDER_PASSWORD=MagnetarStudio_2024_Founder
 # ELOHIMOS_JWT_SECRET_KEY=some-long-random-string
 ```
 
@@ -41,7 +41,7 @@ ELOHIM_ENV=development python -m uvicorn api.main:app --reload
 
 - Open http://localhost:4200
 - Use either:
-  - **Founder**: `elohim_founder` / `ElohimOS_2024_Founder` (dev default), or
+  - **Founder**: `elohim_founder` / `MagnetarStudio_2024_Founder` (dev default), or
   - Click **"Create account"** and register a normal user
 - After login, `auth_token` is stored in `localStorage` and 401 spam stops
 

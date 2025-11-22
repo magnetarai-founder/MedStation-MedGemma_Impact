@@ -5,7 +5,7 @@
 
 ## Overview
 
-ElohimOS uses a consolidated auth database schema managed through an explicit migration system. All authentication, authorization, and permissions data lives in `elohimos_app.db` (or `auth.db` in legacy deployments).
+MagnetarStudio uses a consolidated auth database schema managed through an explicit migration system. All authentication, authorization, and permissions data lives in `elohimos_app.db` (or `auth.db` in legacy deployments).
 
 **Key Principles**:
 - **Offline-first**: Single-device SQLite database with WAL mode
@@ -396,7 +396,7 @@ conn.close()
 
 ## Update Safety (AUTH-P6)
 
-ElohimOS update mechanism uses the migration system to ensure auth data survives updates:
+MagnetarStudio update mechanism uses the migration system to ensure auth data survives updates:
 
 **Update Flow**:
 1. New code deployed (via git pull or update client)

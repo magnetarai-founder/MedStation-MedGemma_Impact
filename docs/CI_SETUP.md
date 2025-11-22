@@ -2,7 +2,7 @@
 
 ## Overview
 
-ElohimOS uses GitHub Actions for continuous integration, ensuring code quality on every push and pull request.
+MagnetarStudio uses GitHub Actions for continuous integration, ensuring code quality on every push and pull request.
 
 ## Workflows
 
@@ -81,7 +81,7 @@ npm run lint
 
 ## E2E Smoke Tests
 
-ElohimOS includes end-to-end smoke tests that validate the complete Agent + Workflow integration path. These tests run as part of the standard backend test suite.
+MagnetarStudio includes end-to-end smoke tests that validate the complete Agent + Workflow integration path. These tests run as part of the standard backend test suite.
 
 ### Test Suite: `apps/backend/tests/test_e2e_agent_workflow_smoke.py`
 

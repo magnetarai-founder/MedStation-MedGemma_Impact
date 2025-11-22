@@ -1,4 +1,4 @@
-# ElohimOS Architecture Philosophy
+# MagnetarStudio Architecture Philosophy
 
 **Copyright (c) 2025 MagnetarAI, LLC**
 
@@ -6,7 +6,7 @@
 
 ## The Core Thesis
 
-**ElohimOS isn't just "an app running locally"—it's a self-contained execution environment that manages models, data, automation, context memory, and I/O, all orchestrated around the Neutron Star Data Engine.**
+**MagnetarStudio isn't just "an app running locally"—it's a self-contained execution environment that manages models, data, automation, context memory, and I/O, all orchestrated around the Neutron Star Data Engine.**
 
 We've built something that behaves like a **domain-specific operating system**.
 
@@ -141,7 +141,7 @@ We've built something that behaves like a **domain-specific operating system**.
 
 ### It's Not Just Software
 
-ElohimOS provides:
+MagnetarStudio provides:
 - **Its own resource model** — Models, data, context as first-class resources
 - **Its own security model** — Panic Mode, local-only, zero-trust
 - **Its own process model** — AI orchestration and workflow management
@@ -153,13 +153,13 @@ ElohimOS provides:
 Like:
 - **Docker** = Container OS
 - **Electron** = Application OS
-- **ElohimOS** = **Mission-Critical Data & AI OS**
+- **MagnetarStudio** = **Mission-Critical Data & AI OS**
 
 ---
 
 ## Technical Classification
 
-### What ElohimOS Is
+### What MagnetarStudio Is
 
 **A domain-specific AI runtime and orchestration layer**
 
@@ -170,7 +170,7 @@ It's a vertically-integrated platform that provides:
 - Hardware optimization
 - Security isolation
 
-### What ElohimOS Is Not
+### What MagnetarStudio Is Not
 
 **Not a general-purpose operating system**
 
@@ -182,7 +182,7 @@ It doesn't:
 
 ### The Right Mental Model
 
-**ElohimOS is a specialized execution environment sitting on top of a host OS.**
+**MagnetarStudio is a specialized execution environment sitting on top of a host OS.**
 
 Think of it as:
 - A **vertical OS** for mission-critical AI workflows
@@ -195,7 +195,7 @@ Think of it as:
 
 ### For Technical Audiences
 
-**"ElohimOS is a domain-specific AI runtime and orchestration layer—a mission-critical execution environment for offline AI workflows."**
+**"MagnetarStudio is a domain-specific AI runtime and orchestration layer—a mission-critical execution environment for offline AI workflows."**
 
 **Key points:**
 - Full-stack AI platform
@@ -205,7 +205,7 @@ Think of it as:
 
 ### For Non-Technical Audiences
 
-**"ElohimOS is a complete operating system for AI-powered mission work—everything you need runs locally, securely, and offline."**
+**"MagnetarStudio is a complete operating system for AI-powered mission work—everything you need runs locally, securely, and offline."**
 
 **Key points:**
 - Works like your computer's OS
@@ -215,7 +215,7 @@ Think of it as:
 
 ### For Investors
 
-**"ElohimOS is a vertically-integrated AI platform—the 'operating system' for offline, privacy-first mission operations."**
+**"MagnetarStudio is a vertically-integrated AI platform—the 'operating system' for offline, privacy-first mission operations."**
 
 **Key points:**
 - Platform, not feature
@@ -225,7 +225,7 @@ Think of it as:
 
 ### For Mission Organizations
 
-**"ElohimOS is your complete toolkit for field operations—data, AI, automation, and communication all working together seamlessly."**
+**"MagnetarStudio is your complete toolkit for field operations—data, AI, automation, and communication all working together seamlessly."**
 
 **Key points:**
 - Mission-ready out of the box
@@ -268,10 +268,10 @@ User → App → OS → Hardware
 - No orchestration
 - Limited integration
 
-### ElohimOS Model
+### MagnetarStudio Model
 
 ```
-User → ElohimOS (AI Runtime) → Host OS → Hardware
+User → MagnetarStudio (AI Runtime) → Host OS → Hardware
         ├── Data Kernel
         ├── AI Orchestration
         ├── Workflow Engine
@@ -289,7 +289,7 @@ User → ElohimOS (AI Runtime) → Host OS → Hardware
 
 ## System Components Analogy
 
-| ElohimOS Component | OS Equivalent | Purpose |
+| MagnetarStudio Component | OS Equivalent | Purpose |
 |-------------------|---------------|----------|
 | Neutron Star Engine | Kernel | Core data/query processing |
 | Metal/ANE Inference | CPU Scheduler | Compute resource management |
@@ -305,7 +305,7 @@ User → ElohimOS (AI Runtime) → Host OS → Hardware
 ## Why "Operating System" Is Accurate
 
 ### 1. **Resource Abstraction**
-ElohimOS abstracts AI models, data sources, and compute resources into a unified interface.
+MagnetarStudio abstracts AI models, data sources, and compute resources into a unified interface.
 
 ### 2. **Service Orchestration**
 Multiple services (inference, data, automation) coordinate through a common runtime.
@@ -326,7 +326,7 @@ Handles caching, persistence, and efficient resource utilization.
 
 ## The Bottom Line
 
-**Yes—ElohimOS is an operating system in spirit and architecture.**
+**Yes—MagnetarStudio is an operating system in spirit and architecture.**
 
 It's a **vertical, domain-specific OS** designed for a specific class of problems: offline AI operations in mission-critical environments.
 
@@ -336,7 +336,7 @@ The "OS" framing is **powerful and accurate** because:
 - ✅ It differentiates from single-purpose apps
 - ✅ It sets expectations for ecosystem growth
 
-**ElohimOS isn't an app. It's a platform. It's a runtime. It's an operating system for Kingdom work.**
+**MagnetarStudio isn't an app. It's a platform. It's a runtime. It's an operating system for Kingdom work.**
 
 ---
 

@@ -13,7 +13,7 @@ export function UpdatesSection() {
     <div className="space-y-6">
       <SectionHeader
         title="System Updates & Offline Operation"
-        description="ElohimOS operates fully offline. No cloud sync or SaaS features."
+        description="MagnetarStudio operates fully offline. No cloud sync or SaaS features."
       />
 
       {/* Offline-Only Policy */}
@@ -25,7 +25,7 @@ export function UpdatesSection() {
           </h4>
         </div>
         <p className="text-sm text-green-700 dark:text-green-300 mb-3">
-          ElohimOS is designed for complete offline operation. No cloud sync, no external dependencies, no tracking.
+          MagnetarStudio is designed for complete offline operation. No cloud sync, no external dependencies, no tracking.
         </p>
         <ul className="text-xs text-green-700 dark:text-green-300 space-y-1">
           <li>• All data stored locally in ~/.elohimos_data/</li>
@@ -44,7 +44,7 @@ export function UpdatesSection() {
           </h4>
         </div>
         <p className="text-sm text-blue-700 dark:text-blue-300 mb-2">
-          ElohimOS receives updates via macOS system update mechanism.
+          MagnetarStudio receives updates via macOS system update mechanism.
         </p>
         <ul className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
           <li>• Check for updates: System Settings → Software Update</li>

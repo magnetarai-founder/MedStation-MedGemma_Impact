@@ -1,7 +1,7 @@
 /**
  * Welcome Screen
  *
- * Entry point for ElohimOS shown before authentication.
+ * Entry point for MagnetarStudio shown before authentication.
  * Routes to Login, Sign Up, or Founder Login flows.
  *
  * "Trust in the Lord with all your heart" - Proverbs 3:5
@@ -48,7 +48,7 @@ export function WelcomeScreen({ onLoginSuccess }: WelcomeScreenProps) {
             <Shield className="w-12 h-12 text-white" />
           </div>
           <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-            ElohimOS
+            MagnetarStudio
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
             Equipping the global Church with AI
@@ -168,7 +168,7 @@ function FounderLogin({ onBack, onLoginSuccess }: FounderLoginProps) {
 
       if (!response.ok) {
         const data = await response.json()
-        // Handle ElohimOS error response format
+        // Handle MagnetarStudio error response format
         const errorMessage = data.detail?.message || data.detail || data.message || 'Founder login failed'
         throw new Error(errorMessage)
       }

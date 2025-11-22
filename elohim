@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
-# 🚀 ElohimOS - Just start everything
+# 🚀 MagnetarStudio - Just start everything
 # Copyright (c) 2025 MagnetarAI, LLC
 
 # macOS-only check
 if [[ "$(uname -s)" != "Darwin" ]]; then
-    echo "❌ Error: ElohimOS is macOS-only. Detected OS: $(uname -s)"
+    echo "❌ Error: MagnetarStudio is macOS-only. Detected OS: $(uname -s)"
     echo "This system requires macOS (Darwin) to run."
     exit 1
 fi

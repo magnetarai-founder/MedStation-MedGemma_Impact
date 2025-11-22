@@ -1,5 +1,5 @@
 /**
- * Welcome Step - Introduction to ElohimOS setup
+ * Welcome Step - Introduction to MagnetarStudio setup
  */
 
 import { Zap } from 'lucide-react'
@@ -23,7 +23,7 @@ export default function WelcomeStep({ onNext }: WelcomeStepProps) {
 
       {/* Title */}
       <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-        Welcome to ElohimOS
+        Welcome to MagnetarStudio
       </h2>
 
       <p className="text-lg text-gray-600 dark:text-gray-400 mb-6">

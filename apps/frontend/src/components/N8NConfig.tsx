@@ -169,7 +169,7 @@ export function N8NConfig() {
             n8n Integration
           </h2>
           <p className="text-gray-400 mt-1">
-            Connect ElohimOS workflows with n8n for advanced automation
+            Connect MagnetarStudio workflows with n8n for advanced automation
           </p>
         </div>
         {healthStatus && (
@@ -381,11 +381,11 @@ export function N8NConfig() {
         <h3 className="text-lg font-semibold">How it Works</h3>
         <div className="space-y-2 text-sm text-gray-400">
           <p>
-            1. <strong className="text-white">Export Stages:</strong> Convert ElohimOS workflow
+            1. <strong className="text-white">Export Stages:</strong> Convert MagnetarStudio workflow
             stages into n8n workflows for complex automation.
           </p>
           <p>
-            2. <strong className="text-white">Webhook Triggers:</strong> ElohimOS sends work items
+            2. <strong className="text-white">Webhook Triggers:</strong> MagnetarStudio sends work items
             to n8n via webhooks, n8n processes them, and returns results.
           </p>
           <p>
@@ -394,7 +394,7 @@ export function N8NConfig() {
           </p>
           <p>
             4. <strong className="text-white">Bidirectional Sync:</strong> Changes in n8n workflows
-            can be imported back into ElohimOS.
+            can be imported back into MagnetarStudio.
           </p>
         </div>
       </div>

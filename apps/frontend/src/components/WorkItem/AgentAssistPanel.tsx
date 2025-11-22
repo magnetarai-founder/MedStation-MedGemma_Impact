@@ -26,8 +26,9 @@ export function AgentAssistPanel({ workItem, stage, onRefresh }: AgentAssistPane
     return !localStorage.getItem('elohim_agent_assist_hint_dismissed');
   });
 
-  // Only show for AGENT_ASSIST stages
-  if (stage.stage_type !== 'agent_assist') {
+  // Only show for AGENT_ASSIST and opinionated stage types (AGENT-PHASE-1)
+  const agentStageTypes: StageType[] = ['agent_assist', 'code_review', 'test_enrichment', 'doc_update'];
+  if (!agentStageTypes.includes(stage.stage_type as StageType)) {
     return null;
   }
 
@@ -41,6 +42,34 @@ export function AgentAssistPanel({ workItem, stage, onRefresh }: AgentAssistPane
     localStorage.setItem('elohim_agent_assist_hint_dismissed', 'true');
     setShowFirstRunHint(false);
   };
+
+  // Get contextual header based on stage type (AGENT-PHASE-1)
+  const getStageHeader = (): { title: string; subtitle: string } => {
+    switch (stage.stage_type) {
+      case 'code_review':
+        return {
+          title: 'Code Review',
+          subtitle: 'AI code quality & security analysis'
+        };
+      case 'test_enrichment':
+        return {
+          title: 'Test Enrichment',
+          subtitle: 'AI test generation & coverage suggestions'
+        };
+      case 'doc_update':
+        return {
+          title: 'Documentation Update',
+          subtitle: 'AI documentation & release notes assistance'
+        };
+      default:
+        return {
+          title: 'Agent Assist',
+          subtitle: 'AI-powered recommendation'
+        };
+    }
+  };
+
+  const { title, subtitle } = getStageHeader();
 
   // Helper to render risk level badge with enhanced text
   const renderRiskBadge = (riskLevel?: string | null) => {
@@ -103,8 +132,8 @@ export function AgentAssistPanel({ workItem, stage, onRefresh }: AgentAssistPane
         <div className="flex items-center gap-3">
           <Bot className="w-5 h-5 text-blue-400" />
           <div>
-            <h3 className="font-semibold text-white">Agent Assist</h3>
-            <p className="text-xs text-gray-400">AI-powered recommendation</p>
+            <h3 className="font-semibold text-white">{title}</h3>
+            <p className="text-xs text-gray-400">{subtitle}</p>
           </div>
           {stage.agent_auto_apply && (
             <span className="px-2 py-0.5 text-xs bg-purple-900/30 text-purple-300 border border-purple-700 rounded">

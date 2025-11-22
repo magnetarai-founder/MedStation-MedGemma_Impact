@@ -227,7 +227,7 @@ export function QRCodePairing() {
         </h4>
         <ol className="text-sm text-gray-600 dark:text-gray-400 space-y-1 list-decimal list-inside">
           <li>Generate a pairing code on this device</li>
-          <li>Open ElohimOS on your other device</li>
+          <li>Open MagnetarStudio on your other device</li>
           <li>Go to Settings → Security → Link Device</li>
           <li>Scan the QR code or enter the pairing data manually</li>
           <li>Verify the security fingerprint matches on both devices</li>

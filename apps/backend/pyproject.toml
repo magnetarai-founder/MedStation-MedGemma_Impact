@@ -1,7 +1,7 @@
 [project]
 name = "elohimos-backend"
 version = "0.1.0"
-description = "ElohimOS - AI-powered data processing platform"
+description = "MagnetarStudio - AI-powered data processing platform"
 authors = [{name = "MagnetarAI, LLC"}]
 requires-python = ">=3.12,<3.14"
 

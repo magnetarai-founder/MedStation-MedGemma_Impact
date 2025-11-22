@@ -90,7 +90,7 @@ export function PrivacySection({
             Data Storage Location
           </div>
           <div className="text-xs text-gray-600 dark:text-gray-400 font-mono bg-white dark:bg-gray-800 p-2 rounded border border-gray-300 dark:border-gray-600">
-            ~/Library/Application Support/ElohimOS/.neutron_data
+            ~/Library/Application Support/MagnetarStudio/.neutron_data
           </div>
         </div>
 

@@ -189,7 +189,7 @@ export function Login({ onLogin }: LoginProps) {
             Welcome Back
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Sign in to access your ElohimOS workspace
+            Sign in to access your MagnetarStudio workspace
           </p>
         </div>
 

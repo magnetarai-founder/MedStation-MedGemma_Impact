@@ -9,7 +9,7 @@ export default function IntegrationsTab() {
           Third-Party Integrations
         </h3>
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-          Connect ElohimOS with external automation and workflow tools
+          Connect MagnetarStudio with external automation and workflow tools
         </p>
       </div>
 

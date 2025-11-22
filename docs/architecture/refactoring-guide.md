@@ -1,4 +1,4 @@
-# ElohimOS Refactoring Guide
+# MagnetarStudio Refactoring Guide
 
 **Version:** 1.0
 **Last Updated:** 2025-11-13
@@ -148,9 +148,9 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown
-    logger.info("ElohimOS API shutting down...")
+    logger.info("MagnetarStudio API shutting down...")
 
-app = FastAPI(lifespan=lifespan, title="ElohimOS API")
+app = FastAPI(lifespan=lifespan, title="MagnetarStudio API")
 ```
 
 ---
@@ -310,4 +310,4 @@ After each refactor ticket:
 
 ---
 
-**Reference:** `/Users/indiedevhipps/Desktop/ElohimOS-Refactor-Roadmap.md` for detailed acceptance criteria per ticket.
+**Reference:** `/Users/indiedevhipps/Desktop/MagnetarStudio-Refactor-Roadmap.md` for detailed acceptance criteria per ticket.

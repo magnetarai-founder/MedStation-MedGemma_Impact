@@ -1,13 +1,13 @@
 # Agent & Workflow System – Product Guide
 
-**Audience:** Power users, team leads, and developers using or extending ElohimOS.  
+**Audience:** Power users, team leads, and developers using or extending MagnetarStudio.  
 **Scope:** How the Agent Orchestrator, Workflows, Agent Sessions, Templates, Analytics, and multi‑tenant visibility fit together in practice.
 
 ---
 
 ## 1. What This System Does
 
-ElohimOS combines an AI Agent Orchestrator with a flexible Workflow engine so you can:
+MagnetarStudio combines an AI Agent Orchestrator with a flexible Workflow engine so you can:
 
 - Turn messy, multi‑step development tasks into repeatable workflows.
 - Let the agent propose plans and patches at specific workflow stages.
@@ -541,7 +541,7 @@ For more details, see `docs/CI_SETUP.md`.
 
 ## 10. Summary
 
-The Agent & Workflow system in ElohimOS gives you:
+The Agent & Workflow system in MagnetarStudio gives you:
 
 - A safe, observable way to bring AI into real development workflows.
 - Strong multi‑tenant boundaries (personal/team/global).

@@ -1,5 +1,5 @@
 /**
- * Setup Wizard - First-run onboarding for ElohimOS
+ * Setup Wizard - First-run onboarding for MagnetarStudio
  *
  * "Trust in the Lord with all your heart" - Proverbs 3:5
  *
@@ -132,7 +132,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
         {/* Header */}
         <div className="px-8 py-6 border-b border-gray-200 dark:border-gray-700">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            Welcome to ElohimOS
+            Welcome to MagnetarStudio
           </h1>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
             Let's get you set up in just a few steps

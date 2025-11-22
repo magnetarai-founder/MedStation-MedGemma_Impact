@@ -51,7 +51,7 @@ ${extractTextContent(section.content)}
     const url = URL.createObjectURL(blob)
 
     link.setAttribute('href', url)
-    link.setAttribute('download', `ElohimOS-Legal-Disclaimers-${new Date().toISOString().split('T')[0]}.txt`)
+    link.setAttribute('download', `MagnetarStudio-Legal-Disclaimers-${new Date().toISOString().split('T')[0]}.txt`)
     link.style.visibility = 'hidden'
 
     document.body.appendChild(link)
@@ -80,7 +80,7 @@ ${extractTextContent(section.content)}
               1. Acceptance of Terms
             </h4>
             <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-              By accessing and using ElohimOS ("the Application"), you accept and agree to be bound
+              By accessing and using MagnetarStudio ("the Application"), you accept and agree to be bound
               by these Terms of Service. If you do not agree to these terms, please do not use the
               Application.
             </p>
@@ -119,7 +119,7 @@ ${extractTextContent(section.content)}
             </h4>
             <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
               The Application and its original content, features, and functionality are owned by
-              ElohimOS and are protected by international copyright, trademark, patent, trade secret,
+              MagnetarStudio and are protected by international copyright, trademark, patent, trade secret,
               and other intellectual property laws.
             </p>
           </section>
@@ -227,7 +227,7 @@ ${extractTextContent(section.content)}
               1. Not a Substitute for Professional Medical Advice
             </h4>
             <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-              The information provided by ElohimOS, including AI-generated health insights, is for
+              The information provided by MagnetarStudio, including AI-generated health insights, is for
               educational and informational purposes only. It is not intended to be a substitute
               for professional medical advice, diagnosis, or treatment.
             </p>
@@ -281,7 +281,7 @@ ${extractTextContent(section.content)}
               1. HIPAA Compliance Features
             </h4>
             <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed mb-2">
-              ElohimOS provides features to help users maintain HIPAA compliance:
+              MagnetarStudio provides features to help users maintain HIPAA compliance:
             </p>
             <ul className="text-sm text-gray-700 dark:text-gray-300 space-y-1 ml-4">
               <li>• End-to-end encryption for Protected Health Information (PHI)</li>
@@ -297,7 +297,7 @@ ${extractTextContent(section.content)}
               2. User Responsibilities
             </h4>
             <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed mb-2">
-              While ElohimOS provides HIPAA-compliant features, users and organizations are
+              While MagnetarStudio provides HIPAA-compliant features, users and organizations are
               responsible for:
             </p>
             <ul className="text-sm text-gray-700 dark:text-gray-300 space-y-1 ml-4">
@@ -314,7 +314,7 @@ ${extractTextContent(section.content)}
               3. Business Associate Agreement
             </h4>
             <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-              Organizations using ElohimOS to store or process PHI may require a Business Associate
+              Organizations using MagnetarStudio to store or process PHI may require a Business Associate
               Agreement (BAA). Contact us for information about enterprise compliance agreements.
             </p>
           </section>
@@ -377,7 +377,7 @@ ${extractTextContent(section.content)}
               4. Indemnification
             </h4>
             <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-              You agree to indemnify and hold harmless ElohimOS, its developers, and affiliates
+              You agree to indemnify and hold harmless MagnetarStudio, its developers, and affiliates
               from any claims, damages, losses, liabilities, and expenses arising from your use
               of the Application or violation of these Terms.
             </p>
@@ -396,7 +396,7 @@ ${extractTextContent(section.content)}
             Legal Disclaimers & Policies
           </h4>
           <p className="text-sm text-blue-700 dark:text-blue-300">
-            Important legal information about your use of ElohimOS. Please read these documents
+            Important legal information about your use of MagnetarStudio. Please read these documents
             carefully to understand your rights and responsibilities.
           </p>
         </div>

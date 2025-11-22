@@ -1,8 +1,8 @@
-# ElohimOS Authorization & Identity Roadmap
+# MagnetarStudio Authorization & Identity Roadmap
 
 **Status:** Phase 1-6 Complete ✅ (as of 2025-11-20)
-**Scope:** Turn ElohimOS into a "local IAM appliance" – a robust, offline‑first authorization system with durable DB schema, clear roles, strong audit, and safe update behavior.
-**Audience:** You / future backend + security engineers working on auth/permissions in ElohimOS.
+**Scope:** Turn MagnetarStudio into a "local IAM appliance" – a robust, offline‑first authorization system with durable DB schema, clear roles, strong audit, and safe update behavior.
+**Audience:** You / future backend + security engineers working on auth/permissions in MagnetarStudio.
 
 ## Implementation Status
 
@@ -18,7 +18,7 @@
 
 This roadmap assumes:
 
-- ElohimOS is **fully offline by default**.
+- MagnetarStudio is **fully offline by default**.
 - There is exactly one “tiny update API” that connects to a secure update server **only when the user explicitly chooses**.
 - All real work (users, roles, workflows, agent actions) happens on the **local device**.
 

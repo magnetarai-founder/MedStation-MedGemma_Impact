@@ -112,7 +112,7 @@ export default function AccountStep(props: StepProps) {
           Create Local Account
         </h2>
         <p className="text-gray-600 dark:text-gray-400">
-          This account will have super_admin privileges on your local ElohimOS instance.
+          This account will have super_admin privileges on your local MagnetarStudio instance.
         </p>
       </div>
 

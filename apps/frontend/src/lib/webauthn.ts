@@ -68,7 +68,7 @@ export async function registerBiometric(
     const publicKeyCredentialCreationOptions: PublicKeyCredentialCreationOptions = {
       challenge,
       rp: {
-        name: 'ElohimOS Vault',
+        name: 'MagnetarStudio Vault',
         id: window.location.hostname, // 'localhost' for local dev
       },
       user: {

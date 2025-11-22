@@ -318,9 +318,9 @@ export function PHIModal({ isOpen, onClose }: PHIModalProps) {
 
             <section className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
               <p className="text-sm text-blue-800 dark:text-blue-300">
-                <strong>Note:</strong> ElohimOS provides encrypted vault storage and audit logging
-                to help maintain HIPAA compliance. However, proper use of these features is the
-                responsibility of each user and organization.
+                <strong>Note:</strong> MagnetarStudio provides encrypted vault storage and audit
+                logging to help maintain HIPAA compliance. However, proper use of these features
+                is the responsibility of each user and organization.
               </p>
             </section>
           </div>

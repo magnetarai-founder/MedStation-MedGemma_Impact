@@ -13,7 +13,7 @@ Usage (in main.py, guarded by environment variable):
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         # Startup
-        logger.info("ElohimOS API starting...")
+        logger.info("MagnetarStudio API starting...")
 
         if os.getenv("ELOHIMOS_USE_ROUTER_REGISTRY") == "1":
             from .router_registry import register_routers
@@ -25,9 +25,9 @@ Usage (in main.py, guarded by environment variable):
         yield
 
         # Shutdown
-        logger.info("ElohimOS API shutting down...")
+        logger.info("MagnetarStudio API shutting down...")
 
-    app = FastAPI(lifespan=lifespan, title="ElohimOS API")
+    app = FastAPI(lifespan=lifespan, title="MagnetarStudio API")
 """
 
 import logging

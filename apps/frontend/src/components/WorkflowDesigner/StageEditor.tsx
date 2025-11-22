@@ -113,11 +113,15 @@ export function StageEditor({ stage, allStages, onUpdate, onDelete, onAddRoute, 
                       onChange={(e) => onUpdate({ stage_type: e.target.value as StageType })}
                       className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-blue-500 focus:outline-none"
                     >
-                      <option value="human">Human</option>
-                      <option value="automation">Automation</option>
-                      <option value="ai">AI</option>
-                      <option value="hybrid">Hybrid</option>
-                      <option value="approval">Approval</option>
+                      <option value="human">Human - Person does work</option>
+                      <option value="automation">Automation - n8n workflow runs</option>
+                      <option value="ai">AI - Local AI processing</option>
+                      <option value="hybrid">Hybrid - Person + automation</option>
+                      <option value="approval">Approval - Simple approve/reject</option>
+                      <option value="agent_assist">Agent Assist - AI provides suggestions</option>
+                      <option value="code_review">Code Review - AI code quality review</option>
+                      <option value="test_enrichment">Test Enrichment - AI test generation</option>
+                      <option value="doc_update">Doc Update - AI documentation/release notes</option>
                     </select>
                   </div>
 

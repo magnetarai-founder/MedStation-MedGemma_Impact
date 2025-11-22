@@ -1,5 +1,5 @@
 #!/bin/bash
-# ElohimOS - Setup script to create 'omni' command globally
+# MagnetarStudio - Setup script to create 'omni' command globally
 # Copyright (c) 2025 MagnetarAI, LLC
 # 'omni' represents the omnipresent nature of Elohim
 
@@ -30,7 +30,7 @@ if grep -q "alias omni=" "$SHELL_RC" 2>/dev/null; then
 else
     echo "Adding 'omni' alias to $SHELL_RC"
     echo "" >> "$SHELL_RC"
-    echo "# ElohimOS alias" >> "$SHELL_RC"
+    echo "# MagnetarStudio alias" >> "$SHELL_RC"
     echo "$ALIAS_LINE" >> "$SHELL_RC"
 fi
 
@@ -42,8 +42,8 @@ echo "  1. Reload your shell: source $SHELL_RC"
 echo "  2. Or open a new terminal window"
 echo "  3. Run: omni"
 echo ""
-echo "The 'omni' command will start ElohimOS from anywhere!"
-echo "(omni = omnipresent, a reflection of Elohim)"
+echo "The 'omni' command will start MagnetarStudio from anywhere!"
+echo "(omni = omnipresent)"
 
 # Offer to reload shell
 echo ""
@@ -52,7 +52,7 @@ echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "Reloading shell configuration..."
     source "$SHELL_RC"
-    echo "✓ Done! You can now run 'omni' from anywhere to start ElohimOS"
+    echo "✓ Done! You can now run 'omni' from anywhere to start MagnetarStudio"
 else
     echo "Remember to run: source $SHELL_RC"
     echo "Or open a new terminal to use 'omni'"

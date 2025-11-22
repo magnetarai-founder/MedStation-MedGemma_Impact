@@ -12,7 +12,7 @@ export const env = {
   ollamaBaseUrl: import.meta.env.VITE_OLLAMA_BASE_URL || 'http://localhost:11434',
 
   // Application Settings
-  appName: import.meta.env.VITE_APP_NAME || 'ElohimOS',
+  appName: import.meta.env.VITE_APP_NAME || 'MagnetarStudio',
   maxFileSizeMB: parseInt(import.meta.env.VITE_MAX_FILE_SIZE_MB || '2000'),
   previewRowLimit: parseInt(import.meta.env.VITE_PREVIEW_ROW_LIMIT || '100'),
 

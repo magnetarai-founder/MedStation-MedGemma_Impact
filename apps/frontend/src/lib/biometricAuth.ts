@@ -61,13 +61,13 @@ export async function registerBiometric(documentId: string, userId: string): Pro
     const publicKeyOptions: PublicKeyCredentialCreationOptions = {
       challenge,
       rp: {
-        name: 'ElohimOS',
+        name: 'MagnetarStudio',
         id: rpId,
       },
       user: {
         id: new TextEncoder().encode(userId),
         name: `elohimos-user-${userId.slice(0, 8)}`,
-        displayName: 'ElohimOS User',
+        displayName: 'MagnetarStudio User',
       },
       pubKeyCredParams: [
         { type: 'public-key', alg: -7 },  // ES256

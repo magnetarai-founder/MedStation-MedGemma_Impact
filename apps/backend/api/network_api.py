@@ -16,8 +16,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
-    title="ElohimOS Network API",
-    description="LAN Discovery and P2P Mesh networking for ElohimOS",
+    title="MagnetarStudio Network API",
+    description="LAN Discovery and P2P Mesh networking for MagnetarStudio",
     version="1.0.0"
 )
 

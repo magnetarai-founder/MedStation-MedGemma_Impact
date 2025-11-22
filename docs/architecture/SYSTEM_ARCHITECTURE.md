@@ -1,4 +1,4 @@
-# ElohimOS System Architecture
+# MagnetarStudio System Architecture
 
 **Version**: 1.0
 **Last Updated**: 2025-11-11
@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-ElohimOS is an **offline-first AI operating system** for mission-critical field operations. It provides a complete computing environment with AI capabilities, data processing, secure storage, and team collaboration - all functioning without internet connectivity.
+MagnetarStudio is an **offline-first AI operating system** for mission-critical field operations. It provides a complete computing environment with AI capabilities, data processing, secure storage, and team collaboration - all functioning without internet connectivity.
 
 ### Core Design Principles
 
@@ -751,7 +751,7 @@ Metal 4 / ANE (local GPU)
 ```
 User Device (MacBook, offline)
     ↓
-ElohimOS App Bundle
+MagnetarStudio App Bundle
     ├─→ Backend (embedded)
     ├─→ Frontend (embedded)
     └─→ Ollama (bundled models)
@@ -840,7 +840,7 @@ User Device (still works offline)
              │ HTTPS (when online)
              │
 ┌────────────▼────────────────────────────────────────────────┐
-│                  Local ElohimOS Client                      │
+│                  Local MagnetarStudio Client                      │
 │  • Full offline functionality                               │
 │  • Local cache                                              │
 │  • Offline queue                                            │
@@ -859,7 +859,7 @@ User Device (still works offline)
 
 ## Conclusion
 
-ElohimOS is a **complete offline-first operating system** designed for mission-critical field operations. Its architecture prioritizes:
+MagnetarStudio is a **complete offline-first operating system** designed for mission-critical field operations. Its architecture prioritizes:
 
 1. **Reliability**: "Dumb core that always works" with multiple fallback chains
 2. **Security**: Zero-knowledge encryption, E2E, plausible deniability

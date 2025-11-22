@@ -24,6 +24,9 @@ export enum StageType {
   AI = 'ai',
   APPROVAL = 'approval',
   AGENT_ASSIST = 'agent_assist',  // Phase B: AI agent provides suggestions
+  CODE_REVIEW = 'code_review',  // Phase 1: AI code review with focused prompts
+  TEST_ENRICHMENT = 'test_enrichment',  // Phase 1: AI test generation/suggestions
+  DOC_UPDATE = 'doc_update',  // Phase 1: AI documentation/release notes
 }
 
 export enum WorkItemStatus {

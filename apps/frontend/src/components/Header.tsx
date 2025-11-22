@@ -378,7 +378,7 @@ export function Header({}: HeaderProps = {}) {
 
           {/* Center: Title */}
           <h1 className="absolute left-1/2 transform -translate-x-1/2 text-xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
-            ElohimOS
+            MagnetarStudio
           </h1>
 
           {/* Right: Controls */}

@@ -56,7 +56,7 @@ export default function CompletionStep(props: StepProps) {
           Setup Complete!
         </h2>
         <p className="text-gray-600 dark:text-gray-400">
-          ElohimOS is ready for use. Here's what we've configured:
+          MagnetarStudio is ready for use. Here's what we've configured:
         </p>
       </div>
 
@@ -187,7 +187,7 @@ export default function CompletionStep(props: StepProps) {
           ) : (
             <>
               <Sparkles className="w-5 h-5" />
-              Launch ElohimOS
+              Launch MagnetarStudio
             </>
           )}
         </button>

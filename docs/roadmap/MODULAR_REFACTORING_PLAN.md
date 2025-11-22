@@ -1,4 +1,4 @@
-# ElohimOS Modular Refactoring Plan
+# MagnetarStudio Modular Refactoring Plan
 
 **Created:** 2025-11-16
 **Last Updated:** 2025-11-19
@@ -11,7 +11,7 @@
 
 ## Executive Summary
 
-This is the **single source of truth** for refactoring ElohimOS over the next 12 weeks. All large files will be split into smaller, modular components to improve:
+This is the **single source of truth** for refactoring MagnetarStudio over the next 12 weeks. All large files will be split into smaller, modular components to improve:
 
 - **Maintainability**: Easier to understand and modify individual modules
 - **Testability**: Smaller units are easier to test in isolation
@@ -1736,7 +1736,7 @@ This section breaks down the highest-priority work into weekly sprints with conc
 ### Problems with Current Implementation
 1. **Inconsistent coverage**: Only works in Vault, not in chat/team/search/files/etc.
 2. **No persistence**: Stealth labels not stored in backend database
-3. **App title exposure**: Window title always shows "ElohimOS" regardless of stealth mode
+3. **App title exposure**: Window title always shows "MagnetarStudio" regardless of stealth mode
 4. **Search leakage**: Search results show real titles
 5. **Notification leakage**: Toasts/notifications show real titles
 6. **Recent files leakage**: File browsers show real titles
@@ -1800,7 +1800,7 @@ export function useStealthMode() {
     if (securitySettings.stealth_labels) {
       return 'Productivity Suite' // or user-configurable
     }
-    return 'ElohimOS'
+    return 'MagnetarStudio'
   }
 
   return { getDisplayTitle, getAppTitle, isStealthMode: securitySettings.stealth_labels }
@@ -1832,7 +1832,7 @@ useEffect(() => {
   const { securitySettings } = useDocsStore.getState()
   const appTitle = securitySettings.stealth_labels
     ? (securitySettings.stealth_app_name || 'Productivity Suite')
-    : 'ElohimOS'
+    : 'MagnetarStudio'
 
   document.title = appTitle
 }, [securitySettings.stealth_labels, securitySettings.stealth_app_name])
@@ -1906,7 +1906,7 @@ useEffect(() => {
 
 ### Problem Statement
 
-When using ElohimOS solo (single user), the Admin page shows **all system data**:
+When using MagnetarStudio solo (single user), the Admin page shows **all system data**:
 - All users (even if you're the only one)
 - All teams (even non-existent ones)
 - All permissions (global view)
@@ -1990,7 +1990,7 @@ case 'admin':
 
 ```
 ┌─────────────────────────────────────────┐
-│  Choose Your ElohimOS Mode              │
+│  Choose Your MagnetarStudio Mode              │
 ├─────────────────────────────────────────┤
 │                                         │
 │  ○ Solo Mode (Personal Use)            │
@@ -2648,7 +2648,7 @@ Transform the Admin tab from a basic system overview into a **production-grade a
 - Dramatically improves admin productivity (proactive vs reactive monitoring)
 - Reduces mean time to resolution (MTTR) for incidents
 - Enables data-driven scaling decisions (forecast user growth, storage needs)
-- Professionalizes ElohimOS for production deployment
+- Professionalizes MagnetarStudio for production deployment
 
 ### Future Enhancements (Post-Phase 10)
 
@@ -2656,7 +2656,7 @@ Transform the Admin tab from a basic system overview into a **production-grade a
 - **Historical Playback**: Scrub timeline to see metrics at any point in past
 - **Comparative Analysis**: Compare today vs. last week/month
 - **ML Anomaly Detection**: Auto-detect unusual patterns (sudden traffic spike, model drift)
-- **Multi-Device Fleet Management**: If ElohimOS expands to multi-device, show fleet dashboard
+- **Multi-Device Fleet Management**: If MagnetarStudio expands to multi-device, show fleet dashboard
 - **Automated Remediation**: Auto-run fixes for common issues (e.g., auto-vacuum DB when fragmented >20%)
 - **Billing Integration**: If monetized, show revenue metrics, user tier distribution
 

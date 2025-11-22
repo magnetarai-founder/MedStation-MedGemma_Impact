@@ -144,7 +144,7 @@ async def lifespan(app: FastAPI):
     Handles startup and shutdown logic for the FastAPI application.
     """
     # ===== STARTUP =====
-    print("Starting ElohimOS API...")
+    print("Starting MagnetarStudio API...")
 
     # Register signal handlers for graceful shutdown
     signal.signal(signal.SIGTERM, handle_shutdown_signal)
@@ -237,11 +237,11 @@ def create_app() -> FastAPI:
     """
     # Create FastAPI app with lifespan context
     app = FastAPI(
-        title="ElohimOS API",
+        title="MagnetarStudio API",
         description="""
-## ElohimOS - Offline-First AI Operating System
+## MagnetarStudio - Offline-First AI Operating System
 
-ElohimOS is a secure, privacy-first AI platform designed for mission-critical operations
+MagnetarStudio is a secure, privacy-first AI platform designed for mission-critical operations
 in disconnected environments.
 
 ### Core Features

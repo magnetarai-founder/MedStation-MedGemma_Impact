@@ -14,7 +14,7 @@ from typing import Optional, Dict, Any
 from pathlib import Path
 
 try:
-    from api.workflow_models import WorkItem, Stage
+    from api.workflow_models import WorkItem, Stage, StageType
     from api.workflow_storage import WorkflowStorage
     from api.agent.orchestration.models import ContextRequest, ContextResponse
     from api.agent.orchestration import context_bundle as context_mod
@@ -23,7 +23,7 @@ try:
     from api.audit_logger import AuditAction, audit_log_sync
     from api.metrics import get_metrics
 except ImportError:
-    from workflow_models import WorkItem, Stage
+    from workflow_models import WorkItem, Stage, StageType
     from workflow_storage import WorkflowStorage
     from agent.orchestration.models import ContextRequest, ContextResponse
     from agent.orchestration import context_bundle as context_mod
@@ -39,6 +39,62 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 metrics = get_metrics() if get_metrics() else None
+
+
+def _get_default_agent_prompt_for_stage(stage: Stage, work_item: WorkItem) -> str:
+    """
+    Get default agent prompt based on stage type (AGENT-PHASE-1).
+
+    If stage.agent_prompt is explicitly set, returns it unchanged.
+    Otherwise, provides opinionated defaults for specialized stage types:
+    - CODE_REVIEW: Focus on code quality, security, maintainability
+    - TEST_ENRICHMENT: Focus on test coverage and edge cases
+    - DOC_UPDATE: Focus on documentation and release notes
+
+    Args:
+        stage: Stage configuration
+        work_item: WorkItem context
+
+    Returns:
+        Agent prompt string to use for planning
+    """
+    # If stage has explicit prompt, use it
+    if stage.agent_prompt and stage.agent_prompt.strip():
+        return stage.agent_prompt
+
+    # Choose default based on stage_type
+    stage_type = stage.stage_type
+
+    if stage_type == StageType.CODE_REVIEW:
+        return (
+            "You are a senior code reviewer. Review the following changes for "
+            "correctness, readability, maintainability, and security risks. "
+            "Summarize key issues and provide actionable recommendations. "
+            "Focus on: potential bugs, code smell, security vulnerabilities, "
+            "performance concerns, and adherence to best practices."
+        )
+
+    elif stage_type == StageType.TEST_ENRICHMENT:
+        return (
+            "You are a test engineer. Based on the code changes and description, "
+            "propose comprehensive test cases that validate the behavior and guard "
+            "against regressions. Include: unit tests for core logic, integration "
+            "tests for component interactions, edge cases, error scenarios, and "
+            "boundary conditions. Suggest both positive and negative test cases."
+        )
+
+    elif stage_type == StageType.DOC_UPDATE:
+        return (
+            "You are a technical writer. Review the code changes and update or "
+            "propose documentation to reflect these changes. Focus on: API "
+            "documentation, user-facing release notes, architectural decisions, "
+            "migration guides (if breaking changes), and examples. Ensure clarity, "
+            "correctness, and appropriate detail for the target audience."
+        )
+
+    else:
+        # Fallback for AGENT_ASSIST or other types
+        return f"Assist with stage '{stage.name}' for workflow '{work_item.workflow_name}'"
 
 
 def run_agent_assist_for_stage(
@@ -118,11 +174,8 @@ def run_agent_assist_for_stage(
             paths=paths,
         )
 
-        # Build prompt for planning
-        prompt = stage.agent_prompt
-        if not prompt:
-            # Fallback prompt if stage doesn't specify one
-            prompt = f"Assist with stage '{stage.name}' for workflow '{work_item.workflow_name}'"
+        # Build prompt for planning (AGENT-PHASE-1: Use opinionated defaults)
+        prompt = _get_default_agent_prompt_for_stage(stage, work_item)
 
         # Add target path hint if specified
         if stage.agent_target_path:

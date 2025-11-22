@@ -67,7 +67,7 @@ export function SetupWizard({ onComplete, onBack }: SetupWizardProps) {
 
       if (!response.ok) {
         const data = await response.json()
-        // Handle ElohimOS error response format
+        // Handle MagnetarStudio error response format
         const errorMessage = data.detail?.message || data.detail || data.message || 'Registration failed'
         throw new Error(errorMessage)
       }
@@ -119,7 +119,7 @@ export function SetupWizard({ onComplete, onBack }: SetupWizardProps) {
             </div>
           </div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-            Welcome to ElohimOS
+            Welcome to MagnetarStudio
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
             Let's secure your local AI workspace
@@ -306,7 +306,7 @@ export function SetupWizard({ onComplete, onBack }: SetupWizardProps) {
           {/* Info */}
           <div className="mt-6 p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
             <p className="text-xs text-blue-800 dark:text-blue-200">
-              Your data stays 100% local. This password protects your ElohimOS workspace on this device.
+              Your data stays 100% local. This password protects your MagnetarStudio workspace on this device.
             </p>
           </div>
         </div>

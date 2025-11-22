@@ -35,6 +35,9 @@ class StageType(str, Enum):
     AI = "ai"                     # Local AI processing
     APPROVAL = "approval"         # Simple approve/reject
     AGENT_ASSIST = "agent_assist" # AI agent provides suggestions (Phase B)
+    CODE_REVIEW = "code_review"   # AI code review with focused prompts (Phase 1)
+    TEST_ENRICHMENT = "test_enrichment"  # AI test generation/suggestions (Phase 1)
+    DOC_UPDATE = "doc_update"     # AI documentation/release notes (Phase 1)
 
 
 class WorkItemStatus(str, Enum):

@@ -248,6 +248,18 @@ async def run_startup_migrations() -> None:
             # Non-fatal: log but don't block startup
             logger.warning(f"Session cleanup failed (non-fatal): {e}")
 
+        # ===== AGENT-PHASE-2: Seed Global Workflow Templates =====
+        # Seed high-quality global templates (idempotent)
+        try:
+            from api.workflow_seed_templates import seed_global_workflow_templates
+            from api.workflow_storage import WorkflowStorage
+
+            storage = WorkflowStorage()  # Uses default workflows.db
+            seed_global_workflow_templates(storage)
+        except Exception as e:
+            # Non-fatal: log but don't block startup
+            logger.warning(f"Workflow template seeding failed (non-fatal): {e}")
+
         # Summary output - only show if migrations ran
         if migrations_ran:
             logger.info("=" * 60)
