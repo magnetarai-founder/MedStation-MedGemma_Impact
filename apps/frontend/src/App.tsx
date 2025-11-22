@@ -45,13 +45,9 @@ export default function App() {
 
   // Modal state
   const [isLibraryOpen, setIsLibraryOpen] = useState(false)
-  const [isProjectLibraryOpen, setIsProjectLibraryOpen] = useState(false)
-  const [isCodeChatSettingsOpen, setIsCodeChatSettingsOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isJsonConverterOpen, setIsJsonConverterOpen] = useState(false)
   const [isQueryHistoryOpen, setIsQueryHistoryOpen] = useState(false)
-  const [libraryInitialCode, setLibraryInitialCode] = useState<{ name: string; content: string } | null>(null)
-  const [selectedFile, setSelectedFile] = useState<string | null>(null)
 
   // Handle loading query from library into editor
   const handleLoadQuery = (query: settingsApi.SavedQuery) => {
@@ -59,49 +55,11 @@ export default function App() {
     setIsLibraryOpen(false)
   }
 
-  // Handle file selection from Code Tab file browser
-  const handleFileSelect = async (fileId: string, isAbsolute?: boolean) => {
-    setSelectedFile(fileId)
-
-    try {
-      const response = await fetch(`/api/v1/code/files/${fileId}`)
-      if (!response.ok) {
-        console.error('Failed to load file:', response.statusText)
-        return
-      }
-
-      const file = await response.json()
-      setCode(file.content || '')
-    } catch (error) {
-      console.error('Error loading file:', error)
-    }
-  }
-
   // Handle run query from query history modal
   const handleRunQuery = (query: string) => {
     setCode(query)
     setActiveTab('database')
   }
-
-  // Handle open library with pre-filled code from CodeEditor
-  useEffect(() => {
-    const handleOpenLibraryWithCode = (event: CustomEvent) => {
-      const { name, content } = event.detail
-      setLibraryInitialCode({ name, content })
-      setIsLibraryOpen(true)
-    }
-
-    const handleOpenLibrary = () => {
-      setIsLibraryOpen(true)
-    }
-
-    window.addEventListener('open-library-with-code', handleOpenLibraryWithCode as EventListener)
-    window.addEventListener('open-library', handleOpenLibrary as EventListener)
-    return () => {
-      window.removeEventListener('open-library-with-code', handleOpenLibraryWithCode as EventListener)
-      window.removeEventListener('open-library', handleOpenLibrary as EventListener)
-    }
-  }, [])
 
   // Initialize security monitor (auto-lock, screenshot blocking)
   useEffect(() => {
@@ -167,19 +125,11 @@ export default function App() {
       setIsSettingsOpen={setIsSettingsOpen}
       isLibraryOpen={isLibraryOpen}
       setIsLibraryOpen={setIsLibraryOpen}
-      isProjectLibraryOpen={isProjectLibraryOpen}
-      setIsProjectLibraryOpen={setIsProjectLibraryOpen}
-      isCodeChatSettingsOpen={isCodeChatSettingsOpen}
-      setIsCodeChatSettingsOpen={setIsCodeChatSettingsOpen}
       isJsonConverterOpen={isJsonConverterOpen}
       setIsJsonConverterOpen={setIsJsonConverterOpen}
       isQueryHistoryOpen={isQueryHistoryOpen}
       setIsQueryHistoryOpen={setIsQueryHistoryOpen}
-      selectedFile={selectedFile}
-      onFileSelect={handleFileSelect}
       onLoadQuery={handleLoadQuery}
-      libraryInitialCode={libraryInitialCode}
-      setLibraryInitialCode={setLibraryInitialCode}
       onRunQuery={handleRunQuery}
     />
   )

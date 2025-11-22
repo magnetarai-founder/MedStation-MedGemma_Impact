@@ -69,25 +69,18 @@ export default defineConfig({
           ],
 
           // Code workspace - lazy loaded but chunked together
-          'code-workspace': [
-            './src/components/CodeWorkspace.tsx',
-            './src/components/CodeSidebar.tsx',
-          ],
-
           // Team workspace - separate chunk
           'team-workspace': ['./src/components/TeamWorkspace.tsx'],
 
           // Settings modals - low priority, separate chunk
           'settings': [
             './src/components/SettingsModal.tsx',
-            './src/components/CodeChatSettingsModal.tsx',
             './src/components/ServerControlModal.tsx',
           ],
 
           // Utility modals - separate chunk
           'modals': [
             './src/components/LibraryModal.tsx',
-            './src/components/ProjectLibraryModal.tsx',
             './src/components/JsonConverterModal.tsx',
             './src/components/QueryHistoryModal.tsx',
           ],

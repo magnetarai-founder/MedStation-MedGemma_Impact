@@ -1,7 +1,7 @@
 import { createWithEqualityFn } from 'zustand/traditional'
 import { persist } from 'zustand/middleware'
 
-export type NavTab = 'team' | 'chat' | 'code' | 'database' | 'admin' | 'kanban'
+export type NavTab = 'team' | 'chat' | 'database' | 'admin' | 'kanban'
 
 export interface NavItem {
   id: NavTab
@@ -22,9 +22,8 @@ interface NavigationStore {
 const defaultNavOrder: Array<NavItem['id']> = [
   'team',      // Workspace first
   'chat',      // AI Chat second
-  'code',      // Code third
-  'database',  // Database fourth
-  'kanban'     // Kanban fifth
+  'database',  // Database third
+  'kanban'     // Kanban fourth
 ]
 
 export const useNavigationStore = createWithEqualityFn<NavigationStore>()(
@@ -38,12 +37,12 @@ export const useNavigationStore = createWithEqualityFn<NavigationStore>()(
     }),
     {
       name: 'ns.navigation',
-      version: 2, // Increment version to force migration
+      version: 3, // Increment version to force migration
       // Migration to ensure all tabs are present and in new default order
       migrate: (persistedState: any, version: number) => {
         // Force update to new default order for everyone
-        if (version < 2) {
-          console.log('Migrating navigation order to v2 - new default order')
+        if (version < 3) {
+          console.log('Migrating navigation order to v3 - code tab removed')
           return {
             ...persistedState,
             navOrder: defaultNavOrder
@@ -54,7 +53,7 @@ export const useNavigationStore = createWithEqualityFn<NavigationStore>()(
       onRehydrateStorage: () => (state) => {
         if (state) {
           // Check if navOrder has all required tabs
-          const requiredTabs: NavTab[] = ['team', 'chat', 'code', 'database', 'kanban']
+          const requiredTabs: NavTab[] = ['team', 'chat', 'database', 'kanban']
           const missingTabs = requiredTabs.filter(tab => !state.navOrder.includes(tab))
 
           if (missingTabs.length > 0) {

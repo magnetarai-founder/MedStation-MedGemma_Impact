@@ -3,7 +3,6 @@ import { Toaster } from 'react-hot-toast'
 import { FileUpload } from '../FileUpload'
 import { SidebarTabs } from '../SidebarTabs'
 import { Header } from '../Header'
-import { ResizablePanels } from '../ResizablePanels'
 import { ResizableSidebar } from '../ResizableSidebar'
 import { NavigationRail } from '../NavigationRail'
 import { ClearWorkspaceDialog } from '../ClearWorkspaceDialog'
@@ -15,8 +14,6 @@ import * as settingsApi from '@/lib/settingsApi'
 // Lazy load heavy components for code splitting with retry logic
 const ChatSidebar = lazyNamed(() => import('../ChatSidebar'), 'ChatSidebar')
 const ChatWindow = lazyNamed(() => import('../ChatWindow'), 'ChatWindow')
-const CodeWorkspace = lazyNamed(() => import('../CodeWorkspace'), 'CodeWorkspace')
-const CodeSidebar = lazyNamed(() => import('../CodeSidebar'), 'CodeSidebar')
 const TeamWorkspace = lazyNamed(() => import('../TeamWorkspace'), 'TeamWorkspace')
 const AdminPage = lazyNamed(() => import('@/pages/AdminPage'), 'default')
 const KanbanWorkspace = lazyNamed(() => import('@/pages/KanbanWorkspace'), 'default')
@@ -24,8 +21,6 @@ const KanbanWorkspace = lazyNamed(() => import('@/pages/KanbanWorkspace'), 'defa
 // Lazy load modals (only loaded when opened) with retry logic
 const SettingsModal = lazyNamed(() => import('../SettingsModal'), 'SettingsModal')
 const LibraryModal = lazyNamed(() => import('../LibraryModal'), 'LibraryModal')
-const ProjectLibraryModal = lazyNamed(() => import('../ProjectLibraryModal'), 'ProjectLibraryModal')
-const CodeChatSettingsModal = lazyNamed(() => import('../CodeChatSettingsModal'), 'CodeChatSettingsModal')
 const JsonConverterModal = lazyNamed(() => import('../JsonConverterModal'), 'JsonConverterModal')
 const QueryHistoryModal = lazyNamed(() => import('../QueryHistoryModal'), 'QueryHistoryModal')
 
@@ -47,20 +42,12 @@ interface AppShellProps {
   setIsSettingsOpen: (open: boolean) => void
   isLibraryOpen: boolean
   setIsLibraryOpen: (open: boolean) => void
-  isProjectLibraryOpen: boolean
-  setIsProjectLibraryOpen: (open: boolean) => void
-  isCodeChatSettingsOpen: boolean
-  setIsCodeChatSettingsOpen: (open: boolean) => void
   isJsonConverterOpen: boolean
   setIsJsonConverterOpen: (open: boolean) => void
   isQueryHistoryOpen: boolean
   setIsQueryHistoryOpen: (open: boolean) => void
   // File and query handling
-  selectedFile: string | null
-  onFileSelect: (fileId: string, isAbsolute?: boolean) => Promise<void>
   onLoadQuery: (query: settingsApi.SavedQuery) => void
-  libraryInitialCode: { name: string; content: string } | null
-  setLibraryInitialCode: (code: { name: string; content: string } | null) => void
   // Query history specific
   onRunQuery: (query: string) => void
 }
@@ -73,19 +60,11 @@ export function AppShell(props: AppShellProps) {
     setIsSettingsOpen,
     isLibraryOpen,
     setIsLibraryOpen,
-    isProjectLibraryOpen,
-    setIsProjectLibraryOpen,
-    isCodeChatSettingsOpen,
-    setIsCodeChatSettingsOpen,
     isJsonConverterOpen,
     setIsJsonConverterOpen,
     isQueryHistoryOpen,
     setIsQueryHistoryOpen,
-    selectedFile,
-    onFileSelect,
     onLoadQuery,
-    libraryInitialCode,
-    setLibraryInitialCode,
     onRunQuery,
   } = props
 
@@ -127,31 +106,6 @@ export function AppShell(props: AppShellProps) {
                 storageKey="ns.chatSidebarWidth"
                 left={<ChatSidebar />}
                 right={<ChatWindow />}
-              />
-            </Suspense>
-          </div>
-
-          {/* Code Tab */}
-          <div
-            className="absolute inset-0 flex"
-            style={{
-              display: activeTab === 'code' ? 'flex' : 'none'
-            }}
-          >
-            <Suspense fallback={<LoadingSpinner />}>
-              <ResizableSidebar
-                initialWidth={320}
-                minWidth={320}
-                storageKey="ns.codeSidebarWidth"
-                left={
-                  <CodeSidebar
-                    onFileSelect={onFileSelect}
-                    selectedFile={selectedFile}
-                    onOpenLibrary={() => setIsProjectLibraryOpen(true)}
-                    onOpenSettings={() => setIsCodeChatSettingsOpen(true)}
-                  />
-                }
-                right={<CodeWorkspace />}
               />
             </Suspense>
           </div>
@@ -241,26 +195,9 @@ export function AppShell(props: AppShellProps) {
             isOpen={isLibraryOpen}
             onClose={() => {
               setIsLibraryOpen(false)
-              setLibraryInitialCode(null)
             }}
-            initialCodeData={libraryInitialCode}
+            initialCodeData={null}
             onLoadQuery={onLoadQuery}
-          />
-        )}
-      </Suspense>
-      <Suspense fallback={null}>
-        {isProjectLibraryOpen && (
-          <ProjectLibraryModal
-            isOpen={isProjectLibraryOpen}
-            onClose={() => setIsProjectLibraryOpen(false)}
-          />
-        )}
-      </Suspense>
-      <Suspense fallback={null}>
-        {isCodeChatSettingsOpen && (
-          <CodeChatSettingsModal
-            isOpen={isCodeChatSettingsOpen}
-            onClose={() => setIsCodeChatSettingsOpen(false)}
           />
         )}
       </Suspense>
