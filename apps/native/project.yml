@@ -1,0 +1,48 @@
+name: MagnetarStudio
+options:
+  bundleIdPrefix: com.magnetar
+  deploymentTarget:
+    macOS: "14.0"
+  developmentLanguage: en
+
+settings:
+  base:
+    PRODUCT_NAME: MagnetarStudio
+    PRODUCT_BUNDLE_IDENTIFIER: com.magnetar.studio
+    SWIFT_VERSION: "5.9"
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    INFOPLIST_KEY_NSHumanReadableCopyright: "Copyright © 2025 Magnetar. All rights reserved."
+    INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
+    INFOPLIST_KEY_NSFaceIDUsageDescription: "MagnetarStudio uses Face ID to securely authenticate you and protect your data."
+    ENABLE_PREVIEWS: YES
+    ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+
+targets:
+  MagnetarStudio:
+    type: application
+    platform: macOS
+    sources:
+      - Shared
+      - macOS
+    resources:
+      - path: Resources/Assets.xcassets
+        buildPhase: resources
+    settings:
+      base:
+        INFOPLIST_KEY_NSPrincipalClass: NSApplication
+        INFOPLIST_KEY_NSMainStoryboardFile: ""
+        CODE_SIGN_ENTITLEMENTS: MagnetarStudio.entitlements
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "-"
+        ENABLE_HARDENED_RUNTIME: NO
+        COMBINE_HIDPI_IMAGES: YES
+    entitlements:
+      path: MagnetarStudio.entitlements
+    scheme:
+      environmentVariables:
+        - variable: OS_ACTIVITY_MODE
+          value: disable
+          isEnabled: true
