@@ -11,42 +11,18 @@ struct ChatWorkspace: View {
     @Environment(ChatStore.self) private var chatStore
 
     @State private var messageInput: String = ""
-    @State private var isSessionListVisible: Bool = true
 
     var body: some View {
         @Bindable var store = chatStore
 
         HSplitView {
-            // Session sidebar
-            if isSessionListVisible {
-                sessionSidebar
-                    .frame(minWidth: 250, idealWidth: 300, maxWidth: 400)
-            }
+            // Session sidebar (draggable to resize or close)
+            sessionSidebar
+                .frame(minWidth: 250, idealWidth: 300, maxWidth: 400)
 
             // Chat area
             chatAreaView(selectedModel: $store.selectedModel)
                 .frame(minWidth: 600)
-        }
-        .toolbar {
-            ToolbarItem(placement: .navigation) {
-                Button {
-                    isSessionListVisible.toggle()
-                } label: {
-                    Image(systemName: "sidebar.left")
-                }
-                .help("Toggle session list")
-            }
-
-            ToolbarItem {
-                Button {
-                    Task {
-                        await chatStore.createSession()
-                    }
-                } label: {
-                    Label("New Chat", systemImage: "plus.bubble")
-                }
-                .keyboardShortcut("n", modifiers: .command)
-            }
         }
     }
 

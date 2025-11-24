@@ -181,7 +181,7 @@ struct MainAppView: View {
         @Bindable var navStore = navigationStore
 
         NavigationSplitView {
-            // Sidebar with workspace tabs
+            // Sidebar with workspace tabs - draggable to collapse to nav rail
             List(Workspace.allCases, selection: $navStore.activeWorkspace) { workspace in
                 NavigationLink(value: workspace) {
                     Label(workspace.displayName, systemImage: workspace.icon)
@@ -191,16 +191,7 @@ struct MainAppView: View {
                     modifiers: .command
                 )
             }
-            .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 250)
-            .toolbar {
-                ToolbarItem {
-                    Button {
-                        navigationStore.toggleSidebar()
-                    } label: {
-                        Image(systemName: "sidebar.left")
-                    }
-                }
-            }
+            .navigationSplitViewColumnWidth(min: 70, ideal: 220, max: 250)
         } detail: {
             // Main workspace content
             Group {
