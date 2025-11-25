@@ -75,36 +75,23 @@ struct MainAppView: View {
 
                 Divider()
 
-                // Right: Tab content (ZStack for tab switching)
-                ZStack {
-                    // Each workspace fills the entire space, only one visible at a time
-
-                    // Chat tab
-                    ChatWorkspace()
-                        .opacity(navigationStore.activeWorkspace == .chat ? 1 : 0)
-                        .zIndex(navigationStore.activeWorkspace == .chat ? 1 : 0)
-
-                    // Team tab
-                    TeamWorkspace()
-                        .opacity(navigationStore.activeWorkspace == .team ? 1 : 0)
-                        .zIndex(navigationStore.activeWorkspace == .team ? 1 : 0)
-
-                    // Kanban tab
-                    KanbanWorkspace()
-                        .opacity(navigationStore.activeWorkspace == .kanban ? 1 : 0)
-                        .zIndex(navigationStore.activeWorkspace == .kanban ? 1 : 0)
-
-                    // Database tab (default)
-                    DatabaseWorkspace()
-                        .opacity(navigationStore.activeWorkspace == .database ? 1 : 0)
-                        .zIndex(navigationStore.activeWorkspace == .database ? 1 : 0)
-
-                    // Admin/MagnetarHub tab
-                    MagnetarHubWorkspace()
-                        .opacity(navigationStore.activeWorkspace == .magnetarHub ? 1 : 0)
-                        .zIndex(navigationStore.activeWorkspace == .magnetarHub ? 1 : 0)
+                // Right: Tab content (lazy loading for performance)
+                Group {
+                    switch navigationStore.activeWorkspace {
+                    case .chat:
+                        ChatWorkspace()
+                    case .team:
+                        TeamWorkspace()
+                    case .kanban:
+                        KanbanWorkspace()
+                    case .database:
+                        DatabaseWorkspace()
+                    case .magnetarHub:
+                        MagnetarHubWorkspace()
+                    }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .transition(.opacity.animation(.easeInOut(duration: 0.15)))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
