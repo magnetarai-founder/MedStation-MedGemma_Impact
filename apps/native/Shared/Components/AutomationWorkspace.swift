@@ -636,23 +636,284 @@ struct WorkflowDesignerView: View {
 }
 
 struct WorkflowAnalyticsView: View {
+    @State private var analytics: WorkflowAnalytics = WorkflowAnalytics.mock
+
     var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "chart.line.uptrend.xyaxis")
-                .font(.system(size: 64))
-                .foregroundColor(.secondary)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                // Primary metrics grid
+                LazyVGrid(columns: metricsColumns, spacing: 16) {
+                    MetricCard(
+                        title: "Total Items",
+                        value: "\(analytics.totalItems)",
+                        icon: "square.stack.3d.up",
+                        color: .blue
+                    )
 
-            Text("Workflow Analytics")
-                .font(.title)
+                    MetricCard(
+                        title: "Completed",
+                        value: "\(analytics.completedItems)",
+                        subtitle: "\(analytics.completionPercent)%",
+                        icon: "checkmark.circle.fill",
+                        color: .green
+                    )
 
-            Text("Metrics and stage performance will appear here")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
+                    MetricCard(
+                        title: "In Progress",
+                        value: "\(analytics.inProgressItems)",
+                        icon: "arrow.triangle.2.circlepath",
+                        color: .orange
+                    )
+
+                    MetricCard(
+                        title: "Avg Cycle Time",
+                        value: analytics.avgCycleTime,
+                        subtitle: analytics.medianCycleTime != nil ? "Median: \(analytics.medianCycleTime!)" : nil,
+                        icon: "clock",
+                        color: .purple
+                    )
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+
+                // Extra status metrics
+                if analytics.cancelledItems > 0 || analytics.failedItems > 0 {
+                    LazyVGrid(columns: extraMetricsColumns, spacing: 16) {
+                        if analytics.cancelledItems > 0 {
+                            MetricCard(
+                                title: "Cancelled",
+                                value: "\(analytics.cancelledItems)",
+                                icon: "xmark.circle",
+                                color: .gray,
+                                isCompact: true
+                            )
+                        }
+
+                        if analytics.failedItems > 0 {
+                            MetricCard(
+                                title: "Failed",
+                                value: "\(analytics.failedItems)",
+                                icon: "exclamationmark.triangle.fill",
+                                color: .red,
+                                isCompact: true
+                            )
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                }
+
+                // Stage Performance Table
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Stage Performance")
+                        .font(.system(size: 18, weight: .semibold))
+                        .padding(.horizontal, 16)
+
+                    StagePerformanceTable(stages: analytics.stagePerformance)
+                }
+            }
+            .padding(.bottom, 24)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding()
     }
+
+    private var metricsColumns: [GridItem] {
+        [
+            GridItem(.flexible(), spacing: 16),
+            GridItem(.flexible(), spacing: 16),
+            GridItem(.flexible(), spacing: 16),
+            GridItem(.flexible(), spacing: 16)
+        ]
+    }
+
+    private var extraMetricsColumns: [GridItem] {
+        [
+            GridItem(.flexible(), spacing: 16),
+            GridItem(.flexible(), spacing: 16)
+        ]
+    }
+}
+
+// MARK: - Metric Card
+
+struct MetricCard: View {
+    let title: String
+    let value: String
+    var subtitle: String? = nil
+    let icon: String
+    let color: Color
+    var isCompact: Bool = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: isCompact ? 8 : 12) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: isCompact ? 18 : 24))
+                    .foregroundColor(color)
+
+                Spacer()
+
+                Text(title)
+                    .font(.system(size: isCompact ? 12 : 13))
+                    .foregroundColor(.secondary)
+                    .textCase(.uppercase)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(value)
+                    .font(.system(size: isCompact ? 24 : 32, weight: .bold))
+                    .foregroundColor(.textPrimary)
+
+                if let subtitle = subtitle {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .padding(isCompact ? 12 : 16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.controlBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(Color.gray.opacity(0.15), lineWidth: 1)
+        )
+    }
+}
+
+// MARK: - Stage Performance Table
+
+struct StagePerformanceTable: View {
+    let stages: [StagePerformance]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack(spacing: 16) {
+                Text("Stage")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Text("Entered")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .frame(width: 80, alignment: .trailing)
+
+                Text("Completed")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .frame(width: 100, alignment: .trailing)
+
+                Text("Avg Time")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .frame(width: 100, alignment: .trailing)
+
+                Text("Median Time")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .frame(width: 100, alignment: .trailing)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(Color.gray.opacity(0.05))
+
+            Divider()
+
+            // Rows
+            ForEach(stages) { stage in
+                VStack(spacing: 0) {
+                    HStack(spacing: 16) {
+                        Text(stage.name)
+                            .font(.system(size: 14))
+                            .foregroundColor(.textPrimary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                        Text("\(stage.entered)")
+                            .font(.system(size: 14))
+                            .foregroundColor(.textPrimary)
+                            .frame(width: 80, alignment: .trailing)
+
+                        Text("\(stage.completed)")
+                            .font(.system(size: 14))
+                            .foregroundColor(.textPrimary)
+                            .frame(width: 100, alignment: .trailing)
+
+                        Text(stage.avgTime)
+                            .font(.system(size: 14, design: .monospaced))
+                            .foregroundColor(.textPrimary)
+                            .frame(width: 100, alignment: .trailing)
+
+                        Text(stage.medianTime ?? "—")
+                            .font(.system(size: 14, design: .monospaced))
+                            .foregroundColor(stage.medianTime != nil ? .textPrimary : .secondary)
+                            .frame(width: 100, alignment: .trailing)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+
+                    if stage.id != stages.last?.id {
+                        Divider()
+                    }
+                }
+                .background(Color.clear)
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color(.controlBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(Color.gray.opacity(0.15), lineWidth: 1)
+        )
+        .padding(.horizontal, 16)
+    }
+}
+
+// MARK: - Analytics Models
+
+struct WorkflowAnalytics {
+    let totalItems: Int
+    let completedItems: Int
+    let inProgressItems: Int
+    let cancelledItems: Int
+    let failedItems: Int
+    let avgCycleTime: String
+    let medianCycleTime: String?
+    let stagePerformance: [StagePerformance]
+
+    var completionPercent: Int {
+        guard totalItems > 0 else { return 0 }
+        return Int((Double(completedItems) / Double(totalItems)) * 100)
+    }
+
+    static let mock = WorkflowAnalytics(
+        totalItems: 1847,
+        completedItems: 1523,
+        inProgressItems: 287,
+        cancelledItems: 24,
+        failedItems: 13,
+        avgCycleTime: "3.2h",
+        medianCycleTime: "2.8h",
+        stagePerformance: [
+            StagePerformance(name: "Initial Triage", entered: 1847, completed: 1823, avgTime: "12m", medianTime: "10m"),
+            StagePerformance(name: "Data Validation", entered: 1823, completed: 1789, avgTime: "45m", medianTime: "38m"),
+            StagePerformance(name: "Processing", entered: 1789, completed: 1654, avgTime: "1.8h", medianTime: "1.5h"),
+            StagePerformance(name: "Review", entered: 1654, completed: 1598, avgTime: "2.3h", medianTime: "2.0h"),
+            StagePerformance(name: "Approval", entered: 1598, completed: 1523, avgTime: "4.1h", medianTime: "3.2h")
+        ]
+    )
+}
+
+struct StagePerformance: Identifiable {
+    let id = UUID()
+    let name: String
+    let entered: Int
+    let completed: Int
+    let avgTime: String
+    let medianTime: String?
 }
 
 // MARK: - Supporting Types
