@@ -14,6 +14,13 @@ struct ContentView: View {
 
     var body: some View {
         Group {
+            // DEV MODE: Skip authentication for faster development
+            // To re-enable login: uncomment the if/else block below
+            MainAppView()
+                .environment(navigationStore)
+                .environment(chatStore)
+
+            /*
             if userStore.isAuthenticated {
                 // Main app with navigation
                 MainAppView()
@@ -23,10 +30,11 @@ struct ContentView: View {
                 // Login/Register screen
                 AuthenticationView()
             }
+            */
         }
         .task {
             // Check for existing session on launch
-            await userStore.checkSession()
+            // await userStore.checkSession()  // Disabled for dev mode
         }
     }
 }
@@ -178,36 +186,50 @@ struct MainAppView: View {
     @Environment(ChatStore.self) private var chatStore
 
     var body: some View {
-        @Bindable var navStore = navigationStore
+        VStack(spacing: 0) {
+            // Top: Header bar
+            Header()
 
-        NavigationSplitView {
-            // Sidebar with workspace tabs - draggable to collapse to nav rail
-            List(Workspace.allCases, selection: $navStore.activeWorkspace) { workspace in
-                NavigationLink(value: workspace) {
-                    Label(workspace.displayName, systemImage: workspace.icon)
-                }
-                .keyboardShortcut(
-                    KeyEquivalent(Character(workspace.keyboardShortcut)),
-                    modifiers: .command
-                )
-            }
-            .navigationSplitViewColumnWidth(min: 70, ideal: 220, max: 250)
-        } detail: {
-            // Main workspace content
-            Group {
-                switch navigationStore.activeWorkspace {
-                case .team:
-                    TeamWorkspace()
-                case .chat:
+            // Body: HStack with Navigation Rail + Tab Content
+            HStack(spacing: 0) {
+                // Left: Navigation Rail (56pt wide)
+                NavigationRail()
+
+                Divider()
+
+                // Right: Tab content (ZStack for tab switching)
+                ZStack {
+                    // Each workspace fills the entire space, only one visible at a time
+
+                    // Chat tab
                     ChatWorkspace()
-                case .database:
-                    DatabaseWorkspace()
-                case .kanban:
+                        .opacity(navigationStore.activeWorkspace == .chat ? 1 : 0)
+                        .zIndex(navigationStore.activeWorkspace == .chat ? 1 : 0)
+
+                    // Team tab
+                    TeamWorkspace()
+                        .opacity(navigationStore.activeWorkspace == .team ? 1 : 0)
+                        .zIndex(navigationStore.activeWorkspace == .team ? 1 : 0)
+
+                    // Kanban tab
                     KanbanWorkspace()
+                        .opacity(navigationStore.activeWorkspace == .kanban ? 1 : 0)
+                        .zIndex(navigationStore.activeWorkspace == .kanban ? 1 : 0)
+
+                    // Database tab (default)
+                    DatabaseWorkspace()
+                        .opacity(navigationStore.activeWorkspace == .database ? 1 : 0)
+                        .zIndex(navigationStore.activeWorkspace == .database ? 1 : 0)
+
+                    // Admin/MagnetarHub tab
+                    MagnetarHubWorkspace()
+                        .opacity(navigationStore.activeWorkspace == .magnetarHub ? 1 : 0)
+                        .zIndex(navigationStore.activeWorkspace == .magnetarHub ? 1 : 0)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

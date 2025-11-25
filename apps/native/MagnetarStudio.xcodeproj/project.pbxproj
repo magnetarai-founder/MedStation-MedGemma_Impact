@@ -7,10 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		30393230363164342D646637312D343666382D613263632D /* ThreePaneLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31363739633266642D383665342D346232652D393037382D /* ThreePaneLayout.swift */; };
 		0D6F62E4A20310F8DCA88F48 /* KanbanWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D684EFED023D2A6542AAB1F /* KanbanWorkspace.swift */; };
+		0E2C0590E01037DE122C6D46 /* ModelsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2B236333A555B822D41D3D /* ModelsStore.swift */; };
 		1807773E9FF774789EBDB576 /* ChatMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2C77CB5AF6C4202FD8D7161 /* ChatMessage.swift */; };
 		284B09009A694A4E0263B311 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE1C4B939DAC9084AC244415 /* ContentView.swift */; };
 		33A28A605AE75CD2FDB67907 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0555CDE5ACABDDEA3DA1834D /* SettingsView.swift */; };
+		419431498985644AE22A495A /* MagnetarHubWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2760AE2A83BCE0FEB660A5 /* MagnetarHubWorkspace.swift */; };
 		7B7E8A766BB7FC3F6725F19B /* DatabaseWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = A90C0C6D0ED2910BC2EE2A2D /* DatabaseWorkspace.swift */; };
 		87AC91711BE8494C52DC1524 /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35C17D9C1722F2E28A8F923C /* Colors.swift */; };
 		9567EB5AF9A8C73D29DD0EA6 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F77D79421B014D8C65EC2CF /* APIClient.swift */; };
@@ -24,12 +27,16 @@
 		EBFCB595C54024DFB31B5D56 /* ChatStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E62FD8B9DE028C44A2F0816E /* ChatStore.swift */; };
 		EFBA62F8E6B41580CE0730B2 /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A9CA03F945469535A06F816 /* User.swift */; };
 		F022EFDF45C31A5A57071299 /* KeychainManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B462A62F24C04C9E66B2D0CD /* KeychainManager.swift */; };
+		4FCFAC2E0DD745DFB5813F74 /* NavigationRail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08785DE309A344AF8765E6BC /* NavigationRail.swift */; };
+		C4D33031AF8A4EDDAFDA3841 /* Header.swift in Sources */ = {isa = PBXBuildFile; fileRef = F85CE2F0DE5343879EB18743 /* Header.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		31363739633266642D383665342D346232652D393037382D /* ThreePaneLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreePaneLayout.swift; sourceTree = "<group>"; };
 		0369ADDFF9623D901CC8207E /* MagnetarStudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagnetarStudioApp.swift; sourceTree = "<group>"; };
 		0555CDE5ACABDDEA3DA1834D /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		182105471879C8AECCBF62D0 /* UserStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserStore.swift; sourceTree = "<group>"; };
+		1A2760AE2A83BCE0FEB660A5 /* MagnetarHubWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagnetarHubWorkspace.swift; sourceTree = "<group>"; };
 		1EA14AC49CC3C7EE3D89EE05 /* TeamWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamWorkspace.swift; sourceTree = "<group>"; };
 		2C969A3D6C92097E6DF1F837 /* MagnetarStudio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MagnetarStudio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2D684EFED023D2A6542AAB1F /* KanbanWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KanbanWorkspace.swift; sourceTree = "<group>"; };
@@ -40,12 +47,15 @@
 		7F77D79421B014D8C65EC2CF /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		842DAEC1F81C99999F03FF53 /* LiquidGlassPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidGlassPanel.swift; sourceTree = "<group>"; };
 		A90C0C6D0ED2910BC2EE2A2D /* DatabaseWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseWorkspace.swift; sourceTree = "<group>"; };
+		AA2B236333A555B822D41D3D /* ModelsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelsStore.swift; sourceTree = "<group>"; };
 		B462A62F24C04C9E66B2D0CD /* KeychainManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainManager.swift; sourceTree = "<group>"; };
 		DE1C4B939DAC9084AC244415 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		E0B5547ECD973EFF39678E79 /* NavigationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationStore.swift; sourceTree = "<group>"; };
 		E62FD8B9DE028C44A2F0816E /* ChatStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatStore.swift; sourceTree = "<group>"; };
 		F2C77CB5AF6C4202FD8D7161 /* ChatMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatMessage.swift; sourceTree = "<group>"; };
 		FA268C85AA8894BC92182D94 /* ChatWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatWorkspace.swift; sourceTree = "<group>"; };
+		08785DE309A344AF8765E6BC /* NavigationRail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationRail.swift; sourceTree = "<group>"; };
+		F85CE2F0DE5343879EB18743 /* Header.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Header.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -59,6 +69,16 @@
 				6878B112D67AE729936DE9D4 /* Workspaces */,
 			);
 			path = macOS;
+			sourceTree = "<group>";
+		};
+
+		D87CF2DE26CB41EAA8D2EA1E /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				08785DE309A344AF8765E6BC /* NavigationRail.swift */,
+				F85CE2F0DE5343879EB18743 /* Header.swift */,
+			);
+			path = Components;
 			sourceTree = "<group>";
 		};
 		0CBF91A9C082C90D7E79AF46 = {
@@ -84,6 +104,7 @@
 				FA268C85AA8894BC92182D94 /* ChatWorkspace.swift */,
 				A90C0C6D0ED2910BC2EE2A2D /* DatabaseWorkspace.swift */,
 				2D684EFED023D2A6542AAB1F /* KanbanWorkspace.swift */,
+				1A2760AE2A83BCE0FEB660A5 /* MagnetarHubWorkspace.swift */,
 				1EA14AC49CC3C7EE3D89EE05 /* TeamWorkspace.swift */,
 			);
 			path = Workspaces;
@@ -118,6 +139,7 @@
 			isa = PBXGroup;
 			children = (
 				E62FD8B9DE028C44A2F0816E /* ChatStore.swift */,
+				AA2B236333A555B822D41D3D /* ModelsStore.swift */,
 				E0B5547ECD973EFF39678E79 /* NavigationStore.swift */,
 				182105471879C8AECCBF62D0 /* UserStore.swift */,
 			);
@@ -129,6 +151,7 @@
 			children = (
 				35C17D9C1722F2E28A8F923C /* Colors.swift */,
 				5C5B7D185B4D1BE3FF14F5F6 /* GlassButton.swift */,
+				31363739633266642D383665342D346232652D393037382D /* ThreePaneLayout.swift */,
 				842DAEC1F81C99999F03FF53 /* LiquidGlassPanel.swift */,
 			);
 			path = DesignSystem;
@@ -142,7 +165,8 @@
 				91EAD9BF8EC7E79814E2DAE7 /* Networking */,
 				23C530D571A54A0F4DB28FB5 /* Security */,
 				B8C234D85AAB74A8DE6CC886 /* Stores */,
-			);
+			
+				D87CF2DE26CB41EAA8D2EA1E /* Components */,);
 			path = Shared;
 			sourceTree = "<group>";
 		};
@@ -211,16 +235,21 @@
 				284B09009A694A4E0263B311 /* ContentView.swift in Sources */,
 				7B7E8A766BB7FC3F6725F19B /* DatabaseWorkspace.swift in Sources */,
 				BD7253C573C97E44DCD6BE0A /* GlassButton.swift in Sources */,
+				30393230363164342D646637312D343666382D613263632D /* ThreePaneLayout.swift in Sources */,
 				0D6F62E4A20310F8DCA88F48 /* KanbanWorkspace.swift in Sources */,
 				F022EFDF45C31A5A57071299 /* KeychainManager.swift in Sources */,
 				C39387A4041537956C59BAFC /* LiquidGlassPanel.swift in Sources */,
+				419431498985644AE22A495A /* MagnetarHubWorkspace.swift in Sources */,
 				E65EDDCF022977AA1854B1AA /* MagnetarStudioApp.swift in Sources */,
+				0E2C0590E01037DE122C6D46 /* ModelsStore.swift in Sources */,
 				E8E0336CBB99E532C5484361 /* NavigationStore.swift in Sources */,
 				33A28A605AE75CD2FDB67907 /* SettingsView.swift in Sources */,
 				B64BDA375B00040180CE49A6 /* TeamWorkspace.swift in Sources */,
 				EFBA62F8E6B41580CE0730B2 /* User.swift in Sources */,
 				957BC51DC6E64B63D6FDC130 /* UserStore.swift in Sources */,
-			);
+			
+				4FCFAC2E0DD745DFB5813F74 /* NavigationRail.swift in Sources */,
+				C4D33031AF8A4EDDAFDA3841 /* Header.swift in Sources */,);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */

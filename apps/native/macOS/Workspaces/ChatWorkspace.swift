@@ -2,81 +2,90 @@
 //  ChatWorkspace.swift
 //  MagnetarStudio (macOS)
 //
-//  AI chat interface with message list and input.
+//  AI Chat workspace - matches React app layout EXACTLY
 //
 
 import SwiftUI
 
 struct ChatWorkspace: View {
     @Environment(ChatStore.self) private var chatStore
-
     @State private var messageInput: String = ""
 
     var body: some View {
-        @Bindable var store = chatStore
+        HStack(spacing: 0) {
+            // Left: Chat Sidebar (~280-320px)
+            chatSidebar
+                .frame(width: 300)
+                .background(Color.surfaceSecondary.opacity(0.5))
 
-        HSplitView {
-            // Session sidebar (draggable to resize or close)
-            sessionSidebar
-                .frame(minWidth: 250, idealWidth: 300, maxWidth: 400)
+            Divider()
 
-            // Chat area
-            chatAreaView(selectedModel: $store.selectedModel)
-                .frame(minWidth: 600)
+            // Right: Chat Window
+            chatWindow
         }
     }
 
-    // MARK: - Session Sidebar
+    // MARK: - Chat Sidebar
 
-    private var sessionSidebar: some View {
+    private var chatSidebar: some View {
         VStack(spacing: 0) {
-            // Header
+            // Header with New Chat button
             HStack {
                 Text("Sessions")
-                    .font(.headline)
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.textPrimary)
 
                 Spacer()
 
-                Button {
+                Button(action: {
                     Task {
                         await chatStore.createSession()
                     }
-                } label: {
+                }) {
                     Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 16))
                         .foregroundStyle(LinearGradient.magnetarGradient)
-                        .font(.title3)
                 }
                 .buttonStyle(.plain)
             }
-            .frame(height: 44)
-            .padding(.horizontal, 16)
-            .background(Color.surfaceTertiary.opacity(0.3))
+            .padding(12)
+            .background(Color.surfaceSecondary.opacity(0.3))
 
             Divider()
 
-            // Session list
+            // Sessions list
             if chatStore.sessions.isEmpty {
-                VStack(spacing: 12) {
+                VStack(spacing: 16) {
                     Image(systemName: "bubble.left.and.bubble.right")
-                        .font(.system(size: 48))
+                        .font(.system(size: 42))
                         .foregroundColor(.secondary)
 
                     Text("No chat sessions")
                         .font(.headline)
                         .foregroundColor(.secondary)
 
-                    GlassButton("Start New Chat", icon: "plus", style: .primary) {
+                    Button(action: {
                         Task {
                             await chatStore.createSession()
                         }
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "plus")
+                            Text("Start New Chat")
+                        }
+                        .font(.system(size: 13, weight: .medium))
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(LinearGradient.magnetarGradient)
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
                     }
-                    .frame(width: 200)
+                    .buttonStyle(.plain)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
-                    LazyVStack(spacing: 8) {
+                    LazyVStack(spacing: 4) {
                         ForEach(chatStore.sessions) { session in
                             SessionRow(
                                 session: session,
@@ -92,31 +101,78 @@ struct ChatWorkspace: View {
                             }
                         }
                     }
-                    .padding()
+                    .padding(8)
                 }
             }
         }
-        .background(Color.surfaceSecondary.opacity(0.5))
     }
 
-    // MARK: - Chat Area
+    // MARK: - Chat Window
 
     @ViewBuilder
-    private func chatAreaView(selectedModel: Binding<String>) -> some View {
+    private var chatWindow: some View {
+        @Bindable var store = chatStore
+
         VStack(spacing: 0) {
-            // Model selector
-            modelSelectorView(selectedModel: selectedModel)
-                .frame(height: 44)
-                .padding(.horizontal, 16)
-                .background(Color.surfaceTertiary.opacity(0.3))
+            // Header toolbar
+            HStack {
+                // Left: Title and message count
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(chatStore.currentSession?.title ?? "Chat")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.textPrimary)
+
+                    Text("\(chatStore.messages.count) messages")
+                        .font(.system(size: 11))
+                        .foregroundColor(.textSecondary)
+                }
+
+                Spacer()
+
+                // Right: Timeline button + Model selector
+                HStack(spacing: 12) {
+                    Button(action: {}) {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.system(size: 14))
+                            .foregroundColor(.textSecondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Session Timeline")
+
+                    // Model Selector
+                    Menu {
+                        Button("Mistral") { store.selectedModel = "mistral" }
+                        Button("Llama 2") { store.selectedModel = "llama2" }
+                        Button("CodeLlama") { store.selectedModel = "codellama" }
+                        Button("Neural Chat") { store.selectedModel = "neural-chat" }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "cpu")
+                                .font(.system(size: 13))
+                            Text(store.selectedModel.isEmpty ? "Select Model" : store.selectedModel.capitalized)
+                                .font(.system(size: 13))
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 10))
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.surfaceSecondary)
+                        .cornerRadius(6)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(Color.surfaceTertiary.opacity(0.3))
 
             Divider()
 
-            // Messages
+            // Messages area
             if chatStore.currentSession == nil {
                 welcomeView
             } else if chatStore.messages.isEmpty {
-                emptyStateView
+                emptyMessagesView
             } else {
                 messageList
             }
@@ -125,77 +181,49 @@ struct ChatWorkspace: View {
 
             // Input area
             inputArea
-                .padding()
-        }
-    }
-
-    // MARK: - Model Selector
-
-    @ViewBuilder
-    private func modelSelectorView(selectedModel: Binding<String>) -> some View {
-        HStack {
-            Image(systemName: "cpu")
-                .foregroundColor(.secondary)
-
-            Picker("Model", selection: selectedModel) {
-                Text("Mistral").tag("mistral")
-                Text("Llama 2").tag("llama2")
-                Text("CodeLlama").tag("codellama")
-                Text("Neural Chat").tag("neural-chat")
-            }
-            .pickerStyle(.menu)
-            .frame(width: 200)
-
-            Spacer()
-
-            if chatStore.isStreaming {
-                HStack(spacing: 8) {
-                    ProgressView()
-                        .scaleEffect(0.7)
-                    Text("Thinking...")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
+                .padding(16)
         }
     }
 
     // MARK: - Welcome View
 
     private var welcomeView: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 20) {
             Image(systemName: "sparkles")
-                .font(.system(size: 64))
+                .font(.system(size: 56))
                 .foregroundStyle(LinearGradient.magnetarGradient)
 
             VStack(spacing: 8) {
                 Text("Welcome to MagnetarStudio")
-                    .font(.largeTitle)
+                    .font(.title2)
                     .fontWeight(.bold)
 
                 Text("Click 'Start New Chat' in the sidebar or press ⌘N")
-                    .font(.title3)
+                    .font(.subheadline)
                     .foregroundColor(.secondary)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    // MARK: - Empty State
+    // MARK: - Empty Messages View
 
-    private var emptyStateView: some View {
-        VStack(spacing: 24) {
+    private var emptyMessagesView: some View {
+        VStack(spacing: 16) {
             Image(systemName: "text.bubble")
                 .font(.system(size: 48))
                 .foregroundColor(.secondary)
 
-            Text("No messages yet")
-                .font(.headline)
-                .foregroundColor(.secondary)
+            VStack(spacing: 4) {
+                Text("Start a conversation")
+                    .font(.headline)
 
-            Text("Type a message below to start the conversation")
-                .font(.caption)
-                .foregroundColor(.textTertiary)
+                Text("Ask me anything! I can help with code, answer questions, or just chat.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 400)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -211,10 +239,9 @@ struct ChatWorkspace: View {
                             .id(message.id)
                     }
                 }
-                .padding()
+                .padding(16)
             }
             .onChange(of: chatStore.messages.count) { _, _ in
-                // Auto-scroll to bottom on new message
                 if let lastMessage = chatStore.messages.last {
                     withAnimation {
                         proxy.scrollTo(lastMessage.id, anchor: .bottom)
@@ -228,24 +255,20 @@ struct ChatWorkspace: View {
 
     private var inputArea: some View {
         HStack(alignment: .bottom, spacing: 12) {
-            // Text input
             TextField("Message...", text: $messageInput, axis: .vertical)
                 .textFieldStyle(.plain)
-                .padding(12)
+                .padding(10)
                 .background(Color.surfaceSecondary)
-                .cornerRadius(12)
-                .lineLimit(1...10)
+                .cornerRadius(10)
+                .lineLimit(1...8)
                 .onSubmit {
                     sendMessage()
                 }
 
-            // Send button
-            Button {
-                sendMessage()
-            } label: {
+            Button(action: sendMessage) {
                 Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 32))
-                    .foregroundStyle(messageInput.isEmpty ? Color.secondary : Color.magnetarPrimary)
+                    .font(.system(size: 28))
+                    .foregroundStyle(messageInput.isEmpty ? AnyShapeStyle(Color.secondary) : AnyShapeStyle(LinearGradient.magnetarGradient))
             }
             .buttonStyle(.plain)
             .disabled(messageInput.isEmpty || chatStore.isLoading)
@@ -272,32 +295,35 @@ struct SessionRow: View {
     let isSelected: Bool
 
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(session.title)
-                    .font(.headline)
+                    .font(.system(size: 13, weight: .medium))
                     .lineLimit(1)
+                    .foregroundColor(.textPrimary)
 
                 Text(session.model)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 11))
+                    .foregroundColor(.textSecondary)
             }
 
             Spacer()
 
             if isSelected {
                 Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 14))
                     .foregroundStyle(LinearGradient.magnetarGradient)
             }
         }
-        .padding(12)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
         .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(isSelected ? Color.magnetarPrimary.opacity(0.1) : Color.clear)
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isSelected ? Color.magnetarPrimary.opacity(0.12) : Color.clear)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(isSelected ? Color.magnetarPrimary.opacity(0.3) : Color.clear, lineWidth: 1)
+            RoundedRectangle(cornerRadius: 6)
+                .strokeBorder(isSelected ? Color.magnetarPrimary.opacity(0.3) : Color.clear, lineWidth: 1)
         )
     }
 }
@@ -310,57 +336,31 @@ struct MessageRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             // Avatar
-            avatarView
+            Circle()
+                .fill(message.role == .user ? AnyShapeStyle(LinearGradient.magnetarGradient) : AnyShapeStyle(Color.surfaceSecondary))
                 .frame(width: 32, height: 32)
+                .overlay(
+                    Image(systemName: message.role == .user ? "person.fill" : "sparkles")
+                        .font(.system(size: 14))
+                        .foregroundColor(message.role == .user ? .white : .textSecondary)
+                )
 
             // Message content
             VStack(alignment: .leading, spacing: 4) {
                 Text(message.role.displayName)
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.textSecondary)
 
                 Text(message.content)
-                    .font(.body)
+                    .font(.system(size: 14))
                     .textSelection(.enabled)
             }
 
             Spacer()
         }
-        .padding()
-        .background(messageBackground)
-        .cornerRadius(12)
-    }
-
-    @ViewBuilder
-    private var avatarView: some View {
-        if message.role == .user {
-            Circle()
-                .fill(LinearGradient.magnetarGradient)
-                .overlay(
-                    Image(systemName: "person.fill")
-                        .font(.caption)
-                        .foregroundColor(.white)
-                )
-        } else {
-            Circle()
-                .fill(Color.surfaceTertiary)
-                .overlay(
-                    Image(systemName: "sparkles")
-                        .font(.caption)
-                        .foregroundStyle(LinearGradient.magnetarGradient)
-                )
-        }
-    }
-
-    private var messageBackground: some View {
-        Group {
-            if message.role == .user {
-                Color.magnetarPrimary.opacity(0.05)
-            } else {
-                Color.surfaceSecondary.opacity(0.5)
-            }
-        }
+        .padding(12)
+        .background(message.role == .user ? Color.magnetarPrimary.opacity(0.06) : Color.surfaceSecondary.opacity(0.4))
+        .cornerRadius(10)
     }
 }
 
