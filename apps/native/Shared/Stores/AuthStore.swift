@@ -38,7 +38,7 @@ final class AuthStore: ObservableObject {
 
         do {
             // Step 1: Validate user
-            let user: ApiUser = try await apiClient.request("/v1/users/me")
+            let user: ApiUser = try await apiClient.request("/v1/auth/me")
             self.user = user
 
             // Step 2: Check setup status

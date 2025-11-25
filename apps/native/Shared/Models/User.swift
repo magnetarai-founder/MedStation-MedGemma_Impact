@@ -1,23 +1,23 @@
 import Foundation
 
-/// API User model matching /api/v1/users/me response
+/// API User model matching /api/v1/auth/me response
 struct ApiUser: Codable, Identifiable {
     let userId: String
     let username: String
-    let role: UserRole?
-    let email: String?
-    let createdAt: Date?
-    let updatedAt: Date?
+    let deviceId: String
+    let role: String
 
     var id: String { userId }
+
+    var userRole: UserRole? {
+        UserRole(rawValue: role)
+    }
 
     enum CodingKeys: String, CodingKey {
         case userId = "user_id"
         case username
+        case deviceId = "device_id"
         case role
-        case email
-        case createdAt = "created_at"
-        case updatedAt = "updated_at"
     }
 }
 

@@ -180,7 +180,10 @@ def init_user_db():
 
     Called on module import to ensure table exists.
     """
-    from config_paths import get_config_paths
+    try:
+        from api.config_paths import get_config_paths
+    except ImportError:
+        from config_paths import get_config_paths
 
     PATHS = get_config_paths()
     USER_DB_PATH = PATHS.app_db
