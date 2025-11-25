@@ -22,6 +22,11 @@ struct TeamWorkspace: View {
     @State private var showNLQuery = false
     @State private var showPatterns = false
 
+    // Vault status
+    @State private var vaultReady: Bool = false
+    @State private var checkingVaultStatus: Bool = false
+    @State private var vaultError: String? = nil
+
     // Permissions (mock for now)
     private var permissions = Permissions(
         canAccessDocuments: true,
@@ -259,9 +264,51 @@ struct TeamWorkspace: View {
     // MARK: - Actions
 
     private func handleVaultClick() {
-        // TODO: Check vault setup status
-        // For now, just switch to vault
-        workspaceView = .vault
+        Task {
+            await checkVaultStatus()
+        }
+    }
+
+    @MainActor
+    private func checkVaultStatus() async {
+        checkingVaultStatus = true
+        vaultError = nil
+
+        do {
+            // Try to access vault by checking folders endpoint
+            let url = URL(string: "http://localhost:8000/api/v1/vault/folders?vault_type=real")!
+            var request = URLRequest(url: url)
+            request.httpMethod = "GET"
+
+            // Get token if available (will be nil in DEBUG mode)
+            if let token = KeychainService.shared.loadToken() {
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            }
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw NSError(domain: "VaultError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response"])
+            }
+
+            if httpResponse.statusCode == 200 {
+                // Vault is accessible
+                vaultReady = true
+                workspaceView = .vault
+            } else if httpResponse.statusCode == 403 {
+                // Vault needs setup or no permissions
+                vaultError = "Vault access denied. Setup may be required."
+                showVaultSetup = true
+            } else {
+                vaultError = "Vault returned status \(httpResponse.statusCode)"
+            }
+
+        } catch {
+            vaultError = "Failed to check vault status: \(error.localizedDescription)"
+            print("Vault status check error: \(error)")
+        }
+
+        checkingVaultStatus = false
     }
 }
 
