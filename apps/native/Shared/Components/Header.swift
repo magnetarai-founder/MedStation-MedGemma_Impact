@@ -2,158 +2,176 @@
 //  Header.swift
 //  MagnetarStudio
 //
-//  Global header bar matching React Header.tsx specs
-//  - Gradient background with blur
-//  - Left: Star button + badge
-//  - Center: "MagnetarStudio" title (absolutely centered)
-//  - Right: Terminal button + control buttons
+//  Global header bar with a lighter, Xcode-like toolbar aesthetic
+//  - Soft glass gradient background with subtle chroma
+//  - Left: App glyph + title (no star/pill noise)
+//  - Right: Condensed controls (terminal, activity, panic)
 //
 
 import SwiftUI
 
 struct Header: View {
-    @State private var showModelManagement = false
     @State private var showTerminals = false
     @State private var showPanicMode = false
     @State private var terminalCount = 0
 
     var body: some View {
         ZStack(alignment: .center) {
-            // Background gradient with blur
+            // Background: muted glass gradient with a faint chroma sweep
             LinearGradient(
                 colors: [
-                    Color(red: 0.24, green: 0.51, blue: 0.98, opacity: 0.08), // blue-50/80
-                    Color(red: 0.55, green: 0.27, blue: 0.93, opacity: 0.08), // purple-50/80
-                    Color(red: 0.98, green: 0.44, blue: 0.72, opacity: 0.08)  // pink-50/80
+                    Color(red: 0.11, green: 0.13, blue: 0.18).opacity(0.92),
+                    Color(red: 0.08, green: 0.09, blue: 0.14).opacity(0.94)
                 ],
-                startPoint: .leading,
-                endPoint: .trailing
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
             )
             .overlay(
-                Color.white.opacity(0.01)
-                    .background(.ultraThinMaterial)
+                LinearGradient(
+                    colors: [
+                        Color.magnetarPrimary.opacity(0.18),
+                        Color.magnetarSecondary.opacity(0.12)
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .blur(radius: 36)
             )
+            .background(.regularMaterial)
             .ignoresSafeArea(edges: .top)
 
-            // Content HStack
-            HStack(alignment: .center, spacing: 12) {
-                // Left cluster: Star button + badge
-                HStack(spacing: 12) {
-                    Button {
-                        showModelManagement = true
-                    } label: {
-                        Image(systemName: "star.fill")
-                            .font(.system(size: 20))
-                            .foregroundStyle(LinearGradient.magnetarGradient)
-                            .frame(width: 40, height: 40)
-                            .background(
-                                Circle()
-                                    .fill(Color.white.opacity(0.3))
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .scaleEffect(1.0)
-                    .help("Model Management")
-
-                    // Context badge placeholder
-                    Text("Local")
-                        .font(.system(size: 10, weight: .medium))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(
-                            Capsule()
-                                .fill(Color.green.opacity(0.2))
-                        )
-                        .foregroundColor(.green)
-                }
+            // Content
+            HStack(alignment: .center, spacing: 16) {
+                BrandCluster()
 
                 Spacer()
 
-                // Center: Title (absolutely centered)
-                // This Spacer + HStack trick ensures absolute centering
-                HStack {
-                    Spacer()
-                }
-
-                Spacer()
-
-                // Right cluster: Terminal + controls + panic
-                HStack(spacing: 12) {
-                    // Terminal button + counter
-                    Button {
-                        showTerminals = true
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "terminal")
-                                .font(.system(size: 20))
-
-                            Text("\(terminalCount)")
-                                .font(.system(size: 11))
-                                .frame(minWidth: 20)
-                        }
-                        .foregroundColor(.secondary)
-                        .padding(8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color.white.opacity(0.3))
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .help("Terminals")
-
-                    // Activity button
-                    Button {
-                        // Show activity
-                    } label: {
-                        Image(systemName: "chart.bar")
-                            .font(.system(size: 20))
-                            .foregroundColor(.secondary)
-                            .padding(8)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(Color.white.opacity(0.3))
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .help("Activity")
-
-                    // Panic button
-                    Button {
-                        showPanicMode = true
-                    } label: {
-                        Image(systemName: "exclamationmark.triangle")
-                            .font(.system(size: 20))
-                            .foregroundColor(.red.opacity(0.8))
-                            .padding(8)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(Color.red.opacity(0.1))
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .help("Panic Mode")
-                }
+                ControlCluster(
+                    terminalCount: terminalCount,
+                    showTerminals: $showTerminals,
+                    showPanicMode: $showPanicMode
+                )
             }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 14)
-
-            // Absolutely centered title (overlay)
-            Text("MagnetarStudio")
-                .font(.system(size: 20, weight: .bold))
-                .foregroundColor(.primary)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 10)
         }
-        .frame(height: 60)
+        .frame(height: 54)
         .overlay(
-            // Bottom border
             Rectangle()
-                .fill(Color.white.opacity(0.2))
+                .fill(Color.white.opacity(0.12))
                 .frame(height: 1),
             alignment: .bottom
         )
-        .sheet(isPresented: $showModelManagement) {
-            // Model management view
-            Text("Model Management")
-                .frame(width: 400, height: 600)
+    }
+}
+
+// MARK: - Subcomponents
+
+private struct BrandCluster: View {
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(LinearGradient.magnetarGradient)
+                    .frame(width: 36, height: 36)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(Color.white.opacity(0.22), lineWidth: 0.5)
+                    )
+                    .shadow(color: Color.magnetarPrimary.opacity(0.25), radius: 14, x: 0, y: 8)
+
+                Image(systemName: "sparkles")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Magnetar Studio")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(.primary)
+
+                // Lightweight status line to replace the old pill
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(Color.green.opacity(0.75))
+                        .frame(width: 6, height: 6)
+                    Text("Connected")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.textSecondary)
+                }
+            }
+        }
+    }
+}
+
+private struct ControlCluster: View {
+    let terminalCount: Int
+    @Binding var showTerminals: Bool
+    @Binding var showPanicMode: Bool
+
+    var body: some View {
+        HStack(spacing: 10) {
+            ToolbarButton(icon: "terminal", label: "\(terminalCount)") {
+                showTerminals = true
+            }
+            .help("Terminals")
+
+            ToolbarButton(icon: "chart.bar.fill") {
+                // Show activity
+            }
+            .help("Activity")
+
+            ToolbarButton(
+                icon: "exclamationmark.triangle.fill",
+                tint: Color.red.opacity(0.9),
+                background: Color.red.opacity(0.12)
+            ) {
+                showPanicMode = true
+            }
+            .help("Panic Mode")
+        }
+    }
+}
+
+private struct ToolbarButton: View {
+    let icon: String
+    var label: String? = nil
+    var tint: Color = .primary
+    var background: Color = Color.white.opacity(0.12)
+    let action: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .semibold))
+
+                if let label {
+                    Text(label)
+                        .font(.system(size: 12, weight: .semibold))
+                        .padding(.trailing, 2)
+                }
+            }
+            .foregroundColor(tint.opacity(isHovering ? 1.0 : 0.85))
+            .padding(.horizontal, label == nil ? 10 : 12)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(background.opacity(isHovering ? 1.0 : 0.8))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(Color.white.opacity(0.18), lineWidth: 0.6)
+                    )
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovering = hovering
+            }
         }
     }
 }
