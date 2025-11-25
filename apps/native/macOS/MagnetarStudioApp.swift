@@ -14,8 +14,6 @@ import AppKit
 
 @main
 struct MagnetarStudioApp: App {
-    @State private var userStore = UserStore()
-
     // SwiftData model container
     let modelContainer: ModelContainer
 
@@ -34,7 +32,6 @@ struct MagnetarStudioApp: App {
         // Main window
         WindowGroup {
             ContentView()
-                .environment(userStore)
                 .modelContainer(modelContainer)
                 .frame(minWidth: 1300, minHeight: 750)
                 .onAppear {
@@ -55,7 +52,6 @@ struct MagnetarStudioApp: App {
         // Settings window
         Settings {
             SettingsView()
-                .environment(userStore)
         }
     }
 }

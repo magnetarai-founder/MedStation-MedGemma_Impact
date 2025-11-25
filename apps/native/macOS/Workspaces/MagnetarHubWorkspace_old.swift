@@ -7,9 +7,7 @@
 
 import SwiftUI
 
-struct MagnetarHubWorkspace: View {
-    @Environment(UserStore.self) private var userStore
-
+struct MagnetarHubWorkspace_Old: View {
     @State private var modelsStore = ModelsStore()
     @State private var selectedTab: HubTab = .localModels
     @State private var isCloudAuthenticated: Bool = false
@@ -1030,7 +1028,6 @@ struct MagnetarHubSidebar: View {
 // MARK: - Preview
 
 #Preview {
-    MagnetarHubWorkspace()
-        .environment(UserStore())
+    MagnetarHubWorkspace_Old()
         .frame(width: 1200, height: 800)
 }

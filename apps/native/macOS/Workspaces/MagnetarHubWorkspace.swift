@@ -8,8 +8,6 @@
 import SwiftUI
 
 struct MagnetarHubWorkspace: View {
-    @Environment(UserStore.self) private var userStore
-
     @State private var modelsStore = ModelsStore()
     @State private var selectedCategory: ModelCategory? = .all
     @State private var selectedModel: OllamaModel? = nil
@@ -492,6 +490,5 @@ enum ModelCategory: String, CaseIterable, Identifiable {
 
 #Preview {
     MagnetarHubWorkspace()
-        .environment(UserStore())
         .frame(width: 1200, height: 800)
 }

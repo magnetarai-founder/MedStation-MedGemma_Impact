@@ -14,7 +14,7 @@ final class ModelsStore {
     var isLoading: Bool = false
     var error: Error? = nil
 
-    private let apiClient = APIClient.shared
+    private let apiClient = ApiClient.shared
 
     init() {}
 
@@ -33,7 +33,7 @@ final class ModelsStore {
             let (data, response) = try await URLSession.shared.data(for: request)
 
             guard let httpResponse = response as? HTTPURLResponse else {
-                throw APIError.invalidResponse
+                throw ApiError.invalidResponse
             }
 
             if httpResponse.statusCode == 200 {
@@ -42,7 +42,7 @@ final class ModelsStore {
                 let fetchedModels = try decoder.decode([OllamaModel].self, from: data)
                 self.models = fetchedModels
             } else {
-                throw APIError.httpError(statusCode: httpResponse.statusCode)
+                throw ApiError.httpError(httpResponse.statusCode, data)
             }
         } catch {
             self.error = error

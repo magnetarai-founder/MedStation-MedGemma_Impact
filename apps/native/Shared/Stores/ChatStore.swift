@@ -21,9 +21,9 @@ final class ChatStore {
 
     // Dependencies
     @ObservationIgnored
-    private let apiClient: APIClient
+    private let apiClient: ApiClient
 
-    init(apiClient: APIClient = .shared) {
+    init(apiClient: ApiClient = .shared) {
         self.apiClient = apiClient
     }
 
