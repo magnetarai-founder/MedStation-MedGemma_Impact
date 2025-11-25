@@ -8,34 +8,52 @@
 import SwiftUI
 
 struct ContentView: View {
-    @Environment(UserStore.self) private var userStore
+    @StateObject private var authStore = AuthStore.shared
+    @StateObject private var databaseStore = DatabaseStore.shared
     @State private var navigationStore = NavigationStore()
     @State private var chatStore = ChatStore()
 
     var body: some View {
         Group {
-            // DEV MODE: Skip authentication for faster development
-            // To re-enable login: uncomment the if/else block below
-            MainAppView()
-                .environment(navigationStore)
-                .environment(chatStore)
+            switch authStore.authState {
+            case .welcome:
+                // Show login/welcome screen
+                WelcomeView()
 
-            /*
-            if userStore.isAuthenticated {
+            case .checking:
+                // Show loading while validating token
+                LoadingView(message: "Checking authentication...")
+
+            case .setupNeeded:
+                // Show setup wizard
+                SetupWizardView()
+
+            case .authenticated:
                 // Main app with navigation
                 MainAppView()
                     .environment(navigationStore)
                     .environment(chatStore)
-            } else {
-                // Login/Register screen
-                AuthenticationView()
+                    .environmentObject(databaseStore)
             }
-            */
         }
         .task {
-            // Check for existing session on launch
-            // await userStore.checkSession()  // Disabled for dev mode
+            // Bootstrap: validate existing token on launch
+            await authStore.bootstrap()
+
+            // If authenticated, create database session
+            if authStore.authState == .authenticated {
+                await databaseStore.createSession()
+            }
         }
+        .onChange(of: authStore.authState) { _, newState in
+            // Create session when user becomes authenticated
+            if newState == .authenticated {
+                Task {
+                    await databaseStore.createSession()
+                }
+            }
+        }
+        .environmentObject(authStore)
     }
 }
 

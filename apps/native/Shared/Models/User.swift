@@ -1,99 +1,48 @@
-//
-//  User.swift
-//  MagnetarStudio
-//
-//  Created on 2025-11-23.
-//
-
 import Foundation
-import SwiftData
 
-/// User model matching backend schema
-@Model
-final class User {
-    @Attribute(.unique) var id: UUID
-    var username: String
-    var email: String?
-    var role: String
-    var createdAt: Date
-    var lastLogin: Date?
-
-    init(
-        id: UUID,
-        username: String,
-        email: String? = nil,
-        role: String,
-        createdAt: Date = Date(),
-        lastLogin: Date? = nil
-    ) {
-        self.id = id
-        self.username = username
-        self.email = email
-        self.role = role
-        self.createdAt = createdAt
-        self.lastLogin = lastLogin
-    }
-}
-
-// MARK: - API DTO (Data Transfer Object)
-
-/// Codable representation of User for API responses
-struct UserDTO: Codable {
-    let id: UUID
+/// API User model matching /api/v1/users/me response
+struct ApiUser: Codable, Identifiable {
+    let userId: String
     let username: String
+    let role: UserRole?
     let email: String?
-    let role: String
-    let createdAt: Date
-    let lastLogin: Date?
+    let createdAt: Date?
+    let updatedAt: Date?
+
+    var id: String { userId }
 
     enum CodingKeys: String, CodingKey {
-        case id, username, email, role
+        case userId = "user_id"
+        case username
+        case role
+        case email
         case createdAt = "created_at"
-        case lastLogin = "last_login"
-    }
-
-    /// Convert DTO to SwiftData User model
-    func toModel() -> User {
-        return User(
-            id: id,
-            username: username,
-            email: email,
-            role: role,
-            createdAt: createdAt,
-            lastLogin: lastLogin
-        )
+        case updatedAt = "updated_at"
     }
 }
 
-extension User {
-    /// Convert SwiftData model to DTO for API requests
-    func toDTO() -> UserDTO {
-        return UserDTO(
-            id: id,
-            username: username,
-            email: email,
-            role: role,
-            createdAt: createdAt,
-            lastLogin: lastLogin
-        )
-    }
-}
-
-// MARK: - User Role
+/// User roles in the system
 enum UserRole: String, Codable {
-    case founder = "founder_rights"
-    case admin = "admin"
-    case member = "member"
+    case member
+    case admin
+    case superAdmin = "super_admin"
+    case founderRights = "founder_rights"
 
     var displayName: String {
         switch self {
-        case .founder: return "Founder"
-        case .admin: return "Administrator"
         case .member: return "Member"
+        case .admin: return "Admin"
+        case .superAdmin: return "Super Admin"
+        case .founderRights: return "Founder"
         }
     }
+}
 
-    var canAccessAdmin: Bool {
-        self == .founder || self == .admin
+/// Setup status response from /api/v1/users/me/setup/status
+struct SetupStatus: Codable {
+    let userSetupCompleted: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case userSetupCompleted = "user_setup_completed"
     }
 }

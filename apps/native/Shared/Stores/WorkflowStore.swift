@@ -1,0 +1,259 @@
+import Foundation
+import Combine
+
+/// Workflow workspace state and operations
+@MainActor
+final class WorkflowStore: ObservableObject {
+    static let shared = WorkflowStore()
+
+    // MARK: - Published State
+
+    @Published var workflows: [Workflow] = []
+    @Published var templates: [Workflow] = []
+    @Published var starredIds: Set<String> = []
+    @Published var queueItems: [WorkItem] = []
+    @Published var myWorkItems: [WorkItem] = []
+    @Published var analytics: WorkflowAnalytics?
+    @Published var selectedWorkflow: Workflow?
+    @Published var isLoading = false
+    @Published var error: String?
+
+    private let service = WorkflowService.shared
+
+    private init() {}
+
+    // MARK: - Workflow Management
+
+    func loadWorkflows(type: String = "local") async {
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            workflows = try await service.listWorkflows(type: type)
+            error = nil
+        } catch {
+            self.error = "Failed to load workflows: \(error.localizedDescription)"
+        }
+    }
+
+    func toggleStar(id: String) async {
+        let wasStarred = starredIds.contains(id)
+
+        do {
+            if wasStarred {
+                try await service.unstarWorkflow(id: id)
+                starredIds.remove(id)
+            } else {
+                try await service.starWorkflow(id: id)
+                starredIds.insert(id)
+            }
+            error = nil
+        } catch {
+            self.error = "Failed to \(wasStarred ? "unstar" : "star") workflow: \(error.localizedDescription)"
+        }
+    }
+
+    // MARK: - Templates
+
+    func loadTemplates() async {
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            templates = try await service.listTemplates()
+            error = nil
+        } catch {
+            self.error = "Failed to load templates: \(error.localizedDescription)"
+        }
+    }
+
+    func instantiateTemplate(
+        templateId: String,
+        name: String,
+        description: String? = nil
+    ) async {
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            let newWorkflow = try await service.instantiateTemplate(
+                id: templateId,
+                name: name,
+                description: description
+            )
+
+            workflows.insert(newWorkflow, at: 0)
+            selectedWorkflow = newWorkflow
+            error = nil
+        } catch {
+            self.error = "Failed to instantiate template: \(error.localizedDescription)"
+        }
+    }
+
+    // MARK: - Work Items / Queue
+
+    func loadQueue(workflowId: String, role: String? = nil) async {
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            queueItems = try await service.getQueue(workflowId: workflowId, role: role)
+            error = nil
+        } catch {
+            self.error = "Failed to load queue: \(error.localizedDescription)"
+        }
+    }
+
+    func loadMyWork(workflowId: String) async {
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            myWorkItems = try await service.getMyWork(workflowId: workflowId)
+            error = nil
+        } catch {
+            self.error = "Failed to load my work: \(error.localizedDescription)"
+        }
+    }
+
+    func claimAndStart(workItemId: String, userId: String) async {
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            // 1. Claim the work item
+            var workItem = try await service.claimWorkItem(id: workItemId, userId: userId)
+
+            // 2. Start the work item
+            workItem = try await service.startWorkItem(id: workItemId, userId: userId)
+
+            // 3. Remove from queue
+            queueItems.removeAll { $0.id == workItemId }
+
+            // 4. Add to my work
+            if !myWorkItems.contains(where: { $0.id == workItemId }) {
+                myWorkItems.insert(workItem, at: 0)
+            }
+
+            error = nil
+        } catch {
+            self.error = "Failed to claim and start work item: \(error.localizedDescription)"
+        }
+    }
+
+    func claimWorkItem(workItemId: String, userId: String) async {
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            let workItem = try await service.claimWorkItem(id: workItemId, userId: userId)
+
+            // Remove from queue
+            queueItems.removeAll { $0.id == workItemId }
+
+            // Add to my work
+            if !myWorkItems.contains(where: { $0.id == workItemId }) {
+                myWorkItems.insert(workItem, at: 0)
+            }
+
+            error = nil
+        } catch {
+            self.error = "Failed to claim work item: \(error.localizedDescription)"
+        }
+    }
+
+    func startWorkItem(workItemId: String, userId: String) async {
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            let workItem = try await service.startWorkItem(id: workItemId, userId: userId)
+
+            // Update in my work
+            if let index = myWorkItems.firstIndex(where: { $0.id == workItemId }) {
+                myWorkItems[index] = workItem
+            }
+
+            error = nil
+        } catch {
+            self.error = "Failed to start work item: \(error.localizedDescription)"
+        }
+    }
+
+    // MARK: - Builder (Save/Run)
+
+    func saveWorkflow(
+        workflowId: String,
+        name: String,
+        nodes: [[String: Any]],
+        edges: [[String: Any]]
+    ) async {
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            try await service.saveWorkflow(
+                workflowId: workflowId,
+                name: name,
+                nodes: nodes,
+                edges: edges
+            )
+            error = nil
+        } catch {
+            self.error = "Failed to save workflow: \(error.localizedDescription)"
+        }
+    }
+
+    func runWorkflow(
+        workflowId: String,
+        name: String,
+        nodes: [[String: Any]],
+        edges: [[String: Any]]
+    ) async {
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            try await service.runWorkflow(
+                workflowId: workflowId,
+                name: name,
+                nodes: nodes,
+                edges: edges
+            )
+            error = nil
+        } catch {
+            self.error = "Failed to run workflow: \(error.localizedDescription)"
+        }
+    }
+
+    // MARK: - Analytics
+
+    func loadAnalytics(workflowId: String) async {
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            analytics = try await service.fetchAnalytics(workflowId: workflowId)
+            error = nil
+        } catch {
+            self.error = "Failed to load analytics: \(error.localizedDescription)"
+        }
+    }
+
+    // MARK: - Helpers
+
+    /// Group work items by stage for status tracking
+    func workItemsByStage(items: [WorkItem]) -> [String: [WorkItem]] {
+        Dictionary(grouping: items) { $0.currentStageId }
+    }
+
+    /// Get starred workflows
+    var starredWorkflows: [Workflow] {
+        workflows.filter { starredIds.contains($0.id) }
+    }
+
+    /// Get workflows by category
+    func workflows(byCategory category: String) -> [Workflow] {
+        workflows.filter { $0.category == category }
+    }
+}

@@ -1,278 +1,477 @@
-//
-//  APIClient.swift
-//  MagnetarStudio
-//
-//  HTTP client for communicating with FastAPI backend.
-//  Handles authentication, retries, and error handling.
-//
-
 import Foundation
 
-final class APIClient {
-    static let shared = APIClient()
+/// Shared HTTP client with auth header injection
+final class ApiClient {
+    static let shared = ApiClient()
 
-    private let baseURL = URL(string: "http://localhost:8000/api/v1")!
     private let session: URLSession
-    private let keychain = KeychainManager.shared
+    private let baseURL: String
+    private let decoder: JSONDecoder
 
     private init() {
         let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 30
-        config.timeoutIntervalForResource = 300
+        config.timeoutIntervalForRequest = 30.0
+        config.timeoutIntervalForResource = 60.0
         self.session = URLSession(configuration: config)
+        self.baseURL = "/api"
+        self.decoder = JSONDecoder()
+        self.decoder.keyDecodingStrategy = .convertFromSnakeCase
     }
 
-    // MARK: - Authentication
+    // MARK: - Request Methods
 
-    func login(username: String, password: String) async throws -> AuthResponse {
-        let url = baseURL.appendingPathComponent("auth/login")
-
-        let request = LoginRequest(
-            username: username,
-            password: password,
-            deviceFingerprint: getDeviceIdentifier()
-        )
-
-        return try await post(url: url, body: request, responseType: AuthResponse.self)
-    }
-
-    func register(username: String, password: String, email: String?) async throws -> AuthResponse {
-        let url = baseURL.appendingPathComponent("auth/register")
-
-        let request = RegisterRequest(
-            username: username,
-            password: password,
-            email: email,
-            deviceFingerprint: getDeviceIdentifier()
-        )
-
-        return try await post(url: url, body: request, responseType: AuthResponse.self)
-    }
-
-    func logout() async throws {
-        let url = baseURL.appendingPathComponent("auth/logout")
-        let _: LogoutResponse = try await post(url: url, body: EmptyRequest(), responseType: LogoutResponse.self)
-    }
-
-    func validateToken(_ token: String) async throws -> UserDTO {
-        let url = baseURL.appendingPathComponent("auth/me")
+    func request<T: Decodable>(
+        _ endpoint: String,
+        method: HTTPMethod = .get,
+        body: Encodable? = nil,
+        authenticated: Bool = true
+    ) async throws -> T {
+        let url = try buildURL(endpoint)
         var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.httpMethod = method.rawValue
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        let (data, response) = try await session.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw APIError.invalidResponse
-        }
-
-        guard httpResponse.statusCode == 200 else {
-            throw APIError.httpError(statusCode: httpResponse.statusCode)
-        }
-
-        let decoder = JSONDecoder()
-        // UserDTO uses explicit CodingKeys
-
-        return try decoder.decode(UserDTO.self, from: data)
-    }
-
-    func refreshToken(_ refreshToken: String) async throws -> TokenRefreshResponse {
-        let url = baseURL.appendingPathComponent("auth/refresh")
-
-        let request = RefreshTokenRequest(refreshToken: refreshToken)
-
-        return try await post(url: url, body: request, responseType: TokenRefreshResponse.self)
-    }
-
-    // MARK: - Generic HTTP Methods
-
-    private func post<T: Encodable, R: Decodable>(
-        url: URL,
-        body: T,
-        responseType: R.Type
-    ) async throws -> R {
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        // Add auth token if available
-        if let token = try? keychain.retrieve(for: "jwt_token") {
+        // Inject auth token if needed
+        if authenticated, let token = KeychainService.shared.loadToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 
-        // Encode body
-        let encoder = JSONEncoder()
-        encoder.keyEncodingStrategy = .convertToSnakeCase
-        request.httpBody = try encoder.encode(body)
-
-        // Debug logging
-        if let jsonString = String(data: request.httpBody ?? Data(), encoding: .utf8) {
-            print("📤 POST \(url)")
-            print("📦 Body: \(jsonString)")
+        // Encode body if present
+        if let body = body {
+            let encoder = JSONEncoder()
+            encoder.keyEncodingStrategy = .convertToSnakeCase
+            request.httpBody = try encoder.encode(body)
         }
 
-        // Execute request
         let (data, response) = try await session.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
-            throw APIError.invalidResponse
+            throw ApiError.invalidResponse
         }
 
-        guard httpResponse.statusCode == 200 else {
-            // Log error response
-            if let errorString = String(data: data, encoding: .utf8) {
-                print("❌ HTTP \(httpResponse.statusCode): \(errorString)")
-            }
-            throw APIError.httpError(statusCode: httpResponse.statusCode)
+        // Handle auth errors
+        if httpResponse.statusCode == 401 || httpResponse.statusCode == 403 {
+            throw ApiError.unauthorized
         }
 
-        // Debug success response
-        if let responseString = String(data: data, encoding: .utf8) {
-            print("✅ Response: \(responseString)")
+        // Handle other errors
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw ApiError.httpError(httpResponse.statusCode, data)
         }
 
         // Decode response
-        let decoder = JSONDecoder()
-        // Note: AuthResponse uses explicit CodingKeys, so no automatic conversion needed
-
-        return try decoder.decode(R.self, from: data)
-    }
-
-    // MARK: - Device Identifier
-
-    private func getDeviceIdentifier() -> String? {
-        #if os(macOS)
-        // macOS: Use hardware UUID
-        if let uuid = getMacSerialNumber() {
-            return uuid
+        do {
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            throw ApiError.decodingError(error)
         }
-        // Fallback to random persistent ID
-        return UserDefaults.standard.string(forKey: "deviceIdentifier") ?? {
-            let newID = UUID().uuidString
-            UserDefaults.standard.set(newID, forKey: "deviceIdentifier")
-            return newID
-        }()
-        #else
-        // iOS/iPadOS: Use identifierForVendor
-        return UIDevice.current.identifierForVendor?.uuidString
-        #endif
     }
 
-    #if os(macOS)
-    private func getMacSerialNumber() -> String? {
-        let platformExpert = IOServiceGetMatchingService(
-            kIOMainPortDefault,
-            IOServiceMatching("IOPlatformExpertDevice")
-        )
+    func upload(
+        _ endpoint: String,
+        file: Data,
+        fileName: String,
+        mimeType: String,
+        parameters: [String: String] = [:]
+    ) async throws -> Data {
+        let url = try buildURL(endpoint)
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
 
-        guard platformExpert > 0 else { return nil }
+        let boundary = UUID().uuidString
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
 
-        guard let serialNumber = IORegistryEntryCreateCFProperty(
-            platformExpert,
-            kIOPlatformSerialNumberKey as CFString,
-            kCFAllocatorDefault,
-            0
-        ).takeUnretainedValue() as? String else {
-            IOObjectRelease(platformExpert)
-            return nil
+        // Inject auth token
+        if let token = KeychainService.shared.loadToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 
-        IOObjectRelease(platformExpert)
-        return serialNumber
-    }
-    #endif
-}
+        // Build multipart body
+        var body = Data()
 
-// MARK: - Request/Response Models
+        // Add parameters
+        for (key, value) in parameters {
+            body.append("--\(boundary)\r\n")
+            body.append("Content-Disposition: form-data; name=\"\(key)\"\r\n\r\n")
+            body.append("\(value)\r\n")
+        }
 
-struct LoginRequest: Codable {
-    let username: String
-    let password: String
-    let deviceFingerprint: String?
-}
+        // Add file
+        body.append("--\(boundary)\r\n")
+        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(fileName)\"\r\n")
+        body.append("Content-Type: \(mimeType)\r\n\r\n")
+        body.append(file)
+        body.append("\r\n")
+        body.append("--\(boundary)--\r\n")
 
-struct RegisterRequest: Codable {
-    let username: String
-    let password: String
-    let email: String?
-    let deviceFingerprint: String?
-}
+        request.httpBody = body
 
-struct RefreshTokenRequest: Codable {
-    let refreshToken: String
-}
+        let (data, response) = try await session.data(for: request)
 
-struct EmptyRequest: Codable {}
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw ApiError.invalidResponse
+        }
 
-struct AuthResponse: Codable {
-    let token: String
-    let refreshToken: String
-    let userId: String
-    let username: String
-    let deviceId: String
-    let role: String
-    let expiresIn: Int
+        if httpResponse.statusCode == 401 || httpResponse.statusCode == 403 {
+            throw ApiError.unauthorized
+        }
 
-    enum CodingKeys: String, CodingKey {
-        case token
-        case refreshToken = "refresh_token"
-        case userId = "user_id"
-        case username
-        case deviceId = "device_id"
-        case role
-        case expiresIn = "expires_in"
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw ApiError.httpError(httpResponse.statusCode, data)
+        }
+
+        return data
     }
 
-    // Convert to UserDTO
-    func toUserDTO() -> UserDTO {
-        return UserDTO(
-            id: UUID(), // Backend doesn't return UUID, using new one
-            username: username,
-            email: nil,
-            role: role,
-            createdAt: Date(),
-            lastLogin: Date()
+    // MARK: - Convenience Methods
+
+    /// Request with JSON body (dictionary)
+    func request<T: Decodable>(
+        path: String,
+        method: HTTPMethod = .get,
+        jsonBody: [String: Any]? = nil,
+        authenticated: Bool = true,
+        extraHeaders: [String: String]? = nil
+    ) async throws -> T {
+        let url = try buildURL(path)
+        var request = URLRequest(url: url)
+        request.httpMethod = method.rawValue
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        if authenticated, let token = KeychainService.shared.loadToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        // Add extra headers
+        if let extraHeaders = extraHeaders {
+            for (key, value) in extraHeaders {
+                request.setValue(value, forHTTPHeaderField: key)
+            }
+        }
+
+        if let jsonBody = jsonBody {
+            request.httpBody = try JSONSerialization.data(withJSONObject: jsonBody)
+        }
+
+        let (data, response) = try await session.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw ApiError.invalidResponse
+        }
+
+        if httpResponse.statusCode == 401 || httpResponse.statusCode == 403 {
+            throw ApiError.unauthorized
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw ApiError.httpError(httpResponse.statusCode, data)
+        }
+
+        return try decoder.decode(T.self, from: data)
+    }
+
+    /// Multipart upload returning decoded response
+    func multipart<T: Decodable>(
+        path: String,
+        fileField: String = "file",
+        fileURL: URL,
+        parameters: [String: String] = [:],
+        authenticated: Bool = true,
+        extraHeaders: [String: String]? = nil
+    ) async throws -> T {
+        let fileData = try Data(contentsOf: fileURL)
+        let fileName = fileURL.lastPathComponent
+        let mimeType = mimeType(for: fileURL)
+
+        let url = try buildURL(path)
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+
+        let boundary = UUID().uuidString
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+        if authenticated, let token = KeychainService.shared.loadToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        // Add extra headers
+        if let extraHeaders = extraHeaders {
+            for (key, value) in extraHeaders {
+                request.setValue(value, forHTTPHeaderField: key)
+            }
+        }
+
+        var body = Data()
+
+        // Add parameters
+        for (key, value) in parameters {
+            body.append("--\(boundary)\r\n")
+            body.append("Content-Disposition: form-data; name=\"\(key)\"\r\n\r\n")
+            body.append("\(value)\r\n")
+        }
+
+        // Add file
+        body.append("--\(boundary)\r\n")
+        body.append("Content-Disposition: form-data; name=\"\(fileField)\"; filename=\"\(fileName)\"\r\n")
+        body.append("Content-Type: \(mimeType)\r\n\r\n")
+        body.append(fileData)
+        body.append("\r\n")
+        body.append("--\(boundary)--\r\n")
+
+        request.httpBody = body
+
+        let (data, response) = try await session.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw ApiError.invalidResponse
+        }
+
+        if httpResponse.statusCode == 401 || httpResponse.statusCode == 403 {
+            throw ApiError.unauthorized
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw ApiError.httpError(httpResponse.statusCode, data)
+        }
+
+        return try decoder.decode(T.self, from: data)
+    }
+
+    /// Request returning raw Data (for blobs/downloads)
+    func requestRaw(
+        path: String,
+        method: HTTPMethod = .get,
+        jsonBody: [String: Any]? = nil,
+        authenticated: Bool = true,
+        extraHeaders: [String: String]? = nil
+    ) async throws -> Data {
+        let url = try buildURL(path)
+        var request = URLRequest(url: url)
+        request.httpMethod = method.rawValue
+
+        if authenticated, let token = KeychainService.shared.loadToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        // Add extra headers
+        if let extraHeaders = extraHeaders {
+            for (key, value) in extraHeaders {
+                request.setValue(value, forHTTPHeaderField: key)
+            }
+        }
+
+        if let jsonBody = jsonBody {
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try JSONSerialization.data(withJSONObject: jsonBody)
+        }
+
+        let (data, response) = try await session.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw ApiError.invalidResponse
+        }
+
+        if httpResponse.statusCode == 401 || httpResponse.statusCode == 403 {
+            throw ApiError.unauthorized
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw ApiError.httpError(httpResponse.statusCode, data)
+        }
+
+        return data
+    }
+
+    // MARK: - Streaming Support
+
+    struct StreamingTask {
+        let task: URLSessionDataTask
+        let cancel: () -> Void
+    }
+
+    func makeStreamingTask(
+        path: String,
+        method: HTTPMethod,
+        jsonBody: Encodable,
+        onContent: @escaping (String) -> Void,
+        onDone: @escaping () -> Void,
+        onError: @escaping (Error) -> Void
+    ) throws -> StreamingTask {
+        let url = try buildURL(path)
+        var request = URLRequest(url: url)
+        request.httpMethod = method.rawValue
+        request.timeoutInterval = 300
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        if let token = KeychainService.shared.loadToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        request.httpBody = try encoder.encode(jsonBody)
+
+        // Per-task delegate to capture stream
+        let delegate = StreamingDelegate(
+            onContent: onContent,
+            onDone: onDone,
+            onError: onError
+        )
+        let streamSession = URLSession(
+            configuration: .default,
+            delegate: delegate,
+            delegateQueue: .main
+        )
+        let task = streamSession.dataTask(with: request)
+        delegate.task = task
+
+        return StreamingTask(
+            task: task,
+            cancel: {
+                task.cancel()
+                streamSession.finishTasksAndInvalidate()
+            }
         )
     }
-}
 
-struct TokenRefreshResponse: Codable {
-    let success: Bool
-    let token: String
-    let refreshToken: String
-    let expiresIn: Int
+    // MARK: - Helpers
 
-    enum CodingKeys: String, CodingKey {
-        case success, token
-        case refreshToken = "refresh_token"
-        case expiresIn = "expires_in"
+    private func buildURL(_ endpoint: String) throws -> URL {
+        let path = endpoint.hasPrefix("/") ? endpoint : "/\(endpoint)"
+        let urlString = "\(baseURL)\(path)"
+
+        guard let url = URL(string: urlString) else {
+            throw ApiError.invalidURL(urlString)
+        }
+
+        return url
+    }
+
+    private func mimeType(for url: URL) -> String {
+        let ext = url.pathExtension.lowercased()
+        switch ext {
+        case "json": return "application/json"
+        case "csv": return "text/csv"
+        case "xlsx": return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        case "xls": return "application/vnd.ms-excel"
+        case "parquet": return "application/octet-stream"
+        default: return "application/octet-stream"
+        }
     }
 }
 
-struct LogoutResponse: Codable {
-    let success: Bool
-    let message: String
+// MARK: - Streaming Delegate
+
+private final class StreamingDelegate: NSObject, URLSessionDataDelegate {
+    var buffer = Data()
+    weak var task: URLSessionDataTask?
+    let onContent: (String) -> Void
+    let onDone: () -> Void
+    let onError: (Error) -> Void
+
+    init(
+        onContent: @escaping (String) -> Void,
+        onDone: @escaping () -> Void,
+        onError: @escaping (Error) -> Void
+    ) {
+        self.onContent = onContent
+        self.onDone = onDone
+        self.onError = onError
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        dataTask: URLSessionDataTask,
+        didReceive data: Data
+    ) {
+        buffer.append(data)
+
+        // Split by newline
+        while let range = buffer.range(of: Data([0x0a])) { // \n
+            let lineData = buffer.subdata(in: buffer.startIndex..<range.lowerBound)
+            buffer.removeSubrange(buffer.startIndex...range.lowerBound)
+
+            guard let line = String(data: lineData, encoding: .utf8),
+                  line.hasPrefix("data:") else { continue }
+
+            let payload = line.dropFirst(5).trimmingCharacters(in: .whitespaces)
+
+            // Ignore [START] marker
+            if payload == "[START]" { continue }
+
+            guard let jsonData = payload.data(using: .utf8) else { continue }
+
+            do {
+                let obj = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
+
+                if let content = obj?["content"] as? String, !content.isEmpty {
+                    onContent(content)
+                }
+
+                if let done = obj?["done"] as? Bool, done == true {
+                    onDone()
+                }
+            } catch {
+                // Ignore malformed chunk
+            }
+        }
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        didCompleteWithError error: Error?
+    ) {
+        if let error = error {
+            onError(error)
+        } else {
+            onDone()
+        }
+    }
 }
 
-// MARK: - Error Types
+// MARK: - Supporting Types
 
-enum APIError: LocalizedError {
+enum HTTPMethod: String {
+    case get = "GET"
+    case post = "POST"
+    case put = "PUT"
+    case patch = "PATCH"
+    case delete = "DELETE"
+}
+
+enum ApiError: LocalizedError {
+    case invalidURL(String)
     case invalidResponse
-    case httpError(statusCode: Int)
+    case unauthorized
+    case httpError(Int, Data)
     case decodingError(Error)
-    case networkError(Error)
 
     var errorDescription: String? {
         switch self {
+        case .invalidURL(let url):
+            return "Invalid URL: \(url)"
         case .invalidResponse:
-            return "Invalid response from server"
-        case .httpError(let statusCode):
-            return "HTTP error: \(statusCode)"
+            return "Invalid server response"
+        case .unauthorized:
+            return "Unauthorized - please log in again"
+        case .httpError(let code, let data):
+            if let message = String(data: data, encoding: .utf8), !message.isEmpty {
+                return "Server error (\(code)): \(message)"
+            }
+            return "Server error: \(code)"
         case .decodingError(let error):
             return "Failed to decode response: \(error.localizedDescription)"
-        case .networkError(let error):
-            return "Network error: \(error.localizedDescription)"
+        }
+    }
+}
+
+// MARK: - Data Extension
+
+private extension Data {
+    mutating func append(_ string: String) {
+        if let data = string.data(using: .utf8) {
+            append(data)
         }
     }
 }
