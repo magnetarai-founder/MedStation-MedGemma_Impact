@@ -285,7 +285,7 @@ struct TeamWorkspace: View {
                 request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             }
 
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (_, response) = try await URLSession.shared.data(for: request)
 
             guard let httpResponse = response as? HTTPURLResponse else {
                 throw NSError(domain: "VaultError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response"])

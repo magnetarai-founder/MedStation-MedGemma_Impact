@@ -9,9 +9,7 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var authStore = AuthStore.shared
-    @StateObject private var databaseStore = DatabaseStore.shared
-    @State private var navigationStore = NavigationStore()
-    @State private var chatStore = ChatStore()
+    @EnvironmentObject private var databaseStore: DatabaseStore
 
     var body: some View {
         Group {
@@ -31,9 +29,6 @@ struct ContentView: View {
             case .authenticated:
                 // Main app with navigation
                 MainAppView()
-                    .environment(navigationStore)
-                    .environment(chatStore)
-                    .environmentObject(databaseStore)
             }
         }
         .task {
@@ -103,9 +98,15 @@ struct MainAppView: View {
 #Preview("Welcome") {
     ContentView()
         .frame(width: 1200, height: 800)
+        .environment(NavigationStore())
+        .environment(ChatStore())
+        .environmentObject(DatabaseStore.shared)
 }
 
 #Preview("Authenticated") {
     ContentView()
         .frame(width: 1200, height: 800)
+        .environment(NavigationStore())
+        .environment(ChatStore())
+        .environmentObject(DatabaseStore.shared)
 }

@@ -8,12 +8,17 @@
 import SwiftUI
 import SwiftData
 import AppKit
+import UniformTypeIdentifiers
 
 // MARK: - Import shared modules
 // All shared code is in the Shared/ folder
 
 @main
 struct MagnetarStudioApp: App {
+    @State private var navigationStore = NavigationStore()
+    @State private var chatStore = ChatStore()
+    @StateObject private var databaseStore = DatabaseStore.shared
+
     var body: some Scene {
         // Main window
         WindowGroup {
@@ -30,8 +35,15 @@ struct MagnetarStudioApp: App {
         .windowStyle(.hiddenTitleBar)
         .windowToolbarStyle(.unified)
         .defaultSize(width: 1400, height: 850)
+        .environment(navigationStore)
+        .environment(chatStore)
+        .environmentObject(databaseStore)
         .commands {
-            MagnetarCommands()
+            MagnetarCommands(
+                navigationStore: navigationStore,
+                chatStore: chatStore,
+                databaseStore: databaseStore
+            )
         }
 
         // Settings window
@@ -44,9 +56,9 @@ struct MagnetarStudioApp: App {
 // MARK: - Menu Commands
 
 struct MagnetarCommands: Commands {
-    @Environment(NavigationStore.self) private var navigationStore
-    @Environment(ChatStore.self) private var chatStore
-    @EnvironmentObject private var databaseStore: DatabaseStore
+    let navigationStore: NavigationStore
+    let chatStore: ChatStore
+    let databaseStore: DatabaseStore
 
     private let docsURL = URL(string: "https://docs.magnetar.studio") // replace if your docs live elsewhere
     private let issuesURL = URL(string: "https://github.com/MagnetarStudio/MagnetarStudio/issues") // replace if using another tracker
@@ -165,7 +177,12 @@ struct MagnetarCommands: Commands {
 
     private func handleFileUpload() {
         let panel = NSOpenPanel()
-        panel.allowedFileTypes = ["csv", "xls", "xlsx", "json"]
+        panel.allowedContentTypes = [
+            UTType.commaSeparatedText,
+            UTType(filenameExtension: "xls"),
+            UTType(filenameExtension: "xlsx"),
+            UTType.json
+        ].compactMap { $0 }
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
 
