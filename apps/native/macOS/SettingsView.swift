@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AppKit
 
 struct SettingsView: View {
     @AppStorage("apiBaseURL") private var apiBaseURL = "http://localhost:8000"
@@ -73,6 +74,7 @@ struct APISettingsView: View {
     @Binding var defaultModel: String
 
     let availableModels = ["mistral", "llama3", "qwen", "codestral"]
+    @State private var connectionStatus: SimpleStatus = .idle
 
     var body: some View {
         Form {
@@ -81,8 +83,9 @@ struct APISettingsView: View {
                     .textFieldStyle(.roundedBorder)
 
                 Button("Test Connection") {
-                    // TODO: Test API connection
+                    Task { await testConnection() }
                 }
+                statusLabel(connectionStatus)
             }
 
             Section("AI Models") {
@@ -100,12 +103,57 @@ struct APISettingsView: View {
         .formStyle(.grouped)
         .padding()
     }
+
+    // MARK: - Actions
+
+    private func testConnection() async {
+        await MainActor.run { connectionStatus = .loading }
+
+        let trimmedBase = apiBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let baseURL = URL(string: trimmedBase) else {
+            await MainActor.run {
+                connectionStatus = .failure("Invalid base URL")
+            }
+            return
+        }
+
+        let healthURL = baseURL.appendingPathComponent("health")
+        var request = URLRequest(url: healthURL)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 8
+
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse else {
+                await MainActor.run {
+                    connectionStatus = .failure("Invalid response")
+                }
+                return
+            }
+
+            if (200...299).contains(http.statusCode) {
+                await MainActor.run {
+                    connectionStatus = .success("Connected (\(http.statusCode))")
+                }
+            } else {
+                await MainActor.run {
+                    connectionStatus = .failure("Status \(http.statusCode)")
+                }
+            }
+        } catch {
+            await MainActor.run {
+                connectionStatus = .failure(error.localizedDescription)
+            }
+        }
+    }
 }
 
 // MARK: - Security Settings
 
 struct SecuritySettingsView: View {
     @Binding var enableBiometrics: Bool
+    @State private var cacheStatus: SimpleStatus = .idle
+    @State private var keychainStatus: SimpleStatus = .idle
 
     var body: some View {
         Form {
@@ -130,16 +178,59 @@ struct SecuritySettingsView: View {
 
             Section("Data") {
                 Button("Clear Cache") {
-                    // TODO: Clear cache
+                    Task { await clearCache() }
                 }
+                statusLabel(cacheStatus)
 
                 Button("Reset Keychain", role: .destructive) {
-                    // TODO: Reset keychain
+                    Task { await resetKeychain() }
                 }
+                statusLabel(keychainStatus)
             }
         }
         .formStyle(.grouped)
         .padding()
+    }
+
+    // MARK: - Actions
+
+    private func clearCache() async {
+        await MainActor.run { cacheStatus = .loading }
+
+        do {
+            let fileManager = FileManager.default
+            let cachesDir = try fileManager.url(
+                for: .cachesDirectory,
+                in: .userDomainMask,
+                appropriateFor: nil,
+                create: true
+            )
+
+            let bundleId = Bundle.main.bundleIdentifier ?? "com.magnetarstudio.app"
+            let appCacheDir = cachesDir.appendingPathComponent(bundleId, isDirectory: true)
+
+            if fileManager.fileExists(atPath: appCacheDir.path) {
+                let contents = try fileManager.contentsOfDirectory(at: appCacheDir, includingPropertiesForKeys: nil)
+                for item in contents {
+                    try? fileManager.removeItem(at: item)
+                }
+            }
+
+            await MainActor.run { cacheStatus = .success("Cache cleared") }
+        } catch {
+            await MainActor.run { cacheStatus = .failure(error.localizedDescription) }
+        }
+    }
+
+    private func resetKeychain() async {
+        await MainActor.run { keychainStatus = .loading }
+
+        do {
+            try KeychainService.shared.deleteToken()
+            await MainActor.run { keychainStatus = .success("Keychain reset") }
+        } catch {
+            await MainActor.run { keychainStatus = .failure(error.localizedDescription) }
+        }
     }
 }
 
@@ -193,6 +284,8 @@ struct MagnetarCloudSettingsView: View {
     @State private var cloudEmail: String = ""
     @State private var cloudPlan: String = "Free"
     @State private var syncEnabled: Bool = true
+    private let supabaseAuthURL = URL(string: "https://auth.magnetar.studio/login")
+    private let subscriptionURL = URL(string: "https://billing.magnetar.studio")
 
     var body: some View {
         Form {
@@ -216,10 +309,7 @@ struct MagnetarCloudSettingsView: View {
                         }
 
                         Button {
-                            // TODO: Trigger Supabase auth flow
-                            isAuthenticated = true
-                            cloudEmail = "user@example.com"
-                            cloudPlan = "Pro"
+                            triggerAuth()
                         } label: {
                             Label("Login to MagnetarCloud Account", systemImage: "person.circle")
                                 .frame(maxWidth: .infinity)
@@ -256,7 +346,7 @@ struct MagnetarCloudSettingsView: View {
                     }
 
                     Button("Manage Subscription") {
-                        // TODO: Open subscription management
+                        openExternal(subscriptionURL)
                     }
                 }
 
@@ -299,10 +389,64 @@ struct MagnetarCloudSettingsView: View {
         .formStyle(.grouped)
         .padding()
     }
+
+    private func triggerAuth() {
+        openExternal(supabaseAuthURL)
+        // Keep optimistic UI for now; replace with real auth callback when available.
+        isAuthenticated = true
+        cloudEmail = "user@example.com"
+        cloudPlan = "Pro"
+    }
+
+    private func openExternal(_ url: URL?) {
+        guard let url else { return }
+        NSWorkspace.shared.open(url)
+    }
 }
 
 // MARK: - Preview
 
 #Preview {
     SettingsView()
+}
+
+// MARK: - Helpers
+
+private enum SimpleStatus: Equatable {
+    case idle
+    case loading
+    case success(String)
+    case failure(String)
+}
+
+@ViewBuilder
+private func statusLabel(_ status: SimpleStatus) -> some View {
+    switch status {
+    case .idle:
+        EmptyView()
+    case .loading:
+        HStack(spacing: 6) {
+            ProgressView()
+                .controlSize(.small)
+            Text("Working...")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    case .success(let message):
+        HStack(spacing: 6) {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(.green)
+            Text(message)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    case .failure(let message):
+        HStack(spacing: 6) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+            Text(message)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
 }

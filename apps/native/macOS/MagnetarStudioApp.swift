@@ -44,23 +44,30 @@ struct MagnetarStudioApp: App {
 // MARK: - Menu Commands
 
 struct MagnetarCommands: Commands {
+    @Environment(NavigationStore.self) private var navigationStore
+    @Environment(ChatStore.self) private var chatStore
+    @EnvironmentObject private var databaseStore: DatabaseStore
+
+    private let docsURL = URL(string: "https://docs.magnetar.studio") // replace if your docs live elsewhere
+    private let issuesURL = URL(string: "https://github.com/MagnetarStudio/MagnetarStudio/issues") // replace if using another tracker
+
     var body: some Commands {
         // File menu
         CommandGroup(after: .newItem) {
             Button("New Chat Session") {
-                // TODO: Implement
+                Task { await createNewChatSession() }
             }
             .keyboardShortcut("n", modifiers: .command)
 
             Button("New Query Tab") {
-                // TODO: Implement
+                Task { await createNewQueryTab() }
             }
             .keyboardShortcut("t", modifiers: .command)
 
             Divider()
 
             Button("Upload File...") {
-                // TODO: Implement
+                handleFileUpload()
             }
             .keyboardShortcut("o", modifiers: .command)
         }
@@ -70,34 +77,34 @@ struct MagnetarCommands: Commands {
         // View menu
         CommandMenu("View") {
             Button("Team Workspace") {
-                // TODO: Switch to team tab
+                navigationStore.navigate(to: .team)
             }
             .keyboardShortcut("1", modifiers: .command)
 
             Button("Chat Workspace") {
-                // TODO: Switch to chat tab
+                navigationStore.navigate(to: .chat)
             }
             .keyboardShortcut("2", modifiers: .command)
 
             Button("Database Workspace") {
-                // TODO: Switch to database tab
+                navigationStore.navigate(to: .database)
             }
             .keyboardShortcut("3", modifiers: .command)
 
             Button("Kanban Workspace") {
-                // TODO: Switch to kanban tab
+                navigationStore.navigate(to: .kanban)
             }
             .keyboardShortcut("4", modifiers: .command)
 
             Button("MagnetarHub") {
-                // TODO: Switch to MagnetarHub tab
+                navigationStore.navigate(to: .magnetarHub)
             }
             .keyboardShortcut("5", modifiers: .command)
 
             Divider()
 
             Button("Toggle Sidebar") {
-                // TODO: Implement
+                navigationStore.toggleSidebar()
             }
             .keyboardShortcut("s", modifiers: [.command, .control])
         }
@@ -105,18 +112,18 @@ struct MagnetarCommands: Commands {
         // Tools menu
         CommandMenu("Tools") {
             Button("Agent Orchestrator") {
-                // TODO: Open agent workspace
+                navigationStore.navigate(to: .magnetarHub)
             }
             .keyboardShortcut("k", modifiers: [.command, .shift])
 
             Button("Workflow Designer") {
-                // TODO: Open workflow designer
+                navigationStore.navigate(to: .kanban)
             }
 
             Divider()
 
             Button("Command Palette...") {
-                // TODO: Open command palette
+                showComingSoonAlert(title: "Command Palette", message: "Command Palette is coming soon.")
             }
             .keyboardShortcut("k", modifiers: .command)
         }
@@ -124,18 +131,68 @@ struct MagnetarCommands: Commands {
         // Help menu
         CommandGroup(replacing: .help) {
             Button("MagnetarStudio Documentation") {
-                // TODO: Open docs
+                openExternal(docsURL)
             }
 
             Button("Report an Issue") {
-                // TODO: Open issue reporter
+                openExternal(issuesURL)
             }
 
             Divider()
 
             Button("About MagnetarStudio") {
-                // TODO: Show about window
+                NSApp.orderFrontStandardAboutPanel(nil)
             }
         }
+    }
+
+    // MARK: - Helpers
+
+    @MainActor
+    private func createNewChatSession() async {
+        await chatStore.createSession(title: "New Chat", model: chatStore.selectedModel.isEmpty ? "mistral" : chatStore.selectedModel)
+        navigationStore.navigate(to: .chat)
+    }
+
+    @MainActor
+    private func createNewQueryTab() async {
+        if databaseStore.sessionId == nil {
+            await databaseStore.createSession()
+        }
+        databaseStore.loadEditorText("", contentType: .sql)
+        navigationStore.navigate(to: .database)
+    }
+
+    private func handleFileUpload() {
+        let panel = NSOpenPanel()
+        panel.allowedFileTypes = ["csv", "xls", "xlsx", "json"]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+
+        if panel.runModal() == .OK, let url = panel.url {
+            Task { await uploadSelectedFile(url: url) }
+        }
+    }
+
+    @MainActor
+    private func uploadSelectedFile(url: URL) async {
+        if databaseStore.sessionId == nil {
+            await databaseStore.createSession()
+        }
+        await databaseStore.uploadFile(url: url)
+        navigationStore.navigate(to: .database)
+    }
+
+    private func openExternal(_ url: URL?) {
+        guard let url else { return }
+        NSWorkspace.shared.open(url)
+    }
+
+    private func showComingSoonAlert(title: String, message: String) {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.alertStyle = .informational
+        alert.runModal()
     }
 }
