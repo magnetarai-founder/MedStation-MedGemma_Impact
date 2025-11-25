@@ -27,7 +27,7 @@ final class AuthStore: ObservableObject {
         error = nil
 
         // Load token from keychain
-        guard let token = keychain.loadToken() else {
+        guard keychain.loadToken() != nil else {
             authState = .welcome
             loading = false
             return

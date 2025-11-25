@@ -90,8 +90,10 @@ final class SettingsStore: ObservableObject {
     }
 
     /// Load a saved query into the DatabaseStore editor
-    func loadIntoEditor(_ savedQuery: SavedQuery, databaseStore: DatabaseStore = .shared) {
-        databaseStore.loadEditorText(savedQuery.query, contentType: .sql)
+    nonisolated func loadIntoEditor(_ savedQuery: SavedQuery) {
+        Task { @MainActor in
+            DatabaseStore.shared.loadEditorText(savedQuery.query, contentType: .sql)
+        }
     }
 
     /// Find exact match for current query

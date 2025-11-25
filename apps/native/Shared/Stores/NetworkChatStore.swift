@@ -218,7 +218,7 @@ final class NetworkChatStore: ObservableObject {
             selectedModel = model
 
             // Update active session model locally
-            if let index = sessions.firstIndex(where: { $0.id == sessionId }) {
+            if sessions.firstIndex(where: { $0.id == sessionId }) != nil {
                 // Note: Since ApiChatSession is immutable, we'd need to create a new one
                 // For now, just update selectedModel
             }
