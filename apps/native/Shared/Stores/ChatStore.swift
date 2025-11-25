@@ -17,7 +17,8 @@ final class ChatStore {
     var isStreaming: Bool = false
     var isLoading: Bool = false
     var error: ChatError?
-    var selectedModel: String = "mistral"
+    var selectedModel: String = ""
+    var availableModels: [String] = []
 
     // Dependencies
     @ObservationIgnored
@@ -25,6 +26,31 @@ final class ChatStore {
 
     init(apiClient: ApiClient = .shared) {
         self.apiClient = apiClient
+
+        // Load models on init
+        Task {
+            await fetchModels()
+        }
+    }
+
+    // MARK: - Model Management
+
+    @MainActor
+    func fetchModels() async {
+        do {
+            let url = URL(string: "http://localhost:8000/api/v1/chat/models")!
+            let (data, _) = try await URLSession.shared.data(from: url)
+
+            let models = try JSONDecoder().decode([ModelResponse].self, from: data)
+            availableModels = models.map { $0.name }
+
+            // Set default model if none selected
+            if selectedModel.isEmpty, let first = availableModels.first {
+                selectedModel = first
+            }
+        } catch {
+            print("Failed to fetch models: \(error)")
+        }
     }
 
     // MARK: - Session Management
@@ -129,5 +155,19 @@ enum ChatError: LocalizedError {
         case .loadFailed(let message):
             return "Failed to load chat history: \(message)"
         }
+    }
+}
+
+// MARK: - Model Response
+
+struct ModelResponse: Codable {
+    let name: String
+    let size: String
+    let modifiedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case size
+        case modifiedAt = "modified_at"
     }
 }

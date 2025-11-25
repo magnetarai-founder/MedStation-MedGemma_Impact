@@ -71,7 +71,7 @@ struct OllamaModel: Codable, Identifiable {
     let name: String
     let size: String  // Already formatted by backend (e.g., "4.4GB")
     let digest: String?
-    let modifiedAt: String?
+    let modifiedAt: String
     let tags: [String]?
     let tagDetails: [ModelTag]?
 

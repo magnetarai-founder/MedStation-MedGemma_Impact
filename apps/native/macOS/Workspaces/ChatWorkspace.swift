@@ -141,16 +141,31 @@ struct ChatWorkspace: View {
 
                     // Model Selector
                     Menu {
-                        Button("Mistral") { store.selectedModel = "mistral" }
-                        Button("Llama 2") { store.selectedModel = "llama2" }
-                        Button("CodeLlama") { store.selectedModel = "codellama" }
-                        Button("Neural Chat") { store.selectedModel = "neural-chat" }
+                        if chatStore.availableModels.isEmpty {
+                            Text("Loading models...")
+                                .foregroundColor(.secondary)
+                        } else {
+                            ForEach(chatStore.availableModels, id: \.self) { model in
+                                Button(model) {
+                                    chatStore.selectedModel = model
+                                }
+                            }
+                        }
+
+                        Divider()
+
+                        Button("Refresh Models") {
+                            Task {
+                                await chatStore.fetchModels()
+                            }
+                        }
                     } label: {
                         HStack(spacing: 6) {
                             Image(systemName: "cpu")
                                 .font(.system(size: 13))
-                            Text(store.selectedModel.isEmpty ? "Select Model" : store.selectedModel.capitalized)
+                            Text(chatStore.selectedModel.isEmpty ? "Select Model" : chatStore.selectedModel)
                                 .font(.system(size: 13))
+                                .lineLimit(1)
                             Image(systemName: "chevron.down")
                                 .font(.system(size: 10))
                         }
