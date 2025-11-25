@@ -1746,7 +1746,7 @@ struct LegacyVaultFile: Identifiable {
 // MARK: - File Preview Modal
 
 struct FilePreviewModal: View {
-    let file: VaultFile
+    let file: LegacyVaultFile
     @Binding var isPresented: Bool
 
     var body: some View {
