@@ -35,9 +35,7 @@ final class AuthStore: ObservableObject {
         userSetupComplete = true
         authState = .authenticated
         loading = false
-        return
-        #endif
-
+        #else
         loading = true
         error = nil
 
@@ -77,6 +75,7 @@ final class AuthStore: ObservableObject {
             authState = .welcome
             loading = false
         }
+        #endif
     }
 
     // MARK: - Auth Actions
