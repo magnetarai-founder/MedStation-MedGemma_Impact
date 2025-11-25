@@ -9,7 +9,10 @@ from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 
-from auth_middleware import auth_service, get_current_user, get_current_user_optional
+try:
+    from .auth_middleware import auth_service, get_current_user, get_current_user_optional
+except ImportError:
+    from auth_middleware import auth_service, get_current_user, get_current_user_optional
 
 try:
     from .permission_engine import get_permission_engine
