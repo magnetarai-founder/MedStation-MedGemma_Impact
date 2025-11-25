@@ -283,9 +283,7 @@ struct MagnetarHubWorkspace: View {
                                     DetailRow(icon: "number", label: "Digest", value: String(digest.prefix(16)) + "...")
                                 }
 
-                                if let modifiedAt = model.modifiedAt {
-                                    DetailRow(icon: "calendar", label: "Modified", value: modifiedAt)
-                                }
+                                DetailRow(icon: "calendar", label: "Modified", value: model.modifiedAt)
 
                                 DetailRow(icon: "externaldrive", label: "Size", value: model.size)
                             }

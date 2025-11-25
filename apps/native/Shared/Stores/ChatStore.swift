@@ -97,27 +97,98 @@ final class ChatStore {
         )
         messages.append(userMessage)
 
-        // Send to backend
+        // Send to backend with streaming
         isLoading = true
+        isStreaming = true
         error = nil
 
         do {
-            // TODO: Implement actual API call
-            // For now, simulate response
-            try await Task.sleep(for: .seconds(1))
-
+            // Create assistant message placeholder
             let assistantMessage = ChatMessage(
                 role: .assistant,
-                content: "This is a simulated AI response. Backend integration coming soon!",
+                content: "",
                 sessionId: session.id
             )
             messages.append(assistantMessage)
 
+            // Build request
+            let url = URL(string: "http://localhost:8000/api/v1/chat/sessions/\(session.id)/messages")!
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+            // Get token if available (will be nil in DEBUG mode)
+            if let token = KeychainService.shared.loadToken() {
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            }
+
+            let requestBody: [String: Any] = [
+                "content": text,
+                "model": selectedModel.isEmpty ? "mistral" : selectedModel
+            ]
+            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+
+            // Stream response
+            let (bytes, response) = try await URLSession.shared.bytes(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw ChatError.sendFailed("Invalid response")
+            }
+
+            if httpResponse.statusCode != 200 {
+                throw ChatError.sendFailed("Server returned status \(httpResponse.statusCode)")
+            }
+
+            // Parse SSE stream
+            var fullContent = ""
+            for try await line in bytes.lines {
+                // SSE format: "data: {...}\n\n"
+                if line.hasPrefix("data: ") {
+                    let jsonString = String(line.dropFirst(6)) // Remove "data: "
+
+                    // Skip [START] marker
+                    if jsonString == "[START]" {
+                        continue
+                    }
+
+                    // Parse JSON
+                    if let jsonData = jsonString.data(using: .utf8) {
+                        if let dict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
+                            // Check for error
+                            if let errorMsg = dict["error"] as? String {
+                                throw ChatError.sendFailed(errorMsg)
+                            }
+
+                            // Check for content chunk
+                            if let chunk = dict["content"] as? String {
+                                fullContent += chunk
+                                // Update last message (assistant)
+                                if let lastIndex = messages.indices.last {
+                                    messages[lastIndex] = ChatMessage(
+                                        id: messages[lastIndex].id,
+                                        role: .assistant,
+                                        content: fullContent,
+                                        sessionId: session.id
+                                    )
+                                }
+                            }
+
+                            // Check for done
+                            if let done = dict["done"] as? Bool, done {
+                                break
+                            }
+                        }
+                    }
+                }
+            }
+
         } catch {
             self.error = .sendFailed(error.localizedDescription)
+            print("Chat error: \(error)")
         }
 
         isLoading = false
+        isStreaming = false
     }
 
     @MainActor
