@@ -297,3 +297,7 @@ Global limit: 100 requests/minute. Endpoint-specific limits documented below.
         return response
 
     return app
+
+
+# Create app instance for uvicorn
+app = create_app()

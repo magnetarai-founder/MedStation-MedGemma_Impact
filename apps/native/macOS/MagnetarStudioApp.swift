@@ -108,6 +108,11 @@ struct MagnetarCommands: Commands {
             }
             .keyboardShortcut("4", modifiers: .command)
 
+            Button("MagnetarHub") {
+                // TODO: Switch to MagnetarHub tab
+            }
+            .keyboardShortcut("5", modifiers: .command)
+
             Divider()
 
             Button("Toggle Sidebar") {

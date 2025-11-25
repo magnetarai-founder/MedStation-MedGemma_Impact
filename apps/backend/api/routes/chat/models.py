@@ -35,6 +35,57 @@ async def list_ollama_models_endpoint():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/models/with-tags", name="chat_list_models_with_tags")
+async def list_ollama_models_with_tags_endpoint():
+    """List available Ollama models with auto-detected capability tags (public endpoint)"""
+    from api.services import chat
+    from api.services.model_tags import detect_tags_from_name, get_tag_description, get_tag_icon
+
+    try:
+        models = await chat.list_ollama_models()
+
+        # Add auto-detected tags to each model
+        models_with_tags = []
+        for model in models:
+            tags = list(detect_tags_from_name(model['name']))
+
+            # Add tag metadata
+            tag_details = [
+                {
+                    "id": tag,
+                    "name": tag.replace("-", " ").title(),
+                    "description": get_tag_description(tag),
+                    "icon": get_tag_icon(tag)
+                }
+                for tag in tags
+            ]
+
+            model_with_tags = {
+                **model,
+                "tags": tags,
+                "tag_details": tag_details
+            }
+            models_with_tags.append(model_with_tags)
+
+        return models_with_tags
+    except Exception as e:
+        logger.error(f"Failed to list models with tags: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/models/tags", name="chat_get_all_tags")
+async def get_all_tags_endpoint():
+    """Get all available model capability tags (public endpoint)"""
+    from api.services.model_tags import get_all_tags
+
+    try:
+        tags = get_all_tags()
+        return tags
+    except Exception as e:
+        logger.error(f"Failed to get tags: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/health", name="chat_check_health")
 async def check_health_endpoint():
     """Check Ollama health status (public endpoint)"""

@@ -250,7 +250,7 @@ struct TeamWorkspace: View {
         case .docs:
             DocsWorkspace()
         case .workflows:
-            AutomationWorkspace()
+            AutomationWorkspaceView()
         case .vault:
             VaultWorkspace()
         }
@@ -348,18 +348,7 @@ struct DocsWorkspace: View {
     }
 }
 
-struct AutomationWorkspace: View {
-    var body: some View {
-        VStack {
-            Image(systemName: "arrow.triangle.branch")
-                .font(.system(size: 64))
-                .foregroundColor(.secondary)
-            Text("Workflows & Automation")
-                .font(.title)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
+// AutomationWorkspace moved to Shared/Components/AutomationWorkspace.swift
 
 struct VaultWorkspace: View {
     var body: some View {

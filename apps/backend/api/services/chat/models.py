@@ -33,12 +33,9 @@ def _get_model_manager():
 
 
 def _get_ollama_client():
-    """Lazy init for Ollama client"""
-    global _ollama_client
-    if _ollama_client is None:
-        from .streaming import OllamaClient
-        _ollama_client = OllamaClient()
-    return _ollama_client
+    """Lazy init for Ollama client - recreate on each call for now"""
+    from .streaming import OllamaClient
+    return OllamaClient()
 
 
 # ============================================================================
@@ -55,12 +52,7 @@ async def list_ollama_models() -> List[Dict[str, Any]]:
     ollama_client = _get_ollama_client()
     models = await ollama_client.list_models()
 
-    if not models:
-        return [{
-            "name": "qwen2.5-coder:7b-instruct",
-            "size": "4.7GB",
-            "modified_at": datetime.utcnow().isoformat()
-        }]
+    logger.info(f"OllamaClient returned {len(models)} models")
 
     # Filter out non-chat models
     excluded_patterns = ['embed', 'embedding', '-vision']
@@ -71,6 +63,7 @@ async def list_ollama_models() -> List[Dict[str, Any]]:
         if not any(pattern in model_name_lower for pattern in excluded_patterns):
             chat_models.append(model)
 
+    logger.info(f"After filtering: {len(chat_models)} chat models")
     return chat_models
 
 

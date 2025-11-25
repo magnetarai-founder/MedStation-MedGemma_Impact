@@ -6,7 +6,9 @@ Separated for better organization and to keep chat.py manageable.
 
 import json
 import logging
-from typing import List, Dict, AsyncGenerator
+import subprocess
+import asyncio
+from typing import List, Dict, AsyncGenerator, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -16,10 +18,65 @@ class OllamaClient:
 
     def __init__(self, base_url: str = "http://localhost:11434"):
         self.base_url = base_url
+        self._server_process: Optional[subprocess.Popen] = None
+
+    async def check_server(self) -> bool:
+        """Check if Ollama server is running"""
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.get(f"{self.base_url}/api/version")
+                return response.status_code == 200
+        except Exception as e:
+            logger.debug(f"Ollama server not responding: {e}")
+            return False
+
+    async def start_server(self) -> bool:
+        """Start Ollama server if not running"""
+        try:
+            # Check if already running
+            if await self.check_server():
+                logger.info("Ollama server already running")
+                return True
+
+            logger.info("Starting Ollama server...")
+
+            # Try to start Ollama serve in background
+            self._server_process = subprocess.Popen(
+                ["ollama", "serve"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                start_new_session=True
+            )
+
+            # Wait a few seconds for server to start
+            await asyncio.sleep(3)
+
+            # Check if it started successfully
+            if await self.check_server():
+                logger.info("✓ Ollama server started successfully")
+                return True
+            else:
+                logger.error("Failed to start Ollama server")
+                return False
+
+        except FileNotFoundError:
+            logger.error("Ollama command not found. Please install Ollama from https://ollama.ai")
+            return False
+        except Exception as e:
+            logger.error(f"Failed to start Ollama server: {e}")
+            return False
 
     async def list_models(self) -> List[Dict[str, str]]:
-        """List available models"""
+        """List available models - ensures Ollama is running first"""
         try:
+            # Ensure server is running
+            if not await self.check_server():
+                logger.warning("Ollama server not running, attempting to start...")
+                if not await self.start_server():
+                    logger.error("Could not start Ollama server")
+                    return []
+
             import httpx
             async with httpx.AsyncClient() as client:
                 response = await client.get(f"{self.base_url}/api/tags")

@@ -34,6 +34,11 @@ struct SettingsView: View {
                 .tabItem {
                     Label("Appearance", systemImage: "paintbrush")
                 }
+
+            MagnetarCloudSettingsView()
+                .tabItem {
+                    Label("MagnetarCloud", systemImage: "cloud")
+                }
         }
         .frame(width: 500, height: 400)
     }
@@ -173,6 +178,121 @@ struct AppearanceSettingsView: View {
                     Text("14pt").tag(14)
                     Text("16pt").tag(16)
                     Text("18pt").tag(18)
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .padding()
+    }
+}
+
+// MARK: - MagnetarCloud Settings
+
+struct MagnetarCloudSettingsView: View {
+    @State private var isAuthenticated: Bool = false
+    @State private var cloudEmail: String = ""
+    @State private var cloudPlan: String = "Free"
+    @State private var syncEnabled: Bool = true
+
+    var body: some View {
+        Form {
+            if !isAuthenticated {
+                // Not authenticated
+                Section {
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "cloud.fill")
+                                .font(.system(size: 32))
+                                .foregroundStyle(LinearGradient.magnetarGradient)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("MagnetarCloud")
+                                    .font(.headline)
+
+                                Text("Sign in to sync across devices and access your models")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        Button {
+                            // TODO: Trigger Supabase auth flow
+                            isAuthenticated = true
+                            cloudEmail = "user@example.com"
+                            cloudPlan = "Pro"
+                        } label: {
+                            Label("Login to MagnetarCloud Account", systemImage: "person.circle")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                    }
+                    .padding(.vertical, 8)
+                }
+
+                Section("Features") {
+                    Label("Sync chat sessions across devices", systemImage: "arrow.triangle.2.circlepath")
+                    Label("Access your fine-tuned models", systemImage: "cube.box")
+                    Label("Download model updates", systemImage: "arrow.down.circle")
+                    Label("Priority support", systemImage: "headphones")
+                }
+                .foregroundStyle(.secondary)
+                .font(.caption)
+            } else {
+                // Authenticated
+                Section("Account") {
+                    HStack {
+                        Text("Email")
+                        Spacer()
+                        Text(cloudEmail)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    HStack {
+                        Text("Plan")
+                        Spacer()
+                        Text(cloudPlan)
+                            .foregroundStyle(Color.magnetarPrimary)
+                    }
+
+                    Button("Manage Subscription") {
+                        // TODO: Open subscription management
+                    }
+                }
+
+                Section("Sync") {
+                    Toggle("Enable Cloud Sync", isOn: $syncEnabled)
+
+                    Text("Sync chat sessions, settings, and models across all your devices")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    if syncEnabled {
+                        HStack {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                            Text("Last sync: Just now")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
+                Section("Connected Devices") {
+                    Label("MacBook Pro", systemImage: "laptopcomputer")
+                    Label("iPad Pro", systemImage: "ipad")
+
+                    Text("2 devices connected")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Section {
+                    Button("Sign Out", role: .destructive) {
+                        isAuthenticated = false
+                        cloudEmail = ""
+                        cloudPlan = "Free"
+                    }
                 }
             }
         }

@@ -32,6 +32,8 @@ async def run_startup_migrations() -> None:
         from startup_migrations import run_startup_migrations as _run_migrations
         await _run_migrations()
         logger.info("✓ Startup migrations completed")
+    except ModuleNotFoundError:
+        logger.warning("✗ Startup migrations module not found - skipping")
     except Exception as e:
         logger.error(f"✗ Startup migrations failed: {e}", exc_info=True)
         # Re-raise to prevent app from starting with broken DB state
