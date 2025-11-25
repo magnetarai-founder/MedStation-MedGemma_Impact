@@ -1241,15 +1241,608 @@ struct Document: Identifiable {
 // AutomationWorkspace moved to Shared/Components/AutomationWorkspace.swift
 
 struct VaultWorkspace: View {
+    @State private var vaultUnlocked: Bool = false
+    @State private var password: String = ""
+    @State private var showPassword: Bool = false
+    @State private var authError: String? = nil
+    @State private var isAuthenticating: Bool = false
+    @State private var viewMode: VaultViewMode = .grid
+    @State private var searchText: String = ""
+    @State private var currentPath: [String] = ["Home"]
+    @State private var selectedFile: VaultFile? = nil
+    @State private var showPreview: Bool = false
+
     var body: some View {
-        VStack {
+        Group {
+            if vaultUnlocked {
+                unlockedView
+            } else {
+                lockedView
+            }
+        }
+        .sheet(isPresented: $showPreview) {
+            if let file = selectedFile {
+                FilePreviewModal(file: file, isPresented: $showPreview)
+            }
+        }
+    }
+
+    // MARK: - Locked View
+
+    private var lockedView: some View {
+        VStack(spacing: 24) {
+            // Icon
             Image(systemName: "lock.shield")
-                .font(.system(size: 64))
+                .font(.system(size: 32))
                 .foregroundColor(.orange)
-            Text("Vault Workspace")
-                .font(.title)
+
+            // Title
+            VStack(spacing: 8) {
+                Text("Unlock Vault")
+                    .font(.system(size: 24, weight: .bold))
+
+                Text("Enter your password to access secure files")
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+            }
+
+            // Password field
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 12) {
+                    if showPassword {
+                        TextField("Password", text: $password)
+                            .textFieldStyle(.plain)
+                            .font(.system(size: 14))
+                    } else {
+                        SecureField("Password", text: $password)
+                            .textFieldStyle(.plain)
+                            .font(.system(size: 14))
+                    }
+
+                    Button {
+                        showPassword.toggle()
+                    } label: {
+                        Image(systemName: showPassword ? "eye.slash" : "eye")
+                            .font(.system(size: 18))
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(authError != nil ? Color.red : Color.gray.opacity(0.3), lineWidth: 1)
+                )
+
+                if let error = authError {
+                    Text(error)
+                        .font(.system(size: 12))
+                        .foregroundColor(.red)
+                }
+            }
+
+            // Touch ID button (if available)
+            Button {
+                // Biometric auth
+                authenticateWithBiometrics()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "touchid")
+                        .font(.system(size: 18))
+                    Text("Use Touch ID")
+                        .font(.system(size: 14, weight: .medium))
+                }
+                .foregroundColor(.primary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(Color.gray.opacity(0.3), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+
+            // Unlock button
+            Button {
+                unlockVault()
+            } label: {
+                HStack(spacing: 8) {
+                    if isAuthenticating {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                            .tint(.white)
+                    } else {
+                        Text("Unlock")
+                            .font(.system(size: 14, weight: .medium))
+                    }
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(password.isEmpty ? Color.gray : Color.magnetarPrimary)
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(password.isEmpty || isAuthenticating)
+        }
+        .frame(width: 400)
+        .padding(28)
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color(.controlBackgroundColor))
+                .shadow(color: Color.black.opacity(0.1), radius: 12, x: 0, y: 4)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .strokeBorder(Color.gray.opacity(0.2), lineWidth: 1)
+        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: - Unlocked View
+
+    private var unlockedView: some View {
+        VStack(spacing: 0) {
+            // Top bar
+            topBar
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(Color(.controlBackgroundColor))
+                .overlay(
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.2))
+                        .frame(height: 1),
+                    alignment: .bottom
+                )
+
+            // Content
+            if VaultFile.mockFiles.isEmpty {
+                emptyState
+            } else {
+                if viewMode == .grid {
+                    gridView
+                } else {
+                    listView
+                }
+            }
+        }
+    }
+
+    private var topBar: some View {
+        HStack(spacing: 12) {
+            // Breadcrumbs
+            HStack(spacing: 6) {
+                ForEach(Array(currentPath.enumerated()), id: \.offset) { index, folder in
+                    if index > 0 {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                    }
+
+                    Text(folder)
+                        .font(.system(size: 14))
+                        .foregroundColor(index == currentPath.count - 1 ? .primary : .secondary)
+                }
+            }
+
+            Spacer()
+
+            // View toggle
+            HStack(spacing: 4) {
+                viewToggleButton(icon: "square.grid.3x2", mode: .grid)
+                viewToggleButton(icon: "list.bullet", mode: .list)
+            }
+            .padding(4)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.gray.opacity(0.1))
+            )
+
+            // Search
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+
+                TextField("Search vault...", text: $searchText)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 14))
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .frame(width: 240)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color.gray.opacity(0.1))
+            )
+
+            // Buttons
+            Button {
+                // New folder
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "folder.badge.plus")
+                        .font(.system(size: 16))
+                    Text("New Folder")
+                        .font(.system(size: 14, weight: .medium))
+                }
+                .foregroundColor(.primary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(Color.gray.opacity(0.3), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                // Upload
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.up.doc")
+                        .font(.system(size: 16))
+                    Text("Upload")
+                        .font(.system(size: 14, weight: .medium))
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.magnetarPrimary)
+                )
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func viewToggleButton(icon: String, mode: VaultViewMode) -> some View {
+        Button {
+            viewMode = mode
+        } label: {
+            Image(systemName: icon)
+                .font(.system(size: 16))
+                .foregroundColor(viewMode == mode ? Color.magnetarPrimary : .secondary)
+                .frame(width: 32, height: 32)
+        }
+        .buttonStyle(.plain)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(viewMode == mode ? Color.magnetarPrimary.opacity(0.15) : Color.clear)
+        )
+    }
+
+    // MARK: - Grid View
+
+    private var gridView: some View {
+        ScrollView {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 180, maximum: 220), spacing: 16)], spacing: 16) {
+                ForEach(VaultFile.mockFiles) { file in
+                    fileCard(file: file)
+                        .onTapGesture {
+                            selectedFile = file
+                            showPreview = true
+                        }
+                }
+            }
+            .padding(20)
+        }
+    }
+
+    private func fileCard(file: VaultFile) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Icon chip
+            ZStack {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(file.mimeColor.opacity(0.15))
+                    .frame(height: 80)
+
+                Image(systemName: file.mimeIcon)
+                    .font(.system(size: 32))
+                    .foregroundColor(file.mimeColor)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(file.name)
+                    .font(.system(size: 13, weight: .medium))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+
+                HStack(spacing: 8) {
+                    Text(file.size)
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+
+                    Text("•")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+
+                    Text(file.modified)
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color(.controlBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(Color.gray.opacity(0.2), lineWidth: 1)
+        )
+    }
+
+    // MARK: - List View
+
+    private var listView: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack(spacing: 16) {
+                Text("Name")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Text("Size")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .frame(width: 100, alignment: .trailing)
+
+                Text("Modified")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .frame(width: 120, alignment: .trailing)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(Color.gray.opacity(0.05))
+
+            Divider()
+
+            ScrollView {
+                ForEach(VaultFile.mockFiles) { file in
+                    fileRow(file: file)
+                        .onTapGesture {
+                            selectedFile = file
+                            showPreview = true
+                        }
+                }
+            }
+        }
+    }
+
+    private func fileRow(file: VaultFile) -> some View {
+        HStack(spacing: 16) {
+            HStack(spacing: 10) {
+                Image(systemName: file.mimeIcon)
+                    .font(.system(size: 16))
+                    .foregroundColor(file.mimeColor)
+
+                Text(file.name)
+                    .font(.system(size: 14))
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Text(file.size)
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+                .frame(width: 100, alignment: .trailing)
+
+            Text(file.modified)
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+                .frame(width: 120, alignment: .trailing)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(Color.clear)
+        .overlay(
+            Rectangle()
+                .fill(Color.gray.opacity(0.1))
+                .frame(height: 1),
+            alignment: .bottom
+        )
+    }
+
+    // MARK: - Empty State
+
+    private var emptyState: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "folder.badge.questionmark")
+                .font(.system(size: 48))
+                .foregroundColor(.secondary)
+
+            Text("No files in this folder")
+                .font(.system(size: 18, weight: .semibold))
+
+            Text("Upload files to get started")
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: - Actions
+
+    private func unlockVault() {
+        isAuthenticating = true
+        authError = nil
+
+        // Simulate authentication
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            if password == "test" || password.count >= 4 {
+                vaultUnlocked = true
+                authError = nil
+            } else {
+                authError = "Invalid password"
+            }
+            isAuthenticating = false
+        }
+    }
+
+    private func authenticateWithBiometrics() {
+        // Simulate biometric auth
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            vaultUnlocked = true
+        }
+    }
+}
+
+// MARK: - Supporting Types
+
+enum VaultViewMode {
+    case grid
+    case list
+}
+
+struct VaultFile: Identifiable {
+    let id = UUID()
+    let name: String
+    let size: String
+    let modified: String
+    let mimeType: String
+
+    var mimeIcon: String {
+        switch mimeType {
+        case "image": return "photo"
+        case "video": return "video"
+        case "audio": return "music.note"
+        case "pdf": return "doc.text"
+        case "zip": return "archivebox"
+        case "code": return "chevron.left.forwardslash.chevron.right"
+        default: return "doc"
+        }
+    }
+
+    var mimeColor: Color {
+        switch mimeType {
+        case "image": return .purple
+        case "video": return .pink
+        case "audio": return .green
+        case "pdf": return .red
+        case "zip": return .yellow
+        case "code": return .indigo
+        default: return .gray
+        }
+    }
+
+    static let mockFiles = [
+        VaultFile(name: "Confidential Report.pdf", size: "2.4 MB", modified: "2 hours ago", mimeType: "pdf"),
+        VaultFile(name: "Team Photo.jpg", size: "1.8 MB", modified: "Yesterday", mimeType: "image"),
+        VaultFile(name: "Project Source.zip", size: "15.2 MB", modified: "3 days ago", mimeType: "zip"),
+        VaultFile(name: "Meeting Recording.mp4", size: "45.6 MB", modified: "Last week", mimeType: "video"),
+        VaultFile(name: "Secret Keys.txt", size: "12 KB", modified: "2 weeks ago", mimeType: "code")
+    ]
+}
+
+// MARK: - File Preview Modal
+
+struct FilePreviewModal: View {
+    let file: VaultFile
+    @Binding var isPresented: Bool
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(file.name)
+                        .font(.system(size: 16, weight: .semibold))
+
+                    HStack(spacing: 8) {
+                        Text(file.mimeType.uppercased())
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+
+                        Text("•")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+
+                        Text(file.size)
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                Button {
+                    isPresented = false
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 16))
+                        .foregroundColor(.secondary)
+                        .frame(width: 32, height: 32)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(24)
+            .background(Color(.controlBackgroundColor))
+            .overlay(
+                Rectangle()
+                    .fill(Color.gray.opacity(0.2))
+                    .frame(height: 1),
+                alignment: .bottom
+            )
+
+            // Body
+            VStack(spacing: 16) {
+                Image(systemName: file.mimeIcon)
+                    .font(.system(size: 64))
+                    .foregroundColor(file.mimeColor)
+
+                Text("Preview for \(file.mimeType) files")
+                    .font(.title2)
+
+                Text("File preview rendering will appear here")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(24)
+
+            // Footer
+            HStack {
+                Spacer()
+
+                Button {
+                    // Download
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.down.circle")
+                            .font(.system(size: 16))
+                        Text("Download")
+                            .font(.system(size: 14, weight: .medium))
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.magnetarPrimary)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(24)
+            .background(Color(.controlBackgroundColor))
+            .overlay(
+                Rectangle()
+                    .fill(Color.gray.opacity(0.2))
+                    .frame(height: 1),
+                alignment: .top
+            )
+        }
+        .frame(width: 700, height: 600)
+        .background(Color(.windowBackgroundColor))
+        .cornerRadius(12)
     }
 }
 
