@@ -87,6 +87,11 @@ final class AuthStore: ObservableObject {
         await clearAuthAndRestart()
     }
 
+    /// Set error message
+    func setError(_ message: String?) {
+        self.error = message
+    }
+
     // MARK: - Helpers
 
     private func clearAuthAndRestart() async {

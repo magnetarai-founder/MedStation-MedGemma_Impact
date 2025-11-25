@@ -646,6 +646,17 @@
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
+		<key>18F8E78737774D21B8C95D37</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>AuthService.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
 		<key>67700E88177E4318A9F9D842</key>
 		<dict>
 			<key>isa</key>
@@ -900,6 +911,7 @@
 				<string>EA7137A1464248E4B3DA0B7E</string>
 				<string>E4C417A6ECAA4E4DAFBF3882</string>
 				<string>AFCFCED70C194916B99900CC</string>
+				<string>C3E44FEBE2074BE4B381E33E</string>
 				<string>F68ABDC7B8A04CCA9B1DE635</string>
 				<string>AD18AD81EDBC4EF8AC097789</string>
 				<string>C275F79B51284D3B82881368</string>
@@ -1026,6 +1038,13 @@
 		<dict>
 			<key>fileRef</key>
 			<string>67700E88177E4318A9F9D842</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>C3E44FEBE2074BE4B381E33E</key>
+		<dict>
+			<key>fileRef</key>
+			<string>18F8E78737774D21B8C95D37</string>
 			<key>isa</key>
 			<string>PBXBuildFile</string>
 		</dict>
@@ -1450,6 +1469,7 @@
 		<dict>
 			<key>children</key>
 			<array>
+				<string>18F8E78737774D21B8C95D37</string>
 				<string>67700E88177E4318A9F9D842</string>
 				<string>98E7B59E6EB249EAA0A73897</string>
 				<string>26E9E5E9E5784B339818979B</string>

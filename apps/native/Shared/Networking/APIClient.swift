@@ -13,7 +13,14 @@ final class ApiClient {
         config.timeoutIntervalForRequest = 30.0
         config.timeoutIntervalForResource = 60.0
         self.session = URLSession(configuration: config)
-        self.baseURL = "/api"
+
+        // Read from environment or default to localhost
+        if let envBaseURL = ProcessInfo.processInfo.environment["API_BASE_URL"] {
+            self.baseURL = envBaseURL
+        } else {
+            self.baseURL = "http://localhost:8000/api"
+        }
+
         self.decoder = JSONDecoder()
         self.decoder.keyDecodingStrategy = .convertFromSnakeCase
     }

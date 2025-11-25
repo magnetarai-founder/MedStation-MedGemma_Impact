@@ -120,13 +120,41 @@ struct WelcomeView: View {
     // MARK: - Auth Handler
 
     private func handleAuth() async {
-        // TODO: Replace with actual login/register API calls
-        // For now, simulate token retrieval
+        do {
+            let response: LoginResponse
 
-        // Mock token after "login"
-        let mockToken = "mock_token_\(username)_\(Int.random(in: 1000...9999))"
+            if isRegistering {
+                // Register new user
+                response = try await AuthService.shared.register(
+                    username: username,
+                    password: password
+                )
+            } else {
+                // Login existing user
+                response = try await AuthService.shared.login(
+                    username: username,
+                    password: password
+                )
+            }
 
-        await authStore.saveToken(mockToken)
+            // Save token and trigger bootstrap
+            await authStore.saveToken(response.token)
+
+        } catch ApiError.httpError(let code, let data) {
+            if let message = String(data: data, encoding: .utf8) {
+                await MainActor.run {
+                    authStore.setError("Error (\(code)): \(message)")
+                }
+            } else {
+                await MainActor.run {
+                    authStore.setError("Error: HTTP \(code)")
+                }
+            }
+        } catch {
+            await MainActor.run {
+                authStore.setError(error.localizedDescription)
+            }
+        }
     }
 }
 
