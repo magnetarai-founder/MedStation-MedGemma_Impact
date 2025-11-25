@@ -146,23 +146,453 @@ struct WorkflowTabButton: View {
 // WorkflowQueueView is now in WorkflowQueue.swift
 
 struct WorkflowDashboardView: View {
+    @State private var scopeFilter: DashboardScope = .all
+    @State private var starredWorkflows: [WorkflowCard] = WorkflowCard.mockStarred
+    @State private var recentWorkflows: [WorkflowCard] = WorkflowCard.mockRecent
+
     var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "chart.bar")
-                .font(.system(size: 64))
-                .foregroundColor(.secondary)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                // Scope filter + count
+                HStack(spacing: 12) {
+                    Menu {
+                        Button("All Workflows") { scopeFilter = .all }
+                        Button("My Workflows") { scopeFilter = .my }
+                        Button("Team Workflows") { scopeFilter = .team }
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "line.3.horizontal.decrease.circle")
+                                .font(.system(size: 16))
 
-            Text("Workflow Dashboard")
-                .font(.title)
+                            Text(scopeFilter.displayName)
+                                .font(.system(size: 14))
 
-            Text("Starred and recent workflows will appear here")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 10))
+                        }
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.gray.opacity(0.1))
+                        )
+                    }
+                    .buttonStyle(.plain)
+
+                    Text("\(starredWorkflows.count + recentWorkflows.count) workflows")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+
+                    Spacer()
+
+                    // Action buttons
+                    HStack(spacing: 8) {
+                        Button {
+                            // Browse templates
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "doc.text.magnifyingglass")
+                                    .font(.system(size: 16))
+                                Text("Browse Templates")
+                                    .font(.system(size: 14, weight: .medium))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.orange)
+                            )
+                        }
+                        .buttonStyle(.plain)
+
+                        Button {
+                            // Create workflow
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "plus")
+                                    .font(.system(size: 16))
+                                Text("Create")
+                                    .font(.system(size: 14, weight: .medium))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.magnetarPrimary)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+
+                // Starred section
+                if !starredWorkflows.isEmpty {
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 16))
+                                .foregroundColor(.orange)
+                            Text("Starred")
+                                .font(.system(size: 18, weight: .semibold))
+                        }
+                        .padding(.horizontal, 16)
+
+                        WorkflowGrid(workflows: starredWorkflows, showStarByDefault: true)
+                    }
+                }
+
+                // Agent CTA card
+                AgentAssistCard()
+                    .padding(.horizontal, 16)
+
+                // Recent section
+                if !recentWorkflows.isEmpty {
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            Image(systemName: "clock")
+                                .font(.system(size: 16))
+                                .foregroundColor(.secondary)
+                            Text("Recent")
+                                .font(.system(size: 18, weight: .semibold))
+                        }
+                        .padding(.horizontal, 16)
+
+                        WorkflowGrid(workflows: recentWorkflows, showStarByDefault: false)
+                    }
+                }
+            }
+            .padding(.bottom, 24)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding()
     }
+}
+
+// MARK: - Workflow Grid
+
+struct WorkflowGrid: View {
+    let workflows: [WorkflowCard]
+    let showStarByDefault: Bool
+
+    var body: some View {
+        LazyVGrid(columns: gridColumns, spacing: 16) {
+            ForEach(workflows) { workflow in
+                WorkflowCardView(workflow: workflow, showStarByDefault: showStarByDefault)
+            }
+        }
+        .padding(.horizontal, 16)
+    }
+
+    private var gridColumns: [GridItem] {
+        [GridItem(.adaptive(minimum: 280, maximum: 360), spacing: 16)]
+    }
+}
+
+// MARK: - Workflow Card
+
+struct WorkflowCardView: View {
+    let workflow: WorkflowCard
+    let showStarByDefault: Bool
+    @State private var isHovered = false
+    @State private var isStarred = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header: Icon chip + Star
+            HStack {
+                // Icon chip
+                HStack(spacing: 6) {
+                    Image(systemName: workflow.icon)
+                        .font(.system(size: 14))
+                        .foregroundColor(workflow.typeColor)
+
+                    Text(workflow.typeName)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(workflow.typeColor)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(workflow.typeColor.opacity(0.15))
+                )
+
+                Spacer()
+
+                // Star toggle
+                if showStarByDefault || isHovered {
+                    Button {
+                        isStarred.toggle()
+                    } label: {
+                        Image(systemName: isStarred ? "star.fill" : "star")
+                            .font(.system(size: 16))
+                            .foregroundColor(isStarred ? .orange : .secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            // Title
+            Text(workflow.name)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(.textPrimary)
+
+            // Template badge
+            if workflow.isTemplate {
+                Text("TEMPLATE")
+                    .font(.caption2)
+                    .fontWeight(.bold)
+                    .foregroundColor(.purple)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(Color.purple.opacity(0.15))
+                    )
+            }
+
+            // Description
+            Text(workflow.description)
+                .font(.system(size: 13))
+                .foregroundColor(.secondary)
+                .lineLimit(2)
+
+            // Visibility badge
+            HStack(spacing: 4) {
+                Image(systemName: workflow.visibility.icon)
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+
+                Text(workflow.visibility.displayName)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.controlBackgroundColor))
+                .shadow(color: Color.black.opacity(isHovered ? 0.1 : 0.05), radius: isHovered ? 8 : 4, x: 0, y: 2)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(Color.gray.opacity(isHovered ? 0.3 : 0.15), lineWidth: 1)
+        )
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isHovered = hovering
+            }
+        }
+    }
+}
+
+// MARK: - Agent Assist Card
+
+struct AgentAssistCard: View {
+    var body: some View {
+        HStack(spacing: 16) {
+            // Icon
+            ZStack {
+                Circle()
+                    .fill(Color.purple.opacity(0.15))
+                    .frame(width: 48, height: 48)
+
+                Image(systemName: "wand.and.stars")
+                    .font(.system(size: 24))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.purple, .pink, .orange],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Workflow Agent Assist")
+                    .font(.system(size: 16, weight: .semibold))
+
+                Text("Let AI help you build, optimize, and maintain workflows automatically")
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            HStack(spacing: 8) {
+                Button {
+                    // Browse templates
+                } label: {
+                    Text("Browse Templates")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(Color.orange)
+                        )
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    // Learn more
+                } label: {
+                    Text("Learn About Agent Assist")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.purple)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .strokeBorder(Color.purple, lineWidth: 1)
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.purple.opacity(0.05),
+                            Color.pink.opacity(0.05),
+                            Color.orange.opacity(0.05)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [.purple, .pink, .orange],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
+        )
+    }
+}
+
+// MARK: - Dashboard Models
+
+enum DashboardScope: String {
+    case all = "All Workflows"
+    case my = "My Workflows"
+    case team = "Team Workflows"
+
+    var displayName: String { rawValue }
+}
+
+enum WorkflowVisibility {
+    case `private`
+    case team
+    case `public`
+
+    var icon: String {
+        switch self {
+        case .private: return "lock.fill"
+        case .team: return "person.2.fill"
+        case .public: return "globe"
+        }
+    }
+
+    var displayName: String {
+        switch self {
+        case .private: return "Private"
+        case .team: return "Team"
+        case .public: return "Public"
+        }
+    }
+}
+
+struct WorkflowCard: Identifiable {
+    let id = UUID()
+    let name: String
+    let description: String
+    let icon: String
+    let typeName: String
+    let typeColor: Color
+    let isTemplate: Bool
+    let visibility: WorkflowVisibility
+
+    static let mockStarred = [
+        WorkflowCard(
+            name: "Customer Onboarding",
+            description: "Automated workflow for onboarding new customers with identity verification and account setup",
+            icon: "person.badge.plus",
+            typeName: "Onboarding",
+            typeColor: .green,
+            isTemplate: false,
+            visibility: .team
+        ),
+        WorkflowCard(
+            name: "Invoice Processing",
+            description: "Extract data from invoices, validate amounts, and route for approval",
+            icon: "doc.text",
+            typeName: "Finance",
+            typeColor: .blue,
+            isTemplate: false,
+            visibility: .private
+        ),
+        WorkflowCard(
+            name: "Support Ticket Triage",
+            description: "Classify incoming support tickets and assign to appropriate teams",
+            icon: "ticket",
+            typeName: "Support",
+            typeColor: .orange,
+            isTemplate: true,
+            visibility: .public
+        )
+    ]
+
+    static let mockRecent = [
+        WorkflowCard(
+            name: "Data Pipeline ETL",
+            description: "Extract, transform, and load data from multiple sources into data warehouse",
+            icon: "arrow.triangle.branch",
+            typeName: "Data",
+            typeColor: .purple,
+            isTemplate: false,
+            visibility: .team
+        ),
+        WorkflowCard(
+            name: "Content Publication",
+            description: "Review, approve, and publish content across multiple channels",
+            icon: "doc.richtext",
+            typeName: "Content",
+            typeColor: .pink,
+            isTemplate: false,
+            visibility: .team
+        ),
+        WorkflowCard(
+            name: "Security Incident Response",
+            description: "Automated playbook for security incident detection, analysis, and remediation",
+            icon: "shield",
+            typeName: "Security",
+            typeColor: .red,
+            isTemplate: true,
+            visibility: .public
+        ),
+        WorkflowCard(
+            name: "Code Review Automation",
+            description: "Automated code quality checks, test execution, and PR review routing",
+            icon: "chevron.left.forwardslash.chevron.right",
+            typeName: "DevOps",
+            typeColor: .cyan,
+            isTemplate: false,
+            visibility: .team
+        )
+    ]
 }
 
 struct WorkflowBuilderView: View {
