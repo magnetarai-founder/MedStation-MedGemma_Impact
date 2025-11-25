@@ -111,17 +111,17 @@ private struct ControlCluster: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            ToolbarButton(icon: "terminal", label: "\(terminalCount)") {
+            HeaderToolbarButton(icon: "terminal", label: "\(terminalCount)") {
                 showTerminals = true
             }
             .help("Terminals")
 
-            ToolbarButton(icon: "chart.bar.fill") {
+            HeaderToolbarButton(icon: "chart.bar.fill") {
                 // Show activity
             }
             .help("Activity")
 
-            ToolbarButton(
+            HeaderToolbarButton(
                 icon: "exclamationmark.triangle.fill",
                 tint: Color.red.opacity(0.9),
                 background: Color.red.opacity(0.12)
@@ -133,7 +133,7 @@ private struct ControlCluster: View {
     }
 }
 
-private struct ToolbarButton: View {
+private struct HeaderToolbarButton: View {
     let icon: String
     var label: String? = nil
     var tint: Color = .primary
