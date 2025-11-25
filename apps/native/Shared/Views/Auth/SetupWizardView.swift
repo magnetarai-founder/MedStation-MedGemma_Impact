@@ -170,13 +170,51 @@ struct SetupWizardView: View {
     // MARK: - Complete Setup
 
     private func completeSetup() async {
-        // TODO: Send setup data to backend
-        // For now, just mark setup as complete
+        do {
+            // Build request to mark setup as complete
+            let url = URL(string: "http://localhost:8000/api/v1/setup/complete")!
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        // Simulate API call
-        try? await Task.sleep(nanoseconds: 500_000_000)
+            // Get token if available (will be nil in DEBUG mode)
+            if let token = KeychainService.shared.loadToken() {
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            }
 
-        authStore.completeSetup()
+            // Send setup data (displayName, teamName, preferences)
+            let requestBody: [String: Any] = [
+                "displayName": displayName,
+                "teamName": teamName,
+                "preferences": preferences
+            ]
+            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+
+            // Make request
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                print("Setup wizard: Invalid response")
+                authStore.completeSetup()  // Complete locally even if backend fails
+                return
+            }
+
+            if httpResponse.statusCode == 200 {
+                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    print("Setup wizard complete: \(json["message"] ?? "Success")")
+                }
+            } else {
+                print("Setup wizard: Server returned status \(httpResponse.statusCode)")
+            }
+
+            // Complete setup locally
+            authStore.completeSetup()
+
+        } catch {
+            print("Setup wizard error: \(error)")
+            // Complete locally even if backend call fails
+            authStore.completeSetup()
+        }
     }
 }
 
