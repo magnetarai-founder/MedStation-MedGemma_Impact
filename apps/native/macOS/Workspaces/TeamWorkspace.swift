@@ -960,16 +960,282 @@ struct FileSharingPanel: View {
 }
 
 struct DocsWorkspace: View {
+    @State private var sidebarVisible: Bool = true
+    @State private var activeDocument: Document? = nil
+    @State private var showDocTypeSelector: Bool = false
+    @State private var selectedDocType: DocumentType = .document
+
     var body: some View {
-        VStack {
-            Image(systemName: "doc.text")
+        HStack(spacing: 0) {
+            // Left Sidebar
+            if sidebarVisible {
+                docsSidebar
+                    .frame(width: 256)
+
+                Divider()
+            }
+
+            // Main area
+            if let doc = activeDocument {
+                documentEditor(doc: doc)
+            } else {
+                emptyState
+            }
+        }
+    }
+
+    // MARK: - Sidebar
+
+    private var docsSidebar: some View {
+        VStack(spacing: 0) {
+            // Header
+            VStack(spacing: 12) {
+                HStack(spacing: 8) {
+                    Text("Documents")
+                        .font(.system(size: 14, weight: .semibold))
+
+                    Spacer()
+
+                    HStack(spacing: 4) {
+                        Text("Solo")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(Color.blue)
+                            )
+                    }
+                }
+
+                // New Document button
+                Button {
+                    // Create new document
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 16))
+                        Text("New Document")
+                            .font(.system(size: 14, weight: .medium))
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.magnetarPrimary)
+                    )
+                }
+                .buttonStyle(.plain)
+
+                // Type selector
+                Menu {
+                    Button("Document") { selectedDocType = .document }
+                    Button("Spreadsheet") { selectedDocType = .spreadsheet }
+                    Button("Insight") { selectedDocType = .insight }
+                    Divider()
+                    Button("Secure Document") { selectedDocType = .secureDocument }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: selectedDocType.icon)
+                            .font(.system(size: 14))
+
+                        Text(selectedDocType.displayName)
+                            .font(.system(size: 13))
+
+                        Spacer()
+
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 10))
+                    }
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.gray.opacity(0.1))
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(12)
+            .background(Color.gray.opacity(0.03))
+            .overlay(
+                Rectangle()
+                    .fill(Color.gray.opacity(0.2))
+                    .frame(height: 1),
+                alignment: .bottom
+            )
+
+            // Document list
+            DocumentsSidebar(
+                activeDocument: $activeDocument,
+                documents: Document.mockDocuments
+            )
+        }
+        .background(Color.gray.opacity(0.05))
+    }
+
+    // MARK: - Editor
+
+    private func documentEditor(doc: Document) -> some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack(spacing: 12) {
+                Button {
+                    sidebarVisible.toggle()
+                } label: {
+                    Image(systemName: "sidebar.left")
+                        .font(.system(size: 16))
+                        .foregroundColor(.secondary)
+                        .frame(width: 32, height: 32)
+                }
+                .buttonStyle(.plain)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(doc.name)
+                        .font(.system(size: 16, weight: .semibold))
+
+                    Text("Last edited: \(doc.lastEdited)")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(Color(.controlBackgroundColor))
+            .overlay(
+                Rectangle()
+                    .fill(Color.gray.opacity(0.2))
+                    .frame(height: 1),
+                alignment: .bottom
+            )
+
+            // Editor area (placeholder)
+            VStack(spacing: 16) {
+                Image(systemName: doc.type.icon)
+                    .font(.system(size: 64))
+                    .foregroundColor(.secondary)
+
+                Text("Document Editor")
+                    .font(.title)
+
+                Text("Editor for \(doc.name) will appear here")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    // MARK: - Empty State
+
+    private var emptyState: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "plus")
                 .font(.system(size: 64))
                 .foregroundColor(.secondary)
-            Text("Documents Workspace")
-                .font(.title)
+
+            Text("No document selected")
+                .font(.system(size: 18, weight: .semibold))
+
+            Text("Select a document from the sidebar or create a new one")
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+}
+
+// MARK: - Documents Sidebar
+
+struct DocumentsSidebar: View {
+    @Binding var activeDocument: Document?
+    let documents: [Document]
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 4) {
+                ForEach(documents) { doc in
+                    documentRow(doc: doc, isActive: activeDocument?.id == doc.id)
+                        .onTapGesture {
+                            activeDocument = doc
+                        }
+                }
+            }
+            .padding(8)
+        }
+    }
+
+    private func documentRow(doc: Document, isActive: Bool) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: doc.type.icon)
+                .font(.system(size: 16))
+                .foregroundColor(isActive ? Color.magnetarPrimary : .secondary)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(doc.name)
+                    .font(.system(size: 13, weight: isActive ? .medium : .regular))
+                    .foregroundColor(isActive ? .primary : .secondary)
+
+                Text(doc.lastEdited)
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(isActive ? Color.magnetarPrimary.opacity(0.1) : Color.clear)
+        )
+    }
+}
+
+// MARK: - Document Types
+
+enum DocumentType {
+    case document
+    case spreadsheet
+    case insight
+    case secureDocument
+
+    var displayName: String {
+        switch self {
+        case .document: return "Document"
+        case .spreadsheet: return "Spreadsheet"
+        case .insight: return "Insight"
+        case .secureDocument: return "Secure Document"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .document: return "doc.text"
+        case .spreadsheet: return "tablecells"
+        case .insight: return "chart.bar.doc.horizontal"
+        case .secureDocument: return "lock.doc"
+        }
+    }
+}
+
+struct Document: Identifiable {
+    let id = UUID()
+    let name: String
+    let type: DocumentType
+    let lastEdited: String
+
+    static let mockDocuments = [
+        Document(name: "Project Proposal", type: .document, lastEdited: "2 hours ago"),
+        Document(name: "Q4 Budget", type: .spreadsheet, lastEdited: "Yesterday"),
+        Document(name: "Sales Analysis", type: .insight, lastEdited: "3 days ago"),
+        Document(name: "Confidential Report", type: .secureDocument, lastEdited: "Last week")
+    ]
 }
 
 // AutomationWorkspace moved to Shared/Components/AutomationWorkspace.swift
