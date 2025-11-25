@@ -992,7 +992,7 @@ struct WorkflowDesignerView: View {
 }
 
 struct WorkflowAnalyticsView: View {
-    @State private var analytics: WorkflowAnalytics = WorkflowAnalytics.mock
+    @State private var analytics: LegacyWorkflowAnalytics = LegacyWorkflowAnalytics.mock
 
     var body: some View {
         ScrollView {
@@ -1140,7 +1140,7 @@ struct MetricCard: View {
 // MARK: - Stage Performance Table
 
 struct StagePerformanceTable: View {
-    let stages: [StagePerformance]
+    let stages: [LegacyStagePerformance]
 
     var body: some View {
         VStack(spacing: 0) {
@@ -1230,7 +1230,8 @@ struct StagePerformanceTable: View {
 
 // MARK: - Analytics Models
 
-struct WorkflowAnalytics {
+// Legacy mock analytics model used for the UI preview; renamed to avoid clashing with backend model.
+struct LegacyWorkflowAnalytics {
     let totalItems: Int
     let completedItems: Int
     let inProgressItems: Int
@@ -1238,14 +1239,14 @@ struct WorkflowAnalytics {
     let failedItems: Int
     let avgCycleTime: String
     let medianCycleTime: String?
-    let stagePerformance: [StagePerformance]
+    let stagePerformance: [LegacyStagePerformance]
 
     var completionPercent: Int {
         guard totalItems > 0 else { return 0 }
         return Int((Double(completedItems) / Double(totalItems)) * 100)
     }
 
-    static let mock = WorkflowAnalytics(
+    static let mock = LegacyWorkflowAnalytics(
         totalItems: 1847,
         completedItems: 1523,
         inProgressItems: 287,
@@ -1254,16 +1255,16 @@ struct WorkflowAnalytics {
         avgCycleTime: "3.2h",
         medianCycleTime: "2.8h",
         stagePerformance: [
-            StagePerformance(name: "Initial Triage", entered: 1847, completed: 1823, avgTime: "12m", medianTime: "10m"),
-            StagePerformance(name: "Data Validation", entered: 1823, completed: 1789, avgTime: "45m", medianTime: "38m"),
-            StagePerformance(name: "Processing", entered: 1789, completed: 1654, avgTime: "1.8h", medianTime: "1.5h"),
-            StagePerformance(name: "Review", entered: 1654, completed: 1598, avgTime: "2.3h", medianTime: "2.0h"),
-            StagePerformance(name: "Approval", entered: 1598, completed: 1523, avgTime: "4.1h", medianTime: "3.2h")
+            LegacyStagePerformance(name: "Initial Triage", entered: 1847, completed: 1823, avgTime: "12m", medianTime: "10m"),
+            LegacyStagePerformance(name: "Data Validation", entered: 1823, completed: 1789, avgTime: "45m", medianTime: "38m"),
+            LegacyStagePerformance(name: "Processing", entered: 1789, completed: 1654, avgTime: "1.8h", medianTime: "1.5h"),
+            LegacyStagePerformance(name: "Review", entered: 1654, completed: 1598, avgTime: "2.3h", medianTime: "2.0h"),
+            LegacyStagePerformance(name: "Approval", entered: 1598, completed: 1523, avgTime: "4.1h", medianTime: "3.2h")
         ]
     )
 }
 
-struct StagePerformance: Identifiable {
+struct LegacyStagePerformance: Identifiable {
     let id = UUID()
     let name: String
     let entered: Int

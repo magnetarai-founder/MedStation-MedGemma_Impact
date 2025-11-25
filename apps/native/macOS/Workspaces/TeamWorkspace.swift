@@ -1249,7 +1249,7 @@ struct VaultWorkspace: View {
     @State private var viewMode: VaultViewMode = .grid
     @State private var searchText: String = ""
     @State private var currentPath: [String] = ["Home"]
-    @State private var selectedFile: VaultFile? = nil
+    @State private var selectedFile: LegacyVaultFile? = nil
     @State private var showPreview: Bool = false
 
     var body: some View {
@@ -1399,7 +1399,7 @@ struct VaultWorkspace: View {
                 )
 
             // Content
-            if VaultFile.mockFiles.isEmpty {
+            if LegacyVaultFile.mockFiles.isEmpty {
                 emptyState
             } else {
                 if viewMode == .grid {
@@ -1521,7 +1521,7 @@ struct VaultWorkspace: View {
     private var gridView: some View {
         ScrollView {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 180, maximum: 220), spacing: 16)], spacing: 16) {
-                ForEach(VaultFile.mockFiles) { file in
+                ForEach(LegacyVaultFile.mockFiles) { file in
                     fileCard(file: file)
                         .onTapGesture {
                             selectedFile = file
@@ -1533,7 +1533,7 @@ struct VaultWorkspace: View {
         }
     }
 
-    private func fileCard(file: VaultFile) -> some View {
+    private func fileCard(file: LegacyVaultFile) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             // Icon chip
             ZStack {
@@ -1606,7 +1606,7 @@ struct VaultWorkspace: View {
             Divider()
 
             ScrollView {
-                ForEach(VaultFile.mockFiles) { file in
+                ForEach(LegacyVaultFile.mockFiles) { file in
                     fileRow(file: file)
                         .onTapGesture {
                             selectedFile = file
@@ -1617,7 +1617,7 @@ struct VaultWorkspace: View {
         }
     }
 
-    private func fileRow(file: VaultFile) -> some View {
+    private func fileRow(file: LegacyVaultFile) -> some View {
         HStack(spacing: 16) {
             HStack(spacing: 10) {
                 Image(systemName: file.mimeIcon)
@@ -1702,7 +1702,8 @@ enum VaultViewMode {
     case list
 }
 
-struct VaultFile: Identifiable {
+// Legacy mock file model for the UI preview; renamed to avoid clashing with real VaultFile model.
+struct LegacyVaultFile: Identifiable {
     let id = UUID()
     let name: String
     let size: String
@@ -1734,11 +1735,11 @@ struct VaultFile: Identifiable {
     }
 
     static let mockFiles = [
-        VaultFile(name: "Confidential Report.pdf", size: "2.4 MB", modified: "2 hours ago", mimeType: "pdf"),
-        VaultFile(name: "Team Photo.jpg", size: "1.8 MB", modified: "Yesterday", mimeType: "image"),
-        VaultFile(name: "Project Source.zip", size: "15.2 MB", modified: "3 days ago", mimeType: "zip"),
-        VaultFile(name: "Meeting Recording.mp4", size: "45.6 MB", modified: "Last week", mimeType: "video"),
-        VaultFile(name: "Secret Keys.txt", size: "12 KB", modified: "2 weeks ago", mimeType: "code")
+        LegacyVaultFile(name: "Confidential Report.pdf", size: "2.4 MB", modified: "2 hours ago", mimeType: "pdf"),
+        LegacyVaultFile(name: "Team Photo.jpg", size: "1.8 MB", modified: "Yesterday", mimeType: "image"),
+        LegacyVaultFile(name: "Project Source.zip", size: "15.2 MB", modified: "3 days ago", mimeType: "zip"),
+        LegacyVaultFile(name: "Meeting Recording.mp4", size: "45.6 MB", modified: "Last week", mimeType: "video"),
+        LegacyVaultFile(name: "Secret Keys.txt", size: "12 KB", modified: "2 weeks ago", mimeType: "code")
     ]
 }
 

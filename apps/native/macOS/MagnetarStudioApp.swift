@@ -14,25 +14,10 @@ import AppKit
 
 @main
 struct MagnetarStudioApp: App {
-    // SwiftData model container
-    let modelContainer: ModelContainer
-
-    init() {
-        do {
-            modelContainer = try ModelContainer(
-                for: User.self, ChatMessage.self, ChatSession.self,
-                configurations: ModelConfiguration(isStoredInMemoryOnly: false)
-            )
-        } catch {
-            fatalError("Failed to create ModelContainer: \(error)")
-        }
-    }
-
     var body: some Scene {
         // Main window
         WindowGroup {
             ContentView()
-                .modelContainer(modelContainer)
                 .frame(minWidth: 1300, minHeight: 750)
                 .onAppear {
                     // Set window size constraints

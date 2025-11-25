@@ -29,7 +29,7 @@ final class KeychainService {
         let status = SecItemAdd(query as CFDictionary, nil)
 
         guard status == errSecSuccess else {
-            throw KeychainError.saveFailed(status)
+            throw KeychainServiceError.saveFailed(status)
         }
     }
 
@@ -64,14 +64,14 @@ final class KeychainService {
         let status = SecItemDelete(query as CFDictionary)
 
         guard status == errSecSuccess || status == errSecItemNotFound else {
-            throw KeychainError.deleteFailed(status)
+            throw KeychainServiceError.deleteFailed(status)
         }
     }
 }
 
 // MARK: - Errors
 
-enum KeychainError: LocalizedError {
+enum KeychainServiceError: LocalizedError {
     case saveFailed(OSStatus)
     case deleteFailed(OSStatus)
 
