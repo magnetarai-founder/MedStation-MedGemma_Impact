@@ -16,8 +16,7 @@ final class KeychainService {
         // DEVELOPMENT BYPASS: Skip keychain to avoid prompts
         #if DEBUG
         return
-        #endif
-
+        #else
         let data = Data(token.utf8)
 
         // Delete existing item first
@@ -36,14 +35,14 @@ final class KeychainService {
         guard status == errSecSuccess else {
             throw KeychainServiceError.saveFailed(status)
         }
+        #endif
     }
 
     func loadToken() -> String? {
         // DEVELOPMENT BYPASS: Return nil to avoid keychain prompts
         #if DEBUG
         return nil
-        #endif
-
+        #else
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -62,14 +61,14 @@ final class KeychainService {
         }
 
         return token
+        #endif
     }
 
     func deleteToken() throws {
         // DEVELOPMENT BYPASS: Skip keychain to avoid prompts
         #if DEBUG
         return
-        #endif
-
+        #else
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -81,6 +80,7 @@ final class KeychainService {
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw KeychainServiceError.deleteFailed(status)
         }
+        #endif
     }
 }
 
