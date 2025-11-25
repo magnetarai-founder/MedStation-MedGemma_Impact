@@ -13,6 +13,8 @@ struct MagnetarHubWorkspace: View {
     @State private var selectedModel: OllamaModel? = nil
     @State private var ollamaServerRunning: Bool = false
     @State private var isCloudAuthenticated: Bool = false
+    @State private var cloudModels: [OllamaModel] = []
+    @State private var isLoadingCloudModels: Bool = false
 
     var body: some View {
         ThreePaneLayout {
@@ -28,6 +30,7 @@ struct MagnetarHubWorkspace: View {
         .task {
             await checkOllamaStatus()
             await modelsStore.fetchModels()
+            await fetchCloudModels()
         }
     }
 
@@ -184,7 +187,7 @@ struct MagnetarHubWorkspace: View {
                 model.tags?.contains("reasoning") == true
             }
         case .cloud:
-            return [] // TODO: Fetch cloud models
+            return cloudModels
         }
     }
 
@@ -353,6 +356,68 @@ struct MagnetarHubWorkspace: View {
                 ollamaServerRunning = false
             }
         }
+    }
+
+    // MARK: - Cloud Models CRUD
+
+    @MainActor
+    private func fetchCloudModels() async {
+        isLoadingCloudModels = true
+
+        do {
+            // TODO: Replace with real cloud endpoint when available
+            // For now, return empty array since cloud endpoints don't exist yet
+            let url = URL(string: "http://localhost:8000/api/v1/cloud/models")!
+            var request = URLRequest(url: url)
+            request.httpMethod = "GET"
+
+            // Get token if available (will be nil in DEBUG mode)
+            if let token = KeychainService.shared.loadToken() {
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            }
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw NSError(domain: "CloudError", code: -1)
+            }
+
+            if httpResponse.statusCode == 200 {
+                // Parse cloud models (same format as OllamaModel)
+                let decoder = JSONDecoder()
+                decoder.keyDecodingStrategy = .convertFromSnakeCase
+                cloudModels = try decoder.decode([OllamaModel].self, from: data)
+            } else {
+                print("Cloud models endpoint returned status \(httpResponse.statusCode)")
+                cloudModels = []
+            }
+
+        } catch {
+            print("Failed to fetch cloud models (endpoint may not exist yet): \(error)")
+            cloudModels = []
+        }
+
+        isLoadingCloudModels = false
+    }
+
+    @MainActor
+    private func useCloudModel(_ modelId: String) async {
+        // TODO: POST /api/v1/cloud/models/{id}/use
+        print("Use cloud model: \(modelId)")
+    }
+
+    @MainActor
+    private func updateCloudModel(_ modelId: String) async {
+        // TODO: PUT /api/v1/cloud/models/{id}
+        print("Update cloud model: \(modelId)")
+    }
+
+    @MainActor
+    private func deleteCloudModel(_ modelId: String) async {
+        // TODO: DELETE /api/v1/cloud/models/{id}
+        print("Delete cloud model: \(modelId)")
+        // Optimistic update
+        cloudModels.removeAll { $0.id == modelId }
     }
 }
 
