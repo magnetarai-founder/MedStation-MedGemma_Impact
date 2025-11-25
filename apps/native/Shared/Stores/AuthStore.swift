@@ -23,6 +23,21 @@ final class AuthStore: ObservableObject {
 
     /// Call on app launch to validate existing token
     func bootstrap() async {
+        // DEVELOPMENT BYPASS: Skip auth entirely for now
+        #if DEBUG
+        print("⚠️ DEBUG MODE: Bypassing authentication")
+        self.user = ApiUser(
+            userId: "dev_user",
+            username: "developer",
+            deviceId: "dev_device",
+            role: "founder_rights"
+        )
+        userSetupComplete = true
+        authState = .authenticated
+        loading = false
+        return
+        #endif
+
         loading = true
         error = nil
 
