@@ -91,9 +91,7 @@ struct FileUpload: View {
                 .fill(isHovered ? Color.magnetarPrimary.opacity(0.05) : Color.clear)
         )
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.2)) {
-                isHovered = hovering
-            }
+            isHovered = hovering
         }
         .onDrop(of: [.fileURL], isTargeted: $isDragging) { providers in
             handleDrop(providers: providers)
@@ -102,9 +100,7 @@ struct FileUpload: View {
             openFilePicker()
         }
         .onReceive(NotificationCenter.default.publisher(for: .clearWorkspace)) { _ in
-            withAnimation {
-                loadedFile = nil
-            }
+            loadedFile = nil
         }
     }
 
@@ -126,9 +122,7 @@ struct FileUpload: View {
                 Spacer()
 
                 Button {
-                    withAnimation {
-                        loadedFile = nil
-                    }
+                    loadedFile = nil
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 16))
@@ -200,15 +194,13 @@ struct FileUpload: View {
             }.value
 
             await MainActor.run {
-                withAnimation {
-                    loadedFile = LoadedFile(
-                        name: url.lastPathComponent,
-                        rows: 1250, // Mock
-                        cols: 8,    // Mock
-                        sizeBytes: fileSize
-                    )
-                    isUploading = false
-                }
+                loadedFile = LoadedFile(
+                    name: url.lastPathComponent,
+                    rows: 1250, // Mock
+                    cols: 8,    // Mock
+                    sizeBytes: fileSize
+                )
+                isUploading = false
             }
         }
     }

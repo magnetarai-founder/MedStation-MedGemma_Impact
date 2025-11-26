@@ -574,9 +574,7 @@ struct SavedQueryRow: View {
         .background(isHovering ? Color.gray.opacity(0.05) : Color.clear)
         .cornerRadius(8)
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
-                isHovering = hovering
-            }
+            isHovering = hovering
         }
         .sheet(isPresented: $showEditDialog) {
             EditQueryDialog(

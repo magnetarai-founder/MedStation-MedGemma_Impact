@@ -140,7 +140,7 @@ struct CodeEditor: View {
                 .help("Save to Library")
             }
 
-            // Preview/Run/Stop group
+            // Preview/Run/Stop/Clear group
             ToolbarGroup {
                 ToolbarIconButton(
                     icon: "bolt",
@@ -187,12 +187,8 @@ struct CodeEditor: View {
                     }
                     .help("Stop")
                 }
-            }
 
-            Spacer()
-
-            // Trash group
-            ToolbarGroup {
+                // Trash - Clear editor
                 ToolbarIconButton(
                     icon: "trash",
                     isDisabled: code.isEmpty,
@@ -205,6 +201,8 @@ struct CodeEditor: View {
                 }
                 .help("Clear Editor")
             }
+
+            Spacer()
         }
     }
 
