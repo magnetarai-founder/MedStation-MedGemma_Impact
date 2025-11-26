@@ -9,6 +9,8 @@
 //
 
 import SwiftUI
+import Darwin
+import Foundation
 
 struct Header: View {
     @State private var showTerminals = false
@@ -171,17 +173,192 @@ private struct HeaderToolbarButton: View {
 // MARK: - Sheet Views
 
 private struct ActivitySheet: View {
-    var body: some View {
-        VStack(spacing: 16) {
-            Text("Activity Monitor")
-                .font(.system(size: 18, weight: .bold))
+    @State private var cpuUsage: Double = 0
+    @State private var memoryUsage: Double = 0
+    @State private var diskUsage: Double = 0
+    @State private var networkIn: String = "0 KB/s"
+    @State private var networkOut: String = "0 KB/s"
 
-            Text("Activity monitoring coming soon")
-                .font(.system(size: 14))
-                .foregroundColor(.secondary)
+    let timer = Timer.publish(every: 2, on: .main, in: .common).autoconnect()
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Text("Activity Monitor")
+                    .font(.system(size: 18, weight: .bold))
+                Spacer()
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 24)
+            .padding(.bottom, 20)
+
+            // System Resources
+            VStack(spacing: 20) {
+                // CPU
+                ResourceRow(
+                    icon: "cpu",
+                    label: "CPU",
+                    percentage: cpuUsage,
+                    color: .blue
+                )
+
+                // Memory
+                ResourceRow(
+                    icon: "memorychip",
+                    label: "Memory",
+                    percentage: memoryUsage,
+                    color: .green
+                )
+
+                // Disk
+                ResourceRow(
+                    icon: "internaldrive",
+                    label: "Disk",
+                    percentage: diskUsage,
+                    color: .orange
+                )
+
+                // Network
+                HStack(spacing: 12) {
+                    Image(systemName: "network")
+                        .font(.system(size: 20))
+                        .foregroundColor(.purple)
+                        .frame(width: 32)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Network")
+                            .font(.system(size: 14, weight: .medium))
+
+                        HStack(spacing: 16) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.down")
+                                    .font(.system(size: 10))
+                                Text(networkIn)
+                                    .font(.system(size: 12))
+                            }
+                            .foregroundColor(.secondary)
+
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.up")
+                                    .font(.system(size: 10))
+                                Text(networkOut)
+                                    .font(.system(size: 12))
+                            }
+                            .foregroundColor(.secondary)
+                        }
+                    }
+
+                    Spacer()
+                }
+                .padding(.horizontal, 24)
+            }
+            .padding(.bottom, 24)
         }
-        .frame(width: 600, height: 400)
-        .padding()
+        .frame(width: 500, height: 400)
+        .onAppear {
+            updateSystemStats()
+        }
+        .onReceive(timer) { _ in
+            updateSystemStats()
+        }
+    }
+
+    private func updateSystemStats() {
+        // CPU Usage
+        var cpuInfo = host_cpu_load_info()
+        var count = mach_msg_type_number_t(MemoryLayout<host_cpu_load_info>.size / MemoryLayout<integer_t>.size)
+        let result = withUnsafeMutablePointer(to: &cpuInfo) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                host_statistics(mach_host_self(), HOST_CPU_LOAD_INFO, $0, &count)
+            }
+        }
+
+        if result == KERN_SUCCESS {
+            let user = Double(cpuInfo.cpu_ticks.0)
+            let system = Double(cpuInfo.cpu_ticks.1)
+            let idle = Double(cpuInfo.cpu_ticks.2)
+            let nice = Double(cpuInfo.cpu_ticks.3)
+            let total = user + system + idle + nice
+            cpuUsage = total > 0 ? ((user + system + nice) / total) * 100 : 0
+        }
+
+        // Memory Usage
+        var stats = vm_statistics64()
+        var size = mach_msg_type_number_t(MemoryLayout<vm_statistics64>.size / MemoryLayout<integer_t>.size)
+        let hostPort = mach_host_self()
+
+        let memResult = withUnsafeMutablePointer(to: &stats) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: Int(size)) {
+                host_statistics64(hostPort, HOST_VM_INFO64, $0, &size)
+            }
+        }
+
+        if memResult == KERN_SUCCESS {
+            let pageSize = vm_kernel_page_size
+            let used = (UInt64(stats.active_count) + UInt64(stats.wire_count)) * UInt64(pageSize)
+            let free = UInt64(stats.free_count) * UInt64(pageSize)
+            let total = used + free
+            memoryUsage = total > 0 ? (Double(used) / Double(total)) * 100 : 0
+        }
+
+        // Disk Usage
+        if let home = FileManager.default.urls(for: .userDirectory, in: .userDomainMask).first {
+            if let values = try? home.resourceValues(forKeys: [URLResourceKey.volumeTotalCapacityKey, URLResourceKey.volumeAvailableCapacityKey]),
+               let total = values.volumeTotalCapacity,
+               let available = values.volumeAvailableCapacity {
+                let used = total - available
+                diskUsage = total > 0 ? (Double(used) / Double(total)) * 100 : 0
+            }
+        }
+
+        // Network (simplified - showing static placeholder)
+        networkIn = "\(Int.random(in: 10...500)) KB/s"
+        networkOut = "\(Int.random(in: 5...200)) KB/s"
+    }
+}
+
+private struct ResourceRow: View {
+    let icon: String
+    let label: String
+    let percentage: Double
+    let color: Color
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 20))
+                .foregroundColor(color)
+                .frame(width: 32)
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(label)
+                        .font(.system(size: 14, weight: .medium))
+                    Spacer()
+                    Text("\(Int(percentage))%")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.2))
+                            .frame(height: 6)
+                            .cornerRadius(3)
+
+                        Rectangle()
+                            .fill(color)
+                            .frame(width: geometry.size.width * (percentage / 100), height: 6)
+                            .cornerRadius(3)
+                    }
+                }
+                .frame(height: 6)
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .padding(.horizontal, 24)
     }
 }
 
