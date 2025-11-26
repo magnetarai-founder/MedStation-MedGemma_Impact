@@ -56,6 +56,15 @@ struct Header: View {
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 10)
+            .sheet(isPresented: $showTerminals) {
+                TerminalSheet()
+            }
+            .sheet(isPresented: $showActivity) {
+                ActivitySheet()
+            }
+            .sheet(isPresented: $showPanicMode) {
+                PanicModeSheet()
+            }
         }
         .frame(height: 54)
         .overlay(
@@ -64,15 +73,6 @@ struct Header: View {
                 .frame(height: 1),
             alignment: .bottom
         )
-        .sheet(isPresented: $showTerminals) {
-            TerminalSheet()
-        }
-        .sheet(isPresented: $showActivity) {
-            ActivitySheet()
-        }
-        .sheet(isPresented: $showPanicMode) {
-            PanicModeSheet()
-        }
     }
 }
 
