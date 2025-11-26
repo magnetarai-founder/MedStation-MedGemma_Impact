@@ -14,10 +14,14 @@ struct FileUpload: View {
     @State private var isHovered = false
     @State private var isDragging = false
     @State private var loadedFile: LoadedFile?
+    @State private var isUploading = false
 
     var body: some View {
         VStack(spacing: 0) {
-            if let file = loadedFile {
+            if isUploading {
+                // Uploading state: Show spinner
+                uploadingView
+            } else if let file = loadedFile {
                 // Loaded state: Show file info
                 loadedFileCard(file)
             } else {
@@ -34,6 +38,21 @@ struct FileUpload: View {
                 .frame(height: 1),
             alignment: .bottom
         )
+    }
+
+    // MARK: - Uploading State
+
+    private var uploadingView: some View {
+        VStack(spacing: 16) {
+            ProgressView()
+                .scaleEffect(1.2)
+
+            Text("Uploading file...")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(40)
     }
 
     // MARK: - Drop Zone (Idle State)
@@ -166,16 +185,27 @@ struct FileUpload: View {
     }
 
     private func loadFile(at url: URL) {
-        // Mock file loading - in real app, parse the file
-        let fileSize = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+        isUploading = true
 
-        withAnimation {
-            loadedFile = LoadedFile(
-                name: url.lastPathComponent,
-                rows: 1250, // Mock
-                cols: 8,    // Mock
-                sizeBytes: fileSize ?? 0
-            )
+        // Simulate async file loading
+        DispatchQueue.global(qos: .userInitiated).async {
+            // Mock file loading - in real app, parse the file
+            let fileSize = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+
+            // Simulate processing delay
+            Thread.sleep(forTimeInterval: 0.3)
+
+            DispatchQueue.main.async {
+                withAnimation {
+                    loadedFile = LoadedFile(
+                        name: url.lastPathComponent,
+                        rows: 1250, // Mock
+                        cols: 8,    // Mock
+                        sizeBytes: fileSize
+                    )
+                    isUploading = false
+                }
+            }
         }
     }
 }
