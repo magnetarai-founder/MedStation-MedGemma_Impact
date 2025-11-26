@@ -47,9 +47,26 @@ struct ResultsTable: View {
 
     private var toolbar: some View {
         HStack(spacing: 12) {
-            // Export dropdown + Download + Clear
+            // Analyze with AI - first button
+            ToolbarIconButton(
+                icon: "message",
+                isDisabled: results == nil,
+                action: {
+                    // Analyze with AI
+                }
+            ) {
+                HStack(spacing: 6) {
+                    Image(systemName: "message")
+                        .font(.system(size: 16))
+                    Text("Analyze with AI")
+                        .font(.system(size: 11, weight: .medium))
+                }
+            }
+            .help("Analyze with AI")
+
+            // Export dropdown + Download + Trash
             ToolbarGroup {
-                // Export format picker - wrapped in ToolbarIconButton style
+                // Export format picker
                 Button(action: {}) {
                     Menu {
                         Button("Excel (.xlsx)") { exportFormat = .excel }
@@ -100,23 +117,6 @@ struct ResultsTable: View {
                 }
                 .help("Clear Results")
             }
-
-            // Analyze with AI - styled like ToolbarIconButton
-            ToolbarIconButton(
-                icon: "message",
-                isDisabled: results == nil,
-                action: {
-                    // Analyze with AI
-                }
-            ) {
-                HStack(spacing: 6) {
-                    Image(systemName: "message")
-                        .font(.system(size: 16))
-                    Text("Analyze with AI")
-                        .font(.system(size: 11, weight: .medium))
-                }
-            }
-            .help("Analyze with AI")
 
             Spacer()
         }

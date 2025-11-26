@@ -63,39 +63,7 @@ struct CodeEditor: View {
 
     private var toolbar: some View {
         HStack(spacing: 12) {
-            // Upload/Download group
-            ToolbarGroup {
-                ToolbarIconButton(
-                    icon: "arrow.up.doc",
-                    isDisabled: isUploading,
-                    action: {
-                        uploadSQLFile()
-                    }
-                ) {
-                    if isUploading {
-                        ProgressView()
-                            .scaleEffect(0.7)
-                    } else {
-                        Image(systemName: "arrow.up.doc")
-                            .font(.system(size: 16))
-                    }
-                }
-                .help("Upload .sql File")
-
-                ToolbarIconButton(
-                    icon: "arrow.down.doc",
-                    isDisabled: code.isEmpty,
-                    action: {
-                        // Download
-                    }
-                ) {
-                    Image(systemName: "arrow.down.doc")
-                        .font(.system(size: 16))
-                }
-                .help("Download")
-            }
-
-            // Library/Save group
+            // Library/Save group - first
             if code.isEmpty {
                 Menu {
                     Button("Load from Library") {
@@ -140,7 +108,39 @@ struct CodeEditor: View {
                 .help("Save to Library")
             }
 
-            // Preview/Run/Stop/Clear group
+            // Upload/Download group
+            ToolbarGroup {
+                ToolbarIconButton(
+                    icon: "arrow.up.doc",
+                    isDisabled: isUploading,
+                    action: {
+                        uploadSQLFile()
+                    }
+                ) {
+                    if isUploading {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                    } else {
+                        Image(systemName: "arrow.up.doc")
+                            .font(.system(size: 16))
+                    }
+                }
+                .help("Upload .sql File")
+
+                ToolbarIconButton(
+                    icon: "arrow.down.doc",
+                    isDisabled: code.isEmpty,
+                    action: {
+                        // Download
+                    }
+                ) {
+                    Image(systemName: "arrow.down.doc")
+                        .font(.system(size: 16))
+                }
+                .help("Download")
+            }
+
+            // Preview/Run/Stop/Trash group
             ToolbarGroup {
                 ToolbarIconButton(
                     icon: "bolt",
