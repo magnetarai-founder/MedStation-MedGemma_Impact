@@ -56,9 +56,6 @@ struct Header: View {
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 10)
-            .sheet(isPresented: $showTerminals) {
-                TerminalSheet()
-            }
             .sheet(isPresented: $showActivity) {
                 ActivitySheet()
             }
@@ -95,9 +92,9 @@ private struct ControlCluster: View {
     var body: some View {
         HStack(spacing: 10) {
             HeaderToolbarButton(icon: "terminal", label: "\(terminalCount)") {
-                showTerminals = true
+                openSystemTerminal()
             }
-            .help("Terminals")
+            .help("Open Terminal")
 
             HeaderToolbarButton(icon: "chart.bar.fill") {
                 showActivity = true
@@ -112,6 +109,18 @@ private struct ControlCluster: View {
                 showPanicMode = true
             }
             .help("Panic Mode")
+        }
+    }
+
+    private func openSystemTerminal() {
+        // Try to open iTerm2 first, then fall back to Terminal.app
+        let iTerm = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.googlecode.iterm2")
+        let terminal = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Terminal")
+
+        if let iTermURL = iTerm {
+            NSWorkspace.shared.open(iTermURL)
+        } else if let terminalURL = terminal {
+            NSWorkspace.shared.open(terminalURL)
         }
     }
 }
@@ -160,21 +169,6 @@ private struct HeaderToolbarButton: View {
 }
 
 // MARK: - Sheet Views
-
-private struct TerminalSheet: View {
-    var body: some View {
-        VStack(spacing: 16) {
-            Text("Terminal Manager")
-                .font(.system(size: 18, weight: .bold))
-
-            Text("Terminal management coming soon")
-                .font(.system(size: 14))
-                .foregroundColor(.secondary)
-        }
-        .frame(width: 600, height: 400)
-        .padding()
-    }
-}
 
 private struct ActivitySheet: View {
     var body: some View {
