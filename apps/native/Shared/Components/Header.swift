@@ -70,7 +70,7 @@ struct Header: View {
 private struct BrandCluster: View {
     var body: some View {
         Text("MagnetarStudio")
-            .font(.system(size: 15, weight: .semibold))
+            .font(.system(size: 18, weight: .bold))
             .foregroundColor(.primary)
     }
 }
