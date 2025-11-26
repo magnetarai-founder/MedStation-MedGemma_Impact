@@ -502,30 +502,14 @@ struct SavedQueryRow: View {
     let onDelete: () -> Void
 
     @State private var isHovering: Bool = false
-    @State private var isEditing: Bool = false
-    @State private var editedName: String = ""
+    @State private var showRenameDialog: Bool = false
 
     var body: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 8) {
-                if isEditing {
-                    TextField("Query name", text: $editedName, onCommit: {
-                        if !editedName.isEmpty {
-                            onRename(editedName)
-                        }
-                        isEditing = false
-                    })
-                    .textFieldStyle(.roundedBorder)
+                Text(query.name)
                     .font(.headline)
-                } else {
-                    Text(query.name)
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                        .onTapGesture(count: 2) {
-                            editedName = query.name
-                            isEditing = true
-                        }
-                }
+                    .foregroundColor(.primary)
 
                 Text(query.query)
                     .font(.system(size: 11, design: .monospaced))
@@ -535,12 +519,11 @@ struct SavedQueryRow: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             // Hover action buttons
-            if isHovering && !isEditing {
+            if isHovering {
                 HStack(spacing: 8) {
                     // Pencil - Rename
                     Button(action: {
-                        editedName = query.name
-                        isEditing = true
+                        showRenameDialog = true
                     }) {
                         Image(systemName: "pencil")
                             .font(.system(size: 14))
@@ -586,6 +569,59 @@ struct SavedQueryRow: View {
             withAnimation(.easeInOut(duration: 0.15)) {
                 isHovering = hovering
             }
+        }
+        .sheet(isPresented: $showRenameDialog) {
+            RenameQueryDialog(
+                isPresented: $showRenameDialog,
+                currentName: query.name,
+                onRename: onRename
+            )
+        }
+    }
+}
+
+// MARK: - Rename Query Dialog
+
+struct RenameQueryDialog: View {
+    @Binding var isPresented: Bool
+    let currentName: String
+    let onRename: (String) -> Void
+
+    @State private var newName: String = ""
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Text("Rename Query")
+                .font(.title2)
+                .fontWeight(.semibold)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("New Name")
+                    .font(.system(size: 13, weight: .medium))
+                TextField("Query name", text: $newName)
+                    .textFieldStyle(.roundedBorder)
+            }
+
+            HStack(spacing: 12) {
+                Button("Cancel") {
+                    isPresented = false
+                }
+                .buttonStyle(.bordered)
+
+                Button("Rename") {
+                    if !newName.isEmpty {
+                        onRename(newName)
+                    }
+                    isPresented = false
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(newName.isEmpty || newName == currentName)
+            }
+        }
+        .padding(24)
+        .frame(width: 400)
+        .onAppear {
+            newName = currentName
         }
     }
 }
