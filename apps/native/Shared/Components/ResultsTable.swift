@@ -49,22 +49,23 @@ struct ResultsTable: View {
         HStack(spacing: 12) {
             // Export dropdown + Download + Clear
             ToolbarGroup {
-                // Export format picker
-                Menu {
-                    Button("Excel (.xlsx)") { exportFormat = .excel }
-                    Button("CSV") { exportFormat = .csv }
-                    Button("Parquet") { exportFormat = .parquet }
-                    Button("JSON") { exportFormat = .json }
-                } label: {
-                    HStack(spacing: 4) {
-                        Text(exportFormat.rawValue)
-                            .font(.system(size: 11, weight: .medium))
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 9, weight: .semibold))
+                // Export format picker - wrapped in ToolbarIconButton style
+                Button(action: {}) {
+                    Menu {
+                        Button("Excel (.xlsx)") { exportFormat = .excel }
+                        Button("CSV") { exportFormat = .csv }
+                        Button("Parquet") { exportFormat = .parquet }
+                        Button("JSON") { exportFormat = .json }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(exportFormat.rawValue)
+                                .font(.system(size: 11, weight: .medium))
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 10, weight: .semibold))
+                        }
                     }
                     .foregroundColor(.primary)
                     .frame(height: 28)
-                    .padding(.horizontal, 8)
                 }
                 .buttonStyle(.plain)
                 .help("Export Format")
@@ -100,23 +101,21 @@ struct ResultsTable: View {
                 .help("Clear Results")
             }
 
-            // Analyze with AI
-            Button(action: {
-                // Analyze with AI
-            }) {
+            // Analyze with AI - styled like ToolbarIconButton
+            ToolbarIconButton(
+                icon: "message",
+                isDisabled: results == nil,
+                action: {
+                    // Analyze with AI
+                }
+            ) {
                 HStack(spacing: 6) {
                     Image(systemName: "message")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.system(size: 16))
                     Text("Analyze with AI")
                         .font(.system(size: 11, weight: .medium))
                 }
-                .foregroundColor(.primary)
-                .frame(height: 28)
-                .padding(.horizontal, 8)
             }
-            .buttonStyle(.plain)
-            .disabled(results == nil)
-            .opacity(results == nil ? 0.4 : 1.0)
             .help("Analyze with AI")
 
             Spacer()
