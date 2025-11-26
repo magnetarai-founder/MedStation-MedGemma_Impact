@@ -12,7 +12,9 @@ final class KeychainService {
 
     // MARK: - Token Management
 
-    func saveToken(_ token: String) throws {
+    func saveToken(_ token: String, forKey key: String? = nil) throws {
+        let accountKey = key ?? tokenKey
+
         // DEVELOPMENT BYPASS: Skip keychain to avoid prompts
         #if DEBUG
         return
@@ -20,12 +22,12 @@ final class KeychainService {
         let data = Data(token.utf8)
 
         // Delete existing item first
-        try? deleteToken()
+        try? deleteToken(forKey: accountKey)
 
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: tokenKey,
+            kSecAttrAccount as String: accountKey,
             kSecValueData as String: data,
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
         ]
@@ -38,7 +40,9 @@ final class KeychainService {
         #endif
     }
 
-    func loadToken() -> String? {
+    func loadToken(forKey key: String? = nil) -> String? {
+        let accountKey = key ?? tokenKey
+
         // DEVELOPMENT BYPASS: Return nil to avoid keychain prompts
         #if DEBUG
         return nil
@@ -46,7 +50,7 @@ final class KeychainService {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: tokenKey,
+            kSecAttrAccount as String: accountKey,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne
         ]
@@ -64,7 +68,9 @@ final class KeychainService {
         #endif
     }
 
-    func deleteToken() throws {
+    func deleteToken(forKey key: String? = nil) throws {
+        let accountKey = key ?? tokenKey
+
         // DEVELOPMENT BYPASS: Skip keychain to avoid prompts
         #if DEBUG
         return
@@ -72,7 +78,7 @@ final class KeychainService {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: tokenKey
+            kSecAttrAccount as String: accountKey
         ]
 
         let status = SecItemDelete(query as CFDictionary)

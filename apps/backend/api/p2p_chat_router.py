@@ -4,7 +4,8 @@ Provides REST API endpoints for the frontend
 """
 
 import asyncio
-from typing import List, Optional
+from typing import List, Optional, Dict
+from datetime import datetime
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import StreamingResponse
 import logging
@@ -22,6 +23,10 @@ logger = logging.getLogger(__name__)
 
 from fastapi import Depends
 from auth_middleware import get_current_user
+
+# Storage for invitations and read receipts (in-memory, replace with DB in production)
+_channel_invitations: Dict[str, List[Dict]] = {}  # {channel_id: [{peer_id, invited_by, invited_at, status}]}
+_read_receipts: Dict[str, List[Dict]] = {}  # {message_id: [{peer_id, read_at}]}
 
 router = APIRouter(
     prefix="/api/v1/team",
@@ -225,7 +230,12 @@ async def get_channel(channel_id: str):
 
 
 @router.post("/channels/{channel_id}/invite")
-async def invite_to_channel(request: Request, channel_id: str, body: InviteToChannelRequest):
+async def invite_to_channel(
+    request: Request,
+    channel_id: str,
+    body: InviteToChannelRequest,
+    current_user: dict = Depends(get_current_user)
+):
     """Invite peers to a channel"""
     service = get_p2p_chat_service()
 
@@ -237,10 +247,155 @@ async def invite_to_channel(request: Request, channel_id: str, body: InviteToCha
     if not channel:
         raise HTTPException(status_code=404, detail="Channel not found")
 
-    # TODO: Implement invitation system
-    # For now, just add members directly
+    # Create invitations
+    if channel_id not in _channel_invitations:
+        _channel_invitations[channel_id] = []
 
-    return {"status": "invited", "channel_id": channel_id, "peer_ids": body.peer_ids}
+    invitations = []
+    user_id = current_user.get("user_id", "system")
+
+    for peer_id in body.peer_ids:
+        # Check if invitation already exists
+        existing = next(
+            (inv for inv in _channel_invitations[channel_id]
+             if inv["peer_id"] == peer_id and inv["status"] == "pending"),
+            None
+        )
+
+        if existing:
+            logger.debug(f"Invitation already exists for peer {peer_id} to channel {channel_id}")
+            invitations.append(existing)
+            continue
+
+        invitation = {
+            "peer_id": peer_id,
+            "channel_id": channel_id,
+            "invited_by": user_id,
+            "invited_at": datetime.utcnow().isoformat(),
+            "status": "pending"
+        }
+        _channel_invitations[channel_id].append(invitation)
+        invitations.append(invitation)
+
+        logger.info(f"Created invitation for peer {peer_id} to channel {channel_id}")
+
+    return {
+        "status": "invited",
+        "channel_id": channel_id,
+        "invitations": invitations,
+        "total": len(invitations)
+    }
+
+
+@router.get("/channels/{channel_id}/invitations")
+async def list_channel_invitations(
+    channel_id: str,
+    status: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """List invitations for a channel"""
+    service = get_p2p_chat_service()
+
+    if not service:
+        raise HTTPException(status_code=503, detail="P2P service not initialized")
+
+    invitations = _channel_invitations.get(channel_id, [])
+
+    # Filter by status if provided
+    if status:
+        invitations = [inv for inv in invitations if inv["status"] == status]
+
+    # Filter by current user permissions
+    user_id = current_user.get("user_id")
+    role = current_user.get("role")
+
+    if role != "admin":
+        # Non-admins can only see their own invitations or ones they sent
+        invitations = [
+            inv for inv in invitations
+            if inv["peer_id"] == user_id or inv["invited_by"] == user_id
+        ]
+
+    return {
+        "channel_id": channel_id,
+        "invitations": invitations,
+        "total": len(invitations)
+    }
+
+
+@router.post("/channels/{channel_id}/invitations/{peer_id}/accept")
+async def accept_channel_invitation(
+    channel_id: str,
+    peer_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Accept a channel invitation"""
+    service = get_p2p_chat_service()
+
+    if not service or not service.is_running:
+        raise HTTPException(status_code=503, detail="P2P service not running")
+
+    # Verify current user matches peer_id
+    user_id = current_user.get("user_id")
+    if peer_id != user_id:
+        raise HTTPException(status_code=403, detail="Cannot accept invitation for another user")
+
+    # Find invitation
+    invitations = _channel_invitations.get(channel_id, [])
+    invitation = next(
+        (inv for inv in invitations if inv["peer_id"] == peer_id and inv["status"] == "pending"),
+        None
+    )
+
+    if not invitation:
+        raise HTTPException(status_code=404, detail="Invitation not found or already processed")
+
+    # Update invitation status
+    invitation["status"] = "accepted"
+    invitation["accepted_at"] = datetime.utcnow().isoformat()
+
+    logger.info(f"User {peer_id} accepted invitation to channel {channel_id}")
+
+    return {
+        "status": "accepted",
+        "channel_id": channel_id,
+        "peer_id": peer_id,
+        "accepted_at": invitation["accepted_at"]
+    }
+
+
+@router.post("/channels/{channel_id}/invitations/{peer_id}/decline")
+async def decline_channel_invitation(
+    channel_id: str,
+    peer_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Decline a channel invitation"""
+    user_id = current_user.get("user_id")
+    if peer_id != user_id:
+        raise HTTPException(status_code=403, detail="Cannot decline invitation for another user")
+
+    # Find invitation
+    invitations = _channel_invitations.get(channel_id, [])
+    invitation = next(
+        (inv for inv in invitations if inv["peer_id"] == peer_id and inv["status"] == "pending"),
+        None
+    )
+
+    if not invitation:
+        raise HTTPException(status_code=404, detail="Invitation not found or already processed")
+
+    # Update invitation status
+    invitation["status"] = "declined"
+    invitation["declined_at"] = datetime.utcnow().isoformat()
+
+    logger.info(f"User {peer_id} declined invitation to channel {channel_id}")
+
+    return {
+        "status": "declined",
+        "channel_id": channel_id,
+        "peer_id": peer_id
+    }
 
 
 # ===== Messages =====
@@ -296,16 +451,103 @@ async def get_messages(channel_id: str, limit: int = 50):
 
 
 @router.post("/channels/{channel_id}/messages/{message_id}/read")
-async def mark_message_as_read(request: Request, channel_id: str, message_id: str):
+async def mark_message_as_read(
+    request: Request,
+    channel_id: str,
+    message_id: str,
+    current_user: dict = Depends(get_current_user)
+):
     """Mark a message as read"""
     service = get_p2p_chat_service()
 
     if not service or not service.is_running:
         raise HTTPException(status_code=503, detail="P2P service not running")
 
-    # TODO: Implement read receipts
+    user_id = current_user.get("user_id", "anonymous")
 
-    return {"status": "marked_read", "message_id": message_id}
+    # Store read receipt
+    if message_id not in _read_receipts:
+        _read_receipts[message_id] = []
+
+    # Check if already marked read by this user
+    existing = next(
+        (r for r in _read_receipts[message_id] if r["peer_id"] == user_id),
+        None
+    )
+
+    if existing:
+        logger.debug(f"Message {message_id} already marked read by {user_id}")
+        return {
+            "status": "already_read",
+            "message_id": message_id,
+            "read_at": existing["read_at"]
+        }
+
+    # Add new read receipt
+    receipt = {
+        "peer_id": user_id,
+        "message_id": message_id,
+        "channel_id": channel_id,
+        "read_at": datetime.utcnow().isoformat()
+    }
+    _read_receipts[message_id].append(receipt)
+
+    logger.info(f"User {user_id} marked message {message_id} as read")
+
+    return {
+        "status": "marked_read",
+        "message_id": message_id,
+        "read_at": receipt["read_at"]
+    }
+
+
+@router.get("/channels/{channel_id}/messages/{message_id}/receipts")
+async def get_message_receipts(
+    channel_id: str,
+    message_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get read receipts for a message"""
+    service = get_p2p_chat_service()
+
+    if not service:
+        raise HTTPException(status_code=503, detail="P2P service not initialized")
+
+    receipts = _read_receipts.get(message_id, [])
+
+    return {
+        "message_id": message_id,
+        "channel_id": channel_id,
+        "receipts": receipts,
+        "total_reads": len(receipts),
+        "read_by": [r["peer_id"] for r in receipts]
+    }
+
+
+@router.get("/channels/{channel_id}/receipts")
+async def get_channel_receipts(
+    channel_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all read receipts for messages in a channel"""
+    service = get_p2p_chat_service()
+
+    if not service:
+        raise HTTPException(status_code=503, detail="P2P service not initialized")
+
+    # Filter receipts by channel
+    channel_receipts = {}
+    for message_id, receipts in _read_receipts.items():
+        # Filter receipts that belong to this channel
+        channel_specific = [r for r in receipts if r.get("channel_id") == channel_id]
+        if channel_specific:
+            channel_receipts[message_id] = channel_specific
+
+    return {
+        "channel_id": channel_id,
+        "receipts_by_message": channel_receipts,
+        "total_messages": len(channel_receipts)
+    }
 
 
 # ===== WebSocket for Real-time Updates =====

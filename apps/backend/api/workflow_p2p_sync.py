@@ -294,9 +294,7 @@ class WorkflowP2PSync:
         Broadcast message to all connected peers
 
         Phase 4: Signs team messages before broadcasting
-
-        This would integrate with the existing P2P chat service
-        In production, you'd call the P2P service's broadcast method
+        Integrates with P2P chat service for actual distribution
         """
         # Phase 4: Sign message if it has team context
         self._sign_message(message)
@@ -308,9 +306,29 @@ class WorkflowP2PSync:
         payload = message.model_dump()
         payload_json = json.dumps(payload, default=str)
 
-        # TODO: Integrate with p2p_chat_service to actually broadcast
-        # For now, just log and queue if offline
-        logger.debug(f"Broadcasting message {message.message_id} (type: {message.message_type})")
+        # Integrate with p2p_chat_service to actually broadcast
+        try:
+            from p2p_chat_service import get_p2p_chat_service
+            p2p_service = get_p2p_chat_service()
+
+            if p2p_service and p2p_service.is_running:
+                # Broadcast via P2P mesh using workflow protocol
+                await p2p_service.broadcast_to_protocol(
+                    protocol=WORKFLOW_SYNC_PROTOCOL,
+                    data=payload_json.encode('utf-8')
+                )
+                logger.info(f"✅ Broadcast {message.message_type} to P2P mesh: {message.message_id}")
+            else:
+                # Queue for later if P2P service unavailable
+                await self.queue_for_sync(message)
+                logger.warning(f"⚠️  P2P service unavailable, queued: {message.message_id}")
+        except ImportError:
+            # P2P service not available (development/testing mode)
+            logger.debug(f"P2P service not available, local broadcast only: {message.message_id}")
+        except Exception as e:
+            logger.error(f"Failed to broadcast message {message.message_id}: {e}")
+            # Queue for retry
+            await self.queue_for_sync(message)
 
         # Call registered handlers (for testing/local processing)
         for handler in self.message_handlers:

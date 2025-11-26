@@ -18,6 +18,45 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+@router.get("/sessions/{chat_id}/messages", name="chat_get_messages")
+@require_perm_team("chat.use")
+async def get_messages_endpoint(
+    chat_id: str,
+    limit: Optional[int] = None,
+    team_id: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get messages for a session"""
+    from api.services import chat as chat_service
+
+    try:
+        # Verify session exists and user has access
+        session = await chat_service.get_session(
+            chat_id,
+            user_id=current_user["user_id"],
+            role=current_user.get("role"),
+            team_id=team_id
+        )
+
+        if not session:
+            raise HTTPException(status_code=404, detail="Chat session not found or access denied")
+
+        # Load messages
+        messages = await chat_service.get_messages(chat_id, limit=limit)
+
+        return {
+            "messages": messages,
+            "total": len(messages),
+            "session_id": chat_id
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to load messages: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/sessions/{chat_id}/messages", name="chat_send_message")
 @require_perm_team("chat.use")
 async def send_message_endpoint(

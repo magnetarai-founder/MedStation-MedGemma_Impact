@@ -8,6 +8,215 @@
 //
 
 import SwiftUI
+import Foundation
+
+// MARK: - Team Service Models & Service (inlined for now)
+
+struct Team: Identifiable, Codable {
+    let id: String
+    let name: String
+    let description: String?
+    let createdAt: String
+    let memberCount: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, description
+        case createdAt = "created_at"
+        case memberCount = "member_count"
+    }
+}
+
+struct TeamDocument: Identifiable, Codable {
+    let id: String
+    let title: String
+    let content: String?
+    let type: String
+    let updatedAt: String
+    let createdBy: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, title, content, type
+        case updatedAt = "updated_at"
+        case createdBy = "created_by"
+    }
+}
+
+struct DiagnosticsStatus: Codable {
+    let status: String
+    let network: NetworkStatus
+    let database: DatabaseStatus
+    let services: [ServiceStatus]
+
+    struct NetworkStatus: Codable {
+        let connected: Bool
+        let latency: Int?
+        let bandwidth: String?
+    }
+
+    struct DatabaseStatus: Codable {
+        let connected: Bool
+        let queryTime: Int?
+
+        enum CodingKeys: String, CodingKey {
+            case connected
+            case queryTime = "query_time"
+        }
+    }
+
+    struct ServiceStatus: Codable {
+        let name: String
+        let status: String
+        let uptime: String?
+    }
+}
+
+struct NLQueryResponse: Codable {
+    let answer: String
+    let query: String
+    let confidence: Double?
+    let sources: [String]?
+}
+
+struct PatternDiscoveryResult: Codable {
+    let patterns: [Pattern]
+    let summary: String?
+
+    struct Pattern: Codable, Identifiable {
+        let id: String
+        let type: String
+        let description: String
+        let confidence: Double
+        let examples: [String]?
+    }
+}
+
+struct VaultSetupResponse: Codable {
+    let status: String
+    let message: String
+    let vaultId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case status, message
+        case vaultId = "vault_id"
+    }
+}
+
+struct VaultStatusResponse: Codable {
+    let initialized: Bool
+    let locked: Bool
+    let message: String?
+}
+
+final class TeamService {
+    static let shared = TeamService()
+    private let apiClient = ApiClient.shared
+
+    private init() {}
+
+    func createTeam(name: String, description: String?) async throws -> Team {
+        try await apiClient.request(
+            path: "/v1/teams",
+            method: .post,
+            jsonBody: [
+                "name": name,
+                "description": description ?? ""
+            ]
+        )
+    }
+
+    func joinTeam(code: String) async throws -> Team {
+        try await apiClient.request(
+            path: "/v1/teams/join",
+            method: .post,
+            jsonBody: ["code": code]
+        )
+    }
+
+    func listTeams() async throws -> [Team] {
+        try await apiClient.request(
+            path: "/v1/teams",
+            method: .get
+        )
+    }
+
+    func listDocuments() async throws -> [TeamDocument] {
+        try await apiClient.request(
+            path: "/v1/docs",
+            method: .get
+        )
+    }
+
+    func createDocument(title: String, content: String, type: String) async throws -> TeamDocument {
+        try await apiClient.request(
+            path: "/v1/docs",
+            method: .post,
+            jsonBody: [
+                "title": title,
+                "content": content,
+                "type": type
+            ]
+        )
+    }
+
+    func updateDocument(id: String, title: String?, content: String?) async throws -> TeamDocument {
+        var body: [String: Any] = [:]
+        if let title = title { body["title"] = title }
+        if let content = content { body["content"] = content }
+
+        return try await apiClient.request(
+            path: "/v1/docs/\(id)",
+            method: .put,
+            jsonBody: body
+        )
+    }
+
+    func getDiagnostics() async throws -> DiagnosticsStatus {
+        try await apiClient.request(
+            path: "/v1/diagnostics",
+            method: .get
+        )
+    }
+
+    func askNaturalLanguage(query: String) async throws -> NLQueryResponse {
+        try await apiClient.request(
+            path: "/v1/data/ask",
+            method: .post,
+            jsonBody: ["query": query]
+        )
+    }
+
+    func discoverPatterns(query: String, context: String?) async throws -> PatternDiscoveryResult {
+        var body: [String: Any] = ["query": query]
+        if let context = context { body["context"] = context }
+
+        return try await apiClient.request(
+            path: "/v1/data/patterns",
+            method: .post,
+            jsonBody: body
+        )
+    }
+
+    func setupVault(password: String) async throws -> VaultSetupResponse {
+        try await apiClient.request(
+            path: "/v1/vault/setup",
+            method: .post,
+            jsonBody: ["password": password]
+        )
+    }
+
+    func getVaultStatus() async throws -> VaultStatusResponse {
+        try await apiClient.request(
+            path: "/v1/vault/status",
+            method: .get
+        )
+    }
+}
+
+struct Permissions {
+    let canAccessDocuments: Bool
+    let canAccessAutomation: Bool
+    let canAccessVault: Bool
+}
 
 struct TeamWorkspace: View {
     @State private var networkMode: NetworkMode = .local
@@ -354,18 +563,6 @@ enum TeamView {
     case workflows
     case vault
 }
-
-struct Team {
-    let id: UUID
-    let name: String
-}
-
-struct Permissions {
-    let canAccessDocuments: Bool
-    let canAccessAutomation: Bool
-    let canAccessVault: Bool
-}
-
 // MARK: - Placeholder Sub-Workspaces
 
 struct TeamChatView: View {
@@ -1008,9 +1205,18 @@ struct FileSharingPanel: View {
 
 struct DocsWorkspace: View {
     @State private var sidebarVisible: Bool = true
-    @State private var activeDocument: Document? = nil
+    @State private var activeDocument: TeamDocument? = nil
     @State private var showDocTypeSelector: Bool = false
     @State private var selectedDocType: DocumentType = .document
+
+    @State private var documents: [TeamDocument] = []
+    @State private var isLoading: Bool = false
+    @State private var errorMessage: String? = nil
+    @State private var showNewDocumentDialog: Bool = false
+    @State private var newDocTitle: String = ""
+    @State private var newDocContent: String = ""
+
+    private let teamService = TeamService.shared
 
     var body: some View {
         HStack(spacing: 0) {
@@ -1023,11 +1229,21 @@ struct DocsWorkspace: View {
             }
 
             // Main area
-            if let doc = activeDocument {
+            if isLoading {
+                loadingView
+            } else if let error = errorMessage {
+                errorView(error)
+            } else if let doc = activeDocument {
                 documentEditor(doc: doc)
             } else {
                 emptyState
             }
+        }
+        .task {
+            await loadDocuments()
+        }
+        .sheet(isPresented: $showNewDocumentDialog) {
+            newDocumentSheet
         }
     }
 
@@ -1058,7 +1274,7 @@ struct DocsWorkspace: View {
 
                 // New Document button
                 Button {
-                    // Create new document
+                    showNewDocumentDialog = true
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "plus")
@@ -1118,7 +1334,7 @@ struct DocsWorkspace: View {
             // Document list
             DocumentsSidebar(
                 activeDocument: $activeDocument,
-                documents: Document.mockDocuments
+                documents: documents
             )
         }
         .background(Color.gray.opacity(0.05))
@@ -1126,7 +1342,7 @@ struct DocsWorkspace: View {
 
     // MARK: - Editor
 
-    private func documentEditor(doc: Document) -> some View {
+    private func documentEditor(doc: TeamDocument) -> some View {
         VStack(spacing: 0) {
             // Header
             HStack(spacing: 12) {
@@ -1141,10 +1357,10 @@ struct DocsWorkspace: View {
                 .buttonStyle(.plain)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(doc.name)
+                    Text(doc.title)
                         .font(.system(size: 16, weight: .semibold))
 
-                    Text("Last edited: \(doc.lastEdited)")
+                    Text("Last edited: \(doc.updatedAt)")
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
                 }
@@ -1161,20 +1377,151 @@ struct DocsWorkspace: View {
                 alignment: .bottom
             )
 
-            // Editor area (placeholder)
-            VStack(spacing: 16) {
-                Image(systemName: doc.type.icon)
-                    .font(.system(size: 64))
-                    .foregroundColor(.secondary)
-
-                Text("Document Editor")
-                    .font(.title)
-
-                Text("Editor for \(doc.name) will appear here")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+            // Editor area - showing content
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text(doc.content ?? "No content")
+                        .font(.system(size: 14))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    // MARK: - Helper Views
+
+    private var loadingView: some View {
+        VStack(spacing: 16) {
+            ProgressView()
+                .scaleEffect(1.5)
+
+            Text("Loading documents...")
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func errorView(_ message: String) -> some View {
+        VStack(spacing: 16) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 48))
+                .foregroundColor(.red)
+
+            Text("Error Loading Documents")
+                .font(.system(size: 18, weight: .semibold))
+
+            Text(message)
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+
+            Button("Retry") {
+                Task {
+                    await loadDocuments()
+                }
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding()
+    }
+
+    private var newDocumentSheet: some View {
+        VStack(spacing: 20) {
+            Text("Create New Document")
+                .font(.title2)
+                .fontWeight(.semibold)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Title")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.secondary)
+
+                TextField("Document title", text: $newDocTitle)
+                    .textFieldStyle(.roundedBorder)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Content")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.secondary)
+
+                TextEditor(text: $newDocContent)
+                    .font(.system(size: 13))
+                    .frame(height: 150)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                    )
+            }
+
+            if let error = errorMessage {
+                Text(error)
+                    .font(.system(size: 12))
+                    .foregroundColor(.red)
+            }
+
+            HStack(spacing: 12) {
+                Button("Cancel") {
+                    showNewDocumentDialog = false
+                    newDocTitle = ""
+                    newDocContent = ""
+                    errorMessage = nil
+                }
+                .buttonStyle(.bordered)
+
+                Button("Create") {
+                    Task {
+                        await createDocument()
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(newDocTitle.isEmpty || isLoading)
+            }
+        }
+        .padding(24)
+        .frame(width: 450)
+    }
+
+    // MARK: - Data Functions
+
+    @MainActor
+    private func loadDocuments() async {
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            documents = try await teamService.listDocuments()
+            isLoading = false
+        } catch {
+            errorMessage = error.localizedDescription
+            isLoading = false
+        }
+    }
+
+    @MainActor
+    private func createDocument() async {
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            let newDoc = try await teamService.createDocument(
+                title: newDocTitle,
+                content: newDocContent,
+                type: selectedDocType.rawValue
+            )
+            documents.append(newDoc)
+            activeDocument = newDoc
+            showNewDocumentDialog = false
+            newDocTitle = ""
+            newDocContent = ""
+            isLoading = false
+        } catch {
+            errorMessage = error.localizedDescription
+            isLoading = false
         }
     }
 
@@ -1200,35 +1547,49 @@ struct DocsWorkspace: View {
 // MARK: - Documents Sidebar
 
 struct DocumentsSidebar: View {
-    @Binding var activeDocument: Document?
-    let documents: [Document]
+    @Binding var activeDocument: TeamDocument?
+    let documents: [TeamDocument]
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 4) {
-                ForEach(documents) { doc in
-                    documentRow(doc: doc, isActive: activeDocument?.id == doc.id)
-                        .onTapGesture {
-                            activeDocument = doc
-                        }
-                }
+        if documents.isEmpty {
+            VStack(spacing: 12) {
+                Image(systemName: "doc.text")
+                    .font(.system(size: 32))
+                    .foregroundColor(.secondary)
+
+                Text("No documents yet")
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
             }
-            .padding(8)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding()
+        } else {
+            ScrollView {
+                VStack(spacing: 4) {
+                    ForEach(documents) { doc in
+                        documentRow(doc: doc, isActive: activeDocument?.id == doc.id)
+                            .onTapGesture {
+                                activeDocument = doc
+                            }
+                    }
+                }
+                .padding(8)
+            }
         }
     }
 
-    private func documentRow(doc: Document, isActive: Bool) -> some View {
+    private func documentRow(doc: TeamDocument, isActive: Bool) -> some View {
         HStack(spacing: 10) {
-            Image(systemName: doc.type.icon)
+            Image(systemName: iconForType(doc.type))
                 .font(.system(size: 16))
                 .foregroundColor(isActive ? Color.magnetarPrimary : .secondary)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(doc.name)
+                Text(doc.title)
                     .font(.system(size: 13, weight: isActive ? .medium : .regular))
                     .foregroundColor(isActive ? .primary : .secondary)
 
-                Text(doc.lastEdited)
+                Text(doc.updatedAt)
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
             }
@@ -1242,15 +1603,25 @@ struct DocumentsSidebar: View {
                 .fill(isActive ? Color.magnetarPrimary.opacity(0.1) : Color.clear)
         )
     }
+
+    private func iconForType(_ type: String) -> String {
+        switch type.lowercased() {
+        case "document": return "doc.text"
+        case "spreadsheet": return "tablecells"
+        case "insight": return "chart.bar.doc.horizontal"
+        case "securedocument", "secure_document": return "lock.doc"
+        default: return "doc"
+        }
+    }
 }
 
 // MARK: - Document Types
 
-enum DocumentType {
-    case document
-    case spreadsheet
-    case insight
-    case secureDocument
+enum DocumentType: String {
+    case document = "document"
+    case spreadsheet = "spreadsheet"
+    case insight = "insight"
+    case secureDocument = "secure_document"
 
     var displayName: String {
         switch self {
@@ -1295,9 +1666,22 @@ struct VaultWorkspace: View {
     @State private var isAuthenticating: Bool = false
     @State private var viewMode: VaultViewMode = .grid
     @State private var searchText: String = ""
-    @State private var currentPath: [String] = ["Home"]
-    @State private var selectedFile: LegacyVaultFile? = nil
+    @State private var currentPath: [String] = ["/"]
+    @State private var selectedFile: VaultFile? = nil
     @State private var showPreview: Bool = false
+
+    // Real backend state
+    @State private var files: [VaultFile] = []
+    @State private var isLoadingFiles: Bool = false
+    @State private var vaultError: String? = nil
+    @State private var isUploading: Bool = false
+    @State private var isCreatingFolder: Bool = false
+    @State private var newFolderName: String = ""
+    @State private var showNewFolderDialog: Bool = false
+    @State private var fileToDelete: VaultFile? = nil
+    @State private var showDeleteConfirmation: Bool = false
+
+    private let vaultService = VaultService.shared
 
     var body: some View {
         Group {
@@ -1309,7 +1693,45 @@ struct VaultWorkspace: View {
         }
         .sheet(isPresented: $showPreview) {
             if let file = selectedFile {
-                FilePreviewModal(file: file, isPresented: $showPreview)
+                FilePreviewModal(file: file, isPresented: $showPreview, onDownload: {
+                    Task {
+                        await downloadFile(file)
+                    }
+                }, onDelete: {
+                    fileToDelete = file
+                    showDeleteConfirmation = true
+                })
+            }
+        }
+        .sheet(isPresented: $showNewFolderDialog) {
+            NewFolderDialog(
+                folderName: $newFolderName,
+                isPresented: $showNewFolderDialog,
+                onCreate: {
+                    Task {
+                        await createFolder()
+                    }
+                }
+            )
+        }
+        .alert("Delete File", isPresented: $showDeleteConfirmation, presenting: fileToDelete) { file in
+            Button("Cancel", role: .cancel) {
+                showDeleteConfirmation = false
+                fileToDelete = nil
+            }
+            Button("Delete", role: .destructive) {
+                Task {
+                    await deleteFile(file)
+                }
+                showDeleteConfirmation = false
+                fileToDelete = nil
+            }
+        } message: { file in
+            Text("Are you sure you want to delete '\(file.name)'? This action cannot be undone.")
+        }
+        .task {
+            if vaultUnlocked {
+                await loadFiles()
             }
         }
     }
@@ -1446,7 +1868,11 @@ struct VaultWorkspace: View {
                 )
 
             // Content
-            if LegacyVaultFile.mockFiles.isEmpty {
+            if isLoadingFiles {
+                loadingView
+            } else if let error = vaultError {
+                errorView(error: error)
+            } else if filteredFiles.isEmpty {
                 emptyState
             } else {
                 if viewMode == .grid {
@@ -1456,6 +1882,50 @@ struct VaultWorkspace: View {
                 }
             }
         }
+    }
+
+    private var filteredFiles: [VaultFile] {
+        if searchText.isEmpty {
+            return files
+        }
+        return files.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+    }
+
+    private var loadingView: some View {
+        VStack(spacing: 16) {
+            ProgressView()
+                .scaleEffect(1.2)
+
+            Text("Loading vault...")
+                .font(.system(size: 16))
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func errorView(error: String) -> some View {
+        VStack(spacing: 16) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 48))
+                .foregroundColor(.orange)
+
+            Text("Error Loading Vault")
+                .font(.system(size: 18, weight: .semibold))
+
+            Text(error)
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+
+            Button("Retry") {
+                Task {
+                    await loadFiles()
+                }
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var topBar: some View {
@@ -1508,11 +1978,16 @@ struct VaultWorkspace: View {
 
             // Buttons
             Button {
-                // New folder
+                showNewFolderDialog = true
             } label: {
                 HStack(spacing: 6) {
-                    Image(systemName: "folder.badge.plus")
-                        .font(.system(size: 16))
+                    if isCreatingFolder {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                    } else {
+                        Image(systemName: "folder.badge.plus")
+                            .font(.system(size: 16))
+                    }
                     Text("New Folder")
                         .font(.system(size: 14, weight: .medium))
                 }
@@ -1525,13 +2000,20 @@ struct VaultWorkspace: View {
                 )
             }
             .buttonStyle(.plain)
+            .disabled(isCreatingFolder)
 
             Button {
-                // Upload
+                uploadFile()
             } label: {
                 HStack(spacing: 6) {
-                    Image(systemName: "arrow.up.doc")
-                        .font(.system(size: 16))
+                    if isUploading {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                            .tint(.white)
+                    } else {
+                        Image(systemName: "arrow.up.doc")
+                            .font(.system(size: 16))
+                    }
                     Text("Upload")
                         .font(.system(size: 14, weight: .medium))
                 }
@@ -1540,10 +2022,11 @@ struct VaultWorkspace: View {
                 .padding(.vertical, 8)
                 .background(
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.magnetarPrimary)
+                        .fill(isUploading ? Color.gray : Color.magnetarPrimary)
                 )
             }
             .buttonStyle(.plain)
+            .disabled(isUploading)
         }
     }
 
@@ -1568,11 +2051,31 @@ struct VaultWorkspace: View {
     private var gridView: some View {
         ScrollView {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 180, maximum: 220), spacing: 16)], spacing: 16) {
-                ForEach(LegacyVaultFile.mockFiles) { file in
+                ForEach(filteredFiles) { file in
                     fileCard(file: file)
                         .onTapGesture {
-                            selectedFile = file
-                            showPreview = true
+                            if file.isFolder {
+                                navigateToFolder(file)
+                            } else {
+                                selectedFile = file
+                                showPreview = true
+                            }
+                        }
+                        .contextMenu {
+                            if !file.isFolder {
+                                Button("Download") {
+                                    Task {
+                                        await downloadFile(file)
+                                    }
+                                }
+
+                                Divider()
+
+                                Button("Delete", role: .destructive) {
+                                    fileToDelete = file
+                                    showDeleteConfirmation = true
+                                }
+                            }
                         }
                 }
             }
@@ -1580,17 +2083,17 @@ struct VaultWorkspace: View {
         }
     }
 
-    private func fileCard(file: LegacyVaultFile) -> some View {
+    private func fileCard(file: VaultFile) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             // Icon chip
             ZStack {
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(file.mimeColor.opacity(0.15))
+                    .fill(Color(file.mimeColor).opacity(0.15))
                     .frame(height: 80)
 
                 Image(systemName: file.mimeIcon)
                     .font(.system(size: 32))
-                    .foregroundColor(file.mimeColor)
+                    .foregroundColor(Color(file.mimeColor))
             }
 
             VStack(alignment: .leading, spacing: 4) {
@@ -1600,7 +2103,7 @@ struct VaultWorkspace: View {
                     .truncationMode(.middle)
 
                 HStack(spacing: 8) {
-                    Text(file.size)
+                    Text(file.sizeFormatted)
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
 
@@ -1608,7 +2111,7 @@ struct VaultWorkspace: View {
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
 
-                    Text(file.modified)
+                    Text(file.modifiedFormatted)
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                 }
@@ -1653,23 +2156,43 @@ struct VaultWorkspace: View {
             Divider()
 
             ScrollView {
-                ForEach(LegacyVaultFile.mockFiles) { file in
+                ForEach(filteredFiles) { file in
                     fileRow(file: file)
                         .onTapGesture {
-                            selectedFile = file
-                            showPreview = true
+                            if file.isFolder {
+                                navigateToFolder(file)
+                            } else {
+                                selectedFile = file
+                                showPreview = true
+                            }
+                        }
+                        .contextMenu {
+                            if !file.isFolder {
+                                Button("Download") {
+                                    Task {
+                                        await downloadFile(file)
+                                    }
+                                }
+
+                                Divider()
+
+                                Button("Delete", role: .destructive) {
+                                    fileToDelete = file
+                                    showDeleteConfirmation = true
+                                }
+                            }
                         }
                 }
             }
         }
     }
 
-    private func fileRow(file: LegacyVaultFile) -> some View {
+    private func fileRow(file: VaultFile) -> some View {
         HStack(spacing: 16) {
             HStack(spacing: 10) {
                 Image(systemName: file.mimeIcon)
                     .font(.system(size: 16))
-                    .foregroundColor(file.mimeColor)
+                    .foregroundColor(Color(file.mimeColor))
 
                 Text(file.name)
                     .font(.system(size: 14))
@@ -1677,12 +2200,12 @@ struct VaultWorkspace: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            Text(file.size)
+            Text(file.sizeFormatted)
                 .font(.system(size: 14))
                 .foregroundColor(.secondary)
                 .frame(width: 100, alignment: .trailing)
 
-            Text(file.modified)
+            Text(file.modifiedFormatted)
                 .font(.system(size: 14))
                 .foregroundColor(.secondary)
                 .frame(width: 120, alignment: .trailing)
@@ -1722,11 +2245,14 @@ struct VaultWorkspace: View {
         isAuthenticating = true
         authError = nil
 
-        // Simulate authentication
+        // Simulate authentication (real backend integration would verify password)
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             if password == "test" || password.count >= 4 {
                 vaultUnlocked = true
                 authError = nil
+                Task {
+                    await loadFiles()
+                }
             } else {
                 authError = "Invalid password"
             }
@@ -1738,6 +2264,159 @@ struct VaultWorkspace: View {
         // Simulate biometric auth
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             vaultUnlocked = true
+            Task {
+                await loadFiles()
+            }
+        }
+    }
+
+    // MARK: - Vault Operations
+
+    @MainActor
+    private func loadFiles() async {
+        isLoadingFiles = true
+        vaultError = nil
+
+        do {
+            let currentFolder = currentPath.last ?? "/"
+            files = try await vaultService.listFiles(vaultType: "real", folderPath: currentFolder)
+            vaultError = nil
+        } catch let error as VaultError {
+            if case .unauthorized = error {
+                // Show setup modal
+                vaultError = error.localizedDescription
+                vaultUnlocked = false
+            } else {
+                vaultError = error.localizedDescription
+            }
+            files = []
+        } catch {
+            vaultError = "Failed to load vault: \(error.localizedDescription)"
+            files = []
+        }
+
+        isLoadingFiles = false
+    }
+
+    private func uploadFile() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+
+        if panel.runModal() == .OK, let url = panel.url {
+            Task {
+                await performUpload(fileURL: url)
+            }
+        }
+    }
+
+    @MainActor
+    private func performUpload(fileURL: URL) async {
+        isUploading = true
+        vaultError = nil
+
+        do {
+            let currentFolder = currentPath.last ?? "/"
+            _ = try await vaultService.upload(
+                fileURL: fileURL,
+                folderPath: currentFolder,
+                vaultType: "real",
+                passphrase: password
+            )
+
+            // Refresh file list
+            await loadFiles()
+        } catch let error as VaultError {
+            vaultError = "Upload failed: \(error.localizedDescription)"
+        } catch {
+            vaultError = "Upload failed: \(error.localizedDescription)"
+        }
+
+        isUploading = false
+    }
+
+    private func createFolder() async {
+        guard !newFolderName.isEmpty else { return }
+
+        isCreatingFolder = true
+        vaultError = nil
+
+        do {
+            let currentFolder = currentPath.last ?? "/"
+            _ = try await vaultService.createFolder(
+                name: newFolderName,
+                folderPath: nil,
+                vaultType: "real",
+                passphrase: password
+            )
+
+            // Refresh file list
+            await loadFiles()
+            newFolderName = ""
+        } catch let error as VaultError {
+            vaultError = "Failed to create folder: \(error.localizedDescription)"
+        } catch {
+            vaultError = "Failed to create folder: \(error.localizedDescription)"
+        }
+
+        isCreatingFolder = false
+    }
+
+    @MainActor
+    private func downloadFile(_ file: VaultFile) async {
+        let savePanel = NSSavePanel()
+        savePanel.nameFieldStringValue = file.name
+
+        if savePanel.runModal() == .OK, let destinationURL = savePanel.url {
+            vaultError = nil
+
+            do {
+                let data = try await vaultService.download(
+                    fileId: file.id,
+                    vaultType: "real",
+                    passphrase: password
+                )
+                try data.write(to: destinationURL)
+            } catch let error as VaultError {
+                vaultError = "Download failed: \(error.localizedDescription)"
+            } catch {
+                vaultError = "Download failed: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    @MainActor
+    private func deleteFile(_ file: VaultFile) async {
+        // Optimistic delete
+        let originalFiles = files
+        files.removeAll { $0.id == file.id }
+
+        do {
+            try await vaultService.deleteFile(fileId: file.id)
+            vaultError = nil
+        } catch let error as VaultError {
+            // Rollback on failure
+            files = originalFiles
+            vaultError = "Delete failed: \(error.localizedDescription)"
+        } catch {
+            // Rollback on failure
+            files = originalFiles
+            vaultError = "Delete failed: \(error.localizedDescription)"
+        }
+    }
+
+    private func navigateToFolder(_ folder: VaultFile) {
+        guard folder.isFolder else { return }
+
+        if let folderPath = folder.folderPath {
+            currentPath.append(folderPath)
+        } else {
+            currentPath.append(folder.name)
+        }
+
+        Task {
+            await loadFiles()
         }
     }
 }
@@ -1790,11 +2469,80 @@ struct LegacyVaultFile: Identifiable {
     ]
 }
 
+// MARK: - New Folder Dialog
+
+struct NewFolderDialog: View {
+    @Binding var folderName: String
+    @Binding var isPresented: Bool
+    let onCreate: () -> Void
+
+    var body: some View {
+        VStack(spacing: 24) {
+            // Header
+            HStack {
+                Text("New Folder")
+                    .font(.system(size: 20, weight: .semibold))
+
+                Spacer()
+
+                Button {
+                    isPresented = false
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 16))
+                        .foregroundColor(.secondary)
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+            }
+
+            Divider()
+
+            // Form
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Folder Name")
+                    .font(.headline)
+
+                TextField("Enter folder name", text: $folderName)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit {
+                        onCreate()
+                        isPresented = false
+                    }
+            }
+
+            Spacer()
+
+            // Footer buttons
+            HStack {
+                Spacer()
+
+                Button("Cancel") {
+                    isPresented = false
+                }
+                .keyboardShortcut(.cancelAction)
+
+                Button("Create") {
+                    onCreate()
+                    isPresented = false
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(folderName.isEmpty)
+            }
+        }
+        .padding(24)
+        .frame(width: 400, height: 250)
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+}
+
 // MARK: - File Preview Modal
 
 struct FilePreviewModal: View {
-    let file: LegacyVaultFile
+    let file: VaultFile
     @Binding var isPresented: Bool
+    let onDownload: () -> Void
+    let onDelete: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -1805,7 +2553,7 @@ struct FilePreviewModal: View {
                         .font(.system(size: 16, weight: .semibold))
 
                     HStack(spacing: 8) {
-                        Text(file.mimeType.uppercased())
+                        Text(file.mimeType?.uppercased() ?? "FILE")
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
 
@@ -1813,7 +2561,7 @@ struct FilePreviewModal: View {
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
 
-                        Text(file.size)
+                        Text(file.sizeFormatted)
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
                     }
@@ -1844,9 +2592,9 @@ struct FilePreviewModal: View {
             VStack(spacing: 16) {
                 Image(systemName: file.mimeIcon)
                     .font(.system(size: 64))
-                    .foregroundColor(file.mimeColor)
+                    .foregroundColor(Color(file.mimeColor))
 
-                Text("Preview for \(file.mimeType) files")
+                Text("Preview for \(file.mimeType ?? "unknown") files")
                     .font(.title2)
 
                 Text("File preview rendering will appear here")
@@ -1857,11 +2605,31 @@ struct FilePreviewModal: View {
             .padding(24)
 
             // Footer
-            HStack {
+            HStack(spacing: 12) {
+                Button {
+                    onDelete()
+                    isPresented = false
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "trash")
+                            .font(.system(size: 16))
+                        Text("Delete")
+                            .font(.system(size: 14, weight: .medium))
+                    }
+                    .foregroundColor(.red)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .strokeBorder(Color.red, lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+
                 Spacer()
 
                 Button {
-                    // Download
+                    onDownload()
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "arrow.down.circle")
@@ -1897,80 +2665,727 @@ struct FilePreviewModal: View {
 // MARK: - Placeholder Modals
 
 struct DiagnosticsPanel: View {
+    @Environment(\.dismiss) var dismiss
+    @State private var isLoading: Bool = false
+    @State private var errorMessage: String? = nil
+    @State private var diagnostics: DiagnosticsStatus? = nil
+
+    private let teamService = TeamService.shared
+
     var body: some View {
-        VStack(spacing: 16) {
-            Text("Network Diagnostics")
-                .font(.title2)
-            Text("Connection metrics and status will appear here")
-                .foregroundColor(.secondary)
+        VStack(spacing: 20) {
+            // Header
+            HStack {
+                Text("Network Diagnostics")
+                    .font(.title2.weight(.semibold))
+
+                Spacer()
+
+                Button(action: { Task { await loadDiagnostics() } }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.clockwise")
+                        Text("Retry")
+                    }
+                }
+                .disabled(isLoading)
+            }
+
+            if isLoading {
+                VStack(spacing: 12) {
+                    ProgressView()
+                    Text("Loading diagnostics...")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let diag = diagnostics {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        // Overall Status
+                        HStack {
+                            Image(systemName: diag.status == "ok" ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                                .foregroundColor(diag.status == "ok" ? .green : .orange)
+                            Text("Status: \(diag.status.uppercased())")
+                                .font(.system(size: 14, weight: .medium))
+                        }
+
+                        Divider()
+
+                        // Network Status
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Network")
+                                .font(.system(size: 13, weight: .semibold))
+
+                            statusRow("Connected", value: diag.network.connected ? "Yes" : "No", status: diag.network.connected)
+
+                            if let latency = diag.network.latency {
+                                statusRow("Latency", value: "\(latency)ms", status: latency < 100)
+                            }
+
+                            if let bandwidth = diag.network.bandwidth {
+                                statusRow("Bandwidth", value: bandwidth, status: true)
+                            }
+                        }
+
+                        Divider()
+
+                        // Database Status
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Database")
+                                .font(.system(size: 13, weight: .semibold))
+
+                            statusRow("Connected", value: diag.database.connected ? "Yes" : "No", status: diag.database.connected)
+
+                            if let queryTime = diag.database.queryTime {
+                                statusRow("Query Time", value: "\(queryTime)ms", status: queryTime < 100)
+                            }
+                        }
+
+                        Divider()
+
+                        // Services
+                        if !diag.services.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Services")
+                                    .font(.system(size: 13, weight: .semibold))
+
+                                ForEach(diag.services, id: \.name) { service in
+                                    HStack {
+                                        Image(systemName: service.status == "running" ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                            .foregroundColor(service.status == "running" ? .green : .red)
+                                            .font(.system(size: 12))
+
+                                        Text(service.name)
+                                            .font(.system(size: 12))
+
+                                        Spacer()
+
+                                        if let uptime = service.uptime {
+                                            Text(uptime)
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if let error = errorMessage {
+                VStack(spacing: 12) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.largeTitle)
+                        .foregroundColor(.orange)
+
+                    Text(error)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                        .multilineTextAlignment(.center)
+
+                    Button("Retry") {
+                        Task { await loadDiagnostics() }
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+
+            // Close button
+            Button("Close") {
+                dismiss()
+            }
+            .keyboardShortcut(.escape)
         }
         .frame(width: 600, height: 400)
-        .padding()
+        .padding(24)
+        .onAppear {
+            Task { await loadDiagnostics() }
+        }
+    }
+
+    @ViewBuilder
+    private func statusRow(_ label: String, value: String, status: Bool) -> some View {
+        HStack {
+            Image(systemName: status ? "checkmark.circle.fill" : "xmark.circle.fill")
+                .foregroundColor(status ? .green : .red)
+                .font(.system(size: 12))
+
+            Text(label)
+                .font(.system(size: 12))
+
+            Spacer()
+
+            Text(value)
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
+        }
+    }
+
+    @MainActor
+    private func loadDiagnostics() async {
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            diagnostics = try await teamService.getDiagnostics()
+        } catch {
+            errorMessage = "Failed to load diagnostics: \(error.localizedDescription)"
+        }
+
+        isLoading = false
     }
 }
 
 struct CreateTeamModal: View {
+    @Environment(\.dismiss) var dismiss
+    @State private var teamName: String = ""
+    @State private var teamDescription: String = ""
+    @State private var isLoading: Bool = false
+    @State private var errorMessage: String? = nil
+
+    private let teamService = TeamService.shared
+
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 20) {
+            // Header
             Text("Create Team")
-                .font(.title2)
-            Text("Team creation form will appear here")
-                .foregroundColor(.secondary)
+                .font(.title2.weight(.semibold))
+
+            // Form
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Team Name")
+                        .font(.system(size: 13, weight: .medium))
+                    TextField("Enter team name", text: $teamName)
+                        .textFieldStyle(.roundedBorder)
+                        .disabled(isLoading)
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Description (Optional)")
+                        .font(.system(size: 13, weight: .medium))
+                    TextEditor(text: $teamDescription)
+                        .frame(height: 80)
+                        .border(Color.gray.opacity(0.3))
+                        .disabled(isLoading)
+                }
+            }
+
+            // Error message
+            if let error = errorMessage {
+                Text(error)
+                    .font(.caption)
+                    .foregroundColor(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            // Actions
+            HStack(spacing: 12) {
+                Button("Cancel") {
+                    dismiss()
+                }
+                .keyboardShortcut(.escape)
+                .disabled(isLoading)
+
+                Button("Create Team") {
+                    Task { await createTeam() }
+                }
+                .keyboardShortcut(.return)
+                .buttonStyle(.borderedProminent)
+                .disabled(teamName.isEmpty || isLoading)
+            }
+
+            if isLoading {
+                ProgressView()
+                    .scaleEffect(0.8)
+            }
         }
-        .frame(width: 500, height: 400)
-        .padding()
+        .frame(width: 500)
+        .padding(24)
+    }
+
+    @MainActor
+    private func createTeam() async {
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            _ = try await teamService.createTeam(
+                name: teamName,
+                description: teamDescription.isEmpty ? nil : teamDescription
+            )
+            dismiss()
+        } catch {
+            errorMessage = "Failed to create team: \(error.localizedDescription)"
+        }
+
+        isLoading = false
     }
 }
 
 struct JoinTeamModal: View {
+    @Environment(\.dismiss) var dismiss
+    @State private var teamCode: String = ""
+    @State private var isLoading: Bool = false
+    @State private var errorMessage: String? = nil
+
+    private let teamService = TeamService.shared
+
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 20) {
+            // Header
             Text("Join Team")
-                .font(.title2)
-            Text("Team join form will appear here")
+                .font(.title2.weight(.semibold))
+
+            Text("Enter the team invitation code to join")
+                .font(.system(size: 13))
                 .foregroundColor(.secondary)
+
+            // Form
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Team Code")
+                    .font(.system(size: 13, weight: .medium))
+                TextField("Enter invitation code", text: $teamCode)
+                    .textFieldStyle(.roundedBorder)
+                    .disabled(isLoading)
+                    .font(.system(.body, design: .monospaced))
+            }
+
+            // Error message
+            if let error = errorMessage {
+                Text(error)
+                    .font(.caption)
+                    .foregroundColor(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            // Actions
+            HStack(spacing: 12) {
+                Button("Cancel") {
+                    dismiss()
+                }
+                .keyboardShortcut(.escape)
+                .disabled(isLoading)
+
+                Button("Join Team") {
+                    Task { await joinTeam() }
+                }
+                .keyboardShortcut(.return)
+                .buttonStyle(.borderedProminent)
+                .disabled(teamCode.isEmpty || isLoading)
+            }
+
+            if isLoading {
+                ProgressView()
+                    .scaleEffect(0.8)
+            }
         }
-        .frame(width: 500, height: 400)
-        .padding()
+        .frame(width: 450)
+        .padding(24)
+    }
+
+    @MainActor
+    private func joinTeam() async {
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            _ = try await teamService.joinTeam(code: teamCode)
+            dismiss()
+        } catch {
+            errorMessage = "Failed to join team: \(error.localizedDescription)"
+        }
+
+        isLoading = false
     }
 }
 
 struct VaultSetupModal: View {
+    @Environment(\.dismiss) var dismiss
+    @State private var password: String = ""
+    @State private var confirmPassword: String = ""
+    @State private var isLoading: Bool = false
+    @State private var errorMessage: String? = nil
+    @State private var setupStatus: String? = nil
+
+    private let teamService = TeamService.shared
+
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 20) {
+            // Header
             Text("Vault Setup")
-                .font(.title2)
-            Text("Vault configuration will appear here")
+                .font(.title2.weight(.semibold))
+
+            Text("Set up encrypted vault for secure file storage")
+                .font(.system(size: 13))
                 .foregroundColor(.secondary)
+
+            // Form
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Master Password")
+                        .font(.system(size: 13, weight: .medium))
+                    SecureField("Enter master password", text: $password)
+                        .textFieldStyle(.roundedBorder)
+                        .disabled(isLoading)
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Confirm Password")
+                        .font(.system(size: 13, weight: .medium))
+                    SecureField("Re-enter password", text: $confirmPassword)
+                        .textFieldStyle(.roundedBorder)
+                        .disabled(isLoading)
+                }
+
+                Text("⚠️ Store this password securely. It cannot be recovered.")
+                    .font(.caption)
+                    .foregroundColor(.orange)
+            }
+
+            // Status/Error message
+            if let status = setupStatus {
+                Text(status)
+                    .font(.caption)
+                    .foregroundColor(.green)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            if let error = errorMessage {
+                Text(error)
+                    .font(.caption)
+                    .foregroundColor(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            // Actions
+            HStack(spacing: 12) {
+                Button("Cancel") {
+                    dismiss()
+                }
+                .keyboardShortcut(.escape)
+                .disabled(isLoading)
+
+                Button("Setup Vault") {
+                    Task { await setupVault() }
+                }
+                .keyboardShortcut(.return)
+                .buttonStyle(.borderedProminent)
+                .disabled(!canSubmit || isLoading)
+            }
+
+            if isLoading {
+                ProgressView()
+                    .scaleEffect(0.8)
+            }
         }
-        .frame(width: 500, height: 400)
-        .padding()
+        .frame(width: 500)
+        .padding(24)
+    }
+
+    private var canSubmit: Bool {
+        !password.isEmpty && password == confirmPassword && password.count >= 8
+    }
+
+    @MainActor
+    private func setupVault() async {
+        isLoading = true
+        errorMessage = nil
+        setupStatus = nil
+
+        do {
+            let response = try await teamService.setupVault(password: password)
+            setupStatus = response.message
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            dismiss()
+        } catch {
+            errorMessage = "Setup failed: \(error.localizedDescription)"
+        }
+
+        isLoading = false
     }
 }
 
 struct NLQueryPanel: View {
+    @Environment(\.dismiss) var dismiss
+    @State private var query: String = ""
+    @State private var isLoading: Bool = false
+    @State private var errorMessage: String? = nil
+    @State private var response: NLQueryResponse? = nil
+
+    private let teamService = TeamService.shared
+
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 20) {
+            // Header
             Text("Ask AI About Your Data")
-                .font(.title2)
-            Text("Natural language query interface will appear here")
-                .foregroundColor(.secondary)
+                .font(.title2.weight(.semibold))
+
+            // Query input
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Your Question")
+                    .font(.system(size: 13, weight: .medium))
+                TextEditor(text: $query)
+                    .frame(height: 80)
+                    .border(Color.gray.opacity(0.3))
+                    .disabled(isLoading)
+
+                Text("Example: \"What are the top 5 customers by revenue?\"")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            // Submit button
+            Button(action: { Task { await askQuestion() } }) {
+                HStack {
+                    if isLoading {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                    }
+                    Text(isLoading ? "Asking..." : "Ask AI")
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(query.isEmpty || isLoading)
+
+            // Response area
+            if let answer = response {
+                VStack(alignment: .leading, spacing: 12) {
+                    Divider()
+
+                    HStack {
+                        Text("Answer")
+                            .font(.system(size: 13, weight: .semibold))
+                        Spacer()
+                        if let confidence = answer.confidence {
+                            Text("\(Int(confidence * 100))% confident")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    ScrollView {
+                        Text(answer.answer)
+                            .font(.system(size: 13))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .textSelection(.enabled)
+                    }
+                    .frame(maxHeight: 200)
+
+                    if let sources = answer.sources, !sources.isEmpty {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Sources:")
+                                .font(.caption.weight(.medium))
+                            ForEach(sources, id: \.self) { source in
+                                Text("• \(source)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Error message
+            if let error = errorMessage {
+                Text(error)
+                    .font(.caption)
+                    .foregroundColor(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            Spacer()
+
+            // Close button
+            Button("Close") {
+                dismiss()
+            }
+            .keyboardShortcut(.escape)
         }
         .frame(width: 600, height: 500)
-        .padding()
+        .padding(24)
+    }
+
+    @MainActor
+    private func askQuestion() async {
+        isLoading = true
+        errorMessage = nil
+        response = nil
+
+        do {
+            response = try await teamService.askNaturalLanguage(query: query)
+        } catch {
+            errorMessage = "Failed to get answer: \(error.localizedDescription)"
+        }
+
+        isLoading = false
     }
 }
 
 struct PatternDiscoveryPanel: View {
+    @Environment(\.dismiss) var dismiss
+    @State private var query: String = ""
+    @State private var context: String = ""
+    @State private var isLoading: Bool = false
+    @State private var errorMessage: String? = nil
+    @State private var results: PatternDiscoveryResult? = nil
+
+    private let teamService = TeamService.shared
+
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 20) {
+            // Header
             Text("Pattern Discovery")
-                .font(.title2)
-            Text("Data pattern analysis will appear here")
-                .foregroundColor(.secondary)
+                .font(.title2.weight(.semibold))
+
+            // Input fields
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Query")
+                        .font(.system(size: 13, weight: .medium))
+                    TextField("Describe what patterns to find", text: $query)
+                        .textFieldStyle(.roundedBorder)
+                        .disabled(isLoading)
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Context (Optional)")
+                        .font(.system(size: 13, weight: .medium))
+                    TextEditor(text: $context)
+                        .frame(height: 60)
+                        .border(Color.gray.opacity(0.3))
+                        .disabled(isLoading)
+
+                    Text("Additional context to help with pattern detection")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            // Submit button
+            Button(action: { Task { await discoverPatterns() } }) {
+                HStack {
+                    if isLoading {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                    }
+                    Text(isLoading ? "Analyzing..." : "Discover Patterns")
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(query.isEmpty || isLoading)
+
+            // Results area
+            if let result = results {
+                VStack(alignment: .leading, spacing: 12) {
+                    Divider()
+
+                    if let summary = result.summary {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Summary")
+                                .font(.system(size: 13, weight: .semibold))
+                            Text(summary)
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    if !result.patterns.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Patterns Found (\(result.patterns.count))")
+                                .font(.system(size: 13, weight: .semibold))
+
+                            ScrollView {
+                                VStack(spacing: 8) {
+                                    ForEach(result.patterns) { pattern in
+                                        patternRow(pattern)
+                                    }
+                                }
+                            }
+                            .frame(maxHeight: 250)
+                        }
+                    } else {
+                        Text("No patterns found")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+
+            // Error message
+            if let error = errorMessage {
+                Text(error)
+                    .font(.caption)
+                    .foregroundColor(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            Spacer()
+
+            // Close button
+            Button("Close") {
+                dismiss()
+            }
+            .keyboardShortcut(.escape)
         }
         .frame(width: 700, height: 600)
-        .padding()
+        .padding(24)
+    }
+
+    @ViewBuilder
+    private func patternRow(_ pattern: PatternDiscoveryResult.Pattern) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(pattern.type)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Capsule().fill(Color.blue))
+
+                Spacer()
+
+                Text("\(Int(pattern.confidence * 100))%")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Text(pattern.description)
+                .font(.system(size: 12))
+
+            if let examples = pattern.examples, !examples.isEmpty {
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(examples.prefix(3), id: \.self) { example in
+                        Text("• \(example)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
+        .padding(12)
+        .background(Color.gray.opacity(0.1))
+        .cornerRadius(8)
+    }
+
+    @MainActor
+    private func discoverPatterns() async {
+        isLoading = true
+        errorMessage = nil
+        results = nil
+
+        do {
+            results = try await teamService.discoverPatterns(
+                query: query,
+                context: context.isEmpty ? nil : context
+            )
+        } catch {
+            errorMessage = "Failed to discover patterns: \(error.localizedDescription)"
+        }
+
+        isLoading = false
     }
 }
 

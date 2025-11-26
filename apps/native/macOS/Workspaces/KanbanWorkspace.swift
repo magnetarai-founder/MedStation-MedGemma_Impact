@@ -8,8 +8,16 @@
 import SwiftUI
 
 struct KanbanWorkspace: View {
+    @State private var boards: [KanbanBoard] = KanbanBoard.mockBoards
+    @State private var tasks: [KanbanTask] = KanbanTask.mockTasks
     @State private var selectedBoard: KanbanBoard? = nil
     @State private var selectedTask: KanbanTask? = nil
+    @State private var showNewBoardSheet = false
+    @State private var showNewTaskSheet = false
+    @State private var boardToDelete: KanbanBoard? = nil
+    @State private var taskToDelete: KanbanTask? = nil
+    @State private var newBoardName = ""
+    @State private var newTaskTitle = ""
 
     var body: some View {
         ThreePaneLayout {
@@ -22,6 +30,36 @@ struct KanbanWorkspace: View {
             // Right Pane: Task Detail
             taskDetailPane
         }
+        .sheet(isPresented: $showNewBoardSheet) {
+            NewBoardSheet(boardName: $newBoardName, onSave: {
+                createBoard()
+            })
+        }
+        .sheet(isPresented: $showNewTaskSheet) {
+            NewTaskSheet(taskTitle: $newTaskTitle, onSave: {
+                createTask()
+            })
+        }
+        .alert("Delete Board", isPresented: .constant(boardToDelete != nil), presenting: boardToDelete) { board in
+            Button("Cancel", role: .cancel) {
+                boardToDelete = nil
+            }
+            Button("Delete", role: .destructive) {
+                deleteBoard(board)
+            }
+        } message: { board in
+            Text("Are you sure you want to delete '\(board.name)'? This will remove all associated tasks.")
+        }
+        .alert("Delete Task", isPresented: .constant(taskToDelete != nil), presenting: taskToDelete) { task in
+            Button("Cancel", role: .cancel) {
+                taskToDelete = nil
+            }
+            Button("Delete", role: .destructive) {
+                deleteTask(task)
+            }
+        } message: { task in
+            Text("Are you sure you want to delete '\(task.title)'?")
+        }
     }
 
     // MARK: - Left Pane: Boards
@@ -31,25 +69,22 @@ struct KanbanWorkspace: View {
             PaneHeader(
                 title: "Boards",
                 icon: "square.grid.2x2",
-                action: {},
+                action: {
+                    newBoardName = ""
+                    showNewBoardSheet = true
+                },
                 actionIcon: "plus.circle.fill"
             )
 
             Divider()
 
-            List(KanbanBoard.mockBoards, selection: $selectedBoard) { board in
-                Label {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(board.name)
-                            .font(.headline)
-                        Text("\(board.taskCount) tasks")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+            List(boards, selection: $selectedBoard) { board in
+                BoardRow(
+                    board: board,
+                    onDelete: {
+                        boardToDelete = board
                     }
-                } icon: {
-                    Image(systemName: board.icon)
-                        .foregroundStyle(LinearGradient.magnetarGradient)
-                }
+                )
                 .tag(board)
             }
             .listStyle(.sidebar)
@@ -62,8 +97,12 @@ struct KanbanWorkspace: View {
         VStack(spacing: 0) {
             PaneHeader(
                 title: selectedBoard?.name ?? "Tasks",
-                subtitle: selectedBoard != nil ? "\(KanbanTask.mockTasks.count) tasks" : nil,
-                action: {},
+                subtitle: selectedBoard != nil ? "\(tasks.count) tasks" : nil,
+                action: {
+                    guard selectedBoard != nil else { return }
+                    newTaskTitle = ""
+                    showNewTaskSheet = true
+                },
                 actionIcon: "plus.circle.fill"
             )
 
@@ -78,11 +117,17 @@ struct KanbanWorkspace: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        ForEach(KanbanTask.mockTasks) { task in
-                            TaskRow(task: task, isSelected: selectedTask?.id == task.id)
-                                .onTapGesture {
-                                    selectedTask = task
+                        ForEach(tasks) { task in
+                            TaskRow(
+                                task: task,
+                                isSelected: selectedTask?.id == task.id,
+                                onDelete: {
+                                    taskToDelete = task
                                 }
+                            )
+                            .onTapGesture {
+                                selectedTask = task
+                            }
                         }
                     }
                 }
@@ -114,6 +159,22 @@ struct KanbanWorkspace: View {
                         }
 
                         Spacer()
+
+                        // Delete button
+                        Button {
+                            taskToDelete = task
+                        } label: {
+                            Image(systemName: "trash")
+                                .font(.system(size: 16))
+                                .foregroundColor(.secondary)
+                                .frame(width: 28, height: 28)
+                                .background(
+                                    Circle()
+                                        .fill(Color(nsColor: .controlBackgroundColor))
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .help("Delete Task")
                     }
                     .padding(24)
                     .background(Color.surfaceTertiary.opacity(0.3))
@@ -156,13 +217,125 @@ struct KanbanWorkspace: View {
             }
         }
     }
+
+    // MARK: - CRUD Operations
+
+    private func createBoard() {
+        guard !newBoardName.isEmpty else { return }
+
+        let newBoard = KanbanBoard(
+            name: newBoardName,
+            icon: "folder",
+            taskCount: 0
+        )
+
+        withAnimation {
+            boards.append(newBoard)
+        }
+
+        showNewBoardSheet = false
+        newBoardName = ""
+    }
+
+    private func deleteBoard(_ board: KanbanBoard) {
+        withAnimation {
+            boards.removeAll { $0.id == board.id }
+
+            // Clear selection if deleted board was selected
+            if selectedBoard?.id == board.id {
+                selectedBoard = nil
+                selectedTask = nil
+            }
+        }
+
+        boardToDelete = nil
+    }
+
+    private func createTask() {
+        guard !newTaskTitle.isEmpty else { return }
+
+        let newTask = KanbanTask(
+            title: newTaskTitle,
+            description: "New task description",
+            status: .todo,
+            priority: .medium,
+            assignee: "Unassigned",
+            dueDate: "TBD",
+            labels: []
+        )
+
+        withAnimation {
+            tasks.append(newTask)
+        }
+
+        showNewTaskSheet = false
+        newTaskTitle = ""
+    }
+
+    private func deleteTask(_ task: KanbanTask) {
+        withAnimation {
+            tasks.removeAll { $0.id == task.id }
+
+            // Clear selection if deleted task was selected
+            if selectedTask?.id == task.id {
+                selectedTask = nil
+            }
+        }
+
+        taskToDelete = nil
+    }
 }
 
 // MARK: - Supporting Views
 
+struct BoardRow: View {
+    let board: KanbanBoard
+    let onDelete: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Label {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(board.name)
+                        .font(.headline)
+                    Text("\(board.taskCount) tasks")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            } icon: {
+                Image(systemName: board.icon)
+                    .foregroundStyle(LinearGradient.magnetarGradient)
+            }
+
+            Spacer()
+
+            if isHovered {
+                Button {
+                    onDelete()
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Delete Board")
+            }
+        }
+        .contentShape(Rectangle())
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
+        }
+    }
+}
+
 struct TaskRow: View {
     let task: KanbanTask
     let isSelected: Bool
+    let onDelete: () -> Void
+    @State private var isHovered = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -182,10 +355,28 @@ struct TaskRow: View {
             }
 
             Spacer()
+
+            if isHovered {
+                Button {
+                    onDelete()
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Delete Task")
+            }
         }
         .padding(12)
         .background(isSelected ? Color.magnetarPrimary.opacity(0.1) : Color.clear)
         .cornerRadius(8)
+        .contentShape(Rectangle())
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
+        }
     }
 }
 
@@ -302,6 +493,152 @@ enum TaskPriority: String {
         case .medium: return .orange
         case .high: return .red
         }
+    }
+}
+
+// MARK: - New Board/Task Sheets
+
+struct NewBoardSheet: View {
+    @Binding var boardName: String
+    let onSave: () -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(spacing: 24) {
+            // Header
+            HStack {
+                Text("New Board")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+
+                Spacer()
+
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                        .frame(width: 28, height: 28)
+                        .background(
+                            Circle()
+                                .fill(Color(nsColor: .controlBackgroundColor))
+                        )
+                }
+                .buttonStyle(.plain)
+                .help("Close (Esc)")
+                .keyboardShortcut(.cancelAction)
+            }
+
+            Divider()
+
+            // Form
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Board Name")
+                    .font(.headline)
+
+                TextField("Enter board name", text: $boardName)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit {
+                        onSave()
+                        dismiss()
+                    }
+            }
+
+            Spacer()
+
+            // Footer buttons
+            HStack {
+                Spacer()
+
+                Button("Cancel") {
+                    dismiss()
+                }
+                .keyboardShortcut(.cancelAction)
+
+                Button("Create") {
+                    onSave()
+                    dismiss()
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(boardName.isEmpty)
+            }
+        }
+        .padding(24)
+        .frame(width: 400, height: 250)
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+}
+
+struct NewTaskSheet: View {
+    @Binding var taskTitle: String
+    let onSave: () -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(spacing: 24) {
+            // Header
+            HStack {
+                Text("New Task")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+
+                Spacer()
+
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                        .frame(width: 28, height: 28)
+                        .background(
+                            Circle()
+                                .fill(Color(nsColor: .controlBackgroundColor))
+                        )
+                }
+                .buttonStyle(.plain)
+                .help("Close (Esc)")
+                .keyboardShortcut(.cancelAction)
+            }
+
+            Divider()
+
+            // Form
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Task Title")
+                    .font(.headline)
+
+                TextField("Enter task title", text: $taskTitle)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit {
+                        onSave()
+                        dismiss()
+                    }
+            }
+
+            Spacer()
+
+            // Footer buttons
+            HStack {
+                Spacer()
+
+                Button("Cancel") {
+                    dismiss()
+                }
+                .keyboardShortcut(.cancelAction)
+
+                Button("Create") {
+                    onSave()
+                    dismiss()
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(taskTitle.isEmpty)
+            }
+        }
+        .padding(24)
+        .frame(width: 400, height: 250)
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 }
 

@@ -67,12 +67,32 @@ final class NetworkChatStore: ObservableObject {
         }
     }
 
-    func selectSession(_ session: ApiChatSession) {
+    func selectSession(_ session: ApiChatSession) async {
         activeSession = session
         selectedModel = session.model ?? selectedModel
         messages = []
         streamingContent = ""
-        // TODO: Load messages from backend if needed
+
+        // Load messages from backend
+        await loadMessages(sessionId: session.id)
+    }
+
+    // MARK: - Message Loading
+
+    func loadMessages(sessionId: String, limit: Int? = nil) async {
+        isLoading = true
+        error = nil
+
+        do {
+            let loadedMessages = try await service.loadMessages(sessionId: sessionId, limit: limit)
+            messages = loadedMessages
+            error = nil
+        } catch {
+            self.error = "Failed to load messages: \(error.localizedDescription)"
+            messages = []
+        }
+
+        isLoading = false
     }
 
     // MARK: - File Upload

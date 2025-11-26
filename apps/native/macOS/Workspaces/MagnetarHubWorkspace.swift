@@ -15,6 +15,10 @@ struct MagnetarHubWorkspace: View {
     @State private var isCloudAuthenticated: Bool = false
     @State private var cloudModels: [OllamaModel] = []
     @State private var isLoadingCloudModels: Bool = false
+    @State private var cloudError: String? = nil
+    @State private var isPerformingAction: Bool = false
+    @State private var actionMessage: String? = nil
+    @State private var showDeleteConfirmation: Bool = false
 
     var body: some View {
         ThreePaneLayout {
@@ -29,8 +33,22 @@ struct MagnetarHubWorkspace: View {
         }
         .task {
             await checkOllamaStatus()
+            await checkCloudAuthStatus()
             await modelsStore.fetchModels()
             await fetchCloudModels()
+        }
+        .alert("Delete Model", isPresented: $showDeleteConfirmation, presenting: selectedModel) { model in
+            Button("Cancel", role: .cancel) {
+                showDeleteConfirmation = false
+            }
+            Button("Delete", role: .destructive) {
+                Task {
+                    await deleteCloudModel(model.id)
+                }
+                showDeleteConfirmation = false
+            }
+        } message: { model in
+            Text("Are you sure you want to delete '\(model.name)' from MagnetarCloud?")
         }
     }
 
@@ -132,7 +150,11 @@ struct MagnetarHubWorkspace: View {
                 subtitle: "\(filteredModels.count) models",
                 action: {
                     Task {
-                        await modelsStore.fetchModels()
+                        if selectedCategory == .cloud {
+                            await fetchCloudModels()
+                        } else {
+                            await modelsStore.fetchModels()
+                        }
                     }
                 },
                 actionIcon: "arrow.clockwise"
@@ -140,14 +162,41 @@ struct MagnetarHubWorkspace: View {
 
             Divider()
 
-            if modelsStore.isLoading {
+            if isLoading {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let error = currentError {
+                VStack(spacing: 12) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 48))
+                        .foregroundColor(.secondary)
+
+                    Text("Error Loading Models")
+                        .font(.headline)
+
+                    Text(error)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
+
+                    Button("Retry") {
+                        Task {
+                            if selectedCategory == .cloud {
+                                await fetchCloudModels()
+                            } else {
+                                await modelsStore.fetchModels()
+                            }
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if filteredModels.isEmpty {
                 PaneEmptyState(
-                    icon: "cube.box",
+                    icon: selectedCategory == .cloud ? "cloud" : "cube.box",
                     title: "No models found",
-                    subtitle: "Pull a model from Ollama to get started"
+                    subtitle: selectedCategory == .cloud ? "No cloud models available" : "Pull a model from Ollama to get started"
                 )
             } else {
                 ScrollView {
@@ -162,6 +211,14 @@ struct MagnetarHubWorkspace: View {
                 }
             }
         }
+    }
+
+    private var isLoading: Bool {
+        selectedCategory == .cloud ? isLoadingCloudModels : modelsStore.isLoading
+    }
+
+    private var currentError: String? {
+        selectedCategory == .cloud ? cloudError : nil
     }
 
     private var filteredModels: [OllamaModel] {
@@ -251,28 +308,62 @@ struct MagnetarHubWorkspace: View {
                             // Actions
                             HStack(spacing: 12) {
                                 Button(action: {
-                                    // TODO: Use model in chat
+                                    Task {
+                                        await useCloudModel(model.id)
+                                    }
                                 }) {
-                                    Label("Use in Chat", systemImage: "bubble.left")
-                                        .frame(maxWidth: .infinity)
+                                    if isPerformingAction {
+                                        ProgressView()
+                                            .scaleEffect(0.8)
+                                            .frame(maxWidth: .infinity)
+                                    } else {
+                                        Label("Use in Chat", systemImage: "bubble.left")
+                                            .frame(maxWidth: .infinity)
+                                    }
                                 }
                                 .buttonStyle(.borderedProminent)
+                                .disabled(isPerformingAction || selectedCategory != .cloud)
 
                                 Button(action: {
-                                    // TODO: Update model
+                                    Task {
+                                        await updateCloudModel(model.id)
+                                    }
                                 }) {
-                                    Label("Update", systemImage: "arrow.down.circle")
-                                        .frame(maxWidth: .infinity)
+                                    if isPerformingAction {
+                                        ProgressView()
+                                            .scaleEffect(0.8)
+                                            .frame(maxWidth: .infinity)
+                                    } else {
+                                        Label("Update", systemImage: "arrow.down.circle")
+                                            .frame(maxWidth: .infinity)
+                                    }
                                 }
                                 .buttonStyle(.bordered)
+                                .disabled(isPerformingAction || selectedCategory != .cloud)
 
                                 Button(action: {
-                                    // TODO: Delete model
+                                    showDeleteConfirmation = true
                                 }) {
                                     Image(systemName: "trash")
                                 }
                                 .buttonStyle(.bordered)
                                 .foregroundColor(.red)
+                                .disabled(isPerformingAction || selectedCategory != .cloud)
+                            }
+
+                            // Action message (success/error feedback)
+                            if let message = actionMessage {
+                                HStack(spacing: 8) {
+                                    Image(systemName: message.hasPrefix("Error") ? "exclamationmark.circle" : "checkmark.circle")
+                                        .foregroundColor(message.hasPrefix("Error") ? .red : .green)
+
+                                    Text(message)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding(8)
+                                .background(Color.surfaceSecondary.opacity(0.5))
+                                .cornerRadius(6)
                             }
 
                             Divider()
@@ -358,18 +449,30 @@ struct MagnetarHubWorkspace: View {
         }
     }
 
+    // MARK: - Cloud Auth Status
+
+    @MainActor
+    private func checkCloudAuthStatus() async {
+        // Check if user is authenticated with MagnetarCloud
+        if let token = KeychainService.shared.loadToken(), !token.isEmpty {
+            isCloudAuthenticated = true
+        } else {
+            isCloudAuthenticated = false
+        }
+    }
+
     // MARK: - Cloud Models CRUD
 
     @MainActor
     private func fetchCloudModels() async {
         isLoadingCloudModels = true
+        cloudError = nil
 
         do {
-            // TODO: Replace with real cloud endpoint when available
-            // For now, return empty array since cloud endpoints don't exist yet
             let url = URL(string: "http://localhost:8000/api/v1/cloud/models")!
             var request = URLRequest(url: url)
             request.httpMethod = "GET"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
             // Get token if available (will be nil in DEBUG mode)
             if let token = KeychainService.shared.loadToken() {
@@ -379,7 +482,7 @@ struct MagnetarHubWorkspace: View {
             let (data, response) = try await URLSession.shared.data(for: request)
 
             guard let httpResponse = response as? HTTPURLResponse else {
-                throw NSError(domain: "CloudError", code: -1)
+                throw CloudError.invalidResponse
             }
 
             if httpResponse.statusCode == 200 {
@@ -387,13 +490,20 @@ struct MagnetarHubWorkspace: View {
                 let decoder = JSONDecoder()
                 decoder.keyDecodingStrategy = .convertFromSnakeCase
                 cloudModels = try decoder.decode([OllamaModel].self, from: data)
+            } else if httpResponse.statusCode == 401 {
+                cloudError = "Not authenticated. Please sign in to MagnetarCloud."
+                isCloudAuthenticated = false
+                cloudModels = []
             } else {
-                print("Cloud models endpoint returned status \(httpResponse.statusCode)")
+                cloudError = "Failed to load cloud models: HTTP \(httpResponse.statusCode)"
                 cloudModels = []
             }
 
+        } catch let error as URLError {
+            cloudError = "Network error: \(error.localizedDescription)"
+            cloudModels = []
         } catch {
-            print("Failed to fetch cloud models (endpoint may not exist yet): \(error)")
+            cloudError = "Failed to load cloud models: \(error.localizedDescription)"
             cloudModels = []
         }
 
@@ -402,22 +512,164 @@ struct MagnetarHubWorkspace: View {
 
     @MainActor
     private func useCloudModel(_ modelId: String) async {
-        // TODO: POST /api/v1/cloud/models/{id}/use
-        print("Use cloud model: \(modelId)")
+        isPerformingAction = true
+        actionMessage = nil
+
+        do {
+            let url = URL(string: "http://localhost:8000/api/v1/cloud/models/\(modelId)/use")!
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+            if let token = KeychainService.shared.loadToken() {
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            }
+
+            let (_, response) = try await URLSession.shared.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw CloudError.invalidResponse
+            }
+
+            if httpResponse.statusCode == 200 {
+                actionMessage = "Model activated for chat use"
+                // Clear message after 3 seconds
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                actionMessage = nil
+            } else {
+                actionMessage = "Error: Failed to activate model (HTTP \(httpResponse.statusCode))"
+            }
+
+        } catch {
+            actionMessage = "Error: \(error.localizedDescription)"
+        }
+
+        isPerformingAction = false
     }
 
     @MainActor
     private func updateCloudModel(_ modelId: String) async {
-        // TODO: PUT /api/v1/cloud/models/{id}
-        print("Update cloud model: \(modelId)")
+        isPerformingAction = true
+        actionMessage = nil
+
+        // Store original model in case we need to rollback
+        let originalModel = cloudModels.first { $0.id == modelId }
+
+        do {
+            let url = URL(string: "http://localhost:8000/api/v1/cloud/models/\(modelId)")!
+            var request = URLRequest(url: url)
+            request.httpMethod = "PUT"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+            if let token = KeychainService.shared.loadToken() {
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            }
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw CloudError.invalidResponse
+            }
+
+            if httpResponse.statusCode == 200 {
+                // Parse updated model
+                let decoder = JSONDecoder()
+                decoder.keyDecodingStrategy = .convertFromSnakeCase
+                let updatedModel = try decoder.decode(OllamaModel.self, from: data)
+
+                // Update in cloudModels array
+                if let index = cloudModels.firstIndex(where: { $0.id == modelId }) {
+                    cloudModels[index] = updatedModel
+                    selectedModel = updatedModel
+                }
+
+                actionMessage = "Model updated successfully"
+                // Clear message after 3 seconds
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                actionMessage = nil
+            } else {
+                // Rollback on failure
+                if let original = originalModel,
+                   let index = cloudModels.firstIndex(where: { $0.id == modelId }) {
+                    cloudModels[index] = original
+                }
+                actionMessage = "Error: Failed to update model (HTTP \(httpResponse.statusCode))"
+            }
+
+        } catch {
+            // Rollback on failure
+            if let original = originalModel,
+               let index = cloudModels.firstIndex(where: { $0.id == modelId }) {
+                cloudModels[index] = original
+            }
+            actionMessage = "Error: \(error.localizedDescription)"
+        }
+
+        isPerformingAction = false
     }
 
     @MainActor
     private func deleteCloudModel(_ modelId: String) async {
-        // TODO: DELETE /api/v1/cloud/models/{id}
-        print("Delete cloud model: \(modelId)")
-        // Optimistic update
+        // Store original models in case we need to rollback
+        let originalModels = cloudModels
+
+        // Optimistic delete
         cloudModels.removeAll { $0.id == modelId }
+
+        // Clear selection if deleted model was selected
+        if selectedModel?.id == modelId {
+            selectedModel = nil
+        }
+
+        do {
+            let url = URL(string: "http://localhost:8000/api/v1/cloud/models/\(modelId)")!
+            var request = URLRequest(url: url)
+            request.httpMethod = "DELETE"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+            if let token = KeychainService.shared.loadToken() {
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            }
+
+            let (_, response) = try await URLSession.shared.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw CloudError.invalidResponse
+            }
+
+            if httpResponse.statusCode != 200 && httpResponse.statusCode != 204 {
+                // Rollback on failure
+                cloudModels = originalModels
+                cloudError = "Failed to delete model: HTTP \(httpResponse.statusCode)"
+            }
+
+        } catch {
+            // Rollback on failure
+            cloudModels = originalModels
+            cloudError = "Failed to delete model: \(error.localizedDescription)"
+        }
+    }
+}
+
+// MARK: - Cloud Errors
+
+enum CloudError: LocalizedError {
+    case invalidResponse
+    case unauthorized
+    case notFound
+    case serverError(Int)
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidResponse:
+            return "Invalid response from server"
+        case .unauthorized:
+            return "Not authenticated with MagnetarCloud"
+        case .notFound:
+            return "Model not found"
+        case .serverError(let code):
+            return "Server error (HTTP \(code))"
+        }
     }
 }
 

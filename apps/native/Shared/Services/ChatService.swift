@@ -80,6 +80,27 @@ final class ChatService {
         )
     }
 
+    // MARK: - Message Loading
+
+    func loadMessages(sessionId: String, limit: Int? = nil) async throws -> [ApiChatMessage] {
+        var path = "/v1/chat/sessions/\(sessionId)/messages"
+        if let limit = limit {
+            path += "?limit=\(limit)"
+        }
+
+        struct MessagesResponse: Codable {
+            let messages: [ApiChatMessage]
+            let total: Int?
+        }
+
+        let response: MessagesResponse = try await apiClient.request(
+            path: path,
+            method: .get
+        )
+
+        return response.messages
+    }
+
     // MARK: - Health Check
 
     func checkHealth() async throws -> Bool {

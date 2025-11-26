@@ -210,36 +210,111 @@ class ElohimOSMemory:
         query_type: Optional[str] = None,
         limit: int = 5
     ) -> List[Dict[str, Any]]:
-        """Find similar queries using semantic search"""
+        """Find similar queries using semantic search with cosine similarity"""
 
         # Generate embedding for search query
         search_embedding = self.memory._generate_embedding(query_text)
 
-        # For now, use simple text similarity
-        # TODO: Implement proper cosine similarity with embeddings
-        where_clause = "query_type = ?" if query_type else "1=1"
+        if not search_embedding:
+            logger.warning("Failed to generate embedding for similarity search, falling back to text search")
+            # Fallback to simple text search
+            where_clause = "query_type = ?" if query_type else "1=1"
+            params = [query_type] if query_type else []
+            params.append(f"%{query_text}%")
+            params.append(limit)
+
+            cursor = self.memory.conn.execute(f"""
+                SELECT
+                    id,
+                    query,
+                    query_type,
+                    execution_time,
+                    row_count,
+                    timestamp
+                FROM query_history
+                WHERE {where_clause}
+                  AND query LIKE ?
+                  AND success = 1
+                ORDER BY timestamp DESC
+                LIMIT ?
+            """, params)
+
+            rows = cursor.fetchall()
+            return [dict(row) for row in rows]
+
+        # Fetch candidate queries with embeddings
+        where_clause = "query_type = ? AND embedding IS NOT NULL" if query_type else "embedding IS NOT NULL"
         params = [query_type] if query_type else []
-        params.append(f"%{query_text}%")
-        params.append(limit)
 
-        cursor = self.memory.conn.execute(f"""
-            SELECT
-                id,
-                query,
-                query_type,
-                execution_time,
-                row_count,
-                timestamp
-            FROM query_history
-            WHERE {where_clause}
-              AND query LIKE ?
-              AND success = 1
-            ORDER BY timestamp DESC
-            LIMIT ?
-        """, params)
+        try:
+            cursor = self.memory.conn.execute(f"""
+                SELECT
+                    id,
+                    query,
+                    query_type,
+                    embedding,
+                    execution_time,
+                    row_count,
+                    timestamp
+                FROM query_history
+                WHERE {where_clause}
+                  AND success = 1
+                ORDER BY timestamp DESC
+                LIMIT 100
+            """, params)
 
-        rows = cursor.fetchall()
-        return [dict(row) for row in rows]
+            candidates = cursor.fetchall()
+
+            if not candidates:
+                return []
+
+            # Compute cosine similarity for each candidate
+            import numpy as np
+            import json
+
+            search_vec = np.array(search_embedding)
+            search_norm = np.linalg.norm(search_vec)
+
+            if search_norm == 0:
+                logger.warning("Search embedding has zero norm")
+                return []
+
+            similarities = []
+            for row in candidates:
+                try:
+                    # Deserialize embedding (stored as JSON string)
+                    candidate_embedding = json.loads(row['embedding']) if isinstance(row['embedding'], str) else row['embedding']
+                    candidate_vec = np.array(candidate_embedding)
+                    candidate_norm = np.linalg.norm(candidate_vec)
+
+                    if candidate_norm == 0:
+                        continue
+
+                    # Cosine similarity: dot(A, B) / (||A|| * ||B||)
+                    similarity = np.dot(search_vec, candidate_vec) / (search_norm * candidate_norm)
+
+                    similarities.append({
+                        "id": row['id'],
+                        "query": row['query'],
+                        "query_type": row['query_type'],
+                        "execution_time": row['execution_time'],
+                        "row_count": row['row_count'],
+                        "timestamp": row['timestamp'],
+                        "similarity_score": float(similarity)
+                    })
+                except Exception as e:
+                    logger.error(f"Failed to compute similarity for candidate {row.get('id')}: {e}")
+                    continue
+
+            # Sort by similarity score (highest first) and return top matches
+            similarities.sort(key=lambda x: x["similarity_score"], reverse=True)
+
+            return similarities[:limit]
+
+        except Exception as e:
+            logger.error(f"Error in cosine similarity search: {e}")
+            # Fallback to simple text search
+            return []
 
     def get_history_count(
         self,
