@@ -101,6 +101,11 @@ struct FileUpload: View {
         .onTapGesture {
             openFilePicker()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .clearWorkspace)) { _ in
+            withAnimation {
+                loadedFile = nil
+            }
+        }
     }
 
     // MARK: - Loaded File Card

@@ -37,6 +37,11 @@ struct CodeEditor: View {
                 .background(Color(nsColor: .textBackgroundColor))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .onReceive(NotificationCenter.default.publisher(for: .clearWorkspace)) { _ in
+            code = ""
+            hasFile = false
+            isExecuting = false
+        }
     }
 
     // MARK: - Toolbar

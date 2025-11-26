@@ -18,6 +18,8 @@ struct SidebarTabs: View {
         VStack(spacing: 0) {
             // Tab header
             HStack(spacing: 0) {
+                Spacer()
+
                 TabButton(
                     title: "Columns",
                     isSelected: selectedTab == .columns,

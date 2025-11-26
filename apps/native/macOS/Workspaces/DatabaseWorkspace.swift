@@ -112,6 +112,12 @@ struct DatabaseWorkspace: View {
             })
             .help("JSON Converter")
 
+            // Clear workspace
+            IconToolbarButton(icon: "trash", action: {
+                NotificationCenter.default.post(name: .clearWorkspace, object: nil)
+            })
+            .help("Clear Workspace")
+
             Spacer()
         }
     }
@@ -286,4 +292,10 @@ struct StructuredModal<Content: View>: View {
 #Preview {
     DatabaseWorkspace()
         .frame(width: 1200, height: 800)
+}
+
+// MARK: - Notifications
+
+extension Notification.Name {
+    static let clearWorkspace = Notification.Name("DatabaseWorkspaceClearWorkspace")
 }

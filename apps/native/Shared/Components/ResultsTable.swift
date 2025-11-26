@@ -38,6 +38,9 @@ struct ResultsTable: View {
                 emptyStateView
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .clearWorkspace)) { _ in
+            results = nil
+        }
     }
 
     // MARK: - Toolbar

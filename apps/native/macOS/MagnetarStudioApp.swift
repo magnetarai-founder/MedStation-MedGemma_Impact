@@ -29,6 +29,7 @@ struct MagnetarStudioApp: App {
                     if let window = NSApplication.shared.windows.first {
                         window.setContentSize(NSSize(width: 1400, height: 850))
                         window.minSize = NSSize(width: 1300, height: 750)
+                        window.isMovableByWindowBackground = true
                     }
                 }
         }
