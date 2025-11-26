@@ -10,6 +10,7 @@
 import SwiftUI
 
 struct DatabaseWorkspace: View {
+    @EnvironmentObject private var databaseStore: DatabaseStore
     @State private var sidebarWidth: CGFloat = 320
     @State private var topPaneHeight: CGFloat = 0.33 // 33% default
     @State private var showLibrary = false
@@ -31,39 +32,13 @@ struct DatabaseWorkspace: View {
             }
         }
         .sheet(isPresented: $showLibrary) {
-            StructuredModal(title: "Library", isPresented: $showLibrary) {
-                ScrollView {
-                    VStack(spacing: 12) {
-                        Text("Query library will appear here")
-                            .foregroundColor(.secondary)
-                            .padding(40)
-                    }
-                    .padding(24)
-                }
-            }
+            QueryLibraryModal(isPresented: $showLibrary, databaseStore: databaseStore)
         }
         .sheet(isPresented: $showQueryHistory) {
-            StructuredModal(title: "Query History", isPresented: $showQueryHistory) {
-                ScrollView {
-                    VStack(spacing: 12) {
-                        Text("Query history will appear here")
-                            .foregroundColor(.secondary)
-                            .padding(40)
-                    }
-                    .padding(24)
-                }
-            }
+            QueryHistoryModal(isPresented: $showQueryHistory, databaseStore: databaseStore)
         }
         .sheet(isPresented: $showJsonConverter) {
-            StructuredModal(title: "JSON Converter", isPresented: $showJsonConverter) {
-                VStack(spacing: 24) {
-                    Text("JSON converter will appear here")
-                        .foregroundColor(.secondary)
-                        .padding(40)
-                }
-                .padding(24)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
+            JsonConverterModal(isPresented: $showJsonConverter, databaseStore: databaseStore)
         }
     }
 
@@ -284,6 +259,434 @@ struct StructuredModal<Content: View>: View {
         .background(Color(nsColor: .windowBackgroundColor))
         .cornerRadius(12)
         .shadow(radius: 20)
+    }
+}
+
+// MARK: - Query History Modal
+
+struct QueryHistoryModal: View {
+    @Binding var isPresented: Bool
+    @ObservedObject var databaseStore: DatabaseStore
+
+    @State private var historyItems: [QueryHistoryItem] = []
+    @State private var isLoading: Bool = false
+    @State private var errorMessage: String? = nil
+
+    var body: some View {
+        StructuredModal(title: "Query History", isPresented: $isPresented) {
+            VStack(spacing: 0) {
+                if isLoading {
+                    ProgressView("Loading history...")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if let error = errorMessage {
+                    VStack(spacing: 16) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.system(size: 48))
+                            .foregroundColor(.orange)
+                        Text("Error")
+                            .font(.headline)
+                        Text(error)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                        Button("Retry") {
+                            Task { await loadHistory() }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if historyItems.isEmpty {
+                    VStack(spacing: 16) {
+                        Image(systemName: "clock")
+                            .font(.system(size: 48))
+                            .foregroundColor(.secondary)
+                        Text("No query history yet")
+                            .font(.headline)
+                        Text("Execute some queries to see them here")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    List {
+                        ForEach(historyItems) { item in
+                            QueryHistoryRow(item: item, onSelect: {
+                                databaseStore.loadEditorText(item.query, contentType: .sql)
+                                isPresented = false
+                            })
+                        }
+                    }
+                }
+            }
+        }
+        .onAppear {
+            Task { await loadHistory() }
+        }
+    }
+
+    @MainActor
+    private func loadHistory() async {
+        guard let sessionId = databaseStore.sessionId else { return }
+
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            let response: QueryHistoryResponse = try await ApiClient.shared.request(
+                path: "/v1/sessions/\(sessionId)/query-history",
+                method: .get
+            )
+            historyItems = response.history
+            isLoading = false
+        } catch {
+            errorMessage = error.localizedDescription
+            isLoading = false
+        }
+    }
+}
+
+struct QueryHistoryRow: View {
+    let item: QueryHistoryItem
+    let onSelect: () -> Void
+
+    var body: some View {
+        Button(action: onSelect) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(item.query)
+                    .font(.system(size: 13, design: .monospaced))
+                    .lineLimit(2)
+                    .foregroundColor(.primary)
+
+                HStack(spacing: 16) {
+                    Label(item.timestamp, systemImage: "clock")
+                    if let execTime = item.executionTime {
+                        Label("\(execTime)ms", systemImage: "speedometer")
+                    }
+                    if let rowCount = item.rowCount {
+                        Label("\(rowCount) rows", systemImage: "tablecells")
+                    }
+                }
+                .font(.caption)
+                .foregroundColor(.secondary)
+            }
+            .padding(.vertical, 8)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Query Library Modal
+
+struct QueryLibraryModal: View {
+    @Binding var isPresented: Bool
+    @ObservedObject var databaseStore: DatabaseStore
+
+    @State private var savedQueries: [SavedQuery] = []
+    @State private var isLoading: Bool = false
+    @State private var errorMessage: String? = nil
+    @State private var showNewQuery: Bool = false
+    @State private var newQueryName: String = ""
+    @State private var newQueryDescription: String = ""
+
+    var body: some View {
+        StructuredModal(title: "Query Library", isPresented: $isPresented) {
+            VStack(spacing: 0) {
+                // Header with New Query button
+                HStack {
+                    Spacer()
+                    Button {
+                        showNewQuery = true
+                    } label: {
+                        Label("Save Current Query", systemImage: "plus")
+                            .font(.system(size: 13))
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(databaseStore.editorText.isEmpty)
+                }
+                .padding()
+
+                Divider()
+
+                // Content
+                if isLoading {
+                    ProgressView("Loading library...")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if let error = errorMessage {
+                    VStack(spacing: 16) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.system(size: 48))
+                            .foregroundColor(.orange)
+                        Text("Error")
+                            .font(.headline)
+                        Text(error)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Button("Retry") {
+                            Task { await loadQueries() }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if savedQueries.isEmpty {
+                    VStack(spacing: 16) {
+                        Image(systemName: "folder")
+                            .font(.system(size: 48))
+                            .foregroundColor(.secondary)
+                        Text("No saved queries yet")
+                            .font(.headline)
+                        Text("Save your frequently used queries for quick access")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    List {
+                        ForEach(savedQueries) { query in
+                            SavedQueryRow(query: query, onSelect: {
+                                databaseStore.loadEditorText(query.query, contentType: .sql)
+                                isPresented = false
+                            })
+                        }
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showNewQuery) {
+            SaveQueryDialog(
+                queryName: $newQueryName,
+                queryDescription: $newQueryDescription,
+                onSave: {
+                    Task { await saveCurrentQuery() }
+                },
+                onCancel: {
+                    showNewQuery = false
+                    newQueryName = ""
+                    newQueryDescription = ""
+                }
+            )
+        }
+        .onAppear {
+            Task { await loadQueries() }
+        }
+    }
+
+    @MainActor
+    private func loadQueries() async {
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            let response: SavedQueriesResponse = try await ApiClient.shared.request(
+                path: "/v1/saved-queries?query_type=sql",
+                method: .get
+            )
+            savedQueries = response.queries
+            isLoading = false
+        } catch {
+            errorMessage = error.localizedDescription
+            isLoading = false
+        }
+    }
+
+    @MainActor
+    private func saveCurrentQuery() async {
+        guard !newQueryName.isEmpty else { return }
+
+        do {
+            let _: SaveQueryResponse = try await ApiClient.shared.request(
+                path: "/v1/saved-queries",
+                method: .post,
+                jsonBody: [
+                    "name": newQueryName,
+                    "query": databaseStore.editorText,
+                    "query_type": "sql",
+                    "description": newQueryDescription
+                ]
+            )
+
+            showNewQuery = false
+            newQueryName = ""
+            newQueryDescription = ""
+            await loadQueries()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+}
+
+struct SavedQueryRow: View {
+    let query: SavedQuery
+    let onSelect: () -> Void
+
+    var body: some View {
+        Button(action: onSelect) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(query.name)
+                    .font(.headline)
+                    .foregroundColor(.primary)
+
+                Text(query.query)
+                    .font(.system(size: 11, design: .monospaced))
+                    .lineLimit(2)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.vertical, 8)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+
+struct SaveQueryDialog: View {
+    @Binding var queryName: String
+    @Binding var queryDescription: String
+    let onSave: () -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Text("Save Query")
+                .font(.title2)
+                .fontWeight(.semibold)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Name")
+                    .font(.system(size: 13, weight: .medium))
+                TextField("Query name", text: $queryName)
+                    .textFieldStyle(.roundedBorder)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Description (optional)")
+                    .font(.system(size: 13, weight: .medium))
+                TextField("Description", text: $queryDescription)
+                    .textFieldStyle(.roundedBorder)
+            }
+
+            HStack(spacing: 12) {
+                Button("Cancel", action: onCancel)
+                    .buttonStyle(.bordered)
+
+                Button("Save", action: onSave)
+                    .buttonStyle(.borderedProminent)
+                    .disabled(queryName.isEmpty)
+            }
+        }
+        .padding(24)
+        .frame(width: 400)
+    }
+}
+
+// MARK: - JSON Converter Modal
+
+struct JsonConverterModal: View {
+    @Binding var isPresented: Bool
+    @ObservedObject var databaseStore: DatabaseStore
+
+    @State private var jsonInput: String = ""
+    @State private var isConverting: Bool = false
+    @State private var errorMessage: String? = nil
+    @State private var successMessage: String? = nil
+
+    var body: some View {
+        StructuredModal(title: "JSON to Excel Converter", isPresented: $isPresented) {
+            VStack(spacing: 20) {
+                // Instructions
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Paste your JSON data below to convert it to Excel format")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    Text("The JSON should be an array of objects with consistent keys")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+
+                // JSON Input
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("JSON Data")
+                        .font(.system(size: 13, weight: .medium))
+
+                    TextEditor(text: $jsonInput)
+                        .font(.system(size: 12, design: .monospaced))
+                        .frame(height: 300)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 4)
+                                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                        )
+                }
+
+                // Status Messages
+                if let error = errorMessage {
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.red)
+                        Text(error)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
+                }
+
+                if let success = successMessage {
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                        Text(success)
+                            .font(.caption)
+                            .foregroundColor(.green)
+                    }
+                }
+
+                // Convert Button
+                Button {
+                    Task { await convertJson() }
+                } label: {
+                    HStack {
+                        if isConverting {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                                .frame(width: 16, height: 16)
+                        } else {
+                            Image(systemName: "arrow.right.doc.on.clipboard")
+                        }
+                        Text(isConverting ? "Converting..." : "Convert to Excel")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(jsonInput.isEmpty || isConverting)
+            }
+            .padding(24)
+        }
+    }
+
+    @MainActor
+    private func convertJson() async {
+        guard let sessionId = databaseStore.sessionId else {
+            errorMessage = "No active session"
+            return
+        }
+
+        isConverting = true
+        errorMessage = nil
+        successMessage = nil
+
+        do {
+            let response: JsonConvertResponse = try await ApiClient.shared.request(
+                path: "/v1/sessions/\(sessionId)/json/convert",
+                method: .post,
+                jsonBody: ["json_data": jsonInput]
+            )
+
+            successMessage = "Converted successfully! File: \(response.filename)"
+            isConverting = false
+
+            // Auto-close after 2 seconds
+            try? await Task.sleep(for: .seconds(2))
+            isPresented = false
+        } catch {
+            errorMessage = error.localizedDescription
+            isConverting = false
+        }
     }
 }
 

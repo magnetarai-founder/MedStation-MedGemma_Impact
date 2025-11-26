@@ -117,6 +117,7 @@ struct QueryHistoryResponse: Codable {
 // MARK: - JSON Convert
 
 struct JsonConvertResponse: Codable {
+    let filename: String
     let success: Bool
     let outputFile: String?
     let totalRows: Int
@@ -126,6 +127,7 @@ struct JsonConvertResponse: Codable {
     let isPreviewOnly: Bool?
 
     enum CodingKeys: String, CodingKey {
+        case filename
         case success
         case outputFile = "output_file"
         case totalRows = "total_rows"
@@ -134,6 +136,17 @@ struct JsonConvertResponse: Codable {
         case preview
         case isPreviewOnly = "is_preview_only"
     }
+}
+
+// MARK: - Saved Queries
+
+struct SavedQueriesResponse: Codable {
+    let queries: [SavedQuery]
+}
+
+struct SaveQueryResponse: Codable {
+    let id: Int
+    let success: Bool
 }
 
 // MARK: - Empty Types
