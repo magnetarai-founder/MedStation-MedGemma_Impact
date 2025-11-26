@@ -63,8 +63,8 @@ struct ResultsTable: View {
                             .font(.system(size: 8))
                     }
                     .foregroundColor(.primary)
+                    .frame(height: 28)
                     .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
                 }
                 .buttonStyle(.plain)
                 .help("Export Format")
@@ -101,16 +101,20 @@ struct ResultsTable: View {
             }
 
             // Analyze with AI
-            ToolbarButton(action: {
+            Button(action: {
                 // Analyze with AI
             }) {
                 HStack(spacing: 6) {
                     Image(systemName: "message")
-                        .font(.system(size: 16))
+                        .font(.system(size: 14))
                     Text("Analyze with AI")
-                        .font(.system(size: 13))
+                        .font(.system(size: 11))
                 }
+                .foregroundColor(.primary)
+                .frame(height: 28)
+                .padding(.horizontal, 8)
             }
+            .buttonStyle(.plain)
             .disabled(results == nil)
             .opacity(results == nil ? 0.4 : 1.0)
             .help("Analyze with AI")

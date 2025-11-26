@@ -12,6 +12,7 @@ import SwiftUI
 
 struct Header: View {
     @State private var showTerminals = false
+    @State private var showActivity = false
     @State private var showPanicMode = false
     @State private var terminalCount = 0
 
@@ -45,6 +46,7 @@ struct Header: View {
                 ControlCluster(
                     terminalCount: terminalCount,
                     showTerminals: $showTerminals,
+                    showActivity: $showActivity,
                     showPanicMode: $showPanicMode
                 )
 
@@ -62,6 +64,15 @@ struct Header: View {
                 .frame(height: 1),
             alignment: .bottom
         )
+        .sheet(isPresented: $showTerminals) {
+            TerminalSheet()
+        }
+        .sheet(isPresented: $showActivity) {
+            ActivitySheet()
+        }
+        .sheet(isPresented: $showPanicMode) {
+            PanicModeSheet()
+        }
     }
 }
 
@@ -78,6 +89,7 @@ private struct BrandCluster: View {
 private struct ControlCluster: View {
     let terminalCount: Int
     @Binding var showTerminals: Bool
+    @Binding var showActivity: Bool
     @Binding var showPanicMode: Bool
 
     var body: some View {
@@ -88,7 +100,7 @@ private struct ControlCluster: View {
             .help("Terminals")
 
             HeaderToolbarButton(icon: "chart.bar.fill") {
-                // Show activity
+                showActivity = true
             }
             .help("Activity")
 
@@ -144,6 +156,58 @@ private struct HeaderToolbarButton: View {
                 isHovering = hovering
             }
         }
+    }
+}
+
+// MARK: - Sheet Views
+
+private struct TerminalSheet: View {
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("Terminal Manager")
+                .font(.system(size: 18, weight: .bold))
+
+            Text("Terminal management coming soon")
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+        }
+        .frame(width: 600, height: 400)
+        .padding()
+    }
+}
+
+private struct ActivitySheet: View {
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("Activity Monitor")
+                .font(.system(size: 18, weight: .bold))
+
+            Text("Activity monitoring coming soon")
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+        }
+        .frame(width: 600, height: 400)
+        .padding()
+    }
+}
+
+private struct PanicModeSheet: View {
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 48))
+                .foregroundColor(.red)
+
+            Text("Panic Mode")
+                .font(.system(size: 18, weight: .bold))
+
+            Text("Emergency shutdown and security features coming soon")
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(width: 600, height: 400)
+        .padding()
     }
 }
 
