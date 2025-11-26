@@ -428,8 +428,8 @@ struct QueryLibraryModal: View {
                                     databaseStore.loadEditorText(query.query, contentType: .sql)
                                     isPresented = false
                                 },
-                                onRename: { newName in
-                                    Task { await renameQuery(id: query.id, newName: newName) }
+                                onUpdate: { newName, newDescription, newSQL in
+                                    Task { await updateQuery(id: query.id, name: newName, description: newDescription, sql: newSQL) }
                                 },
                                 onDelete: {
                                     Task { await deleteQuery(id: query.id) }
@@ -468,12 +468,20 @@ struct QueryLibraryModal: View {
     }
 
     @MainActor
-    private func renameQuery(id: Int, newName: String) async {
+    private func updateQuery(id: Int, name: String, description: String, sql: String) async {
         do {
+            var jsonBody: [String: Any] = [
+                "name": name,
+                "query": sql
+            ]
+            if !description.isEmpty {
+                jsonBody["description"] = description
+            }
+
             let _: EmptyResponse = try await ApiClient.shared.request(
                 path: "/saved-queries/\(id)",
                 method: .put,
-                jsonBody: ["name": newName]
+                jsonBody: jsonBody
             )
             await loadQueries()
         } catch {
@@ -498,11 +506,11 @@ struct QueryLibraryModal: View {
 struct SavedQueryRow: View {
     let query: SavedQuery
     let onLoad: () -> Void
-    let onRename: (String) -> Void
+    let onUpdate: (String, String, String) -> Void  // name, description, sql
     let onDelete: () -> Void
 
     @State private var isHovering: Bool = false
-    @State private var showRenameDialog: Bool = false
+    @State private var showEditDialog: Bool = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -521,9 +529,9 @@ struct SavedQueryRow: View {
             // Hover action buttons
             if isHovering {
                 HStack(spacing: 8) {
-                    // Pencil - Rename
+                    // Pencil - Edit
                     Button(action: {
-                        showRenameDialog = true
+                        showEditDialog = true
                     }) {
                         Image(systemName: "pencil")
                             .font(.system(size: 14))
@@ -533,7 +541,7 @@ struct SavedQueryRow: View {
                             .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
-                    .help("Rename")
+                    .help("Edit query")
 
                     // Trash - Delete
                     Button(action: onDelete) {
@@ -570,58 +578,94 @@ struct SavedQueryRow: View {
                 isHovering = hovering
             }
         }
-        .sheet(isPresented: $showRenameDialog) {
-            RenameQueryDialog(
-                isPresented: $showRenameDialog,
-                currentName: query.name,
-                onRename: onRename
+        .sheet(isPresented: $showEditDialog) {
+            EditQueryDialog(
+                isPresented: $showEditDialog,
+                query: query,
+                onUpdate: onUpdate
             )
         }
     }
 }
 
-// MARK: - Rename Query Dialog
+// MARK: - Edit Query Dialog
 
-struct RenameQueryDialog: View {
+struct EditQueryDialog: View {
     @Binding var isPresented: Bool
-    let currentName: String
-    let onRename: (String) -> Void
+    let query: SavedQuery
+    let onUpdate: (String, String, String) -> Void  // name, description, sql
 
-    @State private var newName: String = ""
+    @State private var editedName: String = ""
+    @State private var editedDescription: String = ""
+    @State private var editedSQL: String = ""
 
     var body: some View {
         VStack(spacing: 20) {
-            Text("Rename Query")
-                .font(.title2)
-                .fontWeight(.semibold)
+            // Header
+            HStack {
+                Text("Edit Query")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                Spacer()
+                Button(action: { isPresented = false }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
 
+            // Name field
             VStack(alignment: .leading, spacing: 8) {
-                Text("New Name")
+                Text("Name")
                     .font(.system(size: 13, weight: .medium))
-                TextField("Query name", text: $newName)
+                TextField("Query name", text: $editedName)
                     .textFieldStyle(.roundedBorder)
             }
 
+            // Description field
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Description (optional)")
+                    .font(.system(size: 13, weight: .medium))
+                TextField("Description", text: $editedDescription)
+                    .textFieldStyle(.roundedBorder)
+            }
+
+            // SQL Editor
+            VStack(alignment: .leading, spacing: 8) {
+                Text("SQL Query")
+                    .font(.system(size: 13, weight: .medium))
+
+                TextEditor(text: $editedSQL)
+                    .font(.system(size: 13, design: .monospaced))
+                    .frame(height: 300)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                    )
+            }
+
+            // Action buttons
             HStack(spacing: 12) {
                 Button("Cancel") {
                     isPresented = false
                 }
                 .buttonStyle(.bordered)
 
-                Button("Rename") {
-                    if !newName.isEmpty {
-                        onRename(newName)
-                    }
+                Button("Save Changes") {
+                    onUpdate(editedName, editedDescription, editedSQL)
                     isPresented = false
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(newName.isEmpty || newName == currentName)
+                .disabled(editedName.isEmpty || editedSQL.isEmpty)
             }
         }
         .padding(24)
-        .frame(width: 400)
+        .frame(width: 600)
         .onAppear {
-            newName = currentName
+            editedName = query.name
+            editedDescription = query.description ?? ""
+            editedSQL = query.query
         }
     }
 }
