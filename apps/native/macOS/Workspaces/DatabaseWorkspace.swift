@@ -476,7 +476,7 @@ struct QueryLibraryModal: View {
 
         do {
             let response: SavedQueriesResponse = try await ApiClient.shared.request(
-                path: "/v1/saved-queries?query_type=sql",
+                path: "/saved-queries?query_type=sql",
                 method: .get
             )
             savedQueries = response.queries
@@ -493,7 +493,7 @@ struct QueryLibraryModal: View {
 
         do {
             let _: SaveQueryResponse = try await ApiClient.shared.request(
-                path: "/v1/saved-queries",
+                path: "/saved-queries",
                 method: .post,
                 jsonBody: [
                     "name": newQueryName,
