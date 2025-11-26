@@ -47,7 +47,7 @@ struct ResultsTable: View {
 
     private var toolbar: some View {
         HStack(spacing: 12) {
-            // Export dropdown + Download
+            // Export dropdown + Download + Clear
             ToolbarGroup {
                 // Export format picker
                 Menu {
@@ -85,6 +85,19 @@ struct ResultsTable: View {
                     }
                 }
                 .help("Download")
+
+                // Clear results
+                ToolbarIconButton(
+                    icon: "trash",
+                    isDisabled: results == nil,
+                    action: {
+                        results = nil
+                    }
+                ) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 16))
+                }
+                .help("Clear Results")
             }
 
             // Analyze with AI
@@ -103,21 +116,6 @@ struct ResultsTable: View {
             .help("Analyze with AI")
 
             Spacer()
-
-            // Clear results
-            ToolbarGroup {
-                ToolbarIconButton(
-                    icon: "trash",
-                    isDisabled: results == nil,
-                    action: {
-                        results = nil
-                    }
-                ) {
-                    Image(systemName: "trash")
-                        .font(.system(size: 16))
-                }
-                .help("Clear Results")
-            }
         }
     }
 
