@@ -38,8 +38,8 @@ struct CodeEditor: View {
                 .scrollContentBackground(.hidden)
                 .background(Color(nsColor: .textBackgroundColor))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .onChange(of: code) { newValue in
-                    databaseStore.editorText = newValue
+                .onChange(of: code) {
+                    databaseStore.editorText = code
                 }
         }
         .onReceive(NotificationCenter.default.publisher(for: .clearWorkspace)) { _ in

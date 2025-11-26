@@ -646,15 +646,19 @@ struct SaveQueryDialog: View {
         errorMessage = nil
 
         do {
+            var jsonBody: [String: Any] = [
+                "name": queryName,
+                "query": queryText,
+                "query_type": "sql"
+            ]
+            if !queryDescription.isEmpty {
+                jsonBody["description"] = queryDescription
+            }
+
             let _: SaveQueryResponse = try await ApiClient.shared.request(
                 path: "/saved-queries",
                 method: .post,
-                jsonBody: [
-                    "name": queryName,
-                    "query": queryText,
-                    "query_type": "sql",
-                    "description": queryDescription.isEmpty ? nil : queryDescription
-                ]
+                jsonBody: jsonBody
             )
 
             isSaving = false
