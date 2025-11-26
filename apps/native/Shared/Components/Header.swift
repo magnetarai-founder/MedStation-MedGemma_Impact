@@ -69,28 +69,9 @@ struct Header: View {
 
 private struct BrandCluster: View {
     var body: some View {
-        HStack(spacing: 10) {
-            if let logo = NSImage(named: "MagnetarLogo") {
-                Image(nsImage: logo)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 24, height: 24)
-            } else {
-                Image(systemName: "shield.fill")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [Color.magnetarPrimary, Color.magnetarSecondary],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-            }
-
-            Text("MagnetarStudio")
-                .font(.system(size: 22, weight: .bold))
-                .foregroundColor(.primary)
-        }
+        Text("MagnetarStudio")
+            .font(.system(size: 22, weight: .bold))
+            .foregroundColor(.primary)
     }
 }
 
