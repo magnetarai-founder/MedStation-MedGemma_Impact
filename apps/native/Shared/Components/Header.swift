@@ -42,15 +42,15 @@ struct Header: View {
 
             // Content
             HStack(alignment: .center, spacing: 16) {
-                BrandCluster()
-
-                Spacer()
-
                 ControlCluster(
                     terminalCount: terminalCount,
                     showTerminals: $showTerminals,
                     showPanicMode: $showPanicMode
                 )
+
+                Spacer()
+
+                BrandCluster()
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 10)
