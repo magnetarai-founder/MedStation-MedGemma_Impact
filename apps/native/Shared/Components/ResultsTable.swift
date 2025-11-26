@@ -63,10 +63,13 @@ struct ResultsTable: View {
                             .font(.system(size: 8))
                     }
                     .foregroundColor(.primary)
-                    .frame(height: 28)
-                    .padding(.horizontal, 8)
+                    .frame(width: 60, height: 28)
                 }
                 .buttonStyle(.plain)
+                .background(
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color(.controlBackgroundColor))
+                )
                 .help("Export Format")
 
                 ToolbarIconButton(
@@ -112,9 +115,13 @@ struct ResultsTable: View {
                 }
                 .foregroundColor(.primary)
                 .frame(height: 28)
-                .padding(.horizontal, 8)
+                .padding(.horizontal, 10)
             }
             .buttonStyle(.plain)
+            .background(
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color(.controlBackgroundColor))
+            )
             .disabled(results == nil)
             .opacity(results == nil ? 0.4 : 1.0)
             .help("Analyze with AI")
