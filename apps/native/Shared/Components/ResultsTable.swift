@@ -58,18 +58,15 @@ struct ResultsTable: View {
                 } label: {
                     HStack(spacing: 4) {
                         Text(exportFormat.rawValue)
-                            .font(.system(size: 11))
+                            .font(.system(size: 11, weight: .medium))
                         Image(systemName: "chevron.down")
-                            .font(.system(size: 8))
+                            .font(.system(size: 9, weight: .semibold))
                     }
                     .foregroundColor(.primary)
-                    .frame(width: 60, height: 28)
+                    .frame(height: 28)
+                    .padding(.horizontal, 8)
                 }
                 .buttonStyle(.plain)
-                .background(
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Color(.controlBackgroundColor))
-                )
                 .help("Export Format")
 
                 ToolbarIconButton(
@@ -109,19 +106,15 @@ struct ResultsTable: View {
             }) {
                 HStack(spacing: 6) {
                     Image(systemName: "message")
-                        .font(.system(size: 14))
+                        .font(.system(size: 14, weight: .medium))
                     Text("Analyze with AI")
-                        .font(.system(size: 11))
+                        .font(.system(size: 11, weight: .medium))
                 }
                 .foregroundColor(.primary)
                 .frame(height: 28)
-                .padding(.horizontal, 10)
+                .padding(.horizontal, 8)
             }
             .buttonStyle(.plain)
-            .background(
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(Color(.controlBackgroundColor))
-            )
             .disabled(results == nil)
             .opacity(results == nil ? 0.4 : 1.0)
             .help("Analyze with AI")
