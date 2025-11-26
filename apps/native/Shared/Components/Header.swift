@@ -69,38 +69,9 @@ struct Header: View {
 
 private struct BrandCluster: View {
     var body: some View {
-        HStack(spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(LinearGradient.magnetarGradient)
-                    .frame(width: 36, height: 36)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(Color.white.opacity(0.22), lineWidth: 0.5)
-                    )
-                    .shadow(color: Color.magnetarPrimary.opacity(0.25), radius: 14, x: 0, y: 8)
-
-                Image(systemName: "sparkles")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Magnetar Studio")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(.primary)
-
-                // Lightweight status line to replace the old pill
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(Color.green.opacity(0.75))
-                        .frame(width: 6, height: 6)
-                    Text("Connected")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.textSecondary)
-                }
-            }
-        }
+        Text("Magnetar Studio")
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundColor(.primary)
     }
 }
 
