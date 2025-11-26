@@ -458,6 +458,10 @@ struct QueryLibraryModal: View {
             savedQueries = response.queries
             isLoading = false
         } catch {
+            print("DEBUG: Failed to load queries - \(error)")
+            if let decodingError = error as? DecodingError {
+                print("DEBUG: Decoding error details - \(decodingError)")
+            }
             errorMessage = error.localizedDescription
             isLoading = false
         }

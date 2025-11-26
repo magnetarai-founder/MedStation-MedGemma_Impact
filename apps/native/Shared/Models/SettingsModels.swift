@@ -6,7 +6,7 @@ struct SavedQuery: Codable, Identifiable {
     let id: Int
     let name: String
     let query: String
-    let queryType: String
+    let queryType: String?
     let folder: String?
     let description: String?
     let tags: [String]?
@@ -27,10 +27,14 @@ struct SavedQuery: Codable, Identifiable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        // Required fields
         id = try container.decode(Int.self, forKey: .id)
         name = try container.decode(String.self, forKey: .name)
         query = try container.decode(String.self, forKey: .query)
-        queryType = try container.decode(String.self, forKey: .queryType)
+
+        // Optional fields
+        queryType = try container.decodeIfPresent(String.self, forKey: .queryType)
         folder = try container.decodeIfPresent(String.self, forKey: .folder)
         description = try container.decodeIfPresent(String.self, forKey: .description)
         createdAt = try container.decodeIfPresent(String.self, forKey: .createdAt)
@@ -45,6 +49,8 @@ struct SavedQuery: Codable, Identifiable {
         } else {
             tags = nil
         }
+
+        print("DEBUG: Decoded SavedQuery - id: \(id), name: \(name), queryType: \(queryType ?? "nil")")
     }
 }
 
