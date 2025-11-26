@@ -69,9 +69,21 @@ struct Header: View {
 
 private struct BrandCluster: View {
     var body: some View {
-        Text("MagnetarStudio")
-            .font(.system(size: 22, weight: .bold))
-            .foregroundColor(.primary)
+        HStack(spacing: 10) {
+            Image(systemName: "shield.fill")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [Color.magnetarPrimary, Color.magnetarSecondary],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+
+            Text("MagnetarStudio")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundColor(.primary)
+        }
     }
 }
 
