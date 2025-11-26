@@ -184,7 +184,8 @@ struct FileUpload: View {
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
 
-        if panel.runModal() == .OK, let url = panel.url {
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
             loadFile(at: url)
         }
     }
@@ -192,15 +193,13 @@ struct FileUpload: View {
     private func loadFile(at url: URL) {
         isUploading = true
 
-        // Simulate async file loading
-        DispatchQueue.global(qos: .userInitiated).async {
-            // Mock file loading - in real app, parse the file
-            let fileSize = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        Task {
+            // Load file metadata asynchronously
+            let fileSize = await Task.detached {
+                (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+            }.value
 
-            // Simulate processing delay
-            Thread.sleep(forTimeInterval: 0.3)
-
-            DispatchQueue.main.async {
+            await MainActor.run {
                 withAnimation {
                     loadedFile = LoadedFile(
                         name: url.lastPathComponent,

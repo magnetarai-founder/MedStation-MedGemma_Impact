@@ -216,16 +216,22 @@ struct CodeEditor: View {
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
 
-        if panel.runModal() == .OK, let url = panel.url {
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
+
             isUploading = true
-            DispatchQueue.global(qos: .userInitiated).async {
-                if let contents = try? String(contentsOf: url, encoding: .utf8) {
-                    DispatchQueue.main.async {
+            Task {
+                do {
+                    let contents = try await Task.detached {
+                        try String(contentsOf: url, encoding: .utf8)
+                    }.value
+
+                    await MainActor.run {
                         code = contents
                         isUploading = false
                     }
-                } else {
-                    DispatchQueue.main.async {
+                } catch {
+                    await MainActor.run {
                         isUploading = false
                     }
                 }
