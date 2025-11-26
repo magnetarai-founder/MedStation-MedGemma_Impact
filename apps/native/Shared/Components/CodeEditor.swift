@@ -14,6 +14,7 @@ struct CodeEditor: View {
     @State private var isExecuting: Bool = false
     @State private var hasFile: Bool = false
     @State private var showLibrary: Bool = false
+    @State private var isUploading: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -44,13 +45,22 @@ struct CodeEditor: View {
         HStack(spacing: 12) {
             // Upload/Download group
             ToolbarGroup {
-                ToolbarIconButton(icon: "arrow.up.doc", action: {
-                    // Upload
-                }) {
-                    Image(systemName: "arrow.up.doc")
-                        .font(.system(size: 16))
+                ToolbarIconButton(
+                    icon: "arrow.up.doc",
+                    isDisabled: isUploading,
+                    action: {
+                        uploadSQLFile()
+                    }
+                ) {
+                    if isUploading {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                    } else {
+                        Image(systemName: "arrow.up.doc")
+                            .font(.system(size: 16))
+                    }
                 }
-                .help("Upload")
+                .help("Upload .sql File")
 
                 ToolbarIconButton(
                     icon: "arrow.down.doc",
@@ -67,7 +77,18 @@ struct CodeEditor: View {
 
             // Library/Save group
             if code.isEmpty {
-                ToolbarButton(action: { showLibrary.toggle() }) {
+                Menu {
+                    Button("Load from Library") {
+                        showLibrary = true
+                    }
+                    Button("Recent Queries") {
+                        // Show recent
+                    }
+                    Divider()
+                    Button("Upload .sql File") {
+                        // Upload SQL
+                    }
+                } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "book")
                             .font(.system(size: 16))
@@ -76,7 +97,14 @@ struct CodeEditor: View {
                         Image(systemName: "chevron.down")
                             .font(.system(size: 10))
                     }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
                 }
+                .buttonStyle(.plain)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.gray.opacity(0.1))
+                )
                 .help("Browse Library")
             } else {
                 ToolbarButton(action: {
@@ -156,6 +184,31 @@ struct CodeEditor: View {
                         .font(.system(size: 16))
                 }
                 .help("Clear Editor")
+            }
+        }
+    }
+
+    // MARK: - SQL Upload
+
+    private func uploadSQLFile() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.init(filenameExtension: "sql") ?? .plainText]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+
+        if panel.runModal() == .OK, let url = panel.url {
+            isUploading = true
+            DispatchQueue.global(qos: .userInitiated).async {
+                if let contents = try? String(contentsOf: url, encoding: .utf8) {
+                    DispatchQueue.main.async {
+                        code = contents
+                        isUploading = false
+                    }
+                } else {
+                    DispatchQueue.main.async {
+                        isUploading = false
+                    }
+                }
             }
         }
     }

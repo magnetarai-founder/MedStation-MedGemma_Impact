@@ -31,16 +31,39 @@ struct DatabaseWorkspace: View {
             }
         }
         .sheet(isPresented: $showLibrary) {
-            Text("Query Library")
-                .frame(width: 600, height: 500)
+            StructuredModal(title: "Library", isPresented: $showLibrary) {
+                ScrollView {
+                    VStack(spacing: 12) {
+                        Text("Query library will appear here")
+                            .foregroundColor(.secondary)
+                            .padding(40)
+                    }
+                    .padding(24)
+                }
+            }
         }
         .sheet(isPresented: $showQueryHistory) {
-            Text("Query History")
-                .frame(width: 600, height: 500)
+            StructuredModal(title: "Query History", isPresented: $showQueryHistory) {
+                ScrollView {
+                    VStack(spacing: 12) {
+                        Text("Query history will appear here")
+                            .foregroundColor(.secondary)
+                            .padding(40)
+                    }
+                    .padding(24)
+                }
+            }
         }
         .sheet(isPresented: $showJsonConverter) {
-            Text("JSON Converter")
-                .frame(width: 600, height: 500)
+            StructuredModal(title: "JSON Converter", isPresented: $showJsonConverter) {
+                VStack(spacing: 24) {
+                    Text("JSON converter will appear here")
+                        .foregroundColor(.secondary)
+                        .padding(40)
+                }
+                .padding(24)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
         }
     }
 
@@ -207,6 +230,54 @@ extension View {
                 NSCursor.pop()
             }
         }
+    }
+}
+
+// MARK: - Structured Modal
+
+struct StructuredModal<Content: View>: View {
+    let title: String
+    @Binding var isPresented: Bool
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header with title + close X
+            HStack {
+                Text(title)
+                    .font(.title2)
+                    .fontWeight(.semibold)
+
+                Spacer()
+
+                Button {
+                    isPresented = false
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                        .frame(width: 28, height: 28)
+                        .background(
+                            Circle()
+                                .fill(Color(nsColor: .controlBackgroundColor))
+                        )
+                }
+                .buttonStyle(.plain)
+                .help("Close (Esc)")
+                .keyboardShortcut(.cancelAction)
+            }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 16)
+
+            Divider()
+
+            // Content
+            content
+        }
+        .frame(width: 700, height: 500)
+        .background(Color(nsColor: .windowBackgroundColor))
+        .cornerRadius(12)
+        .shadow(radius: 20)
     }
 }
 
