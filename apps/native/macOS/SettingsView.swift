@@ -7,6 +7,8 @@
 
 import SwiftUI
 import AppKit
+import ServiceManagement
+import UserNotifications
 
 struct SettingsView: View {
     @AppStorage("apiBaseURL") private var apiBaseURL = "http://localhost:8000"
@@ -48,12 +50,31 @@ struct SettingsView: View {
 // MARK: - General Settings
 
 struct GeneralSettingsView: View {
+    @StateObject private var settingsManager = SettingsManager.shared
+
     var body: some View {
         Form {
             Section("Application") {
-                Toggle("Launch at Login", isOn: .constant(false))
-                Toggle("Show in Menu Bar", isOn: .constant(true))
-                Toggle("Enable Notifications", isOn: .constant(true))
+                VStack(alignment: .leading, spacing: 8) {
+                    Toggle("Launch at Login", isOn: $settingsManager.launchAtLogin)
+                        .disabled(settingsManager.launchAtLoginStatus == .loading)
+
+                    statusLabel(settingsManager.launchAtLoginStatus)
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Toggle("Show in Menu Bar", isOn: $settingsManager.showMenuBar)
+                        .disabled(settingsManager.menuBarStatus == .loading)
+
+                    statusLabel(settingsManager.menuBarStatus)
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Toggle("Enable Notifications", isOn: $settingsManager.notificationsEnabled)
+                        .disabled(settingsManager.notificationsStatus == .loading)
+
+                    statusLabel(settingsManager.notificationsStatus)
+                }
             }
 
             Section("Editor") {
@@ -64,6 +85,11 @@ struct GeneralSettingsView: View {
         }
         .formStyle(.grouped)
         .padding()
+        .onAppear {
+            Task {
+                await settingsManager.checkInitialStates()
+            }
+        }
     }
 }
 
@@ -576,6 +602,222 @@ final class CloudAuthManager: ObservableObject {
     }
 }
 
+// MARK: - Settings Manager
+
+@MainActor
+final class SettingsManager: ObservableObject {
+    static let shared = SettingsManager()
+
+    // MARK: - Launch at Login
+    @AppStorage("launchAtLogin") var launchAtLogin: Bool = false {
+        didSet {
+            if launchAtLogin != oldValue {
+                Task {
+                    await toggleLaunchAtLogin(enabled: launchAtLogin)
+                }
+            }
+        }
+    }
+    @Published var launchAtLoginStatus: SimpleStatus = .idle
+
+    // MARK: - Menu Bar
+    @AppStorage("showMenuBar") var showMenuBar: Bool = false {
+        didSet {
+            if showMenuBar != oldValue {
+                toggleMenuBar(enabled: showMenuBar)
+            }
+        }
+    }
+    @Published var menuBarStatus: SimpleStatus = .idle
+
+    // MARK: - Notifications
+    @AppStorage("notificationsEnabled") var notificationsEnabled: Bool = false {
+        didSet {
+            if notificationsEnabled != oldValue {
+                Task {
+                    await toggleNotifications(enabled: notificationsEnabled)
+                }
+            }
+        }
+    }
+    @Published var notificationsStatus: SimpleStatus = .idle
+
+    private init() {}
+
+    // MARK: - Check Initial States
+
+    func checkInitialStates() async {
+        // Check launch at login status
+        if #available(macOS 13.0, *) {
+            let service = SMAppService.mainApp
+            launchAtLogin = (service.status == .enabled)
+        }
+
+        // Check notification authorization
+        let center = UNUserNotificationCenter.current()
+        let settings = await center.notificationSettings()
+
+        switch settings.authorizationStatus {
+        case .authorized:
+            notificationsEnabled = true
+            notificationsStatus = .idle
+        case .denied:
+            notificationsEnabled = false
+            notificationsStatus = .failure("Notifications denied in System Settings")
+        case .notDetermined:
+            notificationsStatus = .idle
+        default:
+            notificationsStatus = .idle
+        }
+    }
+
+    // MARK: - Launch at Login
+
+    private func toggleLaunchAtLogin(enabled: Bool) async {
+        guard #available(macOS 13.0, *) else {
+            launchAtLoginStatus = .failure("Requires macOS 13+")
+            launchAtLogin = false
+            return
+        }
+
+        launchAtLoginStatus = .loading
+
+        do {
+            let service = SMAppService.mainApp
+
+            if enabled {
+                try service.register()
+                launchAtLoginStatus = .success("Enabled")
+            } else {
+                try await service.unregister()
+                launchAtLoginStatus = .success("Disabled")
+            }
+
+            // Auto-clear success message
+            try? await Task.sleep(for: .seconds(2))
+            if launchAtLoginStatus.isSuccess {
+                launchAtLoginStatus = .idle
+            }
+        } catch {
+            launchAtLoginStatus = .failure(error.localizedDescription)
+            launchAtLogin = !enabled // Revert toggle
+        }
+    }
+
+    // MARK: - Menu Bar
+
+    private func toggleMenuBar(enabled: Bool) {
+        menuBarStatus = .loading
+
+        if enabled {
+            MenuBarManager.shared.show()
+            menuBarStatus = .success("Menu bar icon enabled")
+        } else {
+            MenuBarManager.shared.hide()
+            menuBarStatus = .success("Menu bar icon hidden")
+        }
+
+        // Auto-clear success message
+        Task {
+            try? await Task.sleep(for: .seconds(2))
+            if menuBarStatus.isSuccess {
+                menuBarStatus = .idle
+            }
+        }
+    }
+
+    // MARK: - Notifications
+
+    private func toggleNotifications(enabled: Bool) async {
+        notificationsStatus = .loading
+
+        let center = UNUserNotificationCenter.current()
+
+        if enabled {
+            // Request authorization
+            do {
+                let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
+
+                if granted {
+                    notificationsEnabled = true
+                    notificationsStatus = .success("Notifications enabled")
+                } else {
+                    notificationsEnabled = false
+                    notificationsStatus = .failure("Notifications denied")
+                }
+            } catch {
+                notificationsEnabled = false
+                notificationsStatus = .failure(error.localizedDescription)
+            }
+        } else {
+            // Cannot programmatically revoke - user must do it in System Settings
+            notificationsEnabled = false
+            notificationsStatus = .success("Disabled (revoke in System Settings if needed)")
+        }
+
+        // Auto-clear success message
+        try? await Task.sleep(for: .seconds(3))
+        if notificationsStatus.isSuccess {
+            notificationsStatus = .idle
+        }
+    }
+}
+
+// MARK: - Menu Bar Manager
+
+final class MenuBarManager {
+    static let shared = MenuBarManager()
+
+    private var statusItem: NSStatusItem?
+
+    private init() {}
+
+    func show() {
+        guard statusItem == nil else { return }
+
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+
+        if let button = item.button {
+            button.image = NSImage(systemSymbolName: "cube.box.fill", accessibilityDescription: "MagnetarStudio")
+            button.action = #selector(handleMenuBarClick)
+            button.target = self
+        }
+
+        // Create menu
+        let menu = NSMenu()
+
+        menu.addItem(NSMenuItem(title: "Open MagnetarStudio", action: #selector(openMainWindow), keyEquivalent: "o"))
+        menu.addItem(NSMenuItem.separator())
+        menu.addItem(NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ","))
+        menu.addItem(NSMenuItem.separator())
+        menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+
+        item.menu = menu
+        statusItem = item
+    }
+
+    func hide() {
+        guard let item = statusItem else { return }
+        NSStatusBar.system.removeStatusItem(item)
+        statusItem = nil
+    }
+
+    @objc private func handleMenuBarClick() {
+        // Menu is shown automatically
+    }
+
+    @objc private func openMainWindow() {
+        NSApp.activate(ignoringOtherApps: true)
+        if let window = NSApp.windows.first {
+            window.makeKeyAndOrderFront(nil)
+        }
+    }
+
+    @objc private func openSettings() {
+        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+    }
+}
+
 // MARK: - Preview
 
 #Preview {
@@ -589,6 +831,13 @@ enum SimpleStatus: Equatable {
     case loading
     case success(String)
     case failure(String)
+
+    var isSuccess: Bool {
+        if case .success = self {
+            return true
+        }
+        return false
+    }
 }
 
 @ViewBuilder

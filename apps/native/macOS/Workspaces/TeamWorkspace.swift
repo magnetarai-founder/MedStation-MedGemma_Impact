@@ -1693,14 +1693,20 @@ struct VaultWorkspace: View {
         }
         .sheet(isPresented: $showPreview) {
             if let file = selectedFile {
-                FilePreviewModal(file: file, isPresented: $showPreview, onDownload: {
-                    Task {
-                        await downloadFile(file)
-                    }
-                }, onDelete: {
-                    fileToDelete = file
-                    showDeleteConfirmation = true
-                })
+                FilePreviewModal(
+                    file: file,
+                    isPresented: $showPreview,
+                    onDownload: {
+                        Task {
+                            await downloadFile(file)
+                        }
+                    },
+                    onDelete: {
+                        fileToDelete = file
+                        showDeleteConfirmation = true
+                    },
+                    vaultPassword: password
+                )
             }
         }
         .sheet(isPresented: $showNewFolderDialog) {
@@ -2343,10 +2349,9 @@ struct VaultWorkspace: View {
         vaultError = nil
 
         do {
-            let currentFolder = currentPath.last ?? "/"
             _ = try await vaultService.createFolder(
                 name: newFolderName,
-                folderPath: nil,
+                folderPath: currentPath.last ?? "/",
                 vaultType: "real",
                 passphrase: password
             )
@@ -2543,6 +2548,13 @@ struct FilePreviewModal: View {
     @Binding var isPresented: Bool
     let onDownload: () -> Void
     let onDelete: () -> Void
+    let vaultPassword: String
+
+    @State private var isDownloading: Bool = false
+    @State private var downloadError: String? = nil
+    @State private var downloadSuccess: Bool = false
+
+    private let vaultService = VaultService.shared
 
     var body: some View {
         VStack(spacing: 0) {
@@ -2600,6 +2612,29 @@ struct FilePreviewModal: View {
                 Text("File preview rendering will appear here")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
+
+                // Download status messages
+                if downloadSuccess {
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                        Text("File downloaded successfully")
+                            .font(.system(size: 14))
+                            .foregroundColor(.green)
+                    }
+                    .padding(.top, 8)
+                }
+
+                if let error = downloadError {
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.red)
+                        Text(error)
+                            .font(.system(size: 14))
+                            .foregroundColor(.red)
+                    }
+                    .padding(.top, 8)
+                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(24)
@@ -2625,16 +2660,25 @@ struct FilePreviewModal: View {
                     )
                 }
                 .buttonStyle(.plain)
+                .disabled(isDownloading)
 
                 Spacer()
 
                 Button {
-                    onDownload()
+                    Task {
+                        await handleDownload()
+                    }
                 } label: {
                     HStack(spacing: 8) {
-                        Image(systemName: "arrow.down.circle")
-                            .font(.system(size: 16))
-                        Text("Download")
+                        if isDownloading {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                                .frame(width: 16, height: 16)
+                        } else {
+                            Image(systemName: downloadSuccess ? "checkmark.circle" : "arrow.down.circle")
+                                .font(.system(size: 16))
+                        }
+                        Text(isDownloading ? "Downloading..." : (downloadSuccess ? "Downloaded" : "Download"))
                             .font(.system(size: 14, weight: .medium))
                     }
                     .foregroundColor(.white)
@@ -2642,10 +2686,11 @@ struct FilePreviewModal: View {
                     .padding(.vertical, 10)
                     .background(
                         RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.magnetarPrimary)
+                            .fill(downloadSuccess ? Color.green : Color.magnetarPrimary)
                     )
                 }
                 .buttonStyle(.plain)
+                .disabled(isDownloading || downloadSuccess)
             }
             .padding(24)
             .background(Color(.controlBackgroundColor))
@@ -2658,7 +2703,55 @@ struct FilePreviewModal: View {
         }
         .frame(width: 700, height: 600)
         .background(Color(.windowBackgroundColor))
-        .cornerRadius(12)
+    }
+
+    // MARK: - Download Handler
+
+    @MainActor
+    private func handleDownload() async {
+        // Reset states
+        downloadError = nil
+        downloadSuccess = false
+
+        // Show save panel
+        let savePanel = NSSavePanel()
+        savePanel.nameFieldStringValue = file.name
+        savePanel.canCreateDirectories = true
+        savePanel.showsTagField = false
+
+        let response = savePanel.runModal()
+
+        // User cancelled
+        guard response == .OK, let destinationURL = savePanel.url else {
+            return
+        }
+
+        // Start download
+        isDownloading = true
+
+        do {
+            let data = try await vaultService.download(
+                fileId: file.id,
+                vaultType: "real",
+                passphrase: vaultPassword
+            )
+
+            try data.write(to: destinationURL)
+
+            downloadSuccess = true
+            isDownloading = false
+
+            // Auto-close after success (optional)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                isPresented = false
+            }
+        } catch let error as VaultError {
+            downloadError = error.localizedDescription
+            isDownloading = false
+        } catch {
+            downloadError = "Download failed: \(error.localizedDescription)"
+            isDownloading = false
+        }
     }
 }
 

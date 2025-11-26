@@ -209,7 +209,7 @@ final class VaultStore: ObservableObject {
             // Build full path
             let newPath = currentFolder == "/" ? "/\(name)" : "\(currentFolder)/\(name)"
 
-            try await service.createFolder(
+            _ = try await service.createFolder(
                 folderPath: newPath,
                 vaultType: vaultType,
                 passphrase: passphrase

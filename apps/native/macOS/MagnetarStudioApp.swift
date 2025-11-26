@@ -69,6 +69,15 @@ struct MagnetarStudioApp: App {
 // MARK: - App Delegate for URL Handling
 
 class AppDelegate: NSObject, NSApplicationDelegate {
+    @AppStorage("showMenuBar") private var showMenuBar: Bool = false
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // Initialize menu bar if enabled
+        if showMenuBar {
+            MenuBarManager.shared.show()
+        }
+    }
+
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
             handleURL(url)
