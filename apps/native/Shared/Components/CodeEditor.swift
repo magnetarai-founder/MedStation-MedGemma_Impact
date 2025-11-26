@@ -10,10 +10,12 @@
 import SwiftUI
 
 struct CodeEditor: View {
+    @EnvironmentObject private var databaseStore: DatabaseStore
     @State private var code: String = ""
     @State private var isExecuting: Bool = false
     @State private var hasFile: Bool = false
     @State private var showLibrary: Bool = false
+    @State private var showSaveModal: Bool = false
     @State private var isUploading: Bool = false
 
     var body: some View {
@@ -36,11 +38,24 @@ struct CodeEditor: View {
                 .scrollContentBackground(.hidden)
                 .background(Color(nsColor: .textBackgroundColor))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .onChange(of: code) { newValue in
+                    databaseStore.editorText = newValue
+                }
         }
         .onReceive(NotificationCenter.default.publisher(for: .clearWorkspace)) { _ in
             code = ""
             hasFile = false
             isExecuting = false
+        }
+        .onAppear {
+            code = databaseStore.editorText
+        }
+        .sheet(isPresented: $showSaveModal) {
+            SaveQueryDialog(
+                isPresented: $showSaveModal,
+                queryText: code,
+                databaseStore: databaseStore
+            )
         }
     }
 
@@ -113,7 +128,7 @@ struct CodeEditor: View {
                 .help("Browse Library")
             } else {
                 ToolbarButton(action: {
-                    // Save to library
+                    showSaveModal = true
                 }) {
                     HStack(spacing: 6) {
                         Image(systemName: "square.and.arrow.down")

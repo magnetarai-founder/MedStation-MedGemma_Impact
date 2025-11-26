@@ -383,29 +383,10 @@ struct QueryLibraryModal: View {
     @State private var savedQueries: [SavedQuery] = []
     @State private var isLoading: Bool = false
     @State private var errorMessage: String? = nil
-    @State private var showNewQuery: Bool = false
-    @State private var newQueryName: String = ""
-    @State private var newQueryDescription: String = ""
 
     var body: some View {
         StructuredModal(title: "Query Library", isPresented: $isPresented) {
             VStack(spacing: 0) {
-                // Header with New Query button
-                HStack {
-                    Spacer()
-                    Button {
-                        showNewQuery = true
-                    } label: {
-                        Label("Save Current Query", systemImage: "plus")
-                            .font(.system(size: 13))
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(databaseStore.editorText.isEmpty)
-                }
-                .padding()
-
-                Divider()
-
                 // Content
                 if isLoading {
                     ProgressView("Loading library...")
@@ -441,28 +422,23 @@ struct QueryLibraryModal: View {
                 } else {
                     List {
                         ForEach(savedQueries) { query in
-                            SavedQueryRow(query: query, onSelect: {
-                                databaseStore.loadEditorText(query.query, contentType: .sql)
-                                isPresented = false
-                            })
+                            SavedQueryRow(
+                                query: query,
+                                onLoad: {
+                                    databaseStore.loadEditorText(query.query, contentType: .sql)
+                                    isPresented = false
+                                },
+                                onRename: { newName in
+                                    Task { await renameQuery(id: query.id, newName: newName) }
+                                },
+                                onDelete: {
+                                    Task { await deleteQuery(id: query.id) }
+                                }
+                            )
                         }
                     }
                 }
             }
-        }
-        .sheet(isPresented: $showNewQuery) {
-            SaveQueryDialog(
-                queryName: $newQueryName,
-                queryDescription: $newQueryDescription,
-                onSave: {
-                    Task { await saveCurrentQuery() }
-                },
-                onCancel: {
-                    showNewQuery = false
-                    newQueryName = ""
-                    newQueryDescription = ""
-                }
-            )
         }
         .onAppear {
             Task { await loadQueries() }
@@ -488,24 +464,26 @@ struct QueryLibraryModal: View {
     }
 
     @MainActor
-    private func saveCurrentQuery() async {
-        guard !newQueryName.isEmpty else { return }
-
+    private func renameQuery(id: Int, newName: String) async {
         do {
-            let _: SaveQueryResponse = try await ApiClient.shared.request(
-                path: "/saved-queries",
-                method: .post,
-                jsonBody: [
-                    "name": newQueryName,
-                    "query": databaseStore.editorText,
-                    "query_type": "sql",
-                    "description": newQueryDescription
-                ]
+            let _: EmptyResponse = try await ApiClient.shared.request(
+                path: "/saved-queries/\(id)",
+                method: .put,
+                jsonBody: ["name": newName]
             )
+            await loadQueries()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
 
-            showNewQuery = false
-            newQueryName = ""
-            newQueryDescription = ""
+    @MainActor
+    private func deleteQuery(id: Int) async {
+        do {
+            let _: EmptyResponse = try await ApiClient.shared.request(
+                path: "/saved-queries/\(id)",
+                method: .delete
+            )
             await loadQueries()
         } catch {
             errorMessage = error.localizedDescription
@@ -515,32 +493,109 @@ struct QueryLibraryModal: View {
 
 struct SavedQueryRow: View {
     let query: SavedQuery
-    let onSelect: () -> Void
+    let onLoad: () -> Void
+    let onRename: (String) -> Void
+    let onDelete: () -> Void
+
+    @State private var isHovering: Bool = false
+    @State private var isEditing: Bool = false
+    @State private var editedName: String = ""
 
     var body: some View {
-        Button(action: onSelect) {
+        HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 8) {
-                Text(query.name)
+                if isEditing {
+                    TextField("Query name", text: $editedName, onCommit: {
+                        if !editedName.isEmpty {
+                            onRename(editedName)
+                        }
+                        isEditing = false
+                    })
+                    .textFieldStyle(.roundedBorder)
                     .font(.headline)
-                    .foregroundColor(.primary)
+                } else {
+                    Text(query.name)
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                        .onTapGesture(count: 2) {
+                            editedName = query.name
+                            isEditing = true
+                        }
+                }
 
                 Text(query.query)
                     .font(.system(size: 11, design: .monospaced))
                     .lineLimit(2)
                     .foregroundColor(.secondary)
             }
-            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            // Hover action buttons
+            if isHovering && !isEditing {
+                HStack(spacing: 8) {
+                    // Pencil - Rename
+                    Button(action: {
+                        editedName = query.name
+                        isEditing = true
+                    }) {
+                        Image(systemName: "pencil")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                            .frame(width: 28, height: 28)
+                            .background(Color.gray.opacity(0.1))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .help("Rename")
+
+                    // Trash - Delete
+                    Button(action: onDelete) {
+                        Image(systemName: "trash")
+                            .font(.system(size: 14))
+                            .foregroundColor(.red)
+                            .frame(width: 28, height: 28)
+                            .background(Color.red.opacity(0.1))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .help("Delete")
+
+                    // Arrow - Load
+                    Button(action: onLoad) {
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 14))
+                            .foregroundColor(.blue)
+                            .frame(width: 28, height: 28)
+                            .background(Color.blue.opacity(0.1))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .help("Load into editor")
+                }
+            }
         }
-        .buttonStyle(.plain)
+        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .background(isHovering ? Color.gray.opacity(0.05) : Color.clear)
+        .cornerRadius(8)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovering = hovering
+            }
+        }
     }
 }
 
 
 struct SaveQueryDialog: View {
-    @Binding var queryName: String
-    @Binding var queryDescription: String
-    let onSave: () -> Void
-    let onCancel: () -> Void
+    @Binding var isPresented: Bool
+    let queryText: String
+    @ObservedObject var databaseStore: DatabaseStore
+
+    @State private var queryName: String = ""
+    @State private var queryDescription: String = ""
+    @State private var isSaving: Bool = false
+    @State private var errorMessage: String? = nil
 
     var body: some View {
         VStack(spacing: 20) {
@@ -562,17 +617,52 @@ struct SaveQueryDialog: View {
                     .textFieldStyle(.roundedBorder)
             }
 
-            HStack(spacing: 12) {
-                Button("Cancel", action: onCancel)
-                    .buttonStyle(.bordered)
+            if let error = errorMessage {
+                Text(error)
+                    .font(.caption)
+                    .foregroundColor(.red)
+            }
 
-                Button("Save", action: onSave)
-                    .buttonStyle(.borderedProminent)
-                    .disabled(queryName.isEmpty)
+            HStack(spacing: 12) {
+                Button("Cancel") {
+                    isPresented = false
+                }
+                .buttonStyle(.bordered)
+
+                Button(isSaving ? "Saving..." : "Save") {
+                    Task { await saveQuery() }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(queryName.isEmpty || isSaving)
             }
         }
         .padding(24)
         .frame(width: 400)
+    }
+
+    @MainActor
+    private func saveQuery() async {
+        isSaving = true
+        errorMessage = nil
+
+        do {
+            let _: SaveQueryResponse = try await ApiClient.shared.request(
+                path: "/saved-queries",
+                method: .post,
+                jsonBody: [
+                    "name": queryName,
+                    "query": queryText,
+                    "query_type": "sql",
+                    "description": queryDescription.isEmpty ? nil : queryDescription
+                ]
+            )
+
+            isSaving = false
+            isPresented = false
+        } catch {
+            errorMessage = error.localizedDescription
+            isSaving = false
+        }
     }
 }
 
