@@ -50,6 +50,7 @@
 		E65EDDCF022977AA1854B1AA /* MagnetarStudioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0369ADDFF9623D901CC8207E /* MagnetarStudioApp.swift */; };
 		E68789013473A49D03D15C8B /* ChatWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA268C85AA8894BC92182D94 /* ChatWorkspace.swift */; };
 		E7655B4CD26D4096BB36C64E /* NetworkChatStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC1A48A6AB2B47E091FD7A11 /* NetworkChatStore.swift */; };
+		E840DDF0BB59FF2E5EFCF7DD /* VaultSetupWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBAFCA059EFBB30832A7C3B2 /* VaultSetupWizardView.swift */; };
 		E8E0336CBB99E532C5484361 /* NavigationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0B5547ECD973EFF39678E79 /* NavigationStore.swift */; };
 		EA7137A1464248E4B3DA0B7E /* VaultStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D400216101AE4ABBA95512A5 /* VaultStore.swift */; };
 		EBFCB595C54024DFB31B5D56 /* ChatStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E62FD8B9DE028C44A2F0816E /* ChatStore.swift */; };
@@ -102,6 +103,7 @@
 		B462A62F24C04C9E66B2D0CD /* KeychainManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainManager.swift; sourceTree = "<group>"; };
 		BFB37B6A745242FDB043D334 /* ChatModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatModels.swift; sourceTree = "<group>"; };
 		C8B00CD34FC941DB87FE17B3 /* WorkflowStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowStore.swift; sourceTree = "<group>"; };
+		CBAFCA059EFBB30832A7C3B2 /* VaultSetupWizardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VaultSetupWizardView.swift; sourceTree = "<group>"; };
 		CC1A48A6AB2B47E091FD7A11 /* NetworkChatStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkChatStore.swift; sourceTree = "<group>"; };
 		D400216101AE4ABBA95512A5 /* VaultStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultStore.swift; sourceTree = "<group>"; };
 		D5A9F666CAE746EDB38AE581 /* WorkflowModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowModels.swift; sourceTree = "<group>"; };
@@ -205,6 +207,7 @@
 				28E3301816CD44269E126C96 /* LoadingView.swift */,
 				624C9537C9E743BAB72D79DB /* SetupWizardView.swift */,
 				3DB05E6C67FE4427941ECD63 /* WelcomeView.swift */,
+				CBAFCA059EFBB30832A7C3B2 /* VaultSetupWizardView.swift */,
 			);
 			path = Auth;
 			sourceTree = "<group>";
@@ -385,6 +388,7 @@
 				965A14789C7D4F6BB6F09F0B /* LoadingView.swift in Sources */,
 				500A346FB7ED4D9B9ADD8F0C /* SetupWizardView.swift in Sources */,
 				C8CE1D6E95657B5967D53579 /* BiometricAuthService.swift in Sources */,
+				E840DDF0BB59FF2E5EFCF7DD /* VaultSetupWizardView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

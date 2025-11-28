@@ -14,17 +14,113 @@ final class VaultService {
 
     private init() {}
 
-    // MARK: - Unlock (Stub for now - real auth would go here)
+    // MARK: - Unlock
 
-    func unlock(password: String, requireTouchId: Bool = false) async throws -> Bool {
-        // For now, just verify the vault endpoint is accessible
-        // Real implementation would verify password with backend
-        do {
-            _ = try await listFolders(vaultType: "real", parentPath: "/")
-            return true
-        } catch {
-            return false
+    struct UnlockResponse: Codable {
+        let success: Bool
+        let vaultType: String?
+        let sessionId: String
+        let message: String
+    }
+
+    /// Unlock vault with password (automatically detects sensitive vs unsensitive)
+    func unlock(password: String, vaultId: String = "default", requireTouchId: Bool = false) async throws -> Bool {
+        let url = URL(string: "\(baseURL)/unlock/passphrase")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        if let token = KeychainService.shared.loadToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
+
+        // Build request body as URL-encoded form (FastAPI expects form data for this endpoint)
+        let bodyString = "vault_id=\(vaultId)&passphrase=\(password.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
+        request.httpBody = bodyString.data(using: .utf8)
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw VaultError.invalidResponse
+        }
+
+        if httpResponse.statusCode == 401 || httpResponse.statusCode == 403 {
+            throw VaultError.unauthorized
+        }
+
+        if httpResponse.statusCode == 429 {
+            throw VaultError.rateLimited
+        }
+
+        if httpResponse.statusCode != 200 {
+            throw VaultError.serverError(httpResponse.statusCode)
+        }
+
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let unlockResponse = try decoder.decode(UnlockResponse.self, from: data)
+
+        // Store session ID in keychain for future requests
+        if unlockResponse.success {
+            try? KeychainService.shared.saveToken(unlockResponse.sessionId, forKey: "vault_session_\(vaultId)")
+        }
+
+        return unlockResponse.success
+    }
+
+    /// Setup dual-password vault (sensitive + unsensitive)
+    func setupDualPassword(
+        vaultId: String = "default",
+        passwordSensitive: String,
+        passwordUnsensitive: String
+    ) async throws -> Bool {
+        let url = URL(string: "\(baseURL)/setup/dual-password")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        if let token = KeychainService.shared.loadToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        let body: [String: String] = [
+            "vault_id": vaultId,
+            "password_sensitive": passwordSensitive,
+            "password_unsensitive": passwordUnsensitive
+        ]
+
+        request.httpBody = try JSONEncoder().encode(body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw VaultError.invalidResponse
+        }
+
+        if httpResponse.statusCode == 400 {
+            // Passwords must differ
+            throw VaultError.invalidRequest("Sensitive and unsensitive passwords must be different")
+        }
+
+        if httpResponse.statusCode == 401 || httpResponse.statusCode == 403 {
+            throw VaultError.unauthorized
+        }
+
+        if httpResponse.statusCode != 200 {
+            throw VaultError.serverError(httpResponse.statusCode)
+        }
+
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let setupResponse = try decoder.decode(UnlockResponse.self, from: data)
+
+        // Store session ID
+        if setupResponse.success {
+            try? KeychainService.shared.saveToken(setupResponse.sessionId, forKey: "vault_session_\(vaultId)")
+        }
+
+        return setupResponse.success
     }
 
     // MARK: - List Files and Folders
@@ -395,6 +491,8 @@ enum VaultError: LocalizedError {
     case invalidURL
     case invalidResponse
     case unauthorized
+    case rateLimited
+    case invalidRequest(String)
     case serverError(Int)
 
     var errorDescription: String? {
@@ -404,7 +502,11 @@ enum VaultError: LocalizedError {
         case .invalidResponse:
             return "Invalid response from vault server"
         case .unauthorized:
-            return "Unauthorized. Vault setup may be required."
+            return "Unauthorized - incorrect password or vault not configured"
+        case .rateLimited:
+            return "Too many unlock attempts. Please wait 5 minutes."
+        case .invalidRequest(let message):
+            return message
         case .serverError(let code):
             return "Vault server error (HTTP \(code))"
         }

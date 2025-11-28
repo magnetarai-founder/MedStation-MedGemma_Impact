@@ -144,11 +144,11 @@ class BiometricUnlockRequest(BaseModel):
     signature: str = Field(..., description="WebAuthn signature (base64)")
 
 
-class DecoySetupRequest(BaseModel):
-    """Setup decoy mode (dual-password)"""
+class DualPasswordSetupRequest(BaseModel):
+    """Setup dual-password mode (sensitive vs unsensitive)"""
     vault_id: str = Field(..., description="Vault UUID")
-    password_real: str = Field(..., min_length=8, description="Real vault password")
-    password_decoy: str = Field(..., min_length=8, description="Decoy vault password")
+    password_sensitive: str = Field(..., min_length=8, description="Sensitive vault password")
+    password_unsensitive: str = Field(..., min_length=8, description="Unsensitive vault password")
 
 
 class UnlockResponse(BaseModel):
@@ -465,35 +465,36 @@ async def unlock_biometric(
         )
 
 
-@router.post("/setup/decoy", response_model=UnlockResponse)
-async def setup_decoy(
-    request: DecoySetupRequest,
+@router.post("/setup/dual-password", response_model=UnlockResponse)
+async def setup_dual_password(
+    request: DualPasswordSetupRequest,
     current_user: User = Depends(get_current_user)
 ):
     """
-    Setup decoy mode (dual-password system)
+    Setup dual-password mode (sensitive vs unsensitive vaults)
 
     Flow:
     1. Validate passwords differ
-    2. Derive KEKs for both real and decoy vaults
+    2. Derive KEKs for both sensitive and unsensitive vaults
     3. Store both wrapped KEKs
-    4. Optionally pre-populate decoy vault with benign files
+    4. Optionally pre-populate unsensitive vault with benign files
 
     Security:
-    - No indicator of which mode is active
+    - No indicator of which vault is active
     - Both passwords derive valid KEKs
     - Switching requires logout
+    - Never discloses which password was used (plausible deniability)
     """
     try:
         # Validate passwords differ
-        if request.password_real == request.password_decoy:
+        if request.password_sensitive == request.password_unsensitive:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Real and decoy passwords must differ"
+                detail="Sensitive and unsensitive passwords must differ"
             )
 
         logger.info(
-            "Decoy mode setup request",
+            "Dual-password setup request",
             extra={
                 "user_id": current_user.user_id,
                 "vault_id": sanitize_for_log(request.vault_id)
@@ -501,19 +502,19 @@ async def setup_decoy(
         )
 
         # Generate salts
-        salt_real = secrets.token_bytes(32)
-        salt_decoy = secrets.token_bytes(32)
+        salt_sensitive = secrets.token_bytes(32)
+        salt_unsensitive = secrets.token_bytes(32)
 
         # Derive KEKs
-        kek_real = _derive_kek_from_passphrase(request.password_real, salt_real)
-        kek_decoy = _derive_kek_from_passphrase(request.password_decoy, salt_decoy)
+        kek_sensitive = _derive_kek_from_passphrase(request.password_sensitive, salt_sensitive)
+        kek_unsensitive = _derive_kek_from_passphrase(request.password_unsensitive, salt_unsensitive)
 
         # Wrap KEKs using AES-KW with password-derived wrap keys
-        wrap_key_real = hashlib.sha256(request.password_real.encode()).digest()
-        wrap_key_decoy = hashlib.sha256(request.password_decoy.encode()).digest()
+        wrap_key_sensitive = hashlib.sha256(request.password_sensitive.encode()).digest()
+        wrap_key_unsensitive = hashlib.sha256(request.password_unsensitive.encode()).digest()
 
-        wrapped_kek_real = _wrap_kek(kek_real, wrap_key_real, method="aes_kw")
-        wrapped_kek_decoy = _wrap_kek(kek_decoy, wrap_key_decoy, method="aes_kw")
+        wrapped_kek_sensitive = _wrap_kek(kek_sensitive, wrap_key_sensitive, method="aes_kw")
+        wrapped_kek_unsensitive = _wrap_kek(kek_unsensitive, wrap_key_unsensitive, method="aes_kw")
 
         # Store in database
         with sqlite3.connect(str(VAULT_DB_PATH)) as conn:
@@ -540,10 +541,10 @@ async def setup_decoy(
                         updated_at = ?
                     WHERE user_id = ? AND vault_id = ?
                 """, (
-                    salt_real.hex(),
-                    wrapped_kek_real.hex(),
-                    salt_decoy.hex(),
-                    wrapped_kek_decoy.hex(),
+                    salt_sensitive.hex(),
+                    wrapped_kek_sensitive.hex(),
+                    salt_unsensitive.hex(),
+                    wrapped_kek_unsensitive.hex(),
                     "aes_kw",
                     datetime.now().isoformat(),
                     current_user.user_id,
@@ -564,10 +565,10 @@ async def setup_decoy(
                     secrets.token_urlsafe(16),
                     current_user.user_id,
                     request.vault_id,
-                    salt_real.hex(),
-                    wrapped_kek_real.hex(),
-                    salt_decoy.hex(),
-                    wrapped_kek_decoy.hex(),
+                    salt_sensitive.hex(),
+                    wrapped_kek_sensitive.hex(),
+                    salt_unsensitive.hex(),
+                    wrapped_kek_unsensitive.hex(),
                     "aes_kw",
                     datetime.now().isoformat(),
                     datetime.now().isoformat()
@@ -575,31 +576,41 @@ async def setup_decoy(
 
             conn.commit()
 
-        # Create session with real vault
+        # Create session with sensitive vault
         session_id = secrets.token_urlsafe(32)
         vault_sessions[(current_user.user_id, request.vault_id)] = {
-            'kek': kek_real,
+            'kek': kek_sensitive,
             'vault_type': 'real',
             'unlocked_at': time.time(),
             'session_id': session_id
         }
 
-        logger.info("Decoy mode setup successful", extra={"user_id": current_user.user_id})
+        logger.info("Dual-password setup successful", extra={"user_id": current_user.user_id})
 
         return UnlockResponse(
             success=True,
             session_id=session_id,
-            message="Decoy mode configured successfully"
+            message="Dual-password vault configured successfully"
         )
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Decoy setup failed: {e}", exc_info=True)
+        logger.error(f"Dual-password setup failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to setup decoy mode: {str(e)}"
+            detail=f"Failed to setup dual-password mode: {str(e)}"
         )
+
+
+# Backward compatibility alias
+@router.post("/setup/decoy", response_model=UnlockResponse, include_in_schema=False)
+async def setup_decoy_legacy(
+    request: DualPasswordSetupRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """Legacy endpoint - redirects to /setup/dual-password"""
+    return await setup_dual_password(request, current_user)
 
 
 @router.post("/unlock/passphrase", response_model=UnlockResponse)
