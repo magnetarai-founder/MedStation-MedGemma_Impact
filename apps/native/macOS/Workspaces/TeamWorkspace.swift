@@ -29,15 +29,25 @@ struct Team: Identifiable, Codable {
 struct TeamDocument: Identifiable, Codable {
     let id: String
     let title: String
-    let content: String?
+    let content: AnyCodable?  // Backend returns Any type (could be JSON object or string)
     let type: String
+    let createdAt: String
     let updatedAt: String
-    let createdBy: String?
+    let createdBy: String
+    let isPrivate: Bool
+    let securityLevel: String?
+    let sharedWith: [String]
+    let teamId: String?
 
     enum CodingKeys: String, CodingKey {
         case id, title, content, type
+        case createdAt = "created_at"
         case updatedAt = "updated_at"
         case createdBy = "created_by"
+        case isPrivate = "is_private"
+        case securityLevel = "security_level"
+        case sharedWith = "shared_with"
+        case teamId = "team_id"
     }
 }
 
@@ -1460,7 +1470,7 @@ struct DocsWorkspace: View {
             // Editor area - showing content
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text(doc.content ?? "No content")
+                    Text(doc.content?.stringValue ?? doc.content?.value as? String ?? "No content")
                         .font(.system(size: 14))
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding()
