@@ -14,10 +14,8 @@ import Foundation
 import SystemConfiguration
 
 struct Header: View {
-    @State private var showTerminals = false
     @State private var showActivity = false
     @State private var showPanicMode = false
-    @State private var terminalCount = 0
 
     var body: some View {
         ZStack(alignment: .center) {
@@ -47,8 +45,6 @@ struct Header: View {
             // Content
             HStack(alignment: .center, spacing: 16) {
                 ControlCluster(
-                    terminalCount: terminalCount,
-                    showTerminals: $showTerminals,
                     showActivity: $showActivity,
                     showPanicMode: $showPanicMode
                 )
@@ -87,18 +83,11 @@ private struct BrandCluster: View {
 }
 
 private struct ControlCluster: View {
-    let terminalCount: Int
-    @Binding var showTerminals: Bool
     @Binding var showActivity: Bool
     @Binding var showPanicMode: Bool
 
     var body: some View {
         HStack(spacing: 10) {
-            HeaderToolbarButton(icon: "terminal", label: "\(terminalCount)") {
-                openSystemTerminal()
-            }
-            .help("Open Terminal")
-
             HeaderToolbarButton(icon: "switch.2") {
                 showActivity = true
             }
@@ -112,18 +101,6 @@ private struct ControlCluster: View {
                 showPanicMode = true
             }
             .help("Panic Mode")
-        }
-    }
-
-    private func openSystemTerminal() {
-        // Try to open iTerm2 first, then fall back to Terminal.app
-        let iTerm = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.googlecode.iterm2")
-        let terminal = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Terminal")
-
-        if let iTermURL = iTerm {
-            NSWorkspace.shared.open(iTermURL)
-        } else if let terminalURL = terminal {
-            NSWorkspace.shared.open(terminalURL)
         }
     }
 }
@@ -185,9 +162,6 @@ private struct ControlCenterSheet: View {
     @State private var lastNetworkCheck: Date = Date()
     let timer = Timer.publish(every: 3, on: .main, in: .common).autoconnect()
 
-    // UI State
-    @State private var showActivityMonitor = false
-
     var body: some View {
         VStack(spacing: 0) {
             // Close button
@@ -215,59 +189,34 @@ private struct ControlCenterSheet: View {
 
             ScrollView {
                 VStack(spacing: 16) {
-                    // Quick Action Tiles
-                    HStack(spacing: 12) {
-                        // Terminal Tile
-                        Button {
-                            openSystemTerminal()
-                        } label: {
-                            HStack(spacing: 10) {
-                                Image(systemName: "terminal.fill")
-                                    .font(.system(size: 18))
-                                    .foregroundColor(.blue)
-                                Text("Terminal")
-                                    .font(.system(size: 13, weight: .medium))
-                                    .foregroundColor(.primary)
-                                Spacer()
-                            }
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 12)
-                            .background(Color.secondary.opacity(0.08))
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    // Terminal Button
+                    Button {
+                        openSystemTerminal()
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "terminal.fill")
+                                .font(.system(size: 18))
+                                .foregroundColor(.blue)
+                            Text("Terminal")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.primary)
+                            Spacer()
                         }
-                        .buttonStyle(.plain)
-
-                        // Activity Tile
-                        Button {
-                            showActivityMonitor.toggle()
-                        } label: {
-                            HStack(spacing: 10) {
-                                Image(systemName: "chart.bar.fill")
-                                    .font(.system(size: 18))
-                                    .foregroundColor(.green)
-                                Text("Activity")
-                                    .font(.system(size: 13, weight: .medium))
-                                    .foregroundColor(.primary)
-                                Spacer()
-                            }
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 12)
-                            .background(Color.secondary.opacity(showActivityMonitor ? 0.15 : 0.08))
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                        }
-                        .buttonStyle(.plain)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
+                        .background(Color.secondary.opacity(0.08))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
+                    .buttonStyle(.plain)
 
-                    // Activity Monitor (expandable, full width)
-                    if showActivityMonitor {
-                        ActivityMonitorTile(stats: stats)
-                    }
+                    // Activity Monitor - always visible
+                    ActivityMonitorTile(stats: stats)
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 24)
             }
         }
-        .frame(width: 500, height: showActivityMonitor ? 450 : 200)
+        .frame(width: 500, height: 450)
         .onAppear {
             updateSystemStats()
         }
