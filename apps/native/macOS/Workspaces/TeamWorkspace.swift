@@ -830,7 +830,12 @@ struct TeamChatSidebar: View {
             privateChannels = allChannels.filter { $0.type == "private" }
             directMessages = allChannels.filter { $0.type == "direct" }
         } catch {
-            print("Failed to load channels: \(error.localizedDescription)")
+            // Silently handle P2P service not initialized (expected in dev without libp2p)
+            if error.localizedDescription.contains("P2P service not initialized") {
+                print("ℹ️ P2P service not available (libp2p not installed) - using default channels")
+            } else {
+                print("Failed to load channels: \(error.localizedDescription)")
+            }
             // Keep default channels on error
         }
     }
