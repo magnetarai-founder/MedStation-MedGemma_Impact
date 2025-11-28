@@ -1604,7 +1604,13 @@ struct DocsWorkspace: View {
             documents = try await teamService.listDocuments()
             isLoading = false
         } catch {
-            errorMessage = error.localizedDescription
+            // Handle docs API not available (work in progress)
+            if error.localizedDescription.contains("404") || error.localizedDescription.contains("Not Found") {
+                print("ℹ️ Docs API not available yet - feature in development")
+                errorMessage = "Docs feature coming soon"
+            } else {
+                errorMessage = error.localizedDescription
+            }
             isLoading = false
         }
     }
