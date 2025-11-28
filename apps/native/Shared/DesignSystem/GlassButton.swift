@@ -44,7 +44,7 @@ struct GlassButton: View {
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .shadow(color: shadowColor, radius: isHovered ? 12 : 8, y: 4)
             .scaleEffect(isHovered ? 1.02 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isHovered)
+            .animation(.magnetarSpring, value: isHovered)
         }
         .buttonStyle(.plain)
         .onHover { hovering in

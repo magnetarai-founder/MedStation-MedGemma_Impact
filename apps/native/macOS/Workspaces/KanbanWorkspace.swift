@@ -8,8 +8,8 @@
 import SwiftUI
 
 struct KanbanWorkspace: View {
-    @State private var boards: [KanbanBoard] = KanbanBoard.mockBoards
-    @State private var tasks: [KanbanTask] = KanbanTask.mockTasks
+    @State private var boards: [KanbanBoard] = []
+    @State private var tasks: [KanbanTask] = []
     @State private var selectedBoard: KanbanBoard? = nil
     @State private var selectedTask: KanbanTask? = nil
     @State private var showNewBoardSheet = false
@@ -18,6 +18,7 @@ struct KanbanWorkspace: View {
     @State private var taskToDelete: KanbanTask? = nil
     @State private var newBoardName = ""
     @State private var newTaskTitle = ""
+    @State private var isLoading = false
 
     var body: some View {
         ThreePaneLayout {
@@ -59,6 +60,9 @@ struct KanbanWorkspace: View {
             }
         } message: { task in
             Text("Are you sure you want to delete '\(task.title)'?")
+        }
+        .onAppear {
+            loadBoardsAndTasks()
         }
     }
 
@@ -214,6 +218,25 @@ struct KanbanWorkspace: View {
                     title: "No task selected",
                     subtitle: "Select a task to view details"
                 )
+            }
+        }
+    }
+
+    // MARK: - Data Loading
+
+    private func loadBoardsAndTasks() {
+        // TODO: Connect to Kanban API when backend endpoint is ready
+        // For now, use mock data until /api/v1/kanban endpoint is implemented
+        isLoading = true
+
+        Task {
+            // Simulate API delay
+            try? await Task.sleep(nanoseconds: 500_000_000)
+
+            await MainActor.run {
+                boards = KanbanBoard.mockBoards
+                tasks = KanbanTask.mockTasks
+                isLoading = false
             }
         }
     }

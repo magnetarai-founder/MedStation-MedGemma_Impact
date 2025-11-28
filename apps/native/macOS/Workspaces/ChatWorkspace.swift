@@ -10,6 +10,7 @@ import SwiftUI
 struct ChatWorkspace: View {
     @Environment(ChatStore.self) private var chatStore
     @State private var messageInput: String = ""
+    @State private var showTimeline: Bool = false
 
     var body: some View {
         HStack(spacing: 0) {
@@ -131,10 +132,12 @@ struct ChatWorkspace: View {
 
                 // Right: Timeline button + Model selector
                 HStack(spacing: 12) {
-                    Button(action: {}) {
+                    Button(action: {
+                        showTimeline.toggle()
+                    }) {
                         Image(systemName: "clock.arrow.circlepath")
                             .font(.system(size: 14))
-                            .foregroundColor(.textSecondary)
+                            .foregroundColor(showTimeline ? .magnetarPrimary : .textSecondary)
                     }
                     .buttonStyle(.plain)
                     .help("Session Timeline")
@@ -183,6 +186,35 @@ struct ChatWorkspace: View {
 
             Divider()
 
+            // Error Banner
+            if let error = chatStore.error {
+                HStack(spacing: 12) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(.orange)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Error")
+                            .font(.system(size: 12, weight: .semibold))
+                        Text(error.localizedDescription)
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+
+                    Spacer()
+
+                    Button("Dismiss") {
+                        chatStore.error = nil
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+                .padding(12)
+                .background(Color.orange.opacity(0.1))
+                .cornerRadius(8)
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+            }
+
             // Messages area
             if chatStore.currentSession == nil {
                 welcomeView
@@ -197,6 +229,9 @@ struct ChatWorkspace: View {
             // Input area
             inputArea
                 .padding(16)
+        }
+        .sheet(isPresented: $showTimeline) {
+            TimelineSheet(session: chatStore.currentSession)
         }
     }
 
@@ -376,6 +411,153 @@ struct MessageRow: View {
         .padding(12)
         .background(message.role == .user ? Color.magnetarPrimary.opacity(0.06) : Color.surfaceSecondary.opacity(0.4))
         .cornerRadius(10)
+    }
+}
+
+// MARK: - Timeline Sheet
+
+struct TimelineSheet: View {
+    let session: ChatSession?
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(spacing: 0) {
+            timelineHeader
+            Divider()
+            timelineContent
+        }
+        .frame(width: 500, height: 600)
+    }
+
+    private var timelineHeader: some View {
+        HStack {
+            Text("Session Timeline")
+                .font(.system(size: 18, weight: .bold))
+            Spacer()
+            Button("Done") {
+                dismiss()
+            }
+            .buttonStyle(.bordered)
+        }
+        .padding(20)
+    }
+
+    @ViewBuilder
+    private var timelineContent: some View {
+        if let session = session {
+            SessionTimelineDetails(session: session)
+        } else {
+            emptyTimelineView
+        }
+    }
+
+    private var emptyTimelineView: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "clock")
+                .font(.system(size: 48))
+                .foregroundColor(.secondary)
+            Text("No session selected")
+                .font(.headline)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+private struct SessionTimelineDetails: View {
+    let session: ChatSession
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                sessionInfoCard
+                if !session.messages.isEmpty {
+                    messageHistoryList
+                }
+            }
+            .padding(20)
+        }
+    }
+
+    private var sessionInfoCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Session Details", systemImage: "info.circle")
+                .font(.system(size: 14, weight: .semibold))
+
+            InfoRow(label: "Title:", value: session.title)
+            InfoRow(label: "Model:", value: session.model)
+
+            HStack {
+                Text("Created:")
+                    .foregroundColor(.secondary)
+                Text(session.createdAt, style: .date)
+                Text(session.createdAt, style: .time)
+            }
+            .font(.system(size: 13))
+
+            InfoRow(label: "Messages:", value: "\(session.messages.count)")
+        }
+        .padding(16)
+        .background(Color.surfaceSecondary.opacity(0.3))
+        .cornerRadius(10)
+    }
+
+    private var messageHistoryList: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Message History", systemImage: "clock.arrow.circlepath")
+                .font(.system(size: 14, weight: .semibold))
+
+            ForEach(Array(session.messages.enumerated()), id: \.element.id) { index, message in
+                TimelineMessageRow(index: index, message: message)
+            }
+        }
+    }
+}
+
+private struct InfoRow: View {
+    let label: String
+    let value: String
+
+    var body: some View {
+        HStack {
+            Text(label)
+                .foregroundColor(.secondary)
+            Text(value)
+        }
+        .font(.system(size: 13))
+    }
+}
+
+private struct TimelineMessageRow: View {
+    let index: Int
+    let message: ChatMessage
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text("#\(index + 1)")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.secondary)
+                .frame(width: 30, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(message.role.displayName)
+                        .font(.system(size: 12, weight: .semibold))
+                    Spacer()
+                    Text(message.createdAt, style: .time)
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+
+                Text(message.content)
+                    .font(.system(size: 12))
+                    .lineLimit(3)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(12)
+        .background(Color.surfaceSecondary.opacity(0.2))
+        .cornerRadius(8)
     }
 }
 

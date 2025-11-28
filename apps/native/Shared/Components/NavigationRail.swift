@@ -73,22 +73,6 @@ struct NavigationRail: View {
                     navigationStore.activeWorkspace = .magnetarHub
                 }
                 .help("Admin (⌘5)")
-
-                // Settings button (not a workspace)
-                Button {
-                    showSettings = true
-                } label: {
-                    Image(systemName: "slider.horizontal.3")
-                        .font(.system(size: 22))
-                        .frame(width: 56, height: 56)
-                        .foregroundColor(.secondary)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(Color.clear)
-                        )
-                }
-                .buttonStyle(.plain)
-                .help("Settings")
             }
             .padding(.bottom, 16)
         }

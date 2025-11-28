@@ -8,6 +8,7 @@
 import Foundation
 import Observation
 
+@MainActor
 @Observable
 final class ModelsStore {
     var models: [OllamaModel] = []
@@ -18,7 +19,6 @@ final class ModelsStore {
 
     init() {}
 
-    @MainActor
     func fetchModels() async {
         isLoading = true
         error = nil

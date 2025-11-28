@@ -17,6 +17,8 @@ struct CodeEditor: View {
     @State private var showLibrary: Bool = false
     @State private var showSaveModal: Bool = false
     @State private var isUploading: Bool = false
+    @State private var showRecentQueries: Bool = false
+    @State private var debounceTask: Task<Void, Never>?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -38,8 +40,20 @@ struct CodeEditor: View {
                 .scrollContentBackground(.hidden)
                 .background(Color(nsColor: .textBackgroundColor))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .onChange(of: code) {
-                    databaseStore.editorText = code
+                .onChange(of: code) { _, newValue in
+                    // Cancel previous debounce task
+                    debounceTask?.cancel()
+
+                    // Create new debounced task (300ms delay)
+                    debounceTask = Task {
+                        try? await Task.sleep(nanoseconds: 300_000_000) // 300ms
+
+                        guard !Task.isCancelled else { return }
+
+                        await MainActor.run {
+                            databaseStore.editorText = newValue
+                        }
+                    }
                 }
         }
         .onReceive(NotificationCenter.default.publisher(for: .clearWorkspace)) { _ in
@@ -57,6 +71,15 @@ struct CodeEditor: View {
                 databaseStore: databaseStore
             )
         }
+        .sheet(isPresented: $showRecentQueries) {
+            RecentQueriesSheet(
+                isPresented: $showRecentQueries,
+                onSelectQuery: { query in
+                    code = query
+                    showRecentQueries = false
+                }
+            )
+        }
     }
 
     // MARK: - Toolbar
@@ -70,11 +93,11 @@ struct CodeEditor: View {
                         showLibrary = true
                     }
                     Button("Recent Queries") {
-                        // Show recent
+                        showRecentQueries = true
                     }
                     Divider()
                     Button("Upload .sql File") {
-                        // Upload SQL
+                        uploadSQLFile()
                     }
                 } label: {
                     HStack(spacing: 6) {
@@ -131,28 +154,28 @@ struct CodeEditor: View {
                     icon: "arrow.down.doc",
                     isDisabled: code.isEmpty,
                     action: {
-                        // Download
+                        downloadSQL()
                     }
                 ) {
                     Image(systemName: "arrow.down.doc")
                         .font(.system(size: 16))
                 }
-                .help("Download")
+                .help("Download as .sql")
             }
 
             // Preview/Run/Stop/Trash group
             ToolbarGroup {
                 ToolbarIconButton(
                     icon: "bolt",
-                    isDisabled: !hasFile || isExecuting,
+                    isDisabled: code.isEmpty || isExecuting,
                     action: {
-                        // Preview
+                        previewQuery()
                     }
                 ) {
                     Image(systemName: "bolt")
                         .font(.system(size: 16))
                 }
-                .help("Preview Query")
+                .help("Preview Query (first 100 rows)")
 
                 // Run button (primary)
                 ToolbarIconButton(
@@ -203,6 +226,36 @@ struct CodeEditor: View {
             }
 
             Spacer()
+        }
+    }
+
+    // MARK: - Actions
+
+    private func downloadSQL() {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.init(filenameExtension: "sql") ?? .plainText]
+        panel.nameFieldStringValue = "query.sql"
+        panel.canCreateDirectories = true
+
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
+
+            let sqlContent = code // Capture on main actor
+            Task.detached {
+                do {
+                    try sqlContent.write(to: url, atomically: true, encoding: .utf8)
+                } catch {
+                    print("Failed to save SQL file: \(error)")
+                }
+            }
+        }
+    }
+
+    private func previewQuery() {
+        Task {
+            isExecuting = true
+            await databaseStore.runQuery(sql: code, limit: 100, isPreview: true)
+            isExecuting = false
         }
     }
 
@@ -316,6 +369,85 @@ struct ToolbarIconButton<Content: View>: View {
         } else {
             return Color.clear
         }
+    }
+}
+
+// MARK: - Recent Queries Sheet
+
+struct RecentQueriesSheet: View {
+    @Binding var isPresented: Bool
+    let onSelectQuery: (String) -> Void
+    @AppStorage("recentQueries") private var recentQueriesData: Data = Data()
+
+    private var recentQueries: [String] {
+        (try? JSONDecoder().decode([String].self, from: recentQueriesData)) ?? []
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Text("Recent Queries")
+                    .font(.system(size: 18, weight: .bold))
+                Spacer()
+                Button("Done") {
+                    isPresented = false
+                }
+                .buttonStyle(.bordered)
+            }
+            .padding(20)
+
+            Divider()
+
+            // Content
+            if recentQueries.isEmpty {
+                VStack(spacing: 16) {
+                    Image(systemName: "clock")
+                        .font(.system(size: 48))
+                        .foregroundColor(.secondary)
+                    Text("No recent queries")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                    Text("Queries you run will appear here")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 8) {
+                        ForEach(Array(recentQueries.enumerated()), id: \.offset) { index, query in
+                            Button(action: {
+                                onSelectQuery(query)
+                            }) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    HStack {
+                                        Text("Query #\(recentQueries.count - index)")
+                                            .font(.system(size: 12, weight: .semibold))
+                                        Spacer()
+                                        Image(systemName: "chevron.right")
+                                            .font(.system(size: 10))
+                                            .foregroundColor(.secondary)
+                                    }
+
+                                    Text(query)
+                                        .font(.system(size: 12, design: .monospaced))
+                                        .lineLimit(2)
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding(12)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Color.surfaceSecondary.opacity(0.3))
+                                .cornerRadius(8)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(20)
+                }
+            }
+        }
+        .frame(width: 600, height: 500)
     }
 }
 

@@ -148,7 +148,7 @@ struct IconToolbarButton: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.2)) {
+            withAnimation(.magnetarStandard) {
                 isHovered = hovering
             }
         }
@@ -307,13 +307,21 @@ struct QueryHistoryModal: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    List {
-                        ForEach(historyItems) { item in
-                            QueryHistoryRow(item: item, onSelect: {
-                                databaseStore.loadEditorText(item.query, contentType: .sql)
-                                isPresented = false
-                            })
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            ForEach(historyItems) { item in
+                                QueryHistoryRow(item: item, onSelect: {
+                                    databaseStore.loadEditorText(item.query, contentType: .sql)
+                                    isPresented = false
+                                })
+                                .padding(.horizontal, 16)
+
+                                if item.id != historyItems.last?.id {
+                                    Divider()
+                                }
+                            }
                         }
+                        .padding(.vertical, 8)
                     }
                 }
             }
@@ -420,22 +428,30 @@ struct QueryLibraryModal: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    List {
-                        ForEach(savedQueries) { query in
-                            SavedQueryRow(
-                                query: query,
-                                onLoad: {
-                                    databaseStore.loadEditorText(query.query, contentType: .sql)
-                                    isPresented = false
-                                },
-                                onUpdate: { newName, newDescription, newSQL in
-                                    Task { await updateQuery(id: query.id, name: newName, description: newDescription, sql: newSQL) }
-                                },
-                                onDelete: {
-                                    Task { await deleteQuery(id: query.id) }
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            ForEach(savedQueries) { query in
+                                SavedQueryRow(
+                                    query: query,
+                                    onLoad: {
+                                        databaseStore.loadEditorText(query.query, contentType: .sql)
+                                        isPresented = false
+                                    },
+                                    onUpdate: { newName, newDescription, newSQL in
+                                        Task { await updateQuery(id: query.id, name: newName, description: newDescription, sql: newSQL) }
+                                    },
+                                    onDelete: {
+                                        Task { await deleteQuery(id: query.id) }
+                                    }
+                                )
+                                .padding(.horizontal, 16)
+
+                                if query.id != savedQueries.last?.id {
+                                    Divider()
                                 }
-                            )
+                            }
                         }
+                        .padding(.vertical, 8)
                     }
                 }
             }

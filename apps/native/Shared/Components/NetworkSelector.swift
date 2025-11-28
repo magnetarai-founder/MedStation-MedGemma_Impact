@@ -67,6 +67,30 @@ enum NetworkMode: String, CaseIterable {
         case .cloud: return "Cloud Relay"
         }
     }
+
+    var shortName: String {
+        switch self {
+        case .local: return "Offline"
+        case .p2p: return "P2P"
+        case .cloud: return "Cloud"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .local: return "wifi.slash"
+        case .p2p: return "point.3.connected.trianglepath.dotted"
+        case .cloud: return "cloud.fill"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .local: return .gray
+        case .p2p: return .purple
+        case .cloud: return .blue
+        }
+    }
 }
 
 // MARK: - Preview

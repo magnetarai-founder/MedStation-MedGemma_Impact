@@ -10,13 +10,19 @@ import SwiftUI
 struct TeamWorkspace: View {
     @State private var selectedView: TeamView = .chat
     @State private var selectedTeamMember: TeamMember? = nil
+    @State private var showNetworkStatus: Bool = false
+    @State private var showDiagnostics: Bool = false
+    @State private var showDataLab: Bool = false
+    @State private var showAddMember: Bool = false
+    @State private var teamMembers: [TeamMember] = []
+    @State private var isLoading: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
             // Horizontal Toolbar
             HStack(spacing: 12) {
                 // Network status indicator
-                Button(action: {}) {
+                Button(action: { showNetworkStatus = true }) {
                     HStack(spacing: 6) {
                         Image(systemName: "globe")
                             .font(.system(size: 14))
@@ -31,7 +37,7 @@ struct TeamWorkspace: View {
                 .buttonStyle(.plain)
 
                 // Diagnostics
-                Button(action: {}) {
+                Button(action: { showDiagnostics = true }) {
                     HStack(spacing: 6) {
                         Image(systemName: "waveform.path.ecg")
                             .font(.system(size: 14))
@@ -81,7 +87,7 @@ struct TeamWorkspace: View {
                 }
                 .buttonStyle(.plain)
 
-                Button(action: {}) {
+                Button(action: { showDataLab = true }) {
                     HStack(spacing: 6) {
                         Image(systemName: "cylinder")
                             .font(.system(size: 14))
@@ -115,7 +121,7 @@ struct TeamWorkspace: View {
 
                         Spacer()
 
-                        Button(action: {}) {
+                        Button(action: { showAddMember = true }) {
                             Image(systemName: "person.badge.plus")
                                 .font(.system(size: 14))
                                 .foregroundStyle(LinearGradient.magnetarGradient)
@@ -130,7 +136,7 @@ struct TeamWorkspace: View {
                     // Member list
                     ScrollView {
                         LazyVStack(spacing: 0) {
-                            ForEach(TeamMember.mockMembers) { member in
+                            ForEach(teamMembers) { member in
                                 TeamMemberRow(
                                     member: member,
                                     isSelected: selectedTeamMember?.id == member.id
@@ -168,6 +174,27 @@ struct TeamWorkspace: View {
                 }
             }
         }
+        .onAppear {
+            loadTeamMembers()
+        }
+        .sheet(isPresented: $showNetworkStatus) {
+            PlaceholderSheet(title: "Network Status", message: "Network discovery and P2P mesh status will appear here")
+        }
+        .sheet(isPresented: $showDiagnostics) {
+            PlaceholderSheet(title: "Diagnostics", message: "Team collaboration diagnostics and health metrics will appear here")
+        }
+        .sheet(isPresented: $showDataLab) {
+            PlaceholderSheet(title: "Data Lab", message: "Collaborative data analysis tools will appear here")
+        }
+        .sheet(isPresented: $showAddMember) {
+            PlaceholderSheet(title: "Add Team Member", message: "Invite team members via email or connection code")
+        }
+    }
+
+    private func loadTeamMembers() {
+        // TODO: Connect to Team API when backend is ready
+        // For now, use mock data until /api/v1/team endpoint is implemented
+        teamMembers = TeamMember.mockMembers
     }
 }
 
@@ -333,6 +360,45 @@ struct TeamMember: Identifiable {
         TeamMember(name: "David Wilson", role: "Engineer", email: "david@magnetar.studio", phone: "+1 (555) 456-7890", isOnline: true, lastActive: "Just now"),
         TeamMember(name: "Eve Martinez", role: "Junior Engineer", email: "eve@magnetar.studio", phone: "+1 (555) 567-8901", isOnline: false, lastActive: "Yesterday")
     ]
+}
+
+// MARK: - Placeholder Sheet
+
+struct PlaceholderSheet: View {
+    let title: String
+    let message: String
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(spacing: 20) {
+            HStack {
+                Text(title)
+                    .font(.system(size: 18, weight: .bold))
+                Spacer()
+                Button("Done") {
+                    dismiss()
+                }
+                .buttonStyle(.bordered)
+            }
+            .padding(20)
+
+            Divider()
+
+            VStack(spacing: 16) {
+                Image(systemName: "wrench.and.screwdriver")
+                    .font(.system(size: 48))
+                    .foregroundColor(.secondary)
+
+                Text(message)
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 40)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .frame(width: 500, height: 400)
+    }
 }
 
 #Preview {

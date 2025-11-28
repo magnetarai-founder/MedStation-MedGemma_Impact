@@ -189,20 +189,45 @@ struct FileUpload: View {
 
         Task {
             // Load file metadata asynchronously
-            let fileSize = await Task.detached {
-                (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+            let (fileSize, rows, cols) = await Task.detached {
+                let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+                let (rowCount, colCount) = Self.detectFileMetadata(url: url)
+                return (size, rowCount, colCount)
             }.value
 
             await MainActor.run {
                 loadedFile = LoadedFile(
                     name: url.lastPathComponent,
-                    rows: 1250, // Mock
-                    cols: 8,    // Mock
+                    rows: rows,
+                    cols: cols,
                     sizeBytes: fileSize
                 )
                 isUploading = false
             }
         }
+    }
+
+    // MARK: - File Metadata Detection
+
+    private static nonisolated func detectFileMetadata(url: URL) -> (rows: Int, cols: Int) {
+        guard let contents = try? String(contentsOf: url, encoding: .utf8) else {
+            return (0, 0)
+        }
+
+        let lines = contents.components(separatedBy: .newlines).filter { !$0.isEmpty }
+        guard !lines.isEmpty else { return (0, 0) }
+
+        // Detect delimiter (CSV or TSV)
+        let firstLine = lines[0]
+        let delimiter: Character = firstLine.contains("\t") ? "\t" : ","
+
+        // Count columns from first line
+        let columns = firstLine.split(separator: delimiter).count
+
+        // Count rows (excluding header)
+        let rows = max(lines.count - 1, 0)
+
+        return (rows, columns)
     }
 }
 

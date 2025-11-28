@@ -117,3 +117,42 @@ extension LinearGradient {
         endPoint: .bottomTrailing
     )
 }
+
+// MARK: - Animation Constants
+
+extension Animation {
+    /// Quick animation for UI state changes (150ms)
+    static let magnetarQuick = Animation.easeInOut(duration: 0.15)
+
+    /// Standard animation for most UI transitions (200ms)
+    static let magnetarStandard = Animation.easeInOut(duration: 0.2)
+
+    /// Smooth animation for larger transitions (300ms)
+    static let magnetarSmooth = Animation.easeInOut(duration: 0.3)
+
+    /// Spring animation for interactive elements (hover, press)
+    static let magnetarSpring = Animation.spring(response: 0.3, dampingFraction: 0.7)
+
+    /// Gentle spring for subtle interactive feedback
+    static let magnetarGentleSpring = Animation.spring(response: 0.25, dampingFraction: 0.8)
+}
+
+extension AnyTransition {
+    /// Standard fade transition
+    static let magnetarFade = AnyTransition.opacity.animation(.magnetarQuick)
+
+    /// Slide from trailing edge
+    static let magnetarSlideTrailing = AnyTransition.move(edge: .trailing)
+        .combined(with: .opacity)
+        .animation(.magnetarStandard)
+
+    /// Slide from bottom edge
+    static let magnetarSlideBottom = AnyTransition.move(edge: .bottom)
+        .combined(with: .opacity)
+        .animation(.magnetarStandard)
+
+    /// Scale and fade
+    static let magnetarScale = AnyTransition.scale(scale: 0.95)
+        .combined(with: .opacity)
+        .animation(.magnetarSmooth)
+}

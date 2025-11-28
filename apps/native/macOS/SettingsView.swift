@@ -51,6 +51,9 @@ struct SettingsView: View {
 
 struct GeneralSettingsView: View {
     @StateObject private var settingsManager = SettingsManager.shared
+    @AppStorage("autoSaveChatSessions") private var autoSaveChatSessions = true
+    @AppStorage("showLineNumbers") private var showLineNumbers = true
+    @AppStorage("wordWrap") private var wordWrap = false
 
     var body: some View {
         Form {
@@ -78,9 +81,9 @@ struct GeneralSettingsView: View {
             }
 
             Section("Editor") {
-                Toggle("Auto-save Chat Sessions", isOn: .constant(true))
-                Toggle("Show Line Numbers", isOn: .constant(true))
-                Toggle("Word Wrap", isOn: .constant(false))
+                Toggle("Auto-save Chat Sessions", isOn: $autoSaveChatSessions)
+                Toggle("Show Line Numbers", isOn: $showLineNumbers)
+                Toggle("Word Wrap", isOn: $wordWrap)
             }
         }
         .formStyle(.grouped)
@@ -178,6 +181,8 @@ struct APISettingsView: View {
 
 struct SecuritySettingsView: View {
     @Binding var enableBiometrics: Bool
+    @AppStorage("autoLockEnabled") private var autoLockEnabled = true
+    @AppStorage("autoLockTimeout") private var autoLockTimeout = 15
     @State private var cacheStatus: SimpleStatus = .idle
     @State private var keychainStatus: SimpleStatus = .idle
 
@@ -192,14 +197,15 @@ struct SecuritySettingsView: View {
             }
 
             Section("Session") {
-                Toggle("Auto-lock after Inactivity", isOn: .constant(true))
+                Toggle("Auto-lock after Inactivity", isOn: $autoLockEnabled)
 
-                Picker("Timeout", selection: .constant(15)) {
+                Picker("Timeout", selection: $autoLockTimeout) {
                     Text("5 minutes").tag(5)
                     Text("15 minutes").tag(15)
                     Text("30 minutes").tag(30)
                     Text("1 hour").tag(60)
                 }
+                .disabled(!autoLockEnabled)
             }
 
             Section("Data") {
@@ -264,6 +270,10 @@ struct SecuritySettingsView: View {
 
 struct AppearanceSettingsView: View {
     @Binding var theme: String
+    @AppStorage("enableBlurEffects") private var enableBlurEffects = true
+    @AppStorage("reduceTransparency") private var reduceTransparency = false
+    @AppStorage("glassOpacity") private var glassOpacity = 0.5
+    @AppStorage("editorFontSize") private var editorFontSize = 14
 
     var body: some View {
         Form {
@@ -281,16 +291,21 @@ struct AppearanceSettingsView: View {
             }
 
             Section("Liquid Glass") {
-                Toggle("Enable Blur Effects", isOn: .constant(true))
-                Toggle("Reduce Transparency", isOn: .constant(false))
+                Toggle("Enable Blur Effects", isOn: $enableBlurEffects)
+                Toggle("Reduce Transparency", isOn: $reduceTransparency)
 
-                Slider(value: .constant(0.5), in: 0...1) {
-                    Text("Glass Opacity")
+                VStack(alignment: .leading, spacing: 8) {
+                    Slider(value: $glassOpacity, in: 0...1) {
+                        Text("Glass Opacity")
+                    }
+                    Text(String(format: "%.0f%%", glassOpacity * 100))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
 
             Section("Font") {
-                Picker("Editor Font Size", selection: .constant(14)) {
+                Picker("Editor Font Size", selection: $editorFontSize) {
                     Text("12pt").tag(12)
                     Text("14pt").tag(14)
                     Text("16pt").tag(16)

@@ -86,7 +86,7 @@ struct MainAppView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .transition(.opacity.animation(.easeInOut(duration: 0.15)))
+                .transition(.magnetarFade)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

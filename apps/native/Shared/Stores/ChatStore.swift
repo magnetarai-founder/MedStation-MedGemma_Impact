@@ -8,6 +8,7 @@
 import Foundation
 import Observation
 
+@MainActor
 @Observable
 final class ChatStore {
     // Published state
@@ -35,7 +36,6 @@ final class ChatStore {
 
     // MARK: - Model Management
 
-    @MainActor
     func fetchModels() async {
         do {
             let url = URL(string: "http://localhost:8000/api/v1/chat/models")!
@@ -48,14 +48,18 @@ final class ChatStore {
             if selectedModel.isEmpty, let first = availableModels.first {
                 selectedModel = first
             }
+
+            // Clear any previous errors
+            error = nil
         } catch {
+            // Show error to user instead of silent print
+            self.error = .loadFailed("Could not load AI models. Backend may be offline.")
             print("Failed to fetch models: \(error)")
         }
     }
 
     // MARK: - Session Management
 
-    @MainActor
     func createSession(title: String = "New Chat", model: String = "mistral") async {
         let session = ChatSession(title: title, model: model)
         sessions.insert(session, at: 0)
@@ -63,15 +67,12 @@ final class ChatStore {
         messages = []
     }
 
-    @MainActor
     func selectSession(_ session: ChatSession) {
         currentSession = session
-        // Load messages for this session (from SwiftData or API)
-        // For now, just clear
-        messages = []
+        // Load messages from the session
+        messages = session.messages
     }
 
-    @MainActor
     func deleteSession(_ session: ChatSession) {
         sessions.removeAll { $0.id == session.id }
         if currentSession?.id == session.id {
@@ -82,7 +83,6 @@ final class ChatStore {
 
     // MARK: - Messaging
 
-    @MainActor
     func sendMessage(_ text: String) async {
         guard let session = currentSession else {
             error = .noActiveSession
@@ -191,7 +191,6 @@ final class ChatStore {
         isStreaming = false
     }
 
-    @MainActor
     func regenerateLastResponse() async {
         // Remove last assistant message
         if let lastIndex = messages.lastIndex(where: { $0.role == .assistant }) {
@@ -204,7 +203,6 @@ final class ChatStore {
         }
     }
 
-    @MainActor
     func clearMessages() {
         messages.removeAll()
     }

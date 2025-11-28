@@ -148,40 +148,21 @@ struct ResultsTable: View {
                     alignment: .bottom
                 )
 
-                // Data rows
-                ForEach(0..<results.rows.count, id: \.self) { rowIndex in
-                    HStack(spacing: 0) {
-                        ForEach(0..<results.columns.count, id: \.self) { colIndex in
-                            let value = results.rows[rowIndex][colIndex]
-
-                            if value == nil {
-                                Text("null")
-                                    .font(.system(size: 12))
-                                    .italic()
-                                    .foregroundColor(.secondary)
-                                    .lineLimit(1)
-                                    .truncationMode(.tail)
-                                    .frame(minWidth: 120, alignment: .leading)
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 8)
-                            } else {
-                                Text(value!)
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.primary)
-                                    .lineLimit(1)
-                                    .truncationMode(.tail)
-                                    .frame(minWidth: 120, alignment: .leading)
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 8)
+                // Data rows - LazyVStack for better performance with large datasets
+                LazyVStack(spacing: 0) {
+                    ForEach(0..<results.rows.count, id: \.self) { rowIndex in
+                        HStack(spacing: 0) {
+                            ForEach(0..<results.columns.count, id: \.self) { colIndex in
+                                TableCell(value: results.rows[rowIndex][colIndex])
                             }
                         }
+                        .overlay(
+                            Rectangle()
+                                .fill(Color.gray.opacity(0.1))
+                                .frame(height: 1),
+                            alignment: .bottom
+                        )
                     }
-                    .overlay(
-                        Rectangle()
-                            .fill(Color.gray.opacity(0.1))
-                            .frame(height: 1),
-                        alignment: .bottom
-                    )
                 }
             }
         }
@@ -265,6 +246,35 @@ struct QueryResults {
         ],
         isLimited: false
     )
+}
+
+// MARK: - Table Cell Component
+
+struct TableCell: View {
+    let value: String?
+
+    var body: some View {
+        if let value = value {
+            Text(value)
+                .font(.system(size: 12))
+                .foregroundColor(.primary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(minWidth: 120, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+        } else {
+            Text("null")
+                .font(.system(size: 12))
+                .italic()
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(minWidth: 120, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+        }
+    }
 }
 
 // MARK: - Preview
