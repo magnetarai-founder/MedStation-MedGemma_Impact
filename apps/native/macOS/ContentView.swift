@@ -6,10 +6,12 @@
 //
 
 import SwiftUI
+import LocalAuthentication
 
 struct ContentView: View {
     @StateObject private var authStore = AuthStore.shared
     @EnvironmentObject private var databaseStore: DatabaseStore
+    @State private var attemptedBiometricLogin = false
 
     var body: some View {
         Group {
@@ -39,6 +41,12 @@ struct ContentView: View {
             if authStore.authState == .authenticated {
                 await databaseStore.createSession()
             }
+
+            // Attempt biometric login on app launch if not already authenticated and has saved credentials
+            if authStore.authState == .welcome && !attemptedBiometricLogin {
+                attemptedBiometricLogin = true
+                await attemptBiometricAutoLogin()
+            }
         }
         .onChange(of: authStore.authState) { _, newState in
             // Create session when user becomes authenticated
@@ -49,6 +57,51 @@ struct ContentView: View {
             }
         }
         .environmentObject(authStore)
+    }
+
+    // MARK: - Biometric Auto-Login
+
+    private func attemptBiometricAutoLogin() async {
+        let keychainService = KeychainService.shared
+        let biometricService = BiometricAuthService.shared
+
+        // Check if biometric credentials are saved
+        guard keychainService.hasBiometricCredentials(),
+              biometricService.isBiometricAvailable else {
+            return
+        }
+
+        do {
+            // Authenticate with biometrics (silently fail if user cancels)
+            let success = try await biometricService.authenticate(
+                reason: "Sign in to MagnetarStudio"
+            )
+
+            guard success else {
+                return
+            }
+
+            // Load credentials from keychain
+            let context = LAContext()
+            let credentials = try keychainService.loadBiometricCredentials(context: context)
+
+            // Login with stored credentials
+            let response = try await AuthService.shared.login(
+                username: credentials.username,
+                password: credentials.password
+            )
+
+            // Save token and trigger bootstrap
+            await authStore.saveToken(response.token)
+
+        } catch BiometricError.userCancel {
+            // User cancelled - silently ignore
+            return
+        } catch {
+            // Other errors - silently ignore (user can manually login)
+            print("Biometric auto-login failed: \(error.localizedDescription)")
+            return
+        }
     }
 }
 

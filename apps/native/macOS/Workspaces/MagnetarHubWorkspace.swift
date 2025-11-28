@@ -483,11 +483,17 @@ struct MagnetarHubWorkspace: View {
 
             let (data, response) = try await URLSession.shared.data(for: request)
 
+            // Handle 404 gracefully (endpoint not yet implemented)
             guard let httpResponse = response as? HTTPURLResponse else {
-                throw CloudError.invalidResponse
+                throw URLError(.badServerResponse)
             }
 
-            if httpResponse.statusCode == 200 {
+            if httpResponse.statusCode == 404 {
+                // Cloud models endpoint not yet implemented - use empty list
+                cloudModels = []
+                isLoadingCloudModels = false
+                return
+            } else if httpResponse.statusCode == 200 {
                 // Parse cloud models (same format as OllamaModel)
                 let decoder = JSONDecoder()
                 decoder.keyDecodingStrategy = .convertFromSnakeCase

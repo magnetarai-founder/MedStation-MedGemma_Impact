@@ -2,7 +2,7 @@
 //  NavigationStore.swift
 //  MagnetarStudio
 //
-//  Manages active workspace/tab navigation.
+//  Manages active workspace/tab navigation with state persistence.
 //
 
 import Foundation
@@ -11,8 +11,33 @@ import Observation
 @MainActor
 @Observable
 final class NavigationStore {
-    var activeWorkspace: Workspace = .database  // Default to Database (matching React)
-    var isSidebarVisible: Bool = true
+    private static let workspaceKey = "magnetar.lastActiveWorkspace"
+    private static let sidebarKey = "magnetar.isSidebarVisible"
+
+    var activeWorkspace: Workspace {
+        didSet {
+            saveWorkspaceState()
+        }
+    }
+
+    var isSidebarVisible: Bool {
+        didSet {
+            saveSidebarState()
+        }
+    }
+
+    init() {
+        // Restore last active workspace or default to chat
+        if let savedWorkspace = UserDefaults.standard.string(forKey: Self.workspaceKey),
+           let workspace = Workspace(rawValue: savedWorkspace) {
+            self.activeWorkspace = workspace
+        } else {
+            self.activeWorkspace = .chat  // Default to AI Chat
+        }
+
+        // Restore sidebar visibility (default to true)
+        self.isSidebarVisible = UserDefaults.standard.object(forKey: Self.sidebarKey) as? Bool ?? true
+    }
 
     func navigate(to workspace: Workspace) {
         activeWorkspace = workspace
@@ -20,6 +45,16 @@ final class NavigationStore {
 
     func toggleSidebar() {
         isSidebarVisible.toggle()
+    }
+
+    // MARK: - State Persistence
+
+    private func saveWorkspaceState() {
+        UserDefaults.standard.set(activeWorkspace.rawValue, forKey: Self.workspaceKey)
+    }
+
+    private func saveSidebarState() {
+        UserDefaults.standard.set(isSidebarVisible, forKey: Self.sidebarKey)
     }
 }
 
