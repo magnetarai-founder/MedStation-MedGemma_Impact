@@ -58,16 +58,6 @@ final class AuthStore: ObservableObject {
                 let deviceId: String
                 let role: String
                 let expiresIn: Int
-
-                enum CodingKeys: String, CodingKey {
-                    case token
-                    case refreshToken = "refresh_token"
-                    case userId = "user_id"
-                    case username
-                    case deviceId = "device_id"
-                    case role
-                    case expiresIn = "expires_in"
-                }
             }
 
             let response: LoginResponse = try await apiClient.request(

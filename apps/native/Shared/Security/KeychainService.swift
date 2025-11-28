@@ -16,11 +16,6 @@ final class KeychainService {
 
     func saveToken(_ token: String, forKey key: String? = nil) throws {
         let accountKey = key ?? tokenKey
-
-        // DEVELOPMENT BYPASS: Skip keychain to avoid prompts
-        #if DEBUG
-        return
-        #else
         let data = Data(token.utf8)
 
         // Delete existing item first
@@ -39,16 +34,11 @@ final class KeychainService {
         guard status == errSecSuccess else {
             throw KeychainServiceError.saveFailed(status)
         }
-        #endif
     }
 
     func loadToken(forKey key: String? = nil) -> String? {
         let accountKey = key ?? tokenKey
 
-        // DEVELOPMENT BYPASS: Return nil to avoid keychain prompts
-        #if DEBUG
-        return nil
-        #else
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -67,16 +57,11 @@ final class KeychainService {
         }
 
         return token
-        #endif
     }
 
     func deleteToken(forKey key: String? = nil) throws {
         let accountKey = key ?? tokenKey
 
-        // DEVELOPMENT BYPASS: Skip keychain to avoid prompts
-        #if DEBUG
-        return
-        #else
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -88,7 +73,6 @@ final class KeychainService {
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw KeychainServiceError.deleteFailed(status)
         }
-        #endif
     }
 
     // MARK: - Biometric Credentials Storage
