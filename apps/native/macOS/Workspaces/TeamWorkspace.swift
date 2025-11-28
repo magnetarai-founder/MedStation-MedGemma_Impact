@@ -141,14 +141,14 @@ final class TeamService {
 
     func listDocuments() async throws -> [TeamDocument] {
         try await apiClient.request(
-            path: "/v1/docs",
+            path: "/v1/docs/documents",
             method: .get
         )
     }
 
     func createDocument(title: String, content: String, type: String) async throws -> TeamDocument {
         try await apiClient.request(
-            path: "/v1/docs",
+            path: "/v1/docs/documents",
             method: .post,
             jsonBody: [
                 "title": title,
@@ -164,7 +164,7 @@ final class TeamService {
         if let content = content { body["content"] = content }
 
         return try await apiClient.request(
-            path: "/v1/docs/\(id)",
+            path: "/v1/docs/documents/\(id)",
             method: .put,
             jsonBody: body
         )
@@ -1604,13 +1604,7 @@ struct DocsWorkspace: View {
             documents = try await teamService.listDocuments()
             isLoading = false
         } catch {
-            // Handle docs API not available (work in progress)
-            if error.localizedDescription.contains("404") || error.localizedDescription.contains("Not Found") {
-                print("ℹ️ Docs API not available yet - feature in development")
-                errorMessage = "Docs feature coming soon"
-            } else {
-                errorMessage = error.localizedDescription
-            }
+            errorMessage = error.localizedDescription
             isLoading = false
         }
     }
