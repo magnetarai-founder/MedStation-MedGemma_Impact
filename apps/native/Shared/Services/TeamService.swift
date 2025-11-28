@@ -187,14 +187,14 @@ final class TeamService {
 
     func listDocuments() async throws -> [TeamDocument] {
         try await apiClient.request(
-            path: "/v1/documents",
+            path: "/v1/docs/documents",
             method: .get
         )
     }
 
     func createDocument(title: String, content: String, type: String) async throws -> TeamDocument {
         try await apiClient.request(
-            path: "/v1/documents",
+            path: "/v1/docs/documents",
             method: .post,
             jsonBody: [
                 "title": title,
@@ -210,7 +210,7 @@ final class TeamService {
         if let content = content { body["content"] = content }
 
         return try await apiClient.request(
-            path: "/v1/documents/\(id)",
+            path: "/v1/docs/documents/\(id)",
             method: .put,
             jsonBody: body
         )

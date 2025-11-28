@@ -1313,24 +1313,25 @@ struct FileSharingPanel: View {
 struct DocsWorkspace: View {
     @State private var sidebarVisible: Bool = true
     @State private var activeDocument: TeamDocument? = nil
-    @State private var showDocTypeSelector: Bool = false
-    @State private var selectedDocType: DocumentType = .document
-
     @State private var documents: [TeamDocument] = []
     @State private var isLoading: Bool = false
     @State private var errorMessage: String? = nil
-    @State private var showNewDocumentDialog: Bool = false
-    @State private var newDocTitle: String = ""
-    @State private var newDocContent: String = ""
+    @State private var showNewDocumentModal: Bool = false
 
     private let teamService = TeamService.shared
 
     var body: some View {
         HStack(spacing: 0) {
-            // Left Sidebar
+            // Left Sidebar - New Slack-style sidebar
             if sidebarVisible {
-                docsSidebar
-                    .frame(width: 256)
+                SlackStyleDocsSidebar(
+                    activeDocument: $activeDocument,
+                    documents: documents,
+                    onNewDocument: {
+                        showNewDocumentModal = true
+                    }
+                )
+                .frame(width: 256)
 
                 Divider()
             }
@@ -1349,105 +1350,77 @@ struct DocsWorkspace: View {
         .task {
             await loadDocuments()
         }
-        .sheet(isPresented: $showNewDocumentDialog) {
-            newDocumentSheet
-        }
-    }
-
-    // MARK: - Sidebar
-
-    private var docsSidebar: some View {
-        VStack(spacing: 0) {
-            // Header
-            VStack(spacing: 12) {
-                HStack(spacing: 8) {
-                    Text("Documents")
-                        .font(.system(size: 14, weight: .semibold))
-
-                    Spacer()
-
-                    HStack(spacing: 4) {
-                        Text("Solo")
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 3)
-                            .background(
-                                RoundedRectangle(cornerRadius: 4)
-                                    .fill(Color.blue)
-                            )
-                    }
-                }
-
-                // New Document button
-                Button {
-                    showNewDocumentDialog = true
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 16))
-                        Text("New Document")
-                            .font(.system(size: 14, weight: .medium))
-                    }
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.magnetarPrimary)
-                    )
-                }
-                .buttonStyle(.plain)
-
-                // Type selector
-                Menu {
-                    Button("Document") { selectedDocType = .document }
-                    Button("Spreadsheet") { selectedDocType = .spreadsheet }
-                    Button("Insight") { selectedDocType = .insight }
-                    Divider()
-                    Button("Secure Document") { selectedDocType = .secureDocument }
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: selectedDocType.icon)
-                            .font(.system(size: 14))
-
-                        Text(selectedDocType.displayName)
-                            .font(.system(size: 13))
-
-                        Spacer()
-
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 10))
-                    }
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.gray.opacity(0.1))
-                    )
-                }
-                .buttonStyle(.plain)
+        .sheet(isPresented: $showNewDocumentModal) {
+            NewDocumentModal(isPresented: $showNewDocumentModal) { title, type in
+                try await createDocument(title: title, type: type)
             }
-            .padding(12)
-            .background(Color.gray.opacity(0.03))
-            .overlay(
-                Rectangle()
-                    .fill(Color.gray.opacity(0.2))
-                    .frame(height: 1),
-                alignment: .bottom
-            )
-
-            // Document list
-            DocumentsSidebar(
-                activeDocument: $activeDocument,
-                documents: documents
-            )
         }
-        .background(Color.gray.opacity(0.05))
     }
 
-    // MARK: - Editor
+    @MainActor
+    private func loadDocuments() async {
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            documents = try await teamService.listDocuments()
+            isLoading = false
+        } catch {
+            errorMessage = error.localizedDescription
+            isLoading = false
+        }
+    }
+
+    @MainActor
+    private func createDocument(title: String, type: NewDocumentType) async throws {
+        let newDoc = try await teamService.createDocument(
+            title: title,
+            content: "",
+            type: type.backendType
+        )
+        documents.append(newDoc)
+        activeDocument = newDoc
+        await loadDocuments() // Refresh list
+    }
+
+    // MARK: - Helper Views
+
+    private var loadingView: some View {
+        VStack(spacing: 16) {
+            ProgressView()
+                .scaleEffect(1.5)
+
+            Text("Loading documents...")
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func errorView(_ message: String) -> some View {
+        VStack(spacing: 16) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 48))
+                .foregroundColor(.red)
+
+            Text("Error Loading Documents")
+                .font(.system(size: 18, weight: .semibold))
+
+            Text(message)
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+
+            Button("Retry") {
+                Task {
+                    await loadDocuments()
+                }
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding()
+    }
 
     private func documentEditor(doc: TeamDocument) -> some View {
         VStack(spacing: 0) {
@@ -1494,141 +1467,6 @@ struct DocsWorkspace: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-    }
-
-    // MARK: - Helper Views
-
-    private var loadingView: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-                .scaleEffect(1.5)
-
-            Text("Loading documents...")
-                .font(.system(size: 14))
-                .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private func errorView(_ message: String) -> some View {
-        VStack(spacing: 16) {
-            Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 48))
-                .foregroundColor(.red)
-
-            Text("Error Loading Documents")
-                .font(.system(size: 18, weight: .semibold))
-
-            Text(message)
-                .font(.system(size: 14))
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-
-            Button("Retry") {
-                Task {
-                    await loadDocuments()
-                }
-            }
-            .buttonStyle(.borderedProminent)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding()
-    }
-
-    private var newDocumentSheet: some View {
-        VStack(spacing: 20) {
-            Text("Create New Document")
-                .font(.title2)
-                .fontWeight(.semibold)
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Title")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.secondary)
-
-                TextField("Document title", text: $newDocTitle)
-                    .textFieldStyle(.roundedBorder)
-            }
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Content")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.secondary)
-
-                TextEditor(text: $newDocContent)
-                    .font(.system(size: 13))
-                    .frame(height: 150)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                    )
-            }
-
-            if let error = errorMessage {
-                Text(error)
-                    .font(.system(size: 12))
-                    .foregroundColor(.red)
-            }
-
-            HStack(spacing: 12) {
-                Button("Cancel") {
-                    showNewDocumentDialog = false
-                    newDocTitle = ""
-                    newDocContent = ""
-                    errorMessage = nil
-                }
-                .buttonStyle(.bordered)
-
-                Button("Create") {
-                    Task {
-                        await createDocument()
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(newDocTitle.isEmpty || isLoading)
-            }
-        }
-        .padding(24)
-        .frame(width: 450)
-    }
-
-    // MARK: - Data Functions
-
-    @MainActor
-    private func loadDocuments() async {
-        isLoading = true
-        errorMessage = nil
-
-        do {
-            documents = try await teamService.listDocuments()
-            isLoading = false
-        } catch {
-            errorMessage = error.localizedDescription
-            isLoading = false
-        }
-    }
-
-    @MainActor
-    private func createDocument() async {
-        isLoading = true
-        errorMessage = nil
-
-        do {
-            let newDoc = try await teamService.createDocument(
-                title: newDocTitle,
-                content: newDocContent,
-                type: selectedDocType.rawValue
-            )
-            documents.append(newDoc)
-            activeDocument = newDoc
-            showNewDocumentDialog = false
-            newDocTitle = ""
-            newDocContent = ""
-            isLoading = false
-        } catch {
-            errorMessage = error.localizedDescription
-            isLoading = false
         }
     }
 

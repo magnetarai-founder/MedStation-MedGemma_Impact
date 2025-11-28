@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		047B49149C254D87B631EEF6 /* CodeEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 832F8059CDA346DF9163F393 /* CodeEditor.swift */; };
+		04B417CD2D01C6E1ABC5ADDB /* SlackStyleDocsSidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDE1074A47D7354964A79AB4 /* SlackStyleDocsSidebar.swift */; };
 		0996D3B0B63B4CB29AE2EE9E /* VaultModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18F56FEE06EB4480B335A64B /* VaultModels.swift */; };
 		0ACEF63C75F74A6698462792 /* WorkflowService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B02AE94CCC83473FB64BC7BD /* WorkflowService.swift */; };
 		0D6F62E4A20310F8DCA88F48 /* KanbanWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D684EFED023D2A6542AAB1F /* KanbanWorkspace.swift */; };
@@ -45,6 +46,7 @@
 		C6F6EB90EF484C51BF4451F3 /* AuthStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00280C486C0A463EACC552E6 /* AuthStore.swift */; };
 		C8CE1D6E95657B5967D53579 /* BiometricAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A904439226AE3F48234C22A0 /* BiometricAuthService.swift */; };
 		CA2EC71E90324844890DF29C /* SidebarTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B42850187A449F9B295DF2 /* SidebarTabs.swift */; };
+		CD851BE5E0D7AB9D5519B9A7 /* NewDocumentModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5ADD9516A7A1CEB080FDEDF3 /* NewDocumentModal.swift */; };
 		E4C417A6ECAA4E4DAFBF3882 /* WorkflowStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B00CD34FC941DB87FE17B3 /* WorkflowStore.swift */; };
 		E597B05474B74E02887E7C99 /* FileUpload.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC1DB0ED9A1D41F89804F805 /* FileUpload.swift */; };
 		E65EDDCF022977AA1854B1AA /* MagnetarStudioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0369ADDFF9623D901CC8207E /* MagnetarStudioApp.swift */; };
@@ -81,6 +83,7 @@
 		3A959626C53B4237AD1DD881 /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
 		3DB05E6C67FE4427941ECD63 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		5A9CA03F945469535A06F816 /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
+		5ADD9516A7A1CEB080FDEDF3 /* NewDocumentModal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NewDocumentModal.swift; path = ../../Shared/Views/Team/NewDocumentModal.swift; sourceTree = "<group>"; };
 		5C5B7D185B4D1BE3FF14F5F6 /* GlassButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassButton.swift; sourceTree = "<group>"; };
 		5EAEA6C1E62949E989A455ED /* SettingsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsModels.swift; sourceTree = "<group>"; };
 		61A51A35C05D4A7A8724EE3B /* AnyCodable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnyCodable.swift; sourceTree = "<group>"; };
@@ -115,6 +118,7 @@
 		F2C77CB5AF6C4202FD8D7161 /* ChatMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatMessage.swift; sourceTree = "<group>"; };
 		F85CE2F0DE5343879EB18743 /* Header.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Header.swift; sourceTree = "<group>"; };
 		FA268C85AA8894BC92182D94 /* ChatWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatWorkspace.swift; sourceTree = "<group>"; };
+		FDE1074A47D7354964A79AB4 /* SlackStyleDocsSidebar.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SlackStyleDocsSidebar.swift; path = ../../Shared/Views/Team/SlackStyleDocsSidebar.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -182,6 +186,7 @@
 			isa = PBXGroup;
 			children = (
 				B2C3D4E5F6A7B8C9D0E1F2A3 /* Auth */,
+				C3D28E375A13BD24F645A93B /* Team */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -226,6 +231,15 @@
 				C8B00CD34FC941DB87FE17B3 /* WorkflowStore.swift */,
 			);
 			path = Stores;
+			sourceTree = "<group>";
+		};
+		C3D28E375A13BD24F645A93B /* Team */ = {
+			isa = PBXGroup;
+			children = (
+				5ADD9516A7A1CEB080FDEDF3 /* NewDocumentModal.swift */,
+				FDE1074A47D7354964A79AB4 /* SlackStyleDocsSidebar.swift */,
+			);
+			name = Team;
 			sourceTree = "<group>";
 		};
 		C819DDE2D3F5F98EE85FC3CB /* DesignSystem */ = {
@@ -389,6 +403,8 @@
 				500A346FB7ED4D9B9ADD8F0C /* SetupWizardView.swift in Sources */,
 				C8CE1D6E95657B5967D53579 /* BiometricAuthService.swift in Sources */,
 				E840DDF0BB59FF2E5EFCF7DD /* VaultSetupWizardView.swift in Sources */,
+				CD851BE5E0D7AB9D5519B9A7 /* NewDocumentModal.swift in Sources */,
+				04B417CD2D01C6E1ABC5ADDB /* SlackStyleDocsSidebar.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
