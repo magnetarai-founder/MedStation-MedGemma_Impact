@@ -26,15 +26,75 @@ struct Team: Identifiable, Codable {
 struct TeamDocument: Identifiable, Codable {
     let id: String
     let title: String
-    let content: String?
+    let content: AnyCodable?  // Backend returns Any type content (could be JSON object or string)
     let type: String
+    let createdAt: String
     let updatedAt: String
-    let createdBy: String?
+    let createdBy: String
+    let isPrivate: Bool
+    let securityLevel: String?
+    let sharedWith: [String]
+    let teamId: String?
 
     enum CodingKeys: String, CodingKey {
         case id, title, content, type
+        case createdAt = "created_at"
         case updatedAt = "updated_at"
         case createdBy = "created_by"
+        case isPrivate = "is_private"
+        case securityLevel = "security_level"
+        case sharedWith = "shared_with"
+        case teamId = "team_id"
+    }
+}
+
+// Helper to decode Any type from JSON
+struct AnyCodable: Codable {
+    let value: Any
+
+    init(_ value: Any) {
+        self.value = value
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+
+        if let string = try? container.decode(String.self) {
+            value = string
+        } else if let int = try? container.decode(Int.self) {
+            value = int
+        } else if let double = try? container.decode(Double.self) {
+            value = double
+        } else if let bool = try? container.decode(Bool.self) {
+            value = bool
+        } else if let array = try? container.decode([AnyCodable].self) {
+            value = array.map { $0.value }
+        } else if let dict = try? container.decode([String: AnyCodable].self) {
+            value = dict.mapValues { $0.value }
+        } else {
+            value = NSNull()
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+
+        switch value {
+        case let string as String:
+            try container.encode(string)
+        case let int as Int:
+            try container.encode(int)
+        case let double as Double:
+            try container.encode(double)
+        case let bool as Bool:
+            try container.encode(bool)
+        case let array as [Any]:
+            try container.encode(array.map { AnyCodable($0) })
+        case let dict as [String: Any]:
+            try container.encode(dict.mapValues { AnyCodable($0) })
+        default:
+            try container.encodeNil()
+        }
     }
 }
 
@@ -127,14 +187,14 @@ final class TeamService {
 
     func listDocuments() async throws -> [TeamDocument] {
         try await apiClient.request(
-            path: "/v1/docs",
+            path: "/v1/documents",
             method: .get
         )
     }
 
     func createDocument(title: String, content: String, type: String) async throws -> TeamDocument {
         try await apiClient.request(
-            path: "/v1/docs",
+            path: "/v1/documents",
             method: .post,
             jsonBody: [
                 "title": title,
@@ -150,7 +210,7 @@ final class TeamService {
         if let content = content { body["content"] = content }
 
         return try await apiClient.request(
-            path: "/v1/docs/\(id)",
+            path: "/v1/documents/\(id)",
             method: .put,
             jsonBody: body
         )

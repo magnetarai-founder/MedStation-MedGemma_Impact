@@ -17,7 +17,7 @@ struct NetworkSelector: View {
             Button {
                 mode = .local
             } label: {
-                Label("Local Network", systemImage: "wifi")
+                Label("Offline", systemImage: "wifi.slash")
             }
 
             Button {
@@ -62,7 +62,7 @@ enum NetworkMode: String, CaseIterable {
 
     var displayName: String {
         switch self {
-        case .local: return "Local Network"
+        case .local: return "Offline"
         case .p2p: return "P2P Mesh"
         case .cloud: return "Cloud Relay"
         }

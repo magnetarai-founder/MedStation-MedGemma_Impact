@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import LocalAuthentication
 
 struct WelcomeView: View {
     @EnvironmentObject private var authStore: AuthStore
@@ -14,6 +15,10 @@ struct WelcomeView: View {
     @State private var password: String = ""
     @State private var email: String = ""
     @State private var isRegistering: Bool = false
+    @State private var enableBiometric: Bool = false
+
+    private let biometricService = BiometricAuthService.shared
+    private let keychainService = KeychainService.shared
 
     var body: some View {
         ZStack {
@@ -45,16 +50,31 @@ struct WelcomeView: View {
                         TextField("Username", text: $username)
                             .textFieldStyle(.roundedBorder)
                             .frame(height: 40)
+                            .onSubmit {
+                                Task {
+                                    await handleAuth()
+                                }
+                            }
 
                         if isRegistering {
                             TextField("Email (optional)", text: $email)
                                 .textFieldStyle(.roundedBorder)
                                 .frame(height: 40)
+                                .onSubmit {
+                                    Task {
+                                        await handleAuth()
+                                    }
+                                }
                         }
 
                         SecureField("Password", text: $password)
                             .textFieldStyle(.roundedBorder)
                             .frame(height: 40)
+                            .onSubmit {
+                                Task {
+                                    await handleAuth()
+                                }
+                            }
                     }
 
                     // Error message
@@ -78,6 +98,20 @@ struct WelcomeView: View {
                         }
                         .disabled(username.isEmpty || password.isEmpty || authStore.loading)
 
+                        // Biometric toggle (only show when logging in, not registering)
+                        if !isRegistering && biometricService.isBiometricAvailable {
+                            Toggle(isOn: $enableBiometric) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: biometricService.biometricType().icon)
+                                        .font(.caption)
+                                    Text("Enable \(biometricService.biometricType().displayName)")
+                                        .font(.caption)
+                                }
+                                .foregroundColor(.secondary)
+                            }
+                            .toggleStyle(.checkbox)
+                        }
+
                         Button {
                             isRegistering.toggle()
                             email = ""
@@ -89,16 +123,25 @@ struct WelcomeView: View {
                         .buttonStyle(.plain)
                     }
 
-                    // Biometric info (if available)
-                    if KeychainService.shared.loadToken() != nil {
-                        HStack(spacing: 8) {
-                            Image(systemName: "lock.shield")
-                                .font(.caption)
-                            Text("Your credentials are securely stored")
+                    // Biometric login button (if credentials are saved)
+                    if keychainService.hasBiometricCredentials() && biometricService.isBiometricAvailable {
+                        VStack(spacing: 8) {
+                            Text("or")
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
+
+                            GlassButton(
+                                "Sign in with \(biometricService.biometricType().displayName)",
+                                icon: biometricService.biometricType().icon,
+                                style: .secondary
+                            ) {
+                                Task {
+                                    await handleBiometricLogin()
+                                }
+                            }
+                            .disabled(authStore.loading)
                         }
-                        .padding(.top, 8)
+                        .padding(.top, 4)
                     }
                 }
                 .padding(32)
@@ -117,7 +160,7 @@ struct WelcomeView: View {
         }
     }
 
-    // MARK: - Auth Handler
+    // MARK: - Auth Handlers
 
     private func handleAuth() async {
         do {
@@ -135,6 +178,18 @@ struct WelcomeView: View {
                     username: username,
                     password: password
                 )
+
+                // Save credentials for biometric login if enabled
+                if enableBiometric {
+                    do {
+                        try keychainService.saveBiometricCredentials(
+                            username: username,
+                            password: password
+                        )
+                    } catch {
+                        print("Failed to save biometric credentials: \(error.localizedDescription)")
+                    }
+                }
             }
 
             // Save token and trigger bootstrap
@@ -156,7 +211,42 @@ struct WelcomeView: View {
             }
         }
     }
+
+    private func handleBiometricLogin() async {
+        do {
+            // Authenticate with biometrics
+            let success = try await biometricService.authenticate(
+                reason: "Sign in to MagnetarStudio"
+            )
+
+            guard success else {
+                return
+            }
+
+            // Load credentials from keychain
+            let context = LAContext()
+            let credentials = try keychainService.loadBiometricCredentials(context: context)
+
+            // Login with stored credentials
+            let response = try await AuthService.shared.login(
+                username: credentials.username,
+                password: credentials.password
+            )
+
+            // Save token and trigger bootstrap
+            await authStore.saveToken(response.token)
+
+        } catch BiometricError.userCancel {
+            // User cancelled, no error message needed
+            return
+        } catch {
+            await MainActor.run {
+                authStore.setError(error.localizedDescription)
+            }
+        }
+    }
 }
+
 
 // MARK: - Preview
 

@@ -23,19 +23,79 @@ final class AuthStore: ObservableObject {
 
     /// Call on app launch to validate existing token
     func bootstrap() async {
-        // DEVELOPMENT BYPASS: Skip auth entirely for now
+        // DEVELOPMENT BYPASS: Auto-login for fast iteration
         #if DEBUG
-        print("⚠️ DEBUG MODE: Bypassing authentication")
-        self.user = ApiUser(
-            userId: "dev_user",
-            username: "developer",
-            deviceId: "dev_device",
-            role: "founder_rights"
-        )
-        userSetupComplete = true
-        authState = .authenticated
-        loading = false
-        #else
+        print("⚠️ DEBUG MODE: Auto-login enabled for fast iteration")
+
+        // Check if we already have a valid token
+        if keychain.loadToken() != nil {
+            // Try to use existing token
+            do {
+                let user: ApiUser = try await apiClient.request("/v1/auth/me")
+                self.user = user
+                userSetupComplete = true
+                authState = .authenticated
+                loading = false
+                return
+            } catch {
+                // Token invalid, will try to login below
+                print("DEBUG: Existing token invalid, will attempt auto-login")
+            }
+        }
+
+        // Auto-login with founder credentials
+        do {
+            struct LoginRequest: Codable {
+                let username: String
+                let password: String
+            }
+
+            struct LoginResponse: Codable {
+                let token: String
+                let refreshToken: String?
+                let userId: String
+                let username: String
+                let deviceId: String
+                let role: String
+                let expiresIn: Int
+
+                enum CodingKeys: String, CodingKey {
+                    case token
+                    case refreshToken = "refresh_token"
+                    case userId = "user_id"
+                    case username
+                    case deviceId = "device_id"
+                    case role
+                    case expiresIn = "expires_in"
+                }
+            }
+
+            let response: LoginResponse = try await apiClient.request(
+                "/v1/auth/login",
+                method: .post,
+                body: LoginRequest(username: "elohim_founder", password: "ElohimOS_2024_Founder"),
+                authenticated: false
+            )
+
+            try keychain.saveToken(response.token)
+            self.user = ApiUser(
+                userId: response.userId,
+                username: response.username,
+                deviceId: response.deviceId,
+                role: response.role
+            )
+            userSetupComplete = true
+            authState = .authenticated
+            loading = false
+            print("✅ DEBUG: Auto-login successful")
+            return
+
+        } catch {
+            print("⚠️ DEBUG: Auto-login failed: \(error.localizedDescription)")
+            print("   Falling through to normal auth flow...")
+        }
+        #endif
+
         loading = true
         error = nil
 
@@ -75,7 +135,6 @@ final class AuthStore: ObservableObject {
             authState = .welcome
             loading = false
         }
-        #endif
     }
 
     // MARK: - Auth Actions

@@ -185,15 +185,51 @@ struct SecuritySettingsView: View {
     @AppStorage("autoLockTimeout") private var autoLockTimeout = 15
     @State private var cacheStatus: SimpleStatus = .idle
     @State private var keychainStatus: SimpleStatus = .idle
+    @State private var biometricStatus: SimpleStatus = .idle
+
+    private let biometricService = BiometricAuthService.shared
+    private let keychainService = KeychainService.shared
 
     var body: some View {
         Form {
-            Section("Authentication") {
-                Toggle("Require Face ID", isOn: $enableBiometrics)
+            Section("Biometric Authentication") {
+                HStack {
+                    Image(systemName: biometricService.biometricType().icon)
+                        .foregroundColor(.blue)
+                    Text(biometricService.biometricType().displayName)
+                        .font(.headline)
+                }
 
-                Text("Secure your authentication tokens with Face ID or Touch ID")
+                Toggle("Enable Biometric Login", isOn: $enableBiometrics)
+                    .disabled(!biometricService.isBiometricAvailable)
+
+                Text("Sign in quickly and securely using \(biometricService.biometricType().displayName)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+
+                if keychainService.hasBiometricCredentials() {
+                    VStack(spacing: 8) {
+                        HStack {
+                            Image(systemName: "checkmark.shield.fill")
+                                .foregroundColor(.green)
+                            Text("Biometric credentials stored")
+                                .font(.caption)
+                            Spacer()
+                        }
+
+                        Button(role: .destructive) {
+                            clearBiometricCredentials()
+                        } label: {
+                            HStack {
+                                Image(systemName: "trash")
+                                Text("Remove Biometric Credentials")
+                            }
+                        }
+                        .disabled(biometricStatus == .loading)
+
+                        statusLabel(biometricStatus)
+                    }
+                }
             }
 
             Section("Session") {
@@ -262,6 +298,17 @@ struct SecuritySettingsView: View {
             await MainActor.run { keychainStatus = .success("Keychain reset") }
         } catch {
             await MainActor.run { keychainStatus = .failure(error.localizedDescription) }
+        }
+    }
+
+    private func clearBiometricCredentials() {
+        biometricStatus = .loading
+
+        do {
+            try keychainService.deleteBiometricCredentials()
+            biometricStatus = .success("Biometric credentials removed")
+        } catch {
+            biometricStatus = .failure(error.localizedDescription)
         }
     }
 }

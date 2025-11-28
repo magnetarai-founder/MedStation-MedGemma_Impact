@@ -162,6 +162,10 @@ private struct ControlCenterSheet: View {
     @State private var lastNetworkCheck: Date = Date()
     let timer = Timer.publish(every: 3, on: .main, in: .common).autoconnect()
 
+    // Terminal Sessions
+    @State private var terminalCount: Int = 0
+    @State private var showTerminalMenu: Bool = false
+
     var body: some View {
         VStack(spacing: 0) {
             // Close button
@@ -189,25 +193,36 @@ private struct ControlCenterSheet: View {
 
             ScrollView {
                 VStack(spacing: 16) {
-                    // Terminal Button
-                    Button {
-                        openSystemTerminal()
-                    } label: {
-                        HStack(spacing: 10) {
-                            Image(systemName: "terminal.fill")
-                                .font(.system(size: 18))
-                                .foregroundColor(.blue)
-                            Text("Terminal")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundColor(.primary)
-                            Spacer()
+                    // Terminal Button with Session Count
+                    HStack(spacing: 8) {
+                        Button {
+                            openSystemTerminal()
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "terminal.fill")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.blue)
+                                Text("Terminal")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.primary)
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(Color.secondary.opacity(0.08))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
                         }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 12)
-                        .background(Color.secondary.opacity(0.08))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .buttonStyle(.plain)
+                        .disabled(terminalCount >= 3)
+
+                        // Session count badge - same size as button
+                        Text("\(terminalCount)/3")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(terminalCount >= 3 ? .red : .secondary)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(Color.secondary.opacity(0.08))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
-                    .buttonStyle(.plain)
 
                     // Activity Monitor - always visible
                     ActivityMonitorTile(stats: stats)
@@ -219,9 +234,22 @@ private struct ControlCenterSheet: View {
         .frame(width: 500, height: 450)
         .onAppear {
             updateSystemStats()
+            loadTerminalCount()
         }
         .onReceive(timer) { _ in
             updateSystemStats()
+            loadTerminalCount()
+        }
+    }
+
+    private func loadTerminalCount() {
+        // TODO: Call terminal API to get session count
+        // For now, we'll use a placeholder
+        // This will be implemented when we wire up the terminal service
+        Task {
+            // Simulated API call - replace with actual API call
+            // let sessions = try await TerminalService.shared.listSessions()
+            // terminalCount = sessions.count
         }
     }
 

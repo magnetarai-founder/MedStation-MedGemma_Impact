@@ -210,6 +210,57 @@ final class TeamService {
             method: .get
         )
     }
+
+    func getUserPermissions() async throws -> Permissions {
+        // MVP: All authenticated users have full access to team features
+        // The backend has a comprehensive RBAC system at /api/v1/permissions/*
+        // Future enhancement: Query user's actual permission profile for fine-grained access control
+        // For production multi-tenant deployment, wire up to backend RBAC:
+        //   - GET /api/v1/permissions/users/{user_id}/profiles
+        //   - Check specific permissions like "team.access_documents", "team.access_vault", etc.
+        return Permissions(
+            canAccessDocuments: true,
+            canAccessAutomation: true,
+            canAccessVault: true
+        )
+    }
+
+    func listChannels() async throws -> [Channel] {
+        struct ChannelListResponse: Codable {
+            let channels: [Channel]
+            let total: Int
+        }
+
+        let response: ChannelListResponse = try await apiClient.request(
+            path: "/v1/team/channels",
+            method: .get
+        )
+
+        return response.channels
+    }
+
+    func getP2PNetworkStatus() async throws -> P2PNetworkStatus {
+        try await apiClient.request(
+            path: "/v1/team/status",
+            method: .get
+        )
+    }
+}
+
+struct P2PNetworkStatus: Codable {
+    let peerId: String
+    let isConnected: Bool
+    let discoveredPeers: Int
+    let activeChannels: Int
+    let multiaddrs: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case peerId = "peer_id"
+        case isConnected = "is_connected"
+        case discoveredPeers = "discovered_peers"
+        case activeChannels = "active_channels"
+        case multiaddrs
+    }
 }
 
 struct Permissions {
@@ -228,20 +279,19 @@ struct TeamWorkspace: View {
     @State private var showCreateTeam = false
     @State private var showJoinTeam = false
     @State private var showVaultSetup = false
-    @State private var showNLQuery = false
-    @State private var showPatterns = false
 
     // Vault status
     @State private var vaultReady: Bool = false
     @State private var checkingVaultStatus: Bool = false
     @State private var vaultError: String? = nil
 
-    // Permissions (mock for now)
-    private var permissions = Permissions(
+    // Permissions
+    @State private var permissions = Permissions(
         canAccessDocuments: true,
         canAccessAutomation: true,
         canAccessVault: true
     )
+    @State private var isLoadingPermissions: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -272,11 +322,22 @@ struct TeamWorkspace: View {
         .sheet(isPresented: $showVaultSetup) {
             VaultSetupModal()
         }
-        .sheet(isPresented: $showNLQuery) {
-            NLQueryPanel()
+        .task {
+            await loadPermissions()
         }
-        .sheet(isPresented: $showPatterns) {
-            PatternDiscoveryPanel()
+    }
+
+    // MARK: - Data Loading
+
+    private func loadPermissions() async {
+        isLoadingPermissions = true
+        defer { isLoadingPermissions = false }
+
+        do {
+            permissions = try await TeamService.shared.getUserPermissions()
+        } catch {
+            // Keep default permissions on error
+            print("Failed to load permissions: \(error.localizedDescription)")
         }
     }
 
@@ -333,48 +394,6 @@ struct TeamWorkspace: View {
                         action: { workspaceView = .docs }
                     )
                 }
-
-                // Data Lab (opens panel, not a tab switch)
-                Button {
-                    showNLQuery = true
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "cylinder")
-                            .font(.system(size: 16))
-                        Text("Data Lab")
-                            .font(.system(size: 14))
-                    }
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.clear)
-                    )
-                }
-                .buttonStyle(.plain)
-                .help("Ask AI about your data")
-
-                // Patterns (opens panel)
-                Button {
-                    showPatterns = true
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "chart.bar")
-                            .font(.system(size: 16))
-                        Text("Patterns")
-                            .font(.system(size: 14))
-                    }
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.clear)
-                    )
-                }
-                .buttonStyle(.plain)
-                .help("Pattern Discovery")
 
                 // Workflows
                 if permissions.canAccessAutomation {
@@ -572,8 +591,8 @@ struct TeamChatView: View {
     @State private var showNewChannelDialog = false
     @State private var showPeerDiscovery = false
     @State private var showFileSharing = false
-    @State private var p2pStatus: P2PStatus = .connected
-    @State private var peerCount: Int = 3
+    @State private var p2pStatus: P2PStatus = .connecting
+    @State private var p2pNetworkStatus: P2PNetworkStatus? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -611,6 +630,23 @@ struct TeamChatView: View {
         .sheet(isPresented: $showFileSharing) {
             FileSharingPanel()
         }
+        .task {
+            if mode == .p2p {
+                await loadP2PStatus()
+            }
+        }
+    }
+
+    // MARK: - Data Loading
+
+    private func loadP2PStatus() async {
+        do {
+            p2pNetworkStatus = try await TeamService.shared.getP2PNetworkStatus()
+            p2pStatus = p2pNetworkStatus?.isConnected == true ? .connected : .disconnected
+        } catch {
+            p2pStatus = .disconnected
+            print("Failed to load P2P status: \(error.localizedDescription)")
+        }
     }
 
     // MARK: - P2P Banner
@@ -631,8 +667,8 @@ struct TeamChatView: View {
 
             // Right: Peer ID + Buttons
             HStack(spacing: 8) {
-                if let peerId = mockPeerId {
-                    Text(peerId)
+                if let networkStatus = p2pNetworkStatus, p2pStatus == .connected {
+                    Text(String(networkStatus.peerId.prefix(12)) + "...")
                         .font(.system(size: 12, design: .monospaced))
                         .foregroundColor(.blue)
                 }
@@ -708,7 +744,9 @@ struct TeamChatView: View {
         switch p2pStatus {
         case .connecting: return "Connecting to P2P mesh..."
         case .disconnected: return "Disconnected from mesh"
-        case .connected: return "Connected • \(peerCount) peers"
+        case .connected:
+            let peerCount = p2pNetworkStatus?.discoveredPeers ?? 0
+            return "Connected • \(peerCount) peers"
         }
     }
 
@@ -718,10 +756,6 @@ struct TeamChatView: View {
         case .disconnected: return .red
         case .connected: return .green
         }
-    }
-
-    private var mockPeerId: String? {
-        p2pStatus == .connected ? "12D3Ko...aB9f" : nil
     }
 }
 
@@ -781,6 +815,23 @@ struct TeamChatSidebar: View {
                 .padding(.top, 16)
                 .padding(.bottom, 8)
             }
+        }
+        .task {
+            await loadChannels()
+        }
+    }
+
+    private func loadChannels() async {
+        do {
+            let allChannels = try await TeamService.shared.listChannels()
+
+            // Separate into public, private, and DM channels
+            publicChannels = allChannels.filter { $0.type == "public" }
+            privateChannels = allChannels.filter { $0.type == "private" }
+            directMessages = allChannels.filter { $0.type == "direct" }
+        } catch {
+            print("Failed to load channels: \(error.localizedDescription)")
+            // Keep default channels on error
         }
     }
 
@@ -1034,14 +1085,65 @@ enum P2PStatus {
     case connected
 }
 
-struct Channel: Identifiable {
-    let id = UUID()
+struct Channel: Identifiable, Codable {
+    let id: String
     let name: String
-    let isPrivate: Bool
+    let type: String // "public", "private", "direct"
+    let createdAt: String
+    let createdBy: String
+    let members: [String]
+    let admins: [String]
+    let description: String?
+    let topic: String?
+    let pinnedMessages: [String]
+    let dmParticipants: [String]?
 
+    var isPrivate: Bool {
+        type == "private"
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case type
+        case createdAt = "created_at"
+        case createdBy = "created_by"
+        case members
+        case admins
+        case description
+        case topic
+        case pinnedMessages = "pinned_messages"
+        case dmParticipants = "dm_participants"
+    }
+
+    // Mock defaults for preview/testing
     static let defaultPublic = [
-        Channel(name: "general", isPrivate: false),
-        Channel(name: "files", isPrivate: false)
+        Channel(
+            id: "ch_general",
+            name: "general",
+            type: "public",
+            createdAt: "",
+            createdBy: "",
+            members: [],
+            admins: [],
+            description: nil,
+            topic: nil,
+            pinnedMessages: [],
+            dmParticipants: nil
+        ),
+        Channel(
+            id: "ch_files",
+            name: "files",
+            type: "public",
+            createdAt: "",
+            createdBy: "",
+            members: [],
+            admins: [],
+            description: nil,
+            topic: nil,
+            pinnedMessages: [],
+            dmParticipants: nil
+        )
     ]
 }
 
@@ -3193,289 +3295,6 @@ struct VaultSetupModal: View {
             dismiss()
         } catch {
             errorMessage = "Setup failed: \(error.localizedDescription)"
-        }
-
-        isLoading = false
-    }
-}
-
-struct NLQueryPanel: View {
-    @Environment(\.dismiss) var dismiss
-    @State private var query: String = ""
-    @State private var isLoading: Bool = false
-    @State private var errorMessage: String? = nil
-    @State private var response: NLQueryResponse? = nil
-
-    private let teamService = TeamService.shared
-
-    var body: some View {
-        VStack(spacing: 20) {
-            // Header
-            Text("Ask AI About Your Data")
-                .font(.title2.weight(.semibold))
-
-            // Query input
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Your Question")
-                    .font(.system(size: 13, weight: .medium))
-                TextEditor(text: $query)
-                    .frame(height: 80)
-                    .border(Color.gray.opacity(0.3))
-                    .disabled(isLoading)
-
-                Text("Example: \"What are the top 5 customers by revenue?\"")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-
-            // Submit button
-            Button(action: { Task { await askQuestion() } }) {
-                HStack {
-                    if isLoading {
-                        ProgressView()
-                            .scaleEffect(0.7)
-                    }
-                    Text(isLoading ? "Asking..." : "Ask AI")
-                }
-                .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(query.isEmpty || isLoading)
-
-            // Response area
-            if let answer = response {
-                VStack(alignment: .leading, spacing: 12) {
-                    Divider()
-
-                    HStack {
-                        Text("Answer")
-                            .font(.system(size: 13, weight: .semibold))
-                        Spacer()
-                        if let confidence = answer.confidence {
-                            Text("\(Int(confidence * 100))% confident")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-
-                    ScrollView {
-                        Text(answer.answer)
-                            .font(.system(size: 13))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .textSelection(.enabled)
-                    }
-                    .frame(maxHeight: 200)
-
-                    if let sources = answer.sources, !sources.isEmpty {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Sources:")
-                                .font(.caption.weight(.medium))
-                            ForEach(sources, id: \.self) { source in
-                                Text("• \(source)")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Error message
-            if let error = errorMessage {
-                Text(error)
-                    .font(.caption)
-                    .foregroundColor(.red)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            Spacer()
-
-            // Close button
-            Button("Close") {
-                dismiss()
-            }
-            .keyboardShortcut(.escape)
-        }
-        .frame(width: 600, height: 500)
-        .padding(24)
-    }
-
-    @MainActor
-    private func askQuestion() async {
-        isLoading = true
-        errorMessage = nil
-        response = nil
-
-        do {
-            response = try await teamService.askNaturalLanguage(query: query)
-        } catch {
-            errorMessage = "Failed to get answer: \(error.localizedDescription)"
-        }
-
-        isLoading = false
-    }
-}
-
-struct PatternDiscoveryPanel: View {
-    @Environment(\.dismiss) var dismiss
-    @State private var query: String = ""
-    @State private var context: String = ""
-    @State private var isLoading: Bool = false
-    @State private var errorMessage: String? = nil
-    @State private var results: PatternDiscoveryResult? = nil
-
-    private let teamService = TeamService.shared
-
-    var body: some View {
-        VStack(spacing: 20) {
-            // Header
-            Text("Pattern Discovery")
-                .font(.title2.weight(.semibold))
-
-            // Input fields
-            VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Query")
-                        .font(.system(size: 13, weight: .medium))
-                    TextField("Describe what patterns to find", text: $query)
-                        .textFieldStyle(.roundedBorder)
-                        .disabled(isLoading)
-                }
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Context (Optional)")
-                        .font(.system(size: 13, weight: .medium))
-                    TextEditor(text: $context)
-                        .frame(height: 60)
-                        .border(Color.gray.opacity(0.3))
-                        .disabled(isLoading)
-
-                    Text("Additional context to help with pattern detection")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-
-            // Submit button
-            Button(action: { Task { await discoverPatterns() } }) {
-                HStack {
-                    if isLoading {
-                        ProgressView()
-                            .scaleEffect(0.7)
-                    }
-                    Text(isLoading ? "Analyzing..." : "Discover Patterns")
-                }
-                .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(query.isEmpty || isLoading)
-
-            // Results area
-            if let result = results {
-                VStack(alignment: .leading, spacing: 12) {
-                    Divider()
-
-                    if let summary = result.summary {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Summary")
-                                .font(.system(size: 13, weight: .semibold))
-                            Text(summary)
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary)
-                        }
-                    }
-
-                    if !result.patterns.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Patterns Found (\(result.patterns.count))")
-                                .font(.system(size: 13, weight: .semibold))
-
-                            ScrollView {
-                                VStack(spacing: 8) {
-                                    ForEach(result.patterns) { pattern in
-                                        patternRow(pattern)
-                                    }
-                                }
-                            }
-                            .frame(maxHeight: 250)
-                        }
-                    } else {
-                        Text("No patterns found")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-            }
-
-            // Error message
-            if let error = errorMessage {
-                Text(error)
-                    .font(.caption)
-                    .foregroundColor(.red)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            Spacer()
-
-            // Close button
-            Button("Close") {
-                dismiss()
-            }
-            .keyboardShortcut(.escape)
-        }
-        .frame(width: 700, height: 600)
-        .padding(24)
-    }
-
-    @ViewBuilder
-    private func patternRow(_ pattern: PatternDiscoveryResult.Pattern) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(pattern.type)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Capsule().fill(Color.blue))
-
-                Spacer()
-
-                Text("\(Int(pattern.confidence * 100))%")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-
-            Text(pattern.description)
-                .font(.system(size: 12))
-
-            if let examples = pattern.examples, !examples.isEmpty {
-                VStack(alignment: .leading, spacing: 2) {
-                    ForEach(examples.prefix(3), id: \.self) { example in
-                        Text("• \(example)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-            }
-        }
-        .padding(12)
-        .background(Color.gray.opacity(0.1))
-        .cornerRadius(8)
-    }
-
-    @MainActor
-    private func discoverPatterns() async {
-        isLoading = true
-        errorMessage = nil
-        results = nil
-
-        do {
-            results = try await teamService.discoverPatterns(
-                query: query,
-                context: context.isEmpty ? nil : context
-            )
-        } catch {
-            errorMessage = "Failed to discover patterns: \(error.localizedDescription)"
         }
 
         isLoading = false

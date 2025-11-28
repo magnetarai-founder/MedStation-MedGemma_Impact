@@ -91,25 +91,7 @@ final class KeychainManager {
 
     /// Get biometric type (Face ID or Touch ID)
     func biometricType() -> BiometricType {
-        let context = LAContext()
-        var error: NSError?
-
-        guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) else {
-            return .none
-        }
-
-        switch context.biometryType {
-        case .faceID:
-            return .faceID
-        case .touchID:
-            return .touchID
-        case .opticID:
-            return .opticID
-        case .none:
-            return .none
-        @unknown default:
-            return .none
-        }
+        return BiometricAuthService.shared.biometricType()
     }
 }
 
@@ -134,22 +116,6 @@ enum KeychainError: LocalizedError {
             return "Failed to delete item from Keychain (status: \(status))"
         case .invalidData:
             return "Invalid data retrieved from Keychain"
-        }
-    }
-}
-
-enum BiometricType {
-    case faceID
-    case touchID
-    case opticID
-    case none
-
-    var displayName: String {
-        switch self {
-        case .faceID: return "Face ID"
-        case .touchID: return "Touch ID"
-        case .opticID: return "Optic ID"
-        case .none: return "None"
         }
     }
 }

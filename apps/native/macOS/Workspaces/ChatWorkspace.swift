@@ -32,9 +32,15 @@ struct ChatWorkspace: View {
         VStack(spacing: 0) {
             // Header with New Chat button
             HStack {
-                Text("Sessions")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.textPrimary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Sessions")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.textPrimary)
+
+                    Text("\(chatStore.sessions.count) sessions")
+                        .font(.system(size: 11))
+                        .foregroundColor(.textSecondary)
+                }
 
                 Spacer()
 
@@ -49,7 +55,8 @@ struct ChatWorkspace: View {
                 }
                 .buttonStyle(.plain)
             }
-            .padding(12)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 12)
             .background(Color.surfaceSecondary.opacity(0.3))
 
             Divider()
