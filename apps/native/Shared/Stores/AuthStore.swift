@@ -73,7 +73,7 @@ final class AuthStore: ObservableObject {
             let response: LoginResponse = try await apiClient.request(
                 "/v1/auth/login",
                 method: .post,
-                body: LoginRequest(username: "elohim_founder", password: "ElohimOS_2024_Founder"),
+                body: LoginRequest(username: "founder", password: "Jesus33"),
                 authenticated: false
             )
 
