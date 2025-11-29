@@ -88,7 +88,7 @@ struct TabButton: View {
 // MARK: - Column Inspector
 
 struct ColumnInspector: View {
-    let columns: [ColumnInfo]
+    let columns: [SidebarColumnInfo]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {

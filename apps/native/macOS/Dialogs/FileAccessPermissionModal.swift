@@ -226,7 +226,7 @@ struct FileAccessPermissionModal: View {
 
 // MARK: - Info Row
 
-struct InfoRow: View {
+private struct InfoRow: View {
     let icon: String
     let label: String
     let value: String
