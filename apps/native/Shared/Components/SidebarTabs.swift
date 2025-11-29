@@ -11,7 +11,7 @@ import SwiftUI
 
 struct SidebarTabs: View {
     @State private var selectedTab: SidebarTab = .columns
-    @State private var columns: [ColumnInfo] = []
+    @State private var columns: [SidebarColumnInfo] = []
     @State private var logs: [LogEntry] = []
 
     var body: some View {
@@ -138,7 +138,7 @@ struct ColumnInspector: View {
 }
 
 struct ColumnRow: View {
-    let column: ColumnInfo
+    let column: SidebarColumnInfo
     @State private var isHovered = false
 
     var body: some View {
@@ -235,17 +235,17 @@ enum SidebarTab {
     case logs
 }
 
-struct ColumnInfo: Identifiable {
+struct SidebarColumnInfo: Identifiable {
     let id = UUID()
     let name: String
     let type: String
     let isClickable: Bool
 
     static let mock = [
-        ColumnInfo(name: "id", type: "INTEGER", isClickable: true),
-        ColumnInfo(name: "name", type: "TEXT", isClickable: true),
-        ColumnInfo(name: "email", type: "TEXT", isClickable: true),
-        ColumnInfo(name: "created_at", type: "TIMESTAMP", isClickable: true)
+        SidebarColumnInfo(name: "id", type: "INTEGER", isClickable: true),
+        SidebarColumnInfo(name: "name", type: "TEXT", isClickable: true),
+        SidebarColumnInfo(name: "email", type: "TEXT", isClickable: true),
+        SidebarColumnInfo(name: "created_at", type: "TIMESTAMP", isClickable: true)
     ]
 }
 

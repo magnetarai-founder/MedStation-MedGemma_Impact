@@ -141,11 +141,11 @@ struct DataContext {
 struct TableMetadata: Codable {
     let name: String
     let rowCount: Int?
-    let columns: [ColumnInfo]
+    let columns: [DataColumnInfo]
     let source: String  // "uploaded", "connected"
 }
 
-struct ColumnInfo: Codable {
+struct DataColumnInfo: Codable {
     let name: String
     let type: String
 }
