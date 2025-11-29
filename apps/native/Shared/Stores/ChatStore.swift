@@ -21,6 +21,10 @@ final class ChatStore {
     var selectedModel: String = ""
     var availableModels: [String] = []
 
+    // Model orchestration (Phase 2)
+    var selectedMode: String = "intelligent"  // "intelligent" or "manual"
+    var selectedModelId: String? = nil  // Specific model when in manual mode
+
     // Dependencies
     @ObservationIgnored
     private let apiClient: ApiClient
@@ -137,12 +141,75 @@ final class ChatStore {
                     createdAt: ISO8601DateFormatter().date(from: apiMsg.timestamp) ?? Date()
                 )
             }
+
+            // Load model preferences for this session
+            await loadModelPreferences(sessionId: sessionId)
         } catch {
             print("Failed to load messages: \(error)")
             messages = []
         }
         isLoading = false
     }
+
+    // MARK: - Model Preferences (Phase 2)
+
+    /// Load model preferences for the current session
+    func loadModelPreferences(sessionId: String) async {
+        do {
+            struct ModelPreferencesResponse: Codable {
+                let selectedMode: String
+                let selectedModelId: String?
+
+                enum CodingKeys: String, CodingKey {
+                    case selectedMode = "selected_mode"
+                    case selectedModelId = "selected_model_id"
+                }
+            }
+
+            let prefs: ModelPreferencesResponse = try await apiClient.request(
+                "/api/v1/chat/sessions/\(sessionId)/model-preferences",
+                method: .get
+            )
+
+            selectedMode = prefs.selectedMode
+            selectedModelId = prefs.selectedModelId
+        } catch {
+            print("Failed to load model preferences: \(error)")
+            // Default to intelligent mode
+            selectedMode = "intelligent"
+            selectedModelId = nil
+        }
+    }
+
+    /// Save model preferences for the current session
+    func saveModelPreferences() async {
+        guard let session = currentSession else { return }
+
+        do {
+            struct UpdateRequest: Codable {
+                let selectedMode: String
+                let selectedModelId: String?
+
+                enum CodingKeys: String, CodingKey {
+                    case selectedMode = "selected_mode"
+                    case selectedModelId = "selected_model_id"
+                }
+            }
+
+            let _: EmptyResponse = try await apiClient.request(
+                "/api/v1/chat/sessions/\(session.id.uuidString)/model-preferences",
+                method: .put,
+                body: UpdateRequest(
+                    selectedMode: selectedMode,
+                    selectedModelId: selectedModelId
+                )
+            )
+        } catch {
+            print("Failed to save model preferences: \(error)")
+        }
+    }
+
+    private struct EmptyResponse: Codable {}
 
     func deleteSession(_ session: ChatSession) {
         // Optimistically remove from UI

@@ -319,3 +319,86 @@ async def get_token_count_cached_endpoint(request: Request, chat_id: str, curren
     except Exception as e:
         logger.error(f"Failed to get token count: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# MARK: - Model Preferences (Phase 2: Intelligent Routing)
+
+@router.get("/sessions/{chat_id}/model-preferences", name="chat_get_model_preferences")
+async def get_model_preferences_endpoint(
+    request: Request,
+    chat_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get model selection preferences for a chat session"""
+    from api.chat_memory import get_memory
+
+    try:
+        # Verify session exists and user has access
+        memory = get_memory()
+        session = memory.get_session(chat_id, user_id=current_user["user_id"])
+        if not session:
+            raise HTTPException(status_code=404, detail="Chat session not found")
+
+        # Get model preferences
+        prefs = memory.get_model_preferences(chat_id)
+
+        return {
+            "selected_mode": prefs["selected_mode"],
+            "selected_model_id": prefs["selected_model_id"]
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get model preferences: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/sessions/{chat_id}/model-preferences", name="chat_update_model_preferences")
+async def update_model_preferences_endpoint(
+    request: Request,
+    chat_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update model selection preferences for a chat session"""
+    from api.chat_memory import get_memory
+    from pydantic import BaseModel
+
+    class ModelPreferencesUpdate(BaseModel):
+        selected_mode: str  # "intelligent" or "manual"
+        selected_model_id: Optional[str] = None
+
+    try:
+        # Parse request body
+        body_data = await request.json()
+        body = ModelPreferencesUpdate(**body_data)
+
+        # Verify session exists and user has access
+        memory = get_memory()
+        session = memory.get_session(chat_id, user_id=current_user["user_id"])
+        if not session:
+            raise HTTPException(status_code=404, detail="Chat session not found")
+
+        # Validate selected_mode
+        if body.selected_mode not in ["intelligent", "manual"]:
+            raise HTTPException(status_code=400, detail="selected_mode must be 'intelligent' or 'manual'")
+
+        # Update preferences
+        memory.update_model_preferences(
+            session_id=chat_id,
+            selected_mode=body.selected_mode,
+            selected_model_id=body.selected_model_id
+        )
+
+        return {
+            "status": "updated",
+            "chat_id": chat_id,
+            "selected_mode": body.selected_mode,
+            "selected_model_id": body.selected_model_id
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update model preferences: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))

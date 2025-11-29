@@ -151,42 +151,25 @@ struct ChatWorkspace: View {
                     .buttonStyle(.plain)
                     .help("Session Timeline")
 
-                    // Model Selector
-                    Menu {
-                        if chatStore.availableModels.isEmpty {
-                            Text("Loading models...")
-                                .foregroundColor(.secondary)
-                        } else {
-                            ForEach(chatStore.availableModels, id: \.self) { model in
-                                Button(model) {
-                                    chatStore.selectedModel = model
-                                }
-                            }
+                    // Model Selector (Phase 2: Intelligent routing)
+                    ModelSelectorMenu(
+                        selectedMode: $store.selectedMode,
+                        selectedModelId: $store.selectedModelId,
+                        availableModels: chatStore.availableModels,
+                        onRefresh: {
+                            await chatStore.fetchModels()
                         }
-
-                        Divider()
-
-                        Button("Refresh Models") {
-                            Task {
-                                await chatStore.fetchModels()
-                            }
+                    )
+                    .onChange(of: chatStore.selectedMode) { oldValue, newValue in
+                        Task {
+                            await chatStore.saveModelPreferences()
                         }
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "cpu")
-                                .font(.system(size: 13))
-                            Text(chatStore.selectedModel.isEmpty ? "Select Model" : chatStore.selectedModel)
-                                .font(.system(size: 13))
-                                .lineLimit(1)
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 10))
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color.surfaceSecondary)
-                        .cornerRadius(6)
                     }
-                    .buttonStyle(.plain)
+                    .onChange(of: chatStore.selectedModelId) { oldValue, newValue in
+                        Task {
+                            await chatStore.saveModelPreferences()
+                        }
+                    }
                 }
             }
             .padding(.horizontal, 16)
