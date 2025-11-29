@@ -24,6 +24,7 @@
 		33A28A605AE75CD2FDB67907 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0555CDE5ACABDDEA3DA1834D /* SettingsView.swift */; };
 		3AEF6F15A9E949E7A20E3E10 /* DatabaseStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6D0A604BB2D42F8996CC8C9 /* DatabaseStore.swift */; };
 		3B0607AB6F5A44BABD952DDA /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DB05E6C67FE4427941ECD63 /* WelcomeView.swift */; };
+		403835D13F7BBA5B87DF4BC0 /* CodeEditorService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10F8272E2D6EF476FDDCC185 /* CodeEditorService.swift */; };
 		419431498985644AE22A495A /* MagnetarHubWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2760AE2A83BCE0FEB660A5 /* MagnetarHubWorkspace.swift */; };
 		4FCFAC2E0DD745DFB5813F74 /* NavigationRail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08785DE309A344AF8765E6BC /* NavigationRail.swift */; };
 		500A346FB7ED4D9B9ADD8F0C /* SetupWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 624C9537C9E743BAB72D79DB /* SetupWizardView.swift */; };
@@ -70,6 +71,7 @@
 		0369ADDFF9623D901CC8207E /* MagnetarStudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagnetarStudioApp.swift; sourceTree = "<group>"; };
 		0555CDE5ACABDDEA3DA1834D /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		08785DE309A344AF8765E6BC /* NavigationRail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationRail.swift; sourceTree = "<group>"; };
+		10F8272E2D6EF476FDDCC185 /* CodeEditorService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CodeEditorService.swift; sourceTree = "<group>"; };
 		18F56FEE06EB4480B335A64B /* VaultModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultModels.swift; sourceTree = "<group>"; };
 		18F8E78737774D21B8C95D37 /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
 		1A2760AE2A83BCE0FEB660A5 /* MagnetarHubWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagnetarHubWorkspace.swift; sourceTree = "<group>"; };
@@ -301,6 +303,7 @@
 				B02AE94CCC83473FB64BC7BD /* WorkflowService.swift */,
 				A3DBDF8C9291B00E92989C8A /* KanbanService.swift */,
 				C0D63ED6288BC106CB39D1BB /* TerminalService.swift */,
+				10F8272E2D6EF476FDDCC185 /* CodeEditorService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -417,6 +420,7 @@
 				6906ED58F9814219F579F8A1 /* KanbanService.swift in Sources */,
 				21E71528368BABF2F2852CFE /* TerminalService.swift in Sources */,
 				8151AB8F8D128C4FE220C6A6 /* CodeWorkspace.swift in Sources */,
+				403835D13F7BBA5B87DF4BC0 /* CodeEditorService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

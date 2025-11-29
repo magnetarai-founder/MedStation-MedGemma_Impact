@@ -15,9 +15,12 @@ struct CodeWorkspace: View {
     @State private var sidebarWidth: CGFloat = 250
     @State private var terminalHeight: CGFloat = 200
     @State private var showTerminal: Bool = true
-    @State private var currentPath: String = "~"
+    @State private var currentWorkspace: CodeEditorWorkspace? = nil
     @State private var files: [FileItem] = []
     @State private var isLoadingFiles: Bool = false
+    @State private var errorMessage: String? = nil
+
+    private let codeEditorService = CodeEditorService.shared
 
     var body: some View {
         GeometryReader { geometry in
@@ -84,7 +87,7 @@ struct CodeWorkspace: View {
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
 
-                Text(currentPath)
+                Text(currentWorkspace?.name ?? "No workspace")
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.secondary)
                     .lineLimit(1)
@@ -228,12 +231,52 @@ struct CodeWorkspace: View {
 
     private func loadFiles() async {
         isLoadingFiles = true
+        errorMessage = nil
 
-        // TODO: Load from backend file system API
-        // For now, use mock data
-        await MainActor.run {
-            files = FileItem.mockFiles
-            isLoadingFiles = false
+        do {
+            // First, get or create a default workspace
+            let workspaces = try await codeEditorService.listWorkspaces()
+
+            let workspace: CodeEditorWorkspace
+            if let existing = workspaces.first {
+                workspace = existing
+            } else {
+                // Create default workspace
+                workspace = try await codeEditorService.createWorkspace(
+                    name: "Default Workspace",
+                    sourceType: "database"
+                )
+            }
+
+            currentWorkspace = workspace
+
+            // Load files for this workspace
+            let codeFiles = try await codeEditorService.getWorkspaceFiles(workspaceId: workspace.id)
+
+            // Convert to FileItem
+            let fileItems = codeFiles.map { file in
+                FileItem(
+                    name: file.name,
+                    path: file.path,
+                    isDirectory: file.isDirectory,
+                    size: file.size,
+                    modifiedAt: file.modifiedAt != nil ? ISO8601DateFormatter().date(from: file.modifiedAt!) : nil,
+                    fileId: file.id
+                )
+            }
+
+            await MainActor.run {
+                files = fileItems
+                isLoadingFiles = false
+            }
+        } catch {
+            print("Failed to load files: \(error)")
+            await MainActor.run {
+                // Fall back to mock data
+                files = FileItem.mockFiles
+                errorMessage = "Using mock data - backend connection failed"
+                isLoadingFiles = false
+            }
         }
     }
 
@@ -245,8 +288,25 @@ struct CodeWorkspace: View {
             openFiles.append(file)
         }
 
-        // TODO: Load file content from backend
-        fileContent = "// Content of \(file.name)\n// TODO: Load from backend"
+        // Load file content from backend
+        Task {
+            guard let fileId = file.fileId else {
+                fileContent = "// No file ID available"
+                return
+            }
+
+            do {
+                let codeFile = try await codeEditorService.getFile(fileId: fileId)
+                await MainActor.run {
+                    fileContent = codeFile.content ?? "// Empty file"
+                }
+            } catch {
+                print("Failed to load file content: \(error)")
+                await MainActor.run {
+                    fileContent = "// Failed to load file content\n// Error: \(error.localizedDescription)"
+                }
+            }
+        }
     }
 
     private func closeFile(_ file: FileItem) {
@@ -268,13 +328,14 @@ struct FileItem: Identifiable, Hashable {
     let isDirectory: Bool
     let size: Int64?
     let modifiedAt: Date?
+    let fileId: String?  // Backend file ID
 
     static let mockFiles = [
-        FileItem(name: "README.md", path: "/README.md", isDirectory: false, size: 1024, modifiedAt: Date()),
-        FileItem(name: "src", path: "/src", isDirectory: true, size: nil, modifiedAt: Date()),
-        FileItem(name: "main.swift", path: "/src/main.swift", isDirectory: false, size: 2048, modifiedAt: Date()),
-        FileItem(name: "utils.swift", path: "/src/utils.swift", isDirectory: false, size: 512, modifiedAt: Date()),
-        FileItem(name: "package.json", path: "/package.json", isDirectory: false, size: 256, modifiedAt: Date()),
+        FileItem(name: "README.md", path: "/README.md", isDirectory: false, size: 1024, modifiedAt: Date(), fileId: nil),
+        FileItem(name: "src", path: "/src", isDirectory: true, size: nil, modifiedAt: Date(), fileId: nil),
+        FileItem(name: "main.swift", path: "/src/main.swift", isDirectory: false, size: 2048, modifiedAt: Date(), fileId: nil),
+        FileItem(name: "utils.swift", path: "/src/utils.swift", isDirectory: false, size: 512, modifiedAt: Date(), fileId: nil),
+        FileItem(name: "package.json", path: "/package.json", isDirectory: false, size: 256, modifiedAt: Date(), fileId: nil),
     ]
 }
 
