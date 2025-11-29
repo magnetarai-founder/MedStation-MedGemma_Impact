@@ -77,6 +77,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             MenuBarManager.shared.show()
         }
 
+        // Initialize orchestrators (Phase 4)
+        Task {
+            await OrchestratorInitializer.initialize()
+        }
+
         // Auto-start Ollama if enabled in settings
         Task {
             await autoStartOllama()

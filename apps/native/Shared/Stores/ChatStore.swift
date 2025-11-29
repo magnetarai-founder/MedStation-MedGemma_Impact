@@ -236,6 +236,120 @@ final class ChatStore {
         }
     }
 
+    // MARK: - Intelligent Routing (Phase 4)
+
+    /// Determine which model to use for a query
+    /// Uses orchestrator in "intelligent" mode, manual selection otherwise
+    private func determineModelForQuery(_ query: String, sessionId: String) async -> String {
+        // Check mode
+        if selectedMode == "manual" {
+            // Manual mode: use specifically selected model
+            if let modelId = selectedModelId {
+                print("✓ Manual mode: Using selected model \(modelId)")
+                return modelId
+            } else {
+                // Fallback to default
+                print("⚠️ Manual mode but no model selected, using default")
+                return selectedModel.isEmpty ? "llama3.2:3b" : selectedModel
+            }
+        }
+
+        // Intelligent mode: use orchestrator
+        print("🧠 Intelligent mode: Using orchestrator to determine best model")
+
+        do {
+            // Build context bundle
+            let bundle = await buildContextBundle(query: query, sessionId: sessionId)
+
+            // Get orchestrator
+            let manager = OrchestratorManager.shared
+            guard let orchestrator = await manager.getActiveOrchestrator() else {
+                print("✗ No orchestrator available, using default model")
+                return selectedModel.isEmpty ? "llama3.2:3b" : selectedModel
+            }
+
+            // Route with orchestrator
+            let decision = try await orchestrator.route(bundle: bundle)
+
+            print("✓ Orchestrator decision:")
+            print("  Model: \(decision.selectedModelName)")
+            print("  Confidence: \(Int(decision.confidence * 100))%")
+            print("  Reasoning: \(decision.reasoning)")
+
+            return decision.selectedModelId
+
+        } catch {
+            print("✗ Orchestrator routing failed: \(error)")
+            // Fallback to default
+            return selectedModel.isEmpty ? "llama3.2:3b" : selectedModel
+        }
+    }
+
+    /// Build context bundle for orchestrator routing
+    private func buildContextBundle(query: String, sessionId: String) async -> ContextBundle {
+        // Get app context
+        let appContext = await AppContext.current()
+
+        // Convert messages to ConversationMessage format
+        let conversationHistory = messages.map { msg in
+            ConversationMessage(
+                id: msg.id.uuidString,
+                role: msg.role == .user ? "user" : "assistant",
+                content: msg.content,
+                modelId: nil,  // TODO: Track which model generated each response
+                timestamp: msg.createdAt,
+                tokenCount: nil
+            )
+        }
+
+        // Get available models (hot slots + all models)
+        let hotSlotManager = HotSlotManager.shared
+        let availableModels: [AvailableModel] = availableModels.enumerated().map { index, modelName in
+            // Check if in hot slot
+            let slot = hotSlotManager.hotSlots.first { $0.modelId == modelName }
+
+            return AvailableModel(
+                id: modelName,
+                name: modelName,
+                displayName: modelName,
+                slotNumber: slot?.slotNumber,
+                isPinned: slot?.isPinned ?? false,
+                memoryUsageGB: nil,  // TODO: Get actual memory usage
+                capabilities: ModelCapabilities(
+                    chat: true,
+                    codeGeneration: modelName.lowercased().contains("coder"),
+                    dataAnalysis: modelName.lowercased().contains("phi"),
+                    reasoning: modelName.lowercased().contains("deepseek"),
+                    maxContextTokens: 8192,
+                    specialized: nil
+                ),
+                isHealthy: true
+            )
+        }
+
+        return ContextBundle(
+            userQuery: query,
+            sessionId: sessionId,
+            workspaceType: "chat",
+            conversationHistory: conversationHistory,
+            totalMessagesInSession: messages.count,
+            vaultContext: nil,  // TODO: Include vault context
+            dataContext: nil,
+            kanbanContext: nil,
+            workflowContext: nil,
+            teamContext: nil,
+            codeContext: nil,
+            ragDocuments: nil,
+            vectorSearchResults: nil,
+            userPreferences: appContext.userPreferences,
+            activeModelId: selectedModelId,
+            systemResources: appContext.systemResources,
+            availableModels: availableModels,
+            bundledAt: Date(),
+            ttl: 60
+        )
+    }
+
     // MARK: - Messaging
 
     func sendMessage(_ text: String) async {
@@ -258,6 +372,9 @@ final class ChatStore {
         error = nil
 
         do {
+            // Phase 4: Determine which model to use (intelligent routing or manual)
+            let modelToUse = await determineModelForQuery(text, sessionId: session.id.uuidString)
+
             // Create assistant message placeholder
             let assistantMessage = ChatMessage(
                 role: .assistant,
@@ -279,7 +396,7 @@ final class ChatStore {
 
             let requestBody: [String: Any] = [
                 "content": text,
-                "model": selectedModel.isEmpty ? "mistral" : selectedModel
+                "model": modelToUse
             ]
             request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
 
