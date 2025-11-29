@@ -87,6 +87,10 @@ final class ChatStore {
             if currentSession == nil, let first = sessions.first {
                 await selectSession(first)
             }
+        } catch ApiError.unauthorized {
+            print("⚠️ Unauthorized when loading sessions - session may not be initialized yet")
+            // Don't show error to user for auth issues - they just logged in
+            sessions = []
         } catch {
             print("Failed to load sessions: \(error)")
             self.error = .loadFailed("Could not load chat sessions")
