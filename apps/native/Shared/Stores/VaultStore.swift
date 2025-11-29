@@ -9,7 +9,7 @@ final class VaultStore: ObservableObject {
     // MARK: - Published State
 
     @Published var unlocked: Bool = false
-    @Published var vaultType: String = "primary"  // "primary" | "decoy" | "team"
+    @Published var vaultType: String = "real"  // "real" | "decoy"
     @Published var currentFolder: String = "/"
     @Published var folders: [VaultFolder] = []
     @Published var files: [VaultFile] = []
@@ -286,7 +286,7 @@ final class VaultStore: ObservableObject {
     func clear() {
         unlocked = false
         passphrase = nil
-        vaultType = "primary"
+        vaultType = "real"
         currentFolder = "/"
         folders = []
         files = []
