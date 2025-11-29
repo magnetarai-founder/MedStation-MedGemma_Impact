@@ -31,9 +31,28 @@ final class OllamaService {
 
     /// Start Ollama server
     func start() async throws {
+        // Try common Ollama installation paths
+        let possiblePaths = [
+            "/opt/homebrew/bin/ollama",  // Apple Silicon Homebrew
+            "/usr/local/bin/ollama",      // Intel Homebrew
+            "/usr/bin/ollama"             // System install
+        ]
+
+        var ollamaPath: String?
+        for path in possiblePaths {
+            if FileManager.default.fileExists(atPath: path) {
+                ollamaPath = path
+                break
+            }
+        }
+
+        guard let ollamaPath = ollamaPath else {
+            throw OllamaError.startFailed
+        }
+
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        process.arguments = ["ollama", "serve"]
+        process.executableURL = URL(fileURLWithPath: ollamaPath)
+        process.arguments = ["serve"]
 
         // Run in background
         try process.run()
