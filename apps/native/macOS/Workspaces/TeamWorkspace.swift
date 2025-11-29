@@ -1571,6 +1571,11 @@ struct DocsWorkspace: View {
         do {
             documents = try await teamService.listDocuments()
             isLoading = false
+        } catch ApiError.unauthorized {
+            print("⚠️ Unauthorized when loading documents - session may not be initialized yet")
+            // Don't show error to user for auth issues - they just logged in
+            documents = []
+            isLoading = false
         } catch {
             errorMessage = error.localizedDescription
             isLoading = false
