@@ -130,6 +130,8 @@ struct MainAppView: View {
                         ChatWorkspace()
                     case .team:
                         TeamWorkspace()
+                    case .code:
+                        CodeWorkspace()
                     case .kanban:
                         KanbanWorkspace()
                     case .database:

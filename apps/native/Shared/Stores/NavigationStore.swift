@@ -63,6 +63,7 @@ final class NavigationStore {
 enum Workspace: String, CaseIterable, Identifiable, Hashable {
     case team
     case chat
+    case code
     case database
     case kanban
     case magnetarHub
@@ -73,6 +74,7 @@ enum Workspace: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .team: return "Team"
         case .chat: return "Chat"
+        case .code: return "Code"
         case .database: return "Database"
         case .kanban: return "Kanban"
         case .magnetarHub: return "MagnetarHub"
@@ -83,6 +85,7 @@ enum Workspace: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .team: return "person.2"
         case .chat: return "bubble.left"
+        case .code: return "chevron.left.forwardslash.chevron.right"
         case .database: return "cylinder"
         case .kanban: return "square.grid.2x2"
         case .magnetarHub: return "cube.box"
@@ -93,9 +96,10 @@ enum Workspace: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .team: return "1"
         case .chat: return "2"
-        case .database: return "3"
-        case .kanban: return "4"
-        case .magnetarHub: return "5"
+        case .code: return "3"
+        case .database: return "4"
+        case .kanban: return "5"
+        case .magnetarHub: return "6"
         }
     }
 
@@ -103,6 +107,7 @@ enum Workspace: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .team: return "Team"
         case .chat: return "Chat"
+        case .code: return "Code"
         case .database: return "Data"
         case .kanban: return "Board"
         case .magnetarHub: return "Hub"
