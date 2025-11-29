@@ -997,6 +997,7 @@ struct TeamChatWindow: View {
     @State private var messageInput: String = ""
     @State private var messages: [TeamMessage] = []
     @State private var isLoadingMessages = false
+    @State private var errorMessage: String? = nil
 
     var body: some View {
         Group {
@@ -1036,6 +1037,37 @@ struct TeamChatWindow: View {
                             .frame(height: 1),
                         alignment: .bottom
                     )
+
+                    // Error banner
+                    if let error = errorMessage {
+                        HStack(spacing: 12) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.orange)
+
+                            Text(error)
+                                .font(.system(size: 13))
+                                .foregroundColor(.primary)
+
+                            Spacer()
+
+                            Button {
+                                errorMessage = nil
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .background(Color.orange.opacity(0.1))
+                        .overlay(
+                            Rectangle()
+                                .fill(Color.orange.opacity(0.3))
+                                .frame(height: 1),
+                            alignment: .bottom
+                        )
+                    }
 
                     // Messages area
                     ScrollView {
@@ -1134,12 +1166,14 @@ struct TeamChatWindow: View {
                 await MainActor.run {
                     messages = response.messages
                     isLoadingMessages = false
+                    errorMessage = nil
                 }
             } catch {
                 print("Failed to load messages: \(error.localizedDescription)")
                 await MainActor.run {
                     messages = []
                     isLoadingMessages = false
+                    errorMessage = "Failed to load messages: \(error.localizedDescription)"
                 }
             }
         }
@@ -1162,10 +1196,13 @@ struct TeamChatWindow: View {
                 await MainActor.run {
                     // Add the new message to the list
                     messages.append(sentMessage)
+                    errorMessage = nil
                 }
             } catch {
                 print("Failed to send message: \(error.localizedDescription)")
-                // TODO: Show error to user
+                await MainActor.run {
+                    errorMessage = "Failed to send message: \(error.localizedDescription)"
+                }
             }
         }
     }

@@ -32,6 +32,13 @@ final class ChatService {
         )
     }
 
+    func deleteSession(sessionId: String) async throws {
+        _ = try await apiClient.request(
+            path: "/v1/chat/sessions/\(sessionId)",
+            method: .delete
+        ) as EmptyResponse
+    }
+
     // MARK: - File Upload
 
     func uploadAttachment(sessionId: String, fileURL: URL) async throws -> ChatFile {

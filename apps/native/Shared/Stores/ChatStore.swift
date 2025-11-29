@@ -145,6 +145,7 @@ final class ChatStore {
     }
 
     func deleteSession(_ session: ChatSession) {
+        // Optimistically remove from UI
         sessions.removeAll { $0.id == session.id }
         if currentSession?.id == session.id {
             currentSession = sessions.first
@@ -157,7 +158,15 @@ final class ChatStore {
             }
         }
 
-        // TODO: Call backend delete endpoint when available
+        // Delete from backend
+        Task {
+            do {
+                try await chatService.deleteSession(sessionId: session.id.uuidString)
+            } catch {
+                print("Failed to delete session from backend: \(error)")
+                // Session already removed from UI, just log the error
+            }
+        }
     }
 
     // MARK: - Messaging
