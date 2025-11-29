@@ -71,6 +71,9 @@ struct MagnetarStudioApp: App {
 class AppDelegate: NSObject, NSApplicationDelegate {
     @AppStorage("showMenuBar") private var showMenuBar: Bool = false
 
+    // Keep backend process alive
+    private var backendProcess: Process?
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Initialize menu bar if enabled
         if showMenuBar {
@@ -122,12 +125,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         task.arguments = ["-m", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
         task.currentDirectoryURL = backendPath
 
-        // Suppress output (run silently in background)
-        task.standardOutput = nil
-        task.standardError = nil
+        // Pipe output to DevNull (suppress but don't crash)
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        task.standardError = pipe
 
         do {
             try task.run()
+
+            // Keep process reference alive
+            self.backendProcess = task
+
             print("✓ Backend server started successfully (PID: \(task.processIdentifier))")
 
             // Wait a moment for server to initialize
@@ -204,6 +212,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
             handleURL(url)
+        }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        // Clean shutdown of backend server
+        if let process = backendProcess, process.isRunning {
+            print("Stopping backend server...")
+            process.terminate()
+            backendProcess = nil
         }
     }
 
