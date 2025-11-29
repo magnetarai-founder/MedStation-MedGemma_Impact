@@ -155,7 +155,7 @@ struct CodeWorkspace: View {
             }
 
             // Editor content
-            if let selected = selectedFile {
+            if selectedFile != nil {
                 TextEditor(text: $fileContent)
                     .font(.system(size: 13, design: .monospaced))
                     .scrollContentBackground(.hidden)

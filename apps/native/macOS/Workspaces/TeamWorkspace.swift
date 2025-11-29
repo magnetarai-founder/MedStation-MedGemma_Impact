@@ -1096,7 +1096,7 @@ struct TeamChatWindow: View {
                             .padding(16)
                         }
                     }
-                    .onChange(of: activeChannel?.id) { _ in
+                    .onChange(of: activeChannel?.id) {
                         loadMessages()
                     }
                     .onAppear {
@@ -1264,7 +1264,7 @@ struct TeamMessageRow: View {
                     .font(.system(size: 14))
                     .foregroundColor(.primary)
 
-                if let editedAt = message.editedAt {
+                if message.editedAt != nil {
                     Text("(edited)")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary.opacity(0.7))
