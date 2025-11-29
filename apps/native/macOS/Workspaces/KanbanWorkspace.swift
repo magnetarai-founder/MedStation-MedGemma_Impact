@@ -225,19 +225,88 @@ struct KanbanWorkspace: View {
     // MARK: - Data Loading
 
     private func loadBoardsAndTasks() {
-        // TODO: Connect to Kanban API when backend endpoint is ready
-        // For now, use mock data until /api/v1/kanban endpoint is implemented
         isLoading = true
 
         Task {
-            // Simulate API delay
-            try? await Task.sleep(nanoseconds: 500_000_000)
+            do {
+                // Note: Kanban backend requires a project_id
+                // Using a default project for now - in production this should be user-selected
+                let defaultProjectId = "default"
+
+                // Try to load boards from API
+                let apiBoards = try await KanbanService.shared.listBoards(projectId: defaultProjectId)
+
+                await MainActor.run {
+                    // Convert API boards to UI models
+                    boards = apiBoards.map { apiBoard in
+                        KanbanBoard(
+                            name: apiBoard.name,
+                            icon: "folder",
+                            taskCount: 0,  // Would need separate API call to get count
+                            boardId: apiBoard.boardId
+                        )
+                    }
+
+                    // If we have boards, load tasks for the first one
+                    if let firstBoard = apiBoards.first {
+                        selectedBoard = boards.first
+                        Task {
+                            await loadTasks(boardId: firstBoard.boardId)
+                        }
+                    }
+
+                    isLoading = false
+                }
+            } catch {
+                // Fall back to mock data if API fails
+                print("Kanban API error: \(error.localizedDescription)")
+                await MainActor.run {
+                    boards = KanbanBoard.mockBoards
+                    tasks = KanbanTask.mockTasks
+                    isLoading = false
+                }
+            }
+        }
+    }
+
+    private func loadTasks(boardId: String) async {
+        do {
+            let apiTasks = try await KanbanService.shared.listTasks(boardId: boardId)
 
             await MainActor.run {
-                boards = KanbanBoard.mockBoards
-                tasks = KanbanTask.mockTasks
-                isLoading = false
+                tasks = apiTasks.map { apiTask in
+                    KanbanTask(
+                        title: apiTask.title,
+                        description: apiTask.description ?? "",
+                        status: taskStatusFromString(apiTask.status ?? "todo"),
+                        priority: taskPriorityFromString(apiTask.priority ?? "medium"),
+                        assignee: apiTask.assigneeId ?? "Unassigned",
+                        dueDate: apiTask.dueDate ?? "",
+                        labels: apiTask.tags,
+                        taskId: apiTask.taskId,
+                        boardId: apiTask.boardId,
+                        columnId: apiTask.columnId
+                    )
+                }
             }
+        } catch {
+            print("Failed to load tasks: \(error.localizedDescription)")
+        }
+    }
+
+    private func taskStatusFromString(_ str: String) -> TaskStatus {
+        switch str.lowercased() {
+        case "done": return .done
+        case "in_progress", "inprogress": return .inProgress
+        default: return .todo
+        }
+    }
+
+    private func taskPriorityFromString(_ str: String) -> TaskPriority {
+        switch str.lowercased() {
+        case "high": return .high
+        case "low": return .low
+        default: return .medium
         }
     }
 
@@ -246,66 +315,202 @@ struct KanbanWorkspace: View {
     private func createBoard() {
         guard !newBoardName.isEmpty else { return }
 
-        let newBoard = KanbanBoard(
-            name: newBoardName,
-            icon: "folder",
-            taskCount: 0
-        )
+        Task {
+            do {
+                // Create board via API
+                let defaultProjectId = "default"
+                let apiBoard = try await KanbanService.shared.createBoard(
+                    projectId: defaultProjectId,
+                    name: newBoardName
+                )
 
-        withAnimation {
-            boards.append(newBoard)
+                await MainActor.run {
+                    let newBoard = KanbanBoard(
+                        name: apiBoard.name,
+                        icon: "folder",
+                        taskCount: 0,
+                        boardId: apiBoard.boardId
+                    )
+
+                    withAnimation {
+                        boards.append(newBoard)
+                        selectedBoard = newBoard
+                    }
+
+                    showNewBoardSheet = false
+                    newBoardName = ""
+                }
+            } catch {
+                print("Failed to create board: \(error.localizedDescription)")
+                // Fall back to local-only creation
+                await MainActor.run {
+                    let newBoard = KanbanBoard(
+                        name: newBoardName,
+                        icon: "folder",
+                        taskCount: 0,
+                        boardId: nil
+                    )
+
+                    withAnimation {
+                        boards.append(newBoard)
+                    }
+
+                    showNewBoardSheet = false
+                    newBoardName = ""
+                }
+            }
         }
-
-        showNewBoardSheet = false
-        newBoardName = ""
     }
 
     private func deleteBoard(_ board: KanbanBoard) {
-        withAnimation {
-            boards.removeAll { $0.id == board.id }
+        Task {
+            do {
+                // Delete from API if we have a backend ID
+                if let boardId = board.boardId {
+                    try await KanbanService.shared.deleteBoard(boardId: boardId)
+                }
 
-            // Clear selection if deleted board was selected
-            if selectedBoard?.id == board.id {
-                selectedBoard = nil
-                selectedTask = nil
+                await MainActor.run {
+                    withAnimation {
+                        boards.removeAll { $0.id == board.id }
+
+                        // Clear selection if deleted board was selected
+                        if selectedBoard?.id == board.id {
+                            selectedBoard = nil
+                            selectedTask = nil
+                        }
+                    }
+
+                    boardToDelete = nil
+                }
+            } catch {
+                print("Failed to delete board from API: \(error.localizedDescription)")
+                // Still remove locally even if API fails
+                await MainActor.run {
+                    withAnimation {
+                        boards.removeAll { $0.id == board.id }
+
+                        if selectedBoard?.id == board.id {
+                            selectedBoard = nil
+                            selectedTask = nil
+                        }
+                    }
+
+                    boardToDelete = nil
+                }
             }
         }
-
-        boardToDelete = nil
     }
 
     private func createTask() {
         guard !newTaskTitle.isEmpty else { return }
-
-        let newTask = KanbanTask(
-            title: newTaskTitle,
-            description: "New task description",
-            status: .todo,
-            priority: .medium,
-            assignee: "Unassigned",
-            dueDate: "TBD",
-            labels: []
-        )
-
-        withAnimation {
-            tasks.append(newTask)
+        guard let currentBoard = selectedBoard, let boardId = currentBoard.boardId else {
+            print("Cannot create task: no board selected or board has no backend ID")
+            showNewTaskSheet = false
+            newTaskTitle = ""
+            return
         }
 
-        showNewTaskSheet = false
-        newTaskTitle = ""
+        Task {
+            do {
+                // For now, use "todo" as the default column_id
+                // In a full implementation, we'd fetch columns and use the first one
+                let defaultColumnId = "todo"
+
+                let apiTask = try await KanbanService.shared.createTask(
+                    boardId: boardId,
+                    columnId: defaultColumnId,
+                    title: newTaskTitle,
+                    description: "New task description",
+                    status: "todo",
+                    priority: "medium"
+                )
+
+                await MainActor.run {
+                    let newTask = KanbanTask(
+                        title: apiTask.title,
+                        description: apiTask.description ?? "",
+                        status: taskStatusFromString(apiTask.status ?? "todo"),
+                        priority: taskPriorityFromString(apiTask.priority ?? "medium"),
+                        assignee: apiTask.assigneeId ?? "Unassigned",
+                        dueDate: apiTask.dueDate ?? "TBD",
+                        labels: apiTask.tags,
+                        taskId: apiTask.taskId,
+                        boardId: apiTask.boardId,
+                        columnId: apiTask.columnId
+                    )
+
+                    withAnimation {
+                        tasks.append(newTask)
+                    }
+
+                    showNewTaskSheet = false
+                    newTaskTitle = ""
+                }
+            } catch {
+                print("Failed to create task: \(error.localizedDescription)")
+                // Fall back to local-only creation
+                await MainActor.run {
+                    let newTask = KanbanTask(
+                        title: newTaskTitle,
+                        description: "New task description",
+                        status: .todo,
+                        priority: .medium,
+                        assignee: "Unassigned",
+                        dueDate: "TBD",
+                        labels: [],
+                        taskId: nil,
+                        boardId: nil,
+                        columnId: nil
+                    )
+
+                    withAnimation {
+                        tasks.append(newTask)
+                    }
+
+                    showNewTaskSheet = false
+                    newTaskTitle = ""
+                }
+            }
+        }
     }
 
     private func deleteTask(_ task: KanbanTask) {
-        withAnimation {
-            tasks.removeAll { $0.id == task.id }
+        Task {
+            do {
+                // Delete from API if we have a backend ID
+                if let taskId = task.taskId {
+                    try await KanbanService.shared.deleteTask(taskId: taskId)
+                }
 
-            // Clear selection if deleted task was selected
-            if selectedTask?.id == task.id {
-                selectedTask = nil
+                await MainActor.run {
+                    withAnimation {
+                        tasks.removeAll { $0.id == task.id }
+
+                        // Clear selection if deleted task was selected
+                        if selectedTask?.id == task.id {
+                            selectedTask = nil
+                        }
+                    }
+
+                    taskToDelete = nil
+                }
+            } catch {
+                print("Failed to delete task from API: \(error.localizedDescription)")
+                // Still remove locally even if API fails
+                await MainActor.run {
+                    withAnimation {
+                        tasks.removeAll { $0.id == task.id }
+
+                        if selectedTask?.id == task.id {
+                            selectedTask = nil
+                        }
+                    }
+
+                    taskToDelete = nil
+                }
             }
         }
-
-        taskToDelete = nil
     }
 }
 
@@ -463,12 +668,13 @@ struct KanbanBoard: Identifiable, Hashable {
     let name: String
     let icon: String
     let taskCount: Int
+    let boardId: String?  // Backend board ID for API operations
 
     static let mockBoards = [
-        KanbanBoard(name: "Product Roadmap", icon: "map", taskCount: 24),
-        KanbanBoard(name: "Sprint 12", icon: "bolt", taskCount: 18),
-        KanbanBoard(name: "Bug Fixes", icon: "ant", taskCount: 12),
-        KanbanBoard(name: "Research", icon: "magnifyingglass", taskCount: 8)
+        KanbanBoard(name: "Product Roadmap", icon: "map", taskCount: 24, boardId: nil),
+        KanbanBoard(name: "Sprint 12", icon: "bolt", taskCount: 18, boardId: nil),
+        KanbanBoard(name: "Bug Fixes", icon: "ant", taskCount: 12, boardId: nil),
+        KanbanBoard(name: "Research", icon: "magnifyingglass", taskCount: 8, boardId: nil)
     ]
 }
 
@@ -481,13 +687,16 @@ struct KanbanTask: Identifiable {
     let assignee: String
     let dueDate: String
     let labels: [String]
+    let taskId: String?  // Backend task ID for API operations
+    let boardId: String?  // Backend board ID
+    let columnId: String?  // Backend column ID
 
     static let mockTasks = [
-        KanbanTask(title: "Implement model tag system", description: "Add capability tags to models for better organization", status: .inProgress, priority: .high, assignee: "Alice Johnson", dueDate: "Nov 30, 2025", labels: ["Feature", "Backend"]),
-        KanbanTask(title: "Design Liquid Glass UI", description: "Create macOS Tahoe-inspired UI components", status: .inProgress, priority: .high, assignee: "Bob Smith", dueDate: "Nov 28, 2025", labels: ["Design", "UI"]),
-        KanbanTask(title: "Fix chat streaming bug", description: "Messages not displaying correctly during streaming", status: .todo, priority: .medium, assignee: "Carol Davis", dueDate: "Dec 2, 2025", labels: ["Bug", "Chat"]),
-        KanbanTask(title: "Add model performance metrics", description: "Track inference time and token usage", status: .todo, priority: .low, assignee: "David Wilson", dueDate: "Dec 5, 2025", labels: ["Analytics"]),
-        KanbanTask(title: "Write API documentation", description: "Document all REST endpoints", status: .done, priority: .medium, assignee: "Eve Martinez", dueDate: "Nov 20, 2025", labels: ["Documentation"])
+        KanbanTask(title: "Implement model tag system", description: "Add capability tags to models for better organization", status: .inProgress, priority: .high, assignee: "Alice Johnson", dueDate: "Nov 30, 2025", labels: ["Feature", "Backend"], taskId: nil, boardId: nil, columnId: nil),
+        KanbanTask(title: "Design Liquid Glass UI", description: "Create macOS Tahoe-inspired UI components", status: .inProgress, priority: .high, assignee: "Bob Smith", dueDate: "Nov 28, 2025", labels: ["Design", "UI"], taskId: nil, boardId: nil, columnId: nil),
+        KanbanTask(title: "Fix chat streaming bug", description: "Messages not displaying correctly during streaming", status: .todo, priority: .medium, assignee: "Carol Davis", dueDate: "Dec 2, 2025", labels: ["Bug", "Chat"], taskId: nil, boardId: nil, columnId: nil),
+        KanbanTask(title: "Add model performance metrics", description: "Track inference time and token usage", status: .todo, priority: .low, assignee: "David Wilson", dueDate: "Dec 5, 2025", labels: ["Analytics"], taskId: nil, boardId: nil, columnId: nil),
+        KanbanTask(title: "Write API documentation", description: "Document all REST endpoints", status: .done, priority: .medium, assignee: "Eve Martinez", dueDate: "Nov 20, 2025", labels: ["Documentation"], taskId: nil, boardId: nil, columnId: nil)
     ]
 }
 

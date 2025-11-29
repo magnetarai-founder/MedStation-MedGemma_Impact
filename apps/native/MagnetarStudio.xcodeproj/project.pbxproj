@@ -27,6 +27,7 @@
 		4FCFAC2E0DD745DFB5813F74 /* NavigationRail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08785DE309A344AF8765E6BC /* NavigationRail.swift */; };
 		500A346FB7ED4D9B9ADD8F0C /* SetupWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 624C9537C9E743BAB72D79DB /* SetupWizardView.swift */; };
 		67FDD665DB0B426EA23C1F9F /* DatabaseModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 971E406BFD964D0DA7C3DB54 /* DatabaseModels.swift */; };
+		6906ED58F9814219F579F8A1 /* KanbanService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3DBDF8C9291B00E92989C8A /* KanbanService.swift */; };
 		6B00212B907A4D3A89F2BA66 /* AutomationWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23E49F56280544789AA32ABF /* AutomationWorkspace.swift */; };
 		6F8590DFCF92476BB18FB1FF /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A959626C53B4237AD1DD881 /* KeychainService.swift */; };
 		7B7E8A766BB7FC3F6725F19B /* DatabaseWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = A90C0C6D0ED2910BC2EE2A2D /* DatabaseWorkspace.swift */; };
@@ -98,6 +99,7 @@
 		98E7B59E6EB249EAA0A73897 /* DatabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseService.swift; sourceTree = "<group>"; };
 		9FB81FC9D13D45848AE84D90 /* SettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStore.swift; sourceTree = "<group>"; };
 		A2B42850187A449F9B295DF2 /* SidebarTabs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarTabs.swift; sourceTree = "<group>"; };
+		A3DBDF8C9291B00E92989C8A /* KanbanService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = KanbanService.swift; path = ../../Shared/Services/KanbanService.swift; sourceTree = "<group>"; };
 		A6D0A604BB2D42F8996CC8C9 /* DatabaseStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseStore.swift; sourceTree = "<group>"; };
 		A904439226AE3F48234C22A0 /* BiometricAuthService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BiometricAuthService.swift; path = BiometricAuthService.swift; sourceTree = "<group>"; };
 		A90C0C6D0ED2910BC2EE2A2D /* DatabaseWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseWorkspace.swift; sourceTree = "<group>"; };
@@ -292,6 +294,7 @@
 				26E9E5E9E5784B339818979B /* SettingsService.swift */,
 				399E593F40D14E5AAD83D8EA /* VaultService.swift */,
 				B02AE94CCC83473FB64BC7BD /* WorkflowService.swift */,
+				A3DBDF8C9291B00E92989C8A /* KanbanService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -405,6 +408,7 @@
 				E840DDF0BB59FF2E5EFCF7DD /* VaultSetupWizardView.swift in Sources */,
 				CD851BE5E0D7AB9D5519B9A7 /* NewDocumentModal.swift in Sources */,
 				04B417CD2D01C6E1ABC5ADDB /* SlackStyleDocsSidebar.swift in Sources */,
+				6906ED58F9814219F579F8A1 /* KanbanService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
