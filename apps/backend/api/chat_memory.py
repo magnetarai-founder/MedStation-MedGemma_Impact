@@ -123,6 +123,17 @@ class NeutronChatMemory:
         except sqlite3.OperationalError:
             pass  # Column already exists
 
+        # Phase 1: Model Orchestration - Add model preference columns
+        try:
+            conn.execute("ALTER TABLE chat_sessions ADD COLUMN selected_mode TEXT DEFAULT 'intelligent'")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
+        try:
+            conn.execute("ALTER TABLE chat_sessions ADD COLUMN selected_model_id TEXT")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
         # Full message history
         conn.execute("""
             CREATE TABLE IF NOT EXISTS chat_messages (
@@ -621,6 +632,52 @@ class NeutronChatMemory:
                 WHERE id = ?
             """, (model, now, session_id))
             conn.commit()
+
+    def update_model_preferences(self, session_id: str, selected_mode: str, selected_model_id: Optional[str] = None) -> None:
+        """
+        Update model selection preferences for a chat session
+
+        Args:
+            session_id: Session ID to update
+            selected_mode: "intelligent" (Apple FM orchestrator) or "manual" (specific model)
+            selected_model_id: Model ID when in manual mode, None when in intelligent mode
+        """
+        now = datetime.utcnow().isoformat()
+        conn = self._get_connection()
+        with self._write_lock:
+            conn.execute("""
+                UPDATE chat_sessions
+                SET selected_mode = ?, selected_model_id = ?, updated_at = ?
+                WHERE id = ?
+            """, (selected_mode, selected_model_id, now, session_id))
+            conn.commit()
+
+    def get_model_preferences(self, session_id: str) -> Dict[str, Any]:
+        """
+        Get model selection preferences for a chat session
+
+        Returns:
+            Dict with 'selected_mode' and 'selected_model_id' keys
+        """
+        conn = self._get_connection()
+        cur = conn.execute("""
+            SELECT selected_mode, selected_model_id
+            FROM chat_sessions
+            WHERE id = ?
+        """, (session_id,))
+
+        row = cur.fetchone()
+        if not row:
+            # Default to intelligent mode
+            return {
+                "selected_mode": "intelligent",
+                "selected_model_id": None
+            }
+
+        return {
+            "selected_mode": row["selected_mode"] or "intelligent",
+            "selected_model_id": row["selected_model_id"]
+        }
 
     def set_session_archived(self, session_id: str, archived: bool) -> None:
         """Archive or unarchive a chat session"""

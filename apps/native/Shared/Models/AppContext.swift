@@ -1,0 +1,447 @@
+//
+//  AppContext.swift
+//  MagnetarStudio
+//
+//  Unified context across all workspaces for intelligent model routing
+//  Part of Noah's Ark for the Digital Age - Cross-app intelligence
+//
+//  Foundation: Matthew 7:24-25 - Built on the rock, not sand
+//
+
+import Foundation
+
+// MARK: - App Context (Unified Cross-Workspace State)
+
+/// Complete application context for intelligent model routing
+/// Provides models with awareness of user activity across ALL workspaces
+struct AppContext {
+    let vault: VaultContext
+    let data: DataContext
+    let kanban: KanbanContext
+    let workflows: WorkflowContext
+    let team: TeamContext
+    let code: CodeContext  // Future: MagnetarCode integration
+
+    // Cross-workspace memory
+    let vectorMemory: ANEContextState
+    let modelInteractionHistory: [ModelInteraction]
+    let userPreferences: UserPreferences
+
+    // System resource state
+    let systemResources: SystemResourceState
+
+    // Timestamp for cache invalidation
+    let capturedAt: Date
+
+    /// Get current app context snapshot
+    static func current() async -> AppContext {
+        async let vault = VaultContext.current()
+        async let data = DataContext.current()
+        async let kanban = KanbanContext.current()
+        async let workflows = WorkflowContext.current()
+        async let team = TeamContext.current()
+        async let code = CodeContext.current()
+        async let vectorMemory = ANEContextState.current()
+        async let modelHistory = ModelInteractionHistory.recent(limit: 100)
+        async let preferences = UserPreferences.load()
+        async let resources = SystemResourceState.current()
+
+        return await AppContext(
+            vault: vault,
+            data: data,
+            kanban: kanban,
+            workflows: workflows,
+            team: team,
+            code: code,
+            vectorMemory: vectorMemory,
+            modelInteractionHistory: modelHistory,
+            userPreferences: preferences,
+            systemResources: resources,
+            capturedAt: Date()
+        )
+    }
+}
+
+// MARK: - Vault Context
+
+/// Context from Vault workspace (encrypted file storage)
+/// SECURITY: Only metadata exposed, file contents require explicit permission
+struct VaultContext {
+    let unlockedVaultType: String?  // "real" or "decoy" (if unlocked)
+    let recentFiles: [VaultFileMetadata]  // Metadata only, NO file contents
+    let activePermissions: [FilePermission]  // What files models currently have access to
+    let totalFiles: Int
+    let totalFolders: Int
+
+    static func current() async -> VaultContext {
+        let store = VaultStore.shared
+
+        return VaultContext(
+            unlockedVaultType: store.unlocked ? store.vaultType : nil,
+            recentFiles: store.files.prefix(20).map { VaultFileMetadata(from: $0) },
+            activePermissions: VaultPermissionManager.shared.activePermissions,
+            totalFiles: store.files.count,
+            totalFolders: store.folders.count
+        )
+    }
+}
+
+/// Metadata about a vault file (NO file contents)
+struct VaultFileMetadata: Codable {
+    let id: String
+    let name: String
+    let path: String
+    let size: Int64?
+    let modifiedAt: Date?
+    let vaultType: String  // "real" or "decoy"
+    let isDirectory: Bool
+
+    init(from file: VaultFile) {
+        self.id = file.id
+        self.name = file.name
+        self.path = file.path
+        self.size = file.size
+        self.modifiedAt = file.modifiedAt != nil ? ISO8601DateFormatter().date(from: file.modifiedAt!) : nil
+        self.vaultType = VaultStore.shared.vaultType
+        self.isDirectory = file.isDirectory
+    }
+}
+
+/// Active file permission (what models can currently access)
+struct FilePermission: Codable, Identifiable {
+    let id: UUID
+    let fileId: String
+    let fileName: String
+    let vaultType: String
+    let modelId: String
+    let grantedAt: Date
+    let expiresAt: Date?  // nil = "just this time" (already expired), Date = "for this session"
+    let sessionId: String  // Chat session that requested access
+}
+
+// MARK: - Data Context
+
+/// Context from Data workspace (SQL queries, databases)
+struct DataContext {
+    let loadedTables: [TableMetadata]
+    let recentQueries: [RecentQuery]
+    let activeConnections: [DatabaseConnection]
+
+    static func current() async -> DataContext {
+        // TODO: Get from DataStore when available
+        return DataContext(
+            loadedTables: [],
+            recentQueries: [],
+            activeConnections: []
+        )
+    }
+}
+
+struct TableMetadata: Codable {
+    let name: String
+    let rowCount: Int?
+    let columns: [ColumnInfo]
+    let source: String  // "uploaded", "connected"
+}
+
+struct ColumnInfo: Codable {
+    let name: String
+    let type: String
+}
+
+struct RecentQuery: Codable {
+    let sql: String
+    let executedAt: Date
+    let success: Bool
+    let rowsReturned: Int?
+}
+
+struct DatabaseConnection: Codable {
+    let name: String
+    let type: String  // "postgresql", "mysql", "sqlite"
+    let connected: Bool
+}
+
+// MARK: - Kanban Context
+
+/// Context from Kanban workspace (task management)
+struct KanbanContext {
+    let activeBoard: String?
+    let activeTasks: [TaskSummary]
+    let recentActivity: [KanbanActivity]
+
+    static func current() async -> KanbanContext {
+        let store = KanbanStore.shared
+
+        return KanbanContext(
+            activeBoard: store.selectedBoard?.name,
+            activeTasks: store.tasks.prefix(10).map { TaskSummary(from: $0) },
+            recentActivity: []  // TODO: Track kanban activity
+        )
+    }
+}
+
+struct TaskSummary: Codable {
+    let id: String
+    let title: String
+    let status: String
+    let priority: String?
+    let assignedTo: String?
+    let dueDate: Date?
+}
+
+struct KanbanActivity: Codable {
+    let action: String
+    let taskTitle: String
+    let timestamp: Date
+}
+
+// MARK: - Workflow Context
+
+/// Context from Workflows workspace (automations)
+struct WorkflowContext {
+    let activeWorkflows: [WorkflowSummary]
+    let recentExecutions: [WorkflowExecution]
+
+    static func current() async -> WorkflowContext {
+        let store = WorkflowStore.shared
+
+        return WorkflowContext(
+            activeWorkflows: store.workflows.prefix(10).map { WorkflowSummary(from: $0) },
+            recentExecutions: []  // TODO: Track workflow executions
+        )
+    }
+}
+
+struct WorkflowSummary: Codable {
+    let id: String
+    let name: String
+    let status: String
+    let lastRun: Date?
+}
+
+struct WorkflowExecution: Codable {
+    let workflowId: String
+    let startedAt: Date
+    let completedAt: Date?
+    let success: Bool
+}
+
+// MARK: - Team Context
+
+/// Context from Team workspace (chat, channels)
+struct TeamContext {
+    let activeChannel: String?
+    let recentMessages: [TeamMessageSummary]
+    let onlineMembers: Int
+
+    static func current() async -> TeamContext {
+        let store = TeamStore.shared
+
+        return TeamContext(
+            activeChannel: store.selectedChannel?.name,
+            recentMessages: store.messages.prefix(10).map { TeamMessageSummary(from: $0) },
+            onlineMembers: 0  // TODO: Track online members
+        )
+    }
+}
+
+struct TeamMessageSummary: Codable {
+    let channelName: String
+    let sender: String
+    let preview: String  // First 100 chars
+    let timestamp: Date
+}
+
+// MARK: - Code Context (Future: MagnetarCode)
+
+/// Context from Code workspace (future integration)
+struct CodeContext {
+    let openFiles: [String]
+    let recentEdits: [CodeEdit]
+    let gitBranch: String?
+
+    static func current() async -> CodeContext {
+        // Future: MagnetarCode integration
+        return CodeContext(
+            openFiles: [],
+            recentEdits: [],
+            gitBranch: nil
+        )
+    }
+}
+
+struct CodeEdit: Codable {
+    let filePath: String
+    let timestamp: Date
+}
+
+// MARK: - ANE Context State
+
+/// State of ANE (Apple Neural Engine) context vectorization
+/// Backend Python service provides cross-workspace semantic search
+struct ANEContextState {
+    let available: Bool
+    let indexedDocuments: Int
+    let lastIndexedAt: Date?
+
+    static func current() async -> ANEContextState {
+        // TODO: Query backend ANE Context Engine
+        return ANEContextState(
+            available: false,
+            indexedDocuments: 0,
+            lastIndexedAt: nil
+        )
+    }
+}
+
+// MARK: - Model Interaction History
+
+/// Track what models have done (for learning user patterns)
+struct ModelInteraction: Codable, Identifiable {
+    let id: UUID
+    let modelId: String
+    let workspaceType: String  // "vault", "data", "kanban", etc.
+    let actionType: String  // "file_access", "query", "code_edit", etc.
+    let resourceId: String?  // File ID, query ID, etc.
+    let timestamp: Date
+    let success: Bool
+}
+
+class ModelInteractionHistory {
+    static func recent(limit: Int) async -> [ModelInteraction] {
+        // TODO: Load from persistent storage
+        return []
+    }
+
+    static func record(_ interaction: ModelInteraction) {
+        // TODO: Save to persistent storage
+    }
+}
+
+// MARK: - User Preferences
+
+/// User preferences for model behavior
+struct UserPreferences: Codable {
+    let preferredModels: [String: String]  // Task type -> Model ID
+    let alwaysAllowFiles: [String]  // File IDs that don't require permission prompt
+    let pinnedHotSlots: [Int]  // Which hot slots are pinned (cannot evict)
+    let immutableModels: Bool  // If true, pinned models cannot be unpinned without confirmation
+    let askBeforeUnpinning: Bool  // Show modal before unpinning
+
+    static func load() async -> UserPreferences {
+        // TODO: Load from UserDefaults or backend
+        return UserPreferences(
+            preferredModels: [:],
+            alwaysAllowFiles: [],
+            pinnedHotSlots: [],
+            immutableModels: false,
+            askBeforeUnpinning: true
+        )
+    }
+}
+
+// MARK: - System Resource State
+
+/// Current system resource state (prevent crashes/overload)
+struct SystemResourceState: Codable {
+    let memoryPressure: Float  // 0.0-1.0
+    let thermalState: ThermalState
+    let activeModels: [LoadedModel]
+    let availableMemoryGB: Float
+    let cpuUsage: Float  // 0.0-1.0
+
+    static func current() async -> SystemResourceState {
+        let processInfo = ProcessInfo.processInfo
+
+        // Get thermal state
+        let thermal = ThermalState(from: processInfo.thermalState)
+
+        // Get memory info
+        var info = mach_task_basic_info()
+        var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size) / 4
+        let result = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
+                task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
+            }
+        }
+
+        let usedMemoryGB = result == KERN_SUCCESS ? Float(info.resident_size) / (1024 * 1024 * 1024) : 0
+        let totalMemoryGB = Float(processInfo.physicalMemory) / (1024 * 1024 * 1024)
+        let availableMemoryGB = totalMemoryGB - usedMemoryGB
+
+        // Calculate memory pressure (simple heuristic)
+        let memoryPressure = min(1.0, usedMemoryGB / totalMemoryGB)
+
+        // Get CPU usage (simplified)
+        let cpuUsage: Float = 0.0  // TODO: Implement proper CPU monitoring
+
+        // Get active models from hot slots
+        let activeModels = HotSlotManager.shared.loadedModels()
+
+        return SystemResourceState(
+            memoryPressure: memoryPressure,
+            thermalState: thermal,
+            activeModels: activeModels,
+            availableMemoryGB: availableMemoryGB,
+            cpuUsage: cpuUsage
+        )
+    }
+}
+
+enum ThermalState: String, Codable {
+    case nominal
+    case fair
+    case serious
+    case critical
+
+    init(from state: ProcessInfo.ThermalState) {
+        switch state {
+        case .nominal: self = .nominal
+        case .fair: self = .fair
+        case .serious: self = .serious
+        case .critical: self = .critical
+        @unknown default: self = .nominal
+        }
+    }
+}
+
+struct LoadedModel: Codable, Identifiable {
+    let id: String
+    let name: String
+    let slotNumber: Int
+    let memoryUsageGB: Float
+    let lastUsedAt: Date
+    let isPinned: Bool
+}
+
+// MARK: - Helper Extensions
+
+extension TaskSummary {
+    init(from task: KanbanTask) {
+        self.id = task.id
+        self.title = task.title
+        self.status = task.status
+        self.priority = task.priority
+        self.assignedTo = task.assignedTo
+        self.dueDate = task.dueDate
+    }
+}
+
+extension WorkflowSummary {
+    init(from workflow: WorkflowDocument) {
+        self.id = workflow.id
+        self.name = workflow.name
+        self.status = workflow.status
+        self.lastRun = workflow.lastRunAt
+    }
+}
+
+extension TeamMessageSummary {
+    init(from message: TeamMessage) {
+        self.channelName = message.channelName ?? "Unknown"
+        self.sender = message.senderName
+        self.preview = String(message.content.prefix(100))
+        self.timestamp = message.createdAt
+    }
+}
