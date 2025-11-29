@@ -587,27 +587,22 @@ struct MagnetarHubWorkspace: View {
     // MARK: - MagnetarCloud Control Actions
 
     private func signInToCloud() async {
-        isCloudActionInProgress = true
+        // TODO: Implement actual Supabase OAuth flow
+        // This will eventually:
+        // 1. Open browser with Supabase OAuth URL
+        // 2. Handle callback with auth code
+        // 3. Exchange code for session token
+        // 4. Store token in keychain
+        // 5. Update isCloudAuthenticated and fetch profile
 
-        // TODO: Implement actual sign-in flow with OAuth or credentials
-        // For now, simulate sign-in
-        try? await Task.sleep(nanoseconds: 1_000_000_000)
-
-        await MainActor.run {
-            isCloudAuthenticated = true
-            cloudUsername = "User"  // Will be replaced with actual username from auth
-            isCloudActionInProgress = false
-        }
-
-        // Fetch cloud models after sign-in
-        await fetchCloudModels()
+        print("MagnetarCloud sign-in not yet implemented - needs Supabase integration")
     }
 
     private func disconnectCloud() async {
         isCloudActionInProgress = true
 
-        // Clear cloud session but don't sign out completely
-        try? await Task.sleep(nanoseconds: 500_000_000)
+        // Clear cloud session token from keychain
+        try? KeychainService.shared.deleteToken(forKey: "magnetar_cloud_token")
 
         await MainActor.run {
             isCloudAuthenticated = false
@@ -621,15 +616,22 @@ struct MagnetarHubWorkspace: View {
         isCloudActionInProgress = true
 
         // Attempt to reconnect with existing credentials
-        try? await Task.sleep(nanoseconds: 1_000_000_000)
+        // Check if we have a stored token
+        if let token = KeychainService.shared.loadToken(forKey: "magnetar_cloud_token"), !token.isEmpty {
+            // TODO: Validate token with Supabase and refresh profile
+            await MainActor.run {
+                isCloudAuthenticated = true
+                isCloudActionInProgress = false
+            }
 
-        await MainActor.run {
-            isCloudAuthenticated = true
-            isCloudActionInProgress = false
+            // Refresh cloud models
+            await fetchCloudModels()
+        } else {
+            // No stored token - need to sign in
+            await MainActor.run {
+                isCloudActionInProgress = false
+            }
         }
-
-        // Refresh cloud models
-        await fetchCloudModels()
     }
 
     // MARK: - Helper Functions
@@ -646,10 +648,15 @@ struct MagnetarHubWorkspace: View {
     @MainActor
     private func checkCloudAuthStatus() async {
         // Check if user is authenticated with MagnetarCloud
-        if let token = KeychainService.shared.loadToken(), !token.isEmpty {
+        // Use dedicated cloud token key (not the main app token)
+        if let token = KeychainService.shared.loadToken(forKey: "magnetar_cloud_token"), !token.isEmpty {
+            // TODO: Validate token with Supabase API
+            // For now, just check if token exists
             isCloudAuthenticated = true
+            cloudUsername = "Cloud User"  // TODO: Fetch from Supabase profile
         } else {
             isCloudAuthenticated = false
+            cloudUsername = nil
         }
     }
 
