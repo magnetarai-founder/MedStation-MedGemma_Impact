@@ -25,12 +25,16 @@ final class ChatStore {
     @ObservationIgnored
     private let apiClient: ApiClient
 
+    @ObservationIgnored
+    private let chatService = ChatService.shared
+
     init(apiClient: ApiClient = .shared) {
         self.apiClient = apiClient
 
-        // Load models on init
+        // Load models and sessions on init
         Task {
             await fetchModels()
+            await loadSessions()
         }
     }
 
@@ -60,25 +64,100 @@ final class ChatStore {
 
     // MARK: - Session Management
 
-    func createSession(title: String = "New Chat", model: String = "mistral") async {
-        let session = ChatSession(title: title, model: model)
-        sessions.insert(session, at: 0)
-        currentSession = session
-        messages = []
+    func loadSessions() async {
+        do {
+            let apiSessions = try await chatService.listSessions()
+
+            // Convert API sessions to local ChatSession models
+            sessions = apiSessions.map { apiSession in
+                ChatSession(
+                    id: UUID(uuidString: apiSession.id) ?? UUID(),
+                    title: apiSession.title ?? "Untitled Chat",
+                    model: apiSession.model ?? selectedModel,
+                    createdAt: ISO8601DateFormatter().date(from: apiSession.createdAt) ?? Date(),
+                    updatedAt: ISO8601DateFormatter().date(from: apiSession.updatedAt) ?? Date()
+                )
+            }
+
+            // Select first session if available
+            if currentSession == nil, let first = sessions.first {
+                await selectSession(first)
+            }
+        } catch {
+            print("Failed to load sessions: \(error)")
+            self.error = .loadFailed("Could not load chat sessions")
+        }
     }
 
-    func selectSession(_ session: ChatSession) {
+    func createSession(title: String = "New Chat", model: String? = nil) async {
+        isLoading = true
+        error = nil
+
+        do {
+            let useModel = model ?? selectedModel
+            let apiSession = try await chatService.createSession(title: title, model: useModel)
+
+            // Create local session from API response
+            let session = ChatSession(
+                id: UUID(uuidString: apiSession.id) ?? UUID(),
+                title: apiSession.title ?? title,
+                model: apiSession.model ?? useModel,
+                createdAt: ISO8601DateFormatter().date(from: apiSession.createdAt) ?? Date(),
+                updatedAt: ISO8601DateFormatter().date(from: apiSession.updatedAt) ?? Date()
+            )
+
+            sessions.insert(session, at: 0)
+            currentSession = session
+            messages = []
+        } catch {
+            print("Failed to create session: \(error)")
+            self.error = .sendFailed("Could not create new session")
+        }
+
+        isLoading = false
+    }
+
+    func selectSession(_ session: ChatSession) async {
         currentSession = session
-        // Load messages from the session
-        messages = session.messages
+
+        // Load messages from backend
+        isLoading = true
+        do {
+            // Convert UUID to string for API call
+            let sessionId = session.id.uuidString
+            let apiMessages = try await chatService.loadMessages(sessionId: sessionId)
+
+            // Convert API messages to local ChatMessage models
+            messages = apiMessages.map { apiMsg in
+                ChatMessage(
+                    id: UUID(uuidString: apiMsg.id) ?? UUID(),
+                    role: apiMsg.role == "user" ? .user : .assistant,
+                    content: apiMsg.content,
+                    sessionId: session.id,
+                    createdAt: ISO8601DateFormatter().date(from: apiMsg.timestamp) ?? Date()
+                )
+            }
+        } catch {
+            print("Failed to load messages: \(error)")
+            messages = []
+        }
+        isLoading = false
     }
 
     func deleteSession(_ session: ChatSession) {
         sessions.removeAll { $0.id == session.id }
         if currentSession?.id == session.id {
             currentSession = sessions.first
-            messages = currentSession?.messages ?? []
+            if let newCurrent = currentSession {
+                Task {
+                    await selectSession(newCurrent)
+                }
+            } else {
+                messages = []
+            }
         }
+
+        // TODO: Call backend delete endpoint when available
     }
 
     // MARK: - Messaging
@@ -112,7 +191,7 @@ final class ChatStore {
             messages.append(assistantMessage)
 
             // Build request
-            let url = URL(string: "http://localhost:8000/api/v1/chat/sessions/\(session.id)/messages")!
+            let url = URL(string: "http://localhost:8000/api/v1/chat/sessions/\(session.id.uuidString)/messages")!
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")

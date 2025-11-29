@@ -100,7 +100,9 @@ struct ChatWorkspace: View {
                                 isSelected: chatStore.currentSession?.id == session.id
                             )
                             .onTapGesture {
-                                chatStore.selectSession(session)
+                                Task {
+                                    await chatStore.selectSession(session)
+                                }
                             }
                             .contextMenu {
                                 Button("Delete", role: .destructive) {

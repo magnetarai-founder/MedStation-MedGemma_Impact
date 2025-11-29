@@ -147,8 +147,12 @@ struct WorkflowTabButton: View {
 
 struct WorkflowDashboardView: View {
     @State private var scopeFilter: DashboardScope = .all
-    @State private var starredWorkflows: [WorkflowCard] = WorkflowCard.mockStarred
-    @State private var recentWorkflows: [WorkflowCard] = WorkflowCard.mockRecent
+    @State private var starredWorkflows: [WorkflowCard] = []
+    @State private var recentWorkflows: [WorkflowCard] = []
+    @State private var isLoading: Bool = false
+    @State private var error: String? = nil
+
+    private let workflowService = WorkflowService.shared
 
     var body: some View {
         ScrollView {
@@ -267,6 +271,68 @@ struct WorkflowDashboardView: View {
                 }
             }
             .padding(.bottom, 24)
+        }
+        .task {
+            await loadWorkflows()
+        }
+    }
+
+    // MARK: - Data Loading
+
+    @MainActor
+    private func loadWorkflows() async {
+        isLoading = true
+        error = nil
+
+        do {
+            // Load workflows from backend
+            let allWorkflows = try await workflowService.listWorkflows(type: "all")
+
+            // Convert Workflow models to WorkflowCard models
+            // For now, show all as "recent" until we have starred/favoriting logic
+            recentWorkflows = allWorkflows.map { workflow in
+                WorkflowCard(
+                    name: workflow.name,
+                    description: workflow.description ?? "",
+                    icon: workflow.icon ?? "gearshape.2",
+                    typeName: workflow.category ?? workflow.workflowType ?? "General",
+                    typeColor: colorForCategory(workflow.category ?? "general"),
+                    isTemplate: workflow.isTemplate ?? false,
+                    visibility: visibilityFromString(workflow.visibility ?? "private")
+                )
+            }
+
+            // For now, starred is empty - would need backend support for favoriting
+            starredWorkflows = []
+        } catch {
+            print("Failed to load workflows: \(error)")
+            self.error = "Failed to load workflows"
+            // Keep empty arrays on error
+        }
+
+        isLoading = false
+    }
+
+    // Helper functions
+    private func colorForCategory(_ category: String) -> Color {
+        switch category.lowercased() {
+        case "onboarding": return .green
+        case "finance": return .blue
+        case "support": return .orange
+        case "data": return .purple
+        case "content": return .pink
+        case "security": return .red
+        case "devops": return .cyan
+        default: return .blue
+        }
+    }
+
+    private func visibilityFromString(_ visibility: String) -> WorkflowVisibility {
+        switch visibility.lowercased() {
+        case "personal", "private": return .private
+        case "team": return .team
+        case "global", "public": return .public
+        default: return .private
         }
     }
 }
@@ -1314,7 +1380,8 @@ struct WorkflowQueueView: View {
     @State private var viewMode: QueueViewMode = .available
     @State private var priorityFilter: PriorityFilter = .all
     @State private var isLoading: Bool = false
-    @State private var queueItems: [QueueItem] = QueueItem.mockItems
+    @State private var queueItems: [QueueItem] = []
+    // TODO: Wire up queue loading - needs workflow selection first
 
     var body: some View {
         VStack(spacing: 0) {
