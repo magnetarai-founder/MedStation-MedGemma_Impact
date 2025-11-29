@@ -74,16 +74,18 @@ struct VaultContext {
     let totalFolders: Int
 
     static func current() async -> VaultContext {
-        let store = VaultStore.shared
-        let permissionManager = VaultPermissionManager.shared
+        await MainActor.run {
+            let store = VaultStore.shared
+            let permissionManager = VaultPermissionManager.shared
 
-        return VaultContext(
-            unlockedVaultType: store.unlocked ? store.vaultType : nil,
-            recentFiles: store.files.prefix(20).map { VaultFileMetadata(from: $0) },
-            activePermissions: permissionManager.activePermissions,
-            totalFiles: store.files.count,
-            totalFolders: store.folders.count
-        )
+            return VaultContext(
+                unlockedVaultType: store.unlocked ? store.vaultType : nil,
+                recentFiles: store.files.prefix(20).map { VaultFileMetadata(from: $0) },
+                activePermissions: permissionManager.activePermissions.map { FilePermission(from: $0) },
+                totalFiles: store.files.count,
+                totalFolders: store.folders.count
+            )
+        }
     }
 }
 
@@ -100,11 +102,12 @@ struct VaultFileMetadata: Codable {
     init(from file: VaultFile) {
         self.id = file.id
         self.name = file.name
-        self.path = file.path
-        self.size = file.size
-        self.modifiedAt = file.modifiedAt != nil ? ISO8601DateFormatter().date(from: file.modifiedAt!) : nil
-        self.vaultType = VaultStore.shared.vaultType
-        self.isDirectory = file.isDirectory
+        self.path = file.folderPath ?? "/"
+        self.size = Int64(file.size)
+        self.modifiedAt = ISO8601DateFormatter().date(from: file.uploadedAt)
+        // Note: vaultType must be set by caller via MainActor
+        self.vaultType = "real"  // Default, will be overridden
+        self.isDirectory = file.isFolder
     }
 }
 
@@ -118,6 +121,17 @@ struct FilePermission: Codable, Identifiable {
     let grantedAt: Date
     let expiresAt: Date?  // nil = "just this time" (already expired), Date = "for this session"
     let sessionId: String  // Chat session that requested access
+
+    init(from permission: VaultFilePermission) {
+        self.id = permission.id
+        self.fileId = permission.fileId
+        self.fileName = permission.fileName
+        self.vaultType = permission.vaultType
+        self.modelId = permission.modelId
+        self.grantedAt = permission.grantedAt
+        self.expiresAt = permission.expiresAt
+        self.sessionId = permission.sessionId
+    }
 }
 
 // MARK: - Data Context
@@ -172,12 +186,11 @@ struct KanbanContext {
     let recentActivity: [KanbanActivity]
 
     static func current() async -> KanbanContext {
-        let store = KanbanStore.shared
-
+        // TODO: Implement KanbanStore
         return KanbanContext(
-            activeBoard: store.selectedBoard?.name,
-            activeTasks: store.tasks.prefix(10).map { TaskSummary(from: $0) },
-            recentActivity: []  // TODO: Track kanban activity
+            activeBoard: nil,
+            activeTasks: [],
+            recentActivity: []
         )
     }
 }
@@ -205,12 +218,14 @@ struct WorkflowContext {
     let recentExecutions: [WorkflowExecution]
 
     static func current() async -> WorkflowContext {
-        let store = WorkflowStore.shared
+        await MainActor.run {
+            let store = WorkflowStore.shared
 
-        return WorkflowContext(
-            activeWorkflows: store.workflows.prefix(10).map { WorkflowSummary(from: $0) },
-            recentExecutions: []  // TODO: Track workflow executions
-        )
+            return WorkflowContext(
+                activeWorkflows: store.workflows.prefix(10).map { WorkflowSummary(from: $0) },
+                recentExecutions: []  // TODO: Track workflow executions
+            )
+        }
     }
 }
 
@@ -237,12 +252,11 @@ struct TeamContext {
     let onlineMembers: Int
 
     static func current() async -> TeamContext {
-        let store = TeamStore.shared
-
+        // TODO: Implement TeamStore
         return TeamContext(
-            activeChannel: store.selectedChannel?.name,
-            recentMessages: store.messages.prefix(10).map { TeamMessageSummary(from: $0) },
-            onlineMembers: 0  // TODO: Track online members
+            activeChannel: nil,
+            recentMessages: [],
+            onlineMembers: 0
         )
     }
 }
@@ -378,7 +392,9 @@ struct SystemResourceState: Codable {
         let cpuUsage: Float = 0.0  // TODO: Implement proper CPU monitoring
 
         // Get active models from hot slots
-        let activeModels = HotSlotManager.shared.loadedModels()
+        let activeModels = await MainActor.run {
+            HotSlotManager.shared.loadedModels()
+        }
 
         return SystemResourceState(
             memoryPressure: memoryPressure,
@@ -418,31 +434,14 @@ struct LoadedModel: Codable, Identifiable {
 
 // MARK: - Helper Extensions
 
-extension TaskSummary {
-    init(from task: KanbanTask) {
-        self.id = task.id
-        self.title = task.title
-        self.status = task.status
-        self.priority = task.priority
-        self.assignedTo = task.assignedTo
-        self.dueDate = task.dueDate
-    }
-}
-
 extension WorkflowSummary {
-    init(from workflow: WorkflowDocument) {
+    init(from workflow: Workflow) {
         self.id = workflow.id
         self.name = workflow.name
-        self.status = workflow.status
-        self.lastRun = workflow.lastRunAt
+        self.status = "active"  // TODO: Determine from workflow state
+        self.lastRun = nil  // TODO: Track last run time
     }
 }
 
-extension TeamMessageSummary {
-    init(from message: TeamMessage) {
-        self.channelName = message.channelName ?? "Unknown"
-        self.sender = message.senderName
-        self.preview = String(message.content.prefix(100))
-        self.timestamp = message.createdAt
-    }
-}
+// Note: TaskSummary and TeamMessageSummary inits removed - stores don't exist yet
+// TODO: Implement when KanbanStore and TeamStore are created
