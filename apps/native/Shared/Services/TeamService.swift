@@ -149,8 +149,8 @@ struct PatternDiscoveryResult: Codable {
 
 // MARK: - Team Service
 
-final class TeamService {
-    static let shared = TeamService()
+public final class TeamService {
+    public static let shared = TeamService()
     private let apiClient = ApiClient.shared
 
     private init() {}
@@ -263,6 +263,84 @@ final class TeamService {
             path: "/v1/vault/status",
             method: .get
         )
+    }
+
+    // MARK: - Messages
+
+    public func sendMessage(channelId: String, content: String) async throws -> TeamMessage {
+        try await apiClient.request(
+            path: "/v1/team/channels/\(channelId)/messages",
+            method: .post,
+            jsonBody: [
+                "channel_id": channelId,
+                "content": content,
+                "type": "text"
+            ]
+        )
+    }
+
+    public func getMessages(channelId: String, limit: Int = 50) async throws -> MessageListResponse {
+        try await apiClient.request(
+            path: "/v1/team/channels/\(channelId)/messages?limit=\(limit)",
+            method: .get
+        )
+    }
+}
+
+// MARK: - Message Models
+
+public struct TeamMessage: Identifiable, Codable {
+    public let id: String
+    public let channelId: String
+    public let senderId: String
+    public let senderName: String
+    public let type: String
+    public let content: String
+    public let timestamp: String
+    public let encrypted: Bool
+    public let fileMetadata: AnyCodable?
+    public let threadId: String?
+    public let replyTo: String?
+    public let editedAt: String?
+
+    public init(id: String, channelId: String, senderId: String, senderName: String, type: String, content: String, timestamp: String, encrypted: Bool, fileMetadata: AnyCodable?, threadId: String?, replyTo: String?, editedAt: String?) {
+        self.id = id
+        self.channelId = channelId
+        self.senderId = senderId
+        self.senderName = senderName
+        self.type = type
+        self.content = content
+        self.timestamp = timestamp
+        self.encrypted = encrypted
+        self.fileMetadata = fileMetadata
+        self.threadId = threadId
+        self.replyTo = replyTo
+        self.editedAt = editedAt
+    }
+
+    public enum CodingKeys: String, CodingKey {
+        case id
+        case channelId = "channel_id"
+        case senderId = "sender_id"
+        case senderName = "sender_name"
+        case type, content, timestamp, encrypted
+        case fileMetadata = "file_metadata"
+        case threadId = "thread_id"
+        case replyTo = "reply_to"
+        case editedAt = "edited_at"
+    }
+}
+
+public struct MessageListResponse: Codable {
+    public let channelId: String
+    public let messages: [TeamMessage]
+    public let total: Int
+    public let hasMore: Bool
+
+    public enum CodingKeys: String, CodingKey {
+        case channelId = "channel_id"
+        case messages, total
+        case hasMore = "has_more"
     }
 }
 

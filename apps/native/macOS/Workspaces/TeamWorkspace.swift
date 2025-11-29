@@ -12,6 +12,47 @@ import Foundation
 
 // MARK: - Team Service Models & Service (inlined for now)
 
+// Message models (duplicated from TeamService for now - needed due to module visibility)
+struct TeamMessage: Identifiable, Codable {
+    let id: String
+    let channelId: String
+    let senderId: String
+    let senderName: String
+    let type: String
+    let content: String
+    let timestamp: String
+    let encrypted: Bool
+    let fileMetadata: AnyCodable?
+    let threadId: String?
+    let replyTo: String?
+    let editedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case channelId = "channel_id"
+        case senderId = "sender_id"
+        case senderName = "sender_name"
+        case type, content, timestamp, encrypted
+        case fileMetadata = "file_metadata"
+        case threadId = "thread_id"
+        case replyTo = "reply_to"
+        case editedAt = "edited_at"
+    }
+}
+
+struct MessageListResponse: Codable {
+    let channelId: String
+    let messages: [TeamMessage]
+    let total: Int
+    let hasMore: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case channelId = "channel_id"
+        case messages, total
+        case hasMore = "has_more"
+    }
+}
+
 struct Team: Identifiable, Codable {
     let id: String
     let name: String
@@ -247,6 +288,25 @@ final class TeamService {
         )
 
         return response.channels
+    }
+
+    func sendMessage(channelId: String, content: String) async throws -> TeamMessage {
+        try await apiClient.request(
+            path: "/v1/team/channels/\(channelId)/messages",
+            method: .post,
+            jsonBody: [
+                "channel_id": channelId,
+                "content": content,
+                "type": "text"
+            ]
+        )
+    }
+
+    func getMessages(channelId: String, limit: Int = 50) async throws -> MessageListResponse {
+        try await apiClient.request(
+            path: "/v1/team/channels/\(channelId)/messages?limit=\(limit)",
+            method: .get
+        )
     }
 
     func getP2PNetworkStatus() async throws -> P2PNetworkStatus {
@@ -935,6 +995,8 @@ struct TeamChatWindow: View {
     let mode: NetworkMode
 
     @State private var messageInput: String = ""
+    @State private var messages: [TeamMessage] = []
+    @State private var isLoadingMessages = false
 
     var body: some View {
         Group {
@@ -977,12 +1039,36 @@ struct TeamChatWindow: View {
 
                     // Messages area
                     ScrollView {
-                        VStack(spacing: 16) {
-                            ForEach(0..<5) { index in
-                                TeamMessageRow(index: index)
+                        if isLoadingMessages {
+                            ProgressView()
+                                .padding()
+                        } else if messages.isEmpty {
+                            VStack(spacing: 12) {
+                                Image(systemName: "message")
+                                    .font(.system(size: 48))
+                                    .foregroundColor(.secondary.opacity(0.5))
+                                Text("No messages yet")
+                                    .font(.system(size: 16))
+                                    .foregroundColor(.secondary)
+                                Text("Start the conversation!")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.secondary.opacity(0.7))
                             }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        } else {
+                            VStack(spacing: 16) {
+                                ForEach(messages) { message in
+                                    TeamMessageRow(message: message)
+                                }
+                            }
+                            .padding(16)
                         }
-                        .padding(16)
+                    }
+                    .onChange(of: activeChannel?.id) { _ in
+                        loadMessages()
+                    }
+                    .onAppear {
+                        loadMessages()
                     }
 
                     // Message input
@@ -1014,8 +1100,7 @@ struct TeamChatWindow: View {
                                 .buttonStyle(.plain)
 
                                 Button {
-                                    // Send message
-                                    messageInput = ""
+                                    sendMessage()
                                 } label: {
                                     Image(systemName: "arrow.up.circle.fill")
                                         .font(.system(size: 24))
@@ -1031,6 +1116,56 @@ struct TeamChatWindow: View {
                 }
             } else {
                 emptyState
+            }
+        }
+    }
+
+    private func loadMessages() {
+        guard let channel = activeChannel else {
+            messages = []
+            return
+        }
+
+        isLoadingMessages = true
+
+        Task {
+            do {
+                let response = try await TeamService.shared.getMessages(channelId: channel.id)
+                await MainActor.run {
+                    messages = response.messages
+                    isLoadingMessages = false
+                }
+            } catch {
+                print("Failed to load messages: \(error.localizedDescription)")
+                await MainActor.run {
+                    messages = []
+                    isLoadingMessages = false
+                }
+            }
+        }
+    }
+
+    private func sendMessage() {
+        guard let channel = activeChannel else { return }
+        guard !messageInput.isEmpty else { return }
+
+        let message = messageInput
+        messageInput = "" // Clear input immediately
+
+        Task {
+            do {
+                let sentMessage = try await TeamService.shared.sendMessage(
+                    channelId: channel.id,
+                    content: message
+                )
+
+                await MainActor.run {
+                    // Add the new message to the list
+                    messages.append(sentMessage)
+                }
+            } catch {
+                print("Failed to send message: \(error.localizedDescription)")
+                // TODO: Show error to user
             }
         }
     }
@@ -1059,7 +1194,7 @@ struct TeamChatWindow: View {
 }
 
 struct TeamMessageRow: View {
-    let index: Int
+    let message: TeamMessage
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -1067,28 +1202,52 @@ struct TeamMessageRow: View {
                 .fill(LinearGradient.magnetarGradient)
                 .frame(width: 36, height: 36)
                 .overlay(
-                    Text("U\(index + 1)")
+                    Text(String(message.senderName.prefix(2)).uppercased())
                         .font(.system(size: 12, weight: .bold))
                         .foregroundColor(.white)
                 )
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
-                    Text("User \(index + 1)")
+                    Text(message.senderName)
                         .font(.system(size: 14, weight: .semibold))
 
-                    Text("10:\(30 + index)am")
+                    Text(formatTimestamp(message.timestamp))
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
+
+                    if message.encrypted {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 10))
+                            .foregroundColor(.green.opacity(0.7))
+                    }
                 }
 
-                Text("This is a sample message in the team chat. It demonstrates the message layout and styling.")
+                Text(message.content)
                     .font(.system(size: 14))
                     .foregroundColor(.primary)
+
+                if let editedAt = message.editedAt {
+                    Text("(edited)")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary.opacity(0.7))
+                        .italic()
+                }
             }
 
             Spacer()
         }
+    }
+
+    private func formatTimestamp(_ timestamp: String) -> String {
+        let formatter = ISO8601DateFormatter()
+        guard let date = formatter.date(from: timestamp) else {
+            return timestamp
+        }
+
+        let relativeFormatter = RelativeDateTimeFormatter()
+        relativeFormatter.unitsStyle = .short
+        return relativeFormatter.localizedString(for: date, relativeTo: Date())
     }
 }
 
