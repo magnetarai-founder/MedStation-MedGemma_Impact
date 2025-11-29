@@ -77,6 +77,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             MenuBarManager.shared.show()
         }
 
+        // Auto-start backend server (CRITICAL: Must start before everything else)
+        Task {
+            await autoStartBackend()
+        }
+
         // Initialize orchestrators (Phase 4)
         Task {
             await OrchestratorInitializer.initialize()
@@ -86,6 +91,89 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         Task {
             await autoStartOllama()
         }
+    }
+
+    @MainActor
+    private func autoStartBackend() async {
+        print("🚀 Checking backend server status...")
+
+        // Check if backend is already running
+        let isRunning = await checkBackendHealth()
+
+        if isRunning {
+            print("✓ Backend server already running")
+            return
+        }
+
+        print("⚙️ Starting MagnetarStudio backend server...")
+
+        // Get project root directory
+        guard let projectRoot = findProjectRoot() else {
+            print("✗ Could not find project root directory")
+            return
+        }
+
+        // Start backend server in background
+        let venvPython = projectRoot.appendingPathComponent("venv/bin/python")
+        let backendPath = projectRoot.appendingPathComponent("apps/backend")
+
+        let task = Process()
+        task.executableURL = venvPython
+        task.arguments = ["-m", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+        task.currentDirectoryURL = backendPath
+
+        // Suppress output (run silently in background)
+        task.standardOutput = nil
+        task.standardError = nil
+
+        do {
+            try task.run()
+            print("✓ Backend server started successfully (PID: \(task.processIdentifier))")
+
+            // Wait a moment for server to initialize
+            try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+
+            // Verify it started
+            let healthy = await checkBackendHealth()
+            if healthy {
+                print("✓ Backend server is healthy and responding")
+            } else {
+                print("⚠️ Backend server started but not responding yet")
+            }
+        } catch {
+            print("✗ Failed to start backend server: \(error)")
+        }
+    }
+
+    private func checkBackendHealth() async -> Bool {
+        guard let url = URL(string: "http://localhost:8000/health") else { return false }
+
+        do {
+            let (_, response) = try await URLSession.shared.data(from: url)
+            if let httpResponse = response as? HTTPURLResponse {
+                return httpResponse.statusCode == 200
+            }
+        } catch {
+            // Server not responding
+        }
+
+        return false
+    }
+
+    private func findProjectRoot() -> URL? {
+        // Start from bundle and walk up to find project root
+        var current = Bundle.main.bundleURL
+
+        for _ in 0..<10 {
+            // Check if venv/bin/python exists here
+            let venvPython = current.appendingPathComponent("venv/bin/python")
+            if FileManager.default.fileExists(atPath: venvPython.path) {
+                return current
+            }
+            current = current.deletingLastPathComponent()
+        }
+
+        return nil
     }
 
     @MainActor
