@@ -44,4 +44,39 @@ class TerminalService {
             method: .get
         )
     }
+
+    /// Spawn a new system terminal (Warp, iTerm2, or Terminal.app)
+    func spawnTerminal(shell: String? = nil, cwd: String? = nil) async throws -> SpawnTerminalResponse {
+        var payload: [String: Any] = [:]
+        if let shell = shell {
+            payload["shell"] = shell
+        }
+        if let cwd = cwd {
+            payload["cwd"] = cwd
+        }
+
+        return try await apiClient.request(
+            path: "/v1/terminal/spawn",
+            method: .post,
+            jsonBody: payload.isEmpty ? nil : payload
+        )
+    }
+}
+
+// MARK: - Spawn Response
+
+struct SpawnTerminalResponse: Codable {
+    let terminalId: String
+    let terminalApp: String
+    let workspaceRoot: String
+    let activeCount: Int
+    let message: String
+
+    enum CodingKeys: String, CodingKey {
+        case terminalId = "terminal_id"
+        case terminalApp = "terminal_app"
+        case workspaceRoot = "workspace_root"
+        case activeCount = "active_count"
+        case message
+    }
 }

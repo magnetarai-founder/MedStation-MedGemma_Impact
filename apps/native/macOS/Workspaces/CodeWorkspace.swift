@@ -196,6 +196,22 @@ struct CodeWorkspace: View {
 
                 Spacer()
 
+                // New terminal button
+                Button {
+                    Task {
+                        await spawnTerminal()
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 12))
+                        Text("New")
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .foregroundColor(.magnetarPrimary)
+                }
+                .buttonStyle(.plain)
+
                 Button {
                     showTerminal = false
                 } label: {
@@ -210,20 +226,60 @@ struct CodeWorkspace: View {
 
             Divider()
 
-            // Terminal content (placeholder for now)
+            // Terminal info
             ScrollView {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("$ ")
-                        .font(.system(size: 12, design: .monospaced))
-                        .foregroundColor(.green)
-                    + Text("Terminal integration coming soon...")
-                        .font(.system(size: 12, design: .monospaced))
-                        .foregroundColor(.primary)
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "terminal.fill")
+                            .font(.system(size: 24))
+                            .foregroundStyle(LinearGradient.magnetarGradient)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("System Terminal Integration")
+                                .font(.system(size: 13, weight: .semibold))
+
+                            Text("Click 'New' to spawn a terminal window")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(.bottom, 8)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        TerminalInfoRow(
+                            icon: "checkmark.circle.fill",
+                            text: "Opens your default terminal app (Warp, iTerm2, or Terminal)",
+                            color: .green
+                        )
+
+                        TerminalInfoRow(
+                            icon: "checkmark.circle.fill",
+                            text: "Automatically starts in your workspace directory",
+                            color: .green
+                        )
+
+                        TerminalInfoRow(
+                            icon: "checkmark.circle.fill",
+                            text: "Up to 3 terminals can be active simultaneously",
+                            color: .green
+                        )
+                    }
+
+                    if let error = errorMessage {
+                        HStack(spacing: 8) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.orange)
+                            Text(error)
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.top, 8)
+                    }
                 }
-                .padding(12)
+                .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .background(Color.black.opacity(0.9))
+            .background(Color.surfaceTertiary.opacity(0.1))
         }
     }
 
@@ -315,6 +371,25 @@ struct CodeWorkspace: View {
         // If closing the selected file, select another
         if selectedFile?.id == file.id {
             selectedFile = openFiles.first
+        }
+    }
+
+    private func spawnTerminal() async {
+        do {
+            // Get workspace directory if available
+            let cwd = currentWorkspace?.diskPath
+
+            let response = try await TerminalService.shared.spawnTerminal(cwd: cwd)
+
+            await MainActor.run {
+                errorMessage = nil
+                print("✓ Terminal spawned: \(response.terminalApp) - \(response.message)")
+            }
+        } catch {
+            print("Failed to spawn terminal: \(error)")
+            await MainActor.run {
+                errorMessage = "Failed to spawn terminal: \(error.localizedDescription)"
+            }
         }
     }
 }
@@ -416,6 +491,26 @@ struct FileTab: View {
         }
         .onHover { hovering in
             isHovered = hovering
+        }
+    }
+}
+
+// MARK: - Terminal Info Row
+
+struct TerminalInfoRow: View {
+    let icon: String
+    let text: String
+    let color: Color
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 11))
+                .foregroundColor(color)
+
+            Text(text)
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
         }
     }
 }
