@@ -110,41 +110,69 @@ struct ContentView: View {
 struct MainAppView: View {
     @Environment(NavigationStore.self) private var navigationStore
     @Environment(ChatStore.self) private var chatStore
+    @StateObject private var permissionManager = VaultPermissionManager.shared
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Top: Header bar
-            Header()
+        ZStack {
+            // Main content
+            VStack(spacing: 0) {
+                // Top: Header bar
+                Header()
 
-            // Body: HStack with Navigation Rail + Tab Content
-            HStack(spacing: 0) {
-                // Left: Navigation Rail (56pt wide)
-                NavigationRail()
+                // Body: HStack with Navigation Rail + Tab Content
+                HStack(spacing: 0) {
+                    // Left: Navigation Rail (56pt wide)
+                    NavigationRail()
 
-                Divider()
+                    Divider()
 
-                // Right: Tab content (lazy loading for performance)
-                Group {
-                    switch navigationStore.activeWorkspace {
-                    case .chat:
-                        ChatWorkspace()
-                    case .team:
-                        TeamWorkspace()
-                    case .code:
-                        CodeWorkspace()
-                    case .kanban:
-                        KanbanWorkspace()
-                    case .database:
-                        DatabaseWorkspace()
-                    case .magnetarHub:
-                        MagnetarHubWorkspace()
+                    // Right: Tab content (lazy loading for performance)
+                    Group {
+                        switch navigationStore.activeWorkspace {
+                        case .chat:
+                            ChatWorkspace()
+                        case .team:
+                            TeamWorkspace()
+                        case .code:
+                            CodeWorkspace()
+                        case .kanban:
+                            KanbanWorkspace()
+                        case .database:
+                            DatabaseWorkspace()
+                        case .magnetarHub:
+                            MagnetarHubWorkspace()
+                        }
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .transition(.magnetarFade)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .transition(.magnetarFade)
+            }
+
+            // CRITICAL: File permission modal overlay (Phase 3)
+            // This is BLOCKING - models cannot access file contents without permission
+            if permissionManager.showPermissionModal,
+               let request = permissionManager.pendingRequest {
+                Color.black.opacity(0.5)
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+
+                FileAccessPermissionModal(
+                    request: request,
+                    onGrant: { scope in
+                        await permissionManager.grantPermission(scope: scope)
+                    },
+                    onDeny: {
+                        permissionManager.denyPermission()
+                    },
+                    onCancel: {
+                        permissionManager.cancelPermission()
+                    }
+                )
+                .transition(.scale.combined(with: .opacity))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .animation(.easeInOut(duration: 0.2), value: permissionManager.showPermissionModal)
     }
 }
 

@@ -75,11 +75,12 @@ struct VaultContext {
 
     static func current() async -> VaultContext {
         let store = VaultStore.shared
+        let permissionManager = VaultPermissionManager.shared
 
         return VaultContext(
             unlockedVaultType: store.unlocked ? store.vaultType : nil,
             recentFiles: store.files.prefix(20).map { VaultFileMetadata(from: $0) },
-            activePermissions: VaultPermissionManager.shared.activePermissions,
+            activePermissions: permissionManager.activePermissions,
             totalFiles: store.files.count,
             totalFolders: store.folders.count
         )
