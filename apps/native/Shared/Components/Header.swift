@@ -243,13 +243,16 @@ private struct ControlCenterSheet: View {
     }
 
     private func loadTerminalCount() {
-        // TODO: Call terminal API to get session count
-        // For now, we'll use a placeholder
-        // This will be implemented when we wire up the terminal service
         Task {
-            // Simulated API call - replace with actual API call
-            // let sessions = try await TerminalService.shared.listSessions()
-            // terminalCount = sessions.count
+            do {
+                let response = try await TerminalService.shared.listSessions()
+                await MainActor.run {
+                    terminalCount = response.count
+                }
+            } catch {
+                print("Failed to load terminal count: \(error.localizedDescription)")
+                // Keep the current count (defaults to 0)
+            }
         }
     }
 
