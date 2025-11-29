@@ -382,7 +382,7 @@ class VaultPermissionManager: ObservableObject {
 // MARK: - Audit Entry
 
 struct FileAccessAudit: Identifiable, Codable {
-    let id = UUID()
+    var id: UUID = UUID()
     let fileId: String
     let fileName: String
     let modelId: String
@@ -390,4 +390,8 @@ struct FileAccessAudit: Identifiable, Codable {
     let granted: Bool
     let reason: String
     let timestamp: Date
+
+    enum CodingKeys: String, CodingKey {
+        case fileId, fileName, modelId, action, granted, reason, timestamp
+    }
 }
