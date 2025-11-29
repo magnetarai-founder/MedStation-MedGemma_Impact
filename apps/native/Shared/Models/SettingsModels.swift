@@ -94,18 +94,21 @@ struct AppSettings: Codable {
     var defaultWorkspace: String  // "database" | "chat" | "team" | "kanban"
     var enableNotifications: Bool
     var enableAnalytics: Bool
+    var ollamaAutoStart: Bool  // Auto-start Ollama on app launch
 
     enum CodingKeys: String, CodingKey {
         case theme
         case defaultWorkspace = "default_workspace"
         case enableNotifications = "enable_notifications"
         case enableAnalytics = "enable_analytics"
+        case ollamaAutoStart = "ollama_auto_start"
     }
 
     static let `default` = AppSettings(
         theme: "auto",
         defaultWorkspace: "database",
         enableNotifications: true,
-        enableAnalytics: false
+        enableAnalytics: false,
+        ollamaAutoStart: true  // Default ON
     )
 }

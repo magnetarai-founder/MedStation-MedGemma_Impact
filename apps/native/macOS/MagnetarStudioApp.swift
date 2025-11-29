@@ -76,6 +76,36 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if showMenuBar {
             MenuBarManager.shared.show()
         }
+
+        // Auto-start Ollama if enabled in settings
+        Task {
+            await autoStartOllama()
+        }
+    }
+
+    @MainActor
+    private func autoStartOllama() async {
+        let settings = SettingsStore.shared.appSettings
+
+        guard settings.ollamaAutoStart else {
+            print("Ollama auto-start disabled in settings")
+            return
+        }
+
+        let ollamaService = OllamaService.shared
+        let isRunning = await ollamaService.checkStatus()
+
+        if !isRunning {
+            do {
+                print("Starting Ollama server (auto-start enabled)...")
+                try await ollamaService.start()
+                print("✓ Ollama server started successfully")
+            } catch {
+                print("Failed to auto-start Ollama: \(error)")
+            }
+        } else {
+            print("Ollama server already running")
+        }
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {

@@ -51,6 +51,7 @@ struct SettingsView: View {
 
 struct GeneralSettingsView: View {
     @StateObject private var settingsManager = SettingsManager.shared
+    @StateObject private var settingsStore = SettingsStore.shared
     @AppStorage("autoSaveChatSessions") private var autoSaveChatSessions = true
     @AppStorage("showLineNumbers") private var showLineNumbers = true
     @AppStorage("wordWrap") private var wordWrap = false
@@ -77,6 +78,23 @@ struct GeneralSettingsView: View {
                         .disabled(settingsManager.notificationsStatus == .loading)
 
                     statusLabel(settingsManager.notificationsStatus)
+                }
+            }
+
+            Section("Ollama") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Toggle("Auto-start Ollama on Launch", isOn: Binding(
+                        get: { settingsStore.appSettings.ollamaAutoStart },
+                        set: { newValue in
+                            var updatedSettings = settingsStore.appSettings
+                            updatedSettings.ollamaAutoStart = newValue
+                            settingsStore.updateAppSettings(updatedSettings)
+                        }
+                    ))
+
+                    Text("Automatically start Ollama server when MagnetarStudio launches")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
 

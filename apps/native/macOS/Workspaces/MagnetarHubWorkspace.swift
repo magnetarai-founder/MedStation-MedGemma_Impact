@@ -19,6 +19,11 @@ struct MagnetarHubWorkspace: View {
     @State private var isPerformingAction: Bool = false
     @State private var actionMessage: String? = nil
     @State private var showDeleteConfirmation: Bool = false
+    @State private var cloudUsername: String? = nil
+    @State private var isOllamaActionInProgress: Bool = false
+    @State private var isCloudActionInProgress: Bool = false
+
+    private let ollamaService = OllamaService.shared
 
     var body: some View {
         ThreePaneLayout {
@@ -112,32 +117,138 @@ struct MagnetarHubWorkspace: View {
                 }
 
                 Spacer()
+
+                // Control buttons
+                HStack(spacing: 6) {
+                    // Power button
+                    Button {
+                        Task {
+                            await toggleOllama()
+                        }
+                    } label: {
+                        Image(systemName: "power")
+                            .font(.system(size: 11))
+                            .foregroundColor(ollamaServerRunning ? .green : .red)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isOllamaActionInProgress)
+
+                    // Restart button
+                    Button {
+                        Task {
+                            await restartOllama()
+                        }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 11))
+                            .foregroundColor(.magnetarPrimary)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isOllamaActionInProgress || !ollamaServerRunning)
+
+                    if isOllamaActionInProgress {
+                        ProgressView()
+                            .scaleEffect(0.6)
+                            .frame(width: 12, height: 12)
+                    }
+                }
             }
             .padding(8)
             .background(Color.surfaceTertiary.opacity(0.3))
             .cornerRadius(6)
 
             // MagnetarCloud Status
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(isCloudAuthenticated ? Color.green : Color.orange)
-                    .frame(width: 8, height: 8)
+            if isCloudAuthenticated {
+                // Signed In State
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(Color.green)
+                        .frame(width: 8, height: 8)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("MagnetarCloud")
-                        .font(.caption)
-                        .fontWeight(.medium)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("MagnetarCloud")
+                            .font(.caption)
+                            .fontWeight(.medium)
 
-                    Text(isCloudAuthenticated ? "Connected" : "Not connected")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+                        Text("\(cloudUsername ?? "User") Connected")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+
+                    Spacer()
+
+                    // Control buttons
+                    HStack(spacing: 6) {
+                        // Power button (disconnect)
+                        Button {
+                            Task {
+                                await disconnectCloud()
+                            }
+                        } label: {
+                            Image(systemName: "power")
+                                .font(.system(size: 11))
+                                .foregroundColor(.green)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isCloudActionInProgress)
+
+                        // Restart button
+                        Button {
+                            Task {
+                                await reconnectCloud()
+                            }
+                        } label: {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.system(size: 11))
+                                .foregroundColor(.magnetarPrimary)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isCloudActionInProgress)
+
+                        if isCloudActionInProgress {
+                            ProgressView()
+                                .scaleEffect(0.6)
+                                .frame(width: 12, height: 12)
+                        }
+                    }
                 }
+                .padding(8)
+                .background(Color.surfaceTertiary.opacity(0.3))
+                .cornerRadius(6)
+            } else {
+                // Signed Out State - Click to Sign In
+                Button {
+                    Task {
+                        await signInToCloud()
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(Color.orange)
+                            .frame(width: 8, height: 8)
 
-                Spacer()
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("MagnetarCloud")
+                                .font(.caption)
+                                .fontWeight(.medium)
+
+                            Text("Click to Sign In")
+                                .font(.caption2)
+                                .foregroundColor(.magnetarPrimary)
+                        }
+
+                        Spacer()
+
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(8)
+                    .background(Color.surfaceTertiary.opacity(0.3))
+                    .cornerRadius(6)
+                }
+                .buttonStyle(.plain)
             }
-            .padding(8)
-            .background(Color.surfaceTertiary.opacity(0.3))
-            .cornerRadius(6)
         }
     }
 
@@ -429,25 +540,104 @@ struct MagnetarHubWorkspace: View {
         }
     }
 
-    // MARK: - Helper Functions
+    // MARK: - Ollama Control Actions
 
-    private func checkOllamaStatus() async {
+    private func toggleOllama() async {
+        isOllamaActionInProgress = true
+
         do {
-            let url = URL(string: "http://localhost:11434/api/version")!
-            var request = URLRequest(url: url)
-            request.timeoutInterval = 3
-
-            let (_, response) = try await URLSession.shared.data(for: request)
-
-            if let httpResponse = response as? HTTPURLResponse {
+            if ollamaServerRunning {
+                // Stop Ollama
+                try await ollamaService.stop()
                 await MainActor.run {
-                    ollamaServerRunning = httpResponse.statusCode == 200
+                    ollamaServerRunning = false
+                }
+            } else {
+                // Start Ollama
+                try await ollamaService.start()
+                await MainActor.run {
+                    ollamaServerRunning = true
                 }
             }
         } catch {
+            print("Failed to toggle Ollama: \(error)")
+        }
+
+        isOllamaActionInProgress = false
+    }
+
+    private func restartOllama() async {
+        isOllamaActionInProgress = true
+
+        do {
+            try await ollamaService.restart()
+            await MainActor.run {
+                ollamaServerRunning = true
+            }
+        } catch {
+            print("Failed to restart Ollama: \(error)")
             await MainActor.run {
                 ollamaServerRunning = false
             }
+        }
+
+        isOllamaActionInProgress = false
+    }
+
+    // MARK: - MagnetarCloud Control Actions
+
+    private func signInToCloud() async {
+        isCloudActionInProgress = true
+
+        // TODO: Implement actual sign-in flow with OAuth or credentials
+        // For now, simulate sign-in
+        try? await Task.sleep(nanoseconds: 1_000_000_000)
+
+        await MainActor.run {
+            isCloudAuthenticated = true
+            cloudUsername = "User"  // Will be replaced with actual username from auth
+            isCloudActionInProgress = false
+        }
+
+        // Fetch cloud models after sign-in
+        await fetchCloudModels()
+    }
+
+    private func disconnectCloud() async {
+        isCloudActionInProgress = true
+
+        // Clear cloud session but don't sign out completely
+        try? await Task.sleep(nanoseconds: 500_000_000)
+
+        await MainActor.run {
+            isCloudAuthenticated = false
+            cloudUsername = nil
+            cloudModels = []
+            isCloudActionInProgress = false
+        }
+    }
+
+    private func reconnectCloud() async {
+        isCloudActionInProgress = true
+
+        // Attempt to reconnect with existing credentials
+        try? await Task.sleep(nanoseconds: 1_000_000_000)
+
+        await MainActor.run {
+            isCloudAuthenticated = true
+            isCloudActionInProgress = false
+        }
+
+        // Refresh cloud models
+        await fetchCloudModels()
+    }
+
+    // MARK: - Helper Functions
+
+    private func checkOllamaStatus() async {
+        let isRunning = await ollamaService.checkStatus()
+        await MainActor.run {
+            ollamaServerRunning = isRunning
         }
     }
 
