@@ -26,7 +26,7 @@ struct Team: Identifiable, Codable {
 struct TeamDocument: Identifiable, Codable {
     let id: String
     let title: String
-    let content: AnyCodable?  // Backend returns Any type content (could be JSON object or string)
+    let content: AnyCodable?
     let type: String
     let createdAt: String
     let updatedAt: String
@@ -45,6 +45,21 @@ struct TeamDocument: Identifiable, Codable {
         case securityLevel = "security_level"
         case sharedWith = "shared_with"
         case teamId = "team_id"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        content = try? container.decode(AnyCodable.self, forKey: .content)
+        type = try container.decode(String.self, forKey: .type)
+        createdAt = try container.decode(String.self, forKey: .createdAt)
+        updatedAt = try container.decode(String.self, forKey: .updatedAt)
+        createdBy = try container.decode(String.self, forKey: .createdBy)
+        isPrivate = try container.decode(Bool.self, forKey: .isPrivate)
+        securityLevel = try? container.decode(String.self, forKey: .securityLevel)
+        sharedWith = (try? container.decode([String].self, forKey: .sharedWith)) ?? []
+        teamId = try? container.decode(String.self, forKey: .teamId)
     }
 }
 

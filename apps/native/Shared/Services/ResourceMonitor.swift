@@ -145,14 +145,125 @@ enum ModelSizeRecommendation {
     }
 }
 
-// MARK: - CPU Usage (Future Enhancement)
+// MARK: - CPU Usage
 
 extension ResourceMonitor {
-    /// Get CPU usage percentage
-    /// TODO: Implement proper CPU monitoring
-    private func getCPUUsage() -> Float {
-        // Simplified - return 0 for now
-        // Real implementation would use host_processor_info or similar
-        return 0.0
+    /// Get CPU usage percentage (0.0 - 1.0)
+    func getCPUUsage() -> Float {
+        var totalUsageOfCPU: Float = 0.0
+        var threadsList: thread_act_array_t?
+        var threadsCount = mach_msg_type_number_t(0)
+        var threadInfo = thread_basic_info()
+        var threadInfoCount = mach_msg_type_number_t(THREAD_INFO_MAX)
+
+        let threadsResult = withUnsafeMutablePointer(to: &threadsList) {
+            return $0.withMemoryRebound(to: thread_act_array_t?.self, capacity: 1) {
+                task_threads(mach_task_self_, $0, &threadsCount)
+            }
+        }
+
+        if threadsResult == KERN_SUCCESS, let threadsList = threadsList {
+            for index in 0..<threadsCount {
+                threadInfoCount = mach_msg_type_number_t(THREAD_INFO_MAX)
+
+                let result = withUnsafeMutablePointer(to: &threadInfo) {
+                    $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
+                        thread_info(threadsList[Int(index)], thread_flavor_t(THREAD_BASIC_INFO), $0, &threadInfoCount)
+                    }
+                }
+
+                guard result == KERN_SUCCESS else {
+                    break
+                }
+
+                let threadBasicInfo = threadInfo
+                if threadBasicInfo.flags & TH_FLAGS_IDLE == 0 {
+                    totalUsageOfCPU += Float(threadBasicInfo.cpu_usage) / Float(TH_USAGE_SCALE)
+                }
+            }
+
+            // Deallocate thread list
+            vm_deallocate(mach_task_self_, vm_address_t(UInt(bitPattern: threadsList)), vm_size_t(Int(threadsCount) * MemoryLayout<thread_t>.stride))
+        }
+
+        return totalUsageOfCPU
+    }
+
+    /// Get system-wide CPU usage (all processes)
+    private func getSystemCPUUsage() -> Float {
+        var cpuInfo: processor_info_array_t?
+        var numCPUInfo: mach_msg_type_number_t = 0
+        var numProcessors: natural_t = 0
+
+        let result = host_processor_info(mach_host_self(), PROCESSOR_CPU_LOAD_INFO, &numProcessors, &cpuInfo, &numCPUInfo)
+
+        guard result == KERN_SUCCESS, let cpuInfo = cpuInfo else {
+            return 0.0
+        }
+
+        defer {
+            vm_deallocate(mach_task_self_, vm_address_t(UInt(bitPattern: cpuInfo)), vm_size_t(Int(numCPUInfo) * MemoryLayout<integer_t>.stride))
+        }
+
+        // Calculate total CPU usage across all cores
+        var totalUser: UInt32 = 0
+        var totalSystem: UInt32 = 0
+        var totalIdle: UInt32 = 0
+        var totalNice: UInt32 = 0
+
+        for i in 0..<Int(numProcessors) {
+            let baseIndex = Int(CPU_STATE_MAX) * i
+            totalUser += UInt32(cpuInfo[baseIndex + Int(CPU_STATE_USER)])
+            totalSystem += UInt32(cpuInfo[baseIndex + Int(CPU_STATE_SYSTEM)])
+            totalIdle += UInt32(cpuInfo[baseIndex + Int(CPU_STATE_IDLE)])
+            totalNice += UInt32(cpuInfo[baseIndex + Int(CPU_STATE_NICE)])
+        }
+
+        let totalTicks = totalUser + totalSystem + totalIdle + totalNice
+        let usedTicks = totalUser + totalSystem + totalNice
+
+        guard totalTicks > 0 else {
+            return 0.0
+        }
+
+        return Float(usedTicks) / Float(totalTicks)
+    }
+
+    /// Get per-core CPU usage
+    func getPerCoreCPUUsage() -> [Float] {
+        var cpuInfo: processor_info_array_t?
+        var numCPUInfo: mach_msg_type_number_t = 0
+        var numProcessors: natural_t = 0
+
+        let result = host_processor_info(mach_host_self(), PROCESSOR_CPU_LOAD_INFO, &numProcessors, &cpuInfo, &numCPUInfo)
+
+        guard result == KERN_SUCCESS, let cpuInfo = cpuInfo else {
+            return []
+        }
+
+        defer {
+            vm_deallocate(mach_task_self_, vm_address_t(UInt(bitPattern: cpuInfo)), vm_size_t(Int(numCPUInfo) * MemoryLayout<integer_t>.stride))
+        }
+
+        var coreUsages: [Float] = []
+
+        for i in 0..<Int(numProcessors) {
+            let baseIndex = Int(CPU_STATE_MAX) * i
+            let user = cpuInfo[baseIndex + Int(CPU_STATE_USER)]
+            let system = cpuInfo[baseIndex + Int(CPU_STATE_SYSTEM)]
+            let idle = cpuInfo[baseIndex + Int(CPU_STATE_IDLE)]
+            let nice = cpuInfo[baseIndex + Int(CPU_STATE_NICE)]
+
+            let total = user + system + idle + nice
+            let used = user + system + nice
+
+            if total > 0 {
+                coreUsages.append(Float(used) / Float(total))
+            } else {
+                coreUsages.append(0.0)
+            }
+        }
+
+        return coreUsages
     }
 }

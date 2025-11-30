@@ -94,6 +94,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         Task {
             await autoStartOllama()
         }
+
+        // Initialize model memory tracker (wait for Ollama to start)
+        Task {
+            // Wait a bit for Ollama to be ready
+            try? await Task.sleep(nanoseconds: 3_000_000_000)  // 3 seconds
+
+            await ModelMemoryTracker.shared.refresh()
+            ModelMemoryTracker.shared.startAutoRefresh(intervalMinutes: 5)
+            print("✅ Model memory tracker initialized")
+        }
     }
 
     @MainActor

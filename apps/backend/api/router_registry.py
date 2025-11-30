@@ -61,6 +61,24 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
         services_failed.append("Chat API")
         logger.error("Failed to load chat router", exc_info=True)
 
+    # Context API (Phase 5: ANE Context Engine)
+    try:
+        from api.context_router import router as context_router
+        app.include_router(context_router)
+        services_loaded.append("Context API")
+    except Exception as e:
+        services_failed.append("Context API")
+        logger.error("Failed to load context router", exc_info=True)
+
+    # Hot Slots API (Phase 2: Hot Slot Management)
+    try:
+        from api.hot_slots_router import router as hot_slots_router
+        app.include_router(hot_slots_router)
+        services_loaded.append("Hot Slots API")
+    except Exception as e:
+        services_failed.append("Hot Slots API")
+        logger.error("Failed to load hot slots router", exc_info=True)
+
     # P2P Chat
     try:
         from api.p2p_chat_router import router as p2p_chat_router

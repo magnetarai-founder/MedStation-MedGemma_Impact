@@ -340,19 +340,19 @@ struct MagnetarHubWorkspace: View {
             return modelsStore.models
         case .code:
             return modelsStore.models.filter { model in
-                model.tags?.contains("code") == true
+                model.name.lowercased().contains("code") || model.name.lowercased().contains("coder")
             }
         case .chat:
             return modelsStore.models.filter { model in
-                model.tags?.contains("chat") == true
+                model.name.lowercased().contains("chat") || model.name.lowercased().contains("llama")
             }
         case .vision:
             return modelsStore.models.filter { model in
-                model.tags?.contains("vision") == true
+                model.name.lowercased().contains("vision") || model.name.lowercased().contains("llava")
             }
         case .reasoning:
             return modelsStore.models.filter { model in
-                model.tags?.contains("reasoning") == true
+                model.name.lowercased().contains("qwen") || model.name.lowercased().contains("deepseek")
             }
         case .cloud:
             return cloudModels
@@ -389,18 +389,31 @@ struct MagnetarHubWorkspace: View {
                                 Text("•")
                                     .foregroundColor(.secondary)
 
-                                Text(model.size)
+                                Text(model.sizeFormatted)
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
 
-                            // Capability tags
-                            if let tagDetails = model.tagDetails, !tagDetails.isEmpty {
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 6) {
-                                        ForEach(tagDetails) { tag in
-                                            CapabilityTagBadge(tag: tag)
-                                        }
+                            // Model details (family, quantization)
+                            if let details = model.details {
+                                HStack(spacing: 6) {
+                                    if let family = details.family {
+                                        Text(family.uppercased())
+                                            .font(.caption2)
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 4)
+                                            .background(Color.blue.opacity(0.2))
+                                            .foregroundColor(.blue)
+                                            .cornerRadius(4)
+                                    }
+                                    if let quant = details.quantizationLevel {
+                                        Text(quant)
+                                            .font(.caption2)
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 4)
+                                            .background(Color.green.opacity(0.2))
+                                            .foregroundColor(.green)
+                                            .cornerRadius(4)
                                     }
                                 }
                             }
@@ -492,37 +505,61 @@ struct MagnetarHubWorkspace: View {
                                     DetailRow(icon: "calendar", label: "Modified", value: modifiedAt)
                                 }
 
-                                DetailRow(icon: "externaldrive", label: "Size", value: model.size)
+                                DetailRow(icon: "externaldrive", label: "Size", value: model.sizeFormatted)
                             }
 
                             Divider()
 
-                            // Capabilities
-                            if let tagDetails = model.tagDetails, !tagDetails.isEmpty {
+                            // Model Information
+                            if let details = model.details {
                                 VStack(alignment: .leading, spacing: 12) {
-                                    Text("Capabilities")
+                                    Text("Model Details")
                                         .font(.headline)
 
-                                    ForEach(tagDetails) { tag in
-                                        HStack(spacing: 12) {
-                                            Image(systemName: tag.icon)
-                                                .foregroundStyle(LinearGradient.magnetarGradient)
-                                                .frame(width: 24)
-
-                                            VStack(alignment: .leading, spacing: 2) {
-                                                Text(tag.name)
-                                                    .font(.body)
-                                                    .fontWeight(.medium)
-                                                Text(tag.description)
-                                                    .font(.caption)
-                                                    .foregroundColor(.secondary)
-                                            }
+                                    if let family = details.family {
+                                        HStack {
+                                            Text("Family:")
+                                                .font(.body)
+                                                .foregroundColor(.secondary)
+                                            Text(family.capitalized)
+                                                .font(.body)
+                                                .fontWeight(.medium)
                                         }
-                                        .padding(12)
-                                        .background(Color.surfaceSecondary.opacity(0.3))
-                                        .cornerRadius(8)
+                                    }
+                                    if let format = details.format {
+                                        HStack {
+                                            Text("Format:")
+                                                .font(.body)
+                                                .foregroundColor(.secondary)
+                                            Text(format.uppercased())
+                                                .font(.body)
+                                                .fontWeight(.medium)
+                                        }
+                                    }
+                                    if let paramSize = details.parameterSize {
+                                        HStack {
+                                            Text("Parameters:")
+                                                .font(.body)
+                                                .foregroundColor(.secondary)
+                                            Text(paramSize)
+                                                .font(.body)
+                                                .fontWeight(.medium)
+                                        }
+                                    }
+                                    if let quant = details.quantizationLevel {
+                                        HStack {
+                                            Text("Quantization:")
+                                                .font(.body)
+                                                .foregroundColor(.secondary)
+                                            Text(quant)
+                                                .font(.body)
+                                                .fontWeight(.medium)
+                                        }
                                     }
                                 }
+                                .padding(12)
+                                .background(Color.surfaceSecondary.opacity(0.3))
+                                .cornerRadius(8)
                             }
 
                             Spacer()
@@ -895,22 +932,30 @@ struct ModelRow: View {
                     .font(.headline)
                     .foregroundColor(.textPrimary)
 
-                // Capability tags in row
-                if let tagDetails = model.tagDetails, !tagDetails.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 4) {
-                            ForEach(tagDetails.prefix(3)) { tag in
-                                CapabilityTagBadge(tag: tag, compact: true)
-                            }
-                            if tagDetails.count > 3 {
-                                Text("+\(tagDetails.count - 3)")
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                            }
+                // Model details badges
+                if let details = model.details {
+                    HStack(spacing: 4) {
+                        if let family = details.family {
+                            Text(family.uppercased())
+                                .font(.caption2)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.blue.opacity(0.2))
+                                .foregroundColor(.blue)
+                                .cornerRadius(3)
+                        }
+                        if let quant = details.quantizationLevel {
+                            Text(quant)
+                                .font(.caption2)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.green.opacity(0.2))
+                                .foregroundColor(.green)
+                                .cornerRadius(3)
                         }
                     }
                 } else {
-                    Text(model.size)
+                    Text(model.sizeFormatted)
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }

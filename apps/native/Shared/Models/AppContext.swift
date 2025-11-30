@@ -388,8 +388,10 @@ struct SystemResourceState: Codable {
         // Calculate memory pressure (simple heuristic)
         let memoryPressure = min(1.0, usedMemoryGB / totalMemoryGB)
 
-        // Get CPU usage (simplified)
-        let cpuUsage: Float = 0.0  // TODO: Implement proper CPU monitoring
+        // Get CPU usage from ResourceMonitor
+        let cpuUsage: Float = await MainActor.run {
+            ResourceMonitor.shared.getCPUUsage()
+        }
 
         // Get active models from hot slots
         let activeModels = await MainActor.run {

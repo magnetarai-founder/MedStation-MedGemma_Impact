@@ -173,6 +173,20 @@ class ANEContextEngine:
         self._job_queue.put(job)
         logger.debug(f"Queued context for session {session_id}")
 
+    def enqueue_vectorization(
+        self,
+        session_id: str,
+        context: Dict[str, Any]
+    ) -> None:
+        """
+        Alias for preserve_context for backward compatibility
+
+        Args:
+            session_id: Unique session identifier
+            context: Context dict to vectorize
+        """
+        self.preserve_context(session_id, context)
+
     def get_vector(self, session_id: str) -> Optional[List[float]]:
         """Get stored vector for a session"""
         with self._lock:

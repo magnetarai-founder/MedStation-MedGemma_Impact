@@ -112,6 +112,8 @@ class HotSlotManager: ObservableObject {
             )
 
             // Convert to HotSlot array
+            let memoryTracker = ModelMemoryTracker.shared
+
             var slots: [HotSlot] = []
             for slotNum in 1...4 {
                 let key = String(slotNum)
@@ -123,7 +125,7 @@ class HotSlotManager: ObservableObject {
                     modelName: modelId,  // TODO: Get display name from model registry
                     isPinned: pinnedSlots.contains(slotNum),
                     loadedAt: modelId != nil ? Date() : nil,
-                    memoryUsageGB: nil  // TODO: Get from system resources
+                    memoryUsageGB: modelId.flatMap { memoryTracker.getMemoryUsage(for: $0) }
                 ))
             }
 

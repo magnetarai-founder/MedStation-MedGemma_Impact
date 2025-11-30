@@ -300,7 +300,7 @@ final class ChatStore {
                 id: msg.id.uuidString,
                 role: msg.role == .user ? "user" : "assistant",
                 content: msg.content,
-                modelId: nil,  // TODO: Track which model generated each response
+                modelId: msg.modelId,  // Track which model generated each response
                 timestamp: msg.createdAt,
                 tokenCount: nil
             )
@@ -308,6 +308,8 @@ final class ChatStore {
 
         // Get available models (hot slots + all models)
         let hotSlotManager = HotSlotManager.shared
+        let memoryTracker = ModelMemoryTracker.shared
+
         let availableModels: [AvailableModel] = availableModels.enumerated().map { index, modelName in
             // Check if in hot slot
             let slot = hotSlotManager.hotSlots.first { $0.modelId == modelName }
@@ -318,7 +320,7 @@ final class ChatStore {
                 displayName: modelName,
                 slotNumber: slot?.slotNumber,
                 isPinned: slot?.isPinned ?? false,
-                memoryUsageGB: nil,  // TODO: Get actual memory usage
+                memoryUsageGB: memoryTracker.getMemoryUsage(for: modelName),
                 capabilities: ModelCapabilities(
                     chat: true,
                     codeGeneration: modelName.lowercased().contains("coder"),
@@ -331,19 +333,33 @@ final class ChatStore {
             )
         }
 
+        // Phase 5: Get RAG documents from ANE Context Engine
+        let ragDocuments = await ContextService.shared.getRAGDocuments(for: query, limit: 5)
+
+        // Phase 3: Get vault context (file permissions and access)
+        let vaultContext = await VaultContext.current()
+
+        // Convert VaultContext to BundledVaultContext
+        let bundledVaultContext = BundledVaultContext(
+            unlockedVaultType: vaultContext.unlockedVaultType,
+            recentlyAccessedFiles: vaultContext.recentFiles,
+            currentlyGrantedPermissions: vaultContext.activePermissions,
+            relevantFiles: nil  // TODO: Add semantic search for relevant vault files
+        )
+
         return ContextBundle(
             userQuery: query,
             sessionId: sessionId,
             workspaceType: "chat",
             conversationHistory: conversationHistory,
             totalMessagesInSession: messages.count,
-            vaultContext: nil,  // TODO: Include vault context
+            vaultContext: bundledVaultContext,
             dataContext: nil,
             kanbanContext: nil,
             workflowContext: nil,
             teamContext: nil,
             codeContext: nil,
-            ragDocuments: nil,
+            ragDocuments: ragDocuments.isEmpty ? nil : ragDocuments,
             vectorSearchResults: nil,
             userPreferences: appContext.userPreferences,
             activeModelId: selectedModelId,
@@ -379,11 +395,12 @@ final class ChatStore {
             // Phase 4: Determine which model to use (intelligent routing or manual)
             let modelToUse = await determineModelForQuery(text, sessionId: session.id.uuidString)
 
-            // Create assistant message placeholder
+            // Create assistant message placeholder with model tracking
             let assistantMessage = ChatMessage(
                 role: .assistant,
                 content: "",
-                sessionId: session.id
+                sessionId: session.id,
+                modelId: modelToUse
             )
             messages.append(assistantMessage)
 
@@ -438,13 +455,14 @@ final class ChatStore {
                             // Check for content chunk
                             if let chunk = dict["content"] as? String {
                                 fullContent += chunk
-                                // Update last message (assistant)
+                                // Update last message (assistant) while preserving modelId
                                 if let lastIndex = messages.indices.last {
                                     messages[lastIndex] = ChatMessage(
                                         id: messages[lastIndex].id,
                                         role: .assistant,
                                         content: fullContent,
-                                        sessionId: session.id
+                                        sessionId: session.id,
+                                        modelId: modelToUse
                                     )
                                 }
                             }
@@ -455,6 +473,28 @@ final class ChatStore {
                             }
                         }
                     }
+                }
+            }
+
+            // Auto-store context for future semantic search (Phase 5)
+            Task {
+                do {
+                    try await ContextService.shared.storeContext(
+                        sessionId: session.id.uuidString,
+                        workspaceType: "chat",
+                        content: """
+                        User: \(text)
+                        Assistant: \(fullContent)
+                        """,
+                        metadata: [
+                            "model": modelToUse,
+                            "user_query": text,
+                            "response_length": fullContent.count
+                        ]
+                    )
+                    print("✅ Stored chat context in ANE for session \(session.id.uuidString)")
+                } catch {
+                    print("⚠️ Failed to store context in ANE: \(error)")
                 }
             }
 

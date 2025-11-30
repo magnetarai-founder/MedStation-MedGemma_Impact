@@ -145,21 +145,33 @@ final class ModelsStore {
 
 struct OllamaModel: Codable, Identifiable {
     let name: String
-    let size: String  // Already formatted by backend (e.g., "4.4GB")
+    let size: Int64
     let digest: String?
-    let modifiedAt: String?  // Optional - not always returned by Ollama API
-    let tags: [String]?
-    let tagDetails: [ModelTag]?
+    let modifiedAt: String?
+    let details: ModelDetails?
 
     var id: String { name }
+    var sizeFormatted: String {
+        let gb = Double(size) / 1_073_741_824.0
+        return String(format: "%.1f GB", gb)
+    }
 
     enum CodingKeys: String, CodingKey {
-        case name
-        case size
-        case digest
+        case name, size, digest, details
         case modifiedAt = "modified_at"
-        case tags
-        case tagDetails = "tag_details"
+    }
+
+    struct ModelDetails: Codable {
+        let format: String?
+        let family: String?
+        let parameterSize: String?
+        let quantizationLevel: String?
+
+        enum CodingKeys: String, CodingKey {
+            case format, family
+            case parameterSize = "parameter_size"
+            case quantizationLevel = "quantization_level"
+        }
     }
 }
 

@@ -41,14 +41,13 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 # Storage paths - use centralized config_paths
-from config_paths import get_config_paths
+try:
+    from config_paths import get_config_paths
+except ImportError:
+    from api.config_paths import get_config_paths
 PATHS = get_config_paths()
 DOCS_DB_PATH = PATHS.data_dir / "docs.db"
 DOCS_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-
-from typing import Dict
-from fastapi import Depends
-from auth_middleware import get_current_user
 
 router = APIRouter(
     prefix="/api/v1/docs",
@@ -229,7 +228,8 @@ async def create_document(
             created_by=row["created_by"],
             is_private=bool(row["is_private"]),
             security_level=row["security_level"],
-            shared_with=json.loads(row["shared_with"])
+            shared_with=json.loads(row["shared_with"]),
+            team_id=row.get("team_id")
         )
 
     except Exception as e:
@@ -308,7 +308,8 @@ async def list_documents(
                 created_by=row["created_by"],
                 is_private=bool(row["is_private"]),
                 security_level=row["security_level"],
-                shared_with=json.loads(row["shared_with"])
+                shared_with=json.loads(row["shared_with"]),
+                team_id=row.get("team_id")
             ))
 
         return documents
@@ -371,7 +372,8 @@ async def get_document(
             created_by=row["created_by"],
             is_private=bool(row["is_private"]),
             security_level=row["security_level"],
-            shared_with=json.loads(row["shared_with"])
+            shared_with=json.loads(row["shared_with"]),
+            team_id=row.get("team_id")
         )
 
     except HTTPException:
@@ -497,7 +499,8 @@ async def update_document(
             created_by=row["created_by"],
             is_private=bool(row["is_private"]),
             security_level=row["security_level"],
-            shared_with=json.loads(row["shared_with"])
+            shared_with=json.loads(row["shared_with"]),
+            team_id=row.get("team_id")
         )
 
     except HTTPException:

@@ -264,6 +264,19 @@ class AppleFMOrchestrator: ModelOrchestrator {
                 }
             }
 
+            // CPU usage penalty (avoid heavy models when CPU is maxed)
+            if systemResources.cpuUsage > 0.8 {
+                // High CPU load - prefer smaller/faster models
+                if model.memoryUsageGB ?? 0 > 5 {
+                    score -= 0.2
+                }
+            } else if systemResources.cpuUsage > 0.95 {
+                // Critical CPU load - heavily penalize large models
+                if model.memoryUsageGB ?? 0 > 3 {
+                    score -= 0.4
+                }
+            }
+
             scoredModels.append((model, score))
         }
 

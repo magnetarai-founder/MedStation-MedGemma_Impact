@@ -15,19 +15,22 @@ final class ChatMessage {
     var content: String
     var createdAt: Date
     var sessionId: UUID
+    var modelId: String?  // Track which model generated this response
 
     init(
         id: UUID = UUID(),
         role: MessageRole,
         content: String,
         sessionId: UUID,
-        createdAt: Date = Date()
+        createdAt: Date = Date(),
+        modelId: String? = nil
     ) {
         self.id = id
         self.role = role
         self.content = content
         self.sessionId = sessionId
         self.createdAt = createdAt
+        self.modelId = modelId
     }
 }
 
