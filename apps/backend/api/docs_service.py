@@ -229,7 +229,7 @@ async def create_document(
             is_private=bool(row["is_private"]),
             security_level=row["security_level"],
             shared_with=json.loads(row["shared_with"]),
-            team_id=row.get("team_id")
+            team_id=row["team_id"] if "team_id" in row.keys() else None
         )
 
     except Exception as e:
@@ -309,7 +309,7 @@ async def list_documents(
                 is_private=bool(row["is_private"]),
                 security_level=row["security_level"],
                 shared_with=json.loads(row["shared_with"]),
-                team_id=row.get("team_id")
+                team_id=row["team_id"] if "team_id" in row.keys() else None
             ))
 
         return documents
@@ -373,7 +373,7 @@ async def get_document(
             is_private=bool(row["is_private"]),
             security_level=row["security_level"],
             shared_with=json.loads(row["shared_with"]),
-            team_id=row.get("team_id")
+            team_id=row["team_id"] if "team_id" in row.keys() else None
         )
 
     except HTTPException:
@@ -500,7 +500,7 @@ async def update_document(
             is_private=bool(row["is_private"]),
             security_level=row["security_level"],
             shared_with=json.loads(row["shared_with"]),
-            team_id=row.get("team_id")
+            team_id=row["team_id"] if "team_id" in row.keys() else None
         )
 
     except HTTPException:
