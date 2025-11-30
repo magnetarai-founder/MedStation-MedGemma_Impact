@@ -289,7 +289,7 @@ public final class TeamService {
 
     public func getUserPermissions() async throws -> UserPermissions {
         try await apiClient.request(
-            path: "/v1/teams/permissions",
+            path: "/v1/teams/user/permissions",
             method: .get
         )
     }

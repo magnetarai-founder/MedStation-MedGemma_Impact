@@ -18,7 +18,7 @@ class UserPermissionsResponse(BaseModel):
     can_access_vault: bool
 
 
-@router.get("/permissions", name="get_user_permissions")
+@router.get("/user/permissions", name="get_user_permissions")
 async def get_user_permissions(request: Request):
     """Get current user's permissions for workspace features"""
     # For now, return all true - can be enhanced with actual permission checks
