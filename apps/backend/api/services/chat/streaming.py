@@ -43,10 +43,11 @@ class OllamaClient:
     async def check_server(self) -> bool:
         """Check if Ollama server is running"""
         try:
-            import httpx
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                response = await client.get(f"{self.base_url}/api/version")
-                return response.status_code == 200
+            import urllib.request
+            import urllib.error
+            req = urllib.request.Request(f"{self.base_url}/api/version", method='GET')
+            with urllib.request.urlopen(req, timeout=5) as response:
+                return response.status == 200
         except Exception as e:
             logger.debug(f"Ollama server not responding: {e}")
             return False
@@ -90,11 +91,12 @@ class OllamaClient:
     async def list_models(self) -> List[Dict]:
         """List available models"""
         try:
-            import httpx
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.get(f"{self.base_url}/api/tags")
-                response.raise_for_status()
-                data = response.json()
+            import urllib.request
+            import json
+
+            req = urllib.request.Request(f"{self.base_url}/api/tags", method='GET')
+            with urllib.request.urlopen(req, timeout=10) as response:
+                data = json.loads(response.read().decode('utf-8'))
 
                 models = []
                 for model_data in data.get("models", []):
