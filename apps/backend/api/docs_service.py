@@ -87,6 +87,23 @@ class Document(BaseModel):
     shared_with: List[str] = Field(default_factory=list)
     team_id: Optional[str] = None
 
+    model_config = {
+        "populate_by_name": True,
+        "json_schema_extra": {
+            "example": {
+                "id": "doc_123",
+                "type": "doc",
+                "title": "My Document",
+                "content": {},
+                "created_at": "2025-01-01T00:00:00",
+                "updated_at": "2025-01-01T00:00:00",
+                "created_by": "user_123",
+                "is_private": False,
+                "shared_with": []
+            }
+        }
+    }
+
 
 class SyncRequest(BaseModel):
     """Batch sync request for multiple documents"""
