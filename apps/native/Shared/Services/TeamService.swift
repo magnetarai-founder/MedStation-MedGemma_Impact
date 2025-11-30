@@ -24,17 +24,31 @@ struct Team: Identifiable, Codable {
 }
 
 public struct TeamDocument: Identifiable, Codable {
-    let id: String
-    let title: String
-    let content: AnyCodable?
-    let type: String
-    let createdAt: String
-    let updatedAt: String
-    let createdBy: String
-    let isPrivate: Bool
-    let securityLevel: String?
-    let sharedWith: [String]
-    let teamId: String?
+    public let id: String
+    public let title: String
+    public let content: AnyCodable?
+    public let type: String
+    public let createdAt: String
+    public let updatedAt: String
+    public let createdBy: String
+    public let isPrivate: Bool
+    public let securityLevel: String?
+    public let sharedWith: [String]
+    public let teamId: String?
+
+    public init(id: String, title: String, content: AnyCodable? = nil, type: String, createdAt: String, updatedAt: String, createdBy: String, isPrivate: Bool, securityLevel: String? = nil, sharedWith: [String], teamId: String? = nil) {
+        self.id = id
+        self.title = title
+        self.content = content
+        self.type = type
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.createdBy = createdBy
+        self.isPrivate = isPrivate
+        self.securityLevel = securityLevel
+        self.sharedWith = sharedWith
+        self.teamId = teamId
+    }
 
     enum CodingKeys: String, CodingKey {
         case id, title, content, type
@@ -47,7 +61,7 @@ public struct TeamDocument: Identifiable, Codable {
         case teamId = "team_id"
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(String.self, forKey: .id)
         title = try container.decode(String.self, forKey: .title)
