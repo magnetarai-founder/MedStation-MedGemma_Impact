@@ -102,7 +102,7 @@ class OllamaClient:
                 for model_data in data.get("models", []):
                     models.append({
                         "name": model_data["name"],
-                        "size": self._format_size(model_data.get("size", 0)),
+                        "size": model_data.get("size", 0),
                         "modified_at": model_data.get("modified_at", "")
                     })
 

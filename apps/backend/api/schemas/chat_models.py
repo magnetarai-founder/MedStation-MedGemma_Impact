@@ -57,7 +57,7 @@ class SendMessageRequest(BaseModel):
 class OllamaModel(BaseModel):
     """Ollama model information"""
     name: str
-    size: str
+    size: int
     modified_at: str
 
 
