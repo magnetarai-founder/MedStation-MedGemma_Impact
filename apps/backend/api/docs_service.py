@@ -313,7 +313,7 @@ async def list_documents(
 
         documents = []
         for row in rows:
-            documents.append(Document(
+            doc = Document(
                 id=row["id"],
                 type=row["type"],
                 title=row["title"],
@@ -325,7 +325,12 @@ async def list_documents(
                 security_level=row["security_level"],
                 shared_with=json.loads(row["shared_with"]),
                 team_id=row["team_id"] if "team_id" in row.keys() else None
-            ))
+            )
+            documents.append(doc)
+
+        # Log first document for debugging
+        if documents:
+            logger.info(f"Sample document fields: {list(documents[0].model_dump().keys())}")
 
         return documents
 
