@@ -349,16 +349,13 @@ enum SidebarOrganizationMode: String {
 
 // MARK: - Preview
 
-#Preview {
-    let now = ISO8601DateFormatter().string(from: Date())
-    SlackStyleDocsSidebar(
-        activeDocument: .constant(nil),
-        documents: [
-            TeamDocument(id: "1", title: "Project Plan", content: nil, type: "doc", createdAt: now, updatedAt: now, createdBy: "user1", isPrivate: false, securityLevel: nil, sharedWith: [], teamId: nil),
-            TeamDocument(id: "2", title: "Budget 2024", content: nil, type: "sheet", createdAt: now, updatedAt: now, createdBy: "user1", isPrivate: false, securityLevel: nil, sharedWith: [], teamId: nil),
-            TeamDocument(id: "3", title: "Q4 Analytics", content: nil, type: "insight", createdAt: now, updatedAt: now, createdBy: "user1", isPrivate: false, securityLevel: nil, sharedWith: [], teamId: nil)
-        ],
-        onNewDocument: {}
-    )
-    .frame(width: 256)
-}
+// Preview disabled - TeamDocument now in TeamService module
+// #Preview {
+//     let now = ISO8601DateFormatter().string(from: Date())
+//     SlackStyleDocsSidebar(
+//         activeDocument: .constant(nil),
+//         documents: [],
+//         onNewDocument: {}
+//     )
+//     .frame(width: 256)
+// }
