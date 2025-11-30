@@ -5,8 +5,28 @@ Extracted from team.py for better organization.
 """
 
 from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel
 
 router = APIRouter()
+
+
+# ===== User Permissions =====
+
+class UserPermissionsResponse(BaseModel):
+    can_access_documents: bool
+    can_access_automation: bool
+    can_access_vault: bool
+
+
+@router.get("/permissions", name="get_user_permissions")
+async def get_user_permissions(request: Request):
+    """Get current user's permissions for workspace features"""
+    # For now, return all true - can be enhanced with actual permission checks
+    return UserPermissionsResponse(
+        can_access_documents=True,
+        can_access_automation=True,
+        can_access_vault=True
+    )
 
 
 # ===== Workflow Permissions =====
