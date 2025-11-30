@@ -1283,15 +1283,18 @@ struct DocsWorkspace: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            // Left Sidebar - New Slack-style sidebar
+            // Left Sidebar - Simple docs list
             if sidebarVisible {
-                SlackStyleDocsSidebar(
-                    activeDocument: $activeDocument,
-                    documents: documents,
-                    onNewDocument: {
+                VStack {
+                    ForEach(documents) { doc in
+                        Button(doc.title) {
+                            activeDocument = doc
+                        }
+                    }
+                    Button("+ New Document") {
                         showNewDocumentModal = true
                     }
-                )
+                }
                 .frame(width: 256)
 
                 Divider()
