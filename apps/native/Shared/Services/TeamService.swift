@@ -244,10 +244,20 @@ public final class TeamService {
     // MARK: - Diagnostics
 
     func getDiagnostics() async throws -> DiagnosticsStatus {
-        try await apiClient.request(
-            path: "/v1/diagnostics",
-            method: .get
-        )
+        do {
+            let status: DiagnosticsStatus = try await apiClient.request(
+                path: "/v1/diagnostics",
+                method: .get
+            )
+            print("✅ Successfully loaded diagnostics")
+            return status
+        } catch {
+            print("❌ Failed to load diagnostics: \(error)")
+            if let decodingError = error as? DecodingError {
+                print("Decoding error details: \(decodingError)")
+            }
+            throw error
+        }
     }
 
     // MARK: - NL Query

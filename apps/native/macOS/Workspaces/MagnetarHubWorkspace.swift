@@ -742,10 +742,10 @@ struct MagnetarHubWorkspace: View {
             }
 
         } catch let error as URLError {
-            cloudError = "Network error: \(error.localizedDescription)"
+            // Network errors - silently ignore, cloud not available
             cloudModels = []
         } catch {
-            cloudError = "Failed to load cloud models: \(error.localizedDescription)"
+            // Any other errors (including decoding) - silently ignore
             cloudModels = []
         }
 
