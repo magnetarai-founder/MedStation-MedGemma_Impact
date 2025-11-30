@@ -201,10 +201,20 @@ public final class TeamService {
     // MARK: - Documents
 
     func listDocuments() async throws -> [TeamDocument] {
-        try await apiClient.request(
-            path: "/v1/docs/documents",
-            method: .get
-        )
+        do {
+            let documents: [TeamDocument] = try await apiClient.request(
+                path: "/v1/docs/documents",
+                method: .get
+            )
+            print("✅ Successfully loaded \(documents.count) documents")
+            return documents
+        } catch {
+            print("❌ Failed to load documents: \(error)")
+            if let decodingError = error as? DecodingError {
+                print("Decoding error details: \(decodingError)")
+            }
+            throw error
+        }
     }
 
     func createDocument(title: String, content: String, type: String) async throws -> TeamDocument {
