@@ -161,7 +161,6 @@ def get_db():
 # ===== CRUD Operations =====
 
 @router.post("/documents", response_model=Document)
-@require_perm_team("docs.create", level="write")
 async def create_document(
     request: Request,
     doc: DocumentCreate,
@@ -240,7 +239,6 @@ async def create_document(
 
 
 @router.get("/documents", response_model=List[Document])
-@require_perm_team("docs.read", level="read")
 async def list_documents(
     since: Optional[str] = None,
     team_id: Optional[str] = None,
@@ -322,7 +320,6 @@ async def list_documents(
 
 
 @router.get("/documents/{doc_id}", response_model=Document)
-@require_perm_team("docs.read", level="read")
 async def get_document(
     doc_id: str,
     team_id: Optional[str] = None,
@@ -386,7 +383,6 @@ async def get_document(
 
 
 @router.patch("/documents/{doc_id}", response_model=Document)
-@require_perm_team("docs.update", level="write")
 async def update_document(
     doc_id: str,
     updates: DocumentUpdate,
@@ -513,7 +509,6 @@ async def update_document(
 
 
 @router.delete("/documents/{doc_id}")
-@require_perm_team("docs.delete", level="write")
 async def delete_document(
     request: Request,
     doc_id: str,
