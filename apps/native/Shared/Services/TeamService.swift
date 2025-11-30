@@ -23,7 +23,7 @@ struct Team: Identifiable, Codable {
     }
 }
 
-struct TeamDocument: Identifiable, Codable {
+public struct TeamDocument: Identifiable, Codable {
     let id: String
     let title: String
     let content: AnyCodable?
