@@ -741,7 +741,7 @@ struct MagnetarHubWorkspace: View {
                 cloudModels = []
             }
 
-        } catch let error as URLError {
+        } catch is URLError {
             // Network errors - silently ignore, cloud not available
             cloudModels = []
         } catch {
