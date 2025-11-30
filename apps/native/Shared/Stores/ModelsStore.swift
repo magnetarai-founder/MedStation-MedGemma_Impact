@@ -24,8 +24,8 @@ final class ModelsStore {
         error = nil
 
         do {
-            // Build URL to fetch models with auto-detected tags
-            let url = URL(string: "http://localhost:8000/api/v1/chat/models/with-tags")!
+            // Fetch basic models list (no tags to avoid complexity)
+            let url = URL(string: "http://localhost:8000/api/v1/chat/models")!
             var request = URLRequest(url: url)
             request.httpMethod = "GET"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
