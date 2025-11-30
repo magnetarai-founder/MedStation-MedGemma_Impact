@@ -10,89 +10,9 @@
 import SwiftUI
 import Foundation
 
-// MARK: - Team Service Models & Service (inlined for now)
-
-// Message models (duplicated from TeamService for now - needed due to module visibility)
-struct TeamMessage: Identifiable, Codable {
-    let id: String
-    let channelId: String
-    let senderId: String
-    let senderName: String
-    let type: String
-    let content: String
-    let timestamp: String
-    let encrypted: Bool
-    let fileMetadata: AnyCodable?
-    let threadId: String?
-    let replyTo: String?
-    let editedAt: String?
-
-    enum CodingKeys: String, CodingKey {
-        case id
-        case channelId = "channel_id"
-        case senderId = "sender_id"
-        case senderName = "sender_name"
-        case type, content, timestamp, encrypted
-        case fileMetadata = "file_metadata"
-        case threadId = "thread_id"
-        case replyTo = "reply_to"
-        case editedAt = "edited_at"
-    }
-}
-
-struct MessageListResponse: Codable {
-    let channelId: String
-    let messages: [TeamMessage]
-    let total: Int
-    let hasMore: Bool
-
-    enum CodingKeys: String, CodingKey {
-        case channelId = "channel_id"
-        case messages, total
-        case hasMore = "has_more"
-    }
-}
-
-struct Team: Identifiable, Codable {
-    let id: String
-    let name: String
-    let description: String?
-    let createdAt: String
-    let memberCount: Int?
-
-    enum CodingKeys: String, CodingKey {
-        case id, name, description
-        case createdAt = "created_at"
-        case memberCount = "member_count"
-    }
-}
-
-// All TeamService types (TeamDocument, DiagnosticsStatus, NLQueryResponse, etc.)
-// are now imported from Shared/Services/TeamService.swift
-// Removed duplicate declarations to use the ones with proper error handling
-
-
-struct P2PNetworkStatus: Codable {
-    let peerId: String
-    let isConnected: Bool
-    let discoveredPeers: Int
-    let activeChannels: Int
-    let multiaddrs: [String]
-
-    enum CodingKeys: String, CodingKey {
-        case peerId = "peer_id"
-        case isConnected = "is_connected"
-        case discoveredPeers = "discovered_peers"
-        case activeChannels = "active_channels"
-        case multiaddrs
-    }
-}
-
-struct Permissions {
-    let canAccessDocuments: Bool
-    let canAccessAutomation: Bool
-    let canAccessVault: Bool
-}
+// MARK: - Team Service Models & Service
+// All models (Team, TeamDocument, TeamMessage, DiagnosticsStatus, P2PNetworkStatus, UserPermissions, etc.)
+// are imported from Shared/Services/TeamService.swift
 
 struct TeamWorkspace: View {
     @State private var networkMode: NetworkMode = .local
@@ -111,11 +31,7 @@ struct TeamWorkspace: View {
     @State private var vaultError: String? = nil
 
     // Permissions
-    @State private var permissions = Permissions(
-        canAccessDocuments: true,
-        canAccessAutomation: true,
-        canAccessVault: true
-    )
+    @State private var permissions: UserPermissions? = nil
     @State private var isLoadingPermissions: Bool = false
 
     var body: some View {
@@ -210,7 +126,7 @@ struct TeamWorkspace: View {
                 )
 
                 // Docs
-                if permissions.canAccessDocuments {
+                if permissions?.canAccessDocuments ?? true {
                     TeamTabButton(
                         title: "Docs",
                         icon: "doc.text",
@@ -221,7 +137,7 @@ struct TeamWorkspace: View {
                 }
 
                 // Workflows
-                if permissions.canAccessAutomation {
+                if permissions?.canAccessAutomation ?? true {
                     TeamTabButton(
                         title: "Workflows",
                         icon: "arrow.triangle.branch",
@@ -232,7 +148,7 @@ struct TeamWorkspace: View {
                 }
 
                 // Divider before Vault
-                if permissions.canAccessVault {
+                if permissions?.canAccessVault ?? true {
                     Rectangle()
                         .fill(Color.gray.opacity(0.3))
                         .frame(width: 1, height: 24)
@@ -240,7 +156,7 @@ struct TeamWorkspace: View {
                 }
 
                 // Vault (amber tint)
-                if permissions.canAccessVault {
+                if permissions?.canAccessVault ?? true {
                     TeamTabButton(
                         title: "Vault",
                         icon: "lock.shield",
@@ -412,7 +328,7 @@ enum TeamView {
 struct TeamChatView: View {
     let mode: NetworkMode
     @State private var sidebarWidth: CGFloat = 320
-    @State private var activeChannel: Channel?
+    @State private var activeChannel: TeamChannel?
     @State private var showNewChannelDialog = false
     @State private var showPeerDiscovery = false
     @State private var showFileSharing = false
@@ -587,12 +503,12 @@ struct TeamChatView: View {
 // MARK: - TeamChat Sidebar
 
 struct TeamChatSidebar: View {
-    @Binding var activeChannel: Channel?
+    @Binding var activeChannel: TeamChannel?
     let onNewChannel: () -> Void
 
-    @State private var publicChannels: [Channel] = Channel.defaultPublic
-    @State private var privateChannels: [Channel] = []
-    @State private var directMessages: [Channel] = []
+    @State private var publicChannels: [TeamChannel] = TeamChannel.defaultPublic
+    @State private var privateChannels: [TeamChannel] = []
+    @State private var directMessages: [TeamChannel] = []
 
     var body: some View {
         VStack(spacing: 0) {
@@ -691,7 +607,7 @@ struct TeamChatSidebar: View {
         .padding(.vertical, 4)
     }
 
-    private func channelRow(channel: Channel, isActive: Bool, isPrivate: Bool = false) -> some View {
+    private func channelRow(channel: TeamChannel, isActive: Bool, isPrivate: Bool = false) -> some View {
         HStack(spacing: 8) {
             Image(systemName: isPrivate ? "lock" : "number")
                 .font(.system(size: 16))
@@ -746,7 +662,7 @@ struct TeamChatSidebar: View {
 // MARK: - TeamChat Window
 
 struct TeamChatWindow: View {
-    let activeChannel: Channel?
+    let activeChannel: TeamChannel?
     let mode: NetworkMode
 
     @State private var messageInput: String = ""
@@ -1051,40 +967,12 @@ enum P2PStatus {
     case connected
 }
 
-struct Channel: Identifiable, Codable {
-    let id: String
-    let name: String
-    let type: String // "public", "private", "direct"
-    let createdAt: String
-    let createdBy: String
-    let members: [String]
-    let admins: [String]
-    let description: String?
-    let topic: String?
-    let pinnedMessages: [String]
-    let dmParticipants: [String]?
+// MARK: - TeamChannel Extension for Defaults
 
-    var isPrivate: Bool {
-        type == "private"
-    }
-
-    enum CodingKeys: String, CodingKey {
-        case id
-        case name
-        case type
-        case createdAt = "created_at"
-        case createdBy = "created_by"
-        case members
-        case admins
-        case description
-        case topic
-        case pinnedMessages = "pinned_messages"
-        case dmParticipants = "dm_participants"
-    }
-
+extension TeamChannel {
     // Mock defaults for preview/testing
     static let defaultPublic = [
-        Channel(
+        TeamChannel(
             id: "ch_general",
             name: "general",
             type: "public",
@@ -1097,7 +985,7 @@ struct Channel: Identifiable, Codable {
             pinnedMessages: [],
             dmParticipants: nil
         ),
-        Channel(
+        TeamChannel(
             id: "ch_files",
             name: "files",
             type: "public",

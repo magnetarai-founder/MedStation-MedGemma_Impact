@@ -9,14 +9,14 @@ import Foundation
 
 // MARK: - Models
 
-struct Team: Identifiable, Codable {
-    let id: String
-    let name: String
-    let description: String?
-    let createdAt: String
-    let memberCount: Int?
+public struct Team: Identifiable, Codable {
+    public let id: String
+    public let name: String
+    public let description: String?
+    public let createdAt: String
+    public let memberCount: Int?
 
-    enum CodingKeys: String, CodingKey {
+    public enum CodingKeys: String, CodingKey {
         case id, name, description
         case createdAt = "created_at"
         case memberCount = "member_count"
@@ -77,102 +77,52 @@ public struct TeamDocument: Identifiable, Codable {
     }
 }
 
-// Helper to decode Any type from JSON
-struct AnyCodable: Codable {
-    let value: Any
+public struct DiagnosticsStatus: Codable {
+    public let status: String
+    public let network: NetworkStatus
+    public let database: DatabaseStatus
+    public let services: [ServiceStatus]
 
-    init(_ value: Any) {
-        self.value = value
+    public struct NetworkStatus: Codable {
+        public let connected: Bool
+        public let latency: Int?
+        public let bandwidth: String?
     }
 
-    init(from decoder: Decoder) throws {
-        let container = try decoder.singleValueContainer()
+    public struct DatabaseStatus: Codable {
+        public let connected: Bool
+        public let queryTime: Int?
 
-        if let string = try? container.decode(String.self) {
-            value = string
-        } else if let int = try? container.decode(Int.self) {
-            value = int
-        } else if let double = try? container.decode(Double.self) {
-            value = double
-        } else if let bool = try? container.decode(Bool.self) {
-            value = bool
-        } else if let array = try? container.decode([AnyCodable].self) {
-            value = array.map { $0.value }
-        } else if let dict = try? container.decode([String: AnyCodable].self) {
-            value = dict.mapValues { $0.value }
-        } else {
-            value = NSNull()
-        }
-    }
-
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.singleValueContainer()
-
-        switch value {
-        case let string as String:
-            try container.encode(string)
-        case let int as Int:
-            try container.encode(int)
-        case let double as Double:
-            try container.encode(double)
-        case let bool as Bool:
-            try container.encode(bool)
-        case let array as [Any]:
-            try container.encode(array.map { AnyCodable($0) })
-        case let dict as [String: Any]:
-            try container.encode(dict.mapValues { AnyCodable($0) })
-        default:
-            try container.encodeNil()
-        }
-    }
-}
-
-struct DiagnosticsStatus: Codable {
-    let status: String
-    let network: NetworkStatus
-    let database: DatabaseStatus
-    let services: [ServiceStatus]
-
-    struct NetworkStatus: Codable {
-        let connected: Bool
-        let latency: Int?
-        let bandwidth: String?
-    }
-
-    struct DatabaseStatus: Codable {
-        let connected: Bool
-        let queryTime: Int?
-
-        enum CodingKeys: String, CodingKey {
+        public enum CodingKeys: String, CodingKey {
             case connected
             case queryTime = "query_time"
         }
     }
 
-    struct ServiceStatus: Codable {
-        let name: String
-        let status: String
-        let uptime: String?
+    public struct ServiceStatus: Codable {
+        public let name: String
+        public let status: String
+        public let uptime: String?
     }
 }
 
-struct NLQueryResponse: Codable {
-    let answer: String
-    let query: String
-    let confidence: Double?
-    let sources: [String]?
+public struct NLQueryResponse: Codable {
+    public let answer: String
+    public let query: String
+    public let confidence: Double?
+    public let sources: [String]?
 }
 
-struct PatternDiscoveryResult: Codable {
-    let patterns: [Pattern]
-    let summary: String?
+public struct PatternDiscoveryResult: Codable {
+    public let patterns: [Pattern]
+    public let summary: String?
 
-    struct Pattern: Codable, Identifiable {
-        let id: String
-        let type: String
-        let description: String
-        let confidence: Double
-        let examples: [String]?
+    public struct Pattern: Codable, Identifiable {
+        public let id: String
+        public let type: String
+        public let description: String
+        public let confidence: Double
+        public let examples: [String]?
     }
 }
 
@@ -186,7 +136,7 @@ public final class TeamService {
 
     // MARK: - Teams
 
-    func createTeam(name: String, description: String?) async throws -> Team {
+    public func createTeam(name: String, description: String?) async throws -> Team {
         try await apiClient.request(
             path: "/v1/teams",
             method: .post,
@@ -197,7 +147,7 @@ public final class TeamService {
         )
     }
 
-    func joinTeam(code: String) async throws -> Team {
+    public func joinTeam(code: String) async throws -> Team {
         try await apiClient.request(
             path: "/v1/teams/join",
             method: .post,
@@ -205,7 +155,7 @@ public final class TeamService {
         )
     }
 
-    func listTeams() async throws -> [Team] {
+    public func listTeams() async throws -> [Team] {
         try await apiClient.request(
             path: "/v1/teams",
             method: .get
@@ -214,7 +164,7 @@ public final class TeamService {
 
     // MARK: - Documents
 
-    func listDocuments() async throws -> [TeamDocument] {
+    public func listDocuments() async throws -> [TeamDocument] {
         do {
             let documents: [TeamDocument] = try await apiClient.request(
                 path: "/v1/docs/documents",
@@ -231,7 +181,7 @@ public final class TeamService {
         }
     }
 
-    func createDocument(title: String, content: String, type: String) async throws -> TeamDocument {
+    public func createDocument(title: String, content: String, type: String) async throws -> TeamDocument {
         try await apiClient.request(
             path: "/v1/docs/documents",
             method: .post,
@@ -243,7 +193,7 @@ public final class TeamService {
         )
     }
 
-    func updateDocument(id: String, title: String?, content: String?) async throws -> TeamDocument {
+    public func updateDocument(id: String, title: String?, content: String?) async throws -> TeamDocument {
         var body: [String: Any] = [:]
         if let title = title { body["title"] = title }
         if let content = content { body["content"] = content }
@@ -257,7 +207,7 @@ public final class TeamService {
 
     // MARK: - Diagnostics
 
-    func getDiagnostics() async throws -> DiagnosticsStatus {
+    public func getDiagnostics() async throws -> DiagnosticsStatus {
         do {
             let status: DiagnosticsStatus = try await apiClient.request(
                 path: "/v1/diagnostics",
@@ -276,7 +226,7 @@ public final class TeamService {
 
     // MARK: - NL Query
 
-    func askNaturalLanguage(query: String) async throws -> NLQueryResponse {
+    public func askNaturalLanguage(query: String) async throws -> NLQueryResponse {
         try await apiClient.request(
             path: "/v1/data/ask",
             method: .post,
@@ -286,7 +236,7 @@ public final class TeamService {
 
     // MARK: - Pattern Discovery
 
-    func discoverPatterns(query: String, context: String?) async throws -> PatternDiscoveryResult {
+    public func discoverPatterns(query: String, context: String?) async throws -> PatternDiscoveryResult {
         var body: [String: Any] = ["query": query]
         if let context = context { body["context"] = context }
 
@@ -299,7 +249,7 @@ public final class TeamService {
 
     // MARK: - Vault Setup
 
-    func setupVault(password: String) async throws -> VaultSetupResponse {
+    public func setupVault(password: String) async throws -> VaultSetupResponse {
         try await apiClient.request(
             path: "/v1/vault/setup",
             method: .post,
@@ -307,7 +257,7 @@ public final class TeamService {
         )
     }
 
-    func getVaultStatus() async throws -> VaultStatusResponse {
+    public func getVaultStatus() async throws -> VaultStatusResponse {
         try await apiClient.request(
             path: "/v1/vault/status",
             method: .get
@@ -331,6 +281,33 @@ public final class TeamService {
     public func getMessages(channelId: String, limit: Int = 50) async throws -> MessageListResponse {
         try await apiClient.request(
             path: "/v1/team/channels/\(channelId)/messages?limit=\(limit)",
+            method: .get
+        )
+    }
+
+    // MARK: - Permissions
+
+    public func getUserPermissions() async throws -> UserPermissions {
+        try await apiClient.request(
+            path: "/v1/team/permissions",
+            method: .get
+        )
+    }
+
+    // MARK: - P2P Network
+
+    public func getP2PNetworkStatus() async throws -> P2PNetworkStatus {
+        try await apiClient.request(
+            path: "/v1/team/p2p/status",
+            method: .get
+        )
+    }
+
+    // MARK: - Channels
+
+    public func listChannels() async throws -> [TeamChannel] {
+        try await apiClient.request(
+            path: "/v1/team/channels",
             method: .get
         )
     }
@@ -393,21 +370,82 @@ public struct MessageListResponse: Codable {
     }
 }
 
+// MARK: - Permissions Models
+
+public struct UserPermissions: Codable {
+    public let canAccessDocuments: Bool
+    public let canAccessAutomation: Bool
+    public let canAccessVault: Bool
+
+    public enum CodingKeys: String, CodingKey {
+        case canAccessDocuments = "can_access_documents"
+        case canAccessAutomation = "can_access_automation"
+        case canAccessVault = "can_access_vault"
+    }
+}
+
+// MARK: - P2P Network Models
+
+public struct P2PNetworkStatus: Codable {
+    public let peerId: String
+    public let isConnected: Bool
+    public let discoveredPeers: Int
+    public let activeChannels: Int
+    public let multiaddrs: [String]
+
+    public enum CodingKeys: String, CodingKey {
+        case peerId = "peer_id"
+        case isConnected = "is_connected"
+        case discoveredPeers = "discovered_peers"
+        case activeChannels = "active_channels"
+        case multiaddrs
+    }
+}
+
+// MARK: - Channel Models
+
+public struct TeamChannel: Identifiable, Codable {
+    public let id: String
+    public let name: String
+    public let type: String  // "public", "private", "direct"
+    public let createdAt: String
+    public let createdBy: String
+    public let members: [String]
+    public let admins: [String]
+    public let description: String?
+    public let topic: String?
+    public let pinnedMessages: [String]
+    public let dmParticipants: [String]?
+
+    public var isPrivate: Bool {
+        type == "private"
+    }
+
+    public enum CodingKeys: String, CodingKey {
+        case id, name, type
+        case createdAt = "created_at"
+        case createdBy = "created_by"
+        case members, admins, description, topic
+        case pinnedMessages = "pinned_messages"
+        case dmParticipants = "dm_participants"
+    }
+}
+
 // MARK: - Vault Models
 
-struct VaultSetupResponse: Codable {
-    let status: String
-    let message: String
-    let vaultId: String?
+public struct VaultSetupResponse: Codable {
+    public let status: String
+    public let message: String
+    public let vaultId: String?
 
-    enum CodingKeys: String, CodingKey {
+    public enum CodingKeys: String, CodingKey {
         case status, message
         case vaultId = "vault_id"
     }
 }
 
-struct VaultStatusResponse: Codable {
-    let initialized: Bool
-    let locked: Bool
-    let message: String?
+public struct VaultStatusResponse: Codable {
+    public let initialized: Bool
+    public let locked: Bool
+    public let message: String?
 }

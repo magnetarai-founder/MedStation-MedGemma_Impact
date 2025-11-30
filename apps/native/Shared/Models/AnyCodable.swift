@@ -1,16 +1,16 @@
 import Foundation
 
 /// Type-erased Codable value for dynamic JSON handling
-struct AnyCodable: Codable {
-    let value: Any
+public struct AnyCodable: Codable {
+    public let value: Any
 
-    init(_ value: Any) {
+    public init(_ value: Any) {
         self.value = value
     }
 
     // MARK: - Decodable
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
 
         if container.decodeNil() {
@@ -37,7 +37,7 @@ struct AnyCodable: Codable {
 
     // MARK: - Encodable
 
-    func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
 
         switch value {
@@ -67,7 +67,7 @@ struct AnyCodable: Codable {
 
 // MARK: - Helpers
 
-extension AnyCodable {
+public extension AnyCodable {
     var stringValue: String? {
         value as? String
     }

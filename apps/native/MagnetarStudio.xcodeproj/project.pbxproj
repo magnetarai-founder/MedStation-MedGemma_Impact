@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		047B49149C254D87B631EEF6 /* CodeEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 832F8059CDA346DF9163F393 /* CodeEditor.swift */; };
-		04B417CD2D01C6E1ABC5ADDB /* SlackStyleDocsSidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDE1074A47D7354964A79AB4 /* SlackStyleDocsSidebar.swift */; };
 		0996D3B0B63B4CB29AE2EE9E /* VaultModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18F56FEE06EB4480B335A64B /* VaultModels.swift */; };
 		0ACEF63C75F74A6698462792 /* WorkflowService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B02AE94CCC83473FB64BC7BD /* WorkflowService.swift */; };
 		0D6F62E4A20310F8DCA88F48 /* KanbanWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D684EFED023D2A6542AAB1F /* KanbanWorkspace.swift */; };
@@ -54,6 +53,7 @@
 		B64BDA375B00040180CE49A6 /* TeamWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EA14AC49CC3C7EE3D89EE05 /* TeamWorkspace.swift */; };
 		B97B1A4B2A1F47F293CA5768 /* ChatModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFB37B6A745242FDB043D334 /* ChatModels.swift */; };
 		BD7253C573C97E44DCD6BE0A /* GlassButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C5B7D185B4D1BE3FF14F5F6 /* GlassButton.swift */; };
+		C0BBF6544683748DF15A980B /* TeamService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E03654A7DB82435A07B213DD /* TeamService.swift */; };
 		C275F79B51284D3B82881368 /* VaultService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 399E593F40D14E5AAD83D8EA /* VaultService.swift */; };
 		C39387A4041537956C59BAFC /* LiquidGlassPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 842DAEC1F81C99999F03FF53 /* LiquidGlassPanel.swift */; };
 		C3E44FEBE2074BE4B381E33E /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18F8E78737774D21B8C95D37 /* AuthService.swift */; };
@@ -147,13 +147,13 @@
 		DC1DB0ED9A1D41F89804F805 /* FileUpload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileUpload.swift; sourceTree = "<group>"; };
 		DE1C4B939DAC9084AC244415 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		DF7780D6D6AD182EE79F5868 /* OrchestratorInitializer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OrchestratorInitializer.swift; sourceTree = "<group>"; };
+		E03654A7DB82435A07B213DD /* TeamService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TeamService.swift; sourceTree = "<group>"; };
 		E0B5547ECD973EFF39678E79 /* NavigationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationStore.swift; sourceTree = "<group>"; };
 		E14DD2FC8D25B4ABB8A2326D /* ContextBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContextBundle.swift; sourceTree = "<group>"; };
 		E62FD8B9DE028C44A2F0816E /* ChatStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatStore.swift; sourceTree = "<group>"; };
 		F2C77CB5AF6C4202FD8D7161 /* ChatMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatMessage.swift; sourceTree = "<group>"; };
 		F85CE2F0DE5343879EB18743 /* Header.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Header.swift; sourceTree = "<group>"; };
 		FA268C85AA8894BC92182D94 /* ChatWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatWorkspace.swift; sourceTree = "<group>"; };
-		FDE1074A47D7354964A79AB4 /* SlackStyleDocsSidebar.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SlackStyleDocsSidebar.swift; path = ../../Shared/Views/Team/SlackStyleDocsSidebar.swift; sourceTree = "<group>"; };
 		FFCA25F1A54EEEE41A231647 /* FileAccessPermissionModal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FileAccessPermissionModal.swift; path = Dialogs/FileAccessPermissionModal.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -179,6 +179,7 @@
 				05E0510F1772E020FA2158F3 /* macOS */,
 				E18C80C7AB68D88D33E928A3 /* Shared */,
 				734503D79C8E69B6DEAEC3C5 /* Products */,
+				CC62291EC798001AA2110112 /* Shared */,
 			);
 			sourceTree = "<group>";
 		};
@@ -220,6 +221,14 @@
 				FFCA25F1A54EEEE41A231647 /* FileAccessPermissionModal.swift */,
 			);
 			name = Dialogs;
+			sourceTree = "<group>";
+		};
+		8D32CDD79FE2DC78599F3F25 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Services;
+			path = Services;
 			sourceTree = "<group>";
 		};
 		91EAD9BF8EC7E79814E2DAE7 /* Networking */ = {
@@ -296,7 +305,6 @@
 			isa = PBXGroup;
 			children = (
 				5ADD9516A7A1CEB080FDEDF3 /* NewDocumentModal.swift */,
-				FDE1074A47D7354964A79AB4 /* SlackStyleDocsSidebar.swift */,
 			);
 			name = Team;
 			sourceTree = "<group>";
@@ -318,6 +326,15 @@
 				37F355A75223BD31BF23FE9E /* VaultAdminPanel.swift */,
 			);
 			name = Panels;
+			sourceTree = "<group>";
+		};
+		CC62291EC798001AA2110112 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				8D32CDD79FE2DC78599F3F25 /* Services */,
+			);
+			name = Shared;
+			path = ../../Shared;
 			sourceTree = "<group>";
 		};
 		D87CF2DE26CB41EAA8D2EA1E /* Components */ = {
@@ -370,6 +387,7 @@
 				A077DE8B06259E85011EA57B /* HotSlotManager.swift */,
 				C043D3F1AFA96A4DDC52FAA0 /* ContextService.swift */,
 				37B8FC1C1C55127972DBE544 /* ModelMemoryTracker.swift */,
+				E03654A7DB82435A07B213DD /* TeamService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -482,7 +500,6 @@
 				C8CE1D6E95657B5967D53579 /* BiometricAuthService.swift in Sources */,
 				E840DDF0BB59FF2E5EFCF7DD /* VaultSetupWizardView.swift in Sources */,
 				CD851BE5E0D7AB9D5519B9A7 /* NewDocumentModal.swift in Sources */,
-				04B417CD2D01C6E1ABC5ADDB /* SlackStyleDocsSidebar.swift in Sources */,
 				6906ED58F9814219F579F8A1 /* KanbanService.swift in Sources */,
 				21E71528368BABF2F2852CFE /* TerminalService.swift in Sources */,
 				340D121B2E5149E6BF86D0B6 /* OllamaService.swift in Sources */,
@@ -501,6 +518,7 @@
 				27A4D1543BA8BA0FA7604B95 /* ModelSelectorMenu.swift in Sources */,
 				6E29B084EF0AB46C6DFB6D23 /* ContextService.swift in Sources */,
 				664594858BB924BBA1BFF3DD /* ModelMemoryTracker.swift in Sources */,
+				C0BBF6544683748DF15A980B /* TeamService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
