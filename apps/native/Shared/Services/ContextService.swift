@@ -107,12 +107,9 @@ class ContextService {
     static let shared = ContextService()
 
     private let apiClient: ApiClient
-    private let baseURL: String
 
     private init(apiClient: ApiClient = .shared) {
         self.apiClient = apiClient
-        // Use centralized API configuration
-        self.baseURL = "\(APIConfiguration.shared.versionedBaseURL)/context"
     }
 
     // MARK: - Search

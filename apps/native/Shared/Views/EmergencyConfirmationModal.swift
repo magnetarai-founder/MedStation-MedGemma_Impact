@@ -18,6 +18,11 @@ struct EmergencyConfirmationModal: View {
 
     let onConfirm: (EmergencyTriggerMethod) -> Void
 
+    // Explicit internal initializer for SwiftUI preview access
+    init(onConfirm: @escaping (EmergencyTriggerMethod) -> Void) {
+        self.onConfirm = onConfirm
+    }
+
     // Timer for countdown
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -51,6 +56,10 @@ struct EmergencyConfirmationModal: View {
         .onAppear {
             // Start monitoring for key combo (Cmd+Shift+Delete hold)
             startKeyMonitoring()
+        }
+        .onDisappear {
+            // Clean up key monitoring when modal closes
+            stopKeyMonitoring()
         }
     }
 
@@ -282,18 +291,49 @@ struct EmergencyConfirmationModal: View {
         }
     }
 
+    // MARK: - Key Monitoring Implementation
+
+    @State private var keyMonitor: Any?
+    @State private var keyHoldTimer: Timer?
+    @State private var keyHoldStartTime: Date?
+
     private func startKeyMonitoring() {
-        // TODO: Implement NSEvent monitoring for Cmd+Shift+Delete hold
-        // Track hold duration and update keyHoldProgress
-        // If held for 5 seconds, trigger executeEmergency(method: .keyCombo)
-        print("⚠️ TODO: Key combo monitoring not implemented yet")
+        // TODO: Implement key monitoring with proper SwiftUI state management
+        // The current approach with NSEvent closures doesn't work well with SwiftUI structs
+        print("⌨️ Key monitoring: Placeholder implementation")
+    }
+
+    private func startHoldTimer() {
+        // TODO: Implement with proper SwiftUI state management
+        print("⏱️ Hold timer: Placeholder implementation")
+    }
+
+    private func cancelHoldTimer() {
+        // TODO: Implement with proper SwiftUI state management
+        print("❌ Cancel hold timer: Placeholder implementation")
+    }
+
+    private func triggerEmergencyViaKeyCombo() {
+        // TODO: Implement key combo trigger
+        executeEmergency(method: .keyCombo)
+    }
+
+    private func isDeleteKeyPressed() -> Bool {
+        // Check if Delete key (keyCode 51) is currently pressed
+        let keyCode: CGKeyCode = 51
+        return CGEventSource.keyState(.hidSystemState, key: keyCode)
+    }
+
+    private func stopKeyMonitoring() {
+        // TODO: Implement with proper SwiftUI state management
+        print("⌨️ Key monitoring stopped: Placeholder")
     }
 }
 
 // MARK: - Preview
 
 #Preview {
-    EmergencyConfirmationModal { method in
+    EmergencyConfirmationModal(onConfirm: { method in
         print("Emergency mode confirmed via: \(method.rawValue)")
-    }
+    })
 }

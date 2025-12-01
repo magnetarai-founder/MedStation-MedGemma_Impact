@@ -28,8 +28,10 @@
 		340D121B2E5149E6BF86D0B6 /* OllamaService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EBEB2F057FF41A4A120A4DB /* OllamaService.swift */; };
 		3AEF6F15A9E949E7A20E3E10 /* DatabaseStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6D0A604BB2D42F8996CC8C9 /* DatabaseStore.swift */; };
 		3B0607AB6F5A44BABD952DDA /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DB05E6C67FE4427941ECD63 /* WelcomeView.swift */; };
+		3EFF8BA28CFC830D62689E55 /* EmergencyConfirmationModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = AED8C8EF1AB9724F43575821 /* EmergencyConfirmationModal.swift */; };
 		403835D13F7BBA5B87DF4BC0 /* CodeEditorService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10F8272E2D6EF476FDDCC185 /* CodeEditorService.swift */; };
 		419431498985644AE22A495A /* MagnetarHubWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2760AE2A83BCE0FEB660A5 /* MagnetarHubWorkspace.swift */; };
+		462E1B85191C4E7D6E5D04E1 /* EmergencyModeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF608E6633F1DCE6E6542EBD /* EmergencyModeService.swift */; };
 		4E5B3A8474FAD72E073C9871 /* ContextBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = E14DD2FC8D25B4ABB8A2326D /* ContextBundle.swift */; };
 		4FCFAC2E0DD745DFB5813F74 /* NavigationRail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08785DE309A344AF8765E6BC /* NavigationRail.swift */; };
 		500A346FB7ED4D9B9ADD8F0C /* SetupWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 624C9537C9E743BAB72D79DB /* SetupWizardView.swift */; };
@@ -58,11 +60,14 @@
 		C39387A4041537956C59BAFC /* LiquidGlassPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 842DAEC1F81C99999F03FF53 /* LiquidGlassPanel.swift */; };
 		C3E44FEBE2074BE4B381E33E /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18F8E78737774D21B8C95D37 /* AuthService.swift */; };
 		C4D33031AF8A4EDDAFDA3841 /* Header.swift in Sources */ = {isa = PBXBuildFile; fileRef = F85CE2F0DE5343879EB18743 /* Header.swift */; };
+		C53221D23E846FE6D425B460 /* EditDocumentModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = E581C17B318E0B2B62A104F1 /* EditDocumentModal.swift */; };
 		C6F6EB90EF484C51BF4451F3 /* AuthStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00280C486C0A463EACC552E6 /* AuthStore.swift */; };
 		C8CE1D6E95657B5967D53579 /* BiometricAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A904439226AE3F48234C22A0 /* BiometricAuthService.swift */; };
 		CA2EC71E90324844890DF29C /* SidebarTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B42850187A449F9B295DF2 /* SidebarTabs.swift */; };
 		CD851BE5E0D7AB9D5519B9A7 /* NewDocumentModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5ADD9516A7A1CEB080FDEDF3 /* NewDocumentModal.swift */; };
+		DB28DB0D790B392C74C6EDD6 /* EmergencyModeModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02A48E61DFB2D3B96971D9F /* EmergencyModeModels.swift */; };
 		DEBEE5BEF8FFE2128470853D /* AppleFMOrchestrator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CEFDC9D3501139A38812C68 /* AppleFMOrchestrator.swift */; };
+		E17B166B1C783211B6290194 /* PanicModeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4A86189DF1FE9A17A22F231 /* PanicModeService.swift */; };
 		E4C417A6ECAA4E4DAFBF3882 /* WorkflowStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B00CD34FC941DB87FE17B3 /* WorkflowStore.swift */; };
 		E597B05474B74E02887E7C99 /* FileUpload.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC1DB0ED9A1D41F89804F805 /* FileUpload.swift */; };
 		E65EDDCF022977AA1854B1AA /* MagnetarStudioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0369ADDFF9623D901CC8207E /* MagnetarStudioApp.swift */; };
@@ -131,9 +136,11 @@
 		A904439226AE3F48234C22A0 /* BiometricAuthService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BiometricAuthService.swift; path = BiometricAuthService.swift; sourceTree = "<group>"; };
 		A90C0C6D0ED2910BC2EE2A2D /* DatabaseWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseWorkspace.swift; sourceTree = "<group>"; };
 		AA2B236333A555B822D41D3D /* ModelsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelsStore.swift; sourceTree = "<group>"; };
+		AED8C8EF1AB9724F43575821 /* EmergencyConfirmationModal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EmergencyConfirmationModal.swift; sourceTree = "<group>"; };
 		B02AE94CCC83473FB64BC7BD /* WorkflowService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowService.swift; sourceTree = "<group>"; };
 		B462A62F24C04C9E66B2D0CD /* KeychainManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainManager.swift; sourceTree = "<group>"; };
 		B99032061A118F3658F78070 /* VaultPermissionManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VaultPermissionManager.swift; sourceTree = "<group>"; };
+		BF608E6633F1DCE6E6542EBD /* EmergencyModeService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EmergencyModeService.swift; sourceTree = "<group>"; };
 		BFB37B6A745242FDB043D334 /* ChatModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatModels.swift; sourceTree = "<group>"; };
 		C043D3F1AFA96A4DDC52FAA0 /* ContextService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ContextService.swift; path = ContextService.swift; sourceTree = "<group>"; };
 		C0D63ED6288BC106CB39D1BB /* TerminalService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TerminalService.swift; sourceTree = "<group>"; };
@@ -147,11 +154,15 @@
 		DC1DB0ED9A1D41F89804F805 /* FileUpload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileUpload.swift; sourceTree = "<group>"; };
 		DE1C4B939DAC9084AC244415 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		DF7780D6D6AD182EE79F5868 /* OrchestratorInitializer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OrchestratorInitializer.swift; sourceTree = "<group>"; };
+		E02A48E61DFB2D3B96971D9F /* EmergencyModeModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EmergencyModeModels.swift; sourceTree = "<group>"; };
 		E03654A7DB82435A07B213DD /* TeamService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TeamService.swift; sourceTree = "<group>"; };
 		E0B5547ECD973EFF39678E79 /* NavigationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationStore.swift; sourceTree = "<group>"; };
 		E14DD2FC8D25B4ABB8A2326D /* ContextBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContextBundle.swift; sourceTree = "<group>"; };
+		E4A86189DF1FE9A17A22F231 /* PanicModeService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PanicModeService.swift; sourceTree = "<group>"; };
+		E581C17B318E0B2B62A104F1 /* EditDocumentModal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = EditDocumentModal.swift; path = Team/EditDocumentModal.swift; sourceTree = "<group>"; };
 		E62FD8B9DE028C44A2F0816E /* ChatStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatStore.swift; sourceTree = "<group>"; };
 		F2C77CB5AF6C4202FD8D7161 /* ChatMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatMessage.swift; sourceTree = "<group>"; };
+		F5EC6DB8FD99287F756160BC /* EditDocumentModal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EditDocumentModal.swift; sourceTree = "<group>"; };
 		F85CE2F0DE5343879EB18743 /* Header.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Header.swift; sourceTree = "<group>"; };
 		FA268C85AA8894BC92182D94 /* ChatWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatWorkspace.swift; sourceTree = "<group>"; };
 		FFCA25F1A54EEEE41A231647 /* FileAccessPermissionModal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FileAccessPermissionModal.swift; path = Dialogs/FileAccessPermissionModal.swift; sourceTree = "<group>"; };
@@ -252,6 +263,9 @@
 			children = (
 				B2C3D4E5F6A7B8C9D0E1F2A3 /* Auth */,
 				C3D28E375A13BD24F645A93B /* Team */,
+				BF5D395455660AD2E330847B /* Team */,
+				E581C17B318E0B2B62A104F1 /* EditDocumentModal.swift */,
+				AED8C8EF1AB9724F43575821 /* EmergencyConfirmationModal.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -270,6 +284,7 @@
 				0672C7A8089F078868C15E1C /* AppContext.swift */,
 				E14DD2FC8D25B4ABB8A2326D /* ContextBundle.swift */,
 				9CD166ACB45A69C9897FFFA3 /* ModelRoutingDecision.swift */,
+				E02A48E61DFB2D3B96971D9F /* EmergencyModeModels.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -299,6 +314,14 @@
 				C8B00CD34FC941DB87FE17B3 /* WorkflowStore.swift */,
 			);
 			path = Stores;
+			sourceTree = "<group>";
+		};
+		BF5D395455660AD2E330847B /* Team */ = {
+			isa = PBXGroup;
+			children = (
+				F5EC6DB8FD99287F756160BC /* EditDocumentModal.swift */,
+			);
+			name = Team;
 			sourceTree = "<group>";
 		};
 		C3D28E375A13BD24F645A93B /* Team */ = {
@@ -388,6 +411,8 @@
 				C043D3F1AFA96A4DDC52FAA0 /* ContextService.swift */,
 				37B8FC1C1C55127972DBE544 /* ModelMemoryTracker.swift */,
 				E03654A7DB82435A07B213DD /* TeamService.swift */,
+				BF608E6633F1DCE6E6542EBD /* EmergencyModeService.swift */,
+				E4A86189DF1FE9A17A22F231 /* PanicModeService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -519,6 +544,11 @@
 				6E29B084EF0AB46C6DFB6D23 /* ContextService.swift in Sources */,
 				664594858BB924BBA1BFF3DD /* ModelMemoryTracker.swift in Sources */,
 				C0BBF6544683748DF15A980B /* TeamService.swift in Sources */,
+				C53221D23E846FE6D425B460 /* EditDocumentModal.swift in Sources */,
+				DB28DB0D790B392C74C6EDD6 /* EmergencyModeModels.swift in Sources */,
+				462E1B85191C4E7D6E5D04E1 /* EmergencyModeService.swift in Sources */,
+				E17B166B1C783211B6290194 /* PanicModeService.swift in Sources */,
+				3EFF8BA28CFC830D62689E55 /* EmergencyConfirmationModal.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
