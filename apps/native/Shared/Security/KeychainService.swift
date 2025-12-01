@@ -26,7 +26,7 @@ final class KeychainService {
             kSecAttrService as String: service,
             kSecAttrAccount as String: accountKey,
             kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly
         ]
 
         let status = SecItemAdd(query as CFDictionary, nil)

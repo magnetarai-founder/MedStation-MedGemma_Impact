@@ -675,25 +675,58 @@ private struct PanicModeSheet: View {
         isExecuting = true
 
         Task { @MainActor in
-            // 1. Lock all vaults
-            vaultStore.lock()
+            do {
+                // 1. Trigger backend panic mode (secure wipe)
+                let response = try await PanicModeService.shared.triggerPanicMode(
+                    level: .standard,
+                    reason: "User-initiated panic from macOS app"
+                )
 
-            // 2. Clear database sessions (if DatabaseStore becomes observable)
-            NotificationCenter.default.post(name: .init("DatabaseWorkspaceClearWorkspace"), object: nil)
+                print("✅ Panic mode triggered successfully")
+                print("   Actions taken: \(response.actionsTaken.joined(separator: ", "))")
 
-            // Small delay for visual feedback
-            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                if !response.errors.isEmpty {
+                    print("⚠️ Panic mode completed with errors:")
+                    response.errors.forEach { print("   - \($0)") }
+                }
 
-            // 3. Logout (clears token and sensitive data)
-            await authStore.logout()
+                // 2. Lock all vaults locally
+                vaultStore.lock()
 
-            // 4. Quit app if requested
-            if shouldQuitApp {
-                try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
-                NSApplication.shared.terminate(nil)
+                // 3. Clear database sessions
+                NotificationCenter.default.post(name: .init("DatabaseWorkspaceClearWorkspace"), object: nil)
+
+                // 4. Logout (clears token and sensitive data)
+                await authStore.logout()
+
+                // 5. Quit app if requested
+                if shouldQuitApp {
+                    try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                    NSApplication.shared.terminate(nil)
+                }
+
+                dismiss()
+
+            } catch PanicModeError.rateLimitExceeded {
+                print("❌ Panic mode rate limit exceeded")
+                // Still perform local cleanup
+                vaultStore.lock()
+                await authStore.logout()
+                if shouldQuitApp {
+                    NSApplication.shared.terminate(nil)
+                }
+                dismiss()
+
+            } catch {
+                print("❌ Panic mode backend error: \(error.localizedDescription)")
+                // Still perform local cleanup even if backend fails
+                vaultStore.lock()
+                await authStore.logout()
+                if shouldQuitApp {
+                    NSApplication.shared.terminate(nil)
+                }
+                dismiss()
             }
-
-            dismiss()
         }
     }
 }

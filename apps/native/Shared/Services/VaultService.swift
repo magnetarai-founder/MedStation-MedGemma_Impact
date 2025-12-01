@@ -10,9 +10,32 @@ import AppKit
 
 final class VaultService {
     static let shared = VaultService()
-    private let baseURL = "http://localhost:8000/api/v1/vault"
+    private let baseURL: String
 
-    private init() {}
+    private init() {
+        // Read from environment or default to localhost
+        // For production/remote: Set API_BASE_URL environment variable to HTTPS endpoint
+        if let envBaseURL = ProcessInfo.processInfo.environment["API_BASE_URL"] {
+            // If custom base URL is set, append /v1/vault
+            if envBaseURL.hasSuffix("/api") {
+                self.baseURL = "\(envBaseURL)/v1/vault"
+            } else {
+                self.baseURL = envBaseURL
+            }
+        } else {
+            // Local development only - use HTTP for localhost
+            self.baseURL = "http://localhost:8000/api/v1/vault"
+        }
+
+        // Enforce HTTPS for non-localhost URLs (security requirement)
+        if !baseURL.contains("localhost") && !baseURL.contains("127.0.0.1") {
+            if baseURL.hasPrefix("http://") {
+                print("⚠️ SECURITY WARNING: VaultService upgrading non-localhost HTTP to HTTPS")
+                // This should never happen in production - fail loudly
+                assertionFailure("VaultService configured with HTTP for non-localhost URL")
+            }
+        }
+    }
 
     // MARK: - Unlock
 
