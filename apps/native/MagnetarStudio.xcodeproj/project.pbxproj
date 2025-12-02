@@ -65,6 +65,10 @@
 		C8CE1D6E95657B5967D53579 /* BiometricAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A904439226AE3F48234C22A0 /* BiometricAuthService.swift */; };
 		CA2EC71E90324844890DF29C /* SidebarTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B42850187A449F9B295DF2 /* SidebarTabs.swift */; };
 		CD851BE5E0D7AB9D5519B9A7 /* NewDocumentModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5ADD9516A7A1CEB080FDEDF3 /* NewDocumentModal.swift */; };
+		D2CCB34F2EDE7C5E00E20014 /* SecurityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2CCB34E2EDE7C5E00E20014 /* SecurityManager.swift */; };
+		D2CCB3512EDE7C8200E20014 /* NetworkFirewallProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2CCB3502EDE7C8200E20014 /* NetworkFirewallProtocol.swift */; };
+		D2CCB3532EDE7C9E00E20014 /* NetworkApprovalModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2CCB3522EDE7C9E00E20014 /* NetworkApprovalModal.swift */; };
+		D2CCB3552EDE7CC000E20014 /* NetworkFirewallModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2CCB3542EDE7CC000E20014 /* NetworkFirewallModifier.swift */; };
 		DB28DB0D790B392C74C6EDD6 /* EmergencyModeModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02A48E61DFB2D3B96971D9F /* EmergencyModeModels.swift */; };
 		DEBEE5BEF8FFE2128470853D /* AppleFMOrchestrator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CEFDC9D3501139A38812C68 /* AppleFMOrchestrator.swift */; };
 		E17B166B1C783211B6290194 /* PanicModeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4A86189DF1FE9A17A22F231 /* PanicModeService.swift */; };
@@ -106,7 +110,7 @@
 		2E0D4298405D4D92A0BCCC26 /* NetworkSelector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkSelector.swift; sourceTree = "<group>"; };
 		31363739633266642D383665342D346232652D393037382D /* ThreePaneLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreePaneLayout.swift; sourceTree = "<group>"; };
 		35C17D9C1722F2E28A8F923C /* Colors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colors.swift; sourceTree = "<group>"; };
-		37B8FC1C1C55127972DBE544 /* ModelMemoryTracker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ModelMemoryTracker.swift; path = ModelMemoryTracker.swift; sourceTree = "<group>"; };
+		37B8FC1C1C55127972DBE544 /* ModelMemoryTracker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelMemoryTracker.swift; sourceTree = "<group>"; };
 		37F355A75223BD31BF23FE9E /* VaultAdminPanel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VaultAdminPanel.swift; path = Panels/VaultAdminPanel.swift; sourceTree = "<group>"; };
 		399E593F40D14E5AAD83D8EA /* VaultService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultService.swift; sourceTree = "<group>"; };
 		3A959626C53B4237AD1DD881 /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
@@ -133,7 +137,7 @@
 		A3DBDF8C9291B00E92989C8A /* KanbanService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = KanbanService.swift; path = ../../Shared/Services/KanbanService.swift; sourceTree = "<group>"; };
 		A44572DB91B6E7FBABC82A1A /* ResourceMonitor.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ResourceMonitor.swift; sourceTree = "<group>"; };
 		A6D0A604BB2D42F8996CC8C9 /* DatabaseStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseStore.swift; sourceTree = "<group>"; };
-		A904439226AE3F48234C22A0 /* BiometricAuthService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BiometricAuthService.swift; path = BiometricAuthService.swift; sourceTree = "<group>"; };
+		A904439226AE3F48234C22A0 /* BiometricAuthService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BiometricAuthService.swift; sourceTree = "<group>"; };
 		A90C0C6D0ED2910BC2EE2A2D /* DatabaseWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseWorkspace.swift; sourceTree = "<group>"; };
 		AA2B236333A555B822D41D3D /* ModelsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelsStore.swift; sourceTree = "<group>"; };
 		AED8C8EF1AB9724F43575821 /* EmergencyConfirmationModal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EmergencyConfirmationModal.swift; sourceTree = "<group>"; };
@@ -142,12 +146,16 @@
 		B99032061A118F3658F78070 /* VaultPermissionManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VaultPermissionManager.swift; sourceTree = "<group>"; };
 		BF608E6633F1DCE6E6542EBD /* EmergencyModeService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EmergencyModeService.swift; sourceTree = "<group>"; };
 		BFB37B6A745242FDB043D334 /* ChatModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatModels.swift; sourceTree = "<group>"; };
-		C043D3F1AFA96A4DDC52FAA0 /* ContextService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ContextService.swift; path = ContextService.swift; sourceTree = "<group>"; };
+		C043D3F1AFA96A4DDC52FAA0 /* ContextService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContextService.swift; sourceTree = "<group>"; };
 		C0D63ED6288BC106CB39D1BB /* TerminalService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TerminalService.swift; sourceTree = "<group>"; };
 		C8B00CD34FC941DB87FE17B3 /* WorkflowStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowStore.swift; sourceTree = "<group>"; };
 		CBAFCA059EFBB30832A7C3B2 /* VaultSetupWizardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VaultSetupWizardView.swift; sourceTree = "<group>"; };
 		CC12D8A6355AFFD9A5022863 /* ModelSelectorMenu.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ModelSelectorMenu.swift; path = Components/ModelSelectorMenu.swift; sourceTree = "<group>"; };
 		CC1A48A6AB2B47E091FD7A11 /* NetworkChatStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkChatStore.swift; sourceTree = "<group>"; };
+		D2CCB34E2EDE7C5E00E20014 /* SecurityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityManager.swift; sourceTree = "<group>"; };
+		D2CCB3502EDE7C8200E20014 /* NetworkFirewallProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkFirewallProtocol.swift; sourceTree = "<group>"; };
+		D2CCB3522EDE7C9E00E20014 /* NetworkApprovalModal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkApprovalModal.swift; sourceTree = "<group>"; };
+		D2CCB3542EDE7CC000E20014 /* NetworkFirewallModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkFirewallModifier.swift; sourceTree = "<group>"; };
 		D400216101AE4ABBA95512A5 /* VaultStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultStore.swift; sourceTree = "<group>"; };
 		D5A9F666CAE746EDB38AE581 /* WorkflowModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowModels.swift; sourceTree = "<group>"; };
 		DA92DBC25F46989F58584CC5 /* BiometricAuthService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BiometricAuthService.swift; sourceTree = "<group>"; };
@@ -205,6 +213,14 @@
 			path = Security;
 			sourceTree = "<group>";
 		};
+		4E36A8E7580169C9E6979E17 /* Modifiers */ = {
+			isa = PBXGroup;
+			children = (
+				D2CCB3542EDE7CC000E20014 /* NetworkFirewallModifier.swift */,
+			);
+			name = Modifiers;
+			sourceTree = "<group>";
+		};
 		6878B112D67AE729936DE9D4 /* Workspaces */ = {
 			isa = PBXGroup;
 			children = (
@@ -238,7 +254,6 @@
 			isa = PBXGroup;
 			children = (
 			);
-			name = Services;
 			path = Services;
 			sourceTree = "<group>";
 		};
@@ -246,6 +261,7 @@
 			isa = PBXGroup;
 			children = (
 				7F77D79421B014D8C65EC2CF /* APIClient.swift */,
+				D2CCB3502EDE7C8200E20014 /* NetworkFirewallProtocol.swift */,
 			);
 			path = Networking;
 			sourceTree = "<group>";
@@ -266,6 +282,7 @@
 				BF5D395455660AD2E330847B /* Team */,
 				E581C17B318E0B2B62A104F1 /* EditDocumentModal.swift */,
 				AED8C8EF1AB9724F43575821 /* EmergencyConfirmationModal.swift */,
+				D2CCB3522EDE7C9E00E20014 /* NetworkApprovalModal.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -386,6 +403,7 @@
 				B8C234D85AAB74A8DE6CC886 /* Stores */,
 				A1B2C3D4E5F6A7B8C9D0E1F2 /* Views */,
 				D87CF2DE26CB41EAA8D2EA1E /* Components */,
+				4E36A8E7580169C9E6979E17 /* Modifiers */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -413,6 +431,7 @@
 				E03654A7DB82435A07B213DD /* TeamService.swift */,
 				BF608E6633F1DCE6E6542EBD /* EmergencyModeService.swift */,
 				E4A86189DF1FE9A17A22F231 /* PanicModeService.swift */,
+				D2CCB34E2EDE7C5E00E20014 /* SecurityManager.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -479,6 +498,7 @@
 				E68789013473A49D03D15C8B /* ChatWorkspace.swift in Sources */,
 				87AC91711BE8494C52DC1524 /* Colors.swift in Sources */,
 				284B09009A694A4E0263B311 /* ContentView.swift in Sources */,
+				D2CCB3552EDE7CC000E20014 /* NetworkFirewallModifier.swift in Sources */,
 				7B7E8A766BB7FC3F6725F19B /* DatabaseWorkspace.swift in Sources */,
 				BD7253C573C97E44DCD6BE0A /* GlassButton.swift in Sources */,
 				30393230363164342D646637312D343666382D613263632D /* ThreePaneLayout.swift in Sources */,
@@ -492,6 +512,7 @@
 				33A28A605AE75CD2FDB67907 /* SettingsView.swift in Sources */,
 				B64BDA375B00040180CE49A6 /* TeamWorkspace.swift in Sources */,
 				EFBA62F8E6B41580CE0730B2 /* User.swift in Sources */,
+				D2CCB3512EDE7C8200E20014 /* NetworkFirewallProtocol.swift in Sources */,
 				4FCFAC2E0DD745DFB5813F74 /* NavigationRail.swift in Sources */,
 				C4D33031AF8A4EDDAFDA3841 /* Header.swift in Sources */,
 				E597B05474B74E02887E7C99 /* FileUpload.swift in Sources */,
@@ -502,6 +523,7 @@
 				6B00212B907A4D3A89F2BA66 /* AutomationWorkspace.swift in Sources */,
 				C6F6EB90EF484C51BF4451F3 /* AuthStore.swift in Sources */,
 				3AEF6F15A9E949E7A20E3E10 /* DatabaseStore.swift in Sources */,
+				D2CCB3532EDE7C9E00E20014 /* NetworkApprovalModal.swift in Sources */,
 				E7655B4CD26D4096BB36C64E /* NetworkChatStore.swift in Sources */,
 				2CEBD6ED297D4874B6DDB1F6 /* SettingsStore.swift in Sources */,
 				EA7137A1464248E4B3DA0B7E /* VaultStore.swift in Sources */,
@@ -532,6 +554,7 @@
 				403835D13F7BBA5B87DF4BC0 /* CodeEditorService.swift in Sources */,
 				0D9919DA2238C21D1AEE7ECD /* AppContext.swift in Sources */,
 				4E5B3A8474FAD72E073C9871 /* ContextBundle.swift in Sources */,
+				D2CCB34F2EDE7C5E00E20014 /* SecurityManager.swift in Sources */,
 				8D5D7DF58BE6BAF3A63551BA /* ModelRoutingDecision.swift in Sources */,
 				F8B8DDCFEE83420FC10991CD /* VaultPermissionManager.swift in Sources */,
 				6D61AC05F21D85942E23EDB0 /* FileAccessPermissionModal.swift in Sources */,

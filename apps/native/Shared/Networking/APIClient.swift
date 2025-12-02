@@ -12,6 +12,10 @@ final class ApiClient {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 30.0
         config.timeoutIntervalForResource = 60.0
+
+        // Register network firewall protocol
+        config.protocolClasses = [NetworkFirewallProtocol.self]
+
         self.session = URLSession(configuration: config)
 
         // Read from environment or default to localhost

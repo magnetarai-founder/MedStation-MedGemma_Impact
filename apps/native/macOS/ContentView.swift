@@ -173,6 +173,7 @@ struct MainAppView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .animation(.easeInOut(duration: 0.2), value: permissionManager.showPermissionModal)
+        .withNetworkFirewall() // Enable network firewall with approval modals
     }
 }
 

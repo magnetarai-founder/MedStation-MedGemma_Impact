@@ -11,14 +11,14 @@ final class WorkflowService {
 
     func listWorkflows(type: String) async throws -> [Workflow] {
         try await apiClient.request(
-            path: "/v1/workflows?workflow_type=\(type)",
+            path: "/v1/workflow/workflows?workflow_type=\(type)",
             method: .get
         )
     }
 
     func starWorkflow(id: String) async throws {
         _ = try await apiClient.request(
-            path: "/v1/workflows/\(id)/star",
+            path: "/v1/workflow/workflows/\(id)/star",
             method: .post,
             jsonBody: [:]
         ) as EmptyResponse
@@ -26,7 +26,7 @@ final class WorkflowService {
 
     func unstarWorkflow(id: String) async throws {
         _ = try await apiClient.request(
-            path: "/v1/workflows/\(id)/star",
+            path: "/v1/workflow/workflows/\(id)/star",
             method: .delete
         ) as EmptyResponse
     }
@@ -62,9 +62,9 @@ final class WorkflowService {
     func getQueue(workflowId: String, role: String? = nil) async throws -> [WorkItem] {
         let path: String
         if let role = role {
-            path = "/v1/workflows/\(workflowId)/work-items?role=\(role)"
+            path = "/v1/workflow/workflows/\(workflowId)/work-items?role=\(role)"
         } else {
-            path = "/v1/workflows/\(workflowId)/work-items"
+            path = "/v1/workflow/workflows/\(workflowId)/work-items"
         }
 
         return try await apiClient.request(
@@ -75,7 +75,7 @@ final class WorkflowService {
 
     func getMyWork(workflowId: String) async throws -> [WorkItem] {
         try await apiClient.request(
-            path: "/v1/workflows/\(workflowId)/work-items/my",
+            path: "/v1/workflow/workflows/\(workflowId)/work-items/my",
             method: .get
         )
     }
@@ -138,7 +138,7 @@ final class WorkflowService {
 
     func fetchAnalytics(workflowId: String) async throws -> WorkflowAnalytics {
         try await apiClient.request(
-            path: "/v1/workflows/\(workflowId)/analytics",
+            path: "/v1/workflow/workflows/\(workflowId)/analytics",
             method: .get
         )
     }

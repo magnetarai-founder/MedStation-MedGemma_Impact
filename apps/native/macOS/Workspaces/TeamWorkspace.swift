@@ -1166,21 +1166,85 @@ struct DocsWorkspace: View {
     @State private var isLoading: Bool = false
     @State private var errorMessage: String? = nil
     @State private var showNewDocumentModal: Bool = false
+    @State private var showEditDocumentModal: Bool = false
+    @State private var documentToEdit: TeamDocument? = nil
 
     private let teamService = TeamService.shared
 
     var body: some View {
         HStack(spacing: 0) {
-            // Left Sidebar - Simple docs list
+            // Left Sidebar - Documents list
             if sidebarVisible {
-                VStack {
-                    ForEach(documents) { doc in
-                        Button(doc.title) {
-                            activeDocument = doc
+                VStack(spacing: 0) {
+                    // Sidebar header
+                    HStack(spacing: 12) {
+                        Image(systemName: "doc.text.fill")
+                            .font(.system(size: 18))
+                            .foregroundColor(Color.magnetarPrimary)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Documents")
+                                .font(.system(size: 16, weight: .semibold))
+
+                            Text("\(documents.count) document\(documents.count == 1 ? "" : "s")")
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
                         }
+
+                        Spacer()
+
+                        Button(action: { showNewDocumentModal = true }) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 16))
+                                .foregroundColor(.secondary)
+                                .frame(width: 32, height: 32)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    Button("+ New Document") {
-                        showNewDocumentModal = true
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(Color(.controlBackgroundColor))
+                    .overlay(
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.2))
+                            .frame(height: 1),
+                        alignment: .bottom
+                    )
+
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 12) {
+                            // Documents section header
+                            HStack {
+                                Text("DOCUMENTS")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(.secondary)
+                                    .textCase(.uppercase)
+
+                                Spacer()
+                            }
+                            .padding(.bottom, 4)
+
+                            // Document list
+                            ForEach(documents) { doc in
+                                DocumentRowView(
+                                    doc: doc,
+                                    isActive: activeDocument?.id == doc.id,
+                                    onSelect: { activeDocument = doc },
+                                    onEdit: {
+                                        documentToEdit = doc
+                                        showEditDocumentModal = true
+                                    },
+                                    onDelete: {
+                                        Task {
+                                            await deleteDocument(doc)
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.top, 16)
+                        .padding(.bottom, 8)
                     }
                 }
                 .frame(width: 256)
@@ -1207,6 +1271,16 @@ struct DocsWorkspace: View {
                 try await createDocument(title: title, type: type)
             }
         }
+        .sheet(isPresented: $showEditDocumentModal) {
+            if let doc = documentToEdit {
+                EditDocumentModal(
+                    isPresented: $showEditDocumentModal,
+                    document: doc
+                ) { newTitle in
+                    try await updateDocument(doc, newTitle: newTitle)
+                }
+            }
+        }
     }
 
     @MainActor
@@ -1216,6 +1290,10 @@ struct DocsWorkspace: View {
 
         do {
             documents = try await teamService.listDocuments()
+            // Auto-select first document if none selected
+            if activeDocument == nil && !documents.isEmpty {
+                activeDocument = documents.first
+            }
             isLoading = false
         } catch ApiError.unauthorized {
             print("⚠️ Unauthorized when loading documents - session may not be initialized yet")
@@ -1238,6 +1316,30 @@ struct DocsWorkspace: View {
         documents.append(newDoc)
         activeDocument = newDoc
         await loadDocuments() // Refresh list
+    }
+
+    @MainActor
+    private func updateDocument(_ doc: TeamDocument, newTitle: String) async throws {
+        let updated = try await teamService.updateDocument(id: doc.id, title: newTitle, content: nil)
+        if let index = documents.firstIndex(where: { $0.id == doc.id }) {
+            documents[index] = updated
+            if activeDocument?.id == doc.id {
+                activeDocument = updated
+            }
+        }
+    }
+
+    @MainActor
+    private func deleteDocument(_ doc: TeamDocument) async {
+        do {
+            try await teamService.deleteDocument(id: doc.id)
+            documents.removeAll { $0.id == doc.id }
+            if activeDocument?.id == doc.id {
+                activeDocument = documents.first
+            }
+        } catch {
+            errorMessage = "Failed to delete document: \(error.localizedDescription)"
+        }
     }
 
     // MARK: - Helper Views
@@ -1456,6 +1558,91 @@ struct Document: Identifiable {
         Document(name: "Sales Analysis", type: .insight, lastEdited: "3 days ago"),
         Document(name: "Confidential Report", type: .secureDocument, lastEdited: "Last week")
     ]
+}
+
+// MARK: - Document Row with Hover Actions
+
+struct DocumentRowView: View {
+    let doc: TeamDocument
+    let isActive: Bool
+    let onSelect: () -> Void
+    let onEdit: () -> Void
+    let onDelete: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: iconForType(doc.type))
+                .font(.system(size: 16))
+                .foregroundColor(isActive ? Color.magnetarPrimary : .secondary)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(doc.title)
+                    .font(.system(size: 13, weight: isActive ? .medium : .regular))
+                    .foregroundColor(isActive ? .primary : .secondary)
+                    .lineLimit(1)
+
+                Text(formatDate(doc.updatedAt))
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            // Show actions on hover
+            if isHovered {
+                HStack(spacing: 4) {
+                    Button(action: onEdit) {
+                        Image(systemName: "pencil")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                            .frame(width: 24, height: 24)
+                    }
+                    .buttonStyle(.plain)
+
+                    Button(action: onDelete) {
+                        Image(systemName: "trash")
+                            .font(.system(size: 12))
+                            .foregroundColor(.red)
+                            .frame(width: 24, height: 24)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(isActive ? Color.magnetarPrimary.opacity(0.1) : (isHovered ? Color.gray.opacity(0.05) : Color.clear))
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onSelect()
+        }
+        .onHover { hovering in
+            isHovered = hovering
+        }
+    }
+
+    private func iconForType(_ type: String) -> String {
+        switch type.lowercased() {
+        case "document": return "doc.text"
+        case "spreadsheet": return "tablecells"
+        case "insight": return "chart.bar.doc.horizontal"
+        case "securedocument", "secure_document": return "lock.doc"
+        default: return "doc"
+        }
+    }
+
+    private func formatDate(_ dateString: String) -> String {
+        // Simple formatter - just show the date part for now
+        if let range = dateString.range(of: "T") {
+            return String(dateString[..<range.lowerBound])
+        }
+        return dateString
+    }
 }
 
 // AutomationWorkspace moved to Shared/Components/AutomationWorkspace.swift

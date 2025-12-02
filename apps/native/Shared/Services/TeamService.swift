@@ -205,6 +205,16 @@ public final class TeamService {
         )
     }
 
+    public func deleteDocument(id: String) async throws {
+        struct DeleteResponse: Codable {
+            let success: Bool?
+        }
+        let _: DeleteResponse = try await apiClient.request(
+            path: "/v1/docs/documents/\(id)",
+            method: .delete
+        )
+    }
+
     // MARK: - Diagnostics
 
     public func getDiagnostics() async throws -> DiagnosticsStatus {

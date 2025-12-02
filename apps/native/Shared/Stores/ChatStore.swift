@@ -32,6 +32,10 @@ final class ChatStore {
     @ObservationIgnored
     private let chatService = ChatService.shared
 
+    // Session ID mapping: local UUID -> backend string ID
+    @ObservationIgnored
+    private var sessionIdMapping: [UUID: String] = [:]
+
     init(apiClient: ApiClient = .shared) {
         self.apiClient = apiClient
 
@@ -72,15 +76,21 @@ final class ChatStore {
         do {
             let apiSessions = try await chatService.listSessions()
 
-            // Convert API sessions to local ChatSession models
+            // Convert API sessions to local ChatSession models and build ID mapping
             sessions = apiSessions.map { apiSession in
-                ChatSession(
-                    id: UUID(uuidString: apiSession.id) ?? UUID(),
+                let localId = UUID()
+                let session = ChatSession(
+                    id: localId,
                     title: apiSession.title ?? "Untitled Chat",
                     model: apiSession.model ?? selectedModel,
                     createdAt: ISO8601DateFormatter().date(from: apiSession.createdAt) ?? Date(),
                     updatedAt: ISO8601DateFormatter().date(from: apiSession.updatedAt) ?? Date()
                 )
+
+                // Store mapping between local UUID and backend string ID
+                sessionIdMapping[localId] = apiSession.id
+
+                return session
             }
 
             // Select first session if available
@@ -106,13 +116,17 @@ final class ChatStore {
             let apiSession = try await chatService.createSession(title: title, model: useModel)
 
             // Create local session from API response
+            let localId = UUID()
             let session = ChatSession(
-                id: UUID(uuidString: apiSession.id) ?? UUID(),
+                id: localId,
                 title: apiSession.title ?? title,
                 model: apiSession.model ?? useModel,
                 createdAt: ISO8601DateFormatter().date(from: apiSession.createdAt) ?? Date(),
                 updatedAt: ISO8601DateFormatter().date(from: apiSession.updatedAt) ?? Date()
             )
+
+            // Store the mapping between local UUID and backend string ID
+            sessionIdMapping[localId] = apiSession.id
 
             sessions.insert(session, at: 0)
             currentSession = session
@@ -131,9 +145,14 @@ final class ChatStore {
         // Load messages from backend
         isLoading = true
         do {
-            // Convert UUID to string for API call
-            let sessionId = session.id.uuidString
-            let apiMessages = try await chatService.loadMessages(sessionId: sessionId)
+            // Get backend session ID from mapping
+            guard let backendSessionId = sessionIdMapping[session.id] else {
+                print("Failed to load session: session not found in backend mapping")
+                messages = []
+                isLoading = false
+                return
+            }
+            let apiMessages = try await chatService.loadMessages(sessionId: backendSessionId)
 
             // Convert API messages to local ChatMessage models
             messages = apiMessages.map { apiMsg in
@@ -147,7 +166,7 @@ final class ChatStore {
             }
 
             // Load model preferences for this session
-            await loadModelPreferences(sessionId: sessionId)
+            await loadModelPreferences(sessionId: backendSessionId)
         } catch {
             print("Failed to load messages: \(error)")
             messages = []
@@ -188,6 +207,10 @@ final class ChatStore {
     /// Save model preferences for the current session
     func saveModelPreferences() async {
         guard let session = currentSession else { return }
+        guard let backendSessionId = sessionIdMapping[session.id] else {
+            print("Failed to save model preferences: session not found in backend mapping")
+            return
+        }
 
         do {
             struct UpdateRequest: Codable {
@@ -201,7 +224,7 @@ final class ChatStore {
             }
 
             let _: EmptyResponse = try await apiClient.request(
-                "/api/v1/chat/sessions/\(session.id.uuidString)/model-preferences",
+                "/api/v1/chat/sessions/\(backendSessionId)/model-preferences",
                 method: .put,
                 body: UpdateRequest(
                     selectedMode: selectedMode,
@@ -373,8 +396,19 @@ final class ChatStore {
     // MARK: - Messaging
 
     func sendMessage(_ text: String) async {
+        // Auto-create session if none exists (UX improvement)
+        if currentSession == nil {
+            await createSession(title: "New Chat")
+        }
+
         guard let session = currentSession else {
             error = .noActiveSession
+            return
+        }
+
+        // Get backend session ID from mapping
+        guard let backendSessionId = sessionIdMapping[session.id] else {
+            error = .sendFailed("Session not found in backend mapping")
             return
         }
 
@@ -393,7 +427,7 @@ final class ChatStore {
 
         do {
             // Phase 4: Determine which model to use (intelligent routing or manual)
-            let modelToUse = await determineModelForQuery(text, sessionId: session.id.uuidString)
+            let modelToUse = await determineModelForQuery(text, sessionId: backendSessionId)
 
             // Create assistant message placeholder with model tracking
             let assistantMessage = ChatMessage(
@@ -404,8 +438,8 @@ final class ChatStore {
             )
             messages.append(assistantMessage)
 
-            // Build request
-            let url = URL(string: "http://localhost:8000/api/v1/chat/sessions/\(session.id.uuidString)/messages")!
+            // Build request using backend session ID
+            let url = URL(string: "http://localhost:8000/api/v1/chat/sessions/\(backendSessionId)/messages")!
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -547,7 +581,7 @@ enum ChatError: LocalizedError {
 
 struct ModelResponse: Codable {
     let name: String
-    let size: String
+    let size: Int
     let modifiedAt: String
 
     enum CodingKeys: String, CodingKey {

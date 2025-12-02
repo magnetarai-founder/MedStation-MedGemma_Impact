@@ -10,15 +10,14 @@ import Foundation
 import AppKit
 
 /// Centralized security manager (singleton)
-@MainActor
-final class SecurityManager: ObservableObject {
-    static let shared = SecurityManager()
+public final class SecurityManager: ObservableObject {
+    public static let shared = SecurityManager()
 
     // MARK: - Published State
 
-    @Published private(set) var networkFirewallEnabled: Bool = false
-    @Published private(set) var panicModeActive: Bool = false
-    @Published private(set) var securityEvents: [SecurityEvent] = []
+    @Published public private(set) var networkFirewallEnabled: Bool = false
+    @Published public private(set) var panicModeActive: Bool = false
+    @Published public private(set) var securityEvents: [SecurityEvent] = []
 
     // MARK: - Private State
 
@@ -83,7 +82,7 @@ final class SecurityManager: ObservableObject {
     // MARK: - Network Firewall
 
     /// Enable or disable network firewall
-    func setNetworkFirewall(enabled: Bool) {
+    public func setNetworkFirewall(enabled: Bool) {
         networkFirewallEnabled = enabled
 
         logSecurityEvent(SecurityEvent(
@@ -95,7 +94,7 @@ final class SecurityManager: ObservableObject {
     }
 
     /// Validate network request against firewall rules
-    func validateNetworkRequest(_ request: URLRequest) -> NetworkDecision {
+    public func validateNetworkRequest(_ request: URLRequest) -> NetworkDecision {
         guard networkFirewallEnabled else {
             return NetworkDecision(allowed: true, reason: "Firewall disabled")
         }
@@ -129,7 +128,7 @@ final class SecurityManager: ObservableObject {
     }
 
     /// Log network attempt (for audit trail)
-    func logNetworkAttempt(_ request: URLRequest, decision: NetworkOutcome, reason: String) {
+    public func logNetworkAttempt(_ request: URLRequest, decision: NetworkOutcome, reason: String) {
         guard let url = request.url else { return }
 
         logSecurityEvent(SecurityEvent(
@@ -146,7 +145,7 @@ final class SecurityManager: ObservableObject {
     }
 
     /// Approve domain for network access
-    func approveDomain(_ domain: String, permanently: Bool = false) {
+    public func approveDomain(_ domain: String, permanently: Bool = false) {
         if permanently {
             approvedDomains.insert(domain)
             saveFirewallRules()
@@ -161,7 +160,7 @@ final class SecurityManager: ObservableObject {
     }
 
     /// Block domain permanently
-    func blockDomain(_ domain: String) {
+    public func blockDomain(_ domain: String) {
         blockedDomains.insert(domain)
         approvedDomains.remove(domain)
         saveFirewallRules()
@@ -227,27 +226,27 @@ final class SecurityManager: ObservableObject {
 
 // MARK: - Supporting Types
 
-struct NetworkDecision {
+public struct NetworkDecision {
     let allowed: Bool
     let reason: String
     var needsApproval: Bool = false
 }
 
-enum NetworkOutcome: String {
+public enum NetworkOutcome: String {
     case allowed = "allowed"
     case blocked = "blocked"
     case pending = "pending_approval"
 }
 
-struct SecurityEvent: Identifiable, Codable {
-    let id: UUID
-    let timestamp: Date
-    let type: SecurityEventType
-    let level: PanicLevel
-    let message: String
-    let details: [String: String]
+public struct SecurityEvent: Identifiable, Codable {
+    public let id: UUID
+    public let timestamp: Date
+    public let type: SecurityEventType
+    public let level: PanicLevel
+    public let message: String
+    public let details: [String: String]
 
-    init(id: UUID = UUID(),
+    public init(id: UUID = UUID(),
          timestamp: Date = Date(),
          type: SecurityEventType,
          level: PanicLevel,
@@ -262,7 +261,7 @@ struct SecurityEvent: Identifiable, Codable {
     }
 }
 
-enum SecurityEventType: String, Codable {
+public enum SecurityEventType: String, Codable {
     case panicTriggered = "panic_triggered"
     case panicExecuted = "panic_executed"
     case firewallToggled = "firewall_toggled"

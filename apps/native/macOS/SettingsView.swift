@@ -207,9 +207,34 @@ struct SecuritySettingsView: View {
 
     private let biometricService = BiometricAuthService.shared
     private let keychainService = KeychainService.shared
+    @ObservedObject private var securityManager = SecurityManager.shared
 
     var body: some View {
         Form {
+            Section("Network Firewall") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Toggle("Enable Network Firewall", isOn: Binding(
+                        get: { securityManager.networkFirewallEnabled },
+                        set: { securityManager.setNetworkFirewall(enabled: $0) }
+                    ))
+
+                    Text("Control all outgoing network connections with approval prompts (Little Snitch-style)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    if securityManager.networkFirewallEnabled {
+                        HStack {
+                            Image(systemName: "shield.fill")
+                                .foregroundColor(.green)
+                            Text("Firewall active - all requests require approval")
+                                .font(.caption)
+                                .foregroundColor(.green)
+                        }
+                        .padding(.top, 4)
+                    }
+                }
+            }
+
             Section("Biometric Authentication") {
                 HStack {
                     Image(systemName: biometricService.biometricType().icon)

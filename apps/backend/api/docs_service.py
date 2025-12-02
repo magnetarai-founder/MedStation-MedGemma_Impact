@@ -13,12 +13,14 @@ Implements Notion-style periodic sync with conflict resolution.
 import os
 import json
 import sqlite3
+import sys
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 import logging
 
-from fastapi import APIRouter, HTTPException, Request, Depends
+from fastapi import APIRouter, HTTPException, Request, Depends, Response
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 # Import user service (migrated to services layer)
@@ -255,7 +257,7 @@ async def create_document(
         conn.close()
 
 
-@router.get("/documents", response_model=List[Document])
+@router.get("/documents")
 async def list_documents(
     since: Optional[str] = None,
     team_id: Optional[str] = None,
@@ -313,24 +315,28 @@ async def list_documents(
 
         documents = []
         for row in rows:
-            doc = Document(
-                id=row["id"],
-                type=row["type"],
-                title=row["title"],
-                content=json.loads(row["content"]),
-                created_at=row["created_at"],
-                updated_at=row["updated_at"],
-                created_by=row["created_by"],
-                is_private=bool(row["is_private"]),
-                security_level=row["security_level"],
-                shared_with=json.loads(row["shared_with"]),
-                team_id=row["team_id"] if "team_id" in row.keys() else None
-            )
-            documents.append(doc)
+            # Explicitly construct dictionary to ensure all fields are present
+            doc_dict = {
+                "id": row["id"],
+                "type": row["type"],
+                "title": row["title"],
+                "content": json.loads(row["content"]),
+                "created_at": row["created_at"],
+                "updated_at": row["updated_at"],
+                "created_by": row["created_by"],
+                "is_private": bool(row["is_private"]),
+                "security_level": row["security_level"],
+                "shared_with": json.loads(row["shared_with"]),
+                "team_id": row["team_id"] if "team_id" in row.keys() else None
+            }
+            documents.append(doc_dict)
 
         # Log first document for debugging
         if documents:
-            logger.info(f"Sample document fields: {list(documents[0].model_dump().keys())}")
+            print(f"✅ DOCS DEBUG: Returning {len(documents)} documents with fields: {list(documents[0].keys())}", flush=True)
+            print(f"📦 DOCS DEBUG: First document JSON: {json.dumps(documents[0], indent=2)}", flush=True)
+        else:
+            print("⚠️ DOCS DEBUG: No documents found", flush=True)
 
         return documents
 

@@ -39,10 +39,35 @@ struct AssignableModel: Codable, Identifiable {
 
 /// Hot slot response from backend
 struct HotSlotsResponse: Codable {
-    let hotSlots: [String: String?]  // "1": "model-id" or "1": null
+    let slots: [HotSlotData]
+    let totalSlots: Int
+    let occupied: Int
+    let available: Int
 
     enum CodingKeys: String, CodingKey {
-        case hotSlots = "hot_slots"
+        case slots
+        case totalSlots = "total_slots"
+        case occupied
+        case available
+    }
+}
+
+/// Individual hot slot data from backend
+struct HotSlotData: Codable {
+    let slotNumber: Int
+    let modelId: String?
+    let modelName: String?
+    let isPinned: Bool
+    let loadedAt: String?
+    let lastUsed: String?
+
+    enum CodingKeys: String, CodingKey {
+        case slotNumber = "slot_number"
+        case modelId = "model_id"
+        case modelName = "model_name"
+        case isPinned = "is_pinned"
+        case loadedAt = "loaded_at"
+        case lastUsed = "last_used"
     }
 }
 
@@ -111,22 +136,25 @@ class HotSlotManager: ObservableObject {
                 method: .get
             )
 
-            // Convert to HotSlot array
+            // Convert backend HotSlotData to HotSlot
             let memoryTracker = ModelMemoryTracker.shared
 
-            var slots: [HotSlot] = []
-            for slotNum in 1...4 {
-                let key = String(slotNum)
-                let modelId = response.hotSlots[key] ?? nil
+            let slots: [HotSlot] = response.slots.map { slotData in
+                // Parse loadedAt timestamp if present
+                let loadedAt: Date? = {
+                    guard let timestamp = slotData.loadedAt else { return nil }
+                    let formatter = ISO8601DateFormatter()
+                    return formatter.date(from: timestamp)
+                }()
 
-                slots.append(HotSlot(
-                    slotNumber: slotNum,
-                    modelId: modelId,
-                    modelName: modelId,  // TODO: Get display name from model registry
-                    isPinned: pinnedSlots.contains(slotNum),
-                    loadedAt: modelId != nil ? Date() : nil,
-                    memoryUsageGB: modelId.flatMap { memoryTracker.getMemoryUsage(for: $0) }
-                ))
+                return HotSlot(
+                    slotNumber: slotData.slotNumber,
+                    modelId: slotData.modelId,
+                    modelName: slotData.modelName,
+                    isPinned: slotData.isPinned,
+                    loadedAt: loadedAt,
+                    memoryUsageGB: slotData.modelId.flatMap { memoryTracker.getMemoryUsage(for: $0) }
+                )
             }
 
             await MainActor.run {

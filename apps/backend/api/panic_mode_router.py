@@ -5,15 +5,30 @@ Provides REST endpoints for emergency security operations
 """
 
 import logging
-from fastapi import APIRouter, HTTPException, Request
+import os
+import time
+from datetime import datetime
+from fastapi import APIRouter, HTTPException, Request, Body
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 from panic_mode import get_panic_mode
 from rate_limiter import rate_limiter, get_client_ip
 from utils import sanitize_for_log
 
 logger = logging.getLogger(__name__)
+
+# ===== EMERGENCY MODE SAFETY CHECK =====
+# CRITICAL: This must be explicitly enabled to allow emergency wipe
+# Set environment variable: ELOHIM_ALLOW_EMERGENCY_WIPE=true
+ALLOW_EMERGENCY_WIPE = os.getenv("ELOHIM_ALLOW_EMERGENCY_WIPE", "false").lower() == "true"
+
+if not ALLOW_EMERGENCY_WIPE:
+    logger.warning("⚠️  Emergency wipe DISABLED (ELOHIM_ALLOW_EMERGENCY_WIPE=false)")
+    logger.warning("   This is a safety measure. Set ELOHIM_ALLOW_EMERGENCY_WIPE=true to enable.")
+else:
+    logger.critical("🚨 Emergency wipe ENABLED (ELOHIM_ALLOW_EMERGENCY_WIPE=true)")
+    logger.critical("   ⚠️  DoD 7-pass wipe is active and IRREVERSIBLE")
 
 # ===== Models =====
 
@@ -38,6 +53,23 @@ class PanicTriggerResponse(BaseModel):
     actions_taken: list[str]
     errors: list[str]
     status: str
+
+
+class EmergencyModeRequest(BaseModel):
+    """Request to trigger emergency mode (DoD 7-pass wipe)"""
+    confirmation: str = Field(..., description="Must be 'CONFIRM' to proceed")
+    reason: Optional[str] = Field("User-initiated emergency", description="Reason for emergency activation")
+
+
+class EmergencyModeResponse(BaseModel):
+    """Response after emergency mode wipe"""
+    success: bool
+    files_wiped: int
+    passes: int
+    method: str
+    duration_seconds: float
+    timestamp: str
+    errors: List[str] = []
 
 
 # ===== Router =====
@@ -134,3 +166,129 @@ async def panic_health_check():
         "panic_system": "operational",
         "status": panic_mode.get_panic_status()
     }
+
+
+# ===== EMERGENCY MODE - DoD 7-Pass Wipe =====
+
+@router.post("/emergency", response_model=EmergencyModeResponse)
+async def trigger_emergency_mode(
+    request: Request,
+    body: EmergencyModeRequest
+):
+    """
+    🚨🚨🚨 EMERGENCY MODE: DoD 5220.22-M 7-Pass Wipe 🚨🚨🚨
+
+    ⚠️  CRITICAL WARNING: THIS IS IRREVERSIBLE ⚠️
+
+    This endpoint performs a DoD 5220.22-M standard 7-pass overwrite
+    on ALL MagnetarStudio data, followed by secure deletion.
+
+    **Data wiped includes:**
+    - Vault databases (sensitive + unsensitive)
+    - All backups
+    - All models
+    - All audit logs
+    - All cache and temporary files
+    - User preferences and settings
+
+    **Safety Requirements:**
+    1. Environment variable ELOHIM_ALLOW_EMERGENCY_WIPE=true must be set
+    2. User must be authenticated
+    3. Confirmation="CONFIRM" required
+    4. Rate limited (5 triggers per hour)
+
+    **Use Cases:**
+    - Persecution scenario (authorities seizing device)
+    - Data breach requiring immediate sanitization
+    - Authorized destruction for decommissioning
+
+    **This action cannot be undone. All data will be permanently destroyed.**
+    """
+    # Safety check: Emergency mode must be explicitly enabled
+    if not ALLOW_EMERGENCY_WIPE:
+        logger.error("🚫 Emergency mode attempt BLOCKED (ELOHIM_ALLOW_EMERGENCY_WIPE=false)")
+        raise HTTPException(
+            status_code=403,
+            detail="Emergency mode is disabled. Set ELOHIM_ALLOW_EMERGENCY_WIPE=true to enable."
+        )
+
+    # Rate limiting (5 emergency triggers per hour)
+    client_ip = get_client_ip(request)
+    if not rate_limiter.check_rate_limit(f"emergency:trigger:{client_ip}", max_requests=5, window_seconds=3600):
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded. Max 5 emergency triggers per hour."
+        )
+
+    # Verify confirmation
+    if body.confirmation != "CONFIRM":
+        raise HTTPException(
+            status_code=400,
+            detail="Confirmation required. Must send confirmation='CONFIRM' to proceed."
+        )
+
+    # Sanitize reason for logging
+    safe_reason = sanitize_for_log(body.reason) if body.reason else "User-initiated emergency"
+
+    logger.critical(f"🚨🚨🚨 EMERGENCY MODE TRIGGERED: {safe_reason}")
+    logger.critical("   ⚠️  Beginning DoD 7-pass wipe - THIS IS IRREVERSIBLE")
+
+    # Record start time
+    start_time = time.time()
+
+    # Define wipe targets
+    wipe_targets = [
+        # Databases
+        "vault_sensitive.db",
+        "vault_unsensitive.db",
+        "app.db",
+        "audit.db",
+        "datasets.db",
+
+        # Directories
+        os.path.expanduser("~/.magnetar/models/"),
+        os.path.expanduser("~/.elohimos_backups/"),
+        os.path.expanduser("~/Library/Caches/com.magnetarstudio.app/"),
+        os.path.expanduser("~/Library/Application Support/MagnetarStudio/"),
+        os.path.expanduser("~/Library/Logs/MagnetarStudio/"),
+
+        # Preferences
+        os.path.expanduser("~/Library/Preferences/com.magnetarstudio.app.plist"),
+
+        # LaunchAgents
+        os.path.expanduser("~/Library/LaunchAgents/com.magnetarstudio.*.plist"),
+    ]
+
+    # Perform DoD 7-pass wipe
+    try:
+        from emergency_wipe import perform_dod_wipe
+
+        result = await perform_dod_wipe(wipe_targets)
+        duration = time.time() - start_time
+
+        logger.critical(f"✅ Emergency wipe complete: {result['count']} files wiped in {duration:.2f}s")
+
+        if result['errors']:
+            logger.error(f"⚠️  Errors during wipe: {len(result['errors'])}")
+            for error in result['errors']:
+                logger.error(f"   - {error}")
+
+        return EmergencyModeResponse(
+            success=True,
+            files_wiped=result['count'],
+            passes=7,
+            method="DoD 5220.22-M",
+            duration_seconds=duration,
+            timestamp=datetime.utcnow().isoformat(),
+            errors=result['errors']
+        )
+
+    except Exception as e:
+        logger.error(f"❌ Emergency mode execution failed: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Emergency mode failed: {str(e)}"
+        )
+
+
+# DoD wipe functions moved to emergency_wipe.py for independent testing

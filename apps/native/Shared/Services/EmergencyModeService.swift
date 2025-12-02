@@ -197,13 +197,12 @@ final class EmergencyModeService: ObservableObject {
     /// Execute REAL emergency wipe with DoD 7-pass overwrite
     /// ⚠️ THIS IS IRREVERSIBLE - VM TESTING ONLY IN WEEK 2
     private func executeEmergencyWipe(reason: String?) async throws -> EmergencyWipeReport {
-        // SAFETY: This should only run in production or VM testing
         #if DEBUG
+        // SAFETY: This should only run in production or VM testing
         fatalError("❌ SAFETY ERROR: Real emergency wipe attempted in debug build")
         #else
         print("🚨 EMERGENCY MODE: Real DoD 7-pass wipe starting")
         print("   ⚠️ THIS IS IRREVERSIBLE")
-        #endif
 
         var report = EmergencyWipeReport(
             simulated: false,
@@ -236,6 +235,7 @@ final class EmergencyModeService: ObservableObject {
         report.durationSeconds = Date().timeIntervalSince(startTime)
 
         return report
+        #endif
     }
 
     // MARK: - File Identification (Simulation Mode)
@@ -497,11 +497,8 @@ final class EmergencyModeService: ObservableObject {
         #if DEBUG
         print("   ⚠️  SKIPPED: Self-uninstall disabled in debug builds")
         report.errors.append("Self-uninstall skipped (debug build)")
-        return
         #else
-        // Production-only code below (intentionally unreachable in DEBUG)
-        // Get app bundle path
-        #endif
+        // Production-only code below
         let bundlePath = Bundle.main.bundlePath
         print("   App bundle: \(bundlePath)")
 
@@ -533,6 +530,7 @@ final class EmergencyModeService: ObservableObject {
 
         // Terminate the app
         NSApplication.shared.terminate(nil)
+        #endif
     }
 
     // MARK: - Memory & Cache Cleanup Helpers
