@@ -93,10 +93,11 @@ final class ChatStore {
                 return session
             }
 
-            // Select first session if available
-            if currentSession == nil, let first = sessions.first {
-                await selectSession(first)
-            }
+            // Don't auto-select sessions - let user explicitly choose
+            // Sessions are only selected when:
+            // 1. User clicks a session in sidebar
+            // 2. User creates a new session
+            // 3. User sends a message (auto-creates session if needed)
         } catch ApiError.unauthorized {
             print("⚠️ Unauthorized when loading sessions - session may not be initialized yet")
             // Don't show error to user for auth issues - they just logged in
