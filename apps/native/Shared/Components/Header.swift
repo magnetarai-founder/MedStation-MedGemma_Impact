@@ -133,6 +133,12 @@ private struct ControlCluster: View {
 
     var body: some View {
         HStack(spacing: 10) {
+            // Model Manager button
+            HeaderToolbarButton(icon: "bolt.fill") {
+                openModelManager()
+            }
+            .help("Model Manager (⌘M)")
+
             HeaderToolbarButton(icon: "switch.2") {
                 showActivity = true
             }
@@ -147,6 +153,21 @@ private struct ControlCluster: View {
             }
             .help("Panic Mode (Double-click) / Emergency Mode (Triple-click)")
         }
+    }
+
+    // MARK: - Actions
+
+    private func openModelManager() {
+        // Open Model Manager window
+        if let url = URL(string: "magnetarstudio://window/model-manager") {
+            NSWorkspace.shared.open(url)
+        }
+
+        // Fallback: Use NSApp to open window by identifier
+        #if os(macOS)
+        NSApp.sendAction(#selector(NSResponder.newWindowForTab(_:)), to: nil, from: nil)
+        // Note: The WindowGroup with id "model-manager" will handle this
+        #endif
     }
 
     // MARK: - Triple-Click Detection

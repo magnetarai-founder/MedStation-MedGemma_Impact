@@ -69,6 +69,8 @@
 		D2CCB3512EDE7C8200E20014 /* NetworkFirewallProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2CCB3502EDE7C8200E20014 /* NetworkFirewallProtocol.swift */; };
 		D2CCB3532EDE7C9E00E20014 /* NetworkApprovalModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2CCB3522EDE7C9E00E20014 /* NetworkApprovalModal.swift */; };
 		D2CCB3552EDE7CC000E20014 /* NetworkFirewallModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2CCB3542EDE7CC000E20014 /* NetworkFirewallModifier.swift */; };
+		D2F4756D2EDFBA8400F95E34 /* ModelManagerWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2F4756C2EDFBA8400F95E34 /* ModelManagerWindow.swift */; };
+		D2F4756F2EDFBAA100F95E34 /* SmartModelPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2F4756E2EDFBAA100F95E34 /* SmartModelPicker.swift */; };
 		DB28DB0D790B392C74C6EDD6 /* EmergencyModeModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02A48E61DFB2D3B96971D9F /* EmergencyModeModels.swift */; };
 		DEBEE5BEF8FFE2128470853D /* AppleFMOrchestrator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CEFDC9D3501139A38812C68 /* AppleFMOrchestrator.swift */; };
 		E17B166B1C783211B6290194 /* PanicModeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4A86189DF1FE9A17A22F231 /* PanicModeService.swift */; };
@@ -156,6 +158,8 @@
 		D2CCB3502EDE7C8200E20014 /* NetworkFirewallProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkFirewallProtocol.swift; sourceTree = "<group>"; };
 		D2CCB3522EDE7C9E00E20014 /* NetworkApprovalModal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkApprovalModal.swift; sourceTree = "<group>"; };
 		D2CCB3542EDE7CC000E20014 /* NetworkFirewallModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkFirewallModifier.swift; sourceTree = "<group>"; };
+		D2F4756C2EDFBA8400F95E34 /* ModelManagerWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelManagerWindow.swift; sourceTree = "<group>"; };
+		D2F4756E2EDFBAA100F95E34 /* SmartModelPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartModelPicker.swift; sourceTree = "<group>"; };
 		D400216101AE4ABBA95512A5 /* VaultStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultStore.swift; sourceTree = "<group>"; };
 		D5A9F666CAE746EDB38AE581 /* WorkflowModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowModels.swift; sourceTree = "<group>"; };
 		DA92DBC25F46989F58584CC5 /* BiometricAuthService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BiometricAuthService.swift; sourceTree = "<group>"; };
@@ -277,6 +281,7 @@
 		A1B2C3D4E5F6A7B8C9D0E1F2 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				D2F4756C2EDFBA8400F95E34 /* ModelManagerWindow.swift */,
 				B2C3D4E5F6A7B8C9D0E1F2A3 /* Auth */,
 				C3D28E375A13BD24F645A93B /* Team */,
 				BF5D395455660AD2E330847B /* Team */,
@@ -380,6 +385,7 @@
 		D87CF2DE26CB41EAA8D2EA1E /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				D2F4756E2EDFBAA100F95E34 /* SmartModelPicker.swift */,
 				08785DE309A344AF8765E6BC /* NavigationRail.swift */,
 				F85CE2F0DE5343879EB18743 /* Header.swift */,
 				DC1DB0ED9A1D41F89804F805 /* FileUpload.swift */,
@@ -550,10 +556,12 @@
 				6906ED58F9814219F579F8A1 /* KanbanService.swift in Sources */,
 				21E71528368BABF2F2852CFE /* TerminalService.swift in Sources */,
 				340D121B2E5149E6BF86D0B6 /* OllamaService.swift in Sources */,
+				D2F4756D2EDFBA8400F95E34 /* ModelManagerWindow.swift in Sources */,
 				8151AB8F8D128C4FE220C6A6 /* CodeWorkspace.swift in Sources */,
 				403835D13F7BBA5B87DF4BC0 /* CodeEditorService.swift in Sources */,
 				0D9919DA2238C21D1AEE7ECD /* AppContext.swift in Sources */,
 				4E5B3A8474FAD72E073C9871 /* ContextBundle.swift in Sources */,
+				D2F4756F2EDFBAA100F95E34 /* SmartModelPicker.swift in Sources */,
 				D2CCB34F2EDE7C5E00E20014 /* SecurityManager.swift in Sources */,
 				8D5D7DF58BE6BAF3A63551BA /* ModelRoutingDecision.swift in Sources */,
 				F8B8DDCFEE83420FC10991CD /* VaultPermissionManager.swift in Sources */,

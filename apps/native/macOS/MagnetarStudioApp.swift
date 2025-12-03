@@ -63,6 +63,14 @@ struct MagnetarStudioApp: App {
         Settings {
             SettingsView()
         }
+
+        // Model Manager window (floating, separate)
+        WindowGroup("Model Manager", id: "model-manager") {
+            ModelManagerWindow()
+        }
+        .windowStyle(.hiddenTitleBar)
+        .windowResizability(.contentSize)
+        .defaultSize(width: 600, height: 700)
     }
 }
 
