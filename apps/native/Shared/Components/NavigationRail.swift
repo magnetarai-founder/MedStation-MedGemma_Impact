@@ -78,21 +78,20 @@ struct NavigationRail: View {
         }
         .frame(width: 56)
         .background(
-            // Gradient background matching React
-            LinearGradient(
-                colors: [
-                    Color(red: 0.31, green: 0.33, blue: 0.98, opacity: 0.08), // indigo-50/80
-                    Color(red: 0.55, green: 0.27, blue: 0.93, opacity: 0.08), // purple-50/80
-                    Color(red: 0.24, green: 0.51, blue: 0.98, opacity: 0.08)  // blue-50/80
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .overlay(
-                // Backdrop blur effect
-                Color.white.opacity(0.01)
-                    .background(.ultraThinMaterial)
-            )
+            // macOS Tahoe Liquid Glass - refracts content behind, reflects wallpaper
+            ZStack {
+                // Subtle gradient tint
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.31, green: 0.33, blue: 0.98, opacity: 0.08), // indigo-50/80
+                        Color(red: 0.55, green: 0.27, blue: 0.93, opacity: 0.08), // purple-50/80
+                        Color(red: 0.24, green: 0.51, blue: 0.98, opacity: 0.08)  // blue-50/80
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            }
+            .navigationGlass()  // Applies @AppStorage("glassOpacity") controlled material
         )
         .overlay(
             // Right border

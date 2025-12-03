@@ -88,7 +88,8 @@ struct ModelManagerWindow: View {
                 }
             }
         }
-        .frame(width: 520, height: 580)
+        .frame(minWidth: 520, idealWidth: 520, maxWidth: .infinity,
+               minHeight: 580, idealHeight: 580, maxHeight: .infinity)
         .background(Color.surfacePrimary)
         .task {
             await loadData()

@@ -920,6 +920,7 @@ enum CloudError: LocalizedError {
 struct ModelRow: View {
     let model: OllamaModel
     let isSelected: Bool
+    @State private var isHovered = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -964,8 +965,27 @@ struct ModelRow: View {
             Spacer()
         }
         .padding(12)
-        .background(isSelected ? Color.magnetarPrimary.opacity(0.1) : Color.clear)
-        .cornerRadius(8)
+        .background(
+            // macOS Tahoe-style selection and hover feedback
+            RoundedRectangle(cornerRadius: 8)
+                .fill(backgroundColor)
+        )
+        .contentShape(Rectangle())  // Make entire area tappable
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
+        }
+    }
+
+    private var backgroundColor: Color {
+        if isSelected {
+            return Color.magnetarPrimary.opacity(0.15)
+        } else if isHovered {
+            return Color.magnetarPrimary.opacity(0.06)
+        } else {
+            return Color.clear
+        }
     }
 }
 

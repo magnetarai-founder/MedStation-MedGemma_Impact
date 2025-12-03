@@ -69,8 +69,8 @@ struct MagnetarStudioApp: App {
             ModelManagerWindow()
         }
         .windowStyle(.hiddenTitleBar)
-        .windowResizability(.contentSize)
-        .defaultSize(width: 600, height: 700)
+        .windowResizability(.contentMinSize)  // Resizable but respects minimum size
+        .defaultSize(width: 520, height: 580)  // Default matches ModelManagerWindow frame
     }
 }
 

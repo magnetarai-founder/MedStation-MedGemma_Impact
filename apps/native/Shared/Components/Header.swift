@@ -21,27 +21,30 @@ struct Header: View {
 
     var body: some View {
         ZStack(alignment: .center) {
-            // Background: muted glass gradient with a faint chroma sweep
-            LinearGradient(
-                colors: [
-                    Color(red: 0.11, green: 0.13, blue: 0.18).opacity(0.92),
-                    Color(red: 0.08, green: 0.09, blue: 0.14).opacity(0.94)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .overlay(
+            // macOS Tahoe Liquid Glass Header - completely transparent with subtle chroma
+            ZStack {
+                // Muted gradient with faint chroma sweep
                 LinearGradient(
                     colors: [
-                        Color.magnetarPrimary.opacity(0.18),
-                        Color.magnetarSecondary.opacity(0.12)
+                        Color(red: 0.11, green: 0.13, blue: 0.18).opacity(0.92),
+                        Color(red: 0.08, green: 0.09, blue: 0.14).opacity(0.94)
                     ],
-                    startPoint: .leading,
-                    endPoint: .trailing
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
                 )
-                .blur(radius: 36)
-            )
-            .background(.regularMaterial)
+                .overlay(
+                    LinearGradient(
+                        colors: [
+                            Color.magnetarPrimary.opacity(0.18),
+                            Color.magnetarSecondary.opacity(0.12)
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    .blur(radius: 36)
+                )
+            }
+            .headerGlass()  // Applies @AppStorage("glassOpacity") controlled material
             .ignoresSafeArea(edges: .top)
 
             // Content

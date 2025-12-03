@@ -53,7 +53,7 @@ enum GlassMaterial {
     }
 }
 
-// MARK: - Glass Background View Modifier
+// MARK: - Glass Background View Modifier (macOS Tahoe Style)
 
 struct GlassBackgroundModifier: ViewModifier {
     let material: GlassMaterial
@@ -61,10 +61,10 @@ struct GlassBackgroundModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .background(material.swiftUIMaterial)
             .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(.regularMaterial.opacity(glassOpacity))
+                // macOS Tahoe Liquid Glass: material + opacity control
+                material.swiftUIMaterial
+                    .opacity(glassOpacity)
             )
     }
 }
@@ -72,6 +72,18 @@ struct GlassBackgroundModifier: ViewModifier {
 extension View {
     func glassBackground(material: GlassMaterial = .regular) -> some View {
         modifier(GlassBackgroundModifier(material: material))
+    }
+
+    /// macOS Tahoe-style transparent navigation glass
+    /// Refracts content behind it while reflecting wallpaper
+    func navigationGlass() -> some View {
+        modifier(GlassBackgroundModifier(material: .ultraThin))
+    }
+
+    /// macOS Tahoe-style header/toolbar glass
+    /// Completely transparent with subtle material
+    func headerGlass() -> some View {
+        modifier(GlassBackgroundModifier(material: .thin))
     }
 }
 

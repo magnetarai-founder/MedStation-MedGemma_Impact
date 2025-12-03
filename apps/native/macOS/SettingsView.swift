@@ -48,7 +48,8 @@ struct SettingsView: View {
                     Label("MagnetarCloud", systemImage: "cloud")
                 }
         }
-        .frame(width: 600, height: 500)
+        .frame(minWidth: 600, idealWidth: 600, maxWidth: .infinity,
+               minHeight: 500, idealHeight: 500, maxHeight: .infinity)
     }
 }
 
