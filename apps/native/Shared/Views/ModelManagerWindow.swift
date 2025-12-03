@@ -2,8 +2,8 @@
 //  ModelManagerWindow.swift
 //  MagnetarStudio
 //
-//  Global model loading/unloading management
-//  Separate floating window accessible from anywhere
+//  Compact model loading/unloading management (LM Studio style)
+//  Rectangular stacked slots with eject buttons
 //
 
 import SwiftUI
@@ -16,307 +16,298 @@ struct ModelManagerWindow: View {
     @State private var searchText = ""
     @State private var showingEvictionPrompt = false
     @State private var modelToLoad: String?
+    @State private var slotToEvict: Int?
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
-            header
+            // Compact header
+            compactHeader
 
             Divider()
 
-            // Hot Slots Section
+            // Hot Slots - LM Studio style stacked rectangles
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    hotSlotsSection
+                VStack(spacing: 12) {
+                    // Hot Slots Section
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Hot Slots")
+                            .font(.headline)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 16)
+
+                        VStack(spacing: 6) {
+                            ForEach(1...4, id: \.self) { slotNumber in
+                                hotSlotRow(slotNumber: slotNumber)
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                    }
 
                     Divider()
                         .padding(.vertical, 8)
 
-                    availableModelsSection
+                    // Available Models Section
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Available Models")
+                                .font(.headline)
+
+                            Spacer()
+
+                            // Search
+                            HStack(spacing: 6) {
+                                Image(systemName: "magnifyingglass")
+                                    .foregroundColor(.textSecondary)
+                                    .font(.caption)
+
+                                TextField("Search", text: $searchText)
+                                    .textFieldStyle(.plain)
+                                    .font(.caption)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.surfaceSecondary)
+                            .cornerRadius(6)
+                            .frame(width: 140)
+                        }
+                        .padding(.horizontal, 16)
+
+                        VStack(spacing: 4) {
+                            ForEach(filteredModels, id: \.self) { modelName in
+                                availableModelRow(modelName: modelName)
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                    }
+                    .padding(.bottom, 16)
                 }
-                .padding(20)
             }
         }
-        .frame(width: 600, height: 700)
+        .frame(width: 480, height: 520)
         .background(Color.surfacePrimary)
         .task {
             await loadData()
         }
         .alert("All Slots Full", isPresented: $showingEvictionPrompt) {
-            evictionPromptButtons
-        } message: {
-            evictionPromptMessage
-        }
-    }
-
-    // MARK: - Header
-
-    private var header: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Model Manager")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-
-                HStack(spacing: 12) {
-                    // Total memory usage
-                    Label("\(formattedMemory) in use", systemImage: "memorychip")
-                        .font(.caption)
-                        .foregroundColor(.textSecondary)
-
-                    // Loaded count
-                    Label("\(loadedModelsCount) loaded", systemImage: "bolt.fill")
-                        .font(.caption)
-                        .foregroundColor(.accentColor)
-                }
-            }
-
-            Spacer()
-
-            // Refresh button
-            Button(action: { Task { await loadData() } }) {
-                Image(systemName: "arrow.clockwise")
-                    .foregroundColor(.textSecondary)
-            }
-            .buttonStyle(.plain)
-            .disabled(isLoading)
-        }
-        .padding(20)
-    }
-
-    // MARK: - Hot Slots Section
-
-    private var hotSlotsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Hot Slots")
-                    .font(.headline)
-
-                Spacer()
-
-                Text("Quick access • Auto-load on startup")
-                    .font(.caption)
-                    .foregroundColor(.textSecondary)
-            }
-
-            // 4 hot slot cards
-            LazyVGrid(columns: [
-                GridItem(.flexible()),
-                GridItem(.flexible())
-            ], spacing: 12) {
-                ForEach(1...4, id: \.self) { slotNumber in
-                    hotSlotCard(slotNumber: slotNumber)
-                }
-            }
-        }
-    }
-
-    private func hotSlotCard(slotNumber: Int) -> some View {
-        let slot = hotSlotManager.hotSlots.first { $0.slotNumber == slotNumber }
-        let isEmpty = slot?.isEmpty ?? true
-
-        return VStack(alignment: .leading, spacing: 8) {
-            // Slot header
-            HStack {
-                Text("Slot \(slotNumber)")
-                    .font(.caption)
-                    .foregroundColor(.textSecondary)
-
-                Spacer()
-
-                if let slot = slot, !isEmpty {
-                    // Pin button
-                    Button(action: { hotSlotManager.togglePin(slotNumber) }) {
-                        Image(systemName: slot.isPinned ? "pin.fill" : "pin")
-                            .font(.caption)
-                            .foregroundColor(slot.isPinned ? .yellow : .textSecondary)
-                    }
-                    .buttonStyle(.plain)
-                    .help(slot.isPinned ? "Unpin" : "Pin (prevent auto-eviction)")
-                }
-            }
-
-            if isEmpty {
-                // Empty slot
-                VStack(spacing: 4) {
-                    Image(systemName: "cube.transparent")
-                        .font(.title2)
-                        .foregroundColor(.textTertiary)
-
-                    Text("Empty")
-                        .font(.caption)
-                        .foregroundColor(.textTertiary)
-                }
-                .frame(maxWidth: .infinity, minHeight: 80)
-                .background(Color.surfaceSecondary.opacity(0.3))
-                .cornerRadius(8)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [5]))
-                        .foregroundColor(.textTertiary.opacity(0.3))
-                )
-            } else if let slot = slot, let modelName = slot.modelName {
-                // Loaded model
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text(modelName)
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .lineLimit(1)
-
-                        Spacer()
-
-                        // Status indicator
-                        Circle()
-                            .fill(Color.green)
-                            .frame(width: 6, height: 6)
-                    }
-
-                    // Memory usage
-                    if let memoryGB = slot.memoryUsageGB {
-                        HStack(spacing: 4) {
-                            Image(systemName: "memorychip")
-                                .font(.caption2)
-                            Text(String(format: "%.1f GB", memoryGB))
-                                .font(.caption2)
-                        }
-                        .foregroundColor(.textSecondary)
-                    }
-
-                    Spacer()
-
-                    // Unload button
-                    Button(action: {
-                        Task { await unloadModel(slotNumber: slotNumber) }
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "eject")
-                                .font(.caption2)
-                            Text("Unload")
-                                .font(.caption2)
-                        }
-                        .foregroundColor(.red)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(slot.isPinned && hotSlotManager.askBeforeUnpinning)
-                }
-                .padding(10)
-                .frame(maxWidth: .infinity, minHeight: 80, alignment: .topLeading)
-                .background(Color.accentColor.opacity(0.1))
-                .cornerRadius(8)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .strokeBorder(Color.accentColor.opacity(0.3), lineWidth: 1.5)
-                )
-            }
-        }
-    }
-
-    // MARK: - Available Models Section
-
-    private var availableModelsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Available Models")
-                    .font(.headline)
-
-                Spacer()
-
-                // Search
-                HStack {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundColor(.textSecondary)
-                        .font(.caption)
-
-                    TextField("Search...", text: $searchText)
-                        .textFieldStyle(.plain)
-                        .font(.caption)
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(Color.surfaceSecondary)
-                .cornerRadius(6)
-                .frame(width: 150)
-            }
-
-            // Model list
-            LazyVStack(spacing: 8) {
-                ForEach(filteredModels, id: \.self) { modelName in
-                    availableModelRow(modelName: modelName)
-                }
-            }
-        }
-    }
-
-    private func availableModelRow(modelName: String) -> some View {
-        let isLoaded = hotSlotManager.hotSlots.contains { $0.modelName == modelName }
-
-        return HStack {
-            // Status indicator
-            Circle()
-                .fill(isLoaded ? Color.green : Color.gray.opacity(0.3))
-                .frame(width: 8, height: 8)
-
-            // Model name
-            Text(modelName)
-                .font(.subheadline)
-
-            Spacer()
-
-            // Memory estimate
-            if let memory = memoryTracker.getMemoryUsage(for: modelName) {
-                Text(String(format: "%.1f GB", memory))
-                    .font(.caption)
-                    .foregroundColor(.textSecondary)
-            }
-
-            // Load button
-            if isLoaded {
-                Text("Loaded")
-                    .font(.caption)
-                    .foregroundColor(.green)
-            } else {
-                Button(action: {
-                    Task { await loadModel(modelName) }
-                }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "arrow.down.circle")
-                            .font(.caption)
-                        Text("Load")
-                            .font(.caption)
-                    }
-                    .foregroundColor(.accentColor)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(Color.surfaceSecondary)
-        .cornerRadius(6)
-    }
-
-    // MARK: - Eviction Prompt
-
-    private var evictionPromptButtons: some View {
-        Group {
             Button("Cancel", role: .cancel) {
                 modelToLoad = nil
+                slotToEvict = nil
             }
 
             Button("Auto Evict (LRU)") {
                 Task { await autoEvictAndLoad() }
             }
 
-            Button("Manual Selection") {
+            Button("Choose Slot", role: .destructive) {
                 showingEvictionPrompt = false
-                // Window automatically stays open/comes to front
+                // Slot picker will show in the UI
+            }
+        } message: {
+            Text("All 4 hot slots are full. Choose which model to unload, or auto-evict the least recently used model.")
+        }
+    }
+
+    // MARK: - Compact Header
+
+    private var compactHeader: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Model Manager")
+                    .font(.headline)
+
+                HStack(spacing: 8) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "memorychip")
+                            .font(.caption2)
+                        Text(formattedMemory)
+                            .font(.caption2)
+                    }
+                    .foregroundColor(.textSecondary)
+
+                    Text("•")
+                        .font(.caption2)
+                        .foregroundColor(.textTertiary)
+
+                    HStack(spacing: 4) {
+                        Image(systemName: "bolt.fill")
+                            .font(.caption2)
+                        Text("\(loadedModelsCount)/4")
+                            .font(.caption2)
+                    }
+                    .foregroundColor(.accentColor)
+                }
+            }
+
+            Spacer()
+
+            Button(action: { Task { await loadData() } }) {
+                Image(systemName: "arrow.clockwise")
+                    .font(.caption)
+                    .foregroundColor(.textSecondary)
+            }
+            .buttonStyle(.plain)
+            .disabled(isLoading)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+    }
+
+    // MARK: - Hot Slot Row (LM Studio style)
+
+    private func hotSlotRow(slotNumber: Int) -> some View {
+        let slot = hotSlotManager.hotSlots.first { $0.slotNumber == slotNumber }
+        let isEmpty = slot?.isEmpty ?? true
+        let isPinned = slot?.isPinned ?? false
+
+        return HStack(spacing: 0) {
+            // Slot number indicator
+            Text("\(slotNumber)")
+                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                .foregroundColor(.textTertiary)
+                .frame(width: 24)
+
+            if isEmpty {
+                // Empty slot
+                HStack {
+                    Text("Empty Slot")
+                        .font(.subheadline)
+                        .foregroundColor(.textTertiary)
+
+                    Spacer()
+
+                    Image(systemName: "circle.dashed")
+                        .font(.caption)
+                        .foregroundColor(.textTertiary)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(Color.surfaceSecondary.opacity(0.3))
+                .cornerRadius(8)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 2]))
+                        .foregroundColor(.textTertiary.opacity(0.3))
+                )
+            } else if let modelName = slot?.modelName {
+                // Loaded model - compact row
+                HStack(spacing: 10) {
+                    // Status indicator
+                    Circle()
+                        .fill(Color.green)
+                        .frame(width: 6, height: 6)
+
+                    // Model name
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(modelName)
+                            .font(.system(size: 13, weight: .medium))
+                            .lineLimit(1)
+
+                        // Memory usage
+                        if let memoryGB = slot?.memoryUsageGB {
+                            Text(String(format: "%.1f GB", memoryGB))
+                                .font(.system(size: 10))
+                                .foregroundColor(.textSecondary)
+                        }
+                    }
+
+                    Spacer()
+
+                    // Pin button
+                    Button(action: { hotSlotManager.togglePin(slotNumber) }) {
+                        Image(systemName: isPinned ? "pin.fill" : "pin")
+                            .font(.caption)
+                            .foregroundColor(isPinned ? .yellow : .textSecondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help(isPinned ? "Unpin" : "Pin")
+
+                    // Eject button
+                    Button(action: {
+                        Task { await unloadModel(slotNumber: slotNumber) }
+                    }) {
+                        Image(systemName: "eject.fill")
+                            .font(.caption)
+                            .foregroundColor(.red.opacity(0.8))
+                    }
+                    .buttonStyle(.plain)
+                    .help("Unload Model")
+                    .disabled(isPinned && hotSlotManager.askBeforeUnpinning)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(Color.accentColor.opacity(0.08))
+                .cornerRadius(8)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(Color.accentColor.opacity(0.2), lineWidth: 1)
+                )
             }
         }
     }
 
-    private var evictionPromptMessage: some View {
-        Text("All 4 hot slots are full. Would you like to automatically evict the least recently used model, or manually select which model to unload?")
+    // MARK: - Available Model Row
+
+    private func availableModelRow(modelName: String) -> some View {
+        let isLoaded = hotSlotManager.hotSlots.contains { $0.modelName == modelName }
+
+        return HStack(spacing: 10) {
+            // Status indicator
+            if isLoaded {
+                Circle()
+                    .fill(Color.green)
+                    .frame(width: 6, height: 6)
+            } else {
+                Circle()
+                    .stroke(Color.gray.opacity(0.4), lineWidth: 1)
+                    .frame(width: 6, height: 6)
+            }
+
+            // Model name
+            Text(modelName)
+                .font(.system(size: 12))
+                .foregroundColor(isLoaded ? .textPrimary : .textSecondary)
+
+            Spacer()
+
+            // Memory estimate
+            if let memory = memoryTracker.getMemoryUsage(for: modelName) {
+                Text(String(format: "%.1f GB", memory))
+                    .font(.system(size: 10))
+                    .foregroundColor(.textTertiary)
+            }
+
+            // Load/Loaded indicator
+            if isLoaded {
+                Text("Loaded")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.green)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.green.opacity(0.1))
+                    .cornerRadius(4)
+            } else {
+                Button(action: {
+                    Task { await loadModel(modelName) }
+                }) {
+                    HStack(spacing: 3) {
+                        Image(systemName: "arrow.down.circle.fill")
+                            .font(.system(size: 10))
+                        Text("Load")
+                            .font(.system(size: 10, weight: .medium))
+                    }
+                    .foregroundColor(.accentColor)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.accentColor.opacity(0.1))
+                    .cornerRadius(4)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Color.surfaceSecondary.opacity(isLoaded ? 0.3 : 0.5))
+        .cornerRadius(6)
     }
 
     // MARK: - Actions
@@ -324,16 +315,15 @@ struct ModelManagerWindow: View {
     private func loadData() async {
         isLoading = true
 
-        // Load hot slots
         await hotSlotManager.loadHotSlots()
 
-        // Fetch available models from backend
         do {
             let url = URL(string: "http://localhost:8000/api/v1/chat/models")!
             let (data, _) = try await URLSession.shared.data(from: url)
 
             struct ModelResponse: Codable {
                 let name: String
+                let size: Int
             }
 
             let models = try JSONDecoder().decode([ModelResponse].self, from: data)
@@ -342,21 +332,18 @@ struct ModelManagerWindow: View {
             print("Failed to fetch available models: \(error)")
         }
 
-        // Refresh memory tracker
         await memoryTracker.refresh()
 
         isLoading = false
     }
 
     private func loadModel(_ modelName: String) async {
-        // Check if all slots are full
         if hotSlotManager.areAllSlotsFull {
             modelToLoad = modelName
             showingEvictionPrompt = true
             return
         }
 
-        // Find first empty slot
         if let emptySlot = hotSlotManager.hotSlots.first(where: { $0.isEmpty }) {
             do {
                 try await hotSlotManager.assignToSlot(slotNumber: emptySlot.slotNumber, modelId: modelName)
@@ -379,15 +366,10 @@ struct ModelManagerWindow: View {
     private func autoEvictAndLoad() async {
         guard let modelName = modelToLoad else { return }
 
-        // Find LRU slot
         if let evictSlot = hotSlotManager.findEvictionCandidate() {
             do {
-                // Unload from old slot
                 try await hotSlotManager.removeFromSlot(slotNumber: evictSlot)
-
-                // Load new model into that slot
                 try await hotSlotManager.assignToSlot(slotNumber: evictSlot, modelId: modelName)
-
                 await loadData()
             } catch {
                 print("Failed to auto-evict and load: \(error)")
@@ -401,9 +383,11 @@ struct ModelManagerWindow: View {
 
     private var filteredModels: [String] {
         if searchText.isEmpty {
-            return availableModels
+            return availableModels.sorted()
         }
-        return availableModels.filter { $0.localizedCaseInsensitiveContains(searchText) }
+        return availableModels
+            .filter { $0.localizedCaseInsensitiveContains(searchText) }
+            .sorted()
     }
 
     private var loadedModelsCount: Int {
