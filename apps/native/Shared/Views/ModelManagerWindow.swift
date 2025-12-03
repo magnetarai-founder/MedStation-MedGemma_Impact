@@ -2,8 +2,9 @@
 //  ModelManagerWindow.swift
 //  MagnetarStudio
 //
-//  Compact model loading/unloading management (LM Studio style)
-//  Rectangular stacked slots with eject buttons
+//  Compact model loading/unloading management
+//  Slot number buttons [1][2][3][4] for intelligent loading
+//  Tag-based filtering from MagnetarHub
 //
 
 import SwiftUI
@@ -11,9 +12,10 @@ import SwiftUI
 struct ModelManagerWindow: View {
     @StateObject private var hotSlotManager = HotSlotManager.shared
     @StateObject private var memoryTracker = ModelMemoryTracker.shared
-    @State private var availableModels: [String] = []
+    @State private var availableModels: [ModelWithTags] = []
     @State private var isLoading = false
     @State private var searchText = ""
+    @State private var selectedTag: String?
     @State private var showingEvictionPrompt = false
     @State private var modelToLoad: String?
     @State private var slotToEvict: Int?
@@ -46,6 +48,9 @@ struct ModelManagerWindow: View {
                     Divider()
                         .padding(.vertical, 8)
 
+                    // Tag Filter
+                    tagFilterSection
+
                     // Available Models Section
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
@@ -73,8 +78,8 @@ struct ModelManagerWindow: View {
                         .padding(.horizontal, 16)
 
                         VStack(spacing: 4) {
-                            ForEach(filteredModels, id: \.self) { modelName in
-                                availableModelRow(modelName: modelName)
+                            ForEach(filteredModels, id: \.name) { model in
+                                availableModelRow(model: model)
                             }
                         }
                         .padding(.horizontal, 16)
@@ -83,27 +88,10 @@ struct ModelManagerWindow: View {
                 }
             }
         }
-        .frame(width: 480, height: 520)
+        .frame(width: 520, height: 580)
         .background(Color.surfacePrimary)
         .task {
             await loadData()
-        }
-        .alert("All Slots Full", isPresented: $showingEvictionPrompt) {
-            Button("Cancel", role: .cancel) {
-                modelToLoad = nil
-                slotToEvict = nil
-            }
-
-            Button("Auto Evict (LRU)") {
-                Task { await autoEvictAndLoad() }
-            }
-
-            Button("Choose Slot", role: .destructive) {
-                showingEvictionPrompt = false
-                // Slot picker will show in the UI
-            }
-        } message: {
-            Text("All 4 hot slots are full. Choose which model to unload, or auto-evict the least recently used model.")
         }
     }
 
@@ -152,7 +140,39 @@ struct ModelManagerWindow: View {
         .padding(.vertical, 12)
     }
 
-    // MARK: - Hot Slot Row (LM Studio style)
+    // MARK: - Tag Filter Section
+
+    private var tagFilterSection: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                // All models
+                tagFilterChip(tag: nil, label: "All")
+
+                ForEach(availableTags, id: \.self) { tag in
+                    tagFilterChip(tag: tag, label: tag.capitalized)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 4)
+        }
+    }
+
+    private func tagFilterChip(tag: String?, label: String) -> some View {
+        Button(action: {
+            selectedTag = tag
+        }) {
+            Text(label)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(selectedTag == tag ? .white : .textSecondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(selectedTag == tag ? Color.accentColor : Color.surfaceSecondary)
+                .cornerRadius(12)
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Hot Slot Row
 
     private func hotSlotRow(slotNumber: Int) -> some View {
         let slot = hotSlotManager.hotSlots.first { $0.slotNumber == slotNumber }
@@ -245,10 +265,10 @@ struct ModelManagerWindow: View {
         }
     }
 
-    // MARK: - Available Model Row
+    // MARK: - Available Model Row with Slot Buttons
 
-    private func availableModelRow(modelName: String) -> some View {
-        let isLoaded = hotSlotManager.hotSlots.contains { $0.modelName == modelName }
+    private func availableModelRow(model: ModelWithTags) -> some View {
+        let isLoaded = hotSlotManager.hotSlots.contains { $0.modelName == model.name }
 
         return HStack(spacing: 10) {
             // Status indicator
@@ -262,21 +282,38 @@ struct ModelManagerWindow: View {
                     .frame(width: 6, height: 6)
             }
 
-            // Model name
-            Text(modelName)
-                .font(.system(size: 12))
-                .foregroundColor(isLoaded ? .textPrimary : .textSecondary)
+            // Model name + tags
+            VStack(alignment: .leading, spacing: 3) {
+                Text(model.name)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(isLoaded ? .textPrimary : .textSecondary)
+
+                // Tags
+                if !model.tags.isEmpty {
+                    HStack(spacing: 4) {
+                        ForEach(model.tags.prefix(3), id: \.self) { tag in
+                            Text(tag)
+                                .font(.system(size: 9))
+                                .foregroundColor(.textTertiary)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(Color.accentColor.opacity(0.1))
+                                .cornerRadius(3)
+                        }
+                    }
+                }
+            }
 
             Spacer()
 
             // Memory estimate
-            if let memory = memoryTracker.getMemoryUsage(for: modelName) {
+            if let memory = memoryTracker.getMemoryUsage(for: model.name) {
                 Text(String(format: "%.1f GB", memory))
                     .font(.system(size: 10))
                     .foregroundColor(.textTertiary)
             }
 
-            // Load/Loaded indicator
+            // Slot number buttons [1][2][3][4]
             if isLoaded {
                 Text("Loaded")
                     .font(.system(size: 10, weight: .medium))
@@ -286,28 +323,44 @@ struct ModelManagerWindow: View {
                     .background(Color.green.opacity(0.1))
                     .cornerRadius(4)
             } else {
-                Button(action: {
-                    Task { await loadModel(modelName) }
-                }) {
-                    HStack(spacing: 3) {
-                        Image(systemName: "arrow.down.circle.fill")
-                            .font(.system(size: 10))
-                        Text("Load")
-                            .font(.system(size: 10, weight: .medium))
+                HStack(spacing: 4) {
+                    ForEach(1...4, id: \.self) { slotNumber in
+                        slotButton(slotNumber: slotNumber, modelName: model.name)
                     }
-                    .foregroundColor(.accentColor)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Color.accentColor.opacity(0.1))
-                    .cornerRadius(4)
                 }
-                .buttonStyle(.plain)
             }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .background(Color.surfaceSecondary.opacity(isLoaded ? 0.3 : 0.5))
         .cornerRadius(6)
+    }
+
+    // MARK: - Slot Button [1][2][3][4]
+
+    private func slotButton(slotNumber: Int, modelName: String) -> some View {
+        let slot = hotSlotManager.hotSlots.first { $0.slotNumber == slotNumber }
+        let isOccupied = !(slot?.isEmpty ?? true)
+
+        return Button(action: {
+            Task {
+                await loadModelToSlot(modelName: modelName, slotNumber: slotNumber)
+            }
+        }) {
+            Text("\(slotNumber)")
+                .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                .foregroundColor(isOccupied ? .textTertiary : .accentColor)
+                .frame(width: 20, height: 20)
+                .background(isOccupied ? Color.gray.opacity(0.2) : Color.accentColor.opacity(0.15))
+                .cornerRadius(4)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(isOccupied ? Color.clear : Color.accentColor.opacity(0.4), lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+        .disabled(isOccupied)
+        .help(isOccupied ? "Slot \(slotNumber) occupied" : "Load to slot \(slotNumber)")
     }
 
     // MARK: - Actions
@@ -317,19 +370,35 @@ struct ModelManagerWindow: View {
 
         await hotSlotManager.loadHotSlots()
 
+        // Fetch models with tags
         do {
-            let url = URL(string: "http://localhost:8000/api/v1/chat/models")!
+            let url = URL(string: "http://localhost:8000/api/v1/chat/models/with-tags")!
             let (data, _) = try await URLSession.shared.data(from: url)
 
-            struct ModelResponse: Codable {
+            struct ModelResponseWithTags: Codable {
                 let name: String
                 let size: Int
+                let tags: [String]
             }
 
-            let models = try JSONDecoder().decode([ModelResponse].self, from: data)
-            availableModels = models.map { $0.name }
+            let models = try JSONDecoder().decode([ModelResponseWithTags].self, from: data)
+            availableModels = models.map { ModelWithTags(name: $0.name, tags: $0.tags) }
         } catch {
-            print("Failed to fetch available models: \(error)")
+            print("Failed to fetch models with tags: \(error)")
+            // Fallback to basic models endpoint
+            do {
+                let url = URL(string: "http://localhost:8000/api/v1/chat/models")!
+                let (data, _) = try await URLSession.shared.data(from: url)
+
+                struct ModelResponse: Codable {
+                    let name: String
+                }
+
+                let models = try JSONDecoder().decode([ModelResponse].self, from: data)
+                availableModels = models.map { ModelWithTags(name: $0.name, tags: []) }
+            } catch {
+                print("Failed to fetch basic models: \(error)")
+            }
         }
 
         await memoryTracker.refresh()
@@ -337,20 +406,12 @@ struct ModelManagerWindow: View {
         isLoading = false
     }
 
-    private func loadModel(_ modelName: String) async {
-        if hotSlotManager.areAllSlotsFull {
-            modelToLoad = modelName
-            showingEvictionPrompt = true
-            return
-        }
-
-        if let emptySlot = hotSlotManager.hotSlots.first(where: { $0.isEmpty }) {
-            do {
-                try await hotSlotManager.assignToSlot(slotNumber: emptySlot.slotNumber, modelId: modelName)
-                await loadData()
-            } catch {
-                print("Failed to load model: \(error)")
-            }
+    private func loadModelToSlot(modelName: String, slotNumber: Int) async {
+        do {
+            try await hotSlotManager.assignToSlot(slotNumber: slotNumber, modelId: modelName)
+            await loadData()
+        } catch {
+            print("Failed to load model to slot \(slotNumber): \(error)")
         }
     }
 
@@ -363,31 +424,27 @@ struct ModelManagerWindow: View {
         }
     }
 
-    private func autoEvictAndLoad() async {
-        guard let modelName = modelToLoad else { return }
-
-        if let evictSlot = hotSlotManager.findEvictionCandidate() {
-            do {
-                try await hotSlotManager.removeFromSlot(slotNumber: evictSlot)
-                try await hotSlotManager.assignToSlot(slotNumber: evictSlot, modelId: modelName)
-                await loadData()
-            } catch {
-                print("Failed to auto-evict and load: \(error)")
-            }
-        }
-
-        modelToLoad = nil
-    }
-
     // MARK: - Helpers
 
-    private var filteredModels: [String] {
-        if searchText.isEmpty {
-            return availableModels.sorted()
+    private var filteredModels: [ModelWithTags] {
+        var models = availableModels
+
+        // Filter by tag
+        if let tag = selectedTag {
+            models = models.filter { $0.tags.contains(tag) }
         }
-        return availableModels
-            .filter { $0.localizedCaseInsensitiveContains(searchText) }
-            .sorted()
+
+        // Filter by search
+        if !searchText.isEmpty {
+            models = models.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+        }
+
+        return models.sorted { $0.name < $1.name }
+    }
+
+    private var availableTags: [String] {
+        let allTags = Set(availableModels.flatMap { $0.tags })
+        return Array(allTags).sorted()
     }
 
     private var loadedModelsCount: Int {
@@ -398,4 +455,11 @@ struct ModelManagerWindow: View {
         let totalGB = hotSlotManager.hotSlots.compactMap { $0.memoryUsageGB }.reduce(0, +)
         return String(format: "%.1f GB", totalGB)
     }
+}
+
+// MARK: - Model With Tags
+
+struct ModelWithTags {
+    let name: String
+    let tags: [String]
 }
