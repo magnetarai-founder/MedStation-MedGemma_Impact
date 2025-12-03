@@ -33,7 +33,6 @@
 		3EFF8BA28CFC830D62689E55 /* EmergencyConfirmationModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = AED8C8EF1AB9724F43575821 /* EmergencyConfirmationModal.swift */; };
 		403835D13F7BBA5B87DF4BC0 /* CodeEditorService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10F8272E2D6EF476FDDCC185 /* CodeEditorService.swift */; };
 		419431498985644AE22A495A /* MagnetarHubWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2760AE2A83BCE0FEB660A5 /* MagnetarHubWorkspace.swift */; };
-		424C0384ADA95FBD6E735899 /* ModelTagEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81A5E504D476B1838CD2380E /* ModelTagEditorSheet.swift */; };
 		462E1B85191C4E7D6E5D04E1 /* EmergencyModeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF608E6633F1DCE6E6542EBD /* EmergencyModeService.swift */; };
 		4E5B3A8474FAD72E073C9871 /* ContextBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = E14DD2FC8D25B4ABB8A2326D /* ContextBundle.swift */; };
 		4FCFAC2E0DD745DFB5813F74 /* NavigationRail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08785DE309A344AF8765E6BC /* NavigationRail.swift */; };
@@ -68,6 +67,8 @@
 		C8CE1D6E95657B5967D53579 /* BiometricAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A904439226AE3F48234C22A0 /* BiometricAuthService.swift */; };
 		CA2EC71E90324844890DF29C /* SidebarTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B42850187A449F9B295DF2 /* SidebarTabs.swift */; };
 		CD851BE5E0D7AB9D5519B9A7 /* NewDocumentModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5ADD9516A7A1CEB080FDEDF3 /* NewDocumentModal.swift */; };
+		D2C513BE2EE0E6E8009A772A /* ModelTagService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2C513BD2EE0E6E8009A772A /* ModelTagService.swift */; };
+		D2C513C02EE0F018009A772A /* ModelTagEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2C513BF2EE0F018009A772A /* ModelTagEditorSheet.swift */; };
 		D2CCB34F2EDE7C5E00E20014 /* SecurityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2CCB34E2EDE7C5E00E20014 /* SecurityManager.swift */; };
 		D2CCB3512EDE7C8200E20014 /* NetworkFirewallProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2CCB3502EDE7C8200E20014 /* NetworkFirewallProtocol.swift */; };
 		D2CCB3532EDE7C9E00E20014 /* NetworkApprovalModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2CCB3522EDE7C9E00E20014 /* NetworkApprovalModal.swift */; };
@@ -83,7 +84,6 @@
 		E65EDDCF022977AA1854B1AA /* MagnetarStudioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0369ADDFF9623D901CC8207E /* MagnetarStudioApp.swift */; };
 		E68789013473A49D03D15C8B /* ChatWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA268C85AA8894BC92182D94 /* ChatWorkspace.swift */; };
 		E6F67D648E370A7017CB08A0 /* ResourceMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A44572DB91B6E7FBABC82A1A /* ResourceMonitor.swift */; };
-		E734BD67D8807DD7CBE9803E /* ModelTagService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07501808274710D2ED8DDF3A /* ModelTagService.swift */; };
 		E7655B4CD26D4096BB36C64E /* NetworkChatStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC1A48A6AB2B47E091FD7A11 /* NetworkChatStore.swift */; };
 		E840DDF0BB59FF2E5EFCF7DD /* VaultSetupWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBAFCA059EFBB30832A7C3B2 /* VaultSetupWizardView.swift */; };
 		E8E0336CBB99E532C5484361 /* NavigationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0B5547ECD973EFF39678E79 /* NavigationStore.swift */; };
@@ -101,9 +101,8 @@
 		0369ADDFF9623D901CC8207E /* MagnetarStudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagnetarStudioApp.swift; sourceTree = "<group>"; };
 		0555CDE5ACABDDEA3DA1834D /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		0672C7A8089F078868C15E1C /* AppContext.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppContext.swift; sourceTree = "<group>"; };
-		07501808274710D2ED8DDF3A /* ModelTagService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ModelTagService.swift; path = Shared/Services/ModelTagService.swift; sourceTree = "<group>"; };
 		08785DE309A344AF8765E6BC /* NavigationRail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationRail.swift; sourceTree = "<group>"; };
-		103BCE5F6B11D8ACD6D6DDF6 /* ModelManagerWindow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ModelManagerWindow.swift; path = Shared/Views/ModelManagerWindow.swift; sourceTree = "<group>"; };
+		103BCE5F6B11D8ACD6D6DDF6 /* ModelManagerWindow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ModelManagerWindow.swift; path = ModelManagerWindow.swift; sourceTree = "<group>"; };
 		10F8272E2D6EF476FDDCC185 /* CodeEditorService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CodeEditorService.swift; sourceTree = "<group>"; };
 		18F56FEE06EB4480B335A64B /* VaultModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultModels.swift; sourceTree = "<group>"; };
 		18F8E78737774D21B8C95D37 /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
@@ -113,7 +112,7 @@
 		2311BD5A73E62FEED76C9A13 /* CodeWorkspace.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CodeWorkspace.swift; sourceTree = "<group>"; };
 		23E49F56280544789AA32ABF /* AutomationWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutomationWorkspace.swift; sourceTree = "<group>"; };
 		26E9E5E9E5784B339818979B /* SettingsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsService.swift; sourceTree = "<group>"; };
-		2773A6C7CAE78696090B41B7 /* ModelTag.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ModelTag.swift; path = Shared/Models/ModelTag.swift; sourceTree = "<group>"; };
+		2773A6C7CAE78696090B41B7 /* ModelTag.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ModelTag.swift; path = ModelTag.swift; sourceTree = "<group>"; };
 		28E3301816CD44269E126C96 /* LoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingView.swift; sourceTree = "<group>"; };
 		2C969A3D6C92097E6DF1F837 /* MagnetarStudio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MagnetarStudio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2D684EFED023D2A6542AAB1F /* KanbanWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KanbanWorkspace.swift; sourceTree = "<group>"; };
@@ -136,10 +135,9 @@
 		6EBEB2F057FF41A4A120A4DB /* OllamaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaService.swift; sourceTree = "<group>"; };
 		758F62B637F9DF75E26BAB65 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		7F77D79421B014D8C65EC2CF /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
-		81A5E504D476B1838CD2380E /* ModelTagEditorSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ModelTagEditorSheet.swift; path = Shared/Views/ModelTagEditorSheet.swift; sourceTree = "<group>"; };
 		832F8059CDA346DF9163F393 /* CodeEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeEditor.swift; sourceTree = "<group>"; };
 		842DAEC1F81C99999F03FF53 /* LiquidGlassPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidGlassPanel.swift; sourceTree = "<group>"; };
-		8838BDE42960AA40D4057FA2 /* SmartModelPicker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SmartModelPicker.swift; path = Shared/Components/SmartModelPicker.swift; sourceTree = "<group>"; };
+		8838BDE42960AA40D4057FA2 /* SmartModelPicker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SmartModelPicker.swift; path = SmartModelPicker.swift; sourceTree = "<group>"; };
 		971E406BFD964D0DA7C3DB54 /* DatabaseModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseModels.swift; sourceTree = "<group>"; };
 		98E7B59E6EB249EAA0A73897 /* DatabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseService.swift; sourceTree = "<group>"; };
 		9CD166ACB45A69C9897FFFA3 /* ModelRoutingDecision.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelRoutingDecision.swift; sourceTree = "<group>"; };
@@ -164,6 +162,8 @@
 		CBAFCA059EFBB30832A7C3B2 /* VaultSetupWizardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VaultSetupWizardView.swift; sourceTree = "<group>"; };
 		CC12D8A6355AFFD9A5022863 /* ModelSelectorMenu.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ModelSelectorMenu.swift; path = Components/ModelSelectorMenu.swift; sourceTree = "<group>"; };
 		CC1A48A6AB2B47E091FD7A11 /* NetworkChatStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkChatStore.swift; sourceTree = "<group>"; };
+		D2C513BD2EE0E6E8009A772A /* ModelTagService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelTagService.swift; sourceTree = "<group>"; };
+		D2C513BF2EE0F018009A772A /* ModelTagEditorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelTagEditorSheet.swift; sourceTree = "<group>"; };
 		D2CCB34E2EDE7C5E00E20014 /* SecurityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityManager.swift; sourceTree = "<group>"; };
 		D2CCB3502EDE7C8200E20014 /* NetworkFirewallProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkFirewallProtocol.swift; sourceTree = "<group>"; };
 		D2CCB3522EDE7C9E00E20014 /* NetworkApprovalModal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkApprovalModal.swift; sourceTree = "<group>"; };
@@ -299,7 +299,7 @@
 				AED8C8EF1AB9724F43575821 /* EmergencyConfirmationModal.swift */,
 				D2CCB3522EDE7C9E00E20014 /* NetworkApprovalModal.swift */,
 				103BCE5F6B11D8ACD6D6DDF6 /* ModelManagerWindow.swift */,
-				81A5E504D476B1838CD2380E /* ModelTagEditorSheet.swift */,
+				D2C513BF2EE0F018009A772A /* ModelTagEditorSheet.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -452,7 +452,7 @@
 				BF608E6633F1DCE6E6542EBD /* EmergencyModeService.swift */,
 				E4A86189DF1FE9A17A22F231 /* PanicModeService.swift */,
 				D2CCB34E2EDE7C5E00E20014 /* SecurityManager.swift */,
-				07501808274710D2ED8DDF3A /* ModelTagService.swift */,
+				D2C513BD2EE0E6E8009A772A /* ModelTagService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -546,6 +546,7 @@
 				3AEF6F15A9E949E7A20E3E10 /* DatabaseStore.swift in Sources */,
 				D2CCB3532EDE7C9E00E20014 /* NetworkApprovalModal.swift in Sources */,
 				E7655B4CD26D4096BB36C64E /* NetworkChatStore.swift in Sources */,
+				D2C513C02EE0F018009A772A /* ModelTagEditorSheet.swift in Sources */,
 				2CEBD6ED297D4874B6DDB1F6 /* SettingsStore.swift in Sources */,
 				EA7137A1464248E4B3DA0B7E /* VaultStore.swift in Sources */,
 				E4C417A6ECAA4E4DAFBF3882 /* WorkflowStore.swift in Sources */,
@@ -598,8 +599,7 @@
 				0FD9B7E9D48F2A3B78FB8303 /* ModelManagerWindow.swift in Sources */,
 				D4ABFD7B7668EB63C8469B78 /* SmartModelPicker.swift in Sources */,
 				3BA3C53949C60E1DB0C5B12E /* ModelTag.swift in Sources */,
-				E734BD67D8807DD7CBE9803E /* ModelTagService.swift in Sources */,
-				424C0384ADA95FBD6E735899 /* ModelTagEditorSheet.swift in Sources */,
+				D2C513BE2EE0E6E8009A772A /* ModelTagService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -19,7 +19,7 @@ class ModelTagService {
 
     // MARK: - Get Available Tags
 
-    func getAvailableTags() async throws -> [ModelTag] {
+    func getAvailableTags() async throws -> [ModelCapabilityTag] {
         let url = URL(string: "\(baseURL)/api/v1/chat/tags/available")!
         var request = URLRequest(url: url)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -41,7 +41,7 @@ class ModelTagService {
 
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
-        return try decoder.decode([ModelTag].self, from: data)
+        return try decoder.decode([ModelCapabilityTag].self, from: data)
     }
 
     // MARK: - Get Model Tags

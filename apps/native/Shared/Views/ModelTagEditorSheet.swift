@@ -12,7 +12,7 @@ struct ModelTagEditorSheet: View {
     let modelName: String
     @Environment(\.dismiss) private var dismiss
 
-    @State private var availableTags: [ModelTag] = []
+    @State private var availableTags: [ModelCapabilityTag] = []
     @State private var currentTags: ModelTagsResponse?
     @State private var selectedTags: Set<String> = []
     @State private var isLoading = false
@@ -259,7 +259,7 @@ struct ModelTagEditorSheet: View {
 // MARK: - Tag Chip Component
 
 struct TagChip: View {
-    let tag: ModelTag
+    let tag: ModelCapabilityTag
     let isSelected: Bool
     let onTap: () -> Void
 

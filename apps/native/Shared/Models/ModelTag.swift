@@ -10,7 +10,7 @@ import SwiftUI
 
 // MARK: - Tag Definition
 
-struct ModelTag: Identifiable, Codable, Hashable {
+struct ModelCapabilityTag: Identifiable, Codable, Hashable {
     let id: String
     let name: String
     let description: String
@@ -86,7 +86,7 @@ enum TagCategory: String, CaseIterable {
     case core = "Core Capabilities"
     case specialized = "Specialized"
 
-    func tags(from allTags: [ModelTag]) -> [ModelTag] {
+    func tags(from allTags: [ModelCapabilityTag]) -> [ModelCapabilityTag] {
         let coreIds = ["general", "chat", "code", "reasoning", "deep-reasoning", "math", "data", "orchestration"]
 
         switch self {
