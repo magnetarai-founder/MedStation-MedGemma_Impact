@@ -344,7 +344,8 @@ struct SessionRow: View {
                     .lineLimit(1)
                     .foregroundColor(.textPrimary)
 
-                Text(session.model)
+                // Sessions don't have fixed models - show "Multi-model" or "Intelligent"
+                Text("Multi-model")
                     .font(.system(size: 11))
                     .foregroundColor(.textSecondary)
             }
@@ -477,7 +478,7 @@ private struct SessionTimelineDetails: View {
                 .font(.system(size: 14, weight: .semibold))
 
             InfoRow(label: "Title:", value: session.title)
-            InfoRow(label: "Model:", value: session.model)
+            InfoRow(label: "Mode:", value: "Multi-model")  // Sessions use orchestrator per-query
 
             HStack {
                 Text("Created:")

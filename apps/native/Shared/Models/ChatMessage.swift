@@ -56,7 +56,7 @@ enum MessageRole: String, Codable {
 final class ChatSession {
     @Attribute(.unique) var id: UUID
     var title: String
-    var model: String
+    var model: String?  // Sessions are model-agnostic; orchestrator chooses model per query
     var createdAt: Date
     var updatedAt: Date
 
@@ -66,7 +66,7 @@ final class ChatSession {
     init(
         id: UUID = UUID(),
         title: String = "New Chat",
-        model: String = "mistral",
+        model: String? = nil,  // No default model; use orchestrator or manual selection
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
@@ -109,7 +109,7 @@ struct ChatMessageDTO: Codable {
 struct ChatSessionDTO: Codable {
     let id: UUID
     let title: String
-    let model: String
+    let model: String?  // Optional - sessions don't require a fixed model
     let createdAt: Date
     let updatedAt: Date
 

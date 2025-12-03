@@ -26,14 +26,14 @@ class ChatSession(BaseModel):
     title: str
     created_at: str
     updated_at: str
-    model: str = "qwen2.5-coder:7b-instruct"
+    model: Optional[str] = None  # Sessions are model-agnostic; each message uses orchestrator/manual selection
     message_count: int = 0
 
 
 class CreateChatRequest(BaseModel):
     """Request to create a new chat session"""
     title: Optional[str] = "New Chat"
-    model: Optional[str] = "qwen2.5-coder:7b-instruct"
+    model: Optional[str] = None  # Sessions don't have fixed models; orchestrator chooses per query
 
 
 class SendMessageRequest(BaseModel):

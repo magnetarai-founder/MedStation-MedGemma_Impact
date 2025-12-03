@@ -113,15 +113,15 @@ final class ChatStore {
         error = nil
 
         do {
-            let useModel = model ?? selectedModel
-            let apiSession = try await chatService.createSession(title: title, model: useModel)
+            // Sessions don't have fixed models - orchestrator chooses per query
+            let apiSession = try await chatService.createSession(title: title, model: nil)
 
             // Create local session from API response
             let localId = UUID()
             let session = ChatSession(
                 id: localId,
                 title: apiSession.title ?? title,
-                model: apiSession.model ?? useModel,
+                model: apiSession.model,  // Will be nil - that's correct
                 createdAt: ISO8601DateFormatter().date(from: apiSession.createdAt) ?? Date(),
                 updatedAt: ISO8601DateFormatter().date(from: apiSession.updatedAt) ?? Date()
             )

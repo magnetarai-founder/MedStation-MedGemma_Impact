@@ -30,7 +30,7 @@ async def create_chat_session_endpoint(request: Request, current_user: Dict = De
 
         result = await chat.create_session(
             title=body.title or "New Chat",
-            model=body.model or "qwen2.5-coder:7b-instruct",
+            model=body.model,  # Sessions are model-agnostic; None by default
             user_id=current_user["user_id"],
             team_id=team_id
         )
