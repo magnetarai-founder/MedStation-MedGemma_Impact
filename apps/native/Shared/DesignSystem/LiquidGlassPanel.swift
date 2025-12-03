@@ -57,13 +57,14 @@ enum GlassMaterial {
 
 struct GlassBackgroundModifier: ViewModifier {
     let material: GlassMaterial
+    @AppStorage("glassOpacity") private var glassOpacity = 0.5
 
     func body(content: Content) -> some View {
         content
             .background(material.swiftUIMaterial)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(.regularMaterial.opacity(0.5))
+                    .fill(.regularMaterial.opacity(glassOpacity))
             )
     }
 }

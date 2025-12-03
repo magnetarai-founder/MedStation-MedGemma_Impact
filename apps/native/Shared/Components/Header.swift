@@ -17,6 +17,7 @@ struct Header: View {
     @State private var showActivity = false
     @State private var showPanicMode = false
     @State private var showEmergencyMode = false
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         ZStack(alignment: .center) {
@@ -127,6 +128,7 @@ private struct ControlCluster: View {
     @Binding var showActivity: Bool
     @Binding var showPanicMode: Bool
     @Binding var showEmergencyMode: Bool
+    @Environment(\.openWindow) private var openWindow
 
     @State private var clickCount: Int = 0
     @State private var lastClickTime: Date = Date.distantPast
@@ -135,7 +137,7 @@ private struct ControlCluster: View {
         HStack(spacing: 10) {
             // Model Manager button
             HeaderToolbarButton(icon: "bolt.fill") {
-                openModelManager()
+                openWindow(id: "model-manager")
             }
             .help("Model Manager (⌘M)")
 
@@ -153,21 +155,6 @@ private struct ControlCluster: View {
             }
             .help("Panic Mode (Double-click) / Emergency Mode (Triple-click)")
         }
-    }
-
-    // MARK: - Actions
-
-    private func openModelManager() {
-        // Open Model Manager window
-        if let url = URL(string: "magnetarstudio://window/model-manager") {
-            NSWorkspace.shared.open(url)
-        }
-
-        // Fallback: Use NSApp to open window by identifier
-        #if os(macOS)
-        NSApp.sendAction(#selector(NSResponder.newWindowForTab(_:)), to: nil, from: nil)
-        // Note: The WindowGroup with id "model-manager" will handle this
-        #endif
     }
 
     // MARK: - Triple-Click Detection
