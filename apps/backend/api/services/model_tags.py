@@ -7,25 +7,33 @@ from typing import List, Set, Dict
 import re
 
 
-# Tag definitions
+# Tag definitions (Updated for MagnetarStudio)
 class ModelTag:
-    """Model capability tags"""
+    """Model capability tags - predefined categories"""
+    # Core capabilities
     GENERAL = "general"
     REASONING = "reasoning"
+    DEEP_REASONING = "deep-reasoning"  # Advanced CoT (R1, o1)
     MATH = "math"
-    CODE = "code"
-    REFACTOR = "refactor"
-    RESEARCH = "research"
-    VISION = "vision"
     DATA = "data"
+    CODE = "code"
+    CHAT = "chat"
+    ORCHESTRATION = "orchestration"  # Model routing capability
+
+    # Specialized capabilities
+    VISION = "vision"
     CREATIVE = "creative"
-    SUMMARIZATION = "summarization"
     FUNCTION_CALLING = "function-calling"
     MULTILINGUAL = "multilingual"
-    EMBEDDING = "embedding"
+
+    # Deprecated/legacy tags (kept for backwards compatibility)
+    REFACTOR = "refactor"  # Use CODE instead
+    RESEARCH = "research"  # Use REASONING + DATA instead
+    SUMMARIZATION = "summarization"  # Use GENERAL instead
+    EMBEDDING = "embedding"  # Special type, not for chat models
 
 
-# Pattern-based tag detection
+# Pattern-based tag detection (Updated for MagnetarStudio)
 TAG_PATTERNS = {
     ModelTag.CODE: [
         r'code',
@@ -40,17 +48,39 @@ TAG_PATTERNS = {
     ModelTag.REASONING: [
         r'think',
         r'reason',
+        r'qwen.*plus',
+        r'pro',  # Often indicates reasoning capability
+        r'phi',  # phi models good at reasoning
+    ],
+    ModelTag.DEEP_REASONING: [
         r'deepthink',
         r'deepseek-r1',
-        r'qwen.*plus',
         r'o1',
-        r'pro',  # Often indicates reasoning capability
+        r'r1',
+        r'chain.*thought',
+        r'cot',
     ],
     ModelTag.MATH: [
         r'math',
         r'mathstral',
         r'llemma',
         r'minerva',
+    ],
+    ModelTag.DATA: [
+        r'data',
+        r'analyst',
+        r'sql',
+        r'phi',  # phi trained on data analysis
+    ],
+    ModelTag.CHAT: [
+        r'chat',
+        r'instruct',
+        r'llama',
+        r'mistral',
+    ],
+    ModelTag.ORCHESTRATION: [
+        r'qwen2.5-coder:3b',  # Small, fast orchestrator
+        r'phi',  # Good for routing decisions
     ],
     ModelTag.VISION: [
         r'vision',
@@ -65,11 +95,6 @@ TAG_PATTERNS = {
         r'writer',
         r'storytell',
         r'mixtral',  # Known for creative writing
-    ],
-    ModelTag.DATA: [
-        r'data',
-        r'analyst',
-        r'sql',
     ],
     ModelTag.EMBEDDING: [
         r'embed',
@@ -154,41 +179,57 @@ def detect_tags_from_name(model_name: str) -> Set[str]:
 def get_tag_description(tag: str) -> str:
     """Get human-readable description for a tag"""
     descriptions = {
+        # Core capabilities
         ModelTag.GENERAL: "General conversation",
         ModelTag.REASONING: "Complex reasoning & thinking",
+        ModelTag.DEEP_REASONING: "Advanced chain-of-thought reasoning",
         ModelTag.MATH: "Mathematical problem solving",
-        ModelTag.CODE: "Code generation",
-        ModelTag.REFACTOR: "Code refactoring",
-        ModelTag.RESEARCH: "Research & analysis",
-        ModelTag.VISION: "Image understanding",
         ModelTag.DATA: "Data analysis & SQL",
+        ModelTag.CODE: "Code generation & analysis",
+        ModelTag.CHAT: "Conversational AI",
+        ModelTag.ORCHESTRATION: "Model routing & orchestration",
+
+        # Specialized capabilities
+        ModelTag.VISION: "Image understanding",
         ModelTag.CREATIVE: "Creative writing",
-        ModelTag.SUMMARIZATION: "Text summarization",
         ModelTag.FUNCTION_CALLING: "Tool use & function calling",
         ModelTag.MULTILINGUAL: "Multiple languages",
+
+        # Deprecated
+        ModelTag.REFACTOR: "Code refactoring",
+        ModelTag.RESEARCH: "Research & analysis",
+        ModelTag.SUMMARIZATION: "Text summarization",
         ModelTag.EMBEDDING: "Text embeddings",
     }
     return descriptions.get(tag, tag.replace("-", " ").title())
 
 
 def get_tag_icon(tag: str) -> str:
-    """Get emoji icon for a tag"""
+    """Get SF Symbol name for a tag"""
     icons = {
-        ModelTag.GENERAL: "💬",
-        ModelTag.REASONING: "🧠",
-        ModelTag.MATH: "🔢",
-        ModelTag.CODE: "💻",
-        ModelTag.REFACTOR: "🔧",
-        ModelTag.RESEARCH: "🔬",
-        ModelTag.VISION: "👁️",
-        ModelTag.DATA: "📊",
-        ModelTag.CREATIVE: "✍️",
-        ModelTag.SUMMARIZATION: "📝",
-        ModelTag.FUNCTION_CALLING: "🛠️",
-        ModelTag.MULTILINGUAL: "🌍",
-        ModelTag.EMBEDDING: "🔤",
+        # Core capabilities
+        ModelTag.GENERAL: "bubble.left",
+        ModelTag.REASONING: "brain",
+        ModelTag.DEEP_REASONING: "brain.head.profile",
+        ModelTag.MATH: "function",
+        ModelTag.DATA: "chart.bar",
+        ModelTag.CODE: "chevron.left.forwardslash.chevron.right",
+        ModelTag.CHAT: "message",
+        ModelTag.ORCHESTRATION: "arrow.triangle.branch",
+
+        # Specialized capabilities
+        ModelTag.VISION: "eye",
+        ModelTag.CREATIVE: "pencil.and.outline",
+        ModelTag.FUNCTION_CALLING: "wrench.and.screwdriver",
+        ModelTag.MULTILINGUAL: "globe",
+
+        # Deprecated
+        ModelTag.REFACTOR: "arrow.triangle.2.circlepath",
+        ModelTag.RESEARCH: "magnifyingglass",
+        ModelTag.SUMMARIZATION: "doc.text",
+        ModelTag.EMBEDDING: "textformat",
     }
-    return icons.get(tag, "🏷️")
+    return icons.get(tag, "tag")
 
 
 def rank_model_for_task(model_name: str, task_tags: List[str]) -> int:
@@ -220,8 +261,9 @@ def rank_model_for_task(model_name: str, task_tags: List[str]) -> int:
 
 
 def get_all_tags() -> List[Dict[str, str]]:
-    """Get all available tags with metadata"""
+    """Get all available tags with metadata (sorted by priority)"""
     return [
+        # Core capabilities (most important)
         {
             "id": ModelTag.GENERAL,
             "name": "General",
@@ -229,16 +271,10 @@ def get_all_tags() -> List[Dict[str, str]]:
             "icon": get_tag_icon(ModelTag.GENERAL),
         },
         {
-            "id": ModelTag.REASONING,
-            "name": "Reasoning",
-            "description": get_tag_description(ModelTag.REASONING),
-            "icon": get_tag_icon(ModelTag.REASONING),
-        },
-        {
-            "id": ModelTag.MATH,
-            "name": "Math",
-            "description": get_tag_description(ModelTag.MATH),
-            "icon": get_tag_icon(ModelTag.MATH),
+            "id": ModelTag.CHAT,
+            "name": "Chat",
+            "description": get_tag_description(ModelTag.CHAT),
+            "icon": get_tag_icon(ModelTag.CHAT),
         },
         {
             "id": ModelTag.CODE,
@@ -247,22 +283,16 @@ def get_all_tags() -> List[Dict[str, str]]:
             "icon": get_tag_icon(ModelTag.CODE),
         },
         {
-            "id": ModelTag.REFACTOR,
-            "name": "Refactor",
-            "description": get_tag_description(ModelTag.REFACTOR),
-            "icon": get_tag_icon(ModelTag.REFACTOR),
+            "id": ModelTag.REASONING,
+            "name": "Reasoning",
+            "description": get_tag_description(ModelTag.REASONING),
+            "icon": get_tag_icon(ModelTag.REASONING),
         },
         {
-            "id": ModelTag.RESEARCH,
-            "name": "Research",
-            "description": get_tag_description(ModelTag.RESEARCH),
-            "icon": get_tag_icon(ModelTag.RESEARCH),
-        },
-        {
-            "id": ModelTag.VISION,
-            "name": "Vision",
-            "description": get_tag_description(ModelTag.VISION),
-            "icon": get_tag_icon(ModelTag.VISION),
+            "id": ModelTag.DEEP_REASONING,
+            "name": "Deep Reasoning",
+            "description": get_tag_description(ModelTag.DEEP_REASONING),
+            "icon": get_tag_icon(ModelTag.DEEP_REASONING),
         },
         {
             "id": ModelTag.DATA,
@@ -271,16 +301,30 @@ def get_all_tags() -> List[Dict[str, str]]:
             "icon": get_tag_icon(ModelTag.DATA),
         },
         {
+            "id": ModelTag.MATH,
+            "name": "Math",
+            "description": get_tag_description(ModelTag.MATH),
+            "icon": get_tag_icon(ModelTag.MATH),
+        },
+        {
+            "id": ModelTag.ORCHESTRATION,
+            "name": "Orchestration",
+            "description": get_tag_description(ModelTag.ORCHESTRATION),
+            "icon": get_tag_icon(ModelTag.ORCHESTRATION),
+        },
+
+        # Specialized capabilities
+        {
+            "id": ModelTag.VISION,
+            "name": "Vision",
+            "description": get_tag_description(ModelTag.VISION),
+            "icon": get_tag_icon(ModelTag.VISION),
+        },
+        {
             "id": ModelTag.CREATIVE,
             "name": "Creative",
             "description": get_tag_description(ModelTag.CREATIVE),
             "icon": get_tag_icon(ModelTag.CREATIVE),
-        },
-        {
-            "id": ModelTag.SUMMARIZATION,
-            "name": "Summarization",
-            "description": get_tag_description(ModelTag.SUMMARIZATION),
-            "icon": get_tag_icon(ModelTag.SUMMARIZATION),
         },
         {
             "id": ModelTag.FUNCTION_CALLING,

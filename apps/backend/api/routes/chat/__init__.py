@@ -8,7 +8,7 @@ try:
 except ImportError:
     from auth_middleware import get_current_user
 
-from . import sessions, messages, files, models
+from . import sessions, messages, files, models, model_tags
 
 # Authenticated router
 router = APIRouter(
@@ -27,6 +27,7 @@ public_router = APIRouter(
 router.include_router(sessions.router)
 router.include_router(messages.router)
 router.include_router(files.router)
+router.include_router(model_tags.router)  # Model tags management
 
 # Models router is public (function-level auth on protected endpoints)
 # router.include_router(models.router)  # REMOVED - was causing 403 shadowing
