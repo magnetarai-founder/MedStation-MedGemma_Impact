@@ -22,6 +22,7 @@ struct MagnetarHubWorkspace: View {
     @State private var cloudUsername: String? = nil
     @State private var isOllamaActionInProgress: Bool = false
     @State private var isCloudActionInProgress: Bool = false
+    @State private var showTagEditor: Bool = false
 
     private let ollamaService = OllamaService.shared
 
@@ -430,49 +431,61 @@ struct MagnetarHubWorkspace: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 24) {
                             // Actions
-                            HStack(spacing: 12) {
-                                Button(action: {
-                                    Task {
-                                        await useCloudModel(model.id)
+                            VStack(spacing: 12) {
+                                // Primary action row
+                                HStack(spacing: 12) {
+                                    Button(action: {
+                                        Task {
+                                            await useCloudModel(model.id)
+                                        }
+                                    }) {
+                                        if isPerformingAction {
+                                            ProgressView()
+                                                .scaleEffect(0.8)
+                                                .frame(maxWidth: .infinity)
+                                        } else {
+                                            Label("Use in Chat", systemImage: "bubble.left")
+                                                .frame(maxWidth: .infinity)
+                                        }
                                     }
-                                }) {
-                                    if isPerformingAction {
-                                        ProgressView()
-                                            .scaleEffect(0.8)
-                                            .frame(maxWidth: .infinity)
-                                    } else {
-                                        Label("Use in Chat", systemImage: "bubble.left")
-                                            .frame(maxWidth: .infinity)
-                                    }
-                                }
-                                .buttonStyle(.borderedProminent)
-                                .disabled(isPerformingAction || selectedCategory != .cloud)
+                                    .buttonStyle(.borderedProminent)
+                                    .disabled(isPerformingAction || selectedCategory != .cloud)
 
+                                    Button(action: {
+                                        Task {
+                                            await updateCloudModel(model.id)
+                                        }
+                                    }) {
+                                        if isPerformingAction {
+                                            ProgressView()
+                                                .scaleEffect(0.8)
+                                                .frame(maxWidth: .infinity)
+                                        } else {
+                                            Label("Update", systemImage: "arrow.down.circle")
+                                                .frame(maxWidth: .infinity)
+                                        }
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .disabled(isPerformingAction || selectedCategory != .cloud)
+
+                                    Button(action: {
+                                        showDeleteConfirmation = true
+                                    }) {
+                                        Image(systemName: "trash")
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .foregroundColor(.red)
+                                    .disabled(isPerformingAction || selectedCategory != .cloud)
+                                }
+
+                                // Edit Tags button (all models)
                                 Button(action: {
-                                    Task {
-                                        await updateCloudModel(model.id)
-                                    }
+                                    showTagEditor = true
                                 }) {
-                                    if isPerformingAction {
-                                        ProgressView()
-                                            .scaleEffect(0.8)
-                                            .frame(maxWidth: .infinity)
-                                    } else {
-                                        Label("Update", systemImage: "arrow.down.circle")
-                                            .frame(maxWidth: .infinity)
-                                    }
+                                    Label("Edit Tags", systemImage: "tag.circle")
+                                        .frame(maxWidth: .infinity)
                                 }
                                 .buttonStyle(.bordered)
-                                .disabled(isPerformingAction || selectedCategory != .cloud)
-
-                                Button(action: {
-                                    showDeleteConfirmation = true
-                                }) {
-                                    Image(systemName: "trash")
-                                }
-                                .buttonStyle(.bordered)
-                                .foregroundColor(.red)
-                                .disabled(isPerformingAction || selectedCategory != .cloud)
                             }
 
                             // Action message (success/error feedback)
@@ -573,6 +586,11 @@ struct MagnetarHubWorkspace: View {
                     title: "No model selected",
                     subtitle: "Select a model to view details and actions"
                 )
+            }
+        }
+        .sheet(isPresented: $showTagEditor) {
+            if let model = selectedModel {
+                ModelTagEditorSheet(modelName: model.name)
             }
         }
     }
