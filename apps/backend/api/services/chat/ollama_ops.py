@@ -7,7 +7,8 @@ Handles Ollama server lifecycle management, configuration, and status monitoring
 import asyncio
 import logging
 import subprocess
-from typing import Dict, Any, List, Optional
+import json
+from typing import Dict, Any, List, Optional, AsyncGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -204,6 +205,165 @@ async def restart_ollama_server(reload_models: bool = False, models_to_load: Opt
         "reload_results": loaded_results,
         "previously_loaded": previous_models
     }
+
+
+# ========================================================================
+# MODEL MANAGEMENT
+# ========================================================================
+
+async def pull_model(model_name: str) -> AsyncGenerator[Dict[str, Any], None]:
+    """
+    Pull/download a model from Ollama library with progress streaming
+
+    Args:
+        model_name: Name of model to pull (e.g., "qwen2.5-coder:7b")
+
+    Yields:
+        Progress updates as JSON dictionaries with status, progress, and completion
+    """
+    try:
+        # Start ollama pull process
+        process = await asyncio.create_subprocess_shell(
+            f"ollama pull {model_name}",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+
+        logger.info(f"📥 Starting model pull: {model_name}")
+
+        # Stream stdout for progress updates
+        if process.stdout:
+            async for line in process.stdout:
+                try:
+                    line_str = line.decode('utf-8').strip()
+                    if line_str:
+                        # Ollama outputs progress lines like:
+                        # "pulling manifest"
+                        # "pulling sha256:abc123... 100%"
+                        # "success"
+
+                        yield {
+                            "status": "progress",
+                            "message": line_str,
+                            "model": model_name
+                        }
+                except Exception as e:
+                    logger.error(f"Error parsing ollama output: {e}")
+
+        # Wait for process to complete
+        await process.wait()
+
+        if process.returncode == 0:
+            logger.info(f"✅ Model pull completed: {model_name}")
+            yield {
+                "status": "completed",
+                "message": f"Successfully pulled {model_name}",
+                "model": model_name
+            }
+        else:
+            stderr = await process.stderr.read() if process.stderr else b""
+            error_msg = stderr.decode('utf-8').strip()
+            logger.error(f"❌ Model pull failed: {model_name} - {error_msg}")
+            yield {
+                "status": "error",
+                "message": error_msg or "Failed to pull model",
+                "model": model_name
+            }
+
+    except Exception as e:
+        logger.error(f"Exception during model pull: {e}")
+        yield {
+            "status": "error",
+            "message": str(e),
+            "model": model_name
+        }
+
+
+async def remove_model(model_name: str) -> Dict[str, Any]:
+    """
+    Remove/delete a local model
+
+    Args:
+        model_name: Name of model to remove (e.g., "qwen2.5-coder:7b")
+
+    Returns:
+        Status dictionary with success/failure and message
+    """
+    try:
+        # Run ollama rm command
+        process = await asyncio.create_subprocess_shell(
+            f"ollama rm {model_name}",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+
+        logger.info(f"🗑️  Removing model: {model_name}")
+
+        stdout, stderr = await process.communicate()
+
+        if process.returncode == 0:
+            logger.info(f"✅ Model removed: {model_name}")
+            return {
+                "status": "success",
+                "message": f"Successfully removed {model_name}",
+                "model": model_name
+            }
+        else:
+            error_msg = stderr.decode('utf-8').strip()
+            logger.error(f"❌ Model removal failed: {model_name} - {error_msg}")
+            return {
+                "status": "error",
+                "message": error_msg or "Failed to remove model",
+                "model": model_name
+            }
+
+    except Exception as e:
+        logger.error(f"Exception during model removal: {e}")
+        return {
+            "status": "error",
+            "message": str(e),
+            "model": model_name
+        }
+
+
+async def check_ollama_version() -> Dict[str, Any]:
+    """
+    Check installed Ollama version
+
+    Returns:
+        Dictionary with version info and update availability
+    """
+    try:
+        process = await asyncio.create_subprocess_shell(
+            "ollama --version",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+
+        stdout, stderr = await process.communicate()
+
+        if process.returncode == 0:
+            version_str = stdout.decode('utf-8').strip()
+            logger.info(f"Ollama version: {version_str}")
+            return {
+                "status": "success",
+                "version": version_str,
+                "installed": True
+            }
+        else:
+            return {
+                "status": "error",
+                "message": "Ollama not found or version check failed",
+                "installed": False
+            }
+
+    except Exception as e:
+        logger.error(f"Exception checking Ollama version: {e}")
+        return {
+            "status": "error",
+            "message": str(e),
+            "installed": False
+        }
 
 
 # ========================================================================

@@ -7,6 +7,7 @@ For a complete extraction, see the original file at api/routes/chat.py lines 249
 import logging
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Request, Depends
+from fastapi.responses import StreamingResponse
 
 try:
     from api.auth_middleware import get_current_user
@@ -334,6 +335,86 @@ async def restart_ollama_server_endpoint(
         return result
     except Exception as e:
         logger.error(f"Failed to restart Ollama: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== Model Download/Delete Operations =====
+
+@router.post("/models/pull/{model_name}", name="chat_pull_model")
+async def pull_model_endpoint(
+    model_name: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Pull/download a model from Ollama library with streaming progress updates
+
+    Returns a Server-Sent Events stream with progress updates in JSON format:
+    - {"status": "progress", "message": "pulling manifest", "model": "qwen2.5-coder:7b"}
+    - {"status": "completed", "message": "Successfully pulled...", "model": "qwen2.5-coder:7b"}
+    - {"status": "error", "message": "Error message", "model": "qwen2.5-coder:7b"}
+    """
+    from api.services.chat.ollama_ops import pull_model
+    import json
+
+    async def event_stream():
+        """Stream progress updates as Server-Sent Events"""
+        try:
+            async for update in pull_model(model_name):
+                # Format as SSE data
+                yield f"data: {json.dumps(update)}\n\n"
+        except Exception as e:
+            logger.error(f"Error in pull stream: {e}")
+            error_update = {
+                "status": "error",
+                "message": str(e),
+                "model": model_name
+            }
+            yield f"data: {json.dumps(error_update)}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"  # Disable nginx buffering
+        }
+    )
+
+
+@router.delete("/models/{model_name}", name="chat_remove_model")
+async def remove_model_endpoint(
+    model_name: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Remove/delete a local model using ollama rm"""
+    from api.services.chat.ollama_ops import remove_model
+
+    try:
+        result = await remove_model(model_name)
+
+        if result["status"] == "success":
+            return result
+        else:
+            raise HTTPException(status_code=500, detail=result["message"])
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to remove model: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/ollama/version", name="chat_get_ollama_version")
+async def get_ollama_version_endpoint():
+    """Check installed Ollama version (public endpoint)"""
+    from api.services.chat.ollama_ops import check_ollama_version
+
+    try:
+        version_info = await check_ollama_version()
+        return version_info
+    except Exception as e:
+        logger.error(f"Failed to check Ollama version: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 

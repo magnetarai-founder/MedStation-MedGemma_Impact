@@ -23,6 +23,9 @@ struct MagnetarHubWorkspace: View {
     @State private var isOllamaActionInProgress: Bool = false
     @State private var isCloudActionInProgress: Bool = false
     @State private var showTagEditor: Bool = false
+    @State private var downloadProgress: String? = nil
+    @State private var isDownloading: Bool = false
+    @State private var showLocalDeleteConfirmation: Bool = false
 
     private let ollamaService = OllamaService.shared
 
@@ -55,6 +58,24 @@ struct MagnetarHubWorkspace: View {
             }
         } message: { model in
             Text("Are you sure you want to delete '\(model.name)' from MagnetarCloud?")
+        }
+        .alert("Delete Local Model", isPresented: $showLocalDeleteConfirmation, presenting: selectedModel) { model in
+            Button("Cancel", role: .cancel) {
+                showLocalDeleteConfirmation = false
+            }
+            Button("Delete", role: .destructive) {
+                Task {
+                    await deleteLocalModel(model.name)
+                }
+                showLocalDeleteConfirmation = false
+            }
+        } message: { model in
+            Text("Are you sure you want to delete '\(model.name)' from your local Ollama installation? This cannot be undone.")
+        }
+        .sheet(isPresented: $showTagEditor) {
+            if let model = selectedModel {
+                ModelTagEditorSheet(modelName: model.name)
+            }
         }
     }
 
@@ -434,48 +455,78 @@ struct MagnetarHubWorkspace: View {
                             VStack(spacing: 12) {
                                 // Primary action row
                                 HStack(spacing: 12) {
-                                    Button(action: {
-                                        Task {
-                                            await useCloudModel(model.id)
+                                    if selectedCategory == .cloud {
+                                        // Cloud model actions
+                                        Button(action: {
+                                            Task {
+                                                await useCloudModel(model.id)
+                                            }
+                                        }) {
+                                            if isPerformingAction {
+                                                ProgressView()
+                                                    .scaleEffect(0.8)
+                                                    .frame(maxWidth: .infinity)
+                                            } else {
+                                                Label("Use in Chat", systemImage: "bubble.left")
+                                                    .frame(maxWidth: .infinity)
+                                            }
                                         }
-                                    }) {
-                                        if isPerformingAction {
-                                            ProgressView()
-                                                .scaleEffect(0.8)
-                                                .frame(maxWidth: .infinity)
-                                        } else {
-                                            Label("Use in Chat", systemImage: "bubble.left")
-                                                .frame(maxWidth: .infinity)
-                                        }
-                                    }
-                                    .buttonStyle(.borderedProminent)
-                                    .disabled(isPerformingAction || selectedCategory != .cloud)
+                                        .buttonStyle(.borderedProminent)
+                                        .disabled(isPerformingAction)
 
-                                    Button(action: {
-                                        Task {
-                                            await updateCloudModel(model.id)
+                                        Button(action: {
+                                            Task {
+                                                await updateCloudModel(model.id)
+                                            }
+                                        }) {
+                                            if isPerformingAction {
+                                                ProgressView()
+                                                    .scaleEffect(0.8)
+                                                    .frame(maxWidth: .infinity)
+                                            } else {
+                                                Label("Update", systemImage: "arrow.down.circle")
+                                                    .frame(maxWidth: .infinity)
+                                            }
                                         }
-                                    }) {
-                                        if isPerformingAction {
-                                            ProgressView()
-                                                .scaleEffect(0.8)
-                                                .frame(maxWidth: .infinity)
-                                        } else {
-                                            Label("Update", systemImage: "arrow.down.circle")
-                                                .frame(maxWidth: .infinity)
-                                        }
-                                    }
-                                    .buttonStyle(.bordered)
-                                    .disabled(isPerformingAction || selectedCategory != .cloud)
+                                        .buttonStyle(.bordered)
+                                        .disabled(isPerformingAction)
 
-                                    Button(action: {
-                                        showDeleteConfirmation = true
-                                    }) {
-                                        Image(systemName: "trash")
+                                        Button(action: {
+                                            showDeleteConfirmation = true
+                                        }) {
+                                            Image(systemName: "trash")
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .foregroundColor(.red)
+                                        .disabled(isPerformingAction)
+                                    } else {
+                                        // Local Ollama model actions
+                                        Button(action: {
+                                            Task {
+                                                await pullLocalModel(model.name)
+                                            }
+                                        }) {
+                                            if isDownloading {
+                                                ProgressView()
+                                                    .scaleEffect(0.8)
+                                                    .frame(maxWidth: .infinity)
+                                            } else {
+                                                Label("Update", systemImage: "arrow.down.circle")
+                                                    .frame(maxWidth: .infinity)
+                                            }
+                                        }
+                                        .buttonStyle(.borderedProminent)
+                                        .disabled(isDownloading)
+
+                                        Button(action: {
+                                            showLocalDeleteConfirmation = true
+                                        }) {
+                                            Image(systemName: "trash")
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .foregroundColor(.red)
+                                        .disabled(isDownloading)
                                     }
-                                    .buttonStyle(.bordered)
-                                    .foregroundColor(.red)
-                                    .disabled(isPerformingAction || selectedCategory != .cloud)
                                 }
 
                                 // Edit Tags button (all models)
@@ -486,6 +537,22 @@ struct MagnetarHubWorkspace: View {
                                         .frame(maxWidth: .infinity)
                                 }
                                 .buttonStyle(.bordered)
+                            }
+
+                            // Download progress indicator
+                            if let progress = downloadProgress {
+                                HStack(spacing: 8) {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+
+                                    Text(progress)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding(12)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Color.surfaceSecondary.opacity(0.5))
+                                .cornerRadius(8)
                             }
 
                             // Action message (success/error feedback)
@@ -908,6 +975,85 @@ struct MagnetarHubWorkspace: View {
             cloudModels = originalModels
             cloudError = "Failed to delete model: \(error.localizedDescription)"
         }
+    }
+
+    // MARK: - Local Ollama Model Management
+
+    @MainActor
+    private func pullLocalModel(_ modelName: String) async {
+        isDownloading = true
+        downloadProgress = "Starting download..."
+        actionMessage = nil
+
+        ollamaService.pullModel(
+            modelName: modelName,
+            onProgress: { progress in
+                DispatchQueue.main.async {
+                    self.downloadProgress = progress.message
+                }
+            },
+            onComplete: { result in
+                DispatchQueue.main.async {
+                    self.isDownloading = false
+                    self.downloadProgress = nil
+
+                    switch result {
+                    case .success(let message):
+                        self.actionMessage = message
+                        // Refresh model list
+                        Task {
+                            await self.modelsStore.fetchModels()
+                        }
+                    case .failure(let error):
+                        self.actionMessage = "Error: \(error.localizedDescription)"
+                    }
+
+                    // Clear message after 5 seconds
+                    Task {
+                        try? await Task.sleep(nanoseconds: 5_000_000_000)
+                        self.actionMessage = nil
+                    }
+                }
+            }
+        )
+    }
+
+    @MainActor
+    private func deleteLocalModel(_ modelName: String) async {
+        isDownloading = true
+        downloadProgress = "Deleting model..."
+        actionMessage = nil
+
+        do {
+            let result = try await ollamaService.removeModel(modelName: modelName)
+
+            if result.status == "success" {
+                actionMessage = result.message
+
+                // Remove from UI
+                modelsStore.models.removeAll { $0.name == modelName }
+
+                // Clear selection if deleted model was selected
+                if selectedModel?.name == modelName {
+                    selectedModel = nil
+                }
+
+                // Refresh model list to be sure
+                await modelsStore.fetchModels()
+            } else {
+                actionMessage = "Error: \(result.message)"
+            }
+
+        } catch {
+            actionMessage = "Error: \(error.localizedDescription)"
+        }
+
+        isDownloading = false
+        downloadProgress = nil
+
+        // Clear message after 5 seconds
+        try? await Task.sleep(nanoseconds: 5_000_000_000)
+        actionMessage = nil
     }
 }
 
