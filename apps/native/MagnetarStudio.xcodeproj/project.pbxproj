@@ -13,7 +13,6 @@
 		0D6F62E4A20310F8DCA88F48 /* KanbanWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D684EFED023D2A6542AAB1F /* KanbanWorkspace.swift */; };
 		0D9919DA2238C21D1AEE7ECD /* AppContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0672C7A8089F078868C15E1C /* AppContext.swift */; };
 		0E2C0590E01037DE122C6D46 /* ModelsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2B236333A555B822D41D3D /* ModelsStore.swift */; };
-		0FD9B7E9D48F2A3B78FB8303 /* ModelManagerWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 103BCE5F6B11D8ACD6D6DDF6 /* ModelManagerWindow.swift */; };
 		109DA918F3F9F4DDC2D40B92 /* OrchestratorInitializer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF7780D6D6AD182EE79F5868 /* OrchestratorInitializer.swift */; };
 		16118AFDE2324DDF8867D512 /* SettingsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EAEA6C1E62949E989A455ED /* SettingsModels.swift */; };
 		1807773E9FF774789EBDB576 /* ChatMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2C77CB5AF6C4202FD8D7161 /* ChatMessage.swift */; };
@@ -75,7 +74,6 @@
 		D2CCB3552EDE7CC000E20014 /* NetworkFirewallModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2CCB3542EDE7CC000E20014 /* NetworkFirewallModifier.swift */; };
 		D2F4756D2EDFBA8400F95E34 /* ModelManagerWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2F4756C2EDFBA8400F95E34 /* ModelManagerWindow.swift */; };
 		D2F4756F2EDFBAA100F95E34 /* SmartModelPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2F4756E2EDFBAA100F95E34 /* SmartModelPicker.swift */; };
-		D4ABFD7B7668EB63C8469B78 /* SmartModelPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8838BDE42960AA40D4057FA2 /* SmartModelPicker.swift */; };
 		DB28DB0D790B392C74C6EDD6 /* EmergencyModeModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02A48E61DFB2D3B96971D9F /* EmergencyModeModels.swift */; };
 		DEBEE5BEF8FFE2128470853D /* AppleFMOrchestrator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CEFDC9D3501139A38812C68 /* AppleFMOrchestrator.swift */; };
 		E17B166B1C783211B6290194 /* PanicModeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4A86189DF1FE9A17A22F231 /* PanicModeService.swift */; };
@@ -596,8 +594,6 @@
 				462E1B85191C4E7D6E5D04E1 /* EmergencyModeService.swift in Sources */,
 				E17B166B1C783211B6290194 /* PanicModeService.swift in Sources */,
 				3EFF8BA28CFC830D62689E55 /* EmergencyConfirmationModal.swift in Sources */,
-				0FD9B7E9D48F2A3B78FB8303 /* ModelManagerWindow.swift in Sources */,
-				D4ABFD7B7668EB63C8469B78 /* SmartModelPicker.swift in Sources */,
 				3BA3C53949C60E1DB0C5B12E /* ModelTag.swift in Sources */,
 				D2C513BE2EE0E6E8009A772A /* ModelTagService.swift in Sources */,
 			);
