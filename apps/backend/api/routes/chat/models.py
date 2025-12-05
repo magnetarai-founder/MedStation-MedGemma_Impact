@@ -418,6 +418,75 @@ async def get_ollama_version_endpoint():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ===== Model Discovery (Ollama Library) =====
+
+@router.get("/models/library", name="chat_browse_ollama_library")
+async def browse_ollama_library_endpoint(
+    search: Optional[str] = None,
+    model_type: Optional[str] = None,
+    capability: Optional[str] = None,
+    sort_by: Optional[str] = "pulls",
+    order: Optional[str] = "desc",
+    limit: int = 20,
+    skip: int = 0
+):
+    """
+    Browse Ollama model library with search and filtering (public endpoint)
+
+    Proxies requests to ollamadb.dev API for model discovery
+
+    Query Parameters:
+    - search: Search models by name or description
+    - model_type: Filter by 'official' or 'community'
+    - capability: Filter by capability (e.g., 'code', 'chat', 'vision')
+    - sort_by: Sort by 'pulls' or 'last_updated' (default: 'pulls')
+    - order: Sort order 'asc' or 'desc' (default: 'desc')
+    - limit: Results per page (default: 20, max: 100)
+    - skip: Results to skip for pagination (default: 0)
+    """
+    import httpx
+
+    try:
+        # Build query parameters
+        params = {
+            "sort_by": sort_by,
+            "order": order,
+            "limit": min(limit, 100),  # Cap at 100
+            "skip": skip
+        }
+
+        if search:
+            params["search"] = search
+        if model_type:
+            params["model_type"] = model_type
+        if capability:
+            params["capability"] = capability
+
+        # Fetch from ollamadb.dev API
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                "https://ollamadb.dev/api/v1/models",
+                params=params
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                return data
+            else:
+                logger.error(f"ollamadb.dev API error: {response.status_code}")
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"Upstream API error: {response.status_code}"
+                )
+
+    except httpx.TimeoutException:
+        logger.error("Timeout fetching from ollamadb.dev")
+        raise HTTPException(status_code=504, detail="Upstream API timeout")
+    except Exception as e:
+        logger.error(f"Failed to browse Ollama library: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # NOTE: Additional endpoints from original chat.py include:
 # - ANE Context endpoints (lines 410-452)
 # - Embedding info endpoint (line 442-452)
