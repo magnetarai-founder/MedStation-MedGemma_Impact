@@ -987,7 +987,7 @@ private func statusLabel(_ status: SimpleStatus) -> some View {
 struct ModelManagementSettingsView: View {
     // Intelligent Routing
     @AppStorage("enableAppleFM") private var enableAppleFM = true
-    @AppStorage("orchestratorModel") private var orchestratorModel = "qwen2.5-coder:3b"
+    @AppStorage("orchestratorModel") private var orchestratorModel = "apple_fm"
 
     // Default Model Parameters
     @AppStorage("defaultTemperature") private var defaultTemperature = 0.7
@@ -1008,6 +1008,8 @@ struct ModelManagementSettingsView: View {
     @AppStorage("codeModel") private var codeModel = "qwen2.5-coder:3b"
 
     @State private var availableModels: [String] = []
+    @State private var orchestratorModels: [OllamaModelWithTags] = []
+    @State private var isLoadingModels: Bool = false
 
     var body: some View {
         Form {
@@ -1022,16 +1024,44 @@ struct ModelManagementSettingsView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
 
-                        Picker("", selection: $orchestratorModel) {
-                            Text("qwen2.5-coder:3b (Fast)").tag("qwen2.5-coder:3b")
-                            Text("llama3.2:3b (Balanced)").tag("llama3.2:3b")
-                            Text("phi3.5:3.8b (Efficient)").tag("phi3.5:3.8b")
-                        }
-                        .labelsHidden()
+                        if isLoadingModels {
+                            HStack(spacing: 8) {
+                                ProgressView()
+                                    .controlSize(.small)
+                                Text("Loading orchestrator-capable models...")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.vertical, 4)
+                        } else {
+                            Picker("", selection: $orchestratorModel) {
+                                // Apple FM option (default)
+                                Text("Apple FM (Intelligent Router)")
+                                    .tag("apple_fm")
 
-                        Text("The orchestrator analyzes your query and routes to the best model")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+                                if !orchestratorModels.isEmpty {
+                                    Divider()
+
+                                    // Models tagged with "orchestration" capability
+                                    ForEach(orchestratorModels, id: \.name) { model in
+                                        Text(model.name)
+                                            .tag(model.name)
+                                    }
+                                }
+                            }
+                            .labelsHidden()
+                            .disabled(orchestratorModels.isEmpty && orchestratorModel != "apple_fm")
+                        }
+
+                        if orchestratorModel == "apple_fm" {
+                            Text("Apple FM analyzes your query and intelligently routes to the best model")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text("Using \(orchestratorModel) as the orchestrator for all queries")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
             }
@@ -1196,18 +1226,47 @@ struct ModelManagementSettingsView: View {
     }
 
     private func loadAvailableModels() async {
+        await MainActor.run {
+            isLoadingModels = true
+        }
+
         do {
-            let url = URL(string: "http://localhost:8000/api/v1/chat/models")!
+            // Load models with tags
+            let url = URL(string: "http://localhost:8000/api/v1/chat/models/with-tags")!
             let (data, _) = try await URLSession.shared.data(from: url)
 
-            struct ModelResponse: Codable {
-                let name: String
+            let decoder = JSONDecoder()
+            decoder.keyDecodingStrategy = .convertFromSnakeCase
+            let models = try decoder.decode([OllamaModelWithTags].self, from: data)
+
+            // Filter for orchestration-capable models
+            let orchestrators = models.filter { model in
+                model.tags.contains("orchestration")
             }
 
-            let models = try JSONDecoder().decode([ModelResponse].self, from: data)
-            availableModels = models.map { $0.name }
+            await MainActor.run {
+                self.orchestratorModels = orchestrators
+                self.availableModels = models.map { $0.name }
+                self.isLoadingModels = false
+            }
         } catch {
             print("Failed to load models: \(error)")
+            await MainActor.run {
+                self.isLoadingModels = false
+            }
         }
+    }
+}
+
+// MARK: - Supporting Models
+
+struct OllamaModelWithTags: Codable, Identifiable {
+    let id: String
+    let name: String
+    let size: Int64
+    let tags: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, size, tags
     }
 }
