@@ -253,10 +253,19 @@ final class ChatStore {
             }
         }
 
-        // Delete from backend
+        // Delete from backend using mapped backend ID
         Task {
             do {
-                try await chatService.deleteSession(sessionId: session.id.uuidString)
+                // Get backend ID from mapping
+                guard let backendId = sessionIdMapping[session.id] else {
+                    print("⚠️ No backend ID mapping found for session \(session.id)")
+                    return
+                }
+
+                try await chatService.deleteSession(sessionId: backendId)
+
+                // Remove from mapping after successful delete
+                sessionIdMapping.removeValue(forKey: session.id)
             } catch {
                 print("Failed to delete session from backend: \(error)")
                 // Session already removed from UI, just log the error
