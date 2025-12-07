@@ -58,6 +58,7 @@
 		B64BDA375B00040180CE49A6 /* TeamWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EA14AC49CC3C7EE3D89EE05 /* TeamWorkspace.swift */; };
 		B97B1A4B2A1F47F293CA5768 /* ChatModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFB37B6A745242FDB043D334 /* ChatModels.swift */; };
 		BD7253C573C97E44DCD6BE0A /* GlassButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C5B7D185B4D1BE3FF14F5F6 /* GlassButton.swift */; };
+		BE5BC333C517B0398252C865 /* ModelRecommendationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F6B585438FCCD38BEB7E4E /* ModelRecommendationService.swift */; };
 		C0BBF6544683748DF15A980B /* TeamService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E03654A7DB82435A07B213DD /* TeamService.swift */; };
 		C275F79B51284D3B82881368 /* VaultService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 399E593F40D14E5AAD83D8EA /* VaultService.swift */; };
 		C39387A4041537956C59BAFC /* LiquidGlassPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 842DAEC1F81C99999F03FF53 /* LiquidGlassPanel.swift */; };
@@ -151,6 +152,7 @@
 		A44572DB91B6E7FBABC82A1A /* ResourceMonitor.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ResourceMonitor.swift; sourceTree = "<group>"; };
 		A485EA6B25510FE933F43738 /* MagnetarHubWorkspace.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MagnetarHubWorkspace.swift; sourceTree = "<group>"; };
 		A6D0A604BB2D42F8996CC8C9 /* DatabaseStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseStore.swift; sourceTree = "<group>"; };
+		A7F6B585438FCCD38BEB7E4E /* ModelRecommendationService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelRecommendationService.swift; sourceTree = "<group>"; };
 		A904439226AE3F48234C22A0 /* BiometricAuthService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BiometricAuthService.swift; sourceTree = "<group>"; };
 		A90C0C6D0ED2910BC2EE2A2D /* DatabaseWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseWorkspace.swift; sourceTree = "<group>"; };
 		AA2B236333A555B822D41D3D /* ModelsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelsStore.swift; sourceTree = "<group>"; };
@@ -461,6 +463,7 @@
 				D2C513BD2EE0E6E8009A772A /* ModelTagService.swift */,
 				A0C17E6398CC912A0D8702EE /* ModelLibraryService.swift */,
 				337B394F18138ED69FB88772 /* SystemCapabilityService.swift */,
+				A7F6B585438FCCD38BEB7E4E /* ModelRecommendationService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -608,6 +611,7 @@
 				D2C513BE2EE0E6E8009A772A /* ModelTagService.swift in Sources */,
 				A389EB1998243859B3C3DF28 /* ModelLibraryService.swift in Sources */,
 				211EAE88C46AFC153675FAAA /* SystemCapabilityService.swift in Sources */,
+				BE5BC333C517B0398252C865 /* ModelRecommendationService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
