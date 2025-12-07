@@ -10,11 +10,14 @@ import Foundation
 class ModelLibraryService {
     static let shared = ModelLibraryService()
 
-    private let baseURL: String
-    private let session = URLSession.shared
+    private let ollamaLibraryURL = "https://ollama.com/api/tags"
+    private let session: URLSession
 
     init() {
-        self.baseURL = UserDefaults.standard.string(forKey: "apiBaseURL") ?? "http://localhost:8000"
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 30
+        config.timeoutIntervalForResource = 60
+        self.session = URLSession(configuration: config)
     }
 
     // MARK: - Browse Library
@@ -25,35 +28,19 @@ class ModelLibraryService {
         capability: String? = nil,
         sortBy: String = "pulls",
         order: String = "desc",
-        limit: Int = 20,
+        limit: Int = 50,
         skip: Int = 0
     ) async throws -> LibraryResponse {
-        var urlComponents = URLComponents(string: "\(baseURL)/api/v1/chat/models/library")!
-
-        var queryItems: [URLQueryItem] = [
-            URLQueryItem(name: "sort_by", value: sortBy),
-            URLQueryItem(name: "order", value: order),
-            URLQueryItem(name: "limit", value: "\(limit)"),
-            URLQueryItem(name: "skip", value: "\(skip)")
-        ]
-
-        if let search = search, !search.isEmpty {
-            queryItems.append(URLQueryItem(name: "search", value: search))
-        }
-        if let modelType = modelType {
-            queryItems.append(URLQueryItem(name: "model_type", value: modelType))
-        }
-        if let capability = capability {
-            queryItems.append(URLQueryItem(name: "capability", value: capability))
-        }
-
-        urlComponents.queryItems = queryItems
-
-        guard let url = urlComponents.url else {
+        // Fetch all models from Ollama library
+        guard let url = URL(string: ollamaLibraryURL) else {
             throw ModelLibraryError.invalidURL
         }
 
-        let (data, response) = try await session.data(from: url)
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        let (data, response) = try await session.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw ModelLibraryError.invalidResponse
@@ -63,9 +50,178 @@ class ModelLibraryService {
             throw ModelLibraryError.httpError(httpResponse.statusCode)
         }
 
+        // Parse Ollama's response
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
-        return try decoder.decode(LibraryResponse.self, from: data)
+        let apiResponse = try decoder.decode(OllamaAPIResponse.self, from: data)
+        let ollamaModels = apiResponse.models
+
+        // Convert to our LibraryModel format
+        var libraryModels = ollamaModels.map { model -> LibraryModel in
+            // Extract base model name (e.g., "llama3:8b" -> "llama3")
+            let baseName = model.name.components(separatedBy: ":").first ?? model.name
+
+            // Extract parameter size from model name
+            let labels = extractLabelsFromModelName(model.name)
+
+            // Determine if official
+            let isOfficial = isOfficialModel(baseName)
+
+            // Generate friendly description
+            let description = generateDescription(for: baseName)
+
+            return LibraryModel(
+                modelIdentifier: model.name,
+                modelName: baseName,
+                modelType: isOfficial ? "official" : "community",
+                description: description,
+                capability: inferCapability(from: baseName),
+                labels: labels,
+                pulls: 0, // API doesn't provide this
+                tags: [model.name],
+                lastUpdated: model.modifiedAt ?? "",
+                url: "https://ollama.com/library/\(baseName)"
+            )
+        }
+
+        // Apply filters
+        if let search = search, !search.isEmpty {
+            let searchLower = search.lowercased()
+            libraryModels = libraryModels.filter {
+                $0.modelName.lowercased().contains(searchLower) ||
+                $0.description?.lowercased().contains(searchLower) == true
+            }
+        }
+
+        if let modelType = modelType {
+            libraryModels = libraryModels.filter { $0.modelType == modelType }
+        }
+
+        if let capability = capability {
+            libraryModels = libraryModels.filter { $0.capability == capability }
+        }
+
+        // Sort
+        switch sortBy {
+        case "pulls":
+            libraryModels.sort { $0.pulls > $1.pulls }
+        case "last_updated":
+            libraryModels.sort { $0.lastUpdated > $1.lastUpdated }
+        default:
+            break
+        }
+
+        if order == "asc" {
+            libraryModels.reverse()
+        }
+
+        // Paginate
+        let totalCount = libraryModels.count
+        let start = skip
+        let end = min(start + limit, totalCount)
+        let paginatedModels = Array(libraryModels[start..<end])
+
+        return LibraryResponse(
+            models: paginatedModels,
+            totalCount: totalCount,
+            limit: limit,
+            skip: skip,
+            dataUpdated: ISO8601DateFormatter().string(from: Date())
+        )
+    }
+
+    private func extractLabelsFromModelName(_ name: String) -> [String] {
+        // Extract parameter size from model name (e.g., "llama3:8b" -> ["8B"])
+        var labels: [String] = []
+
+        if let match = name.range(of: "\\d+(\\.\\d+)?[bB]", options: .regularExpression) {
+            let size = String(name[match]).uppercased()
+            labels.append(size)
+        }
+
+        return labels
+    }
+
+    private func isOfficialModel(_ baseName: String) -> Bool {
+        // List of known official Ollama models
+        let officialModels = [
+            "llama3", "llama2", "mistral", "mixtral", "gemma", "phi", "qwen",
+            "codellama", "deepseek", "yi", "solar", "dolphin", "orca", "vicuna",
+            "starling", "openhermes", "neural-chat", "zephyr", "nous-hermes"
+        ]
+        return officialModels.contains(baseName.lowercased())
+    }
+
+    private func generateDescription(for baseName: String) -> String {
+        // Provide friendly descriptions for known models
+        switch baseName.lowercased() {
+        case "llama3", "llama2":
+            return "Meta's powerful open-source language model, great for general tasks"
+        case "mistral", "mixtral":
+            return "High-performance model from Mistral AI, excellent for coding and reasoning"
+        case "gemma", "gemma2", "gemma3":
+            return "Google's efficient language model, optimized for on-device use"
+        case "phi", "phi3":
+            return "Microsoft's small but capable model, perfect for resource-constrained environments"
+        case "qwen", "qwen2", "qwen3":
+            return "Alibaba's multilingual model with strong capabilities across languages"
+        case "codellama":
+            return "Specialized for code generation and programming tasks"
+        case "deepseek":
+            return "Advanced model with strong reasoning and coding abilities"
+        case "yi":
+            return "01.AI's bilingual model with excellent performance"
+        default:
+            return "Language model available through Ollama"
+        }
+    }
+
+    private func inferCapability(from baseName: String) -> String? {
+        // Infer capability from model name
+        if baseName.lowercased().contains("code") {
+            return "code"
+        } else if baseName.lowercased().contains("vision") || baseName.lowercased().contains("vl") {
+            return "vision"
+        } else if baseName.lowercased().contains("embed") {
+            return "embedding"
+        }
+        return "chat"
+    }
+}
+
+// MARK: - Ollama API Models
+
+private struct OllamaAPIResponse: Codable {
+    let models: [OllamaAPIModel]
+}
+
+private struct OllamaAPIModel: Codable {
+    let name: String
+    let model: String
+    let modifiedAt: String?
+    let size: Int64?
+    let digest: String?
+    let details: OllamaModelDetails?
+
+    enum CodingKeys: String, CodingKey {
+        case name, model, size, digest, details
+        case modifiedAt = "modified_at"
+    }
+}
+
+private struct OllamaModelDetails: Codable {
+    let parentModel: String?
+    let format: String?
+    let family: String?
+    let families: [String]?
+    let parameterSize: String?
+    let quantizationLevel: String?
+
+    enum CodingKeys: String, CodingKey {
+        case format, family, families
+        case parentModel = "parent_model"
+        case parameterSize = "parameter_size"
+        case quantizationLevel = "quantization_level"
     }
 }
 

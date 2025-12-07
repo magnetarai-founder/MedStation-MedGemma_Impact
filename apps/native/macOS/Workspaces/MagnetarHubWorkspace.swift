@@ -2,197 +2,128 @@
 //  MagnetarHubWorkspace.swift
 //  MagnetarStudio (macOS)
 //
-//  Model management workspace with uniform three-pane Outlook-style layout.
+//  Clean two-pane model management: categories + card grid + modal details
 //
 
 import SwiftUI
+import Network
 
 struct MagnetarHubWorkspace: View {
+    @State private var selectedCategory: HubCategory = .myModels
+    @State private var selectedModel: AnyModelItem? = nil
+    @State private var showModelDetail: Bool = false
+
+    // Local models
     @State private var modelsStore = ModelsStore()
-    @State private var selectedCategory: ModelCategory? = .all
-    @State private var selectedModel: OllamaModel? = nil
     @State private var ollamaServerRunning: Bool = false
-    @State private var isCloudAuthenticated: Bool = false
-    @State private var cloudModels: [OllamaModel] = []
-    @State private var isLoadingCloudModels: Bool = false
-    @State private var cloudError: String? = nil
-    @State private var isPerformingAction: Bool = false
-    @State private var actionMessage: String? = nil
-    @State private var showDeleteConfirmation: Bool = false
-    @State private var cloudUsername: String? = nil
     @State private var isOllamaActionInProgress: Bool = false
+
+    // Discovery - Now using hardcoded recommendations
+    @State private var showDownloadModelModal: Bool = false
+    @State private var isNetworkConnected: Bool = false
+
+    // Cloud models
+    @State private var cloudModels: [OllamaModel] = []
+    @State private var isCloudAuthenticated: Bool = false
+    @State private var isLoadingCloud: Bool = false
     @State private var isCloudActionInProgress: Bool = false
-    @State private var showTagEditor: Bool = false
-    @State private var downloadProgress: String? = nil
-    @State private var isDownloading: Bool = false
-    @State private var showLocalDeleteConfirmation: Bool = false
+    @State private var cloudUsername: String? = nil
+
+    // Download tracking
+    @State private var activeDownloads: [String: DownloadProgress] = [:]
 
     private let ollamaService = OllamaService.shared
+    private let capabilityService = SystemCapabilityService.shared
+    private let networkMonitor = NWPathMonitor()
 
     var body: some View {
-        ThreePaneLayout {
-            // Left Pane: Model Categories
-            categoryListPane
-        } middlePane: {
-            // Middle Pane: Model List
-            modelListPane
-        } rightPane: {
-            // Right Pane: Model Detail
-            modelDetailPane
-        }
-        .task {
-            await checkOllamaStatus()
-            await checkCloudAuthStatus()
-            await modelsStore.fetchModels()
-            await fetchCloudModels()
-        }
-        .alert("Delete Model", isPresented: $showDeleteConfirmation, presenting: selectedModel) { model in
-            Button("Cancel", role: .cancel) {
-                showDeleteConfirmation = false
-            }
-            Button("Delete", role: .destructive) {
-                Task {
-                    await deleteCloudModel(model.id)
-                }
-                showDeleteConfirmation = false
-            }
-        } message: { model in
-            Text("Are you sure you want to delete '\(model.name)' from MagnetarCloud?")
-        }
-        .alert("Delete Local Model", isPresented: $showLocalDeleteConfirmation, presenting: selectedModel) { model in
-            Button("Cancel", role: .cancel) {
-                showLocalDeleteConfirmation = false
-            }
-            Button("Delete", role: .destructive) {
-                Task {
-                    await deleteLocalModel(model.name)
-                }
-                showLocalDeleteConfirmation = false
-            }
-        } message: { model in
-            Text("Are you sure you want to delete '\(model.name)' from your local Ollama installation? This cannot be undone.")
-        }
-        .sheet(isPresented: $showTagEditor) {
-            if let model = selectedModel {
-                ModelTagEditorSheet(modelName: model.name)
-            }
-        }
-    }
-
-    // MARK: - Left Pane: Categories
-
-    private var categoryListPane: some View {
-        VStack(spacing: 0) {
-            PaneHeader(
-                title: "MagnetarHub",
-                icon: "cube.box"
-            )
+        HStack(spacing: 0) {
+            // Left: Categories
+            categoriesPane
+                .frame(width: 220)
 
             Divider()
 
-            List(ModelCategory.allCases, selection: $selectedCategory) { category in
-                Label {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(category.displayName)
-                            .font(.headline)
-                        Text(category.description)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                } icon: {
-                    Image(systemName: category.icon)
+            // Right: Model Cards
+            cardsPane
+        }
+        .task {
+            await loadInitialData()
+            startNetworkMonitoring()
+        }
+        .sheet(isPresented: $showModelDetail) {
+            if let model = selectedModel {
+                ModelDetailModal(model: model, activeDownloads: $activeDownloads, onDownload: downloadModel)
+            }
+        }
+        .sheet(isPresented: $showDownloadModelModal) {
+            DownloadModelModal(
+                isPresented: $showDownloadModelModal,
+                onDownload: downloadModel,
+                isNetworkConnected: isNetworkConnected,
+                ollamaServerRunning: ollamaServerRunning
+            )
+        }
+    }
+
+    // MARK: - Categories Pane
+
+    private var categoriesPane: some View {
+        VStack(spacing: 0) {
+            // Header with System Badge
+            VStack(spacing: 8) {
+                HStack {
+                    Image(systemName: "cube.box.fill")
+                        .font(.title2)
                         .foregroundStyle(LinearGradient.magnetarGradient)
+
+                    Text("MagnetarHub")
+                        .font(.title3)
+                        .fontWeight(.bold)
+
+                    Spacer()
                 }
-                .tag(category)
+
+                // System Info Badge
+                HStack(spacing: 6) {
+                    Image(systemName: "laptopcomputer")
+                        .font(.caption)
+                    Text(systemBadgeText)
+                        .font(.caption)
+                        .fontWeight(.medium)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(systemBadgeColor.opacity(0.2))
+                .foregroundColor(systemBadgeColor)
+                .cornerRadius(8)
+            }
+            .padding()
+
+            Divider()
+
+            // Categories
+            List(HubCategory.allCases, selection: $selectedCategory) { category in
+                CategoryRow(category: category)
+                    .tag(category)
             }
             .listStyle(.sidebar)
 
             Divider()
 
-            // System Status
-            systemStatusSection
-                .padding(12)
-        }
-    }
-
-    private var systemStatusSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("System Status")
-                .font(.caption)
-                .fontWeight(.semibold)
-                .foregroundColor(.secondary)
-
             // Ollama Server Status
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(ollamaServerRunning ? Color.green : Color.red)
-                    .frame(width: 8, height: 8)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Ollama Server")
-                        .font(.caption)
-                        .fontWeight(.medium)
-
-                    Text(ollamaServerRunning ? "Running" : "Stopped")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                }
-
-                Spacer()
-
-                // Control buttons
-                HStack(spacing: 6) {
-                    // Power button
-                    Button {
-                        Task {
-                            await toggleOllama()
-                        }
-                    } label: {
-                        Image(systemName: "power")
-                            .font(.system(size: 11))
-                            .foregroundColor(ollamaServerRunning ? .green : .red)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(isOllamaActionInProgress)
-
-                    // Restart button
-                    Button {
-                        Task {
-                            await restartOllama()
-                        }
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 11))
-                            .foregroundColor(.magnetarPrimary)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(isOllamaActionInProgress || !ollamaServerRunning)
-
-                    if isOllamaActionInProgress {
-                        ProgressView()
-                            .scaleEffect(0.6)
-                            .frame(width: 12, height: 12)
-                    }
-                }
-            }
-            .padding(8)
-            .background(Color.surfaceTertiary.opacity(0.3))
-            .cornerRadius(6)
-
-            // MagnetarCloud Status
-            if isCloudAuthenticated {
-                // Signed In State
+            VStack(spacing: 12) {
                 HStack(spacing: 8) {
                     Circle()
-                        .fill(Color.green)
+                        .fill(ollamaServerRunning ? Color.green : Color.red)
                         .frame(width: 8, height: 8)
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("MagnetarCloud")
+                        Text("Ollama Server")
                             .font(.caption)
                             .fontWeight(.medium)
 
-                        Text("\(cloudUsername ?? "User") Connected")
+                        Text(ollamaServerRunning ? "Running" : "Stopped")
                             .font(.caption2)
                             .foregroundColor(.secondary)
                     }
@@ -201,23 +132,23 @@ struct MagnetarHubWorkspace: View {
 
                     // Control buttons
                     HStack(spacing: 6) {
-                        // Power button (disconnect)
+                        // Power button
                         Button {
                             Task {
-                                await disconnectCloud()
+                                await toggleOllama()
                             }
                         } label: {
                             Image(systemName: "power")
                                 .font(.system(size: 11))
-                                .foregroundColor(.green)
+                                .foregroundColor(ollamaServerRunning ? .green : .red)
                         }
                         .buttonStyle(.plain)
-                        .disabled(isCloudActionInProgress)
+                        .disabled(isOllamaActionInProgress)
 
                         // Restart button
                         Button {
                             Task {
-                                await reconnectCloud()
+                                await restartOllama()
                             }
                         } label: {
                             Image(systemName: "arrow.clockwise")
@@ -225,9 +156,9 @@ struct MagnetarHubWorkspace: View {
                                 .foregroundColor(.magnetarPrimary)
                         }
                         .buttonStyle(.plain)
-                        .disabled(isCloudActionInProgress)
+                        .disabled(isOllamaActionInProgress || !ollamaServerRunning)
 
-                        if isCloudActionInProgress {
+                        if isOllamaActionInProgress {
                             ProgressView()
                                 .scaleEffect(0.6)
                                 .frame(width: 12, height: 12)
@@ -237,13 +168,67 @@ struct MagnetarHubWorkspace: View {
                 .padding(8)
                 .background(Color.surfaceTertiary.opacity(0.3))
                 .cornerRadius(6)
-            } else {
-                // Signed Out State - Click to Sign In
-                Button {
-                    Task {
-                        await signInToCloud()
+
+                // MagnetarCloud Status
+                if isCloudAuthenticated {
+                    // Signed In State
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(Color.green)
+                            .frame(width: 8, height: 8)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("MagnetarCloud")
+                                .font(.caption)
+                                .fontWeight(.medium)
+
+                            Text("\(cloudUsername ?? "User") Connected")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+
+                        Spacer()
+
+                        // Control buttons
+                        HStack(spacing: 6) {
+                            // Disconnect button
+                            Button {
+                                Task {
+                                    await disconnectCloud()
+                                }
+                            } label: {
+                                Image(systemName: "power")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.green)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(isCloudActionInProgress)
+
+                            // Refresh button
+                            Button {
+                                Task {
+                                    await reconnectCloud()
+                                }
+                            } label: {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.magnetarPrimary)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(isCloudActionInProgress)
+
+                            if isCloudActionInProgress {
+                                ProgressView()
+                                    .scaleEffect(0.6)
+                                    .frame(width: 12, height: 12)
+                            }
+                        }
                     }
-                } label: {
+                    .padding(8)
+                    .background(Color.surfaceTertiary.opacity(0.3))
+                    .cornerRadius(6)
+                } else {
+                    // Not Signed In State
                     HStack(spacing: 8) {
                         Circle()
                             .fill(Color.orange)
@@ -254,415 +239,182 @@ struct MagnetarHubWorkspace: View {
                                 .font(.caption)
                                 .fontWeight(.medium)
 
-                            Text("Click to Sign In")
+                            Text("Not Connected")
                                 .font(.caption2)
-                                .foregroundColor(.magnetarPrimary)
+                                .foregroundColor(.secondary)
                         }
 
                         Spacer()
 
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 10))
-                            .foregroundColor(.secondary)
+                        Button {
+                            Task {
+                                await connectCloud()
+                            }
+                        } label: {
+                            Text("Sign In")
+                                .font(.caption2)
+                                .fontWeight(.semibold)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.mini)
+                        .disabled(isCloudActionInProgress)
+
+                        if isCloudActionInProgress {
+                            ProgressView()
+                                .scaleEffect(0.6)
+                                .frame(width: 12, height: 12)
+                        }
                     }
                     .padding(8)
                     .background(Color.surfaceTertiary.opacity(0.3))
                     .cornerRadius(6)
                 }
-                .buttonStyle(.plain)
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 12)
         }
     }
 
-    // MARK: - Middle Pane: Model List
+    // MARK: - Cards Pane
 
-    private var modelListPane: some View {
+    private var cardsPane: some View {
         VStack(spacing: 0) {
-            PaneHeader(
-                title: selectedCategory?.displayName ?? "Models",
-                subtitle: "\(filteredModels.count) models",
-                action: {
-                    Task {
-                        if selectedCategory == .cloud {
-                            await fetchCloudModels()
-                        } else {
-                            await modelsStore.fetchModels()
-                        }
-                    }
-                },
-                actionIcon: "arrow.clockwise"
-            )
+            // Toolbar (for Discover category)
+            if selectedCategory == .discover {
+                discoverToolbar
+                Divider()
+            }
 
-            Divider()
-
-            if isLoading {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let error = currentError {
-                VStack(spacing: 12) {
-                    Image(systemName: "exclamationmark.triangle")
-                        .font(.system(size: 48))
-                        .foregroundColor(.secondary)
-
-                    Text("Error Loading Models")
-                        .font(.headline)
-
-                    Text(error)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 24)
-
-                    Button("Retry") {
-                        Task {
-                            if selectedCategory == .cloud {
-                                await fetchCloudModels()
-                            } else {
-                                await modelsStore.fetchModels()
+            // Cards grid
+            ScrollView {
+                if displayedModels.isEmpty {
+                    emptyState
+                } else {
+                    LazyVGrid(columns: gridColumns, spacing: 20) {
+                        ForEach(displayedModels) { model in
+                            ModelCard(
+                                model: model,
+                                downloadProgress: activeDownloads[model.name],
+                                onDownload: {
+                                    downloadModel(modelName: model.name)
+                                }
+                            )
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                selectedModel = model
+                                showModelDetail = true
                             }
                         }
                     }
-                    .buttonStyle(.borderedProminent)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if filteredModels.isEmpty {
-                PaneEmptyState(
-                    icon: selectedCategory == .cloud ? "cloud" : "cube.box",
-                    title: "No models found",
-                    subtitle: selectedCategory == .cloud ? "No cloud models available" : "Pull a model from Ollama to get started"
-                )
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        ForEach(filteredModels) { model in
-                            ModelRow(model: model, isSelected: selectedModel?.id == model.id)
-                                .onTapGesture {
-                                    selectedModel = model
-                                }
-                        }
-                    }
+                    .padding(20)
                 }
             }
         }
     }
 
-    private var isLoading: Bool {
-        selectedCategory == .cloud ? isLoadingCloudModels : modelsStore.isLoading
+    private var discoverToolbar: some View {
+        HStack(spacing: 12) {
+            // Title
+            Text("Recommended Models")
+                .font(.headline)
+                .foregroundColor(.primary)
+
+            Spacer()
+
+            // Network status indicator
+            HStack(spacing: 4) {
+                Circle()
+                    .fill(isNetworkConnected ? Color.green : Color.red)
+                    .frame(width: 6, height: 6)
+                Text(isNetworkConnected ? "Online" : "Offline")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+
+            // Browse Models button - Opens ollama.com
+            Button {
+                openOllamaWebsite()
+            } label: {
+                Label("Browse Models", systemImage: "safari")
+                    .font(.caption)
+            }
+            .buttonStyle(.bordered)
+            .disabled(!isNetworkConnected)
+            .help(isNetworkConnected ? "Open Ollama library in browser" : "No internet connection")
+
+            // Download Model button - Opens modal
+            Button {
+                showDownloadModelModal = true
+            } label: {
+                Label("Download Model", systemImage: "arrow.down.circle")
+                    .font(.caption)
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(!isNetworkConnected || !ollamaServerRunning)
+            .help(downloadButtonTooltip)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
     }
 
-    private var currentError: String? {
-        selectedCategory == .cloud ? cloudError : nil
-    }
-
-    private var filteredModels: [OllamaModel] {
-        guard let category = selectedCategory else { return modelsStore.models }
-
-        switch category {
-        case .all:
-            return modelsStore.models
-        case .code:
-            return modelsStore.models.filter { model in
-                model.name.lowercased().contains("code") || model.name.lowercased().contains("coder")
-            }
-        case .chat:
-            return modelsStore.models.filter { model in
-                model.name.lowercased().contains("chat") || model.name.lowercased().contains("llama")
-            }
-        case .vision:
-            return modelsStore.models.filter { model in
-                model.name.lowercased().contains("vision") || model.name.lowercased().contains("llava")
-            }
-        case .reasoning:
-            return modelsStore.models.filter { model in
-                model.name.lowercased().contains("qwen") || model.name.lowercased().contains("deepseek")
-            }
-        case .cloud:
-            return cloudModels
+    private var downloadButtonTooltip: String {
+        if !isNetworkConnected {
+            return "No internet connection"
+        } else if !ollamaServerRunning {
+            return "Ollama server is not running"
+        } else {
+            return "Download a specific model by name"
         }
     }
 
-    // MARK: - Right Pane: Model Detail
+    private var emptyState: some View {
+        VStack(spacing: 12) {
+            Image(systemName: selectedCategory.emptyIcon)
+                .font(.system(size: 48))
+                .foregroundColor(.secondary)
 
-    private var modelDetailPane: some View {
-        Group {
-            if let model = selectedModel {
-                VStack(spacing: 0) {
-                    // Model header
-                    HStack(spacing: 16) {
-                        Image(systemName: "cube.box.fill")
-                            .font(.system(size: 56))
-                            .foregroundStyle(LinearGradient.magnetarGradient)
+            Text(selectedCategory.emptyTitle)
+                .font(.title3)
+                .fontWeight(.semibold)
 
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(model.name)
-                                .font(.title2)
-                                .fontWeight(.bold)
+            Text(selectedCategory.emptySubtitle)
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(40)
+    }
 
-                            HStack(spacing: 8) {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "circle.fill")
-                                        .font(.caption2)
-                                        .foregroundColor(.green)
-                                    Text("Installed")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
+    // MARK: - Data Loading
 
-                                Text("•")
-                                    .foregroundColor(.secondary)
+    private func loadInitialData() async {
+        // Load local models
+        await modelsStore.fetchModels()
+        ollamaServerRunning = await ollamaService.checkStatus()
 
-                                Text(model.sizeFormatted)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
+        // Load cloud auth status
+        // TODO: Add cloud auth check
+    }
 
-                            // Model details (family, quantization)
-                            if let details = model.details {
-                                HStack(spacing: 6) {
-                                    if let family = details.family {
-                                        Text(family.uppercased())
-                                            .font(.caption2)
-                                            .padding(.horizontal, 8)
-                                            .padding(.vertical, 4)
-                                            .background(Color.blue.opacity(0.2))
-                                            .foregroundColor(.blue)
-                                            .cornerRadius(4)
-                                    }
-                                    if let quant = details.quantizationLevel {
-                                        Text(quant)
-                                            .font(.caption2)
-                                            .padding(.horizontal, 8)
-                                            .padding(.vertical, 4)
-                                            .background(Color.green.opacity(0.2))
-                                            .foregroundColor(.green)
-                                            .cornerRadius(4)
-                                    }
-                                }
-                            }
-                        }
+    // MARK: - Network Monitoring
 
-                        Spacer()
-                    }
-                    .padding(24)
-                    .background(Color.surfaceTertiary.opacity(0.3))
-
-                    Divider()
-
-                    // Model details and actions
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 24) {
-                            // Actions
-                            VStack(spacing: 12) {
-                                // Primary action row
-                                HStack(spacing: 12) {
-                                    if selectedCategory == .cloud {
-                                        // Cloud model actions
-                                        Button(action: {
-                                            Task {
-                                                await useCloudModel(model.id)
-                                            }
-                                        }) {
-                                            if isPerformingAction {
-                                                ProgressView()
-                                                    .scaleEffect(0.8)
-                                                    .frame(maxWidth: .infinity)
-                                            } else {
-                                                Label("Use in Chat", systemImage: "bubble.left")
-                                                    .frame(maxWidth: .infinity)
-                                            }
-                                        }
-                                        .buttonStyle(.borderedProminent)
-                                        .disabled(isPerformingAction)
-
-                                        Button(action: {
-                                            Task {
-                                                await updateCloudModel(model.id)
-                                            }
-                                        }) {
-                                            if isPerformingAction {
-                                                ProgressView()
-                                                    .scaleEffect(0.8)
-                                                    .frame(maxWidth: .infinity)
-                                            } else {
-                                                Label("Update", systemImage: "arrow.down.circle")
-                                                    .frame(maxWidth: .infinity)
-                                            }
-                                        }
-                                        .buttonStyle(.bordered)
-                                        .disabled(isPerformingAction)
-
-                                        Button(action: {
-                                            showDeleteConfirmation = true
-                                        }) {
-                                            Image(systemName: "trash")
-                                        }
-                                        .buttonStyle(.bordered)
-                                        .foregroundColor(.red)
-                                        .disabled(isPerformingAction)
-                                    } else {
-                                        // Local Ollama model actions
-                                        Button(action: {
-                                            Task {
-                                                await pullLocalModel(model.name)
-                                            }
-                                        }) {
-                                            if isDownloading {
-                                                ProgressView()
-                                                    .scaleEffect(0.8)
-                                                    .frame(maxWidth: .infinity)
-                                            } else {
-                                                Label("Update", systemImage: "arrow.down.circle")
-                                                    .frame(maxWidth: .infinity)
-                                            }
-                                        }
-                                        .buttonStyle(.borderedProminent)
-                                        .disabled(isDownloading)
-
-                                        Button(action: {
-                                            showLocalDeleteConfirmation = true
-                                        }) {
-                                            Image(systemName: "trash")
-                                        }
-                                        .buttonStyle(.bordered)
-                                        .foregroundColor(.red)
-                                        .disabled(isDownloading)
-                                    }
-                                }
-
-                                // Edit Tags button (all models)
-                                Button(action: {
-                                    showTagEditor = true
-                                }) {
-                                    Label("Edit Tags", systemImage: "tag.circle")
-                                        .frame(maxWidth: .infinity)
-                                }
-                                .buttonStyle(.bordered)
-                            }
-
-                            // Download progress indicator
-                            if let progress = downloadProgress {
-                                HStack(spacing: 8) {
-                                    ProgressView()
-                                        .scaleEffect(0.8)
-
-                                    Text(progress)
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                                .padding(12)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(Color.surfaceSecondary.opacity(0.5))
-                                .cornerRadius(8)
-                            }
-
-                            // Action message (success/error feedback)
-                            if let message = actionMessage {
-                                HStack(spacing: 8) {
-                                    Image(systemName: message.hasPrefix("Error") ? "exclamationmark.circle" : "checkmark.circle")
-                                        .foregroundColor(message.hasPrefix("Error") ? .red : .green)
-
-                                    Text(message)
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                                .padding(8)
-                                .background(Color.surfaceSecondary.opacity(0.5))
-                                .cornerRadius(6)
-                            }
-
-                            Divider()
-
-                            // Model info
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Model Information")
-                                    .font(.headline)
-
-                                if let digest = model.digest {
-                                    DetailRow(icon: "number", label: "Digest", value: String(digest.prefix(16)) + "...")
-                                }
-
-                                if let modifiedAt = model.modifiedAt {
-                                    DetailRow(icon: "calendar", label: "Modified", value: modifiedAt)
-                                }
-
-                                DetailRow(icon: "externaldrive", label: "Size", value: model.sizeFormatted)
-                            }
-
-                            Divider()
-
-                            // Model Information
-                            if let details = model.details {
-                                VStack(alignment: .leading, spacing: 12) {
-                                    Text("Model Details")
-                                        .font(.headline)
-
-                                    if let family = details.family {
-                                        HStack {
-                                            Text("Family:")
-                                                .font(.body)
-                                                .foregroundColor(.secondary)
-                                            Text(family.capitalized)
-                                                .font(.body)
-                                                .fontWeight(.medium)
-                                        }
-                                    }
-                                    if let format = details.format {
-                                        HStack {
-                                            Text("Format:")
-                                                .font(.body)
-                                                .foregroundColor(.secondary)
-                                            Text(format.uppercased())
-                                                .font(.body)
-                                                .fontWeight(.medium)
-                                        }
-                                    }
-                                    if let paramSize = details.parameterSize {
-                                        HStack {
-                                            Text("Parameters:")
-                                                .font(.body)
-                                                .foregroundColor(.secondary)
-                                            Text(paramSize)
-                                                .font(.body)
-                                                .fontWeight(.medium)
-                                        }
-                                    }
-                                    if let quant = details.quantizationLevel {
-                                        HStack {
-                                            Text("Quantization:")
-                                                .font(.body)
-                                                .foregroundColor(.secondary)
-                                            Text(quant)
-                                                .font(.body)
-                                                .fontWeight(.medium)
-                                        }
-                                    }
-                                }
-                                .padding(12)
-                                .background(Color.surfaceSecondary.opacity(0.3))
-                                .cornerRadius(8)
-                            }
-
-                            Spacer()
-                        }
-                        .padding(24)
-                    }
-                }
-            } else {
-                PaneEmptyState(
-                    icon: "cube.box",
-                    title: "No model selected",
-                    subtitle: "Select a model to view details and actions"
-                )
+    private func startNetworkMonitoring() {
+        let queue = DispatchQueue(label: "NetworkMonitor")
+        networkMonitor.pathUpdateHandler = { path in
+            DispatchQueue.main.async {
+                self.isNetworkConnected = path.status == .satisfied
             }
         }
-        .sheet(isPresented: $showTagEditor) {
-            if let model = selectedModel {
-                ModelTagEditorSheet(modelName: model.name)
-            }
+        networkMonitor.start(queue: queue)
+    }
+
+    private func openOllamaWebsite() {
+        if let url = URL(string: "https://ollama.com/library") {
+            NSWorkspace.shared.open(url)
         }
     }
 
-    // MARK: - Ollama Control Actions
+    // MARK: - Ollama Management
 
     private func toggleOllama() async {
         isOllamaActionInProgress = true
@@ -706,25 +458,27 @@ struct MagnetarHubWorkspace: View {
         isOllamaActionInProgress = false
     }
 
-    // MARK: - MagnetarCloud Control Actions
+    // MARK: - Cloud Management
 
-    private func signInToCloud() async {
-        // TODO: Implement actual Supabase OAuth flow
-        // This will eventually:
-        // 1. Open browser with Supabase OAuth URL
-        // 2. Handle callback with auth code
-        // 3. Exchange code for session token
-        // 4. Store token in keychain
-        // 5. Update isCloudAuthenticated and fetch profile
+    private func connectCloud() async {
+        isCloudActionInProgress = true
 
-        print("MagnetarCloud sign-in not yet implemented - needs Supabase integration")
+        // TODO: Implement MagnetarCloud authentication
+        // For now, simulate connection
+        try? await Task.sleep(nanoseconds: 1_000_000_000)
+
+        await MainActor.run {
+            isCloudAuthenticated = true
+            cloudUsername = "User"
+            isCloudActionInProgress = false
+        }
     }
 
     private func disconnectCloud() async {
         isCloudActionInProgress = true
 
-        // Clear cloud session token from keychain
-        try? KeychainService.shared.deleteToken(forKey: "magnetar_cloud_token")
+        // TODO: Implement MagnetarCloud disconnection
+        try? await Task.sleep(nanoseconds: 500_000_000)
 
         await MainActor.run {
             isCloudAuthenticated = false
@@ -737,502 +491,948 @@ struct MagnetarHubWorkspace: View {
     private func reconnectCloud() async {
         isCloudActionInProgress = true
 
-        // Attempt to reconnect with existing credentials
-        // Check if we have a stored token
-        if let token = KeychainService.shared.loadToken(forKey: "magnetar_cloud_token"), !token.isEmpty {
-            // TODO: Validate token with Supabase and refresh profile
-            await MainActor.run {
-                isCloudAuthenticated = true
-                isCloudActionInProgress = false
-            }
+        // TODO: Implement MagnetarCloud reconnection
+        try? await Task.sleep(nanoseconds: 1_000_000_000)
 
-            // Refresh cloud models
-            await fetchCloudModels()
-        } else {
-            // No stored token - need to sign in
-            await MainActor.run {
-                isCloudActionInProgress = false
-            }
-        }
-    }
-
-    // MARK: - Helper Functions
-
-    private func checkOllamaStatus() async {
-        let isRunning = await ollamaService.checkStatus()
         await MainActor.run {
-            ollamaServerRunning = isRunning
+            isCloudActionInProgress = false
         }
     }
 
-    // MARK: - Cloud Auth Status
+    // MARK: - Model Downloads
 
-    @MainActor
-    private func checkCloudAuthStatus() async {
-        // Check if user is authenticated with MagnetarCloud
-        // Use dedicated cloud token key (not the main app token)
-        if let token = KeychainService.shared.loadToken(forKey: "magnetar_cloud_token"), !token.isEmpty {
-            // TODO: Validate token with Supabase API
-            // For now, just check if token exists
-            isCloudAuthenticated = true
-            cloudUsername = "Cloud User"  // TODO: Fetch from Supabase profile
-        } else {
-            isCloudAuthenticated = false
-            cloudUsername = nil
-        }
-    }
-
-    // MARK: - Cloud Models CRUD
-
-    @MainActor
-    private func fetchCloudModels() async {
-        isLoadingCloudModels = true
-        cloudError = nil
-
-        do {
-            let url = URL(string: "http://localhost:8000/api/v1/cloud/models")!
-            var request = URLRequest(url: url)
-            request.httpMethod = "GET"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-            // Get token if available (will be nil in DEBUG mode)
-            if let token = KeychainService.shared.loadToken() {
-                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            }
-
-            let (data, response) = try await URLSession.shared.data(for: request)
-
-            // Handle 404 gracefully (endpoint not yet implemented)
-            guard let httpResponse = response as? HTTPURLResponse else {
-                throw URLError(.badServerResponse)
-            }
-
-            if httpResponse.statusCode == 404 {
-                // Cloud models endpoint not yet implemented - use empty list
-                cloudModels = []
-                isLoadingCloudModels = false
-                return
-            } else if httpResponse.statusCode == 200 {
-                // Parse cloud models (same format as OllamaModel)
-                let decoder = JSONDecoder()
-                decoder.keyDecodingStrategy = .convertFromSnakeCase
-                cloudModels = try decoder.decode([OllamaModel].self, from: data)
-            } else if httpResponse.statusCode == 401 {
-                cloudError = "Not authenticated. Please sign in to MagnetarCloud."
-                isCloudAuthenticated = false
-                cloudModels = []
-            } else {
-                cloudError = "Failed to load cloud models: HTTP \(httpResponse.statusCode)"
-                cloudModels = []
-            }
-
-        } catch is URLError {
-            // Network errors - silently ignore, cloud not available
-            cloudModels = []
-        } catch {
-            // Any other errors (including decoding) - silently ignore
-            cloudModels = []
+    private func downloadModel(modelName: String) {
+        guard ollamaServerRunning else {
+            print("❌ Cannot download - Ollama server not running")
+            return
         }
 
-        isLoadingCloudModels = false
-    }
-
-    @MainActor
-    private func useCloudModel(_ modelId: String) async {
-        isPerformingAction = true
-        actionMessage = nil
-
-        do {
-            let url = URL(string: "http://localhost:8000/api/v1/cloud/models/\(modelId)/use")!
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-            if let token = KeychainService.shared.loadToken() {
-                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            }
-
-            let (_, response) = try await URLSession.shared.data(for: request)
-
-            guard let httpResponse = response as? HTTPURLResponse else {
-                throw CloudError.invalidResponse
-            }
-
-            if httpResponse.statusCode == 200 {
-                actionMessage = "Model activated for chat use"
-                // Clear message after 3 seconds
-                try? await Task.sleep(nanoseconds: 3_000_000_000)
-                actionMessage = nil
-            } else {
-                actionMessage = "Error: Failed to activate model (HTTP \(httpResponse.statusCode))"
-            }
-
-        } catch {
-            actionMessage = "Error: \(error.localizedDescription)"
+        guard isNetworkConnected else {
+            print("❌ Cannot download - No internet connection")
+            return
         }
 
-        isPerformingAction = false
-    }
+        // Initialize progress tracking
+        activeDownloads[modelName] = DownloadProgress(
+            modelName: modelName,
+            status: "Starting download...",
+            progress: 0.0
+        )
 
-    @MainActor
-    private func updateCloudModel(_ modelId: String) async {
-        isPerformingAction = true
-        actionMessage = nil
-
-        // Store original model in case we need to rollback
-        let originalModel = cloudModels.first { $0.id == modelId }
-
-        do {
-            let url = URL(string: "http://localhost:8000/api/v1/cloud/models/\(modelId)")!
-            var request = URLRequest(url: url)
-            request.httpMethod = "PUT"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-            if let token = KeychainService.shared.loadToken() {
-                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            }
-
-            let (data, response) = try await URLSession.shared.data(for: request)
-
-            guard let httpResponse = response as? HTTPURLResponse else {
-                throw CloudError.invalidResponse
-            }
-
-            if httpResponse.statusCode == 200 {
-                // Parse updated model
-                let decoder = JSONDecoder()
-                decoder.keyDecodingStrategy = .convertFromSnakeCase
-                let updatedModel = try decoder.decode(OllamaModel.self, from: data)
-
-                // Update in cloudModels array
-                if let index = cloudModels.firstIndex(where: { $0.id == modelId }) {
-                    cloudModels[index] = updatedModel
-                    selectedModel = updatedModel
-                }
-
-                actionMessage = "Model updated successfully"
-                // Clear message after 3 seconds
-                try? await Task.sleep(nanoseconds: 3_000_000_000)
-                actionMessage = nil
-            } else {
-                // Rollback on failure
-                if let original = originalModel,
-                   let index = cloudModels.firstIndex(where: { $0.id == modelId }) {
-                    cloudModels[index] = original
-                }
-                actionMessage = "Error: Failed to update model (HTTP \(httpResponse.statusCode))"
-            }
-
-        } catch {
-            // Rollback on failure
-            if let original = originalModel,
-               let index = cloudModels.firstIndex(where: { $0.id == modelId }) {
-                cloudModels[index] = original
-            }
-            actionMessage = "Error: \(error.localizedDescription)"
-        }
-
-        isPerformingAction = false
-    }
-
-    @MainActor
-    private func deleteCloudModel(_ modelId: String) async {
-        // Store original models in case we need to rollback
-        let originalModels = cloudModels
-
-        // Optimistic delete
-        cloudModels.removeAll { $0.id == modelId }
-
-        // Clear selection if deleted model was selected
-        if selectedModel?.id == modelId {
-            selectedModel = nil
-        }
-
-        do {
-            let url = URL(string: "http://localhost:8000/api/v1/cloud/models/\(modelId)")!
-            var request = URLRequest(url: url)
-            request.httpMethod = "DELETE"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-            if let token = KeychainService.shared.loadToken() {
-                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            }
-
-            let (_, response) = try await URLSession.shared.data(for: request)
-
-            guard let httpResponse = response as? HTTPURLResponse else {
-                throw CloudError.invalidResponse
-            }
-
-            if httpResponse.statusCode != 200 && httpResponse.statusCode != 204 {
-                // Rollback on failure
-                cloudModels = originalModels
-                cloudError = "Failed to delete model: HTTP \(httpResponse.statusCode)"
-            }
-
-        } catch {
-            // Rollback on failure
-            cloudModels = originalModels
-            cloudError = "Failed to delete model: \(error.localizedDescription)"
-        }
-    }
-
-    // MARK: - Local Ollama Model Management
-
-    @MainActor
-    private func pullLocalModel(_ modelName: String) async {
-        isDownloading = true
-        downloadProgress = "Starting download..."
-        actionMessage = nil
+        print("📥 Starting download: \(modelName)")
 
         ollamaService.pullModel(
             modelName: modelName,
             onProgress: { progress in
-                DispatchQueue.main.async {
-                    self.downloadProgress = progress.message
+                Task { @MainActor in
+                    self.activeDownloads[modelName] = DownloadProgress(
+                        modelName: modelName,
+                        status: progress.message,
+                        progress: self.estimateProgress(from: progress.status)
+                    )
                 }
             },
             onComplete: { result in
-                DispatchQueue.main.async {
-                    self.isDownloading = false
-                    self.downloadProgress = nil
-
+                Task { @MainActor in
                     switch result {
-                    case .success(let message):
-                        self.actionMessage = message
-                        // Refresh model list
-                        Task {
-                            await self.modelsStore.fetchModels()
-                        }
+                    case .success:
+                        print("✅ Download complete: \(modelName)")
+                        self.activeDownloads.removeValue(forKey: modelName)
+                        // Refresh local models list
+                        await self.modelsStore.fetchModels()
                     case .failure(let error):
-                        self.actionMessage = "Error: \(error.localizedDescription)"
-                    }
-
-                    // Clear message after 5 seconds
-                    Task {
-                        try? await Task.sleep(nanoseconds: 5_000_000_000)
-                        self.actionMessage = nil
+                        print("❌ Download failed: \(error.localizedDescription)")
+                        self.activeDownloads[modelName] = DownloadProgress(
+                            modelName: modelName,
+                            status: "Error: \(error.localizedDescription)",
+                            progress: 0.0,
+                            error: error.localizedDescription
+                        )
                     }
                 }
             }
         )
     }
 
-    @MainActor
-    private func deleteLocalModel(_ modelName: String) async {
-        isDownloading = true
-        downloadProgress = "Deleting model..."
-        actionMessage = nil
-
-        do {
-            let result = try await ollamaService.removeModel(modelName: modelName)
-
-            if result.status == "success" {
-                actionMessage = result.message
-
-                // Remove from UI
-                modelsStore.models.removeAll { $0.name == modelName }
-
-                // Clear selection if deleted model was selected
-                if selectedModel?.name == modelName {
-                    selectedModel = nil
-                }
-
-                // Refresh model list to be sure
-                await modelsStore.fetchModels()
-            } else {
-                actionMessage = "Error: \(result.message)"
-            }
-
-        } catch {
-            actionMessage = "Error: \(error.localizedDescription)"
-        }
-
-        isDownloading = false
-        downloadProgress = nil
-
-        // Clear message after 5 seconds
-        try? await Task.sleep(nanoseconds: 5_000_000_000)
-        actionMessage = nil
-    }
-}
-
-// MARK: - Cloud Errors
-
-enum CloudError: LocalizedError {
-    case invalidResponse
-    case unauthorized
-    case notFound
-    case serverError(Int)
-
-    var errorDescription: String? {
-        switch self {
-        case .invalidResponse:
-            return "Invalid response from server"
-        case .unauthorized:
-            return "Not authenticated with MagnetarCloud"
-        case .notFound:
-            return "Model not found"
-        case .serverError(let code):
-            return "Server error (HTTP \(code))"
+    private func estimateProgress(from status: String) -> Double {
+        switch status {
+        case "starting": return 0.1
+        case "downloading": return 0.5
+        case "verifying": return 0.8
+        case "completed": return 1.0
+        default: return 0.5
         }
     }
+
+    // MARK: - Computed Properties
+
+    private var gridColumns: [GridItem] {
+        [
+            GridItem(.adaptive(minimum: 280, maximum: 320), spacing: 20)
+        ]
+    }
+
+    private var displayedModels: [AnyModelItem] {
+        switch selectedCategory {
+        case .myModels:
+            return modelsStore.models.map { AnyModelItem.local($0) }
+        case .discover:
+            return recommendedModels.map { AnyModelItem.recommended($0) }
+        case .cloud:
+            return cloudModels.map { AnyModelItem.cloud($0) }
+        }
+    }
+
+    // Hardcoded recommended models
+    private var recommendedModels: [RecommendedModel] {
+        let allModels: [RecommendedModel] = [
+            RecommendedModel(
+                modelName: "phi4:14b",
+                displayName: "Phi-4 (14B)",
+                description: "Microsoft's powerful small model - excellent reasoning and coding abilities in a compact size",
+                capability: "code",
+                parameterSize: "14B",
+                isOfficial: true
+            ),
+            RecommendedModel(
+                modelName: "llama3.3:70b",
+                displayName: "Llama 3.3 (70B)",
+                description: "Meta's flagship model - top-tier performance for complex tasks and reasoning",
+                capability: "chat",
+                parameterSize: "70B",
+                isOfficial: true
+            ),
+            RecommendedModel(
+                modelName: "qwen2.5-coder:14b",
+                displayName: "Qwen2.5 Coder (14B)",
+                description: "Specialized coding model - great for code generation and debugging",
+                capability: "code",
+                parameterSize: "14B",
+                isOfficial: true
+            ),
+            RecommendedModel(
+                modelName: "mistral:7b",
+                displayName: "Mistral (7B)",
+                description: "Fast and efficient - perfect balance of performance and speed",
+                capability: "chat",
+                parameterSize: "7B",
+                isOfficial: true
+            ),
+            RecommendedModel(
+                modelName: "llama3.2:3b",
+                displayName: "Llama 3.2 (3B)",
+                description: "Lightweight and fast - ideal for quick tasks and low-resource devices",
+                capability: "chat",
+                parameterSize: "3B",
+                isOfficial: true
+            ),
+            RecommendedModel(
+                modelName: "deepseek-r1:14b",
+                displayName: "DeepSeek R1 (14B)",
+                description: "Advanced reasoning model - excels at complex problem-solving and analysis",
+                capability: "chat",
+                parameterSize: "14B",
+                isOfficial: true
+            ),
+        ]
+
+        // Filter by system capability
+        return allModels.filter { model in
+            let compatibility = capabilityService.canRunModel(parameterSize: model.parameterSize)
+            return compatibility.performance != .insufficient
+        }
+    }
+
+    private var systemBadgeText: String {
+        let memoryGB = Int(capabilityService.totalMemoryGB)
+        if memoryGB >= 64 {
+            return "\(memoryGB)GB • High-End"
+        } else if memoryGB >= 32 {
+            return "\(memoryGB)GB • Great"
+        } else if memoryGB >= 16 {
+            return "\(memoryGB)GB • Good"
+        } else {
+            return "\(memoryGB)GB • Entry"
+        }
+    }
+
+    private var systemBadgeColor: Color {
+        let memoryGB = Int(capabilityService.totalMemoryGB)
+        if memoryGB >= 64 {
+            return .green
+        } else if memoryGB >= 32 {
+            return .blue
+        } else if memoryGB >= 16 {
+            return .cyan
+        } else {
+            return .orange
+        }
+    }
+
 }
 
-// MARK: - Supporting Views
+// MARK: - Category Row
 
-struct ModelRow: View {
-    let model: OllamaModel
-    let isSelected: Bool
-    @State private var isHovered = false
+struct CategoryRow: View {
+    let category: HubCategory
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "cube.box.fill")
-                .font(.title3)
-                .foregroundStyle(LinearGradient.magnetarGradient)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(model.name)
+        Label {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(category.displayName)
                     .font(.headline)
-                    .foregroundColor(.textPrimary)
+                Text(category.description)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        } icon: {
+            Image(systemName: category.icon)
+                .foregroundStyle(LinearGradient.magnetarGradient)
+        }
+        .padding(.vertical, 4)
+    }
+}
 
-                // Model details badges
-                if let details = model.details {
-                    HStack(spacing: 4) {
-                        if let family = details.family {
-                            Text(family.uppercased())
+// MARK: - Model Card
+
+struct ModelCard: View {
+    let model: AnyModelItem
+    let downloadProgress: DownloadProgress?
+    let onDownload: () -> Void
+    @State private var isHovered: Bool = false
+    private let capabilityService = SystemCapabilityService.shared
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Icon + Badge + Compatibility
+            HStack {
+                Image(systemName: model.icon)
+                    .font(.system(size: 32))
+                    .foregroundStyle(model.iconGradient)
+
+                Spacer()
+
+                // Compatibility badge
+                if let paramSize = model.parameterSize {
+                    let compatibility = capabilityService.canRunModel(parameterSize: paramSize)
+                    Image(systemName: compatibility.performance.icon)
+                        .font(.caption2)
+                        .foregroundColor(colorForPerformance(compatibility.performance))
+                }
+
+                if let badge = model.badge {
+                    Text(badge)
+                        .font(.caption2)
+                        .fontWeight(.bold)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(model.badgeColor.opacity(0.2))
+                        .foregroundColor(model.badgeColor)
+                        .cornerRadius(6)
+                }
+            }
+
+            // Title
+            Text(model.displayName)
+                .font(.headline)
+                .lineLimit(1)
+
+            // Description
+            if let description = model.description {
+                Text(description)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .lineLimit(2)
+                    .frame(height: 32, alignment: .top)
+            }
+
+            Spacer()
+
+            // Download progress or stats
+            if let progress = downloadProgress {
+                VStack(spacing: 4) {
+                    HStack {
+                        Text(progress.status)
+                            .font(.caption2)
+                            .foregroundColor(progress.error != nil ? .red : .secondary)
+                        Spacer()
+                        if progress.error == nil {
+                            Text("\(Int(progress.progress * 100))%")
                                 .font(.caption2)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Color.blue.opacity(0.2))
-                                .foregroundColor(.blue)
-                                .cornerRadius(3)
-                        }
-                        if let quant = details.quantizationLevel {
-                            Text(quant)
-                                .font(.caption2)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Color.green.opacity(0.2))
-                                .foregroundColor(.green)
-                                .cornerRadius(3)
+                                .foregroundColor(.secondary)
                         }
                     }
-                } else {
-                    Text(model.sizeFormatted)
+                    ProgressView(value: progress.progress)
+                        .tint(progress.error != nil ? .red : .magnetarPrimary)
+                }
+            } else if case .recommended = model {
+                Button {
+                    onDownload()
+                } label: {
+                    Label("Download", systemImage: "arrow.down.circle")
+                        .font(.caption)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+            } else {
+                // Stats for local/cloud models
+                HStack(spacing: 12) {
+                    if let stat1 = model.stat1 {
+                        HStack(spacing: 4) {
+                            Image(systemName: stat1.icon)
+                                .font(.caption2)
+                            Text(stat1.text)
+                                .font(.caption2)
+                        }
+                        .foregroundColor(.secondary)
+                    }
+
+                    if let stat2 = model.stat2 {
+                        HStack(spacing: 4) {
+                            Image(systemName: stat2.icon)
+                                .font(.caption2)
+                            Text(stat2.text)
+                                .font(.caption2)
+                        }
+                        .foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .frame(height: 200)
+        .background(cardBackground)
+        .cornerRadius(12)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(isHovered ? Color.magnetarPrimary.opacity(0.3) : Color.clear, lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(isHovered ? 0.15 : 0.05), radius: isHovered ? 8 : 4, y: 2)
+        .scaleEffect(isHovered ? 1.02 : 1.0)
+        .animation(.easeInOut(duration: 0.2), value: isHovered)
+        .onHover { hovering in
+            isHovered = hovering
+        }
+    }
+
+    private var cardBackground: some View {
+        RoundedRectangle(cornerRadius: 12)
+            .fill(Color.surfaceSecondary.opacity(0.5))
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(.ultraThinMaterial)
+            )
+    }
+
+    private func colorForPerformance(_ performance: ModelCompatibility.PerformanceLevel) -> Color {
+        switch performance {
+        case .excellent: return .green
+        case .good: return .blue
+        case .fair: return .orange
+        case .insufficient: return .red
+        case .unknown: return .secondary
+        }
+    }
+}
+
+// MARK: - Download Model Modal
+
+struct DownloadModelModal: View {
+    @Binding var isPresented: Bool
+    let onDownload: (String) -> Void
+    let isNetworkConnected: Bool
+    let ollamaServerRunning: Bool
+
+    @State private var modelName: String = ""
+    @FocusState private var isTextFieldFocused: Bool
+
+    var body: some View {
+        VStack(spacing: 20) {
+            // Header
+            HStack {
+                Image(systemName: "arrow.down.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(LinearGradient.magnetarGradient)
+
+                Text("Download Model")
+                    .font(.title3)
+                    .fontWeight(.bold)
+
+                Spacer()
+
+                Button {
+                    isPresented = false
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title3)
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+
+            // Instructions
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Enter the exact model name from the Ollama library")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+
+                Text("Example: phi4:14b, llama3.3:70b, mistral:7b")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .italic()
+            }
+
+            // Text field
+            TextField("Type/Paste model in exact format from ollama library (ex. phi4:14b)", text: $modelName)
+                .textFieldStyle(.roundedBorder)
+                .focused($isTextFieldFocused)
+                .onSubmit {
+                    downloadModel()
+                }
+
+            // Status indicators
+            HStack(spacing: 16) {
+                HStack(spacing: 6) {
+                    Image(systemName: isNetworkConnected ? "wifi" : "wifi.slash")
+                        .foregroundColor(isNetworkConnected ? .green : .red)
+                    Text(isNetworkConnected ? "Connected" : "No internet")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                HStack(spacing: 6) {
+                    Image(systemName: ollamaServerRunning ? "checkmark.circle.fill" : "xmark.circle.fill")
+                        .foregroundColor(ollamaServerRunning ? .green : .red)
+                    Text(ollamaServerRunning ? "Ollama running" : "Ollama stopped")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
 
-            Spacer()
-        }
-        .padding(12)
-        .background(
-            // macOS Tahoe-style selection and hover feedback
-            RoundedRectangle(cornerRadius: 8)
-                .fill(backgroundColor)
-        )
-        .contentShape(Rectangle())  // Make entire area tappable
-        .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
-                isHovered = hovering
+            // Buttons
+            HStack(spacing: 12) {
+                Button("Cancel") {
+                    isPresented = false
+                }
+                .keyboardShortcut(.cancelAction)
+
+                Button("Download") {
+                    downloadModel()
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(!canDownload)
             }
+        }
+        .padding(24)
+        .frame(width: 500)
+        .background(Color(nsColor: .windowBackgroundColor))
+        .onAppear {
+            isTextFieldFocused = true
         }
     }
 
-    private var backgroundColor: Color {
-        if isSelected {
-            return Color.magnetarPrimary.opacity(0.15)
-        } else if isHovered {
-            return Color.magnetarPrimary.opacity(0.06)
-        } else {
-            return Color.clear
-        }
+    private var canDownload: Bool {
+        !modelName.isEmpty && isNetworkConnected && ollamaServerRunning
+    }
+
+    private func downloadModel() {
+        guard canDownload else { return }
+        onDownload(modelName.trimmingCharacters(in: .whitespaces))
+        isPresented = false
     }
 }
 
-struct CapabilityTagBadge: View {
-    let tag: ModelTag
-    var compact: Bool = false
+// MARK: - Model Detail Modal
+
+struct ModelDetailModal: View {
+    let model: AnyModelItem
+    @Binding var activeDownloads: [String: DownloadProgress]
+    let onDownload: (String) -> Void
+    @Environment(\.dismiss) private var dismiss
+    private let capabilityService = SystemCapabilityService.shared
 
     var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: tag.icon)
-                .font(.caption2)
-            if !compact {
-                Text(tag.name)
-                    .font(.caption2)
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Image(systemName: model.icon)
+                    .font(.system(size: 48))
+                    .foregroundStyle(model.iconGradient)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(model.name)
+                        .font(.title2)
+                        .fontWeight(.bold)
+
+                    if let badge = model.badge {
+                        Text(badge)
+                            .font(.caption)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(model.badgeColor.opacity(0.2))
+                            .foregroundColor(model.badgeColor)
+                            .cornerRadius(6)
+                    }
+                }
+
+                Spacer()
+
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(24)
+
+            Divider()
+
+            // Content
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // System Compatibility (for recommended models)
+                    if case .recommended(let recommendedModel) = model {
+                        compatibilitySection(for: recommendedModel)
+                    }
+
+                    // Description
+                    if let description = model.description {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Description")
+                                .font(.headline)
+                            Text(description)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    // Actions
+                    model.detailActions(activeDownloads: $activeDownloads, onDownload: onDownload)
+
+                    // Additional details
+                    model.additionalDetails
+                }
+                .padding(24)
             }
         }
-        .fontWeight(.semibold)
-        .padding(.horizontal, compact ? 6 : 8)
-        .padding(.vertical, 4)
-        .background(tagColor.opacity(0.2))
-        .foregroundColor(tagColor)
-        .cornerRadius(6)
+        .frame(width: 600, height: 500)
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 
-    private var tagColor: Color {
-        // Map tag IDs to colors
-        switch tag.id {
-        case "code": return .blue
-        case "chat": return .purple
-        case "vision": return .orange
-        case "reasoning": return .green
-        case "multilingual": return .pink
-        case "function_calling": return .cyan
-        case "json_mode": return .indigo
-        default: return .gray
+    @ViewBuilder
+    private func compatibilitySection(for recommendedModel: RecommendedModel) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("System Compatibility")
+                .font(.headline)
+
+            // System info
+            Text(capabilityService.getSystemSummary())
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .padding(.vertical, 4)
+
+            // Check compatibility for this model size
+            let compatibility = capabilityService.canRunModel(parameterSize: recommendedModel.parameterSize)
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 12) {
+                    Image(systemName: compatibility.performance.icon)
+                        .foregroundColor(colorForPerformance(compatibility.performance))
+                        .frame(width: 20)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Text(friendlyModelSizeName(recommendedModel.parameterSize))
+                                .font(.body)
+                                .fontWeight(.medium)
+
+                            Text("(\(recommendedModel.parameterSize))")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+
+                        Text(compatibility.reason)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+
+                    Spacer()
+
+                    if let memUsage = compatibility.estimatedMemoryUsage {
+                        Text(String(format: "~%.1fGB", memUsage))
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                if let explanation = compatibility.friendlyExplanation {
+                    Text(explanation)
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .padding(.leading, 32)
+                }
+            }
+            .padding(10)
+            .background(Color.surfaceTertiary.opacity(0.3))
+            .cornerRadius(8)
+        }
+    }
+
+    private func colorForPerformance(_ performance: ModelCompatibility.PerformanceLevel) -> Color {
+        switch performance {
+        case .excellent: return .green
+        case .good: return .blue
+        case .fair: return .orange
+        case .insufficient: return .red
+        case .unknown: return .secondary
+        }
+    }
+
+    private func friendlyModelSizeName(_ size: String) -> String {
+        switch size {
+        case "1.5B": return "Tiny"
+        case "3B": return "Small"
+        case "7B": return "Medium"
+        case "13B": return "Large"
+        case "34B": return "Very Large"
+        case "70B": return "Massive"
+        default: return size
         }
     }
 }
 
-// MARK: - Models
+// MARK: - Hub Category
 
-enum ModelCategory: String, CaseIterable, Identifiable {
-    case all = "all"
-    case code = "code"
-    case chat = "chat"
-    case vision = "vision"
-    case reasoning = "reasoning"
+enum HubCategory: String, CaseIterable, Identifiable {
+    case myModels = "my_models"
+    case discover = "discover"
     case cloud = "cloud"
 
     var id: String { rawValue }
 
     var displayName: String {
         switch self {
-        case .all: return "All Models"
-        case .code: return "Code Models"
-        case .chat: return "Chat Models"
-        case .vision: return "Vision Models"
-        case .reasoning: return "Reasoning Models"
+        case .myModels: return "My Models"
+        case .discover: return "Discover"
         case .cloud: return "Cloud Models"
         }
     }
 
     var description: String {
         switch self {
-        case .all: return "All local models"
-        case .code: return "Code generation & analysis"
-        case .chat: return "Conversational AI"
-        case .vision: return "Image understanding"
-        case .reasoning: return "Complex problem solving"
+        case .myModels: return "Installed local models"
+        case .discover: return "Browse Ollama library"
         case .cloud: return "MagnetarCloud models"
         }
     }
 
     var icon: String {
         switch self {
-        case .all: return "cube.box"
-        case .code: return "chevron.left.forwardslash.chevron.right"
-        case .chat: return "bubble.left"
-        case .vision: return "eye"
-        case .reasoning: return "brain"
+        case .myModels: return "cube.box"
+        case .discover: return "magnifyingglass"
         case .cloud: return "cloud"
         }
     }
+
+    var emptyIcon: String {
+        switch self {
+        case .myModels: return "cube.box"
+        case .discover: return "magnifyingglass.circle"
+        case .cloud: return "cloud"
+        }
+    }
+
+    var emptyTitle: String {
+        switch self {
+        case .myModels: return "No Models Installed"
+        case .discover: return "No Models Found"
+        case .cloud: return "Not Connected"
+        }
+    }
+
+    var emptySubtitle: String {
+        switch self {
+        case .myModels: return "Download models from Discover tab"
+        case .discover: return "Try a different search"
+        case .cloud: return "Sign in to MagnetarCloud"
+        }
+    }
+}
+
+// MARK: - AnyModelItem (Type-erased model)
+
+enum AnyModelItem: Identifiable {
+    case local(OllamaModel)
+    case recommended(RecommendedModel)
+    case cloud(OllamaModel)
+
+    var id: String {
+        switch self {
+        case .local(let model): return "local-\(model.id)"
+        case .recommended(let model): return "recommended-\(model.id)"
+        case .cloud(let model): return "cloud-\(model.id)"
+        }
+    }
+
+    var name: String {
+        switch self {
+        case .local(let model): return model.name
+        case .recommended(let model): return model.modelName
+        case .cloud(let model): return model.name
+        }
+    }
+
+    var displayName: String {
+        switch self {
+        case .local(let model): return model.name
+        case .recommended(let model): return model.displayName
+        case .cloud(let model): return model.name
+        }
+    }
+
+    var description: String? {
+        switch self {
+        case .local: return nil
+        case .recommended(let model): return model.description
+        case .cloud: return nil
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .local: return "cube.box.fill"
+        case .recommended: return "star.circle.fill"
+        case .cloud: return "cloud.fill"
+        }
+    }
+
+    var iconGradient: LinearGradient {
+        switch self {
+        case .local: return LinearGradient.magnetarGradient
+        case .recommended:
+            return LinearGradient(colors: [.blue, .cyan], startPoint: .topLeading, endPoint: .bottomTrailing)
+        case .cloud: return LinearGradient(colors: [.purple, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
+        }
+    }
+
+    var badge: String? {
+        switch self {
+        case .local: return "LOCAL"
+        case .recommended(let model): return model.isOfficial ? "RECOMMENDED" : nil
+        case .cloud: return "CLOUD"
+        }
+    }
+
+    var badgeColor: Color {
+        switch self {
+        case .local: return .green
+        case .recommended: return .blue
+        case .cloud: return .purple
+        }
+    }
+
+    var parameterSize: String? {
+        switch self {
+        case .local: return nil
+        case .recommended(let model): return model.parameterSize
+        case .cloud: return nil
+        }
+    }
+
+    var stat1: (icon: String, text: String)? {
+        switch self {
+        case .local(let model):
+            return ("internaldrive", model.sizeFormatted)
+        case .recommended(let model):
+            return ("tag", model.parameterSize)
+        case .cloud(let model):
+            return ("internaldrive", model.sizeFormatted)
+        }
+    }
+
+    var stat2: (icon: String, text: String)? {
+        switch self {
+        case .local: return nil
+        case .recommended(let model):
+            return ("sparkles", model.capability.capitalized)
+        case .cloud: return nil
+        }
+    }
+
+    func detailActions(activeDownloads: Binding<[String: DownloadProgress]>, onDownload: @escaping (String) -> Void) -> some View {
+        Group {
+            switch self {
+            case .local(let model):
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Actions")
+                        .font(.headline)
+
+                    HStack(spacing: 12) {
+                        Button {
+                            // TODO: Delete model
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(.red)
+
+                        Button {
+                            // TODO: Update model
+                        } label: {
+                            Label("Update", systemImage: "arrow.clockwise")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+
+                    if !model.sizeFormatted.isEmpty {
+                        HStack {
+                            Image(systemName: "internaldrive")
+                                .foregroundColor(.secondary)
+                            Text("Size: \(model.sizeFormatted)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+
+            case .recommended(let model):
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Download")
+                        .font(.headline)
+
+                    if let progress = activeDownloads.wrappedValue[model.modelName] {
+                        // Show progress
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text(progress.status)
+                                    .font(.caption)
+                                    .foregroundColor(progress.error != nil ? .red : .secondary)
+                                Spacer()
+                                if progress.error == nil {
+                                    Text("\(Int(progress.progress * 100))%")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            ProgressView(value: progress.progress)
+                                .tint(progress.error != nil ? .red : .magnetarPrimary)
+                        }
+                        .padding()
+                        .background(Color.surfaceTertiary.opacity(0.3))
+                        .cornerRadius(8)
+                    } else {
+                        Button {
+                            onDownload(model.modelName)
+                        } label: {
+                            Label("Download \(model.displayName)", systemImage: "arrow.down.circle")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                }
+
+            case .cloud:
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Cloud Actions")
+                        .font(.headline)
+
+                    Button {
+                        // TODO: Sync from cloud
+                    } label: {
+                        Label("Sync to Local", systemImage: "arrow.down.circle")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    var additionalDetails: some View {
+        switch self {
+        case .local(let model):
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Model Info")
+                    .font(.headline)
+
+                if let family = model.details?.family {
+                    HStack {
+                        Text("Family:")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text(family)
+                            .font(.caption)
+                    }
+                }
+
+                if let digest = model.digest {
+                    HStack {
+                        Text("Digest:")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text(digest.prefix(12))
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+
+        case .recommended(let model):
+            VStack(alignment: .leading, spacing: 8) {
+                Text("About")
+                    .font(.headline)
+
+                HStack(spacing: 6) {
+                    Image(systemName: "sparkles")
+                        .font(.caption)
+                        .foregroundColor(.magnetarPrimary)
+                    Text("Capability: \(model.capability.capitalized)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                HStack(spacing: 6) {
+                    Image(systemName: "tag")
+                        .font(.caption)
+                        .foregroundColor(.magnetarPrimary)
+                    Text("Size: \(model.parameterSize)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+        case .cloud:
+            EmptyView()
+        }
+    }
+}
+
+// MARK: - Recommended Model
+
+struct RecommendedModel: Identifiable {
+    let modelName: String
+    let displayName: String
+    let description: String
+    let capability: String
+    let parameterSize: String
+    let isOfficial: Bool
+
+    var id: String { modelName }
+}
+
+// MARK: - Download Progress
+
+struct DownloadProgress {
+    let modelName: String
+    let status: String
+    let progress: Double
+    var error: String? = nil
 }
 
 // MARK: - Preview

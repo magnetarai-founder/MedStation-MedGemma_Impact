@@ -18,6 +18,7 @@
 		1807773E9FF774789EBDB576 /* ChatMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2C77CB5AF6C4202FD8D7161 /* ChatMessage.swift */; };
 		197FE4FF4E34415F80B4AB4E /* NetworkSelector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E0D4298405D4D92A0BCCC26 /* NetworkSelector.swift */; };
 		1F6C75B6ED0D4B9CBC80D2F3 /* AnyCodable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61A51A35C05D4A7A8724EE3B /* AnyCodable.swift */; };
+		211EAE88C46AFC153675FAAA /* SystemCapabilityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 337B394F18138ED69FB88772 /* SystemCapabilityService.swift */; };
 		21E71528368BABF2F2852CFE /* TerminalService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D63ED6288BC106CB39D1BB /* TerminalService.swift */; };
 		27A4D1543BA8BA0FA7604B95 /* ModelSelectorMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC12D8A6355AFFD9A5022863 /* ModelSelectorMenu.swift */; };
 		284B09009A694A4E0263B311 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE1C4B939DAC9084AC244415 /* ContentView.swift */; };
@@ -49,6 +50,7 @@
 		8D5D7DF58BE6BAF3A63551BA /* ModelRoutingDecision.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CD166ACB45A69C9897FFFA3 /* ModelRoutingDecision.swift */; };
 		9567EB5AF9A8C73D29DD0EA6 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F77D79421B014D8C65EC2CF /* APIClient.swift */; };
 		965A14789C7D4F6BB6F09F0B /* LoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28E3301816CD44269E126C96 /* LoadingView.swift */; };
+		A389EB1998243859B3C3DF28 /* ModelLibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0C17E6398CC912A0D8702EE /* ModelLibraryService.swift */; };
 		AC6DF635275F4E798D506030 /* WorkflowModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5A9F666CAE746EDB38AE581 /* WorkflowModels.swift */; };
 		AD18AD81EDBC4EF8AC097789 /* SettingsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26E9E5E9E5784B339818979B /* SettingsService.swift */; };
 		AEBBD28E489D89C49337B46B /* VaultAdminPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37F355A75223BD31BF23FE9E /* VaultAdminPanel.swift */; };
@@ -116,6 +118,7 @@
 		2D684EFED023D2A6542AAB1F /* KanbanWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KanbanWorkspace.swift; sourceTree = "<group>"; };
 		2E0D4298405D4D92A0BCCC26 /* NetworkSelector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkSelector.swift; sourceTree = "<group>"; };
 		31363739633266642D383665342D346232652D393037382D /* ThreePaneLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreePaneLayout.swift; sourceTree = "<group>"; };
+		337B394F18138ED69FB88772 /* SystemCapabilityService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SystemCapabilityService.swift; sourceTree = "<group>"; };
 		35C17D9C1722F2E28A8F923C /* Colors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colors.swift; sourceTree = "<group>"; };
 		37B8FC1C1C55127972DBE544 /* ModelMemoryTracker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelMemoryTracker.swift; sourceTree = "<group>"; };
 		37F355A75223BD31BF23FE9E /* VaultAdminPanel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VaultAdminPanel.swift; path = Panels/VaultAdminPanel.swift; sourceTree = "<group>"; };
@@ -135,15 +138,18 @@
 		7F77D79421B014D8C65EC2CF /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		832F8059CDA346DF9163F393 /* CodeEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeEditor.swift; sourceTree = "<group>"; };
 		842DAEC1F81C99999F03FF53 /* LiquidGlassPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidGlassPanel.swift; sourceTree = "<group>"; };
+		87815974F16A9DC291E9CEF3 /* FlowLayout.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
 		8838BDE42960AA40D4057FA2 /* SmartModelPicker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SmartModelPicker.swift; path = SmartModelPicker.swift; sourceTree = "<group>"; };
 		971E406BFD964D0DA7C3DB54 /* DatabaseModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseModels.swift; sourceTree = "<group>"; };
 		98E7B59E6EB249EAA0A73897 /* DatabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseService.swift; sourceTree = "<group>"; };
 		9CD166ACB45A69C9897FFFA3 /* ModelRoutingDecision.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelRoutingDecision.swift; sourceTree = "<group>"; };
 		9FB81FC9D13D45848AE84D90 /* SettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStore.swift; sourceTree = "<group>"; };
 		A077DE8B06259E85011EA57B /* HotSlotManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HotSlotManager.swift; sourceTree = "<group>"; };
+		A0C17E6398CC912A0D8702EE /* ModelLibraryService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelLibraryService.swift; sourceTree = "<group>"; };
 		A2B42850187A449F9B295DF2 /* SidebarTabs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarTabs.swift; sourceTree = "<group>"; };
 		A3DBDF8C9291B00E92989C8A /* KanbanService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = KanbanService.swift; path = ../../Shared/Services/KanbanService.swift; sourceTree = "<group>"; };
 		A44572DB91B6E7FBABC82A1A /* ResourceMonitor.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ResourceMonitor.swift; sourceTree = "<group>"; };
+		A485EA6B25510FE933F43738 /* MagnetarHubWorkspace.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MagnetarHubWorkspace.swift; sourceTree = "<group>"; };
 		A6D0A604BB2D42F8996CC8C9 /* DatabaseStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseStore.swift; sourceTree = "<group>"; };
 		A904439226AE3F48234C22A0 /* BiometricAuthService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BiometricAuthService.swift; sourceTree = "<group>"; };
 		A90C0C6D0ED2910BC2EE2A2D /* DatabaseWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseWorkspace.swift; sourceTree = "<group>"; };
@@ -242,6 +248,7 @@
 				1A2760AE2A83BCE0FEB660A5 /* MagnetarHubWorkspace.swift */,
 				1EA14AC49CC3C7EE3D89EE05 /* TeamWorkspace.swift */,
 				2311BD5A73E62FEED76C9A13 /* CodeWorkspace.swift */,
+				A485EA6B25510FE933F43738 /* MagnetarHubWorkspace.swift */,
 			);
 			path = Workspaces;
 			sourceTree = "<group>";
@@ -372,6 +379,7 @@
 				5C5B7D185B4D1BE3FF14F5F6 /* GlassButton.swift */,
 				31363739633266642D383665342D346232652D393037382D /* ThreePaneLayout.swift */,
 				842DAEC1F81C99999F03FF53 /* LiquidGlassPanel.swift */,
+				87815974F16A9DC291E9CEF3 /* FlowLayout.swift */,
 			);
 			path = DesignSystem;
 			sourceTree = "<group>";
@@ -451,6 +459,8 @@
 				E4A86189DF1FE9A17A22F231 /* PanicModeService.swift */,
 				D2CCB34E2EDE7C5E00E20014 /* SecurityManager.swift */,
 				D2C513BD2EE0E6E8009A772A /* ModelTagService.swift */,
+				A0C17E6398CC912A0D8702EE /* ModelLibraryService.swift */,
+				337B394F18138ED69FB88772 /* SystemCapabilityService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -596,6 +606,8 @@
 				3EFF8BA28CFC830D62689E55 /* EmergencyConfirmationModal.swift in Sources */,
 				3BA3C53949C60E1DB0C5B12E /* ModelTag.swift in Sources */,
 				D2C513BE2EE0E6E8009A772A /* ModelTagService.swift in Sources */,
+				A389EB1998243859B3C3DF28 /* ModelLibraryService.swift in Sources */,
+				211EAE88C46AFC153675FAAA /* SystemCapabilityService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
