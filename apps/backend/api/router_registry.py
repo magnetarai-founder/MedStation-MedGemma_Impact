@@ -61,6 +61,15 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
         services_failed.append("Chat API")
         logger.error("Failed to load chat router", exc_info=True)
 
+    # Model Recommendations API (Phase 4B+: Dynamic Model Discovery)
+    try:
+        from api.routes.model_recommendations import router as model_recommendations_router
+        app.include_router(model_recommendations_router)
+        services_loaded.append("Model Recommendations API")
+    except Exception as e:
+        services_failed.append("Model Recommendations API")
+        logger.error("Failed to load model recommendations router", exc_info=True)
+
     # Context API (Phase 5: ANE Context Engine)
     try:
         from api.context_router import router as context_router

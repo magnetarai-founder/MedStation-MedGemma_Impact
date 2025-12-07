@@ -18,9 +18,11 @@ struct MagnetarHubWorkspace: View {
     @State private var ollamaServerRunning: Bool = false
     @State private var isOllamaActionInProgress: Bool = false
 
-    // Discovery - Now using hardcoded recommendations
+    // Discovery - Now using backend recommendations
     @State private var showDownloadModelModal: Bool = false
     @State private var isNetworkConnected: Bool = false
+    @State private var recommendedModels: [BackendRecommendedModel] = []
+    @State private var isLoadingRecommendations: Bool = false
 
     // Cloud models
     @State private var cloudModels: [OllamaModel] = []
@@ -34,6 +36,7 @@ struct MagnetarHubWorkspace: View {
 
     private let ollamaService = OllamaService.shared
     private let capabilityService = SystemCapabilityService.shared
+    private let recommendationService = ModelRecommendationService.shared
     private let networkMonitor = NWPathMonitor()
 
     var body: some View {
@@ -392,8 +395,32 @@ struct MagnetarHubWorkspace: View {
         await modelsStore.fetchModels()
         ollamaServerRunning = await ollamaService.checkStatus()
 
+        // Load recommended models from backend
+        await loadRecommendations()
+
         // Load cloud auth status
         // TODO: Add cloud auth check
+    }
+
+    private func loadRecommendations() async {
+        isLoadingRecommendations = true
+
+        do {
+            let response = try await recommendationService.getRecommendations(
+                totalMemoryGB: capabilityService.totalMemoryGB,
+                cpuCores: capabilityService.cpuCores,
+                hasMetal: capabilityService.hasMetalSupport,
+                installedModels: modelsStore.models.map { $0.name }
+            )
+
+            recommendedModels = response.recommendations
+            print("✅ Loaded \(response.totalCount) recommended models from backend")
+        } catch {
+            print("❌ Failed to load recommendations: \(error)")
+            // Keep empty list on error
+        }
+
+        isLoadingRecommendations = false
     }
 
     // MARK: - Network Monitoring
@@ -577,69 +604,9 @@ struct MagnetarHubWorkspace: View {
         case .myModels:
             return modelsStore.models.map { AnyModelItem.local($0) }
         case .discover:
-            return recommendedModels.map { AnyModelItem.recommended($0) }
+            return recommendedModels.map { AnyModelItem.backendRecommended($0) }
         case .cloud:
             return cloudModels.map { AnyModelItem.cloud($0) }
-        }
-    }
-
-    // Hardcoded recommended models
-    private var recommendedModels: [RecommendedModel] {
-        let allModels: [RecommendedModel] = [
-            RecommendedModel(
-                modelName: "phi4:14b",
-                displayName: "Phi-4 (14B)",
-                description: "Microsoft's powerful small model - excellent reasoning and coding abilities in a compact size",
-                capability: "code",
-                parameterSize: "14B",
-                isOfficial: true
-            ),
-            RecommendedModel(
-                modelName: "llama3.3:70b",
-                displayName: "Llama 3.3 (70B)",
-                description: "Meta's flagship model - top-tier performance for complex tasks and reasoning",
-                capability: "chat",
-                parameterSize: "70B",
-                isOfficial: true
-            ),
-            RecommendedModel(
-                modelName: "qwen2.5-coder:14b",
-                displayName: "Qwen2.5 Coder (14B)",
-                description: "Specialized coding model - great for code generation and debugging",
-                capability: "code",
-                parameterSize: "14B",
-                isOfficial: true
-            ),
-            RecommendedModel(
-                modelName: "mistral:7b",
-                displayName: "Mistral (7B)",
-                description: "Fast and efficient - perfect balance of performance and speed",
-                capability: "chat",
-                parameterSize: "7B",
-                isOfficial: true
-            ),
-            RecommendedModel(
-                modelName: "llama3.2:3b",
-                displayName: "Llama 3.2 (3B)",
-                description: "Lightweight and fast - ideal for quick tasks and low-resource devices",
-                capability: "chat",
-                parameterSize: "3B",
-                isOfficial: true
-            ),
-            RecommendedModel(
-                modelName: "deepseek-r1:14b",
-                displayName: "DeepSeek R1 (14B)",
-                description: "Advanced reasoning model - excels at complex problem-solving and analysis",
-                capability: "chat",
-                parameterSize: "14B",
-                isOfficial: true
-            ),
-        ]
-
-        // Filter by system capability
-        return allModels.filter { model in
-            let compatibility = capabilityService.canRunModel(parameterSize: model.parameterSize)
-            return compatibility.performance != .insufficient
         }
     }
 
@@ -720,15 +687,18 @@ struct ModelCard: View {
                         .foregroundColor(colorForPerformance(compatibility.performance))
                 }
 
-                if let badge = model.badge {
-                    Text(badge)
-                        .font(.caption2)
-                        .fontWeight(.bold)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(model.badgeColor.opacity(0.2))
-                        .foregroundColor(model.badgeColor)
-                        .cornerRadius(6)
+                // Multiple badges
+                HStack(spacing: 4) {
+                    ForEach(model.badges, id: \.self) { badge in
+                        Text(badge.uppercased())
+                            .font(.caption2)
+                            .fontWeight(.bold)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(model.badgeColor(for: badge).opacity(0.2))
+                            .foregroundColor(model.badgeColor(for: badge))
+                            .cornerRadius(4)
+                    }
                 }
             }
 
@@ -765,7 +735,7 @@ struct ModelCard: View {
                     ProgressView(value: progress.progress)
                         .tint(progress.error != nil ? .red : .magnetarPrimary)
                 }
-            } else if case .recommended = model {
+            } else if case .backendRecommended = model {
                 Button {
                     onDownload()
                 } label: {
@@ -965,14 +935,17 @@ struct ModelDetailModal: View {
                         .font(.title2)
                         .fontWeight(.bold)
 
-                    if let badge = model.badge {
-                        Text(badge)
-                            .font(.caption)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(model.badgeColor.opacity(0.2))
-                            .foregroundColor(model.badgeColor)
-                            .cornerRadius(6)
+                    // Multiple badges in detail modal
+                    HStack(spacing: 6) {
+                        ForEach(model.badges, id: \.self) { badge in
+                            Text(badge.uppercased())
+                                .font(.caption)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(model.badgeColor(for: badge).opacity(0.2))
+                                .foregroundColor(model.badgeColor(for: badge))
+                                .cornerRadius(6)
+                        }
                     }
                 }
 
@@ -995,8 +968,8 @@ struct ModelDetailModal: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     // System Compatibility (for recommended models)
-                    if case .recommended(let recommendedModel) = model {
-                        compatibilitySection(for: recommendedModel)
+                    if case .backendRecommended(let backendModel) = model {
+                        compatibilitySection(for: backendModel)
                     }
 
                     // Description
@@ -1023,7 +996,7 @@ struct ModelDetailModal: View {
     }
 
     @ViewBuilder
-    private func compatibilitySection(for recommendedModel: RecommendedModel) -> some View {
+    private func compatibilitySection(for backendModel: BackendRecommendedModel) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("System Compatibility")
                 .font(.headline)
@@ -1034,45 +1007,40 @@ struct ModelDetailModal: View {
                 .foregroundColor(.secondary)
                 .padding(.vertical, 4)
 
-            // Check compatibility for this model size
-            let compatibility = capabilityService.canRunModel(parameterSize: recommendedModel.parameterSize)
+            // Use backend-provided compatibility info
+            let performance = backendModel.compatibility.performance
+            let icon = performanceIcon(for: performance)
+            let color = colorForPerformanceString(performance)
 
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 12) {
-                    Image(systemName: compatibility.performance.icon)
-                        .foregroundColor(colorForPerformance(compatibility.performance))
+                    Image(systemName: icon)
+                        .foregroundColor(color)
                         .frame(width: 20)
 
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(spacing: 6) {
-                            Text(friendlyModelSizeName(recommendedModel.parameterSize))
+                            Text(friendlyModelSizeName(backendModel.parameterSize))
                                 .font(.body)
                                 .fontWeight(.medium)
 
-                            Text("(\(recommendedModel.parameterSize))")
+                            Text("(\(backendModel.parameterSize))")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
 
-                        Text(compatibility.reason)
+                        Text(backendModel.compatibility.reason)
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
 
                     Spacer()
 
-                    if let memUsage = compatibility.estimatedMemoryUsage {
+                    if let memUsage = backendModel.compatibility.estimatedMemoryUsage {
                         Text(String(format: "~%.1fGB", memUsage))
                             .font(.caption2)
                             .foregroundColor(.secondary)
                     }
-                }
-
-                if let explanation = compatibility.friendlyExplanation {
-                    Text(explanation)
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                        .padding(.leading, 32)
                 }
             }
             .padding(10)
@@ -1088,6 +1056,26 @@ struct ModelDetailModal: View {
         case .fair: return .orange
         case .insufficient: return .red
         case .unknown: return .secondary
+        }
+    }
+
+    private func colorForPerformanceString(_ performance: String) -> Color {
+        switch performance.lowercased() {
+        case "excellent": return .green
+        case "good": return .blue
+        case "fair": return .orange
+        case "insufficient": return .red
+        default: return .secondary
+        }
+    }
+
+    private func performanceIcon(for performance: String) -> String {
+        switch performance.lowercased() {
+        case "excellent": return "checkmark.circle.fill"
+        case "good": return "checkmark.circle"
+        case "fair": return "exclamationmark.triangle"
+        case "insufficient": return "xmark.circle"
+        default: return "questionmark.circle"
         }
     }
 
@@ -1166,13 +1154,13 @@ enum HubCategory: String, CaseIterable, Identifiable {
 
 enum AnyModelItem: Identifiable {
     case local(OllamaModel)
-    case recommended(RecommendedModel)
+    case backendRecommended(BackendRecommendedModel)
     case cloud(OllamaModel)
 
     var id: String {
         switch self {
         case .local(let model): return "local-\(model.id)"
-        case .recommended(let model): return "recommended-\(model.id)"
+        case .backendRecommended(let model): return "recommended-\(model.id)"
         case .cloud(let model): return "cloud-\(model.id)"
         }
     }
@@ -1180,7 +1168,7 @@ enum AnyModelItem: Identifiable {
     var name: String {
         switch self {
         case .local(let model): return model.name
-        case .recommended(let model): return model.modelName
+        case .backendRecommended(let model): return model.modelName
         case .cloud(let model): return model.name
         }
     }
@@ -1188,7 +1176,7 @@ enum AnyModelItem: Identifiable {
     var displayName: String {
         switch self {
         case .local(let model): return model.name
-        case .recommended(let model): return model.displayName
+        case .backendRecommended(let model): return model.displayName
         case .cloud(let model): return model.name
         }
     }
@@ -1196,7 +1184,7 @@ enum AnyModelItem: Identifiable {
     var description: String? {
         switch self {
         case .local: return nil
-        case .recommended(let model): return model.description
+        case .backendRecommended(let model): return model.description
         case .cloud: return nil
         }
     }
@@ -1204,7 +1192,7 @@ enum AnyModelItem: Identifiable {
     var icon: String {
         switch self {
         case .local: return "cube.box.fill"
-        case .recommended: return "star.circle.fill"
+        case .backendRecommended: return "star.circle.fill"
         case .cloud: return "cloud.fill"
         }
     }
@@ -1212,33 +1200,57 @@ enum AnyModelItem: Identifiable {
     var iconGradient: LinearGradient {
         switch self {
         case .local: return LinearGradient.magnetarGradient
-        case .recommended:
+        case .backendRecommended:
             return LinearGradient(colors: [.blue, .cyan], startPoint: .topLeading, endPoint: .bottomTrailing)
         case .cloud: return LinearGradient(colors: [.purple, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
         }
     }
 
-    var badge: String? {
+    var badges: [String] {
         switch self {
-        case .local: return "LOCAL"
-        case .recommended(let model): return model.isOfficial ? "RECOMMENDED" : nil
-        case .cloud: return "CLOUD"
+        case .local: return ["LOCAL"]
+        case .backendRecommended(let model):
+            var result = model.badges
+            if model.isInstalled && !result.contains("installed") {
+                result.insert("installed", at: 0)
+            }
+            return result
+        case .cloud: return ["CLOUD"]
         }
     }
 
-    var badgeColor: Color {
-        switch self {
-        case .local: return .green
-        case .recommended: return .blue
-        case .cloud: return .purple
+    func badgeColor(for badge: String) -> Color {
+        switch badge.lowercased() {
+        case "installed": return .green
+        case "recommended": return .blue
+        case "experimental": return .orange
+        case "local": return .green
+        case "cloud": return .purple
+        default: return .gray
         }
     }
 
     var parameterSize: String? {
         switch self {
         case .local: return nil
-        case .recommended(let model): return model.parameterSize
+        case .backendRecommended(let model): return model.parameterSize
         case .cloud: return nil
+        }
+    }
+
+    var isMultiPurpose: Bool {
+        switch self {
+        case .local: return false
+        case .backendRecommended(let model): return model.isMultiPurpose
+        case .cloud: return false
+        }
+    }
+
+    var primaryUseCases: [String] {
+        switch self {
+        case .local: return []
+        case .backendRecommended(let model): return model.primaryUseCases
+        case .cloud: return []
         }
     }
 
@@ -1246,7 +1258,7 @@ enum AnyModelItem: Identifiable {
         switch self {
         case .local(let model):
             return ("internaldrive", model.sizeFormatted)
-        case .recommended(let model):
+        case .backendRecommended(let model):
             return ("tag", model.parameterSize)
         case .cloud(let model):
             return ("internaldrive", model.sizeFormatted)
@@ -1256,8 +1268,12 @@ enum AnyModelItem: Identifiable {
     var stat2: (icon: String, text: String)? {
         switch self {
         case .local: return nil
-        case .recommended(let model):
-            return ("sparkles", model.capability.capitalized)
+        case .backendRecommended(let model):
+            if model.isMultiPurpose {
+                return ("star.circle", "Multi-purpose")
+            } else {
+                return ("sparkles", model.capability.capitalized)
+            }
         case .cloud: return nil
         }
     }
@@ -1300,7 +1316,7 @@ enum AnyModelItem: Identifiable {
                     }
                 }
 
-            case .recommended(let model):
+            case .backendRecommended(let model):
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Download")
                         .font(.headline)
@@ -1383,18 +1399,29 @@ enum AnyModelItem: Identifiable {
                 }
             }
 
-        case .recommended(let model):
+        case .backendRecommended(let model):
             VStack(alignment: .leading, spacing: 8) {
                 Text("About")
                     .font(.headline)
 
-                HStack(spacing: 6) {
-                    Image(systemName: "sparkles")
-                        .font(.caption)
-                        .foregroundColor(.magnetarPrimary)
-                    Text("Capability: \(model.capability.capitalized)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                if model.isMultiPurpose {
+                    HStack(spacing: 6) {
+                        Image(systemName: "star.circle")
+                            .font(.caption)
+                            .foregroundColor(.magnetarPrimary)
+                        Text("Multi-Purpose: \(model.primaryUseCases.joined(separator: ", "))")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                } else {
+                    HStack(spacing: 6) {
+                        Image(systemName: "sparkles")
+                            .font(.caption)
+                            .foregroundColor(.magnetarPrimary)
+                        Text("Capability: \(model.capability.capitalized)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
 
                 HStack(spacing: 6) {
