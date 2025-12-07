@@ -30,11 +30,15 @@ logger = logging.getLogger(__name__)
 
 # JWT configuration
 # Persist JWT secret to disk for offline resilience
+_jwt_secret_warning_shown = False
+
 def _get_or_create_jwt_secret() -> str:
     """
     Get or create persistent JWT secret.
     In offline deployments, losing the JWT secret would invalidate all sessions.
     """
+    global _jwt_secret_warning_shown
+
     # Check env vars first (production override)
     # Preferred: ELOHIMOS_JWT_SECRET_KEY (standardized)
     env_secret = os.getenv("ELOHIMOS_JWT_SECRET_KEY")
@@ -44,7 +48,10 @@ def _get_or_create_jwt_secret() -> str:
     # Backwards-compat: ELOHIM_JWT_SECRET (deprecated)
     legacy_secret = os.getenv("ELOHIM_JWT_SECRET")
     if legacy_secret:
-        logger.warning("Using deprecated env var ELOHIM_JWT_SECRET; prefer ELOHIMOS_JWT_SECRET_KEY")
+        # Only warn once per session
+        if not _jwt_secret_warning_shown:
+            logger.warning("Using deprecated env var ELOHIM_JWT_SECRET; prefer ELOHIMOS_JWT_SECRET_KEY")
+            _jwt_secret_warning_shown = True
         return legacy_secret
 
     # Use persistent file storage

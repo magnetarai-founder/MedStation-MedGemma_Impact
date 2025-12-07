@@ -308,8 +308,28 @@ async def snapshot_task():
             logger.error(f"Snapshot task error: {e}")
 
 
-# Start snapshot task on module load
-asyncio.create_task(snapshot_task())
+# Snapshot task will be started by FastAPI lifespan event
+# Don't start here as event loop may not be running during import
+_snapshot_task: Optional[asyncio.Task] = None
+
+async def start_snapshot_task():
+    """Start the background snapshot task (called by app lifespan)"""
+    global _snapshot_task
+    if _snapshot_task is None:
+        _snapshot_task = asyncio.create_task(snapshot_task())
+        logger.info("✅ Snapshot task started")
+
+async def stop_snapshot_task():
+    """Stop the background snapshot task (called by app shutdown)"""
+    global _snapshot_task
+    if _snapshot_task:
+        _snapshot_task.cancel()
+        try:
+            await _snapshot_task
+        except asyncio.CancelledError:
+            pass
+        _snapshot_task = None
+        logger.info("✅ Snapshot task stopped")
 
 
 # ===== WebSocket Endpoint =====
