@@ -15,8 +15,6 @@ struct WorkflowQueueView: View {
     @State private var selectedWorkflowId: String? = nil
     @State private var errorMessage: String? = nil
 
-    @EnvironmentObject private var workflowStore: WorkflowStore
-
     var body: some View {
         VStack(spacing: 0) {
             // Header bar
@@ -151,6 +149,7 @@ struct WorkflowQueueView: View {
             do {
                 // Get the first workflow from the store to load its queue
                 // In a full implementation, this would be user-selected
+                let workflowStore = WorkflowStore.shared
                 guard let firstWorkflow = workflowStore.workflows.first else {
                     await MainActor.run {
                         queueItems = []
