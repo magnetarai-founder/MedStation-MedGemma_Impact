@@ -47,6 +47,7 @@
 		6E29B084EF0AB46C6DFB6D23 /* ContextService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C043D3F1AFA96A4DDC52FAA0 /* ContextService.swift */; };
 		6F8590DFCF92476BB18FB1FF /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A959626C53B4237AD1DD881 /* KeychainService.swift */; };
 		7B7E8A766BB7FC3F6725F19B /* DatabaseWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = A90C0C6D0ED2910BC2EE2A2D /* DatabaseWorkspace.swift */; };
+		8070383B0926FBAD64A94461 /* TeamModals.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4205E4368F6655584595587C /* TeamModals.swift */; };
 		8151AB8F8D128C4FE220C6A6 /* CodeWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2311BD5A73E62FEED76C9A13 /* CodeWorkspace.swift */; };
 		86B7A0EDAC440B41E6FA5710 /* VaultWorkspaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17B48CFFB13864D1927C04F8 /* VaultWorkspaceView.swift */; };
 		87AC91711BE8494C52DC1524 /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35C17D9C1722F2E28A8F923C /* Colors.swift */; };
@@ -135,6 +136,7 @@
 		399E593F40D14E5AAD83D8EA /* VaultService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultService.swift; sourceTree = "<group>"; };
 		3A959626C53B4237AD1DD881 /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
 		3DB05E6C67FE4427941ECD63 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
+		4205E4368F6655584595587C /* TeamModals.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TeamModals.swift; path = Team/TeamModals.swift; sourceTree = "<group>"; };
 		52327976284A111B087DC761 /* ModelEnrichmentService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelEnrichmentService.swift; sourceTree = "<group>"; };
 		5A9CA03F945469535A06F816 /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
 		5ADD9516A7A1CEB080FDEDF3 /* NewDocumentModal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NewDocumentModal.swift; path = ../../Shared/Views/Team/NewDocumentModal.swift; sourceTree = "<group>"; };
@@ -277,6 +279,7 @@
 				29DF4A0DB6E3BF50D8AF569E /* TeamChat */,
 				75C6E8BB23325894A32D4935 /* Docs */,
 				DCE4AA910ED02FF68EDB552F /* Vault */,
+				F537FC8B7306C1C4B8EFCCD8 /* Team */,
 			);
 			path = Workspaces;
 			sourceTree = "<group>";
@@ -513,6 +516,14 @@
 			path = Services;
 			sourceTree = "<group>";
 		};
+		F537FC8B7306C1C4B8EFCCD8 /* Team */ = {
+			isa = PBXGroup;
+			children = (
+				4205E4368F6655584595587C /* TeamModals.swift */,
+			);
+			name = Team;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -664,6 +675,7 @@
 				9321F3F615C1FF90BDC69F93 /* DocsWorkspaceView.swift in Sources */,
 				86B7A0EDAC440B41E6FA5710 /* VaultWorkspaceView.swift in Sources */,
 				E80D6A747358ABC244FB51EC /* VaultComponents.swift in Sources */,
+				8070383B0926FBAD64A94461 /* TeamModals.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
