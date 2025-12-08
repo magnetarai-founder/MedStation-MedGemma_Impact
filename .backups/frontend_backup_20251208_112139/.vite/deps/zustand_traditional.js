@@ -1,0 +1,42 @@
+import {
+  createStore
+} from "./chunk-F5MVPC2S.js";
+import {
+  require_with_selector
+} from "./chunk-MPLAA6TC.js";
+import {
+  require_react
+} from "./chunk-HQJSOCRU.js";
+import {
+  __toESM
+} from "./chunk-RDKGUBC5.js";
+
+// node_modules/zustand/esm/traditional.mjs
+var import_react = __toESM(require_react(), 1);
+var import_with_selector = __toESM(require_with_selector(), 1);
+var { useDebugValue } = import_react.default;
+var { useSyncExternalStoreWithSelector } = import_with_selector.default;
+var identity = (arg) => arg;
+function useStoreWithEqualityFn(api, selector = identity, equalityFn) {
+  const slice = useSyncExternalStoreWithSelector(
+    api.subscribe,
+    api.getState,
+    api.getServerState || api.getInitialState,
+    selector,
+    equalityFn
+  );
+  useDebugValue(slice);
+  return slice;
+}
+var createWithEqualityFnImpl = (createState, defaultEqualityFn) => {
+  const api = createStore(createState);
+  const useBoundStoreWithEqualityFn = (selector, equalityFn = defaultEqualityFn) => useStoreWithEqualityFn(api, selector, equalityFn);
+  Object.assign(useBoundStoreWithEqualityFn, api);
+  return useBoundStoreWithEqualityFn;
+};
+var createWithEqualityFn = (createState, defaultEqualityFn) => createState ? createWithEqualityFnImpl(createState, defaultEqualityFn) : createWithEqualityFnImpl;
+export {
+  createWithEqualityFn,
+  useStoreWithEqualityFn
+};
+//# sourceMappingURL=zustand_traditional.js.map

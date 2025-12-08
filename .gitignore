@@ -15,7 +15,6 @@ build/
 .scan_venv/
 .scan_bandit.json
 .semgrep_backend.json
-.semgrep_frontend.json
 
 # Node
 node_modules/
@@ -25,10 +24,6 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # Build outputs
-frontend/dist/
-frontend/.vite/
-apps/frontend/dist/
-apps/frontend/.vite/
 
 # Data and cache
 api/.neutron_data/
