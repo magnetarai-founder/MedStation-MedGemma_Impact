@@ -95,6 +95,7 @@
 		EBFCB595C54024DFB31B5D56 /* ChatStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E62FD8B9DE028C44A2F0816E /* ChatStore.swift */; };
 		EFBA62F8E6B41580CE0730B2 /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A9CA03F945469535A06F816 /* User.swift */; };
 		F022EFDF45C31A5A57071299 /* KeychainManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B462A62F24C04C9E66B2D0CD /* KeychainManager.swift */; };
+		F52CC6633BFB9B995A499F78 /* TeamChatModals.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CE26C88BCDE81BD11937A38 /* TeamChatModals.swift */; };
 		F68ABDC7B8A04CCA9B1DE635 /* DatabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98E7B59E6EB249EAA0A73897 /* DatabaseService.swift */; };
 		F8B8DDCFEE83420FC10991CD /* VaultPermissionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B99032061A118F3658F78070 /* VaultPermissionManager.swift */; };
 		FA145C7E3B82413ABC4FBDEF /* ResultsTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62BA9229DF934A44B0D3CBC5 /* ResultsTable.swift */; };
@@ -139,6 +140,7 @@
 		624C9537C9E743BAB72D79DB /* SetupWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupWizardView.swift; sourceTree = "<group>"; };
 		62BA9229DF934A44B0D3CBC5 /* ResultsTable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResultsTable.swift; sourceTree = "<group>"; };
 		67700E88177E4318A9F9D842 /* ChatService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatService.swift; sourceTree = "<group>"; };
+		6CE26C88BCDE81BD11937A38 /* TeamChatModals.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TeamChatModals.swift; path = TeamChat/TeamChatModals.swift; sourceTree = "<group>"; };
 		6EBEB2F057FF41A4A120A4DB /* OllamaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaService.swift; sourceTree = "<group>"; };
 		758F62B637F9DF75E26BAB65 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		7F77D79421B014D8C65EC2CF /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
@@ -243,6 +245,7 @@
 			isa = PBXGroup;
 			children = (
 				0451645C6D081B309C394FFB /* TeamChatComponents.swift */,
+				6CE26C88BCDE81BD11937A38 /* TeamChatModals.swift */,
 			);
 			name = TeamChat;
 			sourceTree = "<group>";
@@ -632,6 +635,7 @@
 				6C6B9342084AED4C54919FE4 /* AgentModels.swift in Sources */,
 				CD0E0853A1FAE27A3518557A /* ModelEnrichmentService.swift in Sources */,
 				24CCD2C68B24A6B1BFA19456 /* TeamChatComponents.swift in Sources */,
+				F52CC6633BFB9B995A499F78 /* TeamChatModals.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
