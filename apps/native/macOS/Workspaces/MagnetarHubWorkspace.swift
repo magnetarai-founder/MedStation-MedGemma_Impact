@@ -33,9 +33,14 @@ struct MagnetarHubWorkspace: View {
     // Download tracking
     @State private var activeDownloads: [String: DownloadProgress] = [:]
 
+    // Model enrichment (for My Models)
+    @State private var enrichedModels: [String: EnrichedModelMetadata] = [:]
+    @State private var isEnrichingModels: Bool = false
+
     private let ollamaService = OllamaService.shared
     private let capabilityService = SystemCapabilityService.shared
     private let recommendationService = ModelRecommendationService.shared
+    private let enrichmentService = ModelEnrichmentService.shared
     private let networkMonitor = NWPathMonitor()
 
     var body: some View {
@@ -55,7 +60,12 @@ struct MagnetarHubWorkspace: View {
         }
         .sheet(isPresented: $showModelDetail) {
             if let model = selectedModel {
-                ModelDetailModal(model: model, activeDownloads: $activeDownloads, onDownload: downloadModel)
+                ModelDetailModal(
+                    model: model,
+                    enrichedMetadata: enrichedModels,
+                    activeDownloads: $activeDownloads,
+                    onDownload: downloadModel
+                )
             }
         }
     }
@@ -291,12 +301,14 @@ struct MagnetarHubWorkspace: View {
                                 downloadProgress: activeDownloads[model.name],
                                 onDownload: {
                                     downloadModel(modelName: model.name)
-                                }
+                                },
+                                enrichedMetadata: enrichedModels
                             )
                             .contentShape(Rectangle())
                             .onTapGesture {
-                                selectedModel = model
-                                showModelDetail = true
+                                Task {
+                                    await handleModelTap(model)
+                                }
                             }
                         }
                     }
@@ -391,6 +403,25 @@ struct MagnetarHubWorkspace: View {
         }
 
         isLoadingRecommendations = false
+    }
+
+    // MARK: - Model Interaction
+
+    private func handleModelTap(_ model: AnyModelItem) async {
+        // For local models, enrich with AI-generated metadata
+        if case .local(let ollamaModel) = model {
+            // Check if already enriched
+            if enrichedModels[ollamaModel.name] == nil {
+                isEnrichingModels = true
+                let enriched = await enrichmentService.enrichModel(ollamaModel)
+                enrichedModels[ollamaModel.name] = enriched
+                isEnrichingModels = false
+            }
+        }
+
+        // Show modal
+        selectedModel = model
+        showModelDetail = true
     }
 
     // MARK: - Network Monitoring
@@ -636,6 +667,7 @@ struct ModelCard: View {
     let model: AnyModelItem
     let downloadProgress: DownloadProgress?
     let onDownload: () -> Void
+    var enrichedMetadata: [String: EnrichedModelMetadata] = [:] // Add enriched metadata support
     @State private var isHovered: Bool = false
     private let capabilityService = SystemCapabilityService.shared
 
@@ -650,7 +682,7 @@ struct ModelCard: View {
                 Spacer()
 
                 // Compatibility badge
-                if let paramSize = model.parameterSize {
+                if let paramSize = model.parameterSize(enriched: enrichedMetadata) {
                     let compatibility = capabilityService.canRunModel(parameterSize: paramSize)
                     Image(systemName: compatibility.performance.icon)
                         .font(.caption2)
@@ -659,7 +691,7 @@ struct ModelCard: View {
 
                 // Multiple badges
                 HStack(spacing: 4) {
-                    ForEach(model.badges, id: \.self) { badge in
+                    ForEach(model.badges(enriched: enrichedMetadata), id: \.self) { badge in
                         Text(badge.uppercased())
                             .font(.caption2)
                             .fontWeight(.bold)
@@ -678,7 +710,7 @@ struct ModelCard: View {
                 .lineLimit(1)
 
             // Description
-            if let description = model.description {
+            if let description = model.description(enriched: enrichedMetadata) {
                 Text(description)
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -795,6 +827,7 @@ struct ModelCard: View {
 
 struct ModelDetailModal: View {
     let model: AnyModelItem
+    let enrichedMetadata: [String: EnrichedModelMetadata]
     @Binding var activeDownloads: [String: DownloadProgress]
     let onDownload: (String) -> Void
     @Environment(\.dismiss) private var dismiss
@@ -815,7 +848,7 @@ struct ModelDetailModal: View {
 
                     // Multiple badges in detail modal
                     HStack(spacing: 6) {
-                        ForEach(model.badges, id: \.self) { badge in
+                        ForEach(model.badges(enriched: enrichedMetadata), id: \.self) { badge in
                             Text(badge.uppercased())
                                 .font(.caption)
                                 .padding(.horizontal, 8)
@@ -851,7 +884,7 @@ struct ModelDetailModal: View {
                     }
 
                     // Description
-                    if let description = model.description {
+                    if let description = model.description(enriched: enrichedMetadata) {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Description")
                                 .font(.headline)
@@ -864,7 +897,7 @@ struct ModelDetailModal: View {
                     model.detailActions(activeDownloads: $activeDownloads, onDownload: onDownload)
 
                     // Additional details
-                    model.additionalDetails
+                    model.additionalDetails(enriched: enrichedMetadata)
                 }
                 .padding(24)
             }
@@ -1059,10 +1092,14 @@ enum AnyModelItem: Identifiable {
         }
     }
 
-    var description: String? {
+    func description(enriched: [String: EnrichedModelMetadata]) -> String? {
         switch self {
         case .local(let model):
-            // Generate description based on model family/name
+            // Use enriched metadata if available
+            if let metadata = enriched[model.name] {
+                return metadata.description
+            }
+            // Fallback to basic description
             let name = model.name.lowercased()
             if name.contains("llama") {
                 return "Meta's powerful open-source language model"
@@ -1105,9 +1142,13 @@ enum AnyModelItem: Identifiable {
         }
     }
 
-    var badges: [String] {
+    func badges(enriched: [String: EnrichedModelMetadata]) -> [String] {
         switch self {
-        case .local: return ["installed"]
+        case .local(let model):
+            if let metadata = enriched[model.name] {
+                return metadata.badges
+            }
+            return ["installed"]
         case .backendRecommended(let model):
             var result = model.badges
             if model.isInstalled && !result.contains("installed") {
@@ -1129,25 +1170,37 @@ enum AnyModelItem: Identifiable {
         }
     }
 
-    var parameterSize: String? {
+    func parameterSize(enriched: [String: EnrichedModelMetadata]) -> String? {
         switch self {
-        case .local: return nil
+        case .local(let model):
+            if let metadata = enriched[model.name] {
+                return metadata.parameterSize
+            }
+            return model.details?.parameterSize
         case .backendRecommended(let model): return model.parameterSize
         case .cloud: return nil
         }
     }
 
-    var isMultiPurpose: Bool {
+    func isMultiPurpose(enriched: [String: EnrichedModelMetadata]) -> Bool {
         switch self {
-        case .local: return false
+        case .local(let model):
+            if let metadata = enriched[model.name] {
+                return metadata.isMultiPurpose
+            }
+            return false
         case .backendRecommended(let model): return model.isMultiPurpose
         case .cloud: return false
         }
     }
 
-    var primaryUseCases: [String] {
+    func primaryUseCases(enriched: [String: EnrichedModelMetadata]) -> [String] {
         switch self {
-        case .local: return []
+        case .local(let model):
+            if let metadata = enriched[model.name] {
+                return metadata.primaryUseCases
+            }
+            return []
         case .backendRecommended(let model): return model.primaryUseCases
         case .cloud: return []
         }
@@ -1280,31 +1333,103 @@ enum AnyModelItem: Identifiable {
     }
 
     @ViewBuilder
-    var additionalDetails: some View {
+    func additionalDetails(enriched: [String: EnrichedModelMetadata]) -> some View {
         switch self {
         case .local(let model):
             VStack(alignment: .leading, spacing: 8) {
-                Text("Model Info")
+                Text("About")
                     .font(.headline)
 
-                if let family = model.details?.family {
-                    HStack {
-                        Text("Family:")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Text(family)
-                            .font(.caption)
+                // Use enriched metadata if available
+                if let metadata = enriched[model.name] {
+                    // Multi-purpose or capability
+                    if metadata.isMultiPurpose {
+                        HStack(spacing: 6) {
+                            Image(systemName: "star.circle")
+                                .font(.caption)
+                                .foregroundColor(.magnetarPrimary)
+                            Text("Multi-Purpose: \(metadata.primaryUseCases.joined(separator: ", "))")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    } else {
+                        HStack(spacing: 6) {
+                            Image(systemName: "sparkles")
+                                .font(.caption)
+                                .foregroundColor(.magnetarPrimary)
+                            Text("Capability: \(metadata.capability.capitalized)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                     }
-                }
 
-                if let digest = model.digest {
-                    HStack {
-                        Text("Digest:")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Text(digest.prefix(12))
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
+                    // Parameter size
+                    if let paramSize = metadata.parameterSize {
+                        HStack(spacing: 6) {
+                            Image(systemName: "tag")
+                                .font(.caption)
+                                .foregroundColor(.magnetarPrimary)
+                            Text("Size: \(paramSize)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    // Strengths
+                    if !metadata.strengths.isEmpty {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Strengths:")
+                                .font(.caption)
+                                .fontWeight(.medium)
+                                .foregroundColor(.secondary)
+                            ForEach(metadata.strengths, id: \.self) { strength in
+                                HStack(spacing: 4) {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .font(.caption2)
+                                        .foregroundColor(.green)
+                                    Text(strength)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                        .padding(.top, 4)
+                    }
+
+                    // Ideal for
+                    if !metadata.idealFor.isEmpty {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Ideal For:")
+                                .font(.caption)
+                                .fontWeight(.medium)
+                                .foregroundColor(.secondary)
+                            Text(metadata.idealFor)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.top, 4)
+                    }
+                } else {
+                    // Fallback: basic model info
+                    if let family = model.details?.family {
+                        HStack {
+                            Text("Family:")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Text(family)
+                                .font(.caption)
+                        }
+                    }
+
+                    if let digest = model.digest {
+                        HStack {
+                            Text("Digest:")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Text(digest.prefix(12))
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
             }

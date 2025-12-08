@@ -69,6 +69,7 @@
 		C6F6EB90EF484C51BF4451F3 /* AuthStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00280C486C0A463EACC552E6 /* AuthStore.swift */; };
 		C8CE1D6E95657B5967D53579 /* BiometricAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A904439226AE3F48234C22A0 /* BiometricAuthService.swift */; };
 		CA2EC71E90324844890DF29C /* SidebarTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B42850187A449F9B295DF2 /* SidebarTabs.swift */; };
+		CD0E0853A1FAE27A3518557A /* ModelEnrichmentService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52327976284A111B087DC761 /* ModelEnrichmentService.swift */; };
 		CD851BE5E0D7AB9D5519B9A7 /* NewDocumentModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5ADD9516A7A1CEB080FDEDF3 /* NewDocumentModal.swift */; };
 		D2C513BE2EE0E6E8009A772A /* ModelTagService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2C513BD2EE0E6E8009A772A /* ModelTagService.swift */; };
 		D2C513C02EE0F018009A772A /* ModelTagEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2C513BF2EE0F018009A772A /* ModelTagEditorSheet.swift */; };
@@ -127,6 +128,7 @@
 		399E593F40D14E5AAD83D8EA /* VaultService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultService.swift; sourceTree = "<group>"; };
 		3A959626C53B4237AD1DD881 /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
 		3DB05E6C67FE4427941ECD63 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
+		52327976284A111B087DC761 /* ModelEnrichmentService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelEnrichmentService.swift; sourceTree = "<group>"; };
 		5A9CA03F945469535A06F816 /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
 		5ADD9516A7A1CEB080FDEDF3 /* NewDocumentModal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NewDocumentModal.swift; path = ../../Shared/Views/Team/NewDocumentModal.swift; sourceTree = "<group>"; };
 		5C5B7D185B4D1BE3FF14F5F6 /* GlassButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassButton.swift; sourceTree = "<group>"; };
@@ -467,6 +469,7 @@
 				A0C17E6398CC912A0D8702EE /* ModelLibraryService.swift */,
 				337B394F18138ED69FB88772 /* SystemCapabilityService.swift */,
 				A7F6B585438FCCD38BEB7E4E /* ModelRecommendationService.swift */,
+				52327976284A111B087DC761 /* ModelEnrichmentService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -616,6 +619,7 @@
 				211EAE88C46AFC153675FAAA /* SystemCapabilityService.swift in Sources */,
 				BE5BC333C517B0398252C865 /* ModelRecommendationService.swift in Sources */,
 				6C6B9342084AED4C54919FE4 /* AgentModels.swift in Sources */,
+				CD0E0853A1FAE27A3518557A /* ModelEnrichmentService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

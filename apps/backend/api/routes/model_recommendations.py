@@ -252,3 +252,15 @@ async def recommendations_health():
         "total_models": len(data.get("models", [])),
         "learning_enabled": False
     }
+
+
+# ===== Model Enrichment Endpoint =====
+
+# Import enrichment route
+try:
+    from .models.enrichment import router as enrichment_router
+    # Include enrichment routes under /api/v1/models
+    router.include_router(enrichment_router)
+    logger.info("✅ Model enrichment routes registered")
+except Exception as e:
+    logger.warning(f"⚠️ Could not register enrichment routes: {e}")
