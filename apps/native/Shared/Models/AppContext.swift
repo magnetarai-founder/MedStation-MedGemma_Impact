@@ -109,6 +109,16 @@ struct VaultFileMetadata: Codable {
         self.vaultType = "real"  // Default, will be overridden
         self.isDirectory = file.isFolder
     }
+
+    init(id: String, name: String, path: String, size: Int64?, modifiedAt: Date?, vaultType: String, isDirectory: Bool) {
+        self.id = id
+        self.name = name
+        self.path = path
+        self.size = size
+        self.modifiedAt = modifiedAt
+        self.vaultType = vaultType
+        self.isDirectory = isDirectory
+    }
 }
 
 /// Active file permission (what models can currently access)

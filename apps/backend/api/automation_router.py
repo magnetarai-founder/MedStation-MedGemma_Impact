@@ -190,3 +190,137 @@ async def delete_workflow(request: Request, workflow_id: str):
     """
     # TODO: Delete from database
     return {"status": "deleted", "workflow_id": workflow_id}
+
+
+# MARK: - Semantic Search
+
+
+class WorkflowSemanticSearchRequest(BaseModel):
+    query: str
+    limit: int = 10
+    min_similarity: float = 0.4
+
+
+class WorkflowSearchResult(BaseModel):
+    workflow_id: str
+    workflow_name: str
+    description: Optional[str]
+    created_at: str
+    similarity_score: float
+
+
+class WorkflowSemanticSearchResponse(BaseModel):
+    results: List[WorkflowSearchResult]
+    query: str
+    total_results: int
+
+
+@router.post("/workflows/semantic-search")
+async def semantic_search_workflows(
+    request: WorkflowSemanticSearchRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Semantic search for similar workflows using AI embeddings.
+    Helps users find relevant workflow templates.
+    """
+    try:
+        user_id = current_user.get("user_id")
+        logger.info(f"🔍 Workflow semantic search: user={user_id}, query='{request.query[:50]}...'")
+
+        # Get embedding for query
+        query_embedding = await _embed_query_workflow(request.query)
+
+        if not query_embedding:
+            logger.warning("⚠️ Embeddings unavailable")
+            return WorkflowSemanticSearchResponse(
+                results=[],
+                query=request.query,
+                total_results=0
+            )
+
+        # Get workflows from WorkflowService
+        workflows = await _get_user_workflows(user_id)
+
+        # Compute similarity for each workflow
+        results = []
+        for workflow in workflows:
+            # Create searchable text from workflow metadata
+            searchable_text = f"{workflow.get('name', '')} {workflow.get('description', '')}"
+
+            # Get workflow embedding
+            workflow_embedding = await _embed_query_workflow(searchable_text)
+
+            if workflow_embedding:
+                # Compute cosine similarity
+                similarity = _compute_cosine_similarity(query_embedding, workflow_embedding)
+
+                if similarity >= request.min_similarity:
+                    results.append(WorkflowSearchResult(
+                        workflow_id=workflow.get("id", ""),
+                        workflow_name=workflow.get("name", "Unnamed Workflow"),
+                        description=workflow.get("description"),
+                        created_at=workflow.get("created_at", ""),
+                        similarity_score=round(similarity, 4)
+                    ))
+
+        # Sort by similarity score
+        results.sort(key=lambda x: x.similarity_score, reverse=True)
+
+        # Limit results
+        results = results[:request.limit]
+
+        logger.info(f"✅ Found {len(results)} similar workflows")
+
+        return WorkflowSemanticSearchResponse(
+            results=results,
+            query=request.query,
+            total_results=len(results)
+        )
+
+    except Exception as e:
+        logger.error(f"❌ Workflow semantic search failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Workflow semantic search failed: {str(e)}")
+
+
+# MARK: - Helper Functions for Semantic Search
+
+async def _embed_query_workflow(text: str) -> Optional[List[float]]:
+    """Generate embedding for workflow text using ANE Context Engine"""
+    try:
+        from api.ane_context_engine import _embed_with_ane
+        embedding = _embed_with_ane(text)
+        return embedding
+    except Exception as e:
+        logger.warning(f"⚠️ Embedding failed: {e}")
+        return None
+
+
+async def _get_user_workflows(user_id: str) -> List[Dict[str, Any]]:
+    """Get workflows for user"""
+    try:
+        from api.workflow_service import WorkflowService
+        workflow_service = WorkflowService()
+
+        # Get workflows from service
+        workflows = workflow_service.list_workflows(user_id=user_id)
+        return workflows
+
+    except Exception as e:
+        logger.warning(f"⚠️ Failed to get workflows: {e}")
+        return []
+
+
+def _compute_cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
+    """Compute cosine similarity between two vectors"""
+    if len(vec1) != len(vec2):
+        return 0.0
+
+    dot_product = sum(a * b for a, b in zip(vec1, vec2))
+    magnitude1 = sum(a * a for a in vec1) ** 0.5
+    magnitude2 = sum(b * b for b in vec2) ** 0.5
+
+    if magnitude1 == 0 or magnitude2 == 0:
+        return 0.0
+
+    return dot_product / (magnitude1 * magnitude2)

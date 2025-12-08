@@ -8,7 +8,7 @@ try:
 except ImportError:
     from auth_middleware import get_current_user
 
-from . import documents, files, folders, sharing, ws, automation
+from . import documents, files, folders, sharing, ws, automation, semantic_search
 
 router = APIRouter(
     prefix="/api/v1/vault",
@@ -23,3 +23,4 @@ router.include_router(folders.router)
 router.include_router(sharing.router)
 router.include_router(ws.router)
 router.include_router(automation.router)
+router.include_router(semantic_search.router)

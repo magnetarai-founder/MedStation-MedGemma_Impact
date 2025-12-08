@@ -312,15 +312,14 @@ class ContextBundler {
             return nil
         }
 
-        // TODO: Search for relevant files using semantic search
-        // Would need full VaultFileMetadata objects which require more data than search provides
-        // For now, rely on recently accessed files
+        // Semantic search for relevant files
+        let relevantFiles = await fetchRelevantVaultFiles(query: query, vaultType: vault.unlockedVaultType ?? "real")
 
         return BundledVaultContext(
             unlockedVaultType: vault.unlockedVaultType,
             recentlyAccessedFiles: Array(vault.recentFiles.prefix(5)),
             currentlyGrantedPermissions: vault.activePermissions,
-            relevantFiles: nil  // TODO: Implement when VaultService provides file search
+            relevantFiles: relevantFiles
         )
     }
 
@@ -379,14 +378,13 @@ class ContextBundler {
             return nil
         }
 
-        // TODO: Search for relevant workflows using semantic search
-        // Would need full WorkflowSummary objects
-        // For now, rely on active workflows
+        // Semantic search for relevant workflows
+        let relevantWorkflows = await fetchRelevantWorkflows(query: query)
 
         return BundledWorkflowContext(
             activeWorkflows: Array(workflow.activeWorkflows.prefix(5)),
             recentExecutions: Array(workflow.recentExecutions.prefix(5)),
-            relevantWorkflows: nil  // TODO: Implement when WorkflowService provides search
+            relevantWorkflows: relevantWorkflows
         )
     }
 
@@ -435,12 +433,15 @@ class ContextBundler {
         // Get git status if in a git repo
         let gitStatus = getGitStatus()
 
+        // Semantic search for relevant code files (future: integrate with MagnetarCode)
+        // For now, leave as nil since code context is minimal
+
         return BundledCodeContext(
             openFiles: code.openFiles,
             recentEdits: Array(code.recentEdits.prefix(5)),
             gitBranch: code.gitBranch,
             gitStatus: gitStatus,
-            relevantFiles: nil  // TODO: Semantic search for relevant files
+            relevantFiles: nil  // TODO: Integrate with MagnetarCode when available
         )
     }
 
@@ -565,6 +566,113 @@ class ContextBundler {
                 ),
                 isHealthy: true
             )
+        }
+    }
+
+    private func fetchRelevantVaultFiles(query: String, vaultType: String) async -> [VaultFileMetadata]? {
+        do {
+            struct SemanticSearchRequest: Codable {
+                let query: String
+                let vaultType: String
+                let limit: Int
+                let minSimilarity: Float
+            }
+
+            struct SemanticSearchResult: Codable {
+                let fileId: String
+                let filename: String
+                let similarityScore: Float
+                let filePath: String?
+                let fileSize: Int?
+                let createdAt: String?
+                let modifiedAt: String?
+            }
+
+            struct SemanticSearchResponse: Codable {
+                let results: [SemanticSearchResult]
+                let query: String
+                let totalResults: Int
+            }
+
+            let searchRequest = SemanticSearchRequest(
+                query: query,
+                vaultType: vaultType,
+                limit: 10,
+                minSimilarity: 0.4
+            )
+
+            let response: SemanticSearchResponse = try await ApiClient.shared.request(
+                "/v1/vault/semantic-search",
+                method: .post,
+                body: searchRequest
+            )
+
+            let files = response.results.map { result in
+                VaultFileMetadata(
+                    id: result.fileId,
+                    name: result.filename,
+                    path: result.filePath ?? "/",
+                    size: result.fileSize.map { Int64($0) },
+                    modifiedAt: ISO8601DateFormatter().date(from: result.modifiedAt ?? ""),
+                    vaultType: vaultType,
+                    isDirectory: false
+                )
+            }
+
+            return files.isEmpty ? nil : files
+        } catch {
+            print("⚠️ Failed to fetch relevant vault files: \(error)")
+            return nil
+        }
+    }
+
+    private func fetchRelevantWorkflows(query: String) async -> [WorkflowSummary]? {
+        do {
+            struct WorkflowSemanticSearchRequest: Codable {
+                let query: String
+                let limit: Int
+                let minSimilarity: Float
+            }
+
+            struct WorkflowSearchResult: Codable {
+                let workflowId: String
+                let workflowName: String
+                let description: String?
+                let createdAt: String
+                let similarityScore: Float
+            }
+
+            struct WorkflowSemanticSearchResponse: Codable {
+                let results: [WorkflowSearchResult]
+                let query: String
+                let totalResults: Int
+            }
+
+            let searchRequest = WorkflowSemanticSearchRequest(
+                query: query,
+                limit: 10,
+                minSimilarity: 0.4
+            )
+
+            let response: WorkflowSemanticSearchResponse = try await ApiClient.shared.request(
+                "/v1/automation/workflows/semantic-search",
+                method: .post,
+                body: searchRequest
+            )
+
+            let workflows = response.results.map { result in
+                WorkflowSummary(
+                    id: result.workflowId,
+                    name: result.workflowName,
+                    status: "active",  // Default status, adjust as needed
+                    lastRun: ISO8601DateFormatter().date(from: result.createdAt)
+                )
+            }
+
+            return workflows.isEmpty ? nil : workflows
+        } catch {
+            print("⚠️ Failed to fetch relevant workflows: \(error)")
+            return nil
         }
     }
 }
