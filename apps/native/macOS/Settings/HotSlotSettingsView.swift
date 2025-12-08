@@ -12,11 +12,9 @@ import SwiftUI
 
 struct HotSlotSettingsView: View {
     @StateObject private var hotSlotManager = HotSlotManager.shared
-    @State private var availableModels: [AssignableModel] = []
-    @State private var isLoadingModels: Bool = false
-    @State private var showEvictionDialog: Bool = false
+    @State private var modelsStore = ModelsStore()
+    @State private var showModelPicker: Bool = false
     @State private var selectedSlotForAssignment: Int? = nil
-    @State private var selectedModelForAssignment: String? = nil
 
     var body: some View {
         ScrollView {
@@ -74,7 +72,7 @@ struct HotSlotSettingsView: View {
                             },
                             onAssign: {
                                 selectedSlotForAssignment = slot.slotNumber
-                                // TODO: Show model picker
+                                showModelPicker = true
                             }
                         )
                     }
@@ -143,6 +141,26 @@ struct HotSlotSettingsView: View {
         }
         .task {
             await hotSlotManager.loadHotSlots()
+            await modelsStore.fetchModels()
+        }
+        .sheet(isPresented: $showModelPicker) {
+            if let slotNumber = selectedSlotForAssignment {
+                ModelPickerSheet(
+                    slotNumber: slotNumber,
+                    availableModels: modelsStore.models,
+                    onSelect: { modelName in
+                        Task {
+                            try? await hotSlotManager.assignToSlot(slotNumber: slotNumber, modelName: modelName)
+                            showModelPicker = false
+                            selectedSlotForAssignment = nil
+                        }
+                    },
+                    onCancel: {
+                        showModelPicker = false
+                        selectedSlotForAssignment = nil
+                    }
+                )
+            }
         }
     }
 }
@@ -261,6 +279,168 @@ struct HotSlotCard: View {
         }
         .scaleEffect(isHovered ? 1.02 : 1.0)
         .animation(.easeInOut(duration: 0.2), value: isHovered)
+    }
+}
+
+// MARK: - Model Picker Sheet
+
+struct ModelPickerSheet: View {
+    let slotNumber: Int
+    let availableModels: [OllamaModel]
+    let onSelect: (String) -> Void
+    let onCancel: () -> Void
+
+    @State private var searchText: String = ""
+
+    var filteredModels: [OllamaModel] {
+        if searchText.isEmpty {
+            return availableModels
+        }
+        return availableModels.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Text("Assign to Slot \(slotNumber)")
+                    .font(.title2)
+                    .fontWeight(.bold)
+
+                Spacer()
+
+                Button {
+                    onCancel()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title3)
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(20)
+
+            Divider()
+
+            // Search bar
+            HStack {
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(.secondary)
+
+                TextField("Search models...", text: $searchText)
+                    .textFieldStyle(.plain)
+
+                if !searchText.isEmpty {
+                    Button {
+                        searchText = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(12)
+            .background(Color.surfaceSecondary.opacity(0.3))
+            .cornerRadius(8)
+            .padding(.horizontal, 20)
+            .padding(.top, 16)
+
+            // Model list
+            if filteredModels.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "cube.box")
+                        .font(.system(size: 48))
+                        .foregroundColor(.secondary)
+
+                    Text(searchText.isEmpty ? "No models installed" : "No matching models")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+
+                    if searchText.isEmpty {
+                        Text("Install models from MagnetarHub first")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 12) {
+                        ForEach(filteredModels) { model in
+                            ModelPickerRow(model: model) {
+                                onSelect(model.name)
+                            }
+                        }
+                    }
+                    .padding(20)
+                }
+            }
+        }
+        .frame(width: 500, height: 600)
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+}
+
+// MARK: - Model Picker Row
+
+struct ModelPickerRow: View {
+    let model: OllamaModel
+    let onSelect: () -> Void
+
+    @State private var isHovered: Bool = false
+
+    var body: some View {
+        Button {
+            onSelect()
+        } label: {
+            HStack(spacing: 12) {
+                // Icon
+                Image(systemName: "cube.fill")
+                    .font(.title2)
+                    .foregroundStyle(LinearGradient.magnetarGradient)
+                    .frame(width: 40)
+
+                // Model info
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(model.name)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.primary)
+
+                    HStack(spacing: 8) {
+                        if let family = model.details?.family {
+                            Text(family.capitalized)
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+
+                        Text(model.sizeFormatted)
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                // Assign button
+                Image(systemName: "arrow.right.circle.fill")
+                    .font(.title3)
+                    .foregroundColor(.magnetarPrimary)
+            }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(isHovered ? Color.surfaceSecondary.opacity(0.5) : Color.surfaceSecondary.opacity(0.3))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(isHovered ? Color.magnetarPrimary.opacity(0.5) : Color.clear, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            isHovered = hovering
+        }
     }
 }
 

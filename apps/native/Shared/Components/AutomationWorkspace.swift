@@ -1573,6 +1573,9 @@ struct WorkflowQueueView: View {
         // Create status labels from work item status
         let statusLabels = [workItem.status.capitalized]
 
+        // Format timestamp
+        let formattedTimestamp = formatTimestamp(workItem.createdAt)
+
         return QueueItem(
             reference: workItem.referenceNumber ?? "WRK-\(workItem.id.prefix(6))",
             workflowName: workItem.workflowName ?? workflowName,
@@ -1580,11 +1583,64 @@ struct WorkflowQueueView: View {
             priority: priority,
             statusLabels: statusLabels,
             dataPreview: Array(dataPreview),
-            createdAt: "Recently", // TODO: Format timestamp from backend
-            tags: [], // TODO: Extract tags from work item data
+            createdAt: formattedTimestamp,
+            tags: workItem.tags ?? [],
             assignedTo: nil, // TODO: Add assignee field to WorkItem model
             isAssignedToMe: workItem.status == "claimed"
         )
+    }
+
+    private func formatTimestamp(_ isoString: String?) -> String {
+        guard let isoString = isoString else { return "Recently" }
+
+        // Parse ISO8601 timestamp
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        guard let date = formatter.date(from: isoString) else {
+            // Try without fractional seconds
+            formatter.formatOptions = [.withInternetDateTime]
+            guard let date = formatter.date(from: isoString) else {
+                return "Recently"
+            }
+            return formatRelativeTime(date)
+        }
+
+        return formatRelativeTime(date)
+    }
+
+    private func formatRelativeTime(_ date: Date) -> String {
+        let now = Date()
+        let interval = now.timeIntervalSince(date)
+
+        // Less than 1 minute
+        if interval < 60 {
+            return "Just now"
+        }
+
+        // Less than 1 hour
+        if interval < 3600 {
+            let minutes = Int(interval / 60)
+            return "\(minutes)m ago"
+        }
+
+        // Less than 24 hours
+        if interval < 86400 {
+            let hours = Int(interval / 3600)
+            return "\(hours)h ago"
+        }
+
+        // Less than 7 days
+        if interval < 604800 {
+            let days = Int(interval / 86400)
+            return "\(days)d ago"
+        }
+
+        // Use date formatter for older dates
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .short
+        dateFormatter.timeStyle = .none
+        return dateFormatter.string(from: date)
     }
 
     // MARK: - States

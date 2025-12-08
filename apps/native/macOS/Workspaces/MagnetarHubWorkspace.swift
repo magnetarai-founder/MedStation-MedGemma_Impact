@@ -64,7 +64,9 @@ struct MagnetarHubWorkspace: View {
                     model: model,
                     enrichedMetadata: enrichedModels,
                     activeDownloads: $activeDownloads,
-                    onDownload: downloadModel
+                    onDownload: downloadModel,
+                    onDelete: deleteModel,
+                    onUpdate: updateModel
                 )
             }
         }
@@ -592,6 +594,94 @@ struct MagnetarHubWorkspace: View {
         }
     }
 
+    private func deleteModel(_ modelName: String) {
+        Task {
+            do {
+                print("🗑️ Deleting model: \(modelName)")
+                let result = try await ollamaService.removeModel(modelName: modelName)
+                print("✅ \(result.message)")
+
+                // Refresh local models list
+                await modelsStore.fetchModels()
+
+                // Clear enrichment cache for this model
+                await enrichmentService.clearCache(for: modelName)
+                enrichedModels.removeValue(forKey: modelName)
+
+                // Close modal
+                showModelDetail = false
+                selectedModel = nil
+            } catch {
+                print("❌ Failed to delete model: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    private func updateModel(_ modelName: String) {
+        guard ollamaServerRunning else {
+            print("❌ Cannot update - Ollama server not running")
+            return
+        }
+
+        guard isNetworkConnected else {
+            print("❌ Cannot update - No internet connection")
+            return
+        }
+
+        // Re-pull the model to update it
+        print("🔄 Updating model: \(modelName)")
+
+        // Initialize progress tracking
+        activeDownloads[modelName] = DownloadProgress(
+            modelName: modelName,
+            status: "Checking for updates...",
+            progress: 0.0
+        )
+
+        ollamaService.pullModel(
+            modelName: modelName,
+            onProgress: { progress in
+                Task { @MainActor in
+                    self.activeDownloads[modelName] = DownloadProgress(
+                        modelName: modelName,
+                        status: progress.message,
+                        progress: self.estimateProgress(from: progress.status)
+                    )
+                }
+            },
+            onComplete: { result in
+                Task { @MainActor in
+                    switch result {
+                    case .success:
+                        print("✅ Update complete: \(modelName)")
+                        self.activeDownloads.removeValue(forKey: modelName)
+
+                        // Refresh local models list
+                        await self.modelsStore.fetchModels()
+
+                        // Clear enrichment cache to get fresh metadata
+                        await self.enrichmentService.clearCache(for: modelName)
+                        self.enrichedModels.removeValue(forKey: modelName)
+
+                        // Re-enrich the updated model
+                        if let updatedModel = self.modelsStore.models.first(where: { $0.name == modelName }) {
+                            let enriched = await self.enrichmentService.enrichModel(updatedModel)
+                            self.enrichedModels[modelName] = enriched
+                        }
+                    case .failure(let error):
+                        print("❌ Update failed: \(error.localizedDescription)")
+                        self.activeDownloads[modelName] = DownloadProgress(
+                            modelName: modelName,
+                            status: "Error: \(error.localizedDescription)",
+                            progress: 0.0,
+                            error: error.localizedDescription
+                        )
+                    }
+                }
+            }
+        )
+    }
+
     // MARK: - Computed Properties
 
     private var gridColumns: [GridItem] {
@@ -830,6 +920,8 @@ struct ModelDetailModal: View {
     let enrichedMetadata: [String: EnrichedModelMetadata]
     @Binding var activeDownloads: [String: DownloadProgress]
     let onDownload: (String) -> Void
+    let onDelete: (String) -> Void
+    let onUpdate: (String) -> Void
     @Environment(\.dismiss) private var dismiss
     private let capabilityService = SystemCapabilityService.shared
 
@@ -894,7 +986,12 @@ struct ModelDetailModal: View {
                     }
 
                     // Actions
-                    model.detailActions(activeDownloads: $activeDownloads, onDownload: onDownload)
+                    model.detailActions(
+                        activeDownloads: $activeDownloads,
+                        onDownload: onDownload,
+                        onDelete: onDelete,
+                        onUpdate: onUpdate
+                    )
 
                     // Additional details
                     model.additionalDetails(enriched: enrichedMetadata)
@@ -1241,7 +1338,12 @@ enum AnyModelItem: Identifiable {
         }
     }
 
-    func detailActions(activeDownloads: Binding<[String: DownloadProgress]>, onDownload: @escaping (String) -> Void) -> some View {
+    func detailActions(
+        activeDownloads: Binding<[String: DownloadProgress]>,
+        onDownload: @escaping (String) -> Void,
+        onDelete: @escaping (String) -> Void,
+        onUpdate: @escaping (String) -> Void
+    ) -> some View {
         Group {
             switch self {
             case .local(let model):
@@ -1251,7 +1353,7 @@ enum AnyModelItem: Identifiable {
 
                     HStack(spacing: 12) {
                         Button {
-                            // TODO: Delete model
+                            onDelete(model.name)
                         } label: {
                             Label("Delete", systemImage: "trash")
                                 .frame(maxWidth: .infinity)
@@ -1260,7 +1362,7 @@ enum AnyModelItem: Identifiable {
                         .tint(.red)
 
                         Button {
-                            // TODO: Update model
+                            onUpdate(model.name)
                         } label: {
                             Label("Update", systemImage: "arrow.clockwise")
                                 .frame(maxWidth: .infinity)

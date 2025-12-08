@@ -101,6 +101,8 @@ struct WorkItem: Codable, Identifiable {
     let workflowName: String?
     let isOverdue: Bool?
     let completedAt: String?
+    let createdAt: String?
+    let tags: [String]?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -114,6 +116,8 @@ struct WorkItem: Codable, Identifiable {
         case workflowName = "workflow_name"
         case isOverdue = "is_overdue"
         case completedAt = "completed_at"
+        case createdAt = "created_at"
+        case tags
     }
 }
 

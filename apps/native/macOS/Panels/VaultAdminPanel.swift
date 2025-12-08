@@ -14,6 +14,7 @@ import SwiftUI
 struct VaultAdminPanel: View {
     @StateObject private var permissionManager = VaultPermissionManager.shared
     @StateObject private var hotSlotManager = HotSlotManager.shared
+    private let capabilityService = SystemCapabilityService.shared
 
     @State private var selectedTab: AdminTab = .permissions
     @State private var showRevokeAllConfirmation: Bool = false
@@ -222,10 +223,67 @@ struct VaultAdminPanel: View {
                 Text("System Resources")
                     .font(.headline)
 
-                // TODO: Get from SystemResourceState
-                Text("Resource monitoring coming in Phase 4")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
+                HStack(spacing: 16) {
+                    // Memory
+                    ResourceStat(
+                        icon: "memorychip.fill",
+                        label: "Total Memory",
+                        value: String(format: "%.0f GB", capabilityService.totalMemoryGB),
+                        color: .blue
+                    )
+
+                    // CPU Cores
+                    ResourceStat(
+                        icon: "cpu.fill",
+                        label: "CPU Cores",
+                        value: "\(capabilityService.cpuCores)",
+                        color: .green
+                    )
+
+                    // Metal Support
+                    ResourceStat(
+                        icon: capabilityService.hasMetalSupport ? "checkmark.circle.fill" : "xmark.circle.fill",
+                        label: "Metal GPU",
+                        value: capabilityService.hasMetalSupport ? "Available" : "N/A",
+                        color: capabilityService.hasMetalSupport ? .green : .secondary
+                    )
+                }
+
+                // Hot Slots Memory Usage
+                if hotSlotManager.hotSlots.contains(where: { !$0.isEmpty }) {
+                    Divider()
+                        .padding(.vertical, 8)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Hot Slots Memory Usage")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+
+                        HStack(spacing: 12) {
+                            ForEach(hotSlotManager.hotSlots) { slot in
+                                if !slot.isEmpty, let memoryGB = slot.memoryUsageGB {
+                                    VStack(spacing: 4) {
+                                        Text("Slot \(slot.slotNumber)")
+                                            .font(.system(size: 10))
+                                            .foregroundColor(.secondary)
+
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "memorychip")
+                                                .font(.system(size: 10))
+                                            Text(String(format: "%.1f GB", memoryGB))
+                                                .font(.system(size: 11, weight: .medium))
+                                        }
+                                        .foregroundColor(.magnetarPrimary)
+                                    }
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 6)
+                                    .background(Color.surfaceSecondary.opacity(0.3))
+                                    .cornerRadius(6)
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -455,6 +513,34 @@ struct StatCard: View {
         .padding(16)
         .background(Color.surfaceSecondary.opacity(0.3))
         .cornerRadius(12)
+    }
+}
+
+// MARK: - Resource Stat (Compact)
+
+struct ResourceStat: View {
+    let icon: String
+    let label: String
+    let value: String
+    let color: Color
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 18))
+                .foregroundColor(color)
+
+            Text(value)
+                .font(.system(size: 14, weight: .semibold))
+
+            Text(label)
+                .font(.system(size: 10))
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(12)
+        .background(Color.surfaceSecondary.opacity(0.3))
+        .cornerRadius(8)
     }
 }
 
