@@ -605,7 +605,7 @@ struct MagnetarHubWorkspace: View {
                 await modelsStore.fetchModels()
 
                 // Clear enrichment cache for this model
-                await enrichmentService.clearCache(for: modelName)
+                enrichmentService.clearCache(for: modelName)
                 enrichedModels.removeValue(forKey: modelName)
 
                 // Close modal
@@ -660,7 +660,7 @@ struct MagnetarHubWorkspace: View {
                         await self.modelsStore.fetchModels()
 
                         // Clear enrichment cache to get fresh metadata
-                        await self.enrichmentService.clearCache(for: modelName)
+                        self.enrichmentService.clearCache(for: modelName)
                         self.enrichedModels.removeValue(forKey: modelName)
 
                         // Re-enrich the updated model
