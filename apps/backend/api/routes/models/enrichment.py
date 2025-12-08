@@ -120,24 +120,56 @@ Return ONLY the JSON object, no additional text."""
 
 
 async def call_apple_fm_enrichment(prompt: str, request: ModelEnrichmentRequest) -> dict:
-    """Call Apple FM via agent routing to get enriched metadata"""
+    """Call Apple FM (Phi-3) via Ollama to get enriched metadata"""
 
     try:
-        # Import agent routing service
-        from api.services.agent_router import route_to_best_agent
+        # Import Ollama client
+        from api.services.chat.core import _get_ollama_client
 
-        # Route to phi-3 (Apple FM) for fast, structured analysis
-        response = await route_to_best_agent(
-            input_text=prompt,
-            intent="metadata_generation",
-            require_json=True
+        # Get Ollama client
+        client = _get_ollama_client()
+
+        # Use phi-3 (Apple FM) for fast, structured analysis
+        # Fallback to any available small model if phi-3 not available
+        models_to_try = ["phi3.5:latest", "phi3:latest", "phi:latest", "llama3.2:3b", "mistral:latest"]
+
+        model_to_use = None
+        available_models = await list_available_models()
+
+        for model in models_to_try:
+            if any(model in m for m in available_models):
+                model_to_use = model
+                break
+
+        if not model_to_use and available_models:
+            # Use first available model
+            model_to_use = available_models[0]
+            logger.info(f"Using fallback model: {model_to_use}")
+
+        if not model_to_use:
+            raise Exception("No Ollama models available")
+
+        # Call Ollama with the enrichment prompt
+        response = client.chat(
+            model=model_to_use,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a helpful AI assistant that generates structured JSON metadata for AI models. Always respond with valid JSON only."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            options={
+                "temperature": 0.3,  # Low temperature for consistent structured output
+                "num_predict": 500   # Limit response length
+            }
         )
 
-        # Parse JSON response
-        if isinstance(response, dict) and "output" in response:
-            json_text = response["output"]
-        else:
-            json_text = str(response)
+        # Extract response text
+        json_text = response.get("message", {}).get("content", "")
 
         # Extract JSON from response (handle markdown code blocks)
         json_text = extract_json_from_response(json_text)
@@ -149,6 +181,16 @@ async def call_apple_fm_enrichment(prompt: str, request: ModelEnrichmentRequest)
     except Exception as e:
         logger.warning(f"⚠️ Apple FM enrichment failed: {e}, using fallback")
         raise
+
+
+async def list_available_models() -> list[str]:
+    """List available Ollama models"""
+    try:
+        from api.services import chat
+        models = await chat.list_ollama_models()
+        return [m.get("name", "") for m in models]
+    except Exception:
+        return []
 
 
 def extract_json_from_response(text: str) -> str:
