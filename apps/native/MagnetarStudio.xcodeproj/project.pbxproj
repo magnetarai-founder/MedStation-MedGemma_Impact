@@ -91,6 +91,7 @@
 		E68789013473A49D03D15C8B /* ChatWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA268C85AA8894BC92182D94 /* ChatWorkspace.swift */; };
 		E6F67D648E370A7017CB08A0 /* ResourceMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A44572DB91B6E7FBABC82A1A /* ResourceMonitor.swift */; };
 		E7655B4CD26D4096BB36C64E /* NetworkChatStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC1A48A6AB2B47E091FD7A11 /* NetworkChatStore.swift */; };
+		E80D6A747358ABC244FB51EC /* VaultComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA41B0C7CACB6D1CA954CD7D /* VaultComponents.swift */; };
 		E840DDF0BB59FF2E5EFCF7DD /* VaultSetupWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBAFCA059EFBB30832A7C3B2 /* VaultSetupWizardView.swift */; };
 		E8E0336CBB99E532C5484361 /* NavigationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0B5547ECD973EFF39678E79 /* NavigationStore.swift */; };
 		EA7137A1464248E4B3DA0B7E /* VaultStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D400216101AE4ABBA95512A5 /* VaultStore.swift */; };
@@ -205,6 +206,7 @@
 		F5EC6DB8FD99287F756160BC /* EditDocumentModal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EditDocumentModal.swift; sourceTree = "<group>"; };
 		F85CE2F0DE5343879EB18743 /* Header.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Header.swift; sourceTree = "<group>"; };
 		FA268C85AA8894BC92182D94 /* ChatWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatWorkspace.swift; sourceTree = "<group>"; };
+		FA41B0C7CACB6D1CA954CD7D /* VaultComponents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VaultComponents.swift; path = Vault/VaultComponents.swift; sourceTree = "<group>"; };
 		FFCA25F1A54EEEE41A231647 /* FileAccessPermissionModal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FileAccessPermissionModal.swift; path = Dialogs/FileAccessPermissionModal.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -457,6 +459,7 @@
 			isa = PBXGroup;
 			children = (
 				17B48CFFB13864D1927C04F8 /* VaultWorkspaceView.swift */,
+				FA41B0C7CACB6D1CA954CD7D /* VaultComponents.swift */,
 			);
 			name = Vault;
 			sourceTree = "<group>";
@@ -660,6 +663,7 @@
 				F52CC6633BFB9B995A499F78 /* TeamChatModals.swift in Sources */,
 				9321F3F615C1FF90BDC69F93 /* DocsWorkspaceView.swift in Sources */,
 				86B7A0EDAC440B41E6FA5710 /* VaultWorkspaceView.swift in Sources */,
+				E80D6A747358ABC244FB51EC /* VaultComponents.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
