@@ -20,6 +20,7 @@
 		1F6C75B6ED0D4B9CBC80D2F3 /* AnyCodable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61A51A35C05D4A7A8724EE3B /* AnyCodable.swift */; };
 		211EAE88C46AFC153675FAAA /* SystemCapabilityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 337B394F18138ED69FB88772 /* SystemCapabilityService.swift */; };
 		21E71528368BABF2F2852CFE /* TerminalService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D63ED6288BC106CB39D1BB /* TerminalService.swift */; };
+		24CCD2C68B24A6B1BFA19456 /* TeamChatComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0451645C6D081B309C394FFB /* TeamChatComponents.swift */; };
 		27A4D1543BA8BA0FA7604B95 /* ModelSelectorMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC12D8A6355AFFD9A5022863 /* ModelSelectorMenu.swift */; };
 		284B09009A694A4E0263B311 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE1C4B939DAC9084AC244415 /* ContentView.swift */; };
 		2CEBD6ED297D4874B6DDB1F6 /* SettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FB81FC9D13D45848AE84D90 /* SettingsStore.swift */; };
@@ -102,6 +103,7 @@
 /* Begin PBXFileReference section */
 		00280C486C0A463EACC552E6 /* AuthStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthStore.swift; sourceTree = "<group>"; };
 		0369ADDFF9623D901CC8207E /* MagnetarStudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagnetarStudioApp.swift; sourceTree = "<group>"; };
+		0451645C6D081B309C394FFB /* TeamChatComponents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TeamChatComponents.swift; path = TeamChat/TeamChatComponents.swift; sourceTree = "<group>"; };
 		0555CDE5ACABDDEA3DA1834D /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		0672C7A8089F078868C15E1C /* AppContext.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppContext.swift; sourceTree = "<group>"; };
 		08785DE309A344AF8765E6BC /* NavigationRail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationRail.swift; sourceTree = "<group>"; };
@@ -237,6 +239,14 @@
 			path = Security;
 			sourceTree = "<group>";
 		};
+		29DF4A0DB6E3BF50D8AF569E /* TeamChat */ = {
+			isa = PBXGroup;
+			children = (
+				0451645C6D081B309C394FFB /* TeamChatComponents.swift */,
+			);
+			name = TeamChat;
+			sourceTree = "<group>";
+		};
 		4E36A8E7580169C9E6979E17 /* Modifiers */ = {
 			isa = PBXGroup;
 			children = (
@@ -255,6 +265,7 @@
 				1EA14AC49CC3C7EE3D89EE05 /* TeamWorkspace.swift */,
 				2311BD5A73E62FEED76C9A13 /* CodeWorkspace.swift */,
 				A485EA6B25510FE933F43738 /* MagnetarHubWorkspace.swift */,
+				29DF4A0DB6E3BF50D8AF569E /* TeamChat */,
 			);
 			path = Workspaces;
 			sourceTree = "<group>";
@@ -620,6 +631,7 @@
 				BE5BC333C517B0398252C865 /* ModelRecommendationService.swift in Sources */,
 				6C6B9342084AED4C54919FE4 /* AgentModels.swift in Sources */,
 				CD0E0853A1FAE27A3518557A /* ModelEnrichmentService.swift in Sources */,
+				24CCD2C68B24A6B1BFA19456 /* TeamChatComponents.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
