@@ -48,6 +48,7 @@
 		6F8590DFCF92476BB18FB1FF /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A959626C53B4237AD1DD881 /* KeychainService.swift */; };
 		7B7E8A766BB7FC3F6725F19B /* DatabaseWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = A90C0C6D0ED2910BC2EE2A2D /* DatabaseWorkspace.swift */; };
 		8151AB8F8D128C4FE220C6A6 /* CodeWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2311BD5A73E62FEED76C9A13 /* CodeWorkspace.swift */; };
+		86B7A0EDAC440B41E6FA5710 /* VaultWorkspaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17B48CFFB13864D1927C04F8 /* VaultWorkspaceView.swift */; };
 		87AC91711BE8494C52DC1524 /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35C17D9C1722F2E28A8F923C /* Colors.swift */; };
 		8D5D7DF58BE6BAF3A63551BA /* ModelRoutingDecision.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CD166ACB45A69C9897FFFA3 /* ModelRoutingDecision.swift */; };
 		9321F3F615C1FF90BDC69F93 /* DocsWorkspaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 786CB632E145399E3EDC4820 /* DocsWorkspaceView.swift */; };
@@ -111,6 +112,7 @@
 		08785DE309A344AF8765E6BC /* NavigationRail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationRail.swift; sourceTree = "<group>"; };
 		103BCE5F6B11D8ACD6D6DDF6 /* ModelManagerWindow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ModelManagerWindow.swift; path = ModelManagerWindow.swift; sourceTree = "<group>"; };
 		10F8272E2D6EF476FDDCC185 /* CodeEditorService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CodeEditorService.swift; sourceTree = "<group>"; };
+		17B48CFFB13864D1927C04F8 /* VaultWorkspaceView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VaultWorkspaceView.swift; path = Vault/VaultWorkspaceView.swift; sourceTree = "<group>"; };
 		18F56FEE06EB4480B335A64B /* VaultModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultModels.swift; sourceTree = "<group>"; };
 		18F8E78737774D21B8C95D37 /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
 		1A2760AE2A83BCE0FEB660A5 /* MagnetarHubWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagnetarHubWorkspace.swift; sourceTree = "<group>"; };
@@ -272,6 +274,7 @@
 				A485EA6B25510FE933F43738 /* MagnetarHubWorkspace.swift */,
 				29DF4A0DB6E3BF50D8AF569E /* TeamChat */,
 				75C6E8BB23325894A32D4935 /* Docs */,
+				DCE4AA910ED02FF68EDB552F /* Vault */,
 			);
 			path = Workspaces;
 			sourceTree = "<group>";
@@ -448,6 +451,14 @@
 				8838BDE42960AA40D4057FA2 /* SmartModelPicker.swift */,
 			);
 			path = Components;
+			sourceTree = "<group>";
+		};
+		DCE4AA910ED02FF68EDB552F /* Vault */ = {
+			isa = PBXGroup;
+			children = (
+				17B48CFFB13864D1927C04F8 /* VaultWorkspaceView.swift */,
+			);
+			name = Vault;
 			sourceTree = "<group>";
 		};
 		E18C80C7AB68D88D33E928A3 /* Shared */ = {
@@ -648,6 +659,7 @@
 				24CCD2C68B24A6B1BFA19456 /* TeamChatComponents.swift in Sources */,
 				F52CC6633BFB9B995A499F78 /* TeamChatModals.swift in Sources */,
 				9321F3F615C1FF90BDC69F93 /* DocsWorkspaceView.swift in Sources */,
+				86B7A0EDAC440B41E6FA5710 /* VaultWorkspaceView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
