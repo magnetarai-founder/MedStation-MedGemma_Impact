@@ -258,11 +258,11 @@ struct KanbanWorkspace: View {
                     isLoading = false
                 }
             } catch {
-                // Fall back to mock data if API fails
+                // Show empty state if API fails
                 print("Kanban API error: \(error.localizedDescription)")
                 await MainActor.run {
-                    boards = KanbanBoard.mockBoards
-                    tasks = KanbanTask.mockTasks
+                    boards = []
+                    tasks = []
                     isLoading = false
                 }
             }

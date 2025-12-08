@@ -20,19 +20,24 @@ class AppleFMOrchestrator: ModelOrchestrator {
     let id = "apple-fm"
     let displayName = "Apple Foundation Models"
 
-    // Check if Foundation Models is available (macOS 26+)
+    // Check if backend orchestrator is available
     var isAvailable: Bool {
         get async {
-            // Check macOS version
-            let version = ProcessInfo.processInfo.operatingSystemVersion
-            guard version.majorVersion >= 26 else {
-                print("✗ Apple FM unavailable: Requires macOS 26 Tahoe or later (current: \(version.majorVersion))")
+            // Check if backend is available by attempting health check
+            do {
+                struct HealthResponse: Codable {
+                    let status: String
+                }
+
+                let response: HealthResponse = try await ApiClient.shared.request(
+                    "/health",
+                    method: .get
+                )
+                return response.status == "ok"
+            } catch {
+                print("✗ Backend orchestrator unavailable: \(error)")
                 return false
             }
-
-            // TODO: Check if Foundation Models framework is actually available
-            // For now, assume available on macOS 26+
-            return true
         }
     }
 
@@ -111,12 +116,99 @@ class AppleFMOrchestrator: ModelOrchestrator {
         )
     }
 
-    // MARK: - Query Analysis (Simulated - will use real FM in production)
+    // MARK: - Query Analysis (Backend-Powered)
 
     private func analyzeQuery(_ query: String, context: ContextBundle) async -> QueryAnalysis {
-        // TODO: Use actual Foundation Models API
-        // For now, use rule-based analysis
+        // Use backend's intelligent routing via Phi-3 intent classification
+        do {
+            // Call backend route endpoint
+            let routeRequest = AgentRouteRequest(input: query)
+            let response: AgentRouteResponse = try await ApiClient.shared.request(
+                "/v1/agent/route",
+                method: .post,
+                body: routeRequest
+            )
 
+            // Map backend response to QueryAnalysis
+            return mapBackendRouteToAnalysis(response, originalQuery: query, context: context)
+
+        } catch {
+            print("⚠️ Backend routing failed, falling back to rule-based analysis: \(error)")
+            // Fallback to rule-based analysis if backend unavailable
+            return fallbackAnalyzeQuery(query, context: context)
+        }
+    }
+
+    // Map backend route response to QueryAnalysis
+    private func mapBackendRouteToAnalysis(
+        _ response: AgentRouteResponse,
+        originalQuery: String,
+        context: ContextBundle
+    ) -> QueryAnalysis {
+        // Detect specialty from intent
+        var specialty: ModelSpecialty? = nil
+        var needsVault = false
+        var needsData = false
+        var needsKanban = false
+        var needsWorkflow = false
+        var needsTeam = false
+        var needsCode = false
+
+        // Map intent to specialty
+        if response.intent == "code_edit" {
+            specialty = .code
+            needsCode = true
+        } else if response.intent == "shell" {
+            specialty = .code
+            needsCode = true
+        } else if response.intent == "question" {
+            // Analyze query for context needs
+            let lowercased = originalQuery.lowercased()
+            if lowercased.contains("sql") || lowercased.contains("query") || lowercased.contains("database") {
+                specialty = .data
+                needsData = true
+            } else if lowercased.contains("file") || lowercased.contains("document") || lowercased.contains("vault") {
+                needsVault = true
+            } else if lowercased.contains("task") || lowercased.contains("todo") || lowercased.contains("kanban") {
+                needsKanban = true
+            } else if lowercased.contains("workflow") || lowercased.contains("automation") {
+                needsWorkflow = true
+            } else if lowercased.contains("team") || lowercased.contains("message") {
+                needsTeam = true
+            }
+        }
+
+        // Determine complexity
+        let complexity: QueryComplexity
+        if response.next_action.contains("plan") {
+            complexity = .high  // Requires planning = complex
+        } else if originalQuery.split(separator: " ").count < 5 {
+            complexity = .low
+        } else {
+            complexity = .medium
+        }
+
+        // Use backend's model hint as reasoning
+        let reasoning = response.model_hint != nil
+            ? "Backend suggests using \(response.model_hint!) for this task"
+            : "General query - using default model selection"
+
+        return QueryAnalysis(
+            complexity: complexity,
+            specialty: specialty,
+            reasoning: reasoning,
+            confidence: response.confidence,
+            needsVaultContext: needsVault,
+            needsDataContext: needsData,
+            needsKanbanContext: needsKanban,
+            needsWorkflowContext: needsWorkflow,
+            needsTeamContext: needsTeam,
+            needsCodeContext: needsCode
+        )
+    }
+
+    // Fallback rule-based analysis (original logic)
+    private func fallbackAnalyzeQuery(_ query: String, context: ContextBundle) -> QueryAnalysis {
         let lowercased = query.lowercased()
         var complexity = QueryComplexity.medium
         var specialty: ModelSpecialty? = nil
@@ -162,7 +254,7 @@ class AppleFMOrchestrator: ModelOrchestrator {
         if lowercased.contains("why") || lowercased.contains("explain") || lowercased.contains("reason") || lowercased.contains("analyze") {
             complexity = .high
             if reasoning.isEmpty {
-                reasoning = "Complex reasoning query requires deeper analysis"
+                reasoning = "Complex reasoning query requires deeper analysis (fallback mode)"
             }
         } else if query.split(separator: " ").count < 5 {
             complexity = .low
@@ -172,7 +264,7 @@ class AppleFMOrchestrator: ModelOrchestrator {
         return QueryAnalysis(
             complexity: complexity,
             specialty: specialty,
-            reasoning: reasoning.isEmpty ? "General conversational query" : reasoning,
+            reasoning: reasoning.isEmpty ? "General conversational query (fallback mode)" : reasoning,
             confidence: confidence,
             needsVaultContext: needsVault,
             needsDataContext: needsData,

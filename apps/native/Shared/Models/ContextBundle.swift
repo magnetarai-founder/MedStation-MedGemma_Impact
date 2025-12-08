@@ -218,7 +218,7 @@ class ContextBundler {
         )
 
         // Bundle data context
-        let dataContext = bundleDataContext(
+        let dataContext = await bundleDataContext(
             from: appContext.data,
             relevance: relevance,
             query: query
@@ -232,7 +232,7 @@ class ContextBundler {
         )
 
         // Bundle workflow context
-        let workflowContext = bundleWorkflowContext(
+        let workflowContext = await bundleWorkflowContext(
             from: appContext.workflows,
             relevance: relevance,
             query: query
@@ -312,11 +312,15 @@ class ContextBundler {
             return nil
         }
 
+        // TODO: Search for relevant files using semantic search
+        // Would need full VaultFileMetadata objects which require more data than search provides
+        // For now, rely on recently accessed files
+
         return BundledVaultContext(
             unlockedVaultType: vault.unlockedVaultType,
             recentlyAccessedFiles: Array(vault.recentFiles.prefix(5)),
             currentlyGrantedPermissions: vault.activePermissions,
-            relevantFiles: nil  // TODO: Semantic search for relevant files
+            relevantFiles: nil  // TODO: Implement when VaultService provides file search
         )
     }
 
@@ -324,15 +328,19 @@ class ContextBundler {
         from data: DataContext,
         relevance: QueryRelevance,
         query: String
-    ) -> BundledDataContext? {
+    ) async -> BundledDataContext? {
         guard relevance.needsDataContext || relevance.currentWorkspaceType == "data" else {
             return nil
         }
 
+        // TODO: Search for similar queries using semantic search
+        // Would need full RecentQuery objects which require timestamps and success status
+        // For now, rely on recent queries
+
         return BundledDataContext(
             activeTables: data.loadedTables,
             recentQueries: Array(data.recentQueries.prefix(3)),
-            relevantQueries: nil,  // TODO: Find similar queries
+            relevantQueries: nil,  // TODO: Implement when DatabaseService provides query search
             activeConnections: data.activeConnections
         )
     }
@@ -366,15 +374,19 @@ class ContextBundler {
         from workflow: WorkflowContext,
         relevance: QueryRelevance,
         query: String
-    ) -> BundledWorkflowContext? {
+    ) async -> BundledWorkflowContext? {
         guard relevance.needsWorkflowContext || relevance.currentWorkspaceType == "workflows" else {
             return nil
         }
 
+        // TODO: Search for relevant workflows using semantic search
+        // Would need full WorkflowSummary objects
+        // For now, rely on active workflows
+
         return BundledWorkflowContext(
             activeWorkflows: Array(workflow.activeWorkflows.prefix(5)),
             recentExecutions: Array(workflow.recentExecutions.prefix(5)),
-            relevantWorkflows: nil  // TODO: Find relevant workflows
+            relevantWorkflows: nil  // TODO: Implement when WorkflowService provides search
         )
     }
 
@@ -387,11 +399,27 @@ class ContextBundler {
             return nil
         }
 
+        // Extract @mentions from query using simple regex
+        var mentionedUsers: [String]? = nil
+        let mentionPattern = "@(\\w+)"
+        if let regex = try? NSRegularExpression(pattern: mentionPattern, options: []) {
+            let nsString = query as NSString
+            let results = regex.matches(in: query, options: [], range: NSRange(location: 0, length: nsString.length))
+            let mentions = results.compactMap { result -> String? in
+                if result.numberOfRanges > 1 {
+                    let range = result.range(at: 1)
+                    return nsString.substring(with: range)
+                }
+                return nil
+            }
+            mentionedUsers = mentions.isEmpty ? nil : mentions
+        }
+
         return BundledTeamContext(
             activeChannel: team.activeChannel,
             recentMessages: Array(team.recentMessages.prefix(10)),
             onlineMembers: team.onlineMembers,
-            mentionedUsers: nil  // TODO: Extract @mentions from query
+            mentionedUsers: mentionedUsers
         )
     }
 
@@ -421,9 +449,47 @@ class ContextBundler {
             return nil
         }
 
-        // TODO: Query ANE Context Engine backend
-        // For now, return empty array
-        return []
+        // Query ANE Context Engine backend for semantic search
+        do {
+            let searchRequest = ContextSearchRequest(
+                query: query,
+                sessionId: nil,
+                workspaceTypes: nil,  // Search across all workspaces
+                limit: 10
+            )
+
+            let response: ContextSearchResponse = try await ApiClient.shared.request(
+                "/v1/context/search",
+                method: .post,
+                body: searchRequest
+            )
+
+            // Convert search results to RAGDocuments
+            let ragDocs = response.results.map { result in
+                // Extract sourceId from metadata if available
+                let sourceId = result.metadata["session_id"]?.value as? String
+
+                // Convert AnyCodable metadata to String dictionary
+                var stringMetadata: [String: String] = [:]
+                for (key, value) in result.metadata {
+                    stringMetadata[key] = String(describing: value.value)
+                }
+
+                return RAGDocument(
+                    id: sourceId ?? UUID().uuidString,
+                    content: result.content,
+                    source: result.source,
+                    sourceId: sourceId,
+                    relevanceScore: result.relevanceScore,
+                    metadata: stringMetadata
+                )
+            }
+
+            return ragDocs.isEmpty ? nil : ragDocs
+        } catch {
+            print("⚠️ Failed to fetch RAG documents: \(error)")
+            return nil
+        }
     }
 
     private func fetchAvailableModels(

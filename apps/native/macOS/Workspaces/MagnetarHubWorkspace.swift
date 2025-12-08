@@ -19,7 +19,6 @@ struct MagnetarHubWorkspace: View {
     @State private var isOllamaActionInProgress: Bool = false
 
     // Discovery - Now using backend recommendations
-    @State private var showDownloadModelModal: Bool = false
     @State private var isNetworkConnected: Bool = false
     @State private var recommendedModels: [BackendRecommendedModel] = []
     @State private var isLoadingRecommendations: Bool = false
@@ -58,14 +57,6 @@ struct MagnetarHubWorkspace: View {
             if let model = selectedModel {
                 ModelDetailModal(model: model, activeDownloads: $activeDownloads, onDownload: downloadModel)
             }
-        }
-        .sheet(isPresented: $showDownloadModelModal) {
-            DownloadModelModal(
-                isPresented: $showDownloadModelModal,
-                onDownload: downloadModel,
-                isNetworkConnected: isNetworkConnected,
-                ollamaServerRunning: ollamaServerRunning
-            )
         }
     }
 
@@ -344,30 +335,9 @@ struct MagnetarHubWorkspace: View {
             .buttonStyle(.bordered)
             .disabled(!isNetworkConnected)
             .help(isNetworkConnected ? "Open Ollama library in browser" : "No internet connection")
-
-            // Download Model button - Opens modal
-            Button {
-                showDownloadModelModal = true
-            } label: {
-                Label("Download Model", systemImage: "arrow.down.circle")
-                    .font(.caption)
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(!isNetworkConnected || !ollamaServerRunning)
-            .help(downloadButtonTooltip)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
-    }
-
-    private var downloadButtonTooltip: String {
-        if !isNetworkConnected {
-            return "No internet connection"
-        } else if !ollamaServerRunning {
-            return "Ollama server is not running"
-        } else {
-            return "Download a specific model by name"
-        }
     }
 
     private var emptyState: some View {
@@ -746,26 +716,41 @@ struct ModelCard: View {
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
             } else {
-                // Stats for local/cloud models
-                HStack(spacing: 12) {
-                    if let stat1 = model.stat1 {
-                        HStack(spacing: 4) {
-                            Image(systemName: stat1.icon)
-                                .font(.caption2)
-                            Text(stat1.text)
-                                .font(.caption2)
+                // Info for local/cloud models - now shows as button hint
+                VStack(spacing: 8) {
+                    VStack(spacing: 6) {
+                        if let stat1 = model.stat1 {
+                            HStack(spacing: 6) {
+                                Image(systemName: stat1.icon)
+                                    .font(.caption2)
+                                Text(stat1.text)
+                                    .font(.caption2)
+                                Spacer()
+                            }
+                            .foregroundColor(.secondary)
                         }
-                        .foregroundColor(.secondary)
+
+                        if let stat2 = model.stat2 {
+                            HStack(spacing: 6) {
+                                Image(systemName: stat2.icon)
+                                    .font(.caption2)
+                                Text(stat2.text)
+                                    .font(.caption2)
+                                Spacer()
+                            }
+                            .foregroundColor(.secondary)
+                        }
                     }
 
-                    if let stat2 = model.stat2 {
-                        HStack(spacing: 4) {
-                            Image(systemName: stat2.icon)
-                                .font(.caption2)
-                            Text(stat2.text)
-                                .font(.caption2)
-                        }
-                        .foregroundColor(.secondary)
+                    // Visual hint that card is clickable
+                    HStack {
+                        Spacer()
+                        Text("View Details")
+                            .font(.caption2)
+                            .foregroundColor(.magnetarPrimary.opacity(0.7))
+                        Image(systemName: "chevron.right")
+                            .font(.caption2)
+                            .foregroundColor(.magnetarPrimary.opacity(0.7))
                     }
                 }
             }
@@ -803,113 +788,6 @@ struct ModelCard: View {
         case .insufficient: return .red
         case .unknown: return .secondary
         }
-    }
-}
-
-// MARK: - Download Model Modal
-
-struct DownloadModelModal: View {
-    @Binding var isPresented: Bool
-    let onDownload: (String) -> Void
-    let isNetworkConnected: Bool
-    let ollamaServerRunning: Bool
-
-    @State private var modelName: String = ""
-    @FocusState private var isTextFieldFocused: Bool
-
-    var body: some View {
-        VStack(spacing: 20) {
-            // Header
-            HStack {
-                Image(systemName: "arrow.down.circle.fill")
-                    .font(.title2)
-                    .foregroundStyle(LinearGradient.magnetarGradient)
-
-                Text("Download Model")
-                    .font(.title3)
-                    .fontWeight(.bold)
-
-                Spacer()
-
-                Button {
-                    isPresented = false
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title3)
-                        .foregroundColor(.secondary)
-                }
-                .buttonStyle(.plain)
-            }
-
-            // Instructions
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Enter the exact model name from the Ollama library")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-
-                Text("Example: phi4:14b, llama3.3:70b, mistral:7b")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .italic()
-            }
-
-            // Text field
-            TextField("Type/Paste model in exact format from ollama library (ex. phi4:14b)", text: $modelName)
-                .textFieldStyle(.roundedBorder)
-                .focused($isTextFieldFocused)
-                .onSubmit {
-                    downloadModel()
-                }
-
-            // Status indicators
-            HStack(spacing: 16) {
-                HStack(spacing: 6) {
-                    Image(systemName: isNetworkConnected ? "wifi" : "wifi.slash")
-                        .foregroundColor(isNetworkConnected ? .green : .red)
-                    Text(isNetworkConnected ? "Connected" : "No internet")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-
-                HStack(spacing: 6) {
-                    Image(systemName: ollamaServerRunning ? "checkmark.circle.fill" : "xmark.circle.fill")
-                        .foregroundColor(ollamaServerRunning ? .green : .red)
-                    Text(ollamaServerRunning ? "Ollama running" : "Ollama stopped")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-
-            // Buttons
-            HStack(spacing: 12) {
-                Button("Cancel") {
-                    isPresented = false
-                }
-                .keyboardShortcut(.cancelAction)
-
-                Button("Download") {
-                    downloadModel()
-                }
-                .keyboardShortcut(.defaultAction)
-                .disabled(!canDownload)
-            }
-        }
-        .padding(24)
-        .frame(width: 500)
-        .background(Color(nsColor: .windowBackgroundColor))
-        .onAppear {
-            isTextFieldFocused = true
-        }
-    }
-
-    private var canDownload: Bool {
-        !modelName.isEmpty && isNetworkConnected && ollamaServerRunning
-    }
-
-    private func downloadModel() {
-        guard canDownload else { return }
-        onDownload(modelName.trimmingCharacters(in: .whitespaces))
-        isPresented = false
     }
 }
 
@@ -1183,7 +1061,28 @@ enum AnyModelItem: Identifiable {
 
     var description: String? {
         switch self {
-        case .local: return nil
+        case .local(let model):
+            // Generate description based on model family/name
+            let name = model.name.lowercased()
+            if name.contains("llama") {
+                return "Meta's powerful open-source language model"
+            } else if name.contains("mistral") {
+                return "High-performance model with excellent reasoning"
+            } else if name.contains("phi") {
+                return "Microsoft's efficient small language model"
+            } else if name.contains("qwen") {
+                return "Multilingual model with strong capabilities"
+            } else if name.contains("gemma") {
+                return "Google's lightweight open model"
+            } else if name.contains("deepseek") {
+                return "Advanced reasoning and coding model"
+            } else if name.contains("command") {
+                return "Cohere's enterprise-grade language model"
+            } else if name.contains("mixtral") {
+                return "Mixture-of-experts model with superior performance"
+            } else {
+                return "Locally installed language model"
+            }
         case .backendRecommended(let model): return model.description
         case .cloud: return nil
         }
@@ -1208,14 +1107,14 @@ enum AnyModelItem: Identifiable {
 
     var badges: [String] {
         switch self {
-        case .local: return ["LOCAL"]
+        case .local: return ["installed"]
         case .backendRecommended(let model):
             var result = model.badges
             if model.isInstalled && !result.contains("installed") {
                 result.insert("installed", at: 0)
             }
             return result
-        case .cloud: return ["CLOUD"]
+        case .cloud: return ["cloud"]
         }
     }
 
@@ -1267,7 +1166,18 @@ enum AnyModelItem: Identifiable {
 
     var stat2: (icon: String, text: String)? {
         switch self {
-        case .local: return nil
+        case .local(let model):
+            // Show model family/type
+            let name = model.name.lowercased()
+            if name.contains("instruct") || name.contains("chat") {
+                return ("message.fill", "Chat")
+            } else if name.contains("code") {
+                return ("chevron.left.forwardslash.chevron.right", "Code")
+            } else if name.contains("vision") || name.contains("llava") {
+                return ("eye.fill", "Vision")
+            } else {
+                return ("sparkles", "General")
+            }
         case .backendRecommended(let model):
             if model.isMultiPurpose {
                 return ("star.circle", "Multi-purpose")

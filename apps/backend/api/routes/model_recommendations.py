@@ -17,12 +17,6 @@ try:
 except ImportError:
     from auth_middleware import get_current_user
 
-# System capability service (Swift integration)
-try:
-    from ..services.model_tags import detect_tags
-except ImportError:
-    from services.model_tags import detect_tags
-
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/models", tags=["models"])

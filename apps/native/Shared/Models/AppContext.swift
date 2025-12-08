@@ -143,12 +143,44 @@ struct DataContext {
     let activeConnections: [DatabaseConnection]
 
     static func current() async -> DataContext {
-        // TODO: Get from DataStore when available
-        return DataContext(
-            loadedTables: [],
-            recentQueries: [],
-            activeConnections: []
-        )
+        await MainActor.run {
+            let store = DatabaseStore.shared
+
+            // Get table metadata from current file if available
+            var tables: [TableMetadata] = []
+            if let currentFile = store.currentFile {
+                tables.append(TableMetadata(
+                    name: currentFile.filename,
+                    rowCount: currentFile.rowCount,
+                    columns: currentFile.columns.map { col in
+                        DataColumnInfo(name: col.originalName, type: col.dtype)
+                    },
+                    source: "uploaded"
+                ))
+            }
+
+            // Get recent queries from history (we'll fetch asynchronously)
+            var queries: [RecentQuery] = []
+            // Note: fetchHistory is async, so we'd need to call it separately
+            // For now, if a query has been executed, include it
+            if store.hasExecuted, let currentQuery = store.currentQuery {
+                queries.append(RecentQuery(
+                    sql: store.editorText,
+                    executedAt: Date(),
+                    success: true,
+                    rowsReturned: currentQuery.rowCount
+                ))
+            }
+
+            // No external connections tracked yet
+            let connections: [DatabaseConnection] = []
+
+            return DataContext(
+                loadedTables: tables,
+                recentQueries: queries,
+                activeConnections: connections
+            )
+        }
     }
 }
 
@@ -186,12 +218,58 @@ struct KanbanContext {
     let recentActivity: [KanbanActivity]
 
     static func current() async -> KanbanContext {
-        // TODO: Implement KanbanStore
-        return KanbanContext(
-            activeBoard: nil,
-            activeTasks: [],
-            recentActivity: []
-        )
+        do {
+            // Note: Using default project ID - in production this should be user-selected
+            let defaultProjectId = "default"
+
+            // Fetch boards from backend
+            let boards = try await KanbanService.shared.listBoards(projectId: defaultProjectId)
+
+            guard let firstBoard = boards.first else {
+                // No boards yet
+                return KanbanContext(
+                    activeBoard: nil,
+                    activeTasks: [],
+                    recentActivity: []
+                )
+            }
+
+            // Fetch tasks for the first board
+            let tasks = try await KanbanService.shared.listTasks(boardId: firstBoard.boardId)
+
+            // Map to TaskSummary
+            let taskSummaries = tasks.map { task in
+                // Convert dueDate string to Date if present
+                var dueDateObj: Date? = nil
+                if let dueDateStr = task.dueDate {
+                    let formatter = ISO8601DateFormatter()
+                    dueDateObj = formatter.date(from: dueDateStr)
+                }
+
+                return TaskSummary(
+                    id: task.taskId,
+                    title: task.title,
+                    status: task.status ?? "todo",
+                    priority: task.priority,
+                    assignedTo: task.assigneeId,
+                    dueDate: dueDateObj
+                )
+            }
+
+            return KanbanContext(
+                activeBoard: firstBoard.name,
+                activeTasks: taskSummaries,
+                recentActivity: []  // Activity tracking not implemented yet
+            )
+        } catch {
+            // If backend unavailable, return empty context
+            print("⚠️ Failed to fetch Kanban context: \(error)")
+            return KanbanContext(
+                activeBoard: nil,
+                activeTasks: [],
+                recentActivity: []
+            )
+        }
     }
 }
 
@@ -252,12 +330,47 @@ struct TeamContext {
     let onlineMembers: Int
 
     static func current() async -> TeamContext {
-        // TODO: Implement TeamStore
-        return TeamContext(
-            activeChannel: nil,
-            recentMessages: [],
-            onlineMembers: 0
-        )
+        do {
+            // Fetch recent documents from team workspace
+            let documents = try await TeamService.shared.listDocuments()
+
+            // Convert documents to message summaries for context
+            // (Team workspace is document-based, not channel-based currently)
+            let messageSummaries = documents.prefix(10).map { doc in
+                // Convert updatedAt string to Date
+                let formatter = ISO8601DateFormatter()
+                let timestamp = formatter.date(from: doc.updatedAt) ?? Date()
+
+                // Get content preview
+                let contentStr: String
+                if let content = doc.content {
+                    contentStr = String(describing: content).prefix(100) + "..."
+                } else {
+                    contentStr = ""
+                }
+
+                return TeamMessageSummary(
+                    channelName: "Documents",
+                    sender: doc.createdBy,
+                    preview: "\(doc.title): \(contentStr)",
+                    timestamp: timestamp
+                )
+            }
+
+            return TeamContext(
+                activeChannel: documents.isEmpty ? nil : "Documents",
+                recentMessages: messageSummaries,
+                onlineMembers: 0  // Online presence not implemented yet
+            )
+        } catch {
+            // If backend unavailable, return empty context
+            print("⚠️ Failed to fetch Team context: \(error)")
+            return TeamContext(
+                activeChannel: nil,
+                recentMessages: [],
+                onlineMembers: 0
+            )
+        }
     }
 }
 

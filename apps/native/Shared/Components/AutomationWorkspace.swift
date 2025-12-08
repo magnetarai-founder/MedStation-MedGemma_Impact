@@ -1381,7 +1381,10 @@ struct WorkflowQueueView: View {
     @State private var priorityFilter: PriorityFilter = .all
     @State private var isLoading: Bool = false
     @State private var queueItems: [QueueItem] = []
-    // TODO: Wire up queue loading - needs workflow selection first
+    @State private var selectedWorkflowId: String? = nil
+    @State private var errorMessage: String? = nil
+
+    @EnvironmentObject private var workflowStore: WorkflowStore
 
     var body: some View {
         VStack(spacing: 0) {
@@ -1400,6 +1403,8 @@ struct WorkflowQueueView: View {
             // Content
             if isLoading {
                 loadingState
+            } else if let error = errorMessage {
+                errorState(error)
             } else if filteredItems.isEmpty {
                 emptyState
             } else {
@@ -1412,6 +1417,9 @@ struct WorkflowQueueView: View {
                     .padding(16)
                 }
             }
+        }
+        .onAppear {
+            loadQueue()
         }
     }
 
@@ -1502,7 +1510,107 @@ struct WorkflowQueueView: View {
         return items
     }
 
+    // MARK: - Data Loading
+
+    private func loadQueue() {
+        Task {
+            isLoading = true
+            errorMessage = nil
+
+            do {
+                // Get the first workflow from the store to load its queue
+                // In a full implementation, this would be user-selected
+                guard let firstWorkflow = workflowStore.workflows.first else {
+                    await MainActor.run {
+                        queueItems = []
+                        isLoading = false
+                    }
+                    return
+                }
+
+                selectedWorkflowId = firstWorkflow.id
+
+                // Fetch work items based on view mode
+                let workItems: [WorkItem]
+                if viewMode == .myActive {
+                    workItems = try await WorkflowService.shared.getMyWork(workflowId: firstWorkflow.id)
+                } else {
+                    workItems = try await WorkflowService.shared.getQueue(workflowId: firstWorkflow.id)
+                }
+
+                // Convert WorkItems to QueueItems
+                let items = workItems.map { workItem in
+                    convertToQueueItem(workItem: workItem, workflowName: firstWorkflow.name)
+                }
+
+                await MainActor.run {
+                    queueItems = items
+                    isLoading = false
+                }
+            } catch {
+                print("❌ Failed to load queue: \(error)")
+                await MainActor.run {
+                    errorMessage = "Failed to load queue: \(error.localizedDescription)"
+                    queueItems = []
+                    isLoading = false
+                }
+            }
+        }
+    }
+
+    private func convertToQueueItem(workItem: WorkItem, workflowName: String) -> QueueItem {
+        // Extract data preview from work item data
+        let dataPreview = workItem.data.prefix(3).map { (key: $0.key, value: String(describing: $0.value.value)) }
+
+        // Map priority
+        let priority: ItemPriority
+        switch workItem.priority.lowercased() {
+        case "urgent", "high": priority = .high
+        case "low": priority = .low
+        default: priority = .medium
+        }
+
+        // Create status labels from work item status
+        let statusLabels = [workItem.status.capitalized]
+
+        return QueueItem(
+            reference: workItem.referenceNumber ?? "WRK-\(workItem.id.prefix(6))",
+            workflowName: workItem.workflowName ?? workflowName,
+            stageName: workItem.currentStageName ?? "Unknown Stage",
+            priority: priority,
+            statusLabels: statusLabels,
+            dataPreview: Array(dataPreview),
+            createdAt: "Recently", // TODO: Format timestamp from backend
+            tags: [], // TODO: Extract tags from work item data
+            assignedTo: nil, // TODO: Add assignee field to WorkItem model
+            isAssignedToMe: workItem.status == "claimed"
+        )
+    }
+
     // MARK: - States
+
+    private func errorState(_ message: String) -> some View {
+        VStack(spacing: 16) {
+            Text("⚠️")
+                .font(.system(size: 64))
+
+            Text("Error Loading Queue")
+                .font(.title2)
+                .fontWeight(.semibold)
+
+            Text(message)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+
+            Button("Retry") {
+                loadQueue()
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
 
     private var loadingState: some View {
         VStack(spacing: 16) {

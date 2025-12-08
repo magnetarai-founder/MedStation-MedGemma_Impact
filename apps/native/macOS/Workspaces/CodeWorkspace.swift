@@ -328,9 +328,9 @@ struct CodeWorkspace: View {
         } catch {
             print("Failed to load files: \(error)")
             await MainActor.run {
-                // Fall back to mock data
-                files = FileItem.mockFiles
-                errorMessage = "Using mock data - backend connection failed"
+                // Show empty state if backend unavailable
+                files = []
+                errorMessage = "Backend connection failed: \(error.localizedDescription)"
                 isLoadingFiles = false
             }
         }
