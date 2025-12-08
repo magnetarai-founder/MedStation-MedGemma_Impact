@@ -432,13 +432,63 @@ class ContextBundler {
             return nil
         }
 
+        // Get git status if in a git repo
+        let gitStatus = getGitStatus()
+
         return BundledCodeContext(
             openFiles: code.openFiles,
             recentEdits: Array(code.recentEdits.prefix(5)),
             gitBranch: code.gitBranch,
-            gitStatus: nil,  // TODO: Get git status
+            gitStatus: gitStatus,
             relevantFiles: nil  // TODO: Semantic search for relevant files
         )
+    }
+
+    private func getGitStatus() -> String? {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        process.arguments = ["status", "--porcelain"]
+
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = Pipe()
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+
+            guard process.terminationStatus == 0 else {
+                // Not a git repo or git error
+                return nil
+            }
+
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8) ?? ""
+
+            if output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return "clean"
+            } else {
+                let lines = output.split(separator: "\n")
+                let modifiedCount = lines.filter { $0.hasPrefix(" M") || $0.hasPrefix("M ") }.count
+                let addedCount = lines.filter { $0.hasPrefix("A ") || $0.hasPrefix("??") }.count
+                let deletedCount = lines.filter { $0.hasPrefix(" D") || $0.hasPrefix("D ") }.count
+
+                var statusParts: [String] = []
+                if modifiedCount > 0 {
+                    statusParts.append("\(modifiedCount) modified")
+                }
+                if addedCount > 0 {
+                    statusParts.append("\(addedCount) added")
+                }
+                if deletedCount > 0 {
+                    statusParts.append("\(deletedCount) deleted")
+                }
+
+                return statusParts.isEmpty ? "uncommitted changes" : statusParts.joined(separator: ", ")
+            }
+        } catch {
+            return nil
+        }
     }
 
     private func fetchRAGDocuments(

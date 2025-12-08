@@ -296,12 +296,13 @@ struct WorkflowContext {
     let recentExecutions: [WorkflowExecution]
 
     static func current() async -> WorkflowContext {
-        await MainActor.run {
-            let store = WorkflowStore.shared
+        let store = await MainActor.run { WorkflowStore.shared }
+        let executions = await WorkflowExecutionHistory.recent(limit: 10)
 
-            return WorkflowContext(
+        return await MainActor.run {
+            WorkflowContext(
                 activeWorkflows: store.workflows.prefix(10).map { WorkflowSummary(from: $0) },
-                recentExecutions: []  // TODO: Track workflow executions
+                recentExecutions: executions
             )
         }
     }
@@ -314,11 +315,90 @@ struct WorkflowSummary: Codable {
     let lastRun: Date?
 }
 
-struct WorkflowExecution: Codable {
+struct WorkflowExecution: Codable, Identifiable {
+    let id: UUID
     let workflowId: String
+    let workflowName: String?
     let startedAt: Date
     let completedAt: Date?
     let success: Bool
+    let itemsProcessed: Int?
+    let errorMessage: String?
+
+    init(id: UUID = UUID(), workflowId: String, workflowName: String? = nil, startedAt: Date = Date(), completedAt: Date? = nil, success: Bool, itemsProcessed: Int? = nil, errorMessage: String? = nil) {
+        self.id = id
+        self.workflowId = workflowId
+        self.workflowName = workflowName
+        self.startedAt = startedAt
+        self.completedAt = completedAt
+        self.success = success
+        self.itemsProcessed = itemsProcessed
+        self.errorMessage = errorMessage
+    }
+}
+
+@MainActor
+class WorkflowExecutionHistory {
+    private static let storageKey = "workflowExecutionHistory"
+    private static let maxStoredExecutions = 500
+
+    static func recent(limit: Int) async -> [WorkflowExecution] {
+        guard let data = UserDefaults.standard.data(forKey: storageKey) else {
+            return []
+        }
+
+        do {
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let executions = try decoder.decode(Array<WorkflowExecution>.self, from: data)
+
+            // Return most recent first
+            return Array(executions
+                .sorted { $0.startedAt > $1.startedAt }
+                .prefix(limit))
+        } catch {
+            print("❌ Failed to load workflow execution history: \(error)")
+            return []
+        }
+    }
+
+    static func record(_ execution: WorkflowExecution) {
+        Task { @MainActor in
+            // Load existing
+            var executions = await recent(limit: maxStoredExecutions)
+
+            // Add new execution
+            executions.insert(execution, at: 0)
+
+            // Keep only recent ones
+            if executions.count > maxStoredExecutions {
+                executions = Array(executions.prefix(maxStoredExecutions))
+            }
+
+            // Save
+            do {
+                let encoder = JSONEncoder()
+                encoder.dateEncodingStrategy = .iso8601
+                let data = try encoder.encode(executions)
+                UserDefaults.standard.set(data, forKey: storageKey)
+            } catch {
+                print("❌ Failed to save workflow execution history: \(error)")
+            }
+        }
+    }
+
+    /// Get executions for a specific workflow
+    static func forWorkflow(_ workflowId: String, limit: Int = 10) async -> [WorkflowExecution] {
+        let all = await recent(limit: maxStoredExecutions)
+        return Array(all
+            .filter { $0.workflowId == workflowId }
+            .prefix(limit))
+    }
+
+    /// Clear all execution history
+    static func clear() {
+        UserDefaults.standard.removeObject(forKey: storageKey)
+    }
 }
 
 // MARK: - Team Context
@@ -434,16 +514,71 @@ struct ModelInteraction: Codable, Identifiable {
     let resourceId: String?  // File ID, query ID, etc.
     let timestamp: Date
     let success: Bool
+
+    init(id: UUID = UUID(), modelId: String, workspaceType: String, actionType: String, resourceId: String? = nil, timestamp: Date = Date(), success: Bool) {
+        self.id = id
+        self.modelId = modelId
+        self.workspaceType = workspaceType
+        self.actionType = actionType
+        self.resourceId = resourceId
+        self.timestamp = timestamp
+        self.success = success
+    }
 }
 
+@MainActor
 class ModelInteractionHistory {
+    private static let storageKey = "modelInteractionHistory"
+    private static let maxStoredInteractions = 1000
+
     static func recent(limit: Int) async -> [ModelInteraction] {
-        // TODO: Load from persistent storage
-        return []
+        guard let data = UserDefaults.standard.data(forKey: storageKey) else {
+            return []
+        }
+
+        do {
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let interactions = try decoder.decode(Array<ModelInteraction>.self, from: data)
+
+            // Return most recent first
+            return Array(interactions
+                .sorted { $0.timestamp > $1.timestamp }
+                .prefix(limit))
+        } catch {
+            print("❌ Failed to load interaction history: \(error)")
+            return []
+        }
     }
 
     static func record(_ interaction: ModelInteraction) {
-        // TODO: Save to persistent storage
+        Task { @MainActor in
+            // Load existing
+            var interactions = await recent(limit: maxStoredInteractions)
+
+            // Add new interaction
+            interactions.insert(interaction, at: 0)
+
+            // Keep only recent ones
+            if interactions.count > maxStoredInteractions {
+                interactions = Array(interactions.prefix(maxStoredInteractions))
+            }
+
+            // Save
+            do {
+                let encoder = JSONEncoder()
+                encoder.dateEncodingStrategy = .iso8601
+                let data = try encoder.encode(interactions)
+                UserDefaults.standard.set(data, forKey: storageKey)
+            } catch {
+                print("❌ Failed to save interaction history: \(error)")
+            }
+        }
+    }
+
+    /// Clear all interaction history
+    static func clear() {
+        UserDefaults.standard.removeObject(forKey: storageKey)
     }
 }
 
@@ -457,14 +592,91 @@ struct UserPreferences: Codable {
     let immutableModels: Bool  // If true, pinned models cannot be unpinned without confirmation
     let askBeforeUnpinning: Bool  // Show modal before unpinning
 
+    private static let storageKey = "userPreferences"
+
     static func load() async -> UserPreferences {
-        // TODO: Load from UserDefaults or backend
+        guard let data = UserDefaults.standard.data(forKey: storageKey) else {
+            // Return defaults if no saved preferences
+            return defaultPreferences()
+        }
+
+        do {
+            let decoder = JSONDecoder()
+            return try decoder.decode(UserPreferences.self, from: data)
+        } catch {
+            print("❌ Failed to load user preferences: \(error)")
+            return defaultPreferences()
+        }
+    }
+
+    static func save(_ preferences: UserPreferences) {
+        do {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = .prettyPrinted
+            let data = try encoder.encode(preferences)
+            UserDefaults.standard.set(data, forKey: storageKey)
+            print("✓ Saved user preferences")
+        } catch {
+            print("❌ Failed to save user preferences: \(error)")
+        }
+    }
+
+    static func clear() {
+        UserDefaults.standard.removeObject(forKey: storageKey)
+    }
+
+    private static func defaultPreferences() -> UserPreferences {
         return UserPreferences(
             preferredModels: [:],
             alwaysAllowFiles: [],
             pinnedHotSlots: [],
             immutableModels: false,
             askBeforeUnpinning: true
+        )
+    }
+
+    /// Update preferred model for a task type
+    func setPreferredModel(_ modelId: String, for taskType: String) -> UserPreferences {
+        var models = preferredModels
+        models[taskType] = modelId
+        return UserPreferences(
+            preferredModels: models,
+            alwaysAllowFiles: alwaysAllowFiles,
+            pinnedHotSlots: pinnedHotSlots,
+            immutableModels: immutableModels,
+            askBeforeUnpinning: askBeforeUnpinning
+        )
+    }
+
+    /// Add file to always-allow list
+    func allowFile(_ fileId: String) -> UserPreferences {
+        var files = alwaysAllowFiles
+        if !files.contains(fileId) {
+            files.append(fileId)
+        }
+        return UserPreferences(
+            preferredModels: preferredModels,
+            alwaysAllowFiles: files,
+            pinnedHotSlots: pinnedHotSlots,
+            immutableModels: immutableModels,
+            askBeforeUnpinning: askBeforeUnpinning
+        )
+    }
+
+    /// Toggle hot slot pin
+    func toggleHotSlotPin(_ slotNumber: Int) -> UserPreferences {
+        var pins = pinnedHotSlots
+        if let index = pins.firstIndex(of: slotNumber) {
+            pins.remove(at: index)
+        } else {
+            pins.append(slotNumber)
+        }
+        return UserPreferences(
+            preferredModels: preferredModels,
+            alwaysAllowFiles: alwaysAllowFiles,
+            pinnedHotSlots: pins.sorted(),
+            immutableModels: immutableModels,
+            askBeforeUnpinning: askBeforeUnpinning
         )
     }
 }
