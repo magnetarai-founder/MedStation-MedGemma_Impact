@@ -36,6 +36,11 @@ from . import files as files_mod
 from . import folders as folders_mod
 from . import search as search_mod
 from . import automation as automation_mod
+from . import tags as tags_mod
+from . import favorites as favorites_mod
+from . import analytics as analytics_mod
+from . import audit as audit_mod
+from . import sharing as sharing_mod
 
 logger = logging.getLogger(__name__)
 
@@ -660,250 +665,45 @@ class VaultService:
 
     def add_tag_to_file(self, user_id: str, vault_type: str, file_id: str, tag_name: str, tag_color: str = "#3B82F6") -> Dict[str, Any]:
         """Add a tag to a file"""
-        import uuid
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-        now = datetime.utcnow().isoformat()
-        tag_id = str(uuid.uuid4())
-
-        try:
-            cursor.execute("""
-                INSERT OR IGNORE INTO vault_file_tags (id, file_id, user_id, vault_type, tag_name, tag_color, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (tag_id, file_id, user_id, vault_type, tag_name, tag_color, now))
-
-            conn.commit()
-            return {"id": tag_id, "file_id": file_id, "tag_name": tag_name, "tag_color": tag_color, "created_at": now}
-
-        except Exception as e:
-            conn.rollback()
-            logger.error(f"Failed to add tag: {e}")
-            raise
-        finally:
-            conn.close()
+        return tags_mod.add_tag_to_file(self, user_id, vault_type, file_id, tag_name, tag_color)
 
     def remove_tag_from_file(self, user_id: str, vault_type: str, file_id: str, tag_name: str) -> bool:
         """Remove a tag from a file"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        try:
-            cursor.execute("""
-                DELETE FROM vault_file_tags
-                WHERE file_id = ? AND user_id = ? AND vault_type = ? AND tag_name = ?
-            """, (file_id, user_id, vault_type, tag_name))
-
-            conn.commit()
-            return cursor.rowcount > 0
-
-        except Exception as e:
-            conn.rollback()
-            logger.error(f"Failed to remove tag: {e}")
-            raise
-        finally:
-            conn.close()
+        return tags_mod.remove_tag_from_file(self, user_id, vault_type, file_id, tag_name)
 
     def get_file_tags(self, user_id: str, vault_type: str, file_id: str) -> List[Dict[str, Any]]:
         """Get all tags for a file"""
-        conn = sqlite3.connect(str(self.db_path))
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-
-        try:
-            cursor.execute("""
-                SELECT id, tag_name, tag_color, created_at
-                FROM vault_file_tags
-                WHERE file_id = ? AND user_id = ? AND vault_type = ?
-                ORDER BY created_at DESC
-            """, (file_id, user_id, vault_type))
-
-            return [dict(row) for row in cursor.fetchall()]
-
-        finally:
-            conn.close()
+        return tags_mod.get_file_tags(self, user_id, vault_type, file_id)
 
     # ===== Favorites Management =====
 
     def add_favorite(self, user_id: str, vault_type: str, file_id: str) -> Dict[str, Any]:
         """Add file to favorites"""
-        import uuid
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-        now = datetime.utcnow().isoformat()
-        favorite_id = str(uuid.uuid4())
-
-        try:
-            cursor.execute("""
-                INSERT OR IGNORE INTO vault_file_favorites (id, file_id, user_id, vault_type, created_at)
-                VALUES (?, ?, ?, ?, ?)
-            """, (favorite_id, file_id, user_id, vault_type, now))
-
-            conn.commit()
-            return {"id": favorite_id, "file_id": file_id, "created_at": now}
-
-        except Exception as e:
-            conn.rollback()
-            logger.error(f"Failed to add favorite: {e}")
-            raise
-        finally:
-            conn.close()
+        return favorites_mod.add_favorite(self, user_id, vault_type, file_id)
 
     def remove_favorite(self, user_id: str, vault_type: str, file_id: str) -> bool:
         """Remove file from favorites"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        try:
-            cursor.execute("""
-                DELETE FROM vault_file_favorites
-                WHERE file_id = ? AND user_id = ? AND vault_type = ?
-            """, (file_id, user_id, vault_type))
-
-            conn.commit()
-            return cursor.rowcount > 0
-
-        except Exception as e:
-            conn.rollback()
-            logger.error(f"Failed to remove favorite: {e}")
-            raise
-        finally:
-            conn.close()
+        return favorites_mod.remove_favorite(self, user_id, vault_type, file_id)
 
     def get_favorites(self, user_id: str, vault_type: str) -> List[str]:
         """Get list of favorite file IDs"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        try:
-            cursor.execute("""
-                SELECT file_id
-                FROM vault_file_favorites
-                WHERE user_id = ? AND vault_type = ?
-                ORDER BY created_at DESC
-            """, (user_id, vault_type))
-
-            return [row[0] for row in cursor.fetchall()]
-
-        finally:
-            conn.close()
+        return favorites_mod.get_favorites(self, user_id, vault_type)
 
     # ===== Access Logging & Recent Files =====
 
     def log_file_access(self, user_id: str, vault_type: str, file_id: str, access_type: str = "view"):
         """Log file access for recent files tracking"""
-        import uuid
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-        now = datetime.utcnow().isoformat()
-        log_id = str(uuid.uuid4())
-
-        try:
-            cursor.execute("""
-                INSERT INTO vault_file_access_logs (id, file_id, user_id, vault_type, access_type, accessed_at)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (log_id, file_id, user_id, vault_type, access_type, now))
-
-            conn.commit()
-
-        except Exception as e:
-            # Don't fail the main operation if logging fails
-            logger.warning(f"Failed to log file access: {e}")
-        finally:
-            conn.close()
+        return analytics_mod.log_file_access(self, user_id, vault_type, file_id, access_type)
 
     def get_recent_files(self, user_id: str, vault_type: str, limit: int = 10) -> List[Dict[str, Any]]:
         """Get recently accessed files"""
-        conn = sqlite3.connect(str(self.db_path))
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-
-        try:
-            cursor.execute("""
-                SELECT DISTINCT
-                    vf.id, vf.filename, vf.file_size, vf.mime_type, vf.folder_path,
-                    vf.created_at, vf.updated_at,
-                    MAX(val.accessed_at) as last_accessed
-                FROM vault_files vf
-                INNER JOIN vault_file_access_logs val ON vf.id = val.file_id
-                WHERE vf.user_id = ? AND vf.vault_type = ? AND vf.is_deleted = 0
-                GROUP BY vf.id
-                ORDER BY last_accessed DESC
-                LIMIT ?
-            """, (user_id, vault_type, limit))
-
-            return [dict(row) for row in cursor.fetchall()]
-
-        finally:
-            conn.close()
+        return analytics_mod.get_recent_files(self, user_id, vault_type, limit)
 
     # ===== Storage Statistics =====
 
     def get_storage_stats(self, user_id: str, vault_type: str) -> Dict[str, Any]:
         """Get storage statistics"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        try:
-            # Get total files and size
-            cursor.execute("""
-                SELECT COUNT(*) as total_files, COALESCE(SUM(file_size), 0) as total_size
-                FROM vault_files
-                WHERE user_id = ? AND vault_type = ? AND is_deleted = 0
-            """, (user_id, vault_type))
-
-            total_files, total_size = cursor.fetchone()
-
-            # Get file type breakdown
-            cursor.execute("""
-                SELECT
-                    CASE
-                        WHEN mime_type LIKE 'image/%' THEN 'images'
-                        WHEN mime_type LIKE 'video/%' THEN 'videos'
-                        WHEN mime_type LIKE 'audio/%' THEN 'audio'
-                        WHEN mime_type LIKE 'application/pdf' THEN 'documents'
-                        WHEN mime_type LIKE 'text/%' THEN 'documents'
-                        ELSE 'other'
-                    END as category,
-                    COUNT(*) as count,
-                    COALESCE(SUM(file_size), 0) as size
-                FROM vault_files
-                WHERE user_id = ? AND vault_type = ? AND is_deleted = 0
-                GROUP BY category
-            """, (user_id, vault_type))
-
-            breakdown = []
-            for row in cursor.fetchall():
-                category, count, size = row
-                breakdown.append({"category": category, "count": count, "size": size})
-
-            # Get largest files
-            cursor.execute("""
-                SELECT id, filename, file_size, mime_type, folder_path
-                FROM vault_files
-                WHERE user_id = ? AND vault_type = ? AND is_deleted = 0
-                ORDER BY file_size DESC
-                LIMIT 10
-            """, (user_id, vault_type))
-
-            largest_files = []
-            for row in cursor.fetchall():
-                largest_files.append({
-                    "id": row[0],
-                    "filename": row[1],
-                    "file_size": row[2],
-                    "mime_type": row[3],
-                    "folder_path": row[4]
-                })
-
-            return {
-                "total_files": total_files,
-                "total_size": total_size,
-                "breakdown": breakdown,
-                "largest_files": largest_files
-            }
-
-        finally:
-            conn.close()
+        return analytics_mod.get_storage_stats(self, user_id, vault_type)
 
     # ===== Secure Deletion =====
 
@@ -978,198 +778,27 @@ class VaultService:
                          password: str = None, expires_at: str = None,
                          max_downloads: int = None, permissions: str = "download") -> Dict[str, Any]:
         """Create a shareable link for a file"""
-        import uuid
-        import hashlib
-        import secrets
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        try:
-            # Generate secure share token
-            share_token = secrets.token_urlsafe(32)
-            share_id = str(uuid.uuid4())
-            now = datetime.utcnow().isoformat()
-
-            # Hash password if provided
-            password_hash = None
-            if password:
-                password_hash = hashlib.sha256(password.encode()).hexdigest()
-
-            cursor.execute("""
-                INSERT INTO vault_file_shares (
-                    id, file_id, user_id, vault_type, share_token,
-                    password_hash, expires_at, max_downloads, permissions,
-                    created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (share_id, file_id, user_id, vault_type, share_token,
-                  password_hash, expires_at, max_downloads, permissions, now))
-
-            conn.commit()
-
-            return {
-                "id": share_id,
-                "share_token": share_token,
-                "expires_at": expires_at,
-                "max_downloads": max_downloads,
-                "permissions": permissions,
-                "created_at": now
-            }
-
-        except Exception as e:
-            conn.rollback()
-            logger.error(f"Failed to create share link: {e}")
-            raise
-        finally:
-            conn.close()
+        return sharing_mod.create_share_link(self, user_id, vault_type, file_id, password, expires_at, max_downloads, permissions)
 
     def get_share_link(self, share_token: str) -> Dict[str, Any]:
         """Get share link details"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        try:
-            cursor.execute("""
-                SELECT s.id, s.file_id, s.password_hash, s.expires_at,
-                       s.max_downloads, s.download_count, s.permissions,
-                       f.filename, f.file_size, f.mime_type
-                FROM vault_file_shares s
-                JOIN vault_files f ON s.file_id = f.id
-                WHERE s.share_token = ?
-            """, (share_token,))
-
-            result = cursor.fetchone()
-            if not result:
-                raise ValueError("Share link not found")
-
-            share_id, file_id, password_hash, expires_at, max_downloads, \
-                download_count, permissions, filename, file_size, mime_type = result
-
-            # Check if expired
-            if expires_at:
-                expires_dt = datetime.fromisoformat(expires_at)
-                if datetime.utcnow() > expires_dt:
-                    raise ValueError("Share link has expired")
-
-            # Check download limit
-            if max_downloads and download_count >= max_downloads:
-                raise ValueError("Download limit reached")
-
-            return {
-                "id": share_id,
-                "file_id": file_id,
-                "filename": filename,
-                "file_size": file_size,
-                "mime_type": mime_type,
-                "requires_password": password_hash is not None,
-                "permissions": permissions,
-                "download_count": download_count,
-                "max_downloads": max_downloads
-            }
-
-        finally:
-            conn.close()
+        return sharing_mod.get_share_link(self, share_token)
 
     def verify_share_password(self, share_token: str, password: str) -> bool:
         """Verify password for a share link"""
-        import hashlib
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        try:
-            cursor.execute("""
-                SELECT password_hash
-                FROM vault_file_shares
-                WHERE share_token = ?
-            """, (share_token,))
-
-            result = cursor.fetchone()
-            if not result or not result[0]:
-                return True  # No password required
-
-            stored_hash = result[0]
-            provided_hash = hashlib.sha256(password.encode()).hexdigest()
-
-            return stored_hash == provided_hash
-
-        finally:
-            conn.close()
+        return sharing_mod.verify_share_password(self, share_token, password)
 
     def increment_share_download(self, share_token: str) -> None:
         """Increment download counter for a share"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        try:
-            now = datetime.utcnow().isoformat()
-
-            cursor.execute("""
-                UPDATE vault_file_shares
-                SET download_count = download_count + 1,
-                    last_accessed = ?
-                WHERE share_token = ?
-            """, (now, share_token))
-
-            conn.commit()
-
-        except Exception as e:
-            conn.rollback()
-            logger.error(f"Failed to increment share download: {e}")
-            raise
-        finally:
-            conn.close()
+        return sharing_mod.increment_share_download(self, share_token)
 
     def revoke_share_link(self, user_id: str, vault_type: str, share_id: str) -> bool:
         """Revoke a share link"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        try:
-            cursor.execute("""
-                DELETE FROM vault_file_shares
-                WHERE id = ? AND user_id = ? AND vault_type = ?
-            """, (share_id, user_id, vault_type))
-
-            conn.commit()
-            return cursor.rowcount > 0
-
-        except Exception as e:
-            conn.rollback()
-            logger.error(f"Failed to revoke share link: {e}")
-            raise
-        finally:
-            conn.close()
+        return sharing_mod.revoke_share_link(self, user_id, vault_type, share_id)
 
     def get_file_shares(self, user_id: str, vault_type: str, file_id: str) -> List[Dict[str, Any]]:
         """Get all share links for a file"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        try:
-            cursor.execute("""
-                SELECT id, share_token, expires_at, max_downloads,
-                       download_count, permissions, created_at, last_accessed
-                FROM vault_file_shares
-                WHERE file_id = ? AND user_id = ? AND vault_type = ?
-                ORDER BY created_at DESC
-            """, (file_id, user_id, vault_type))
-
-            shares = []
-            for row in cursor.fetchall():
-                shares.append({
-                    "id": row[0],
-                    "share_token": row[1],
-                    "expires_at": row[2],
-                    "max_downloads": row[3],
-                    "download_count": row[4],
-                    "permissions": row[5],
-                    "created_at": row[6],
-                    "last_accessed": row[7]
-                })
-
-            return shares
-
-        finally:
-            conn.close()
+        return sharing_mod.get_file_shares(self, user_id, vault_type, file_id)
 
     # ===== Day 4: Audit Logs =====
 
@@ -1178,93 +807,14 @@ class VaultService:
                   details: str = None, ip_address: str = None,
                   user_agent: str = None) -> str:
         """Log an audit event"""
-        import uuid
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        try:
-            log_id = str(uuid.uuid4())
-            now = datetime.utcnow().isoformat()
-
-            cursor.execute("""
-                INSERT INTO vault_audit_logs (
-                    id, user_id, vault_type, action, resource_type,
-                    resource_id, details, ip_address, user_agent, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (log_id, user_id, vault_type, action, resource_type,
-                  resource_id, details, ip_address, user_agent, now))
-
-            conn.commit()
-            return log_id
-
-        except Exception as e:
-            conn.rollback()
-            logger.error(f"Failed to log audit: {e}")
-            raise
-        finally:
-            conn.close()
+        return audit_mod.log_audit(self, user_id, vault_type, action, resource_type, resource_id, details, ip_address, user_agent)
 
     def get_audit_logs(self, user_id: str, vault_type: str = None,
                       action: str = None, resource_type: str = None,
                       date_from: str = None, date_to: str = None,
                       limit: int = 100) -> List[Dict[str, Any]]:
         """Get audit logs with filters"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        try:
-            sql = """
-                SELECT id, user_id, vault_type, action, resource_type,
-                       resource_id, details, ip_address, user_agent, created_at
-                FROM vault_audit_logs
-                WHERE user_id = ?
-            """
-            params = [user_id]
-
-            if vault_type:
-                sql += " AND vault_type = ?"
-                params.append(vault_type)
-
-            if action:
-                sql += " AND action = ?"
-                params.append(action)
-
-            if resource_type:
-                sql += " AND resource_type = ?"
-                params.append(resource_type)
-
-            if date_from:
-                sql += " AND created_at >= ?"
-                params.append(date_from)
-
-            if date_to:
-                sql += " AND created_at <= ?"
-                params.append(date_to)
-
-            sql += " ORDER BY created_at DESC LIMIT ?"
-            params.append(limit)
-
-            cursor.execute(sql, params)
-
-            logs = []
-            for row in cursor.fetchall():
-                logs.append({
-                    "id": row[0],
-                    "user_id": row[1],
-                    "vault_type": row[2],
-                    "action": row[3],
-                    "resource_type": row[4],
-                    "resource_id": row[5],
-                    "details": row[6],
-                    "ip_address": row[7],
-                    "user_agent": row[8],
-                    "created_at": row[9]
-                })
-
-            return logs
-
-        finally:
-            conn.close()
+        return audit_mod.get_audit_logs(self, user_id, vault_type, action, resource_type, date_from, date_to, limit)
 
     # ===== Day 4: File Comments =====
 
