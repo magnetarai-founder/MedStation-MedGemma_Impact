@@ -39,6 +39,7 @@
 		3EFF8BA28CFC830D62689E55 /* EmergencyConfirmationModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = AED8C8EF1AB9724F43575821 /* EmergencyConfirmationModal.swift */; };
 		403835D13F7BBA5B87DF4BC0 /* CodeEditorService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10F8272E2D6EF476FDDCC185 /* CodeEditorService.swift */; };
 		419431498985644AE22A495A /* MagnetarHubWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2760AE2A83BCE0FEB660A5 /* MagnetarHubWorkspace.swift */; };
+		453770E04F112E2C2E2A4A36 /* HeaderModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A5261BA0381BAC909F8C068 /* HeaderModels.swift */; };
 		45B6CA56C285B6AA97DA07A4 /* QueueComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AA3D182930C6B24DCA20C52 /* QueueComponents.swift */; };
 		462E1B85191C4E7D6E5D04E1 /* EmergencyModeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF608E6633F1DCE6E6542EBD /* EmergencyModeService.swift */; };
 		47FF6B2EB6210A193845A4D6 /* DatabaseModals.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1733DB00B1FF137572D11592 /* DatabaseModals.swift */; };
@@ -55,6 +56,7 @@
 		6E29B084EF0AB46C6DFB6D23 /* ContextService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C043D3F1AFA96A4DDC52FAA0 /* ContextService.swift */; };
 		6F8590DFCF92476BB18FB1FF /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A959626C53B4237AD1DD881 /* KeychainService.swift */; };
 		72223FF3C75F1AFAC58365A7 /* KanbanModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEF80F8B0EF0149E932077F9 /* KanbanModels.swift */; };
+		74D8E0306527B74CAD6AB3F8 /* ControlCenterSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B185920987FF40C42A24A06 /* ControlCenterSheet.swift */; };
 		7B7E8A766BB7FC3F6725F19B /* DatabaseWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = A90C0C6D0ED2910BC2EE2A2D /* DatabaseWorkspace.swift */; };
 		7D52C320EC4DC723D4A73932 /* SecuritySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84BA14924AAE8B77761B548B /* SecuritySettingsView.swift */; };
 		7F361B205D3FD59F74F18AB8 /* WorkflowAnalyticsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C70DAEBD9922168A2B6BCBF6 /* WorkflowAnalyticsModels.swift */; };
@@ -70,6 +72,7 @@
 		9567EB5AF9A8C73D29DD0EA6 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F77D79421B014D8C65EC2CF /* APIClient.swift */; };
 		965A14789C7D4F6BB6F09F0B /* LoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28E3301816CD44269E126C96 /* LoadingView.swift */; };
 		A389EB1998243859B3C3DF28 /* ModelLibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0C17E6398CC912A0D8702EE /* ModelLibraryService.swift */; };
+		A4252432A1107ED7053F0BB5 /* PanicModeSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AA9D046DA2BBDADF3FB5FF4 /* PanicModeSheet.swift */; };
 		AC6DF635275F4E798D506030 /* WorkflowModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5A9F666CAE746EDB38AE581 /* WorkflowModels.swift */; };
 		ACE46F47F06B47B954AA36F5 /* ModelCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CD03E1F0B393F0E8465CF87 /* ModelCard.swift */; };
 		AD18AD81EDBC4EF8AC097789 /* SettingsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26E9E5E9E5784B339818979B /* SettingsService.swift */; };
@@ -103,6 +106,7 @@
 		CC297974B1F32A1CB838E79F /* WorkflowDashboardModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1433426296987C711963E4B6 /* WorkflowDashboardModels.swift */; };
 		CD0E0853A1FAE27A3518557A /* ModelEnrichmentService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52327976284A111B087DC761 /* ModelEnrichmentService.swift */; };
 		CD851BE5E0D7AB9D5519B9A7 /* NewDocumentModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5ADD9516A7A1CEB080FDEDF3 /* NewDocumentModal.swift */; };
+		CD962EF759DB961BF7FBCEEE /* HeaderComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 994B66D5357CD6810E75411D /* HeaderComponents.swift */; };
 		D2C513BE2EE0E6E8009A772A /* ModelTagService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2C513BD2EE0E6E8009A772A /* ModelTagService.swift */; };
 		D2C513C02EE0F018009A772A /* ModelTagEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2C513BF2EE0F018009A772A /* ModelTagEditorSheet.swift */; };
 		D2CCB34F2EDE7C5E00E20014 /* SecurityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2CCB34E2EDE7C5E00E20014 /* SecurityManager.swift */; };
@@ -157,6 +161,7 @@
 		18F56FEE06EB4480B335A64B /* VaultModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultModels.swift; sourceTree = "<group>"; };
 		18F8E78737774D21B8C95D37 /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
 		1A2760AE2A83BCE0FEB660A5 /* MagnetarHubWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagnetarHubWorkspace.swift; sourceTree = "<group>"; };
+		1A5261BA0381BAC909F8C068 /* HeaderModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HeaderModels.swift; path = Shared/Components/Header/HeaderModels.swift; sourceTree = "<group>"; };
 		1BABB5F6A676E347E4ACE40A /* SettingsHelpers.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SettingsHelpers.swift; path = Settings/SettingsHelpers.swift; sourceTree = "<group>"; };
 		1CEFDC9D3501139A38812C68 /* AppleFMOrchestrator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppleFMOrchestrator.swift; sourceTree = "<group>"; };
 		1DD9755F803656A491BC9DD1 /* QueueItemCard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QueueItemCard.swift; sourceTree = "<group>"; };
@@ -172,6 +177,7 @@
 		2E0D4298405D4D92A0BCCC26 /* NetworkSelector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkSelector.swift; sourceTree = "<group>"; };
 		31363739633266642D383665342D346232652D393037382D /* ThreePaneLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreePaneLayout.swift; sourceTree = "<group>"; };
 		337B394F18138ED69FB88772 /* SystemCapabilityService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SystemCapabilityService.swift; sourceTree = "<group>"; };
+		34C29524468D14A613725CA8 /* ControlCenterSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ControlCenterSheet.swift; path = Shared/Components/Header/ControlCenterSheet.swift; sourceTree = "<group>"; };
 		35C17D9C1722F2E28A8F923C /* Colors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colors.swift; sourceTree = "<group>"; };
 		37B8FC1C1C55127972DBE544 /* ModelMemoryTracker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelMemoryTracker.swift; sourceTree = "<group>"; };
 		37F355A75223BD31BF23FE9E /* VaultAdminPanel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VaultAdminPanel.swift; path = Panels/VaultAdminPanel.swift; sourceTree = "<group>"; };
@@ -180,11 +186,13 @@
 		3CD03E1F0B393F0E8465CF87 /* ModelCard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ModelCard.swift; path = MagnetarHub/ModelCard.swift; sourceTree = "<group>"; };
 		3DB05E6C67FE4427941ECD63 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		4205E4368F6655584595587C /* TeamModals.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TeamModals.swift; path = Team/TeamModals.swift; sourceTree = "<group>"; };
+		4560BB5E2F09DC5748C01FF5 /* HeaderModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HeaderModels.swift; path = Shared/Components/Header/HeaderModels.swift; sourceTree = "<group>"; };
 		46C6F9C65BD57850E16B8E89 /* WorkflowGrid.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowGrid.swift; sourceTree = "<group>"; };
 		4AA3D182930C6B24DCA20C52 /* QueueComponents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QueueComponents.swift; sourceTree = "<group>"; };
 		52327976284A111B087DC761 /* ModelEnrichmentService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelEnrichmentService.swift; sourceTree = "<group>"; };
 		58A9CD34F4FDC94F15684B48 /* WorkflowCardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowCardView.swift; sourceTree = "<group>"; };
 		5A9CA03F945469535A06F816 /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
+		5AA9D046DA2BBDADF3FB5FF4 /* PanicModeSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PanicModeSheet.swift; path = Shared/Components/Header/PanicModeSheet.swift; sourceTree = "<group>"; };
 		5ADD9516A7A1CEB080FDEDF3 /* NewDocumentModal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NewDocumentModal.swift; path = ../../Shared/Views/Team/NewDocumentModal.swift; sourceTree = "<group>"; };
 		5C5B7D185B4D1BE3FF14F5F6 /* GlassButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassButton.swift; sourceTree = "<group>"; };
 		5EAEA6C1E62949E989A455ED /* SettingsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsModels.swift; sourceTree = "<group>"; };
@@ -210,8 +218,10 @@
 		87815974F16A9DC291E9CEF3 /* FlowLayout.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
 		8838BDE42960AA40D4057FA2 /* SmartModelPicker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SmartModelPicker.swift; path = SmartModelPicker.swift; sourceTree = "<group>"; };
 		89716A7193DFB13FD786929D /* DataLabView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DataLabView.swift; path = ../../../macOS/Workspaces/Database/DataLabView.swift; sourceTree = "<group>"; };
+		8B185920987FF40C42A24A06 /* ControlCenterSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ControlCenterSheet.swift; path = Shared/Components/Header/ControlCenterSheet.swift; sourceTree = "<group>"; };
 		971E406BFD964D0DA7C3DB54 /* DatabaseModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseModels.swift; sourceTree = "<group>"; };
 		98E7B59E6EB249EAA0A73897 /* DatabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseService.swift; sourceTree = "<group>"; };
+		994B66D5357CD6810E75411D /* HeaderComponents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HeaderComponents.swift; path = Shared/Components/Header/HeaderComponents.swift; sourceTree = "<group>"; };
 		9BAFA952AE4C72B1AEABD4C6 /* AgentModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AgentModels.swift; sourceTree = "<group>"; };
 		9CD166ACB45A69C9897FFFA3 /* ModelRoutingDecision.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelRoutingDecision.swift; sourceTree = "<group>"; };
 		9F52290D220C60A04F37F79C /* WorkflowAnalyticsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowAnalyticsView.swift; sourceTree = "<group>"; };
@@ -233,6 +243,7 @@
 		B462A62F24C04C9E66B2D0CD /* KeychainManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainManager.swift; sourceTree = "<group>"; };
 		B99032061A118F3658F78070 /* VaultPermissionManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VaultPermissionManager.swift; sourceTree = "<group>"; };
 		BBE06911108B1F5DEE2D80A4 /* WorkflowTabButton.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowTabButton.swift; sourceTree = "<group>"; };
+		BDFEB21A28755A81A545B778 /* PanicModeSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PanicModeSheet.swift; path = Shared/Components/Header/PanicModeSheet.swift; sourceTree = "<group>"; };
 		BF608E6633F1DCE6E6542EBD /* EmergencyModeService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EmergencyModeService.swift; sourceTree = "<group>"; };
 		BFB37B6A745242FDB043D334 /* ChatModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatModels.swift; sourceTree = "<group>"; };
 		C043D3F1AFA96A4DDC52FAA0 /* ContextService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContextService.swift; sourceTree = "<group>"; };
@@ -276,6 +287,7 @@
 		E62FD8B9DE028C44A2F0816E /* ChatStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatStore.swift; sourceTree = "<group>"; };
 		E9DC720A6D6990C4CFE6EB62 /* WorkflowQueueModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowQueueModels.swift; sourceTree = "<group>"; };
 		F2C77CB5AF6C4202FD8D7161 /* ChatMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatMessage.swift; sourceTree = "<group>"; };
+		F5702E47E4E0759D275E6064 /* HeaderComponents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HeaderComponents.swift; path = Shared/Components/Header/HeaderComponents.swift; sourceTree = "<group>"; };
 		F5EC6DB8FD99287F756160BC /* EditDocumentModal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EditDocumentModal.swift; sourceTree = "<group>"; };
 		F85CE2F0DE5343879EB18743 /* Header.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Header.swift; sourceTree = "<group>"; };
 		FA268C85AA8894BC92182D94 /* ChatWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatWorkspace.swift; sourceTree = "<group>"; };
@@ -341,6 +353,10 @@
 				E18C80C7AB68D88D33E928A3 /* Shared */,
 				734503D79C8E69B6DEAEC3C5 /* Products */,
 				CC62291EC798001AA2110112 /* Shared */,
+				1A5261BA0381BAC909F8C068 /* HeaderModels.swift */,
+				994B66D5357CD6810E75411D /* HeaderComponents.swift */,
+				8B185920987FF40C42A24A06 /* ControlCenterSheet.swift */,
+				5AA9D046DA2BBDADF3FB5FF4 /* PanicModeSheet.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -352,6 +368,18 @@
 			);
 			name = Components;
 			path = Components;
+			sourceTree = "<group>";
+		};
+		1B381CF91266AC9E9F7CD5D0 /* Header */ = {
+			isa = PBXGroup;
+			children = (
+				4560BB5E2F09DC5748C01FF5 /* HeaderModels.swift */,
+				F5702E47E4E0759D275E6064 /* HeaderComponents.swift */,
+				34C29524468D14A613725CA8 /* ControlCenterSheet.swift */,
+				BDFEB21A28755A81A545B778 /* PanicModeSheet.swift */,
+			);
+			name = Header;
+			path = Shared/Components/Header;
 			sourceTree = "<group>";
 		};
 		23C530D571A54A0F4DB28FB5 /* Security */ = {
@@ -462,9 +490,21 @@
 			isa = PBXGroup;
 			children = (
 				1E2B507942CA31394CF87244 /* KanbanRows.swift */,
+				1B381CF91266AC9E9F7CD5D0 /* Header */,
 			);
 			name = Components;
 			path = Components;
+			sourceTree = "<group>";
+		};
+		8ADDF1C432AED938847B3F4E /* Header */ = {
+			isa = PBXGroup;
+			children = (
+				1A5261BA0381BAC909F8C068 /* HeaderModels.swift */,
+				994B66D5357CD6810E75411D /* HeaderComponents.swift */,
+				8B185920987FF40C42A24A06 /* ControlCenterSheet.swift */,
+				5AA9D046DA2BBDADF3FB5FF4 /* PanicModeSheet.swift */,
+			);
+			name = Header;
 			sourceTree = "<group>";
 		};
 		8D32CDD79FE2DC78599F3F25 /* Services */ = {
@@ -700,6 +740,7 @@
 				2E0D4298405D4D92A0BCCC26 /* NetworkSelector.swift */,
 				8838BDE42960AA40D4057FA2 /* SmartModelPicker.swift */,
 				A4F8CF51543F1CFFDF4725BB /* AutomationWorkspace */,
+				8ADDF1C432AED938847B3F4E /* Header */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -966,6 +1007,10 @@
 				AF781F424F0FB8869FFC1F1B /* KanbanRows.swift in Sources */,
 				81DDEA5E188C808C64D84751 /* KanbanService.swift in Sources */,
 				BFB7C496A928E4A8C4FB4463 /* KanbanWorkspace.swift in Sources */,
+				453770E04F112E2C2E2A4A36 /* HeaderModels.swift in Sources */,
+				CD962EF759DB961BF7FBCEEE /* HeaderComponents.swift in Sources */,
+				74D8E0306527B74CAD6AB3F8 /* ControlCenterSheet.swift in Sources */,
+				A4252432A1107ED7053F0BB5 /* PanicModeSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
