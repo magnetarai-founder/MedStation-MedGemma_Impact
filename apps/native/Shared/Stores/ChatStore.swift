@@ -39,14 +39,31 @@ final class ChatStore {
     init(apiClient: ApiClient = .shared) {
         self.apiClient = apiClient
 
-        // Load models and sessions on init
+        // Load models and sessions on init with retry logic
         Task {
-            await fetchModels()
+            await fetchModelsWithRetry()
             await loadSessions()
         }
     }
 
     // MARK: - Model Management
+
+    private func fetchModelsWithRetry(maxRetries: Int = 5) async {
+        for attempt in 1...maxRetries {
+            await fetchModels()
+
+            // If we successfully loaded models, we're done
+            if !availableModels.isEmpty {
+                return
+            }
+
+            // Wait before retrying (exponential backoff: 1s, 2s, 4s, 8s, 16s)
+            if attempt < maxRetries {
+                let delay = Double(1 << (attempt - 1))  // 2^(attempt-1)
+                try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            }
+        }
+    }
 
     func fetchModels() async {
         do {
