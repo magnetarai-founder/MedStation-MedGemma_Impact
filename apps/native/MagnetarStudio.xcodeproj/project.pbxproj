@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		047B49149C254D87B631EEF6 /* CodeEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 832F8059CDA346DF9163F393 /* CodeEditor.swift */; };
+		0648B3F97621A8814EC52C54 /* TeamChatSectionHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B5A2AA8A4C26E9774A2032E /* TeamChatSectionHeader.swift */; };
 		0996D3B0B63B4CB29AE2EE9E /* VaultModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18F56FEE06EB4480B335A64B /* VaultModels.swift */; };
 		0ACEF63C75F74A6698462792 /* WorkflowService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B02AE94CCC83473FB64BC7BD /* WorkflowService.swift */; };
 		0D947EE6EB82E5CA0A1C19AD /* AppearanceSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13DC4777B1AC2DAB3002F1ED /* AppearanceSettingsView.swift */; };
@@ -18,6 +19,7 @@
 		16118AFDE2324DDF8867D512 /* SettingsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EAEA6C1E62949E989A455ED /* SettingsModels.swift */; };
 		1807773E9FF774789EBDB576 /* ChatMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2C77CB5AF6C4202FD8D7161 /* ChatMessage.swift */; };
 		197FE4FF4E34415F80B4AB4E /* NetworkSelector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E0D4298405D4D92A0BCCC26 /* NetworkSelector.swift */; };
+		1AA31B9A4F340CA589B50BCF /* TeamChatChannelRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4326B5B0F8552BD7864498B3 /* TeamChatChannelRow.swift */; };
 		1B5A3384079CD043E03E55EC /* WorkflowDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68C7A01DBA5D26E64121533A /* WorkflowDashboardView.swift */; };
 		1F6C75B6ED0D4B9CBC80D2F3 /* AnyCodable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61A51A35C05D4A7A8724EE3B /* AnyCodable.swift */; };
 		20239B14BAE79383F23D53D4 /* HubEmptyState.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC4FCA743DA32128B1771E3C /* HubEmptyState.swift */; };
@@ -31,6 +33,8 @@
 		2EC9190DA5ACBD88DAC3DA69 /* HotSlotManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A077DE8B06259E85011EA57B /* HotSlotManager.swift */; };
 		300738EC663DC3A85FC9519C /* ModelDetailModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF0DA374D27198CAD23D3173 /* ModelDetailModal.swift */; };
 		30393230363164342D646637312D343666382D613263632D /* ThreePaneLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31363739633266642D383665342D346232652D393037382D /* ThreePaneLayout.swift */; };
+		32A19F8ECF1BD1574E8B6F63 /* TeamChatMessageInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = F219A202830587BFC394E02C /* TeamChatMessageInput.swift */; };
+		33543332E93E4386AE6943F8 /* TeamChatWindowHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18B586A66184033619AD6FEF /* TeamChatWindowHeader.swift */; };
 		33799F02E03C96C421E5FF7B /* HubCategoriesHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69D361B60E7A1E173F2DC87F /* HubCategoriesHeader.swift */; };
 		33A28A605AE75CD2FDB67907 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0555CDE5ACABDDEA3DA1834D /* SettingsView.swift */; };
 		340D121B2E5149E6BF86D0B6 /* OllamaService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EBEB2F057FF41A4A120A4DB /* OllamaService.swift */; };
@@ -118,6 +122,7 @@
 		CD851BE5E0D7AB9D5519B9A7 /* NewDocumentModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5ADD9516A7A1CEB080FDEDF3 /* NewDocumentModal.swift */; };
 		CD962EF759DB961BF7FBCEEE /* HeaderComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 994B66D5357CD6810E75411D /* HeaderComponents.swift */; };
 		D201E89388F45116C43DBB42 /* LibraryModelRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53776A551B485D6A1CAA1EAA /* LibraryModelRow.swift */; };
+		D2ABB8164D490EFB09E281EC /* TeamChatP2PBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BBF57BD56141D8E0052ED41 /* TeamChatP2PBanner.swift */; };
 		D2C513BE2EE0E6E8009A772A /* ModelTagService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2C513BD2EE0E6E8009A772A /* ModelTagService.swift */; };
 		D2C513C02EE0F018009A772A /* ModelTagEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2C513BF2EE0F018009A772A /* ModelTagEditorSheet.swift */; };
 		D2CCB34F2EDE7C5E00E20014 /* SecurityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2CCB34E2EDE7C5E00E20014 /* SecurityManager.swift */; };
@@ -170,6 +175,7 @@
 		1733DB00B1FF137572D11592 /* DatabaseModals.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DatabaseModals.swift; path = ../../../macOS/Workspaces/Database/DatabaseModals.swift; sourceTree = "<group>"; };
 		17B48CFFB13864D1927C04F8 /* VaultWorkspaceView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VaultWorkspaceView.swift; path = Vault/VaultWorkspaceView.swift; sourceTree = "<group>"; };
 		181392C49DEAE5A86F4C528B /* WorkflowBuilderView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowBuilderView.swift; sourceTree = "<group>"; };
+		18B586A66184033619AD6FEF /* TeamChatWindowHeader.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TeamChatWindowHeader.swift; path = TeamChat/TeamChatWindowHeader.swift; sourceTree = "<group>"; };
 		18F56FEE06EB4480B335A64B /* VaultModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultModels.swift; sourceTree = "<group>"; };
 		18F8E78737774D21B8C95D37 /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
 		1A2760AE2A83BCE0FEB660A5 /* MagnetarHubWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagnetarHubWorkspace.swift; sourceTree = "<group>"; };
@@ -199,6 +205,7 @@
 		3CD03E1F0B393F0E8465CF87 /* ModelCard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ModelCard.swift; path = MagnetarHub/ModelCard.swift; sourceTree = "<group>"; };
 		3DB05E6C67FE4427941ECD63 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		4205E4368F6655584595587C /* TeamModals.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TeamModals.swift; path = Team/TeamModals.swift; sourceTree = "<group>"; };
+		4326B5B0F8552BD7864498B3 /* TeamChatChannelRow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TeamChatChannelRow.swift; path = TeamChat/TeamChatChannelRow.swift; sourceTree = "<group>"; };
 		4560BB5E2F09DC5748C01FF5 /* HeaderModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HeaderModels.swift; path = Shared/Components/Header/HeaderModels.swift; sourceTree = "<group>"; };
 		46C6F9C65BD57850E16B8E89 /* WorkflowGrid.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowGrid.swift; sourceTree = "<group>"; };
 		4A35F59ADEB8327F1820D140 /* VaultToolbar.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VaultToolbar.swift; path = Vault/VaultToolbar.swift; sourceTree = "<group>"; };
@@ -221,6 +228,7 @@
 		67700E88177E4318A9F9D842 /* ChatService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatService.swift; sourceTree = "<group>"; };
 		68C7A01DBA5D26E64121533A /* WorkflowDashboardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowDashboardView.swift; sourceTree = "<group>"; };
 		69D361B60E7A1E173F2DC87F /* HubCategoriesHeader.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HubCategoriesHeader.swift; path = MagnetarHub/HubCategoriesHeader.swift; sourceTree = "<group>"; };
+		6B5A2AA8A4C26E9774A2032E /* TeamChatSectionHeader.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TeamChatSectionHeader.swift; path = TeamChat/TeamChatSectionHeader.swift; sourceTree = "<group>"; };
 		6CE26C88BCDE81BD11937A38 /* TeamChatModals.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TeamChatModals.swift; path = TeamChat/TeamChatModals.swift; sourceTree = "<group>"; };
 		6EBEB2F057FF41A4A120A4DB /* OllamaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaService.swift; sourceTree = "<group>"; };
 		758F62B637F9DF75E26BAB65 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -244,6 +252,7 @@
 		98E7B59E6EB249EAA0A73897 /* DatabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseService.swift; sourceTree = "<group>"; };
 		994B66D5357CD6810E75411D /* HeaderComponents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HeaderComponents.swift; path = Shared/Components/Header/HeaderComponents.swift; sourceTree = "<group>"; };
 		9BAFA952AE4C72B1AEABD4C6 /* AgentModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AgentModels.swift; sourceTree = "<group>"; };
+		9BBF57BD56141D8E0052ED41 /* TeamChatP2PBanner.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TeamChatP2PBanner.swift; path = TeamChat/TeamChatP2PBanner.swift; sourceTree = "<group>"; };
 		9CD166ACB45A69C9897FFFA3 /* ModelRoutingDecision.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelRoutingDecision.swift; sourceTree = "<group>"; };
 		9F52290D220C60A04F37F79C /* WorkflowAnalyticsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowAnalyticsView.swift; sourceTree = "<group>"; };
 		9FB81FC9D13D45848AE84D90 /* SettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStore.swift; sourceTree = "<group>"; };
@@ -310,6 +319,7 @@
 		E62FD8B9DE028C44A2F0816E /* ChatStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatStore.swift; sourceTree = "<group>"; };
 		E9DC720A6D6990C4CFE6EB62 /* WorkflowQueueModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowQueueModels.swift; sourceTree = "<group>"; };
 		F161155DE71176E1754C3D28 /* HubOllamaStatus.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HubOllamaStatus.swift; path = MagnetarHub/HubOllamaStatus.swift; sourceTree = "<group>"; };
+		F219A202830587BFC394E02C /* TeamChatMessageInput.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TeamChatMessageInput.swift; path = TeamChat/TeamChatMessageInput.swift; sourceTree = "<group>"; };
 		F2C77CB5AF6C4202FD8D7161 /* ChatMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatMessage.swift; sourceTree = "<group>"; };
 		F5702E47E4E0759D275E6064 /* HeaderComponents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HeaderComponents.swift; path = Shared/Components/Header/HeaderComponents.swift; sourceTree = "<group>"; };
 		F5EC6DB8FD99287F756160BC /* EditDocumentModal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EditDocumentModal.swift; sourceTree = "<group>"; };
@@ -424,6 +434,11 @@
 			children = (
 				0451645C6D081B309C394FFB /* TeamChatComponents.swift */,
 				6CE26C88BCDE81BD11937A38 /* TeamChatModals.swift */,
+				9BBF57BD56141D8E0052ED41 /* TeamChatP2PBanner.swift */,
+				6B5A2AA8A4C26E9774A2032E /* TeamChatSectionHeader.swift */,
+				4326B5B0F8552BD7864498B3 /* TeamChatChannelRow.swift */,
+				18B586A66184033619AD6FEF /* TeamChatWindowHeader.swift */,
+				F219A202830587BFC394E02C /* TeamChatMessageInput.swift */,
 			);
 			name = TeamChat;
 			sourceTree = "<group>";
@@ -1069,6 +1084,11 @@
 				36E443ADF9AB9144CC5B15B3 /* HubCloudStatus.swift in Sources */,
 				B9C75FFBD526E3FD2AB65B25 /* HubDiscoverToolbar.swift in Sources */,
 				20239B14BAE79383F23D53D4 /* HubEmptyState.swift in Sources */,
+				D2ABB8164D490EFB09E281EC /* TeamChatP2PBanner.swift in Sources */,
+				0648B3F97621A8814EC52C54 /* TeamChatSectionHeader.swift in Sources */,
+				1AA31B9A4F340CA589B50BCF /* TeamChatChannelRow.swift in Sources */,
+				33543332E93E4386AE6943F8 /* TeamChatWindowHeader.swift in Sources */,
+				32A19F8ECF1BD1574E8B6F63 /* TeamChatMessageInput.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

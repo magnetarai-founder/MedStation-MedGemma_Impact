@@ -76,112 +76,15 @@ struct TeamChatView: View {
     }
 
     // MARK: - P2P Banner
+    // Extracted to TeamChatP2PBanner.swift (Phase 6.13)
 
     private var p2pBanner: some View {
-        HStack(spacing: 12) {
-            // Left: Status
-            HStack(spacing: 8) {
-                statusIcon
-                    .font(.system(size: 12))
-
-                Text(statusText)
-                    .font(.system(size: 14))
-                    .foregroundColor(statusColor)
-            }
-
-            Spacer()
-
-            // Right: Peer ID + Buttons
-            HStack(spacing: 8) {
-                if let networkStatus = p2pNetworkStatus, p2pStatus == .connected {
-                    Text(String(networkStatus.peerId.prefix(12)) + "...")
-                        .font(.system(size: 12, design: .monospaced))
-                        .foregroundColor(.blue)
-                }
-
-                Button {
-                    showPeerDiscovery = true
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "person.2")
-                            .font(.system(size: 12))
-                        Text("Peers")
-                            .font(.system(size: 12, weight: .medium))
-                    }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.blue)
-                    )
-                }
-                .buttonStyle(.plain)
-
-                Button {
-                    showFileSharing = true
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "arrow.up.doc")
-                            .font(.system(size: 12))
-                        Text("Files")
-                            .font(.system(size: 12, weight: .medium))
-                    }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.green)
-                    )
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(Color.blue.opacity(0.1))
-        .overlay(
-            Rectangle()
-                .fill(Color.blue.opacity(0.3))
-                .frame(height: 1),
-            alignment: .bottom
+        TeamChatP2PBanner(
+            p2pStatus: p2pStatus,
+            p2pNetworkStatus: p2pNetworkStatus,
+            onShowPeerDiscovery: { showPeerDiscovery = true },
+            onShowFileSharing: { showFileSharing = true }
         )
-    }
-
-    private var statusIcon: some View {
-        Group {
-            switch p2pStatus {
-            case .connecting:
-                ProgressView()
-                    .scaleEffect(0.6)
-                    .tint(.blue)
-            case .disconnected:
-                Image(systemName: "wifi.slash")
-                    .foregroundColor(.red)
-            case .connected:
-                Image(systemName: "wifi")
-                    .foregroundColor(.green)
-            }
-        }
-    }
-
-    private var statusText: String {
-        switch p2pStatus {
-        case .connecting: return "Connecting to P2P mesh..."
-        case .disconnected: return "Disconnected from mesh"
-        case .connected:
-            let peerCount = p2pNetworkStatus?.discoveredPeers ?? 0
-            return "Connected • \(peerCount) peers"
-        }
-    }
-
-    private var statusColor: Color {
-        switch p2pStatus {
-        case .connecting: return .blue
-        case .disconnected: return .red
-        case .connected: return .green
-        }
     }
 }
 
@@ -266,54 +169,14 @@ struct TeamChatSidebar: View {
         }
     }
 
+    // Extracted to TeamChatSectionHeader.swift and TeamChatChannelRow.swift (Phase 6.13)
+
     private func sectionHeader(title: String, onAdd: (() -> Void)?) -> some View {
-        HStack {
-            Text(title)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(.secondary)
-                .textCase(.uppercase)
-
-            Spacer()
-
-            if let onAdd = onAdd {
-                Button(action: onAdd) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 14))
-                        .foregroundColor(.secondary)
-                        .frame(width: 20, height: 20)
-                }
-                .buttonStyle(.plain)
-                .onHover { hovering in
-                    // Hover effect handled by buttonStyle
-                }
-            }
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
+        TeamChatSectionHeader(title: title, onAdd: onAdd)
     }
 
     private func channelRow(channel: TeamChannel, isActive: Bool, isPrivate: Bool = false) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: isPrivate ? "lock" : "number")
-                .font(.system(size: 16))
-                .foregroundColor(isActive ? Color.magnetarPrimary : .secondary)
-
-            Text(channel.name)
-                .font(.system(size: 14))
-                .foregroundColor(isActive ? .primary : .secondary)
-
-            Spacer()
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(isActive ? Color.magnetarPrimary.opacity(0.15) : Color.clear)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .strokeBorder(isActive ? Color.magnetarPrimary.opacity(0.3) : Color.clear, lineWidth: 1)
-                )
-        )
+        TeamChatChannelRow(channel: channel, isActive: isActive, isPrivate: isPrivate)
     }
 
     private var addChannelRow: some View {
@@ -359,40 +222,8 @@ struct TeamChatWindow: View {
         Group {
             if let channel = activeChannel {
                 VStack(spacing: 0) {
-                    // Header
-                    HStack(spacing: 12) {
-                        Image(systemName: "number")
-                            .font(.system(size: 18))
-                            .foregroundColor(Color.magnetarPrimary)
-
-                        Text(channel.name)
-                            .font(.system(size: 18, weight: .bold))
-
-                        Spacer()
-
-                        Button {
-                            // Channel menu
-                        } label: {
-                            Image(systemName: "ellipsis")
-                                .font(.system(size: 16))
-                                .foregroundColor(.secondary)
-                                .frame(width: 32, height: 32)
-                        }
-                        .buttonStyle(.plain)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color.gray.opacity(0.0))
-                        )
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                    .background(Color(.controlBackgroundColor))
-                    .overlay(
-                        Rectangle()
-                            .fill(Color.gray.opacity(0.2))
-                            .frame(height: 1),
-                        alignment: .bottom
-                    )
+                    // Header - Extracted to TeamChatWindowHeader.swift (Phase 6.13)
+                    TeamChatWindowHeader(channel: channel)
 
                     // Error banner
                     if let error = errorMessage {
@@ -459,48 +290,8 @@ struct TeamChatWindow: View {
                         loadMessages()
                     }
 
-                    // Message input
-                    VStack(spacing: 0) {
-                        Divider()
-
-                        HStack(spacing: 12) {
-                            TextField("Type a message...", text: $messageInput)
-                                .textFieldStyle(.plain)
-                                .font(.system(size: 14))
-
-                            HStack(spacing: 8) {
-                                Button {
-                                    // Attach file
-                                } label: {
-                                    Image(systemName: "paperclip")
-                                        .font(.system(size: 16))
-                                        .foregroundColor(.secondary)
-                                }
-                                .buttonStyle(.plain)
-
-                                Button {
-                                    // Emoji picker
-                                } label: {
-                                    Image(systemName: "face.smiling")
-                                        .font(.system(size: 16))
-                                        .foregroundColor(.secondary)
-                                }
-                                .buttonStyle(.plain)
-
-                                Button {
-                                    sendMessage()
-                                } label: {
-                                    Image(systemName: "arrow.up.circle.fill")
-                                        .font(.system(size: 24))
-                                        .foregroundStyle(messageInput.isEmpty ? AnyShapeStyle(Color.secondary) : AnyShapeStyle(LinearGradient.magnetarGradient))
-                                }
-                                .buttonStyle(.plain)
-                                .disabled(messageInput.isEmpty)
-                            }
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                    }
+                    // Message input - Extracted to TeamChatMessageInput.swift (Phase 6.13)
+                    TeamChatMessageInput(messageInput: $messageInput, onSend: sendMessage)
                 }
             } else {
                 emptyState
