@@ -25,6 +25,7 @@
 		24CCD2C68B24A6B1BFA19456 /* TeamChatComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0451645C6D081B309C394FFB /* TeamChatComponents.swift */; };
 		27A4D1543BA8BA0FA7604B95 /* ModelSelectorMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC12D8A6355AFFD9A5022863 /* ModelSelectorMenu.swift */; };
 		284B09009A694A4E0263B311 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE1C4B939DAC9084AC244415 /* ContentView.swift */; };
+		2B60D81B02F198CEE4838B05 /* VaultToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A35F59ADEB8327F1820D140 /* VaultToolbar.swift */; };
 		2CEBD6ED297D4874B6DDB1F6 /* SettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FB81FC9D13D45848AE84D90 /* SettingsStore.swift */; };
 		2EC9190DA5ACBD88DAC3DA69 /* HotSlotManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A077DE8B06259E85011EA57B /* HotSlotManager.swift */; };
 		300738EC663DC3A85FC9519C /* ModelDetailModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF0DA374D27198CAD23D3173 /* ModelDetailModal.swift */; };
@@ -32,6 +33,7 @@
 		33A28A605AE75CD2FDB67907 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0555CDE5ACABDDEA3DA1834D /* SettingsView.swift */; };
 		340D121B2E5149E6BF86D0B6 /* OllamaService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EBEB2F057FF41A4A120A4DB /* OllamaService.swift */; };
 		37D48B6A552673DBFCBB21B6 /* WorkflowCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58A9CD34F4FDC94F15684B48 /* WorkflowCardView.swift */; };
+		382BD4083C03333CFB822F28 /* VaultListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 771AABD283DC532F95BF7AB1 /* VaultListView.swift */; };
 		3AEF6F15A9E949E7A20E3E10 /* DatabaseStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6D0A604BB2D42F8996CC8C9 /* DatabaseStore.swift */; };
 		3B0607AB6F5A44BABD952DDA /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DB05E6C67FE4427941ECD63 /* WelcomeView.swift */; };
 		3BA3C53949C60E1DB0C5B12E /* ModelTag.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2773A6C7CAE78696090B41B7 /* ModelTag.swift */; };
@@ -72,8 +74,10 @@
 		941292876F3B5AAD09D4BE8F /* WorkflowDesignerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5A0FB3AB9BEAFE307364AF6 /* WorkflowDesignerView.swift */; };
 		9567EB5AF9A8C73D29DD0EA6 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F77D79421B014D8C65EC2CF /* APIClient.swift */; };
 		965A14789C7D4F6BB6F09F0B /* LoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28E3301816CD44269E126C96 /* LoadingView.swift */; };
+		98592D0B7241C2ABA1B6C535 /* VaultGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 898F04454F2A15A0E171CBF4 /* VaultGridView.swift */; };
 		A389EB1998243859B3C3DF28 /* ModelLibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0C17E6398CC912A0D8702EE /* ModelLibraryService.swift */; };
 		A4252432A1107ED7053F0BB5 /* PanicModeSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AA9D046DA2BBDADF3FB5FF4 /* PanicModeSheet.swift */; };
+		A92D9EB17D78EAC4A2E1F36B /* VaultStateViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C6975369F894179A60EF9F1 /* VaultStateViews.swift */; };
 		AC6DF635275F4E798D506030 /* WorkflowModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5A9F666CAE746EDB38AE581 /* WorkflowModels.swift */; };
 		ACE46F47F06B47B954AA36F5 /* ModelCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CD03E1F0B393F0E8465CF87 /* ModelCard.swift */; };
 		AD18AD81EDBC4EF8AC097789 /* SettingsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26E9E5E9E5784B339818979B /* SettingsService.swift */; };
@@ -140,6 +144,7 @@
 		F03107872F22738D05B54CAE /* WorkflowQueueView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC37E911002B5D5042A19F36 /* WorkflowQueueView.swift */; };
 		F213D481455BA14BC15B7BE4 /* DotPattern.swift in Sources */ = {isa = PBXBuildFile; fileRef = D37009FC1ECC7770D86FFB7F /* DotPattern.swift */; };
 		F52CC6633BFB9B995A499F78 /* TeamChatModals.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CE26C88BCDE81BD11937A38 /* TeamChatModals.swift */; };
+		F65714C93C221AB96D3A1595 /* VaultLockScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4F0F46829F0B4656CAACA28 /* VaultLockScreen.swift */; };
 		F68ABDC7B8A04CCA9B1DE635 /* DatabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98E7B59E6EB249EAA0A73897 /* DatabaseService.swift */; };
 		F8B8DDCFEE83420FC10991CD /* VaultPermissionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B99032061A118F3658F78070 /* VaultPermissionManager.swift */; };
 		FA145C7E3B82413ABC4FBDEF /* ResultsTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62BA9229DF934A44B0D3CBC5 /* ResultsTable.swift */; };
@@ -190,6 +195,7 @@
 		4205E4368F6655584595587C /* TeamModals.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TeamModals.swift; path = Team/TeamModals.swift; sourceTree = "<group>"; };
 		4560BB5E2F09DC5748C01FF5 /* HeaderModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HeaderModels.swift; path = Shared/Components/Header/HeaderModels.swift; sourceTree = "<group>"; };
 		46C6F9C65BD57850E16B8E89 /* WorkflowGrid.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowGrid.swift; sourceTree = "<group>"; };
+		4A35F59ADEB8327F1820D140 /* VaultToolbar.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VaultToolbar.swift; path = Vault/VaultToolbar.swift; sourceTree = "<group>"; };
 		4AA3D182930C6B24DCA20C52 /* QueueComponents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QueueComponents.swift; sourceTree = "<group>"; };
 		52327976284A111B087DC761 /* ModelEnrichmentService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelEnrichmentService.swift; sourceTree = "<group>"; };
 		53776A551B485D6A1CAA1EAA /* LibraryModelRow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LibraryModelRow.swift; path = macOS/Workspaces/ModelDiscovery/LibraryModelRow.swift; sourceTree = "<group>"; };
@@ -199,6 +205,7 @@
 		5AA9D046DA2BBDADF3FB5FF4 /* PanicModeSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PanicModeSheet.swift; path = Shared/Components/Header/PanicModeSheet.swift; sourceTree = "<group>"; };
 		5ADD9516A7A1CEB080FDEDF3 /* NewDocumentModal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NewDocumentModal.swift; path = ../../Shared/Views/Team/NewDocumentModal.swift; sourceTree = "<group>"; };
 		5C5B7D185B4D1BE3FF14F5F6 /* GlassButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassButton.swift; sourceTree = "<group>"; };
+		5C6975369F894179A60EF9F1 /* VaultStateViews.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VaultStateViews.swift; path = Vault/VaultStateViews.swift; sourceTree = "<group>"; };
 		5EAEA6C1E62949E989A455ED /* SettingsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsModels.swift; sourceTree = "<group>"; };
 		6031A3F0EC42EA6C42386DBF /* StagePerformanceTable.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StagePerformanceTable.swift; sourceTree = "<group>"; };
 		611796B61D64D3EA27C7F979 /* KanbanModals.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KanbanModals.swift; sourceTree = "<group>"; };
@@ -211,6 +218,7 @@
 		6EBEB2F057FF41A4A120A4DB /* OllamaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaService.swift; sourceTree = "<group>"; };
 		758F62B637F9DF75E26BAB65 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		76B654E79648895F9402737A /* KanbanService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KanbanService.swift; sourceTree = "<group>"; };
+		771AABD283DC532F95BF7AB1 /* VaultListView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VaultListView.swift; path = Vault/VaultListView.swift; sourceTree = "<group>"; };
 		7767622EED14E1BE4AF9547F /* GeneralSettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = GeneralSettingsView.swift; path = Settings/GeneralSettingsView.swift; sourceTree = "<group>"; };
 		786CB632E145399E3EDC4820 /* DocsWorkspaceView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DocsWorkspaceView.swift; path = Docs/DocsWorkspaceView.swift; sourceTree = "<group>"; };
 		7F77D79421B014D8C65EC2CF /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
@@ -222,6 +230,7 @@
 		87815974F16A9DC291E9CEF3 /* FlowLayout.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
 		8838BDE42960AA40D4057FA2 /* SmartModelPicker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SmartModelPicker.swift; path = SmartModelPicker.swift; sourceTree = "<group>"; };
 		89716A7193DFB13FD786929D /* DataLabView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DataLabView.swift; path = ../../../macOS/Workspaces/Database/DataLabView.swift; sourceTree = "<group>"; };
+		898F04454F2A15A0E171CBF4 /* VaultGridView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VaultGridView.swift; path = Vault/VaultGridView.swift; sourceTree = "<group>"; };
 		8B185920987FF40C42A24A06 /* ControlCenterSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ControlCenterSheet.swift; path = Shared/Components/Header/ControlCenterSheet.swift; sourceTree = "<group>"; };
 		971E406BFD964D0DA7C3DB54 /* DatabaseModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseModels.swift; sourceTree = "<group>"; };
 		98E7B59E6EB249EAA0A73897 /* DatabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseService.swift; sourceTree = "<group>"; };
@@ -245,6 +254,7 @@
 		AED8C8EF1AB9724F43575821 /* EmergencyConfirmationModal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EmergencyConfirmationModal.swift; sourceTree = "<group>"; };
 		B02AE94CCC83473FB64BC7BD /* WorkflowService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowService.swift; sourceTree = "<group>"; };
 		B462A62F24C04C9E66B2D0CD /* KeychainManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainManager.swift; sourceTree = "<group>"; };
+		B4F0F46829F0B4656CAACA28 /* VaultLockScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VaultLockScreen.swift; path = Vault/VaultLockScreen.swift; sourceTree = "<group>"; };
 		B99032061A118F3658F78070 /* VaultPermissionManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VaultPermissionManager.swift; sourceTree = "<group>"; };
 		BBE06911108B1F5DEE2D80A4 /* WorkflowTabButton.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowTabButton.swift; sourceTree = "<group>"; };
 		BDFEB21A28755A81A545B778 /* PanicModeSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PanicModeSheet.swift; path = Shared/Components/Header/PanicModeSheet.swift; sourceTree = "<group>"; };
@@ -766,6 +776,11 @@
 			children = (
 				17B48CFFB13864D1927C04F8 /* VaultWorkspaceView.swift */,
 				FA41B0C7CACB6D1CA954CD7D /* VaultComponents.swift */,
+				B4F0F46829F0B4656CAACA28 /* VaultLockScreen.swift */,
+				4A35F59ADEB8327F1820D140 /* VaultToolbar.swift */,
+				898F04454F2A15A0E171CBF4 /* VaultGridView.swift */,
+				771AABD283DC532F95BF7AB1 /* VaultListView.swift */,
+				5C6975369F894179A60EF9F1 /* VaultStateViews.swift */,
 			);
 			name = Vault;
 			sourceTree = "<group>";
@@ -1029,6 +1044,11 @@
 				A4252432A1107ED7053F0BB5 /* PanicModeSheet.swift in Sources */,
 				5207F2487C759987813BB324 /* ModelDiscoveryModels.swift in Sources */,
 				D201E89388F45116C43DBB42 /* LibraryModelRow.swift in Sources */,
+				F65714C93C221AB96D3A1595 /* VaultLockScreen.swift in Sources */,
+				2B60D81B02F198CEE4838B05 /* VaultToolbar.swift in Sources */,
+				98592D0B7241C2ABA1B6C535 /* VaultGridView.swift in Sources */,
+				382BD4083C03333CFB822F28 /* VaultListView.swift in Sources */,
+				A92D9EB17D78EAC4A2E1F36B /* VaultStateViews.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
