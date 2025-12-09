@@ -47,6 +47,7 @@
 		3AEF6F15A9E949E7A20E3E10 /* DatabaseStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6D0A604BB2D42F8996CC8C9 /* DatabaseStore.swift */; };
 		3B0607AB6F5A44BABD952DDA /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DB05E6C67FE4427941ECD63 /* WelcomeView.swift */; };
 		3BA3C53949C60E1DB0C5B12E /* ModelTag.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2773A6C7CAE78696090B41B7 /* ModelTag.swift */; };
+		3D3C894D53974DB37858565C /* ChatTimelineSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D1144CC627DBF40213A72A1 /* ChatTimelineSheet.swift */; };
 		3E58740ADC7316F324337786 /* HubModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E221F2C3BD9E5578CD6F60FC /* HubModels.swift */; };
 		3EFF8BA28CFC830D62689E55 /* EmergencyConfirmationModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = AED8C8EF1AB9724F43575821 /* EmergencyConfirmationModal.swift */; };
 		403835D13F7BBA5B87DF4BC0 /* CodeEditorService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10F8272E2D6EF476FDDCC185 /* CodeEditorService.swift */; };
@@ -60,6 +61,7 @@
 		5029E04178BD64E5D248FDA2 /* QueueItemCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD9755F803656A491BC9DD1 /* QueueItemCard.swift */; };
 		5207F2487C759987813BB324 /* ModelDiscoveryModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53DB5DE47A18C5A9E02B13EF /* ModelDiscoveryModels.swift */; };
 		58E692E5B77C1E536C3E5117 /* AgentAssistCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = D15890D5596882B29171E952 /* AgentAssistCard.swift */; };
+		5DB6803DD81E1F6E4345A2FB /* ChatMessageRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EE00454F6704EA5F7C99AFC /* ChatMessageRow.swift */; };
 		5EE88580002ECB12FCA62E2F /* VaultAuditLogTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39D58279E508EB2ACD10CEC1 /* VaultAuditLogTab.swift */; };
 		64F67906DF494D5A9DC5C9BF /* VaultAdminHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 135878BCF808DF3CD29A158E /* VaultAdminHeader.swift */; };
 		664594858BB924BBA1BFF3DD /* ModelMemoryTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37B8FC1C1C55127972DBE544 /* ModelMemoryTracker.swift */; };
@@ -75,8 +77,10 @@
 		72223FF3C75F1AFAC58365A7 /* KanbanModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEF80F8B0EF0149E932077F9 /* KanbanModels.swift */; };
 		74D8E0306527B74CAD6AB3F8 /* ControlCenterSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B185920987FF40C42A24A06 /* ControlCenterSheet.swift */; };
 		76604907D534F2D1B4B90231 /* VaultResourcesTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58A0523A9291CBF8B0969A33 /* VaultResourcesTab.swift */; };
+		78FBE10A96F03C9151E62A9E /* ChatSessionRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D543F96E3B46F2588608167 /* ChatSessionRow.swift */; };
 		7B7E8A766BB7FC3F6725F19B /* DatabaseWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = A90C0C6D0ED2910BC2EE2A2D /* DatabaseWorkspace.swift */; };
 		7D52C320EC4DC723D4A73932 /* SecuritySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84BA14924AAE8B77761B548B /* SecuritySettingsView.swift */; };
+		7DE4E160EC55A4FB38FD3F81 /* ChatWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AD7D3D6C33E1F8331C5A193 /* ChatWindow.swift */; };
 		7F361B205D3FD59F74F18AB8 /* WorkflowAnalyticsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C70DAEBD9922168A2B6BCBF6 /* WorkflowAnalyticsModels.swift */; };
 		8070383B0926FBAD64A94461 /* TeamModals.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4205E4368F6655584595587C /* TeamModals.swift */; };
 		813D3AACA05AE05DE27F36F4 /* SaveQueryDialog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A828D5AD30F9FFB223DEEB0 /* SaveQueryDialog.swift */; };
@@ -114,6 +118,7 @@
 		B93263A762E279A86B0E1F43 /* MetricCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80E8F3E349787A7F13EE9989 /* MetricCard.swift */; };
 		B97B1A4B2A1F47F293CA5768 /* ChatModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFB37B6A745242FDB043D334 /* ChatModels.swift */; };
 		B9C75FFBD526E3FD2AB65B25 /* HubDiscoverToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34751808D6C98E25FEDD075B /* HubDiscoverToolbar.swift */; };
+		BAABC536666DFD624811A202 /* ChatSidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD1B4DBB9E3B79613EA4D64B /* ChatSidebar.swift */; };
 		BB731D1464F600521BAB2526 /* ModelManagementSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20907FD471EE97E659184AAC /* ModelManagementSettingsView.swift */; };
 		BD7253C573C97E44DCD6BE0A /* GlassButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C5B7D185B4D1BE3FF14F5F6 /* GlassButton.swift */; };
 		BE5BC333C517B0398252C865 /* ModelRecommendationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F6B585438FCCD38BEB7E4E /* ModelRecommendationService.swift */; };
@@ -204,6 +209,7 @@
 		1DD9755F803656A491BC9DD1 /* QueueItemCard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QueueItemCard.swift; sourceTree = "<group>"; };
 		1E2B507942CA31394CF87244 /* KanbanRows.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KanbanRows.swift; sourceTree = "<group>"; };
 		1EA14AC49CC3C7EE3D89EE05 /* TeamWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamWorkspace.swift; sourceTree = "<group>"; };
+		1EE00454F6704EA5F7C99AFC /* ChatMessageRow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ChatMessageRow.swift; path = Chat/ChatMessageRow.swift; sourceTree = "<group>"; };
 		20907FD471EE97E659184AAC /* ModelManagementSettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ModelManagementSettingsView.swift; path = Settings/ModelManagementSettingsView.swift; sourceTree = "<group>"; };
 		2311BD5A73E62FEED76C9A13 /* CodeWorkspace.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CodeWorkspace.swift; sourceTree = "<group>"; };
 		26E9E5E9E5784B339818979B /* SettingsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsService.swift; sourceTree = "<group>"; };
@@ -242,6 +248,8 @@
 		5ADD9516A7A1CEB080FDEDF3 /* NewDocumentModal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NewDocumentModal.swift; path = ../../Shared/Views/Team/NewDocumentModal.swift; sourceTree = "<group>"; };
 		5C5B7D185B4D1BE3FF14F5F6 /* GlassButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassButton.swift; sourceTree = "<group>"; };
 		5C6975369F894179A60EF9F1 /* VaultStateViews.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VaultStateViews.swift; path = Vault/VaultStateViews.swift; sourceTree = "<group>"; };
+		5D1144CC627DBF40213A72A1 /* ChatTimelineSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ChatTimelineSheet.swift; path = Chat/ChatTimelineSheet.swift; sourceTree = "<group>"; };
+		5D543F96E3B46F2588608167 /* ChatSessionRow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ChatSessionRow.swift; path = Chat/ChatSessionRow.swift; sourceTree = "<group>"; };
 		5EAEA6C1E62949E989A455ED /* SettingsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsModels.swift; sourceTree = "<group>"; };
 		5F9266EA43AB501AAA75A82B /* MagnetarMenuCommands.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MagnetarMenuCommands.swift; path = Commands/MagnetarMenuCommands.swift; sourceTree = "<group>"; };
 		6031A3F0EC42EA6C42386DBF /* StagePerformanceTable.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StagePerformanceTable.swift; sourceTree = "<group>"; };
@@ -276,6 +284,7 @@
 		971E406BFD964D0DA7C3DB54 /* DatabaseModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseModels.swift; sourceTree = "<group>"; };
 		98E7B59E6EB249EAA0A73897 /* DatabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseService.swift; sourceTree = "<group>"; };
 		994B66D5357CD6810E75411D /* HeaderComponents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HeaderComponents.swift; path = Shared/Components/Header/HeaderComponents.swift; sourceTree = "<group>"; };
+		9AD7D3D6C33E1F8331C5A193 /* ChatWindow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ChatWindow.swift; path = Chat/ChatWindow.swift; sourceTree = "<group>"; };
 		9BAFA952AE4C72B1AEABD4C6 /* AgentModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AgentModels.swift; sourceTree = "<group>"; };
 		9BBF57BD56141D8E0052ED41 /* TeamChatP2PBanner.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TeamChatP2PBanner.swift; path = TeamChat/TeamChatP2PBanner.swift; sourceTree = "<group>"; };
 		9CD166ACB45A69C9897FFFA3 /* ModelRoutingDecision.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelRoutingDecision.swift; sourceTree = "<group>"; };
@@ -304,6 +313,7 @@
 		BAD0FC77975064DDC0FCCC3F /* VaultPermissionsTab.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VaultPermissionsTab.swift; path = Panels/VaultAdmin/VaultPermissionsTab.swift; sourceTree = "<group>"; };
 		BBE06911108B1F5DEE2D80A4 /* WorkflowTabButton.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowTabButton.swift; sourceTree = "<group>"; };
 		BC2DC9D790ED001BE4A3FE80 /* QueryHistoryModal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QueryHistoryModal.swift; sourceTree = "<group>"; };
+		BD1B4DBB9E3B79613EA4D64B /* ChatSidebar.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ChatSidebar.swift; path = Chat/ChatSidebar.swift; sourceTree = "<group>"; };
 		BDFEB21A28755A81A545B778 /* PanicModeSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PanicModeSheet.swift; path = Shared/Components/Header/PanicModeSheet.swift; sourceTree = "<group>"; };
 		BF608E6633F1DCE6E6542EBD /* EmergencyModeService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EmergencyModeService.swift; sourceTree = "<group>"; };
 		BFB37B6A745242FDB043D334 /* ChatModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatModels.swift; sourceTree = "<group>"; };
@@ -534,6 +544,7 @@
 				BBFC6CECC6ECBFCFD29F7258 /* Database */,
 				AF5B978818446624E1921191 /* Kanban */,
 				9FD4899FD04C556C7AFE42BF /* ModelDiscovery */,
+				B38DC70D7C507EE21E312EB3 /* Chat */,
 			);
 			path = Workspaces;
 			sourceTree = "<group>";
@@ -712,6 +723,18 @@
 				CBAFCA059EFBB30832A7C3B2 /* VaultSetupWizardView.swift */,
 			);
 			path = Auth;
+			sourceTree = "<group>";
+		};
+		B38DC70D7C507EE21E312EB3 /* Chat */ = {
+			isa = PBXGroup;
+			children = (
+				BD1B4DBB9E3B79613EA4D64B /* ChatSidebar.swift */,
+				9AD7D3D6C33E1F8331C5A193 /* ChatWindow.swift */,
+				5D543F96E3B46F2588608167 /* ChatSessionRow.swift */,
+				1EE00454F6704EA5F7C99AFC /* ChatMessageRow.swift */,
+				5D1144CC627DBF40213A72A1 /* ChatTimelineSheet.swift */,
+			);
+			name = Chat;
 			sourceTree = "<group>";
 		};
 		B6F888B0DD1CD24543932D12 /* Components */ = {
@@ -1181,6 +1204,11 @@
 				76604907D534F2D1B4B90231 /* VaultResourcesTab.swift in Sources */,
 				971302AE9DD330948A57B35E /* VaultSecurityAuditTab.swift in Sources */,
 				D9802249FD14FF3871C29F34 /* VaultAdminComponents.swift in Sources */,
+				BAABC536666DFD624811A202 /* ChatSidebar.swift in Sources */,
+				7DE4E160EC55A4FB38FD3F81 /* ChatWindow.swift in Sources */,
+				78FBE10A96F03C9151E62A9E /* ChatSessionRow.swift in Sources */,
+				5DB6803DD81E1F6E4345A2FB /* ChatMessageRow.swift in Sources */,
+				3D3C894D53974DB37858565C /* ChatTimelineSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
