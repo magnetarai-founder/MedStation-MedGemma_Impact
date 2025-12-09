@@ -93,6 +93,7 @@
 		78FBE10A96F03C9151E62A9E /* ChatSessionRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D543F96E3B46F2588608167 /* ChatSessionRow.swift */; };
 		7B7E8A766BB7FC3F6725F19B /* DatabaseWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = A90C0C6D0ED2910BC2EE2A2D /* DatabaseWorkspace.swift */; };
 		7D52C320EC4DC723D4A73932 /* SecuritySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84BA14924AAE8B77761B548B /* SecuritySettingsView.swift */; };
+		7DB98B2613859268D5044625 /* HotSlotCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 077737498A29BA7612A5B626 /* HotSlotCard.swift */; };
 		7DE4E160EC55A4FB38FD3F81 /* ChatWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AD7D3D6C33E1F8331C5A193 /* ChatWindow.swift */; };
 		7F361B205D3FD59F74F18AB8 /* WorkflowAnalyticsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C70DAEBD9922168A2B6BCBF6 /* WorkflowAnalyticsModels.swift */; };
 		8070383B0926FBAD64A94461 /* TeamModals.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4205E4368F6655584595587C /* TeamModals.swift */; };
@@ -116,6 +117,7 @@
 		98BA75D7DDA38680E237D9DB /* AppLifecycleManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A35C3231BC57F9C88597CB6F /* AppLifecycleManager.swift */; };
 		A389EB1998243859B3C3DF28 /* ModelLibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0C17E6398CC912A0D8702EE /* ModelLibraryService.swift */; };
 		A4252432A1107ED7053F0BB5 /* PanicModeSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AA9D046DA2BBDADF3FB5FF4 /* PanicModeSheet.swift */; };
+		A89AF952F1BCD20705015CED /* HotSlotModelPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9FABC4DD8A5DC3C8A6CF560 /* HotSlotModelPicker.swift */; };
 		A92D9EB17D78EAC4A2E1F36B /* VaultStateViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C6975369F894179A60EF9F1 /* VaultStateViews.swift */; };
 		AC6DF635275F4E798D506030 /* WorkflowModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5A9F666CAE746EDB38AE581 /* WorkflowModels.swift */; };
 		ACE46F47F06B47B954AA36F5 /* ModelCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CD03E1F0B393F0E8465CF87 /* ModelCard.swift */; };
@@ -211,6 +213,7 @@
 		0455A9F7466D8484E318C350 /* AppearanceSettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AppearanceSettingsView.swift; path = Settings/AppearanceSettingsView.swift; sourceTree = "<group>"; };
 		0555CDE5ACABDDEA3DA1834D /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		0672C7A8089F078868C15E1C /* AppContext.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppContext.swift; sourceTree = "<group>"; };
+		077737498A29BA7612A5B626 /* HotSlotCard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HotSlotCard.swift; path = Settings/HotSlots/HotSlotCard.swift; sourceTree = "<group>"; };
 		0778AFC21FEAC66F85763B6E /* StructuredModal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StructuredModal.swift; sourceTree = "<group>"; };
 		08785DE309A344AF8765E6BC /* NavigationRail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationRail.swift; sourceTree = "<group>"; };
 		0AC0B72A8EEED4EFEFDF8859 /* JsonConverterModal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = JsonConverterModal.swift; sourceTree = "<group>"; };
@@ -405,6 +408,7 @@
 		E62FD8B9DE028C44A2F0816E /* ChatStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatStore.swift; sourceTree = "<group>"; };
 		E641C18221A798FA48DD589C /* VaultAdminComponents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VaultAdminComponents.swift; path = Panels/VaultAdmin/VaultAdminComponents.swift; sourceTree = "<group>"; };
 		E9DC720A6D6990C4CFE6EB62 /* WorkflowQueueModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowQueueModels.swift; sourceTree = "<group>"; };
+		E9FABC4DD8A5DC3C8A6CF560 /* HotSlotModelPicker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HotSlotModelPicker.swift; path = Settings/HotSlots/HotSlotModelPicker.swift; sourceTree = "<group>"; };
 		F161155DE71176E1754C3D28 /* HubOllamaStatus.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HubOllamaStatus.swift; path = MagnetarHub/HubOllamaStatus.swift; sourceTree = "<group>"; };
 		F219A202830587BFC394E02C /* TeamChatMessageInput.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TeamChatMessageInput.swift; path = TeamChat/TeamChatMessageInput.swift; sourceTree = "<group>"; };
 		F2C77CB5AF6C4202FD8D7161 /* ChatMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatMessage.swift; sourceTree = "<group>"; };
@@ -467,6 +471,7 @@
 				817E3E30F33735CDE1118E55 /* APISettingsView.swift */,
 				7767622EED14E1BE4AF9547F /* GeneralSettingsView.swift */,
 				0455A9F7466D8484E318C350 /* AppearanceSettingsView.swift */,
+				6E7FB21B0E395901B8D7FF44 /* HotSlots */,
 			);
 			name = Settings;
 			sourceTree = "<group>";
@@ -617,6 +622,15 @@
 				97964045CDF191351C3537A5 /* HubModelOperations.swift */,
 			);
 			name = MagnetarHub;
+			sourceTree = "<group>";
+		};
+		6E7FB21B0E395901B8D7FF44 /* HotSlots */ = {
+			isa = PBXGroup;
+			children = (
+				077737498A29BA7612A5B626 /* HotSlotCard.swift */,
+				E9FABC4DD8A5DC3C8A6CF560 /* HotSlotModelPicker.swift */,
+			);
+			name = HotSlots;
 			sourceTree = "<group>";
 		};
 		734503D79C8E69B6DEAEC3C5 /* Products */ = {
@@ -1313,6 +1327,8 @@
 				13E0F9F5D658F7479AFA8865 /* TeamMemberDetailView.swift in Sources */,
 				3B8C4389496BB98EFBABC8E8 /* TeamWorkspaceDataManager.swift in Sources */,
 				10E887FDCC11A331C3F03849 /* TeamWorkspaceModelsV2.swift in Sources */,
+				7DB98B2613859268D5044625 /* HotSlotCard.swift in Sources */,
+				A89AF952F1BCD20705015CED /* HotSlotModelPicker.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
