@@ -11,6 +11,7 @@
 		0996D3B0B63B4CB29AE2EE9E /* VaultModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18F56FEE06EB4480B335A64B /* VaultModels.swift */; };
 		0ACEF63C75F74A6698462792 /* WorkflowService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B02AE94CCC83473FB64BC7BD /* WorkflowService.swift */; };
 		0D6F62E4A20310F8DCA88F48 /* KanbanWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D684EFED023D2A6542AAB1F /* KanbanWorkspace.swift */; };
+		0D947EE6EB82E5CA0A1C19AD /* AppearanceSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13DC4777B1AC2DAB3002F1ED /* AppearanceSettingsView.swift */; };
 		0D9919DA2238C21D1AEE7ECD /* AppContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0672C7A8089F078868C15E1C /* AppContext.swift */; };
 		0E2C0590E01037DE122C6D46 /* ModelsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2B236333A555B822D41D3D /* ModelsStore.swift */; };
 		109DA918F3F9F4DDC2D40B92 /* OrchestratorInitializer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF7780D6D6AD182EE79F5868 /* OrchestratorInitializer.swift */; };
@@ -46,21 +47,27 @@
 		4FCFAC2E0DD745DFB5813F74 /* NavigationRail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08785DE309A344AF8765E6BC /* NavigationRail.swift */; };
 		500A346FB7ED4D9B9ADD8F0C /* SetupWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 624C9537C9E743BAB72D79DB /* SetupWizardView.swift */; };
 		5029E04178BD64E5D248FDA2 /* QueueItemCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD9755F803656A491BC9DD1 /* QueueItemCard.swift */; };
+		53F4C3F7000DF95741625FB0 /* MagnetarCloudSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF7CD000341B9E0DC1A18A26 /* MagnetarCloudSettingsView.swift */; };
+		55CEC243B4997B99883AE12C /* APISettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 817E3E30F33735CDE1118E55 /* APISettingsView.swift */; };
 		58E692E5B77C1E536C3E5117 /* AgentAssistCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = D15890D5596882B29171E952 /* AgentAssistCard.swift */; };
 		664594858BB924BBA1BFF3DD /* ModelMemoryTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37B8FC1C1C55127972DBE544 /* ModelMemoryTracker.swift */; };
 		67FDD665DB0B426EA23C1F9F /* DatabaseModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 971E406BFD964D0DA7C3DB54 /* DatabaseModels.swift */; };
 		6906ED58F9814219F579F8A1 /* KanbanService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3DBDF8C9291B00E92989C8A /* KanbanService.swift */; };
+		69F4556F19770D1001704FFF /* GeneralSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7767622EED14E1BE4AF9547F /* GeneralSettingsView.swift */; };
 		6A525BB01A100E892A5E1D3F /* WorkflowBuilderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 181392C49DEAE5A86F4C528B /* WorkflowBuilderView.swift */; };
 		6C6B9342084AED4C54919FE4 /* AgentModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BAFA952AE4C72B1AEABD4C6 /* AgentModels.swift */; };
 		6D61AC05F21D85942E23EDB0 /* FileAccessPermissionModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCA25F1A54EEEE41A231647 /* FileAccessPermissionModal.swift */; };
 		6E29B084EF0AB46C6DFB6D23 /* ContextService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C043D3F1AFA96A4DDC52FAA0 /* ContextService.swift */; };
 		6F8590DFCF92476BB18FB1FF /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A959626C53B4237AD1DD881 /* KeychainService.swift */; };
 		7B7E8A766BB7FC3F6725F19B /* DatabaseWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = A90C0C6D0ED2910BC2EE2A2D /* DatabaseWorkspace.swift */; };
+		7C6B1DE352517DB6DB7FA77F /* ModelManagementSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0BA47EBB0A461BA6F8B9023 /* ModelManagementSettingsView.swift */; };
+		7D52C320EC4DC723D4A73932 /* SecuritySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84BA14924AAE8B77761B548B /* SecuritySettingsView.swift */; };
 		7F361B205D3FD59F74F18AB8 /* WorkflowAnalyticsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C70DAEBD9922168A2B6BCBF6 /* WorkflowAnalyticsModels.swift */; };
 		8070383B0926FBAD64A94461 /* TeamModals.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4205E4368F6655584595587C /* TeamModals.swift */; };
 		8151AB8F8D128C4FE220C6A6 /* CodeWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2311BD5A73E62FEED76C9A13 /* CodeWorkspace.swift */; };
 		86B7A0EDAC440B41E6FA5710 /* VaultWorkspaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17B48CFFB13864D1927C04F8 /* VaultWorkspaceView.swift */; };
 		87AC91711BE8494C52DC1524 /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35C17D9C1722F2E28A8F923C /* Colors.swift */; };
+		8A64FEB61B5FD3D071FB41CA /* SettingsHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BABB5F6A676E347E4ACE40A /* SettingsHelpers.swift */; };
 		8D5D7DF58BE6BAF3A63551BA /* ModelRoutingDecision.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CD166ACB45A69C9897FFFA3 /* ModelRoutingDecision.swift */; };
 		9321F3F615C1FF90BDC69F93 /* DocsWorkspaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 786CB632E145399E3EDC4820 /* DocsWorkspaceView.swift */; };
 		941292876F3B5AAD09D4BE8F /* WorkflowDesignerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5A0FB3AB9BEAFE307364AF6 /* WorkflowDesignerView.swift */; };
@@ -70,6 +77,7 @@
 		AC6DF635275F4E798D506030 /* WorkflowModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5A9F666CAE746EDB38AE581 /* WorkflowModels.swift */; };
 		ACE46F47F06B47B954AA36F5 /* ModelCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CD03E1F0B393F0E8465CF87 /* ModelCard.swift */; };
 		AD18AD81EDBC4EF8AC097789 /* SettingsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26E9E5E9E5784B339818979B /* SettingsService.swift */; };
+		ADCF9FE38E8746F816414C61 /* APISettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8166B48B028FD3CE0A19F60 /* APISettingsView.swift */; };
 		ADE5B2D77F847B837C70A2E6 /* WorkflowQueueModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9DC720A6D6990C4CFE6EB62 /* WorkflowQueueModels.swift */; };
 		AEBBD28E489D89C49337B46B /* VaultAdminPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37F355A75223BD31BF23FE9E /* VaultAdminPanel.swift */; };
 		AF1274E50C8EE2F7C762F73F /* DataLabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89716A7193DFB13FD786929D /* DataLabView.swift */; };
@@ -80,6 +88,7 @@
 		B7F35166C175F506F791C634 /* WorkflowGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46C6F9C65BD57850E16B8E89 /* WorkflowGrid.swift */; };
 		B93263A762E279A86B0E1F43 /* MetricCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80E8F3E349787A7F13EE9989 /* MetricCard.swift */; };
 		B97B1A4B2A1F47F293CA5768 /* ChatModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFB37B6A745242FDB043D334 /* ChatModels.swift */; };
+		BB731D1464F600521BAB2526 /* ModelManagementSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20907FD471EE97E659184AAC /* ModelManagementSettingsView.swift */; };
 		BD7253C573C97E44DCD6BE0A /* GlassButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C5B7D185B4D1BE3FF14F5F6 /* GlassButton.swift */; };
 		BE5BC333C517B0398252C865 /* ModelRecommendationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F6B585438FCCD38BEB7E4E /* ModelRecommendationService.swift */; };
 		BFD8871A31B827EB8BE07D8D /* StagePerformanceTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6031A3F0EC42EA6C42386DBF /* StagePerformanceTable.swift */; };
@@ -89,8 +98,10 @@
 		C3E44FEBE2074BE4B381E33E /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18F8E78737774D21B8C95D37 /* AuthService.swift */; };
 		C4D33031AF8A4EDDAFDA3841 /* Header.swift in Sources */ = {isa = PBXBuildFile; fileRef = F85CE2F0DE5343879EB18743 /* Header.swift */; };
 		C53221D23E846FE6D425B460 /* EditDocumentModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = E581C17B318E0B2B62A104F1 /* EditDocumentModal.swift */; };
+		C5DE8EEB7CE2C2BF8F02B802 /* MagnetarCloudSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADF668599FE3C90653A436E2 /* MagnetarCloudSettingsView.swift */; };
 		C6F6EB90EF484C51BF4451F3 /* AuthStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00280C486C0A463EACC552E6 /* AuthStore.swift */; };
 		C8CE1D6E95657B5967D53579 /* BiometricAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A904439226AE3F48234C22A0 /* BiometricAuthService.swift */; };
+		C8F3F06DBD5346C685942F67 /* AppearanceSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0455A9F7466D8484E318C350 /* AppearanceSettingsView.swift */; };
 		CA2EC71E90324844890DF29C /* SidebarTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B42850187A449F9B295DF2 /* SidebarTabs.swift */; };
 		CC297974B1F32A1CB838E79F /* WorkflowDashboardModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1433426296987C711963E4B6 /* WorkflowDashboardModels.swift */; };
 		CD0E0853A1FAE27A3518557A /* ModelEnrichmentService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52327976284A111B087DC761 /* ModelEnrichmentService.swift */; };
@@ -103,11 +114,13 @@
 		D2CCB3552EDE7CC000E20014 /* NetworkFirewallModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2CCB3542EDE7CC000E20014 /* NetworkFirewallModifier.swift */; };
 		D2F4756D2EDFBA8400F95E34 /* ModelManagerWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2F4756C2EDFBA8400F95E34 /* ModelManagerWindow.swift */; };
 		D2F4756F2EDFBAA100F95E34 /* SmartModelPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2F4756E2EDFBAA100F95E34 /* SmartModelPicker.swift */; };
+		D6E706FB314F916825C860E6 /* SecuritySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D507FE9E1299EF2541C3C6A4 /* SecuritySettingsView.swift */; };
 		DB28DB0D790B392C74C6EDD6 /* EmergencyModeModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02A48E61DFB2D3B96971D9F /* EmergencyModeModels.swift */; };
 		DCDAABB5974AD7C5B606F181 /* WorkflowTabButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBE06911108B1F5DEE2D80A4 /* WorkflowTabButton.swift */; };
 		DEBEE5BEF8FFE2128470853D /* AppleFMOrchestrator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CEFDC9D3501139A38812C68 /* AppleFMOrchestrator.swift */; };
 		E17B166B1C783211B6290194 /* PanicModeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4A86189DF1FE9A17A22F231 /* PanicModeService.swift */; };
 		E3EF3A1151488AE1218179A8 /* AutomationWorkspaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA2269970A9B04DD1CB88BE /* AutomationWorkspaceView.swift */; };
+		E43D02ED7EF615C88FA702E8 /* GeneralSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5A1AD8316D6DA8D4B2FEF45 /* GeneralSettingsView.swift */; };
 		E4C417A6ECAA4E4DAFBF3882 /* WorkflowStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B00CD34FC941DB87FE17B3 /* WorkflowStore.swift */; };
 		E597B05474B74E02887E7C99 /* FileUpload.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC1DB0ED9A1D41F89804F805 /* FileUpload.swift */; };
 		E65EDDCF022977AA1854B1AA /* MagnetarStudioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0369ADDFF9623D901CC8207E /* MagnetarStudioApp.swift */; };
@@ -133,11 +146,13 @@
 		00280C486C0A463EACC552E6 /* AuthStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthStore.swift; sourceTree = "<group>"; };
 		0369ADDFF9623D901CC8207E /* MagnetarStudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagnetarStudioApp.swift; sourceTree = "<group>"; };
 		0451645C6D081B309C394FFB /* TeamChatComponents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TeamChatComponents.swift; path = TeamChat/TeamChatComponents.swift; sourceTree = "<group>"; };
+		0455A9F7466D8484E318C350 /* AppearanceSettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AppearanceSettingsView.swift; path = Settings/AppearanceSettingsView.swift; sourceTree = "<group>"; };
 		0555CDE5ACABDDEA3DA1834D /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		0672C7A8089F078868C15E1C /* AppContext.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppContext.swift; sourceTree = "<group>"; };
 		08785DE309A344AF8765E6BC /* NavigationRail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationRail.swift; sourceTree = "<group>"; };
 		103BCE5F6B11D8ACD6D6DDF6 /* ModelManagerWindow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ModelManagerWindow.swift; path = ModelManagerWindow.swift; sourceTree = "<group>"; };
 		10F8272E2D6EF476FDDCC185 /* CodeEditorService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CodeEditorService.swift; sourceTree = "<group>"; };
+		13DC4777B1AC2DAB3002F1ED /* AppearanceSettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AppearanceSettingsView.swift; path = Settings/AppearanceSettingsView.swift; sourceTree = "<group>"; };
 		1433426296987C711963E4B6 /* WorkflowDashboardModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowDashboardModels.swift; sourceTree = "<group>"; };
 		1733DB00B1FF137572D11592 /* DatabaseModals.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DatabaseModals.swift; path = ../../../macOS/Workspaces/Database/DatabaseModals.swift; sourceTree = "<group>"; };
 		17B48CFFB13864D1927C04F8 /* VaultWorkspaceView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VaultWorkspaceView.swift; path = Vault/VaultWorkspaceView.swift; sourceTree = "<group>"; };
@@ -145,9 +160,11 @@
 		18F56FEE06EB4480B335A64B /* VaultModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultModels.swift; sourceTree = "<group>"; };
 		18F8E78737774D21B8C95D37 /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
 		1A2760AE2A83BCE0FEB660A5 /* MagnetarHubWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagnetarHubWorkspace.swift; sourceTree = "<group>"; };
+		1BABB5F6A676E347E4ACE40A /* SettingsHelpers.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SettingsHelpers.swift; path = Settings/SettingsHelpers.swift; sourceTree = "<group>"; };
 		1CEFDC9D3501139A38812C68 /* AppleFMOrchestrator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppleFMOrchestrator.swift; sourceTree = "<group>"; };
 		1DD9755F803656A491BC9DD1 /* QueueItemCard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QueueItemCard.swift; sourceTree = "<group>"; };
 		1EA14AC49CC3C7EE3D89EE05 /* TeamWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamWorkspace.swift; sourceTree = "<group>"; };
+		20907FD471EE97E659184AAC /* ModelManagementSettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ModelManagementSettingsView.swift; path = Settings/ModelManagementSettingsView.swift; sourceTree = "<group>"; };
 		2311BD5A73E62FEED76C9A13 /* CodeWorkspace.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CodeWorkspace.swift; sourceTree = "<group>"; };
 		26E9E5E9E5784B339818979B /* SettingsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsService.swift; sourceTree = "<group>"; };
 		2773A6C7CAE78696090B41B7 /* ModelTag.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ModelTag.swift; path = ModelTag.swift; sourceTree = "<group>"; };
@@ -182,11 +199,14 @@
 		6CE26C88BCDE81BD11937A38 /* TeamChatModals.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TeamChatModals.swift; path = TeamChat/TeamChatModals.swift; sourceTree = "<group>"; };
 		6EBEB2F057FF41A4A120A4DB /* OllamaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaService.swift; sourceTree = "<group>"; };
 		758F62B637F9DF75E26BAB65 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		7767622EED14E1BE4AF9547F /* GeneralSettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = GeneralSettingsView.swift; path = Settings/GeneralSettingsView.swift; sourceTree = "<group>"; };
 		786CB632E145399E3EDC4820 /* DocsWorkspaceView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DocsWorkspaceView.swift; path = Docs/DocsWorkspaceView.swift; sourceTree = "<group>"; };
 		7F77D79421B014D8C65EC2CF /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		80E8F3E349787A7F13EE9989 /* MetricCard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MetricCard.swift; sourceTree = "<group>"; };
+		817E3E30F33735CDE1118E55 /* APISettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = APISettingsView.swift; path = Settings/APISettingsView.swift; sourceTree = "<group>"; };
 		832F8059CDA346DF9163F393 /* CodeEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeEditor.swift; sourceTree = "<group>"; };
 		842DAEC1F81C99999F03FF53 /* LiquidGlassPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidGlassPanel.swift; sourceTree = "<group>"; };
+		84BA14924AAE8B77761B548B /* SecuritySettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SecuritySettingsView.swift; path = Settings/SecuritySettingsView.swift; sourceTree = "<group>"; };
 		87815974F16A9DC291E9CEF3 /* FlowLayout.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
 		8838BDE42960AA40D4057FA2 /* SmartModelPicker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SmartModelPicker.swift; path = SmartModelPicker.swift; sourceTree = "<group>"; };
 		89716A7193DFB13FD786929D /* DataLabView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DataLabView.swift; path = ../../../macOS/Workspaces/Database/DataLabView.swift; sourceTree = "<group>"; };
@@ -208,6 +228,7 @@
 		A90C0C6D0ED2910BC2EE2A2D /* DatabaseWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseWorkspace.swift; sourceTree = "<group>"; };
 		AA2B236333A555B822D41D3D /* ModelsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelsStore.swift; sourceTree = "<group>"; };
 		AAA2269970A9B04DD1CB88BE /* AutomationWorkspaceView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AutomationWorkspaceView.swift; sourceTree = "<group>"; };
+		ADF668599FE3C90653A436E2 /* MagnetarCloudSettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MagnetarCloudSettingsView.swift; path = Settings/MagnetarCloudSettingsView.swift; sourceTree = "<group>"; };
 		AED8C8EF1AB9724F43575821 /* EmergencyConfirmationModal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EmergencyConfirmationModal.swift; sourceTree = "<group>"; };
 		B02AE94CCC83473FB64BC7BD /* WorkflowService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowService.swift; sourceTree = "<group>"; };
 		B462A62F24C04C9E66B2D0CD /* KeychainManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainManager.swift; sourceTree = "<group>"; };
@@ -216,12 +237,15 @@
 		BF608E6633F1DCE6E6542EBD /* EmergencyModeService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EmergencyModeService.swift; sourceTree = "<group>"; };
 		BFB37B6A745242FDB043D334 /* ChatModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatModels.swift; sourceTree = "<group>"; };
 		C043D3F1AFA96A4DDC52FAA0 /* ContextService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContextService.swift; sourceTree = "<group>"; };
+		C0BA47EBB0A461BA6F8B9023 /* ModelManagementSettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ModelManagementSettingsView.swift; path = Settings/ModelManagementSettingsView.swift; sourceTree = "<group>"; };
 		C0D63ED6288BC106CB39D1BB /* TerminalService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TerminalService.swift; sourceTree = "<group>"; };
 		C70DAEBD9922168A2B6BCBF6 /* WorkflowAnalyticsModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowAnalyticsModels.swift; sourceTree = "<group>"; };
+		C8166B48B028FD3CE0A19F60 /* APISettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = APISettingsView.swift; path = Settings/APISettingsView.swift; sourceTree = "<group>"; };
 		C8B00CD34FC941DB87FE17B3 /* WorkflowStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowStore.swift; sourceTree = "<group>"; };
 		CBAFCA059EFBB30832A7C3B2 /* VaultSetupWizardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VaultSetupWizardView.swift; sourceTree = "<group>"; };
 		CC12D8A6355AFFD9A5022863 /* ModelSelectorMenu.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ModelSelectorMenu.swift; path = Components/ModelSelectorMenu.swift; sourceTree = "<group>"; };
 		CC1A48A6AB2B47E091FD7A11 /* NetworkChatStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkChatStore.swift; sourceTree = "<group>"; };
+		CF7CD000341B9E0DC1A18A26 /* MagnetarCloudSettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MagnetarCloudSettingsView.swift; path = Settings/MagnetarCloudSettingsView.swift; sourceTree = "<group>"; };
 		D15890D5596882B29171E952 /* AgentAssistCard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AgentAssistCard.swift; sourceTree = "<group>"; };
 		D2C513BD2EE0E6E8009A772A /* ModelTagService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelTagService.swift; sourceTree = "<group>"; };
 		D2C513BF2EE0F018009A772A /* ModelTagEditorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelTagEditorSheet.swift; sourceTree = "<group>"; };
@@ -233,6 +257,7 @@
 		D2F4756E2EDFBAA100F95E34 /* SmartModelPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartModelPicker.swift; sourceTree = "<group>"; };
 		D37009FC1ECC7770D86FFB7F /* DotPattern.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DotPattern.swift; sourceTree = "<group>"; };
 		D400216101AE4ABBA95512A5 /* VaultStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultStore.swift; sourceTree = "<group>"; };
+		D507FE9E1299EF2541C3C6A4 /* SecuritySettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SecuritySettingsView.swift; path = Settings/SecuritySettingsView.swift; sourceTree = "<group>"; };
 		D5A0FB3AB9BEAFE307364AF6 /* WorkflowDesignerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowDesignerView.swift; sourceTree = "<group>"; };
 		D5A9F666CAE746EDB38AE581 /* WorkflowModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowModels.swift; sourceTree = "<group>"; };
 		D8ED05D16761B5A52D844CF7 /* DatabaseComponents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DatabaseComponents.swift; path = ../../../macOS/Workspaces/Database/DatabaseComponents.swift; sourceTree = "<group>"; };
@@ -247,6 +272,7 @@
 		E221F2C3BD9E5578CD6F60FC /* HubModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HubModels.swift; path = MagnetarHub/HubModels.swift; sourceTree = "<group>"; };
 		E4A86189DF1FE9A17A22F231 /* PanicModeService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PanicModeService.swift; sourceTree = "<group>"; };
 		E581C17B318E0B2B62A104F1 /* EditDocumentModal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = EditDocumentModal.swift; path = Team/EditDocumentModal.swift; sourceTree = "<group>"; };
+		E5A1AD8316D6DA8D4B2FEF45 /* GeneralSettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = GeneralSettingsView.swift; path = Settings/GeneralSettingsView.swift; sourceTree = "<group>"; };
 		E62FD8B9DE028C44A2F0816E /* ChatStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatStore.swift; sourceTree = "<group>"; };
 		E9DC720A6D6990C4CFE6EB62 /* WorkflowQueueModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowQueueModels.swift; sourceTree = "<group>"; };
 		F2C77CB5AF6C4202FD8D7161 /* ChatMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatMessage.swift; sourceTree = "<group>"; };
@@ -283,8 +309,29 @@
 				77065B34BC212D9E92BF1B09 /* Dialogs */,
 				CB79BA6E9AD614BE0ADCF634 /* Panels */,
 				968920C9C3F0AB31A2977FA9 /* Components */,
+				0836E31605DEEE56E05B2AFA /* Settings */,
 			);
 			path = macOS;
+			sourceTree = "<group>";
+		};
+		0836E31605DEEE56E05B2AFA /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				ADF668599FE3C90653A436E2 /* MagnetarCloudSettingsView.swift */,
+				20907FD471EE97E659184AAC /* ModelManagementSettingsView.swift */,
+				84BA14924AAE8B77761B548B /* SecuritySettingsView.swift */,
+				C8166B48B028FD3CE0A19F60 /* APISettingsView.swift */,
+				E5A1AD8316D6DA8D4B2FEF45 /* GeneralSettingsView.swift */,
+				13DC4777B1AC2DAB3002F1ED /* AppearanceSettingsView.swift */,
+				1BABB5F6A676E347E4ACE40A /* SettingsHelpers.swift */,
+				CF7CD000341B9E0DC1A18A26 /* MagnetarCloudSettingsView.swift */,
+				C0BA47EBB0A461BA6F8B9023 /* ModelManagementSettingsView.swift */,
+				D507FE9E1299EF2541C3C6A4 /* SecuritySettingsView.swift */,
+				817E3E30F33735CDE1118E55 /* APISettingsView.swift */,
+				7767622EED14E1BE4AF9547F /* GeneralSettingsView.swift */,
+				0455A9F7466D8484E318C350 /* AppearanceSettingsView.swift */,
+			);
+			name = Settings;
 			sourceTree = "<group>";
 		};
 		0CBF91A9C082C90D7E79AF46 = {
@@ -888,6 +935,19 @@
 				47FF6B2EB6210A193845A4D6 /* DatabaseModals.swift in Sources */,
 				AF1274E50C8EE2F7C762F73F /* DataLabView.swift in Sources */,
 				B448DB491B1FCE4EF58F9F71 /* DatabaseComponents.swift in Sources */,
+				C5DE8EEB7CE2C2BF8F02B802 /* MagnetarCloudSettingsView.swift in Sources */,
+				BB731D1464F600521BAB2526 /* ModelManagementSettingsView.swift in Sources */,
+				7D52C320EC4DC723D4A73932 /* SecuritySettingsView.swift in Sources */,
+				ADCF9FE38E8746F816414C61 /* APISettingsView.swift in Sources */,
+				E43D02ED7EF615C88FA702E8 /* GeneralSettingsView.swift in Sources */,
+				0D947EE6EB82E5CA0A1C19AD /* AppearanceSettingsView.swift in Sources */,
+				8A64FEB61B5FD3D071FB41CA /* SettingsHelpers.swift in Sources */,
+				53F4C3F7000DF95741625FB0 /* MagnetarCloudSettingsView.swift in Sources */,
+				7C6B1DE352517DB6DB7FA77F /* ModelManagementSettingsView.swift in Sources */,
+				D6E706FB314F916825C860E6 /* SecuritySettingsView.swift in Sources */,
+				55CEC243B4997B99883AE12C /* APISettingsView.swift in Sources */,
+				69F4556F19770D1001704FFF /* GeneralSettingsView.swift in Sources */,
+				C8F3F06DBD5346C685942F67 /* AppearanceSettingsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
