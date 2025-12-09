@@ -41,6 +41,7 @@
 		419431498985644AE22A495A /* MagnetarHubWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2760AE2A83BCE0FEB660A5 /* MagnetarHubWorkspace.swift */; };
 		45B6CA56C285B6AA97DA07A4 /* QueueComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AA3D182930C6B24DCA20C52 /* QueueComponents.swift */; };
 		462E1B85191C4E7D6E5D04E1 /* EmergencyModeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF608E6633F1DCE6E6542EBD /* EmergencyModeService.swift */; };
+		47FF6B2EB6210A193845A4D6 /* DatabaseModals.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1733DB00B1FF137572D11592 /* DatabaseModals.swift */; };
 		4E5B3A8474FAD72E073C9871 /* ContextBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = E14DD2FC8D25B4ABB8A2326D /* ContextBundle.swift */; };
 		4FCFAC2E0DD745DFB5813F74 /* NavigationRail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08785DE309A344AF8765E6BC /* NavigationRail.swift */; };
 		500A346FB7ED4D9B9ADD8F0C /* SetupWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 624C9537C9E743BAB72D79DB /* SetupWizardView.swift */; };
@@ -71,8 +72,10 @@
 		AD18AD81EDBC4EF8AC097789 /* SettingsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26E9E5E9E5784B339818979B /* SettingsService.swift */; };
 		ADE5B2D77F847B837C70A2E6 /* WorkflowQueueModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9DC720A6D6990C4CFE6EB62 /* WorkflowQueueModels.swift */; };
 		AEBBD28E489D89C49337B46B /* VaultAdminPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37F355A75223BD31BF23FE9E /* VaultAdminPanel.swift */; };
+		AF1274E50C8EE2F7C762F73F /* DataLabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89716A7193DFB13FD786929D /* DataLabView.swift */; };
 		AFCFCED70C194916B99900CC /* ChatService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67700E88177E4318A9F9D842 /* ChatService.swift */; };
 		B26079A82010865BEB4483C2 /* WorkflowAnalyticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F52290D220C60A04F37F79C /* WorkflowAnalyticsView.swift */; };
+		B448DB491B1FCE4EF58F9F71 /* DatabaseComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8ED05D16761B5A52D844CF7 /* DatabaseComponents.swift */; };
 		B64BDA375B00040180CE49A6 /* TeamWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EA14AC49CC3C7EE3D89EE05 /* TeamWorkspace.swift */; };
 		B7F35166C175F506F791C634 /* WorkflowGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46C6F9C65BD57850E16B8E89 /* WorkflowGrid.swift */; };
 		B93263A762E279A86B0E1F43 /* MetricCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80E8F3E349787A7F13EE9989 /* MetricCard.swift */; };
@@ -136,6 +139,7 @@
 		103BCE5F6B11D8ACD6D6DDF6 /* ModelManagerWindow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ModelManagerWindow.swift; path = ModelManagerWindow.swift; sourceTree = "<group>"; };
 		10F8272E2D6EF476FDDCC185 /* CodeEditorService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CodeEditorService.swift; sourceTree = "<group>"; };
 		1433426296987C711963E4B6 /* WorkflowDashboardModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowDashboardModels.swift; sourceTree = "<group>"; };
+		1733DB00B1FF137572D11592 /* DatabaseModals.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DatabaseModals.swift; path = ../../../macOS/Workspaces/Database/DatabaseModals.swift; sourceTree = "<group>"; };
 		17B48CFFB13864D1927C04F8 /* VaultWorkspaceView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VaultWorkspaceView.swift; path = Vault/VaultWorkspaceView.swift; sourceTree = "<group>"; };
 		181392C49DEAE5A86F4C528B /* WorkflowBuilderView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowBuilderView.swift; sourceTree = "<group>"; };
 		18F56FEE06EB4480B335A64B /* VaultModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultModels.swift; sourceTree = "<group>"; };
@@ -185,6 +189,7 @@
 		842DAEC1F81C99999F03FF53 /* LiquidGlassPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidGlassPanel.swift; sourceTree = "<group>"; };
 		87815974F16A9DC291E9CEF3 /* FlowLayout.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
 		8838BDE42960AA40D4057FA2 /* SmartModelPicker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SmartModelPicker.swift; path = SmartModelPicker.swift; sourceTree = "<group>"; };
+		89716A7193DFB13FD786929D /* DataLabView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DataLabView.swift; path = ../../../macOS/Workspaces/Database/DataLabView.swift; sourceTree = "<group>"; };
 		971E406BFD964D0DA7C3DB54 /* DatabaseModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseModels.swift; sourceTree = "<group>"; };
 		98E7B59E6EB249EAA0A73897 /* DatabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseService.swift; sourceTree = "<group>"; };
 		9BAFA952AE4C72B1AEABD4C6 /* AgentModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AgentModels.swift; sourceTree = "<group>"; };
@@ -230,6 +235,7 @@
 		D400216101AE4ABBA95512A5 /* VaultStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultStore.swift; sourceTree = "<group>"; };
 		D5A0FB3AB9BEAFE307364AF6 /* WorkflowDesignerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowDesignerView.swift; sourceTree = "<group>"; };
 		D5A9F666CAE746EDB38AE581 /* WorkflowModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowModels.swift; sourceTree = "<group>"; };
+		D8ED05D16761B5A52D844CF7 /* DatabaseComponents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DatabaseComponents.swift; path = ../../../macOS/Workspaces/Database/DatabaseComponents.swift; sourceTree = "<group>"; };
 		DA92DBC25F46989F58584CC5 /* BiometricAuthService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BiometricAuthService.swift; sourceTree = "<group>"; };
 		DC1DB0ED9A1D41F89804F805 /* FileUpload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileUpload.swift; sourceTree = "<group>"; };
 		DE1C4B939DAC9084AC244415 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -355,6 +361,7 @@
 				DCE4AA910ED02FF68EDB552F /* Vault */,
 				F537FC8B7306C1C4B8EFCCD8 /* Team */,
 				6E4F155009383D7ADC98DAD9 /* MagnetarHub */,
+				BBFC6CECC6ECBFCFD29F7258 /* Database */,
 			);
 			path = Workspaces;
 			sourceTree = "<group>";
@@ -534,6 +541,17 @@
 			);
 			name = Components;
 			path = Components;
+			sourceTree = "<group>";
+		};
+		BBFC6CECC6ECBFCFD29F7258 /* Database */ = {
+			isa = PBXGroup;
+			children = (
+				1733DB00B1FF137572D11592 /* DatabaseModals.swift */,
+				89716A7193DFB13FD786929D /* DataLabView.swift */,
+				D8ED05D16761B5A52D844CF7 /* DatabaseComponents.swift */,
+			);
+			name = Database;
+			path = Database;
 			sourceTree = "<group>";
 		};
 		BF5D395455660AD2E330847B /* Team */ = {
@@ -867,6 +885,9 @@
 				3E58740ADC7316F324337786 /* HubModels.swift in Sources */,
 				ACE46F47F06B47B954AA36F5 /* ModelCard.swift in Sources */,
 				14616E192E7229B6AC06D069 /* CategoryRow.swift in Sources */,
+				47FF6B2EB6210A193845A4D6 /* DatabaseModals.swift in Sources */,
+				AF1274E50C8EE2F7C762F73F /* DataLabView.swift in Sources */,
+				B448DB491B1FCE4EF58F9F71 /* DatabaseComponents.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
