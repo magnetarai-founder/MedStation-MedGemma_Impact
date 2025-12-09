@@ -1,0 +1,228 @@
+//
+//  BackendManager.swift
+//  MagnetarStudio (macOS)
+//
+//  Backend server management - Extracted from MagnetarStudioApp.swift (Phase 6.15)
+//  Handles auto-start, health monitoring, and process lifecycle
+//
+
+import Foundation
+import AppKit
+
+@MainActor
+final class BackendManager {
+    static let shared = BackendManager()
+
+    private var backendProcess: Process?
+
+    private init() {}
+
+    // MARK: - Auto-start
+
+    func autoStartBackend() async {
+        print("🚀 Checking backend server status...")
+
+        // Check if backend is already running
+        let isRunning = await checkBackendHealth()
+
+        if isRunning {
+            print("✓ Backend server already running")
+            return
+        }
+
+        print("⚙️ Starting MagnetarStudio backend server...")
+
+        // Get project root directory
+        print("   Looking for project root...")
+        guard let projectRoot = findProjectRoot() else {
+            print("✗ Could not find project root directory")
+            print("   Bundle path: \(Bundle.main.bundleURL.path)")
+            print("   CRITICAL: Backend will NOT start automatically!")
+            print("   Please start backend manually: cd apps/backend && python -m uvicorn api.main:app")
+            return
+        }
+
+        print("   ✓ Found project root: \(projectRoot.path)")
+
+        // Start backend server in background
+        let venvPython = projectRoot.appendingPathComponent("venv/bin/python")
+        let backendPath = projectRoot.appendingPathComponent("apps/backend")
+
+        print("   Checking python: \(venvPython.path)")
+        guard FileManager.default.fileExists(atPath: venvPython.path) else {
+            print("✗ Python venv not found: \(venvPython.path)")
+            print("   CRITICAL: Backend will NOT start automatically!")
+            return
+        }
+
+        print("   Checking backend: \(backendPath.path)")
+        guard FileManager.default.fileExists(atPath: backendPath.path) else {
+            print("✗ Backend directory not found: \(backendPath.path)")
+            print("   CRITICAL: Backend will NOT start automatically!")
+            return
+        }
+
+        let task = Process()
+        task.executableURL = venvPython
+        task.arguments = ["-m", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+        task.currentDirectoryURL = backendPath
+
+        // CRITICAL: Set environment variables for backend
+        var environment = ProcessInfo.processInfo.environment
+        environment["PYTHONUNBUFFERED"] = "1"
+        environment["ELOHIM_ENV"] = "development"
+        task.environment = environment
+
+        print("   ✓ All paths verified")
+        print("   Python: \(venvPython.path)")
+        print("   Working dir: \(backendPath.path)")
+        print("   Starting uvicorn...")
+
+        // Redirect output to a log file for debugging
+        let logFile = FileManager.default.temporaryDirectory
+            .appendingPathComponent("magnetar_backend.log")
+        FileManager.default.createFile(atPath: logFile.path, contents: nil)
+
+        if let logHandle = FileHandle(forWritingAtPath: logFile.path) {
+            task.standardOutput = logHandle
+            task.standardError = logHandle
+            print("   Backend logs: \(logFile.path)")
+        }
+
+        do {
+            try task.run()
+
+            // Keep process reference alive
+            self.backendProcess = task
+
+            print("✓ Backend server started successfully (PID: \(task.processIdentifier))")
+
+            // Wait for server to initialize with retries
+            var attempts = 0
+            var healthy = false
+
+            while attempts < 10 && !healthy {
+                try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+                healthy = await checkBackendHealth()
+                attempts += 1
+
+                if !healthy {
+                    print("   Waiting for backend... (attempt \(attempts)/10)")
+                }
+            }
+
+            if healthy {
+                print("✓ Backend server is healthy and responding")
+            } else {
+                print("⚠️ Backend server started but not responding after 10 seconds")
+                print("   Check logs at: \(logFile.path)")
+            }
+        } catch {
+            print("✗ CRITICAL: Failed to start backend server: \(error)")
+            print("   Error details: \(error.localizedDescription)")
+
+            // Show alert to user
+            DispatchQueue.main.async {
+                let alert = NSAlert()
+                alert.messageText = "Backend Server Failed to Start"
+                alert.informativeText = "MagnetarStudio requires the backend server to function. Please check the console logs for details."
+                alert.alertStyle = .critical
+                alert.addButton(withTitle: "OK")
+                alert.runModal()
+            }
+        }
+    }
+
+    // MARK: - Health Monitoring
+
+    func monitorBackendHealth() async {
+        // Monitor backend health every 10 seconds and restart if needed
+        while true {
+            try? await Task.sleep(nanoseconds: 10_000_000_000) // 10 seconds
+
+            let isHealthy = await checkBackendHealth()
+
+            if !isHealthy {
+                print("⚠️ Backend health check failed - attempting restart...")
+                await autoStartBackend()
+            }
+        }
+    }
+
+    func checkBackendHealth() async -> Bool {
+        guard let url = URL(string: "http://localhost:8000/health") else { return false }
+
+        do {
+            let (_, response) = try await URLSession.shared.data(from: url)
+            if let httpResponse = response as? HTTPURLResponse {
+                return httpResponse.statusCode == 200
+            }
+        } catch {
+            // Server not responding
+        }
+
+        return false
+    }
+
+    // MARK: - Shutdown
+
+    func terminateBackend() {
+        if let process = backendProcess, process.isRunning {
+            print("Stopping backend server...")
+            process.terminate()
+            backendProcess = nil
+        }
+    }
+
+    // MARK: - Project Root Finding
+
+    private func findProjectRoot() -> URL? {
+        // CRITICAL: This must ALWAYS find the project root for backend auto-start
+
+        // Method 1: Hardcoded development path (HIGHEST PRIORITY)
+        // For development, we KNOW where the project is - don't waste time searching
+        let devPath = URL(fileURLWithPath: "/Users/indiedevhipps/Documents/MagnetarStudio")
+        let devVenv = devPath.appendingPathComponent("venv/bin/python")
+        let devBackend = devPath.appendingPathComponent("apps/backend")
+
+        if FileManager.default.fileExists(atPath: devVenv.path) &&
+           FileManager.default.fileExists(atPath: devBackend.path) {
+            return devPath
+        }
+
+        // Method 2: Walk up from bundle (for production/release builds)
+        var current = Bundle.main.bundleURL
+
+        for _ in 0..<15 {
+            let venvPython = current.appendingPathComponent("venv/bin/python")
+            let backendPath = current.appendingPathComponent("apps/backend")
+
+            if FileManager.default.fileExists(atPath: venvPython.path) &&
+               FileManager.default.fileExists(atPath: backendPath.path) {
+                return current
+            }
+
+            current = current.deletingLastPathComponent()
+        }
+
+        // Method 3: Check common locations
+        let commonPaths = [
+            "/Users/indiedevhipps/Documents/MagnetarStudio",
+            "/Applications/MagnetarStudio.app/Contents/Resources",
+            NSHomeDirectory() + "/Documents/MagnetarStudio"
+        ]
+
+        for path in commonPaths {
+            let url = URL(fileURLWithPath: path)
+            let venvPython = url.appendingPathComponent("venv/bin/python")
+            let backendPath = url.appendingPathComponent("apps/backend")
+
+            if FileManager.default.fileExists(atPath: venvPython.path) &&
+               FileManager.default.fileExists(atPath: backendPath.path) {
+                return url
+            }
+        }
+
+        return nil
+    }
+}
