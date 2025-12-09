@@ -100,3 +100,28 @@ service-account.json
 # JWT secrets (if accidentally created as file)
 jwt_secret.txt
 .jwt_secret
+
+# macOS/iOS (Swift/Xcode)
+*.xcuserstate
+*.xcuserdatad
+xcuserdata/
+DerivedData/
+.build/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+*.swiftpm
+.swiftpm/
+
+# Ruby scripts (temporary refactoring helpers)
+/tmp/*.rb
+
+# Test coverage
+.coverage.*
+coverage/
