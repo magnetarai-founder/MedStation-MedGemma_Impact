@@ -73,38 +73,15 @@ struct MagnetarHubWorkspace: View {
     }
 
     // MARK: - Categories Pane
+    // Components extracted to focused modules (Phase 6.12)
 
     private var categoriesPane: some View {
         VStack(spacing: 0) {
             // Header with System Badge
-            VStack(spacing: 8) {
-                HStack {
-                    Image(systemName: "cube.box.fill")
-                        .font(.title2)
-                        .foregroundStyle(LinearGradient.magnetarGradient)
-
-                    Text("MagnetarHub")
-                        .font(.title3)
-                        .fontWeight(.bold)
-
-                    Spacer()
-                }
-
-                // System Info Badge
-                HStack(spacing: 6) {
-                    Image(systemName: "laptopcomputer")
-                        .font(.caption)
-                    Text(systemBadgeText)
-                        .font(.caption)
-                        .fontWeight(.medium)
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(systemBadgeColor.opacity(0.2))
-                .foregroundColor(systemBadgeColor)
-                .cornerRadius(8)
-            }
-            .padding()
+            HubCategoriesHeader(
+                systemBadgeText: systemBadgeText,
+                systemBadgeColor: systemBadgeColor
+            )
 
             Divider()
 
@@ -117,164 +94,33 @@ struct MagnetarHubWorkspace: View {
 
             Divider()
 
-            // Ollama Server Status
+            // Ollama Server Status & MagnetarCloud Status
             VStack(spacing: 12) {
-                HStack(spacing: 8) {
-                    Circle()
-                        .fill(ollamaServerRunning ? Color.green : Color.red)
-                        .frame(width: 8, height: 8)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Ollama Server")
-                            .font(.caption)
-                            .fontWeight(.medium)
-
-                        Text(ollamaServerRunning ? "Running" : "Stopped")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
+                HubOllamaStatus(
+                    isRunning: ollamaServerRunning,
+                    isActionInProgress: isOllamaActionInProgress,
+                    onToggle: {
+                        Task { await toggleOllama() }
+                    },
+                    onRestart: {
+                        Task { await restartOllama() }
                     }
+                )
 
-                    Spacer()
-
-                    // Control buttons
-                    HStack(spacing: 6) {
-                        // Power button
-                        Button {
-                            Task {
-                                await toggleOllama()
-                            }
-                        } label: {
-                            Image(systemName: "power")
-                                .font(.system(size: 11))
-                                .foregroundColor(ollamaServerRunning ? .green : .red)
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(isOllamaActionInProgress)
-
-                        // Restart button
-                        Button {
-                            Task {
-                                await restartOllama()
-                            }
-                        } label: {
-                            Image(systemName: "arrow.clockwise")
-                                .font(.system(size: 11))
-                                .foregroundColor(.magnetarPrimary)
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(isOllamaActionInProgress || !ollamaServerRunning)
-
-                        if isOllamaActionInProgress {
-                            ProgressView()
-                                .scaleEffect(0.6)
-                                .frame(width: 12, height: 12)
-                        }
+                HubCloudStatus(
+                    isAuthenticated: isCloudAuthenticated,
+                    isActionInProgress: isCloudActionInProgress,
+                    username: cloudUsername,
+                    onConnect: {
+                        Task { await connectCloud() }
+                    },
+                    onDisconnect: {
+                        Task { await disconnectCloud() }
+                    },
+                    onReconnect: {
+                        Task { await reconnectCloud() }
                     }
-                }
-                .padding(8)
-                .background(Color.surfaceTertiary.opacity(0.3))
-                .cornerRadius(6)
-
-                // MagnetarCloud Status
-                if isCloudAuthenticated {
-                    // Signed In State
-                    HStack(spacing: 8) {
-                        Circle()
-                            .fill(Color.green)
-                            .frame(width: 8, height: 8)
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("MagnetarCloud")
-                                .font(.caption)
-                                .fontWeight(.medium)
-
-                            Text("\(cloudUsername ?? "User") Connected")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                        }
-
-                        Spacer()
-
-                        // Control buttons
-                        HStack(spacing: 6) {
-                            // Disconnect button
-                            Button {
-                                Task {
-                                    await disconnectCloud()
-                                }
-                            } label: {
-                                Image(systemName: "power")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.green)
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(isCloudActionInProgress)
-
-                            // Refresh button
-                            Button {
-                                Task {
-                                    await reconnectCloud()
-                                }
-                            } label: {
-                                Image(systemName: "arrow.clockwise")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.magnetarPrimary)
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(isCloudActionInProgress)
-
-                            if isCloudActionInProgress {
-                                ProgressView()
-                                    .scaleEffect(0.6)
-                                    .frame(width: 12, height: 12)
-                            }
-                        }
-                    }
-                    .padding(8)
-                    .background(Color.surfaceTertiary.opacity(0.3))
-                    .cornerRadius(6)
-                } else {
-                    // Not Signed In State
-                    HStack(spacing: 8) {
-                        Circle()
-                            .fill(Color.orange)
-                            .frame(width: 8, height: 8)
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("MagnetarCloud")
-                                .font(.caption)
-                                .fontWeight(.medium)
-
-                            Text("Not Connected")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                        }
-
-                        Spacer()
-
-                        Button {
-                            Task {
-                                await connectCloud()
-                            }
-                        } label: {
-                            Text("Sign In")
-                                .font(.caption2)
-                                .fontWeight(.semibold)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.mini)
-                        .disabled(isCloudActionInProgress)
-
-                        if isCloudActionInProgress {
-                            ProgressView()
-                                .scaleEffect(0.6)
-                                .frame(width: 12, height: 12)
-                        }
-                    }
-                    .padding(8)
-                    .background(Color.surfaceTertiary.opacity(0.3))
-                    .cornerRadius(6)
-                }
+                )
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 12)
@@ -287,14 +133,17 @@ struct MagnetarHubWorkspace: View {
         VStack(spacing: 0) {
             // Toolbar (for Discover category)
             if selectedCategory == .discover {
-                discoverToolbar
+                HubDiscoverToolbar(
+                    isNetworkConnected: isNetworkConnected,
+                    onBrowseModels: openOllamaWebsite
+                )
                 Divider()
             }
 
             // Cards grid
             ScrollView {
                 if displayedModels.isEmpty {
-                    emptyState
+                    HubEmptyState(category: selectedCategory)
                 } else {
                     LazyVGrid(columns: gridColumns, spacing: 20) {
                         ForEach(displayedModels) { model in
@@ -318,58 +167,6 @@ struct MagnetarHubWorkspace: View {
                 }
             }
         }
-    }
-
-    private var discoverToolbar: some View {
-        HStack(spacing: 12) {
-            // Title
-            Text("Recommended Models")
-                .font(.headline)
-                .foregroundColor(.primary)
-
-            Spacer()
-
-            // Network status indicator
-            HStack(spacing: 4) {
-                Circle()
-                    .fill(isNetworkConnected ? Color.green : Color.red)
-                    .frame(width: 6, height: 6)
-                Text(isNetworkConnected ? "Online" : "Offline")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-            }
-
-            // Browse Models button - Opens ollama.com
-            Button {
-                openOllamaWebsite()
-            } label: {
-                Label("Browse Models", systemImage: "safari")
-                    .font(.caption)
-            }
-            .buttonStyle(.bordered)
-            .disabled(!isNetworkConnected)
-            .help(isNetworkConnected ? "Open Ollama library in browser" : "No internet connection")
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
-    }
-
-    private var emptyState: some View {
-        VStack(spacing: 12) {
-            Image(systemName: selectedCategory.emptyIcon)
-                .font(.system(size: 48))
-                .foregroundColor(.secondary)
-
-            Text(selectedCategory.emptyTitle)
-                .font(.title3)
-                .fontWeight(.semibold)
-
-            Text(selectedCategory.emptySubtitle)
-                .font(.caption)
-                .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(40)
     }
 
     // MARK: - Data Loading
