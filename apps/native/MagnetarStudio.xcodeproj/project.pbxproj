@@ -47,20 +47,16 @@
 		4FCFAC2E0DD745DFB5813F74 /* NavigationRail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08785DE309A344AF8765E6BC /* NavigationRail.swift */; };
 		500A346FB7ED4D9B9ADD8F0C /* SetupWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 624C9537C9E743BAB72D79DB /* SetupWizardView.swift */; };
 		5029E04178BD64E5D248FDA2 /* QueueItemCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD9755F803656A491BC9DD1 /* QueueItemCard.swift */; };
-		53F4C3F7000DF95741625FB0 /* MagnetarCloudSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF7CD000341B9E0DC1A18A26 /* MagnetarCloudSettingsView.swift */; };
-		55CEC243B4997B99883AE12C /* APISettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 817E3E30F33735CDE1118E55 /* APISettingsView.swift */; };
 		58E692E5B77C1E536C3E5117 /* AgentAssistCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = D15890D5596882B29171E952 /* AgentAssistCard.swift */; };
 		664594858BB924BBA1BFF3DD /* ModelMemoryTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37B8FC1C1C55127972DBE544 /* ModelMemoryTracker.swift */; };
 		67FDD665DB0B426EA23C1F9F /* DatabaseModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 971E406BFD964D0DA7C3DB54 /* DatabaseModels.swift */; };
 		6906ED58F9814219F579F8A1 /* KanbanService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3DBDF8C9291B00E92989C8A /* KanbanService.swift */; };
-		69F4556F19770D1001704FFF /* GeneralSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7767622EED14E1BE4AF9547F /* GeneralSettingsView.swift */; };
 		6A525BB01A100E892A5E1D3F /* WorkflowBuilderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 181392C49DEAE5A86F4C528B /* WorkflowBuilderView.swift */; };
 		6C6B9342084AED4C54919FE4 /* AgentModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BAFA952AE4C72B1AEABD4C6 /* AgentModels.swift */; };
 		6D61AC05F21D85942E23EDB0 /* FileAccessPermissionModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCA25F1A54EEEE41A231647 /* FileAccessPermissionModal.swift */; };
 		6E29B084EF0AB46C6DFB6D23 /* ContextService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C043D3F1AFA96A4DDC52FAA0 /* ContextService.swift */; };
 		6F8590DFCF92476BB18FB1FF /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A959626C53B4237AD1DD881 /* KeychainService.swift */; };
 		7B7E8A766BB7FC3F6725F19B /* DatabaseWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = A90C0C6D0ED2910BC2EE2A2D /* DatabaseWorkspace.swift */; };
-		7C6B1DE352517DB6DB7FA77F /* ModelManagementSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0BA47EBB0A461BA6F8B9023 /* ModelManagementSettingsView.swift */; };
 		7D52C320EC4DC723D4A73932 /* SecuritySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84BA14924AAE8B77761B548B /* SecuritySettingsView.swift */; };
 		7F361B205D3FD59F74F18AB8 /* WorkflowAnalyticsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C70DAEBD9922168A2B6BCBF6 /* WorkflowAnalyticsModels.swift */; };
 		8070383B0926FBAD64A94461 /* TeamModals.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4205E4368F6655584595587C /* TeamModals.swift */; };
@@ -101,7 +97,6 @@
 		C5DE8EEB7CE2C2BF8F02B802 /* MagnetarCloudSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADF668599FE3C90653A436E2 /* MagnetarCloudSettingsView.swift */; };
 		C6F6EB90EF484C51BF4451F3 /* AuthStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00280C486C0A463EACC552E6 /* AuthStore.swift */; };
 		C8CE1D6E95657B5967D53579 /* BiometricAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A904439226AE3F48234C22A0 /* BiometricAuthService.swift */; };
-		C8F3F06DBD5346C685942F67 /* AppearanceSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0455A9F7466D8484E318C350 /* AppearanceSettingsView.swift */; };
 		CA2EC71E90324844890DF29C /* SidebarTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B42850187A449F9B295DF2 /* SidebarTabs.swift */; };
 		CC297974B1F32A1CB838E79F /* WorkflowDashboardModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1433426296987C711963E4B6 /* WorkflowDashboardModels.swift */; };
 		CD0E0853A1FAE27A3518557A /* ModelEnrichmentService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52327976284A111B087DC761 /* ModelEnrichmentService.swift */; };
@@ -114,7 +109,6 @@
 		D2CCB3552EDE7CC000E20014 /* NetworkFirewallModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2CCB3542EDE7CC000E20014 /* NetworkFirewallModifier.swift */; };
 		D2F4756D2EDFBA8400F95E34 /* ModelManagerWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2F4756C2EDFBA8400F95E34 /* ModelManagerWindow.swift */; };
 		D2F4756F2EDFBAA100F95E34 /* SmartModelPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2F4756E2EDFBAA100F95E34 /* SmartModelPicker.swift */; };
-		D6E706FB314F916825C860E6 /* SecuritySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D507FE9E1299EF2541C3C6A4 /* SecuritySettingsView.swift */; };
 		DB28DB0D790B392C74C6EDD6 /* EmergencyModeModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02A48E61DFB2D3B96971D9F /* EmergencyModeModels.swift */; };
 		DCDAABB5974AD7C5B606F181 /* WorkflowTabButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBE06911108B1F5DEE2D80A4 /* WorkflowTabButton.swift */; };
 		DEBEE5BEF8FFE2128470853D /* AppleFMOrchestrator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CEFDC9D3501139A38812C68 /* AppleFMOrchestrator.swift */; };
@@ -942,12 +936,6 @@
 				E43D02ED7EF615C88FA702E8 /* GeneralSettingsView.swift in Sources */,
 				0D947EE6EB82E5CA0A1C19AD /* AppearanceSettingsView.swift in Sources */,
 				8A64FEB61B5FD3D071FB41CA /* SettingsHelpers.swift in Sources */,
-				53F4C3F7000DF95741625FB0 /* MagnetarCloudSettingsView.swift in Sources */,
-				7C6B1DE352517DB6DB7FA77F /* ModelManagementSettingsView.swift in Sources */,
-				D6E706FB314F916825C860E6 /* SecuritySettingsView.swift in Sources */,
-				55CEC243B4997B99883AE12C /* APISettingsView.swift in Sources */,
-				69F4556F19770D1001704FFF /* GeneralSettingsView.swift in Sources */,
-				C8F3F06DBD5346C685942F67 /* AppearanceSettingsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
