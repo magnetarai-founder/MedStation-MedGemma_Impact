@@ -24,6 +24,7 @@
 		1B5A3384079CD043E03E55EC /* WorkflowDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68C7A01DBA5D26E64121533A /* WorkflowDashboardView.swift */; };
 		1E6AE6723A451CE7A17BB875 /* MagnetarMenuCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F9266EA43AB501AAA75A82B /* MagnetarMenuCommands.swift */; };
 		1F6C75B6ED0D4B9CBC80D2F3 /* AnyCodable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61A51A35C05D4A7A8724EE3B /* AnyCodable.swift */; };
+		1FCED45AE87F9493302262EE /* KanbanDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0D54827E80A5EF1F6723F74 /* KanbanDataManager.swift */; };
 		20239B14BAE79383F23D53D4 /* HubEmptyState.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC4FCA743DA32128B1771E3C /* HubEmptyState.swift */; };
 		205F2E42F8CAE33B2B4E2ECC /* QueryLibraryModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3866A0278A5DCF870F143F1C /* QueryLibraryModal.swift */; };
 		211EAE88C46AFC153675FAAA /* SystemCapabilityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 337B394F18138ED69FB88772 /* SystemCapabilityService.swift */; };
@@ -32,6 +33,7 @@
 		24F1D7D472FFF51DCEA4BA83 /* JsonConverterModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AC0B72A8EEED4EFEFDF8859 /* JsonConverterModal.swift */; };
 		27A4D1543BA8BA0FA7604B95 /* ModelSelectorMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC12D8A6355AFFD9A5022863 /* ModelSelectorMenu.swift */; };
 		284B09009A694A4E0263B311 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE1C4B939DAC9084AC244415 /* ContentView.swift */; };
+		299C4CADC8E78F8863ABE469 /* KanbanCRUDOperations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B62F9D0C6BDD57B0674F0C5 /* KanbanCRUDOperations.swift */; };
 		2B60D81B02F198CEE4838B05 /* VaultToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A35F59ADEB8327F1820D140 /* VaultToolbar.swift */; };
 		2CEBD6ED297D4874B6DDB1F6 /* SettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FB81FC9D13D45848AE84D90 /* SettingsStore.swift */; };
 		2EC9190DA5ACBD88DAC3DA69 /* HotSlotManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A077DE8B06259E85011EA57B /* HotSlotManager.swift */; };
@@ -52,6 +54,7 @@
 		3E58740ADC7316F324337786 /* HubModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E221F2C3BD9E5578CD6F60FC /* HubModels.swift */; };
 		3EFF8BA28CFC830D62689E55 /* EmergencyConfirmationModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = AED8C8EF1AB9724F43575821 /* EmergencyConfirmationModal.swift */; };
 		403835D13F7BBA5B87DF4BC0 /* CodeEditorService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10F8272E2D6EF476FDDCC185 /* CodeEditorService.swift */; };
+		4053FF0388CC5A9AE644B03F /* KanbanTaskDetailPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4CBA461C6B0CA75CBE2701 /* KanbanTaskDetailPane.swift */; };
 		419431498985644AE22A495A /* MagnetarHubWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2760AE2A83BCE0FEB660A5 /* MagnetarHubWorkspace.swift */; };
 		453770E04F112E2C2E2A4A36 /* HeaderModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A5261BA0381BAC909F8C068 /* HeaderModels.swift */; };
 		45B6CA56C285B6AA97DA07A4 /* QueueComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AA3D182930C6B24DCA20C52 /* QueueComponents.swift */; };
@@ -273,6 +276,7 @@
 		68C7A01DBA5D26E64121533A /* WorkflowDashboardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowDashboardView.swift; sourceTree = "<group>"; };
 		69D361B60E7A1E173F2DC87F /* HubCategoriesHeader.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HubCategoriesHeader.swift; path = MagnetarHub/HubCategoriesHeader.swift; sourceTree = "<group>"; };
 		6B5A2AA8A4C26E9774A2032E /* TeamChatSectionHeader.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TeamChatSectionHeader.swift; path = TeamChat/TeamChatSectionHeader.swift; sourceTree = "<group>"; };
+		6B62F9D0C6BDD57B0674F0C5 /* KanbanCRUDOperations.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KanbanCRUDOperations.swift; sourceTree = "<group>"; };
 		6CE26C88BCDE81BD11937A38 /* TeamChatModals.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TeamChatModals.swift; path = TeamChat/TeamChatModals.swift; sourceTree = "<group>"; };
 		6EBEB2F057FF41A4A120A4DB /* OllamaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaService.swift; sourceTree = "<group>"; };
 		758F62B637F9DF75E26BAB65 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -324,6 +328,7 @@
 		B4F0F46829F0B4656CAACA28 /* VaultLockScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VaultLockScreen.swift; path = Vault/VaultLockScreen.swift; sourceTree = "<group>"; };
 		B99032061A118F3658F78070 /* VaultPermissionManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VaultPermissionManager.swift; sourceTree = "<group>"; };
 		BAD0FC77975064DDC0FCCC3F /* VaultPermissionsTab.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VaultPermissionsTab.swift; path = Panels/VaultAdmin/VaultPermissionsTab.swift; sourceTree = "<group>"; };
+		BB4CBA461C6B0CA75CBE2701 /* KanbanTaskDetailPane.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KanbanTaskDetailPane.swift; sourceTree = "<group>"; };
 		BBE06911108B1F5DEE2D80A4 /* WorkflowTabButton.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowTabButton.swift; sourceTree = "<group>"; };
 		BC2DC9D790ED001BE4A3FE80 /* QueryHistoryModal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QueryHistoryModal.swift; sourceTree = "<group>"; };
 		BD1B4DBB9E3B79613EA4D64B /* ChatSidebar.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ChatSidebar.swift; path = Chat/ChatSidebar.swift; sourceTree = "<group>"; };
@@ -341,6 +346,7 @@
 		CC1A48A6AB2B47E091FD7A11 /* NetworkChatStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkChatStore.swift; sourceTree = "<group>"; };
 		CF7CD000341B9E0DC1A18A26 /* MagnetarCloudSettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MagnetarCloudSettingsView.swift; path = Settings/MagnetarCloudSettingsView.swift; sourceTree = "<group>"; };
 		CF9DAA447967A95ADFFBF13D /* CodeFileBrowser.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CodeFileBrowser.swift; path = Code/CodeFileBrowser.swift; sourceTree = "<group>"; };
+		D0D54827E80A5EF1F6723F74 /* KanbanDataManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KanbanDataManager.swift; sourceTree = "<group>"; };
 		D15890D5596882B29171E952 /* AgentAssistCard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AgentAssistCard.swift; sourceTree = "<group>"; };
 		D2C513BD2EE0E6E8009A772A /* ModelTagService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelTagService.swift; sourceTree = "<group>"; };
 		D2C513BF2EE0F018009A772A /* ModelTagEditorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelTagEditorSheet.swift; sourceTree = "<group>"; };
@@ -733,6 +739,9 @@
 				7C6477D0551AB86BA29704A9 /* Components */,
 				DEF80F8B0EF0149E932077F9 /* KanbanModels.swift */,
 				611796B61D64D3EA27C7F979 /* KanbanModals.swift */,
+				BB4CBA461C6B0CA75CBE2701 /* KanbanTaskDetailPane.swift */,
+				D0D54827E80A5EF1F6723F74 /* KanbanDataManager.swift */,
+				6B62F9D0C6BDD57B0674F0C5 /* KanbanCRUDOperations.swift */,
 			);
 			name = Kanban;
 			path = Kanban;
@@ -1253,6 +1262,9 @@
 				F2A80B3A38D84FD30030855F /* HubOllamaManager.swift in Sources */,
 				56E6C199A72FF929813948AE /* HubCloudManager.swift in Sources */,
 				D6577491F2348812B9B33D80 /* HubModelOperations.swift in Sources */,
+				4053FF0388CC5A9AE644B03F /* KanbanTaskDetailPane.swift in Sources */,
+				1FCED45AE87F9493302262EE /* KanbanDataManager.swift in Sources */,
+				299C4CADC8E78F8863ABE469 /* KanbanCRUDOperations.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
