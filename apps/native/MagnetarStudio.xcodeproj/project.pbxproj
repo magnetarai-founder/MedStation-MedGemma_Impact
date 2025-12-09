@@ -14,6 +14,7 @@
 		0D9919DA2238C21D1AEE7ECD /* AppContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0672C7A8089F078868C15E1C /* AppContext.swift */; };
 		0E2C0590E01037DE122C6D46 /* ModelsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2B236333A555B822D41D3D /* ModelsStore.swift */; };
 		109DA918F3F9F4DDC2D40B92 /* OrchestratorInitializer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF7780D6D6AD182EE79F5868 /* OrchestratorInitializer.swift */; };
+		14616E192E7229B6AC06D069 /* CategoryRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCD905DC8F3F6CEDED2604EA /* CategoryRow.swift */; };
 		16118AFDE2324DDF8867D512 /* SettingsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EAEA6C1E62949E989A455ED /* SettingsModels.swift */; };
 		1807773E9FF774789EBDB576 /* ChatMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2C77CB5AF6C4202FD8D7161 /* ChatMessage.swift */; };
 		197FE4FF4E34415F80B4AB4E /* NetworkSelector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E0D4298405D4D92A0BCCC26 /* NetworkSelector.swift */; };
@@ -26,6 +27,7 @@
 		284B09009A694A4E0263B311 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE1C4B939DAC9084AC244415 /* ContentView.swift */; };
 		2CEBD6ED297D4874B6DDB1F6 /* SettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FB81FC9D13D45848AE84D90 /* SettingsStore.swift */; };
 		2EC9190DA5ACBD88DAC3DA69 /* HotSlotManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A077DE8B06259E85011EA57B /* HotSlotManager.swift */; };
+		300738EC663DC3A85FC9519C /* ModelDetailModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF0DA374D27198CAD23D3173 /* ModelDetailModal.swift */; };
 		30393230363164342D646637312D343666382D613263632D /* ThreePaneLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31363739633266642D383665342D346232652D393037382D /* ThreePaneLayout.swift */; };
 		33A28A605AE75CD2FDB67907 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0555CDE5ACABDDEA3DA1834D /* SettingsView.swift */; };
 		340D121B2E5149E6BF86D0B6 /* OllamaService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EBEB2F057FF41A4A120A4DB /* OllamaService.swift */; };
@@ -33,6 +35,7 @@
 		3AEF6F15A9E949E7A20E3E10 /* DatabaseStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6D0A604BB2D42F8996CC8C9 /* DatabaseStore.swift */; };
 		3B0607AB6F5A44BABD952DDA /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DB05E6C67FE4427941ECD63 /* WelcomeView.swift */; };
 		3BA3C53949C60E1DB0C5B12E /* ModelTag.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2773A6C7CAE78696090B41B7 /* ModelTag.swift */; };
+		3E58740ADC7316F324337786 /* HubModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E221F2C3BD9E5578CD6F60FC /* HubModels.swift */; };
 		3EFF8BA28CFC830D62689E55 /* EmergencyConfirmationModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = AED8C8EF1AB9724F43575821 /* EmergencyConfirmationModal.swift */; };
 		403835D13F7BBA5B87DF4BC0 /* CodeEditorService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10F8272E2D6EF476FDDCC185 /* CodeEditorService.swift */; };
 		419431498985644AE22A495A /* MagnetarHubWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2760AE2A83BCE0FEB660A5 /* MagnetarHubWorkspace.swift */; };
@@ -64,6 +67,7 @@
 		965A14789C7D4F6BB6F09F0B /* LoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28E3301816CD44269E126C96 /* LoadingView.swift */; };
 		A389EB1998243859B3C3DF28 /* ModelLibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0C17E6398CC912A0D8702EE /* ModelLibraryService.swift */; };
 		AC6DF635275F4E798D506030 /* WorkflowModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5A9F666CAE746EDB38AE581 /* WorkflowModels.swift */; };
+		ACE46F47F06B47B954AA36F5 /* ModelCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CD03E1F0B393F0E8465CF87 /* ModelCard.swift */; };
 		AD18AD81EDBC4EF8AC097789 /* SettingsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26E9E5E9E5784B339818979B /* SettingsService.swift */; };
 		ADE5B2D77F847B837C70A2E6 /* WorkflowQueueModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9DC720A6D6990C4CFE6EB62 /* WorkflowQueueModels.swift */; };
 		AEBBD28E489D89C49337B46B /* VaultAdminPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37F355A75223BD31BF23FE9E /* VaultAdminPanel.swift */; };
@@ -154,6 +158,7 @@
 		37F355A75223BD31BF23FE9E /* VaultAdminPanel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VaultAdminPanel.swift; path = Panels/VaultAdminPanel.swift; sourceTree = "<group>"; };
 		399E593F40D14E5AAD83D8EA /* VaultService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultService.swift; sourceTree = "<group>"; };
 		3A959626C53B4237AD1DD881 /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
+		3CD03E1F0B393F0E8465CF87 /* ModelCard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ModelCard.swift; path = MagnetarHub/ModelCard.swift; sourceTree = "<group>"; };
 		3DB05E6C67FE4427941ECD63 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		4205E4368F6655584595587C /* TeamModals.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TeamModals.swift; path = Team/TeamModals.swift; sourceTree = "<group>"; };
 		46C6F9C65BD57850E16B8E89 /* WorkflowGrid.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowGrid.swift; sourceTree = "<group>"; };
@@ -233,6 +238,7 @@
 		E03654A7DB82435A07B213DD /* TeamService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TeamService.swift; sourceTree = "<group>"; };
 		E0B5547ECD973EFF39678E79 /* NavigationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationStore.swift; sourceTree = "<group>"; };
 		E14DD2FC8D25B4ABB8A2326D /* ContextBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContextBundle.swift; sourceTree = "<group>"; };
+		E221F2C3BD9E5578CD6F60FC /* HubModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HubModels.swift; path = MagnetarHub/HubModels.swift; sourceTree = "<group>"; };
 		E4A86189DF1FE9A17A22F231 /* PanicModeService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PanicModeService.swift; sourceTree = "<group>"; };
 		E581C17B318E0B2B62A104F1 /* EditDocumentModal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = EditDocumentModal.swift; path = Team/EditDocumentModal.swift; sourceTree = "<group>"; };
 		E62FD8B9DE028C44A2F0816E /* ChatStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatStore.swift; sourceTree = "<group>"; };
@@ -243,6 +249,8 @@
 		FA268C85AA8894BC92182D94 /* ChatWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatWorkspace.swift; sourceTree = "<group>"; };
 		FA41B0C7CACB6D1CA954CD7D /* VaultComponents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VaultComponents.swift; path = Vault/VaultComponents.swift; sourceTree = "<group>"; };
 		FC37E911002B5D5042A19F36 /* WorkflowQueueView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowQueueView.swift; sourceTree = "<group>"; };
+		FCD905DC8F3F6CEDED2604EA /* CategoryRow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CategoryRow.swift; path = MagnetarHub/CategoryRow.swift; sourceTree = "<group>"; };
+		FF0DA374D27198CAD23D3173 /* ModelDetailModal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ModelDetailModal.swift; path = MagnetarHub/ModelDetailModal.swift; sourceTree = "<group>"; };
 		FFCA25F1A54EEEE41A231647 /* FileAccessPermissionModal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FileAccessPermissionModal.swift; path = Dialogs/FileAccessPermissionModal.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -346,8 +354,20 @@
 				75C6E8BB23325894A32D4935 /* Docs */,
 				DCE4AA910ED02FF68EDB552F /* Vault */,
 				F537FC8B7306C1C4B8EFCCD8 /* Team */,
+				6E4F155009383D7ADC98DAD9 /* MagnetarHub */,
 			);
 			path = Workspaces;
+			sourceTree = "<group>";
+		};
+		6E4F155009383D7ADC98DAD9 /* MagnetarHub */ = {
+			isa = PBXGroup;
+			children = (
+				FF0DA374D27198CAD23D3173 /* ModelDetailModal.swift */,
+				E221F2C3BD9E5578CD6F60FC /* HubModels.swift */,
+				3CD03E1F0B393F0E8465CF87 /* ModelCard.swift */,
+				FCD905DC8F3F6CEDED2604EA /* CategoryRow.swift */,
+			);
+			name = MagnetarHub;
 			sourceTree = "<group>";
 		};
 		734503D79C8E69B6DEAEC3C5 /* Products */ = {
@@ -843,6 +863,10 @@
 				F03107872F22738D05B54CAE /* WorkflowQueueView.swift in Sources */,
 				5029E04178BD64E5D248FDA2 /* QueueItemCard.swift in Sources */,
 				45B6CA56C285B6AA97DA07A4 /* QueueComponents.swift in Sources */,
+				300738EC663DC3A85FC9519C /* ModelDetailModal.swift in Sources */,
+				3E58740ADC7316F324337786 /* HubModels.swift in Sources */,
+				ACE46F47F06B47B954AA36F5 /* ModelCard.swift in Sources */,
+				14616E192E7229B6AC06D069 /* CategoryRow.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
