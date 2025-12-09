@@ -59,6 +59,7 @@
 		453770E04F112E2C2E2A4A36 /* HeaderModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A5261BA0381BAC909F8C068 /* HeaderModels.swift */; };
 		45B6CA56C285B6AA97DA07A4 /* QueueComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AA3D182930C6B24DCA20C52 /* QueueComponents.swift */; };
 		462E1B85191C4E7D6E5D04E1 /* EmergencyModeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF608E6633F1DCE6E6542EBD /* EmergencyModeService.swift */; };
+		494B6156F0C362BBA656FA1F /* DocsSidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C97EBBF5A71BFE60E67128CF /* DocsSidebarView.swift */; };
 		4E5B3A8474FAD72E073C9871 /* ContextBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = E14DD2FC8D25B4ABB8A2326D /* ContextBundle.swift */; };
 		4FCFAC2E0DD745DFB5813F74 /* NavigationRail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08785DE309A344AF8765E6BC /* NavigationRail.swift */; };
 		500A346FB7ED4D9B9ADD8F0C /* SetupWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 624C9537C9E743BAB72D79DB /* SetupWizardView.swift */; };
@@ -80,6 +81,7 @@
 		6F8590DFCF92476BB18FB1FF /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A959626C53B4237AD1DD881 /* KeychainService.swift */; };
 		7058C6E3C5910F8637829A01 /* HubOllamaStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = F161155DE71176E1754C3D28 /* HubOllamaStatus.swift */; };
 		72223FF3C75F1AFAC58365A7 /* KanbanModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEF80F8B0EF0149E932077F9 /* KanbanModels.swift */; };
+		737F29B85E2B4EEFCFDD1142 /* DocsDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8793D522AC9A7466AE2DE89 /* DocsDataManager.swift */; };
 		74D8E0306527B74CAD6AB3F8 /* ControlCenterSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B185920987FF40C42A24A06 /* ControlCenterSheet.swift */; };
 		76604907D534F2D1B4B90231 /* VaultResourcesTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58A0523A9291CBF8B0969A33 /* VaultResourcesTab.swift */; };
 		78FBE10A96F03C9151E62A9E /* ChatSessionRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D543F96E3B46F2588608167 /* ChatSessionRow.swift */; };
@@ -137,6 +139,7 @@
 		C39387A4041537956C59BAFC /* LiquidGlassPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 842DAEC1F81C99999F03FF53 /* LiquidGlassPanel.swift */; };
 		C3E44FEBE2074BE4B381E33E /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18F8E78737774D21B8C95D37 /* AuthService.swift */; };
 		C4D33031AF8A4EDDAFDA3841 /* Header.swift in Sources */ = {isa = PBXBuildFile; fileRef = F85CE2F0DE5343879EB18743 /* Header.swift */; };
+		C505DF1411D5EB438830B92F /* DocsEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84E52B19F550F05D5B06F5CE /* DocsEditorView.swift */; };
 		C53221D23E846FE6D425B460 /* EditDocumentModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = E581C17B318E0B2B62A104F1 /* EditDocumentModal.swift */; };
 		C5DE8EEB7CE2C2BF8F02B802 /* MagnetarCloudSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADF668599FE3C90653A436E2 /* MagnetarCloudSettingsView.swift */; };
 		C6F6EB90EF484C51BF4451F3 /* AuthStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00280C486C0A463EACC552E6 /* AuthStore.swift */; };
@@ -291,6 +294,7 @@
 		832F8059CDA346DF9163F393 /* CodeEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeEditor.swift; sourceTree = "<group>"; };
 		842DAEC1F81C99999F03FF53 /* LiquidGlassPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidGlassPanel.swift; sourceTree = "<group>"; };
 		84BA14924AAE8B77761B548B /* SecuritySettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SecuritySettingsView.swift; path = Settings/SecuritySettingsView.swift; sourceTree = "<group>"; };
+		84E52B19F550F05D5B06F5CE /* DocsEditorView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DocsEditorView.swift; path = Docs/DocsEditorView.swift; sourceTree = "<group>"; };
 		8727E981A8450A6B3430ECAF /* HubCloudStatus.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HubCloudStatus.swift; path = MagnetarHub/HubCloudStatus.swift; sourceTree = "<group>"; };
 		87815974F16A9DC291E9CEF3 /* FlowLayout.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
 		8838BDE42960AA40D4057FA2 /* SmartModelPicker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SmartModelPicker.swift; path = SmartModelPicker.swift; sourceTree = "<group>"; };
@@ -316,6 +320,7 @@
 		A485EA6B25510FE933F43738 /* MagnetarHubWorkspace.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MagnetarHubWorkspace.swift; sourceTree = "<group>"; };
 		A6D0A604BB2D42F8996CC8C9 /* DatabaseStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseStore.swift; sourceTree = "<group>"; };
 		A7F6B585438FCCD38BEB7E4E /* ModelRecommendationService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelRecommendationService.swift; sourceTree = "<group>"; };
+		A8793D522AC9A7466AE2DE89 /* DocsDataManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DocsDataManager.swift; path = Docs/DocsDataManager.swift; sourceTree = "<group>"; };
 		A904439226AE3F48234C22A0 /* BiometricAuthService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BiometricAuthService.swift; sourceTree = "<group>"; };
 		A90C0C6D0ED2910BC2EE2A2D /* DatabaseWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseWorkspace.swift; sourceTree = "<group>"; };
 		AA2B236333A555B822D41D3D /* ModelsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelsStore.swift; sourceTree = "<group>"; };
@@ -341,6 +346,7 @@
 		C70DAEBD9922168A2B6BCBF6 /* WorkflowAnalyticsModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowAnalyticsModels.swift; sourceTree = "<group>"; };
 		C8166B48B028FD3CE0A19F60 /* APISettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = APISettingsView.swift; path = Settings/APISettingsView.swift; sourceTree = "<group>"; };
 		C8B00CD34FC941DB87FE17B3 /* WorkflowStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowStore.swift; sourceTree = "<group>"; };
+		C97EBBF5A71BFE60E67128CF /* DocsSidebarView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DocsSidebarView.swift; path = Docs/DocsSidebarView.swift; sourceTree = "<group>"; };
 		CBAFCA059EFBB30832A7C3B2 /* VaultSetupWizardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VaultSetupWizardView.swift; sourceTree = "<group>"; };
 		CC12D8A6355AFFD9A5022863 /* ModelSelectorMenu.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ModelSelectorMenu.swift; path = Components/ModelSelectorMenu.swift; sourceTree = "<group>"; };
 		CC1A48A6AB2B47E091FD7A11 /* NetworkChatStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkChatStore.swift; sourceTree = "<group>"; };
@@ -607,6 +613,9 @@
 			isa = PBXGroup;
 			children = (
 				786CB632E145399E3EDC4820 /* DocsWorkspaceView.swift */,
+				C97EBBF5A71BFE60E67128CF /* DocsSidebarView.swift */,
+				84E52B19F550F05D5B06F5CE /* DocsEditorView.swift */,
+				A8793D522AC9A7466AE2DE89 /* DocsDataManager.swift */,
 			);
 			name = Docs;
 			sourceTree = "<group>";
@@ -1265,6 +1274,9 @@
 				4053FF0388CC5A9AE644B03F /* KanbanTaskDetailPane.swift in Sources */,
 				1FCED45AE87F9493302262EE /* KanbanDataManager.swift in Sources */,
 				299C4CADC8E78F8863ABE469 /* KanbanCRUDOperations.swift in Sources */,
+				494B6156F0C362BBA656FA1F /* DocsSidebarView.swift in Sources */,
+				C505DF1411D5EB438830B92F /* DocsEditorView.swift in Sources */,
+				737F29B85E2B4EEFCFDD1142 /* DocsDataManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
