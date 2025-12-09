@@ -525,11 +525,21 @@ struct TeamChatWindow: View {
                     errorMessage = nil
                 }
             } catch {
-                print("Failed to load messages: \(error.localizedDescription)")
-                await MainActor.run {
-                    messages = []
-                    isLoadingMessages = false
-                    errorMessage = "Failed to load messages: \(error.localizedDescription)"
+                // Silently handle P2P service not initialized (expected in dev without libp2p)
+                if error.localizedDescription.contains("P2P service not initialized") {
+                    print("ℹ️ P2P service not available (libp2p not installed) - messages unavailable")
+                    await MainActor.run {
+                        messages = []
+                        isLoadingMessages = false
+                        errorMessage = nil  // Don't show error for expected P2P unavailability
+                    }
+                } else {
+                    print("Failed to load messages: \(error.localizedDescription)")
+                    await MainActor.run {
+                        messages = []
+                        isLoadingMessages = false
+                        errorMessage = "Failed to load messages: \(error.localizedDescription)"
+                    }
                 }
             }
         }
