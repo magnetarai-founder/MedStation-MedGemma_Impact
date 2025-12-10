@@ -31,9 +31,10 @@ class AppleFMOrchestrator: ModelOrchestrator {
 
                 let response: HealthResponse = try await ApiClient.shared.request(
                     "/health",
-                    method: .get
+                    method: .get,
+                    authenticated: false
                 )
-                return response.status == "ok"
+                return response.status == "healthy" || response.status == "ok"
             } catch {
                 print("✗ Backend orchestrator unavailable: \(error)")
                 return false
