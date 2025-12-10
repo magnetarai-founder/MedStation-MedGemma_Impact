@@ -2,7 +2,7 @@ import Foundation
 import Security
 import LocalAuthentication
 
-/// Secure storage for auth tokens using Keychain
+/// Secure storage for auth tokens using Keychain (or in-memory in DEBUG)
 final class KeychainService {
     static let shared = KeychainService()
 
@@ -10,12 +10,24 @@ final class KeychainService {
     private let tokenKey = "auth_token"
     private let credentialsKey = "biometric_credentials"
 
+    // DEBUG: In-memory storage to avoid keychain headaches during development
+    #if DEBUG
+    private var memoryStorage: [String: String] = [:]
+    #endif
+
     private init() {}
 
     // MARK: - Token Management
 
     func saveToken(_ token: String, forKey key: String? = nil) throws {
         let accountKey = key ?? tokenKey
+
+        #if DEBUG
+        // DEBUG MODE: Use in-memory storage, skip keychain entirely
+        memoryStorage[accountKey] = token
+        print("💾 DEBUG: Token saved to memory (keychain bypassed)")
+        return
+        #else
         let data = Data(token.utf8)
 
         // Delete existing item first
@@ -34,11 +46,16 @@ final class KeychainService {
         guard status == errSecSuccess else {
             throw KeychainServiceError.saveFailed(status)
         }
+        #endif
     }
 
     func loadToken(forKey key: String? = nil) -> String? {
         let accountKey = key ?? tokenKey
 
+        #if DEBUG
+        // DEBUG MODE: Load from in-memory storage
+        return memoryStorage[accountKey]
+        #else
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -57,11 +74,18 @@ final class KeychainService {
         }
 
         return token
+        #endif
     }
 
     func deleteToken(forKey key: String? = nil) throws {
         let accountKey = key ?? tokenKey
 
+        #if DEBUG
+        // DEBUG MODE: Remove from in-memory storage
+        memoryStorage.removeValue(forKey: accountKey)
+        print("🗑️ DEBUG: Token deleted from memory")
+        return
+        #else
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -73,6 +97,7 @@ final class KeychainService {
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw KeychainServiceError.deleteFailed(status)
         }
+        #endif
     }
 
     // MARK: - Biometric Credentials Storage
