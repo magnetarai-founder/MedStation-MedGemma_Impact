@@ -23,6 +23,28 @@ final class AuthStore: ObservableObject {
 
     /// Call on app launch to validate existing token
     func bootstrap() async {
+        // Wait for backend to be ready before attempting auth
+        print("⏳ Waiting for backend to be ready...")
+        var backendReady = false
+        var attempts = 0
+
+        while !backendReady && attempts < 15 {
+            backendReady = await checkBackendHealth()
+            if !backendReady {
+                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 second
+                attempts += 1
+            }
+        }
+
+        if !backendReady {
+            print("⚠️ Backend not ready after 7.5 seconds, will retry auth later")
+            authState = .welcome
+            loading = false
+            return
+        }
+
+        print("✓ Backend is ready, proceeding with auth")
+
         // DEVELOPMENT BYPASS: Auto-login for fast iteration
         #if DEBUG
         print("⚠️ DEBUG MODE: Auto-login enabled for fast iteration")
@@ -164,6 +186,22 @@ final class AuthStore: ObservableObject {
         authState = .welcome
         loading = false
         error = nil
+    }
+
+    private func checkBackendHealth() async -> Bool {
+        guard let url = URL(string: "http://localhost:8000/health") else { return false }
+
+        do {
+            let (_, response) = try await URLSession.shared.data(from: url)
+            if let httpResponse = response as? HTTPURLResponse {
+                return httpResponse.statusCode == 200
+            }
+        } catch {
+            // Server not responding
+            return false
+        }
+
+        return false
     }
 }
 
