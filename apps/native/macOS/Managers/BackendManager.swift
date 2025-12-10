@@ -14,12 +14,19 @@ final class BackendManager {
     static let shared = BackendManager()
 
     private var backendProcess: Process?
+    private var isStarting = false // Prevent concurrent starts
 
     private init() {}
 
     // MARK: - Auto-start
 
     func autoStartBackend() async {
+        // Prevent concurrent start attempts
+        if isStarting {
+            print("⏳ Backend startup already in progress, skipping duplicate request")
+            return
+        }
+
         print("🚀 Checking backend server status...")
 
         // Check if backend is already running
@@ -29,6 +36,16 @@ final class BackendManager {
             print("✓ Backend server already running")
             return
         }
+
+        // Check if we have a process reference and it's still running
+        if let process = backendProcess, process.isRunning {
+            print("✓ Backend process already running (PID: \(process.processIdentifier))")
+            return
+        }
+
+        // Set flag to prevent concurrent starts
+        isStarting = true
+        defer { isStarting = false }
 
         print("⚙️ Starting MagnetarStudio backend server...")
 
@@ -136,15 +153,29 @@ final class BackendManager {
     // MARK: - Health Monitoring
 
     func monitorBackendHealth() async {
-        // Monitor backend health every 10 seconds and restart if needed
+        // Monitor backend health every 30 seconds and restart if needed
+        var consecutiveFailures = 0
+
         while true {
-            try? await Task.sleep(nanoseconds: 10_000_000_000) // 10 seconds
+            try? await Task.sleep(nanoseconds: 30_000_000_000) // 30 seconds
 
             let isHealthy = await checkBackendHealth()
 
             if !isHealthy {
-                print("⚠️ Backend health check failed - attempting restart...")
-                await autoStartBackend()
+                consecutiveFailures += 1
+
+                // Only restart after 3 consecutive failures (90 seconds)
+                // This prevents aggressive restarts during temporary issues
+                if consecutiveFailures >= 3 {
+                    print("⚠️ Backend health check failed 3 times - attempting restart...")
+                    await autoStartBackend()
+                    consecutiveFailures = 0 // Reset counter after restart attempt
+                } else {
+                    print("⚠️ Backend health check failed (\(consecutiveFailures)/3)")
+                }
+            } else {
+                // Reset failure counter on successful health check
+                consecutiveFailures = 0
             }
         }
     }
