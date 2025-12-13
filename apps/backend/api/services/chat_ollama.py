@@ -9,8 +9,10 @@ import logging
 import subprocess
 import asyncio
 from typing import List, Dict, AsyncGenerator, Optional
+from api.cache_service import get_cache
 
 logger = logging.getLogger(__name__)
+cache = get_cache()
 
 
 class OllamaClient:
@@ -68,7 +70,18 @@ class OllamaClient:
             return False
 
     async def list_models(self) -> List[Dict[str, str]]:
-        """List available models - ensures Ollama is running first"""
+        """
+        List available models - ensures Ollama is running first.
+
+        CACHED for 5 minutes to avoid repeated API calls.
+        """
+        # Check cache first (5 minute TTL)
+        cache_key = "ollama:models:list"
+        cached_models = cache.get(cache_key)
+        if cached_models is not None:
+            logger.debug("✅ Ollama models from cache")
+            return cached_models
+
         try:
             # Ensure server is running
             if not await self.check_server():
@@ -90,6 +103,10 @@ class OllamaClient:
                         "size": self._format_size(model_data.get("size", 0)),
                         "modified_at": model_data.get("modified_at", "")
                     })
+
+                # Cache for 5 minutes (models don't change often)
+                cache.set(cache_key, models, ttl=300)
+                logger.debug(f"🔄 Cached {len(models)} Ollama models")
 
                 return models
         except Exception as e:
