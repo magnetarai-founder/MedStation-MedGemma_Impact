@@ -201,6 +201,12 @@ def create_vault_item(
         conn.commit()
         conn.close()
 
+        # Invalidate vault items cache for this team
+        from api.cache_service import get_cache
+        cache = get_cache()
+        cache.delete_pattern(f"vault:items:{team_id}:*")
+        logger.debug(f"🗑️  Invalidated vault cache for team {team_id}")
+
         logger.info(f"Created vault item {item_id} for team {team_id}")
         return True, "Vault item created successfully", item_id
 
@@ -271,6 +277,12 @@ def update_vault_item(
         conn.commit()
         conn.close()
 
+        # Invalidate vault items cache for this team
+        from api.cache_service import get_cache
+        cache = get_cache()
+        cache.delete_pattern(f"vault:items:{team_id}:*")
+        logger.debug(f"🗑️  Invalidated vault cache for team {team_id}")
+
         logger.info(f"Updated vault item {item_id}")
         return True, "Vault item updated successfully"
 
@@ -320,6 +332,12 @@ def delete_vault_item(
 
         if rowcount == 0:
             return False, "Vault item not found or already deleted"
+
+        # Invalidate vault items cache for this team
+        from api.cache_service import get_cache
+        cache = get_cache()
+        cache.delete_pattern(f"vault:items:{team_id}:*")
+        logger.debug(f"🗑️  Invalidated vault cache for team {team_id}")
 
         logger.info(f"Deleted vault item {item_id}")
         return True, "Vault item deleted successfully"
@@ -407,6 +425,7 @@ def list_vault_items(
 ) -> List[Dict]:
     """
     List vault items accessible to user (without decrypted content).
+    Cached for 5 minutes to reduce database load.
 
     Args:
         team_id: Team ID
@@ -430,6 +449,17 @@ def list_vault_items(
             }
         ]
     """
+    # Check cache first (5 minute TTL for vault items)
+    from api.cache_service import get_cache
+    cache = get_cache()
+
+    cache_key = f"vault:items:{team_id}:{user_id}:{item_type or 'all'}:{include_deleted}"
+    cached_items = cache.get(cache_key)
+
+    if cached_items is not None:
+        logger.debug(f"✅ Vault items from cache for team {team_id}")
+        return cached_items
+
     try:
         conn = storage.get_db_connection()
         cursor = conn.cursor()
@@ -468,6 +498,11 @@ def list_vault_items(
                 items.append(dict(row))
 
         conn.close()
+
+        # Cache for 5 minutes
+        cache.set(cache_key, items, ttl=300)
+        logger.debug(f"🔄 Cached {len(items)} vault items for team {team_id}")
+
         return items
 
     except Exception as e:

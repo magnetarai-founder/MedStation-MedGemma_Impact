@@ -21,10 +21,22 @@ async def get_or_create_user_profile():
     Get the current user profile or create one if none exists.
 
     Returns UserProfile model with user data from user_profiles + auth.users tables.
+    Cached for 10 minutes to reduce database load.
     """
     # Lazy imports to avoid cycles
     from config_paths import get_config_paths
     from api.schemas.user_models import UserProfile
+    from api.cache_service import get_cache
+
+    # Check cache first (10 minute TTL)
+    cache = get_cache()
+    cache_key = "user:profile:current"
+    cached_profile = cache.get(cache_key)
+
+    if cached_profile is not None:
+        logger.debug("✅ User profile from cache")
+        # Reconstruct UserProfile from cached dict
+        return UserProfile(**cached_profile)
 
     PATHS = get_config_paths()
     USER_DB_PATH = PATHS.app_db
@@ -54,7 +66,7 @@ async def get_or_create_user_profile():
 
     if row:
         conn.close()
-        return UserProfile(
+        profile = UserProfile(
             user_id=row['user_id'],
             display_name=row['display_name'],
             device_name=row['device_name'],
@@ -66,6 +78,12 @@ async def get_or_create_user_profile():
             role_changed_by=row['role_changed_by'],
             job_role=row['job_role'] or "unassigned"
         )
+
+        # Cache for 10 minutes
+        cache.set(cache_key, profile.dict(), ttl=600)
+        logger.debug("🔄 Cached user profile")
+
+        return profile
 
     # No profile exists - create a default one
     user_id = str(uuid.uuid4())
@@ -84,7 +102,7 @@ async def get_or_create_user_profile():
 
     logger.info(f"Created new user profile: {user_id} ({display_name})")
 
-    return UserProfile(
+    new_profile = UserProfile(
         user_id=user_id,
         display_name=display_name,
         device_name=device_name,
@@ -93,6 +111,12 @@ async def get_or_create_user_profile():
         role="member",
         job_role="unassigned"
     )
+
+    # Cache the newly created profile
+    cache.set(cache_key, new_profile.dict(), ttl=600)
+    logger.debug("🔄 Cached new user profile")
+
+    return new_profile
 
 
 async def update_user_profile(updates: Dict[str, Any]):
@@ -146,6 +170,12 @@ async def update_user_profile(updates: Dict[str, Any]):
 
     conn.commit()
     conn.close()
+
+    # Invalidate cache since profile was updated
+    from api.cache_service import get_cache
+    cache = get_cache()
+    cache.delete("user:profile:current")
+    logger.debug("🗑️  Invalidated user profile cache after update")
 
     # Return updated user
     return await get_or_create_user_profile()

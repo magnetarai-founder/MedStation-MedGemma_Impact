@@ -150,6 +150,20 @@ Response:
 - **Why:** Computing embeddings on-the-fly is expensive
 - **Impact:** 68x faster semantic search vs traditional approach
 
+### 4. User Profile Data
+- **Key:** `user:profile:current`
+- **TTL:** 10 minutes (600s)
+- **Why:** User profiles rarely change
+- **Impact:** Instant profile loading, reduced database queries
+- **Invalidated:** On profile update
+
+### 5. Vault Items List
+- **Key:** `vault:items:{team_id}:{user_id}:{item_type}:{include_deleted}`
+- **TTL:** 5 minutes (300s)
+- **Why:** Vault items don't change frequently
+- **Impact:** Faster vault browsing, reduced permission checks
+- **Invalidated:** On create/update/delete vault item
+
 ---
 
 ## 🔑 Cache Key Patterns
@@ -157,14 +171,15 @@ Response:
 Use consistent naming for easy invalidation:
 
 ```
-user:{user_id}:profile           # User profiles
-user:{user_id}:settings         # User settings
-chat:session:{id}               # Chat sessions
-chat:session:{id}:messages      # Messages in session
-vault:item:{id}                 # Vault items
-vault:user:{user_id}:items      # User's vault items
-ollama:models:list              # Available models
-ollama:model:{name}:info        # Model metadata
+user:profile:current                          # Current user profile
+user:{user_id}:settings                       # User settings
+chat:session:{id}                             # Chat sessions
+chat:session:{id}:messages                    # Messages in session
+vault:items:{team_id}:{user_id}:{type}:{del}  # Vault items list
+vault:item:{id}                               # Single vault item
+ollama:models:list                            # Available models
+ollama:model:{name}:info                      # Model metadata
+semantic_search:{hash}:{user}:{team}:{limit}  # Search results
 ```
 
 ---
