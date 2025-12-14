@@ -1,24 +1,29 @@
 """
-Message Feedback API - Sprint 6 Theme C (Ticket C1)
+Message Feedback API
 
 Allows users to provide thumbs up/down feedback on assistant messages.
+Feedback is stored as analytics events for quality monitoring.
+
+Follows MagnetarStudio API standards (see API_STANDARDS.md).
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from typing import Literal
+from typing import Literal, Dict, Optional
 import logging
 
 # Auth and permissions
 try:
-    from auth_middleware import get_current_user
+    from auth_middleware import get_current_user, User
 except ImportError:
-    from ..auth_middleware import get_current_user
+    from ..auth_middleware import get_current_user, User
 
 try:
     from permission_engine import require_perm_team
 except ImportError:
     from ..permission_engine import require_perm_team
+
+from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 
 logger = logging.getLogger(__name__)
 
@@ -33,14 +38,20 @@ class MessageFeedbackRequest(BaseModel):
     score: Literal[1, -1] = Field(..., description="1 for thumbs up, -1 for thumbs down")
 
 
-@router.post("/messages/{message_id}", name="submit_message_feedback")
+@router.post(
+    "/messages/{message_id}",
+    response_model=SuccessResponse[Dict],
+    status_code=status.HTTP_201_CREATED,
+    name="submit_message_feedback",
+    summary="Submit message feedback",
+    description="Submit thumbs up/down feedback for an assistant message"
+)
 @require_perm_team("chat.use")
 async def submit_message_feedback(
-    request: Request,
     message_id: str,
     feedback: MessageFeedbackRequest,
-    current_user: dict = Depends(get_current_user)
-):
+    current_user: User = Depends(get_current_user)
+) -> SuccessResponse[Dict]:
     """
     Submit feedback (thumbs up/down) for an assistant message
 
@@ -49,20 +60,10 @@ async def submit_message_feedback(
     - Message must belong to user's session or team
     """
     from api.services.analytics import get_analytics_service
-    from api.chat_memory import NeutronChatMemory
 
-    user_id = current_user["user_id"]
-    user_role = current_user.get("role", "user")
-    team_id = current_user.get("team_id")
-
-    # Security check: Verify message belongs to user/team
-    # Extract session_id from message_id (format: session_id:timestamp or similar)
-    # For now, we'll assume message_id contains session context
-    # In production, you'd query chat_memory to verify ownership
-
-    # For this implementation, we'll trust that the frontend only sends
-    # valid message IDs from the user's own sessions
-    # Additional security layer: The analytics service will log with user_id
+    user_id = current_user.get("user_id") if isinstance(current_user, dict) else current_user.user_id
+    user_role = current_user.get("role", "user") if isinstance(current_user, dict) else getattr(current_user, "role", "user")
+    team_id = current_user.get("team_id") if isinstance(current_user, dict) else getattr(current_user, "team_id", None)
 
     try:
         analytics = get_analytics_service()
@@ -81,29 +82,47 @@ async def submit_message_feedback(
 
         logger.info(f"Recorded feedback for message {message_id}: score={feedback.score} by user={user_id}")
 
-        return {
-            "status": "success",
-            "message_id": message_id,
-            "score": feedback.score
-        }
+        return SuccessResponse(
+            data={
+                "status": "success",
+                "message_id": message_id,
+                "score": feedback.score
+            },
+            message="Feedback recorded successfully"
+        )
+
+    except HTTPException:
+        raise
 
     except Exception as e:
-        logger.error(f"Failed to record message feedback: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Failed to record feedback")
+        logger.error(f"Failed to record message feedback", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to record feedback"
+            ).model_dump()
+        )
 
 
-@router.get("/messages/{message_id}", name="get_message_feedback")
+@router.get(
+    "/messages/{message_id}",
+    response_model=SuccessResponse[Dict],
+    status_code=status.HTTP_200_OK,
+    name="get_message_feedback",
+    summary="Get message feedback",
+    description="Get user's previous feedback for a specific message"
+)
 async def get_message_feedback(
-    request: Request,
     message_id: str,
-    current_user: dict = Depends(get_current_user)
-):
+    current_user: User = Depends(get_current_user)
+) -> SuccessResponse[Dict]:
     """
     Get feedback for a specific message (if user wants to see their previous feedback)
     """
     from api.services.analytics import get_analytics_service
 
-    user_id = current_user["user_id"]
+    user_id = current_user.get("user_id") if isinstance(current_user, dict) else current_user.user_id
 
     try:
         analytics = get_analytics_service()
@@ -118,18 +137,33 @@ async def get_message_feedback(
         # Find feedback for this specific message
         for event in events:
             if event.get("metadata", {}).get("message_id") == message_id:
-                return {
-                    "message_id": message_id,
-                    "score": event.get("metadata", {}).get("score"),
-                    "timestamp": event.get("ts")
-                }
+                return SuccessResponse(
+                    data={
+                        "message_id": message_id,
+                        "score": event.get("metadata", {}).get("score"),
+                        "timestamp": event.get("ts")
+                    },
+                    message="Feedback retrieved"
+                )
 
         # No feedback found
-        return {
-            "message_id": message_id,
-            "score": None
-        }
+        return SuccessResponse(
+            data={
+                "message_id": message_id,
+                "score": None
+            },
+            message="No feedback found for this message"
+        )
+
+    except HTTPException:
+        raise
 
     except Exception as e:
-        logger.error(f"Failed to get message feedback: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Failed to get feedback")
+        logger.error(f"Failed to get message feedback", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to retrieve feedback"
+            ).model_dump()
+        )
