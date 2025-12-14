@@ -1,19 +1,23 @@
 """
 Vault Semantic Search Routes
-AI-powered semantic search for vault files using ANE Context Engine
+
+AI-powered semantic search for vault files using ANE Context Engine.
+
+Follows MagnetarStudio API standards (see API_STANDARDS.md).
 """
 
 import logging
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel
 
 from api.auth_middleware import get_current_user
 from api.services.vault.core import VaultService
+from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(prefix="/api/v1/vault", tags=["vault-semantic-search"])
 
 
 # MARK: - Request/Response Models
@@ -45,26 +49,37 @@ class SemanticSearchResponse(BaseModel):
 
 # MARK: - Semantic Search Endpoint
 
-@router.post("/semantic-search", response_model=SemanticSearchResponse)
+@router.post(
+    "/semantic-search",
+    response_model=SuccessResponse[SemanticSearchResponse],
+    status_code=status.HTTP_200_OK,
+    name="semantic_search_vault_files",
+    summary="Semantic search for vault files",
+    description="AI-powered semantic search for vault files using ANE Context Engine with on-device embeddings"
+)
 async def semantic_search_files(
     request: SemanticSearchRequest,
     user_claims: dict = Depends(get_current_user)
-):
+) -> SuccessResponse[SemanticSearchResponse]:
     """
     Semantic search for vault files using AI embeddings.
     Uses ANE Context Engine for fast, on-device semantic matching.
     """
     try:
         user_id = user_claims["user_id"]
-        logger.info(f"🔍 Semantic search: user={user_id}, query='{request.query[:50]}...'")
+        logger.info(f"Semantic search: user={user_id}, query='{request.query[:50]}...'")
 
         # Get embedding for query
         query_embedding = await embed_query(request.query)
 
         if not query_embedding:
             # Fallback to text search
-            logger.warning("⚠️ Embeddings unavailable, falling back to text search")
-            return await fallback_text_search(user_id, request)
+            logger.warning("Embeddings unavailable, falling back to text search")
+            fallback_response = await fallback_text_search(user_id, request)
+            return SuccessResponse(
+                data=fallback_response,
+                message=f"Found {fallback_response.total_results} file(s) (text search fallback)"
+            )
 
         # Get vault service
         vault_service = VaultService()
@@ -107,17 +122,31 @@ async def semantic_search_files(
         # Limit results
         results = results[:request.limit]
 
-        logger.info(f"✅ Found {len(results)} semantic matches")
+        logger.info(f"Found {len(results)} semantic matches")
 
-        return SemanticSearchResponse(
+        response_data = SemanticSearchResponse(
             results=results,
             query=request.query,
             total_results=len(results)
         )
 
+        return SuccessResponse(
+            data=response_data,
+            message=f"Found {len(results)} semantic match{'es' if len(results) != 1 else ''}"
+        )
+
+    except HTTPException:
+        raise
+
     except Exception as e:
-        logger.error(f"❌ Semantic search failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Semantic search failed: {str(e)}")
+        logger.error(f"Semantic search failed", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to perform semantic search"
+            ).model_dump()
+        )
 
 
 # MARK: - Helper Functions
