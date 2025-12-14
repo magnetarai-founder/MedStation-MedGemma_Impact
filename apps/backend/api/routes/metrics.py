@@ -15,7 +15,7 @@ Usage:
     app.include_router(metrics_router, prefix="/api/metrics", tags=["metrics"])
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, status
 from typing import Dict, List
 import logging
 
@@ -27,25 +27,31 @@ from api.observability_middleware import (
 )
 from api.db_profiler import get_query_stats, reset_query_stats
 from api.cache_service import get_cache
+from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/api/v1/metrics",
+    tags=["metrics"]
+)
 
 
-@router.get("/health")
-async def health_check() -> Dict:
+@router.get("/health", response_model=SuccessResponse[Dict])
+async def health_check() -> SuccessResponse[Dict]:
     """
     Basic health check for monitoring systems.
 
     Returns:
         Simple health status
     """
-    return {
-        "status": "healthy",
-        "service": "magnetar-studio-backend",
-        "message": "Metrics service operational"
-    }
+    return SuccessResponse(
+        data={
+            "status": "healthy",
+            "service": "magnetar-studio-backend"
+        },
+        message="Metrics service operational"
+    )
 
 
 @router.get("/system")
@@ -75,9 +81,17 @@ async def get_system_metrics() -> Dict:
             "database": db_stats,
             "cache": cache_stats
         }
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Failed to get system metrics: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get metrics: {str(e)}")
+        logger.error(f"Failed to get system metrics", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to retrieve system metrics"
+            ).model_dump()
+        )
 
 
 @router.get("/requests")

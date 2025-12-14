@@ -1,63 +1,146 @@
 """
-Users router for ElohimOS - User profile management.
+Users API - User profile management
 
-Thin router that delegates to api/services/users.py for business logic.
-Uses lazy imports in endpoints to avoid circular dependencies.
-
-AUTH-P4: Sensitive operations protected with @require_perm decorators.
+Provides endpoints for managing user profiles and settings.
+Follows MagnetarStudio API standards (see API_STANDARDS.md).
 """
 
-from fastapi import APIRouter, HTTPException, Request, Depends
+import logging
+from fastapi import APIRouter, HTTPException, Depends, status
+from api.auth_middleware import get_current_user, User
 from api.permissions import require_perm
+from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.schemas.user_models import UserProfile, UserProfileUpdate
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/api/v1/users",
-    tags=["users"]
+    tags=["users"],
+    dependencies=[Depends(get_current_user)]  # All endpoints require auth
 )
 
 
-# Helper to get current user without importing at module level
-def get_current_user_dep():
-    """Lazy import of get_current_user dependency"""
-    from api.auth_middleware import get_current_user
-    return get_current_user
+@router.get(
+    "/me",
+    response_model=SuccessResponse[UserProfile],
+    name="users_get_me",
+    summary="Get current user profile",
+    description="Get or create the current user's profile information"
+)
+async def get_current_user_profile(
+    current_user: User = Depends(get_current_user)
+) -> SuccessResponse[UserProfile]:
+    """
+    Get or create the current user profile.
 
-
-@router.get("/me", name="users_get_me")
-async def get_current_user_endpoint(request: Request):
-    """Get or create the current user profile"""
+    Returns:
+        User profile with settings and preferences
+    """
     from api.services import users
-    from api.schemas.user_models import UserProfile
 
     try:
-        return await users.get_or_create_user_profile()
+        profile = await users.get_or_create_user_profile()
+        return SuccessResponse(
+            data=profile,
+            message="User profile retrieved successfully"
+        )
+
+    except HTTPException:
+        raise  # Re-raise FastAPI exceptions
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get user profile: {str(e)}")
+        logger.error(f"Failed to get user profile", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to retrieve user profile"
+            ).model_dump()
+        )
 
 
-@router.put("/me", name="users_update_me")
-async def update_current_user_endpoint(request: Request):
-    """Update the current user profile"""
+@router.put(
+    "/me",
+    response_model=SuccessResponse[UserProfile],
+    name="users_update_me",
+    summary="Update current user profile",
+    description="Update the current user's profile settings and preferences"
+)
+async def update_current_user_profile(
+    updates: UserProfileUpdate,  # Automatic Pydantic validation
+    current_user: User = Depends(get_current_user)
+) -> SuccessResponse[UserProfile]:
+    """
+    Update the current user profile.
+
+    Args:
+        updates: Profile fields to update (only provided fields are updated)
+
+    Returns:
+        Updated user profile
+    """
     from api.services import users
-    from api.schemas.user_models import UserProfileUpdate
 
     try:
-        # Parse request body
-        body = await request.json()
-        updates = UserProfileUpdate(**body)
-        return await users.update_user_profile(updates.dict(exclude_unset=True))
+        profile = await users.update_user_profile(updates.dict(exclude_unset=True))
+        return SuccessResponse(
+            data=profile,
+            message="User profile updated successfully"
+        )
+
+    except HTTPException:
+        raise  # Re-raise FastAPI exceptions
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update user profile: {str(e)}")
+        logger.error(f"Failed to update user profile", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to update user profile"
+            ).model_dump()
+        )
 
 
-# AUTH-P4: Tightened per AUTH-P4 - reset requires system.manage_settings permission
-@router.post("/reset", name="users_reset")
+@router.post(
+    "/reset",
+    response_model=SuccessResponse[dict],
+    name="users_reset",
+    summary="Reset user profile",
+    description="Reset user profile to defaults (requires system.manage_settings permission)"
+)
 @require_perm("system.manage_settings")
-async def reset_user_endpoint(request: Request, current_user: dict = Depends(get_current_user_dep)):
-    """Reset user profile (for testing/dev) - Phase 0: only clears profiles, not auth"""
+async def reset_user_profile(
+    current_user: User = Depends(get_current_user)
+) -> SuccessResponse[dict]:
+    """
+    Reset user profile (for testing/dev).
+
+    WARNING: This clears all user profile data.
+    Requires system.manage_settings permission.
+
+    Returns:
+        Reset confirmation
+    """
     from api.services import users
 
     try:
-        return await users.reset_user_profile()
+        result = await users.reset_user_profile()
+        return SuccessResponse(
+            data=result,
+            message="User profile reset successfully"
+        )
+
+    except HTTPException:
+        raise  # Re-raise FastAPI exceptions
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to reset user profile: {str(e)}")
+        logger.error(f"Failed to reset user profile", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to reset user profile"
+            ).model_dump()
+        )
