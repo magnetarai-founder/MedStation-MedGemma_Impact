@@ -17,6 +17,8 @@ Notes:
 - Temp chunks stored under PATHS.shared_files_dir / "temp" / {transfer_id}
 - Metadata stored in {transfer_id}/metadata.json
 - All endpoints require authentication
+
+Follows MagnetarStudio API standards (see API_STANDARDS.md).
 """
 
 from __future__ import annotations
@@ -38,6 +40,7 @@ try:
 except ImportError:
     from auth_middleware import get_current_user, User
 from api.config_paths import get_config_paths
+from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 
 logger = logging.getLogger(__name__)
 PATHS = get_config_paths()
@@ -103,74 +106,153 @@ class InitResponse(BaseModel):
     chunk_size: int
 
 
-@router.post("/init", response_model=InitResponse)
+class UploadProgress(BaseModel):
+    uploaded_chunks: int
+    total_chunks: int
+    percentage: float
+
+
+class UploadChunkResponse(BaseModel):
+    success: bool
+    message: str
+    resumed: bool
+    progress: Optional[UploadProgress] = None
+
+
+class CommitResponse(BaseModel):
+    success: bool
+    message: str
+    filename: str
+    final_path: str
+    sha256: str
+    size_bytes: int
+
+
+class TransferStatusResponse(BaseModel):
+    transfer_id: str
+    filename: str
+    size_bytes: int
+    status: str
+    chunk_size: int
+    total_chunks: int
+    uploaded_chunks: int
+    missing_chunks: int
+    progress_percentage: float
+    next_missing_chunk: Optional[int]
+    missing_chunk_indices: List[int]
+    created_at: Optional[str]
+    updated_at: Optional[str]
+    completed_at: Optional[str]
+    is_complete: bool
+
+
+@router.post(
+    "/init",
+    response_model=SuccessResponse[InitResponse],
+    status_code=status.HTTP_201_CREATED,
+    name="p2p_init_transfer",
+    summary="Initialize transfer",
+    description="Initialize a new P2P file transfer with chunked upload support"
+)
 async def init_transfer(
     body: InitRequest,
     current_user: User = Depends(get_current_user)
-):
-    """Initialize a new transfer and allocate a temp directory.
+) -> SuccessResponse[InitResponse]:
+    """
+    Initialize a new transfer and allocate a temp directory
 
     Creates transfer ID, temp directory, and metadata file for tracking.
 
+    Args:
+        body: Transfer initialization request with filename and size
+
     Returns:
-        InitResponse with transfer_id and chunk_size
+        Transfer ID and chunk size for upload
     """
-    # Validate file size
-    if body.size_bytes > MAX_FILE_SIZE:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"File size exceeds maximum allowed ({MAX_FILE_SIZE / (1024**3):.1f} GB)"
-        )
+    try:
+        # Validate file size
+        if body.size_bytes > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message=f"File size exceeds maximum allowed ({MAX_FILE_SIZE / (1024**3):.1f} GB)"
+                ).model_dump()
+            )
 
-    # Generate transfer ID
-    transfer_id = secrets.token_urlsafe(16)
+        # Generate transfer ID
+        transfer_id = secrets.token_urlsafe(16)
 
-    # Create transfer directory
-    transfer_dir = _get_transfer_dir(transfer_id)
-    transfer_dir.mkdir(parents=True, exist_ok=True)
+        # Create transfer directory
+        transfer_dir = _get_transfer_dir(transfer_id)
+        transfer_dir.mkdir(parents=True, exist_ok=True)
 
-    # Calculate total chunks
-    total_chunks = (body.size_bytes + CHUNK_SIZE - 1) // CHUNK_SIZE
+        # Calculate total chunks
+        total_chunks = (body.size_bytes + CHUNK_SIZE - 1) // CHUNK_SIZE
 
-    # Create metadata
-    metadata = {
-        "transfer_id": transfer_id,
-        "filename": body.filename,
-        "size_bytes": body.size_bytes,
-        "mime_type": body.mime_type,
-        "chunk_size": CHUNK_SIZE,
-        "total_chunks": total_chunks,
-        "uploaded_chunks": [],
-        "user_id": current_user.user_id,
-        "created_at": datetime.now().isoformat(),
-        "status": "initialized"
-    }
-
-    _save_metadata(transfer_id, metadata)
-
-    logger.info(
-        f"Transfer initialized: {transfer_id}",
-        extra={
+        # Create metadata
+        metadata = {
             "transfer_id": transfer_id,
             "filename": body.filename,
             "size_bytes": body.size_bytes,
+            "mime_type": body.mime_type,
+            "chunk_size": CHUNK_SIZE,
             "total_chunks": total_chunks,
-            "user_id": current_user.user_id
+            "uploaded_chunks": [],
+            "user_id": current_user.user_id,
+            "created_at": datetime.now().isoformat(),
+            "status": "initialized"
         }
-    )
 
-    return InitResponse(transfer_id=transfer_id, chunk_size=CHUNK_SIZE)
+        _save_metadata(transfer_id, metadata)
+
+        logger.info(
+            f"Transfer initialized: {transfer_id}",
+            extra={
+                "transfer_id": transfer_id,
+                "filename": body.filename,
+                "size_bytes": body.size_bytes,
+                "total_chunks": total_chunks,
+                "user_id": current_user.user_id
+            }
+        )
+
+        return SuccessResponse(
+            data=InitResponse(transfer_id=transfer_id, chunk_size=CHUNK_SIZE),
+            message=f"Transfer initialized for '{body.filename}' ({total_chunks} chunks)"
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        logger.error(f"Failed to initialize transfer", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to initialize transfer"
+            ).model_dump()
+        )
 
 
-@router.post("/upload-chunk")
+@router.post(
+    "/upload-chunk",
+    response_model=SuccessResponse[UploadChunkResponse],
+    status_code=status.HTTP_200_OK,
+    name="p2p_upload_chunk",
+    summary="Upload chunk",
+    description="Upload a single chunk with SHA-256 verification (supports resume)"
+)
 async def upload_chunk(
     transfer_id: str = Form(...),
     index: int = Form(...),
     checksum: str = Form(...),
     chunk: UploadFile = File(...),
     current_user: User = Depends(get_current_user)
-):
-    """Upload a chunk for a given transfer.
+) -> SuccessResponse[UploadChunkResponse]:
+    """
+    Upload a chunk for a given transfer
 
     Writes chunk to disk, verifies SHA-256 checksum, and updates metadata.
     Supports resume - if chunk already uploaded, returns success.
@@ -182,39 +264,56 @@ async def upload_chunk(
         chunk: Chunk file data
 
     Returns:
-        JSON with success status
+        Upload progress and status
     """
-    # Load metadata
-    metadata = _load_metadata(transfer_id)
-    if not metadata:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Transfer not found"
-        )
-
-    # Verify ownership
-    if metadata["user_id"] != current_user.user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Transfer belongs to another user"
-        )
-
-    # Validate chunk index
-    if index < 0 or index >= metadata["total_chunks"]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid chunk index (expected 0-{metadata['total_chunks']-1})"
-        )
-
-    # Check if chunk already uploaded (resume support)
-    if index in metadata["uploaded_chunks"]:
-        logger.info(f"Chunk {index} already uploaded for transfer {transfer_id}")
-        return {"success": True, "message": "Chunk already uploaded", "resumed": True}
-
-    # Write chunk to disk
-    chunk_path = _get_transfer_dir(transfer_id) / f"chunk_{index:06d}"
-
     try:
+        # Load metadata
+        metadata = _load_metadata(transfer_id)
+        if not metadata:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message="Transfer not found"
+                ).model_dump()
+            )
+
+        # Verify ownership
+        if metadata["user_id"] != current_user.user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.FORBIDDEN,
+                    message="Transfer belongs to another user"
+                ).model_dump()
+            )
+
+        # Validate chunk index
+        if index < 0 or index >= metadata["total_chunks"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message=f"Invalid chunk index (expected 0-{metadata['total_chunks']-1})"
+                ).model_dump()
+            )
+
+        # Check if chunk already uploaded (resume support)
+        if index in metadata["uploaded_chunks"]:
+            logger.info(f"Chunk {index} already uploaded for transfer {transfer_id}")
+            return SuccessResponse(
+                data=UploadChunkResponse(
+                    success=True,
+                    message="Chunk already uploaded",
+                    resumed=True,
+                    progress=None
+                ),
+                message="Chunk already uploaded (resumed)"
+            )
+
+        # Write chunk to disk
+        chunk_path = _get_transfer_dir(transfer_id) / f"chunk_{index:06d}"
+
         # Read and write chunk data
         chunk_data = await chunk.read()
 
@@ -223,7 +322,10 @@ async def upload_chunk(
         if actual_checksum != checksum:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Checksum mismatch (expected: {checksum}, got: {actual_checksum})"
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message=f"Checksum mismatch (expected: {checksum}, got: {actual_checksum})"
+                ).model_dump()
             )
 
         # Write to disk
@@ -247,25 +349,37 @@ async def upload_chunk(
             }
         )
 
-        return {
-            "success": True,
-            "message": "Chunk uploaded successfully",
-            "resumed": False,
-            "progress": {
-                "uploaded_chunks": len(metadata["uploaded_chunks"]),
-                "total_chunks": metadata["total_chunks"],
-                "percentage": round((len(metadata["uploaded_chunks"]) / metadata["total_chunks"]) * 100, 2)
-            }
-        }
+        progress = UploadProgress(
+            uploaded_chunks=len(metadata["uploaded_chunks"]),
+            total_chunks=metadata["total_chunks"],
+            percentage=round((len(metadata["uploaded_chunks"]) / metadata["total_chunks"]) * 100, 2)
+        )
+
+        return SuccessResponse(
+            data=UploadChunkResponse(
+                success=True,
+                message="Chunk uploaded successfully",
+                resumed=False,
+                progress=progress
+            ),
+            message=f"Chunk {index + 1}/{metadata['total_chunks']} uploaded ({progress.percentage}%)"
+        )
+
+    except HTTPException:
+        raise
 
     except Exception as e:
-        logger.error(f"Chunk upload failed: {e}", exc_info=True)
+        logger.error(f"Chunk upload failed for transfer {transfer_id}", exc_info=True)
         # Clean up partial chunk
+        chunk_path = _get_transfer_dir(transfer_id) / f"chunk_{index:06d}"
         if chunk_path.exists():
             chunk_path.unlink()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Chunk upload failed: {str(e)}"
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Chunk upload failed"
+            ).model_dump()
         )
 
 
@@ -274,12 +388,20 @@ class CommitRequest(BaseModel):
     expected_sha256: Optional[str] = None
 
 
-@router.post("/commit")
+@router.post(
+    "/commit",
+    response_model=SuccessResponse[CommitResponse],
+    status_code=status.HTTP_200_OK,
+    name="p2p_commit_transfer",
+    summary="Commit transfer",
+    description="Finalize transfer by merging chunks and verifying integrity"
+)
 async def commit_transfer(
     body: CommitRequest,
     current_user: User = Depends(get_current_user)
-):
-    """Commit a transfer: verify all chunks, merge, and compute final hash.
+) -> SuccessResponse[CommitResponse]:
+    """
+    Commit a transfer: verify all chunks, merge, and compute final hash
 
     Merges all chunks into final file and verifies integrity.
 
@@ -287,32 +409,41 @@ async def commit_transfer(
         body: CommitRequest with transfer_id and optional expected_sha256
 
     Returns:
-        JSON with success status, final file path, and SHA-256 hash
+        Final file path and SHA-256 hash
     """
-    # Load metadata
-    metadata = _load_metadata(body.transfer_id)
-    if not metadata:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Transfer not found"
-        )
-
-    # Verify ownership
-    if metadata["user_id"] != current_user.user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Transfer belongs to another user"
-        )
-
-    # Verify all chunks uploaded
-    if len(metadata["uploaded_chunks"]) != metadata["total_chunks"]:
-        missing_chunks = set(range(metadata["total_chunks"])) - set(metadata["uploaded_chunks"])
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Transfer incomplete: {len(missing_chunks)} chunks missing"
-        )
-
     try:
+        # Load metadata
+        metadata = _load_metadata(body.transfer_id)
+        if not metadata:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message="Transfer not found"
+                ).model_dump()
+            )
+
+        # Verify ownership
+        if metadata["user_id"] != current_user.user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.FORBIDDEN,
+                    message="Transfer belongs to another user"
+                ).model_dump()
+            )
+
+        # Verify all chunks uploaded
+        if len(metadata["uploaded_chunks"]) != metadata["total_chunks"]:
+            missing_chunks = set(range(metadata["total_chunks"])) - set(metadata["uploaded_chunks"])
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message=f"Transfer incomplete: {len(missing_chunks)} chunks missing"
+                ).model_dump()
+            )
+
         # Merge chunks into final file
         transfer_dir = _get_transfer_dir(body.transfer_id)
         final_file_path = PATHS.data_dir / "shared_files" / metadata["filename"]
@@ -326,7 +457,10 @@ async def commit_transfer(
                 if not chunk_path.exists():
                     raise HTTPException(
                         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail=f"Chunk {chunk_index} missing from disk"
+                        detail=ErrorResponse(
+                            error_code=ErrorCode.INTERNAL_ERROR,
+                            message=f"Chunk {chunk_index} missing from disk"
+                        ).model_dump()
                     )
 
                 with open(chunk_path, 'rb') as chunk_file:
@@ -341,7 +475,10 @@ async def commit_transfer(
             final_file_path.unlink()
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Final hash mismatch (expected: {body.expected_sha256}, got: {final_hash})"
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message=f"Final hash mismatch (expected: {body.expected_sha256}, got: {final_hash})"
+                ).model_dump()
             )
 
         # Update metadata
@@ -368,37 +505,57 @@ async def commit_transfer(
             if chunk_path.exists():
                 chunk_path.unlink()
 
-        return {
-            "success": True,
-            "message": "Transfer completed successfully",
-            "filename": metadata["filename"],
-            "final_path": str(final_file_path),
-            "sha256": final_hash,
-            "size_bytes": metadata["size_bytes"]
-        }
+        return SuccessResponse(
+            data=CommitResponse(
+                success=True,
+                message="Transfer completed successfully",
+                filename=metadata["filename"],
+                final_path=str(final_file_path),
+                sha256=final_hash,
+                size_bytes=metadata["size_bytes"]
+            ),
+            message=f"Transfer completed: {metadata['filename']} ({metadata['size_bytes']} bytes)"
+        )
 
     except HTTPException:
         raise
+
     except Exception as e:
-        logger.error(f"Transfer commit failed: {e}", exc_info=True)
+        logger.error(f"Transfer commit failed for {body.transfer_id}", exc_info=True)
         # Update metadata to failed status
-        metadata["status"] = "failed"
-        metadata["error"] = str(e)
-        metadata["failed_at"] = datetime.now().isoformat()
-        _save_metadata(body.transfer_id, metadata)
+        try:
+            metadata = _load_metadata(body.transfer_id)
+            if metadata:
+                metadata["status"] = "failed"
+                metadata["error"] = str(e)
+                metadata["failed_at"] = datetime.now().isoformat()
+                _save_metadata(body.transfer_id, metadata)
+        except Exception:
+            pass
 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Transfer commit failed: {str(e)}"
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Transfer commit failed"
+            ).model_dump()
         )
 
 
-@router.get("/status/{transfer_id}")
+@router.get(
+    "/status/{transfer_id}",
+    response_model=SuccessResponse[TransferStatusResponse],
+    status_code=status.HTTP_200_OK,
+    name="p2p_get_transfer_status",
+    summary="Get transfer status",
+    description="Get transfer progress, uploaded/missing chunks, and completion status"
+)
 async def get_status(
     transfer_id: str,
     current_user: User = Depends(get_current_user)
-):
-    """Return transfer status and missing chunks list.
+) -> SuccessResponse[TransferStatusResponse]:
+    """
+    Return transfer status and missing chunks list
 
     Returns current transfer progress, uploaded chunks, and next missing chunks.
 
@@ -406,49 +563,74 @@ async def get_status(
         transfer_id: Transfer ID from init
 
     Returns:
-        JSON with transfer status, progress, uploaded/missing chunks
+        Transfer status with progress and missing chunks
     """
-    # Load metadata
-    metadata = _load_metadata(transfer_id)
-    if not metadata:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Transfer not found"
+    try:
+        # Load metadata
+        metadata = _load_metadata(transfer_id)
+        if not metadata:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message="Transfer not found"
+                ).model_dump()
+            )
+
+        # Verify ownership
+        if metadata["user_id"] != current_user.user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.FORBIDDEN,
+                    message="Transfer belongs to another user"
+                ).model_dump()
+            )
+
+        # Calculate missing chunks
+        all_chunks = set(range(metadata["total_chunks"]))
+        uploaded_chunks = set(metadata["uploaded_chunks"])
+        missing_chunks = sorted(list(all_chunks - uploaded_chunks))
+
+        # Get next missing chunk (for sequential upload)
+        next_missing_chunk = missing_chunks[0] if missing_chunks else None
+
+        # Calculate progress
+        progress_percentage = round((len(uploaded_chunks) / metadata["total_chunks"]) * 100, 2) if metadata["total_chunks"] > 0 else 100.0
+
+        status_data = TransferStatusResponse(
+            transfer_id=transfer_id,
+            filename=metadata["filename"],
+            size_bytes=metadata["size_bytes"],
+            status=metadata["status"],
+            chunk_size=metadata["chunk_size"],
+            total_chunks=metadata["total_chunks"],
+            uploaded_chunks=len(uploaded_chunks),
+            missing_chunks=len(missing_chunks),
+            progress_percentage=progress_percentage,
+            next_missing_chunk=next_missing_chunk,
+            missing_chunk_indices=missing_chunks[:10],  # First 10 missing chunks
+            created_at=metadata.get("created_at"),
+            updated_at=metadata.get("updated_at"),
+            completed_at=metadata.get("completed_at"),
+            is_complete=len(missing_chunks) == 0
         )
 
-    # Verify ownership
-    if metadata["user_id"] != current_user.user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Transfer belongs to another user"
+        return SuccessResponse(
+            data=status_data,
+            message=f"Transfer {progress_percentage}% complete ({len(uploaded_chunks)}/{metadata['total_chunks']} chunks)"
         )
 
-    # Calculate missing chunks
-    all_chunks = set(range(metadata["total_chunks"]))
-    uploaded_chunks = set(metadata["uploaded_chunks"])
-    missing_chunks = sorted(list(all_chunks - uploaded_chunks))
+    except HTTPException:
+        raise
 
-    # Get next missing chunk (for sequential upload)
-    next_missing_chunk = missing_chunks[0] if missing_chunks else None
-
-    # Calculate progress
-    progress_percentage = round((len(uploaded_chunks) / metadata["total_chunks"]) * 100, 2) if metadata["total_chunks"] > 0 else 100.0
-
-    return {
-        "transfer_id": transfer_id,
-        "filename": metadata["filename"],
-        "size_bytes": metadata["size_bytes"],
-        "status": metadata["status"],
-        "chunk_size": metadata["chunk_size"],
-        "total_chunks": metadata["total_chunks"],
-        "uploaded_chunks": len(uploaded_chunks),
-        "missing_chunks": len(missing_chunks),
-        "progress_percentage": progress_percentage,
-        "next_missing_chunk": next_missing_chunk,
-        "missing_chunk_indices": missing_chunks[:10],  # First 10 missing chunks
-        "created_at": metadata.get("created_at"),
-        "updated_at": metadata.get("updated_at"),
-        "completed_at": metadata.get("completed_at"),
-        "is_complete": len(missing_chunks) == 0
-    }
+    except Exception as e:
+        logger.error(f"Failed to get transfer status for {transfer_id}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to retrieve transfer status"
+            ).model_dump()
+        )
 
