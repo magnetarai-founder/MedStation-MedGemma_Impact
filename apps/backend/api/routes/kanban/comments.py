@@ -1,5 +1,14 @@
+"""
+Kanban Comments Routes
+
+Provides CRUD operations for task comments in kanban boards.
+
+Follows MagnetarStudio API standards (see API_STANDARDS.md).
+"""
+
 from __future__ import annotations
 
+import logging
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -10,9 +19,11 @@ try:
 except ImportError:
     from auth_middleware import get_current_user
 from api.services import kanban_service as kb
+from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 
+logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/kanban", tags=["kanban-comments"], dependencies=[Depends(get_current_user)])
+router = APIRouter(prefix="/api/v1/kanban", tags=["kanban-comments"])
 
 
 class CommentCreate(BaseModel):
@@ -28,20 +39,87 @@ class CommentItem(BaseModel):
   created_at: str
 
 
-@router.get("/tasks/{task_id}/comments", response_model=List[CommentItem])
-async def list_comments(task_id: str):
-  return [CommentItem(**c) for c in kb.list_comments(task_id)]
+@router.get(
+    "/tasks/{task_id}/comments",
+    response_model=SuccessResponse[List[CommentItem]],
+    status_code=status.HTTP_200_OK,
+    name="list_task_comments",
+    summary="List comments",
+    description="List all comments on a kanban task"
+)
+async def list_comments(
+    task_id: str,
+    current_user: dict = Depends(get_current_user)
+) -> SuccessResponse[List[CommentItem]]:
+    """List all comments on a task"""
+    try:
+        comments = [CommentItem(**c) for c in kb.list_comments(task_id)]
+        return SuccessResponse(
+            data=comments,
+            message=f"Retrieved {len(comments)} comment(s)"
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        logger.error(f"Failed to list comments for task {task_id}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to retrieve comments"
+            ).model_dump()
+        )
 
 
-@router.post("/comments", response_model=CommentItem)
-async def create_comment(body: CommentCreate, current_user: dict = Depends(get_current_user)):
-  try:
-    c = kb.create_comment(body.task_id, current_user["user_id"], body.content)
-    return CommentItem(**c)
-  except ValueError as e:
-    if "not found" in str(e).lower():
-      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-  except Exception as e:
-    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to create comment: {str(e)}")
+@router.post(
+    "/comments",
+    response_model=SuccessResponse[CommentItem],
+    status_code=status.HTTP_201_CREATED,
+    name="create_task_comment",
+    summary="Create comment",
+    description="Create a new comment on a kanban task"
+)
+async def create_comment(
+    body: CommentCreate,
+    current_user: dict = Depends(get_current_user)
+) -> SuccessResponse[CommentItem]:
+    """Create a new comment on a task"""
+    try:
+        c = kb.create_comment(body.task_id, current_user["user_id"], body.content)
+        return SuccessResponse(
+            data=CommentItem(**c),
+            message="Comment created successfully"
+        )
+
+    except ValueError as e:
+        if "not found" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message=str(e)
+                ).model_dump()
+            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=ErrorResponse(
+                error_code=ErrorCode.VALIDATION_ERROR,
+                message=str(e)
+            ).model_dump()
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        logger.error(f"Failed to create comment", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to create comment"
+            ).model_dump()
+        )
 
