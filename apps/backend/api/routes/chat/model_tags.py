@@ -1,24 +1,32 @@
 """
 Model Tags API Routes
-Provides endpoints for getting and managing model tags (auto-detected + manual)
+
+Provides endpoints for getting and managing model tags (auto-detected + manual).
+Supports tag detection from model names and manual tag overrides.
+
+Follows MagnetarStudio API standards (see API_STANDARDS.md).
 """
 
 import logging
 from typing import List, Dict
-from fastapi import APIRouter, HTTPException, Request, Depends
+from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel
 
 try:
-    from api.auth_middleware import get_current_user
+    from api.auth_middleware import get_current_user, User
 except ImportError:
-    from auth_middleware import get_current_user
+    from auth_middleware import get_current_user, User
 
 from api.services.model_tags import detect_tags_from_name, get_all_tags, get_tag_description, get_tag_icon
 from api.services.model_tag_overrides import get_manual_tags, set_manual_tags, delete_manual_tags, get_merged_tags
+from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/api/v1/chat",
+    tags=["model-tags"]
+)
 
 
 # MARK: - Request/Response Models
@@ -46,8 +54,15 @@ class TagDefinition(BaseModel):
 
 # MARK: - API Endpoints
 
-@router.get("/tags/available", name="get_available_tags")
-async def get_available_tags() -> List[TagDefinition]:
+@router.get(
+    "/tags/available",
+    response_model=SuccessResponse[List[TagDefinition]],
+    status_code=status.HTTP_200_OK,
+    name="get_available_tags",
+    summary="Get available tags",
+    description="Get all available tag categories with metadata, sorted by priority"
+)
+async def get_available_tags() -> SuccessResponse[List[TagDefinition]]:
     """
     Get all available tag categories with metadata
 
@@ -55,14 +70,39 @@ async def get_available_tags() -> List[TagDefinition]:
     """
     try:
         tags = get_all_tags()
-        return [TagDefinition(**tag) for tag in tags]
+        tag_list = [TagDefinition(**tag) for tag in tags]
+
+        return SuccessResponse(
+            data=tag_list,
+            message=f"Retrieved {len(tag_list)} available tag(s)"
+        )
+
+    except HTTPException:
+        raise
+
     except Exception as e:
-        logger.error(f"Failed to get available tags: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get available tags", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to retrieve available tags"
+            ).model_dump()
+        )
 
 
-@router.get("/models/{model_name}/tags", name="get_model_tags")
-async def get_model_tags(model_name: str, current_user: Dict = Depends(get_current_user)) -> ModelTagsResponse:
+@router.get(
+    "/models/{model_name}/tags",
+    response_model=SuccessResponse[ModelTagsResponse],
+    status_code=status.HTTP_200_OK,
+    name="get_model_tags",
+    summary="Get model tags",
+    description="Get tags for a specific model (auto-detected + manual overrides)"
+)
+async def get_model_tags(
+    model_name: str,
+    current_user: User = Depends(get_current_user)
+) -> SuccessResponse[ModelTagsResponse]:
     """
     Get tags for a specific model (auto-detected + manual override)
 
@@ -82,23 +122,43 @@ async def get_model_tags(model_name: str, current_user: Dict = Depends(get_curre
         # Merge tags (manual completely replaces auto if it exists)
         final_tags = get_merged_tags(model_name, auto_tags)
 
-        return ModelTagsResponse(
-            model_name=model_name,
-            tags=sorted(final_tags),
-            auto_detected=sorted(auto_tags),
-            manual_override=manual_tags is not None
+        return SuccessResponse(
+            data=ModelTagsResponse(
+                model_name=model_name,
+                tags=sorted(final_tags),
+                auto_detected=sorted(auto_tags),
+                manual_override=manual_tags is not None
+            ),
+            message=f"Retrieved tags for model '{model_name}'"
         )
+
+    except HTTPException:
+        raise
+
     except Exception as e:
-        logger.error(f"Failed to get tags for model {model_name}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get tags for model {model_name}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message=f"Failed to retrieve tags for model"
+            ).model_dump()
+        )
 
 
-@router.put("/models/{model_name}/tags", name="update_model_tags")
+@router.put(
+    "/models/{model_name}/tags",
+    response_model=SuccessResponse[ModelTagsResponse],
+    status_code=status.HTTP_200_OK,
+    name="update_model_tags",
+    summary="Update model tags",
+    description="Set manual tag overrides for a model (replaces auto-detected tags)"
+)
 async def update_model_tags(
     model_name: str,
     request: UpdateTagsRequest,
-    current_user: Dict = Depends(get_current_user)
-) -> ModelTagsResponse:
+    current_user: User = Depends(get_current_user)
+) -> SuccessResponse[ModelTagsResponse]:
     """
     Update manual tag overrides for a model
 
@@ -118,8 +178,12 @@ async def update_model_tags(
 
         if invalid_tags:
             raise HTTPException(
-                status_code=400,
-                detail=f"Invalid tags: {', '.join(invalid_tags)}"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message=f"Invalid tags: {', '.join(invalid_tags)}",
+                    details={"invalid_tags": invalid_tags}
+                ).model_dump()
             )
 
         # Save manual overrides
@@ -130,16 +194,30 @@ async def update_model_tags(
 
     except HTTPException:
         raise
+
     except Exception as e:
-        logger.error(f"Failed to update tags for model {model_name}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to update tags for model {model_name}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to update model tags"
+            ).model_dump()
+        )
 
 
-@router.delete("/models/{model_name}/tags", name="delete_model_tag_overrides")
+@router.delete(
+    "/models/{model_name}/tags",
+    response_model=SuccessResponse[ModelTagsResponse],
+    status_code=status.HTTP_200_OK,
+    name="delete_model_tag_overrides",
+    summary="Delete tag overrides",
+    description="Delete manual tag overrides for a model (revert to auto-detection)"
+)
 async def delete_model_tag_overrides(
     model_name: str,
-    current_user: Dict = Depends(get_current_user)
-) -> ModelTagsResponse:
+    current_user: User = Depends(get_current_user)
+) -> SuccessResponse[ModelTagsResponse]:
     """
     Delete manual tag overrides for a model (revert to auto-detection)
 
@@ -159,6 +237,15 @@ async def delete_model_tag_overrides(
         # Return auto-detected tags
         return await get_model_tags(model_name, current_user)
 
+    except HTTPException:
+        raise
+
     except Exception as e:
-        logger.error(f"Failed to delete tag overrides for model {model_name}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to delete tag overrides for model {model_name}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to delete tag overrides"
+            ).model_dump()
+        )
