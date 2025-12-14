@@ -51,6 +51,15 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
     services_loaded = []
     services_failed = []
 
+    # Add observability middleware FIRST (before routers)
+    try:
+        from api.observability_middleware import add_observability_middleware
+        add_observability_middleware(app)
+        services_loaded.append("Observability Middleware")
+    except Exception as e:
+        services_failed.append("Observability Middleware")
+        logger.error("Failed to load observability middleware", exc_info=True)
+
     # Chat API
     try:
         from api.routes import chat as _chat_routes
