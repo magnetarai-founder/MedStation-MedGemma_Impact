@@ -2,11 +2,15 @@
 Vault Authentication Routes
 
 Handles biometric (WebAuthn/Touch ID) and decoy mode authentication for vault unlock.
+
 Security model:
 - KEK (Key Encryption Key) derived client-side via PBKDF2
 - KEK wrapped with WebAuthn credential ID or passphrase
 - Server stores only wrapped KEKs, never plaintext keys
 - Rate limiting on unlock attempts (5 attempts → 5-minute lockout)
+- Plausible deniability via dual-password mode (sensitive vs decoy vaults)
+
+Follows MagnetarStudio API standards (see API_STANDARDS.md).
 """
 
 import logging
@@ -16,7 +20,7 @@ import sqlite3
 import time
 from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
-from fastapi import APIRouter, HTTPException, Depends, Request, status
+from fastapi import APIRouter, HTTPException, Depends, Request, Query, status
 from pydantic import BaseModel, Field
 
 try:
@@ -27,6 +31,7 @@ from api.config_paths import get_config_paths
 from api.utils import sanitize_for_log
 from api.rate_limiter import rate_limiter, get_client_ip
 from api.services.crypto_wrap import wrap_key, unwrap_key
+from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 # from api.services.webauthn_verify import verify_assertion, verify_registration
 
 logger = logging.getLogger(__name__)
@@ -235,11 +240,17 @@ def _unwrap_kek(wrapped_kek: bytes, wrap_key: bytes, method: str = "aes_kw") -> 
 
 # ===== Endpoints =====
 
-@router.post("/setup/biometric", response_model=UnlockResponse)
+@router.post(
+    "/setup/biometric",
+    response_model=SuccessResponse[UnlockResponse],
+    status_code=status.HTTP_201_CREATED,
+    summary="Setup biometric unlock",
+    description="Configure biometric (Touch ID/WebAuthn) authentication for vault"
+)
 async def setup_biometric(
     request: BiometricSetupRequest,
     current_user: User = Depends(get_current_user)
-):
+) -> SuccessResponse[UnlockResponse]:
     """
     Setup biometric unlock for vault
 
@@ -341,26 +352,41 @@ async def setup_biometric(
 
         logger.info("Biometric setup successful", extra={"user_id": current_user.user_id})
 
-        return UnlockResponse(
-            success=True,
-            session_id=session_id,
-            message="Biometric unlock configured successfully"
+        return SuccessResponse(
+            data=UnlockResponse(
+                success=True,
+                session_id=session_id,
+                message="Biometric unlock configured successfully"
+            ),
+            message="Biometric authentication configured"
         )
+
+    except HTTPException:
+        raise
 
     except Exception as e:
-        logger.error(f"Biometric setup failed: {e}", exc_info=True)
+        logger.error(f"Biometric setup failed", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to setup biometric unlock: {str(e)}"
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to setup biometric unlock"
+            ).model_dump()
         )
 
 
-@router.post("/unlock/biometric", response_model=UnlockResponse)
+@router.post(
+    "/unlock/biometric",
+    response_model=SuccessResponse[UnlockResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Unlock vault with biometric",
+    description="Unlock vault using biometric authentication (Touch ID/WebAuthn). Rate limited: 5 attempts per 5 minutes."
+)
 async def unlock_biometric(
     req: BiometricUnlockRequest,
     request: Request,
     current_user: User = Depends(get_current_user)
-):
+) -> SuccessResponse[UnlockResponse]:
     """
     Unlock vault with biometric (Touch ID via WebAuthn)
 
@@ -379,7 +405,10 @@ async def unlock_biometric(
         _record_unlock_attempt(current_user.user_id, req.vault_id, False, 'biometric')
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many unlock attempts. Please wait 5 minutes."
+            detail=ErrorResponse(
+                error_code=ErrorCode.RATE_LIMITED,
+                message="Too many unlock attempts. Please wait 5 minutes."
+            ).model_dump()
         )
 
     try:
@@ -406,7 +435,10 @@ async def unlock_biometric(
                 _record_unlock_attempt(current_user.user_id, req.vault_id, False, 'biometric')
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Biometric unlock not configured for this vault"
+                    detail=ErrorResponse(
+                        error_code=ErrorCode.NOT_FOUND,
+                        message="Biometric unlock not configured for this vault"
+                    ).model_dump()
                 )
 
             credential_id, public_key, wrapped_kek_hex, salt_hex, wrap_method = row
@@ -448,28 +480,41 @@ async def unlock_biometric(
         logger.info("Biometric unlock successful", extra={"user_id": current_user.user_id})
 
         # Do NOT disclose vault_type to maintain plausible deniability
-        return UnlockResponse(
-            success=True,
-            session_id=session_id,
-            message="Vault unlocked successfully"
+        return SuccessResponse(
+            data=UnlockResponse(
+                success=True,
+                session_id=session_id,
+                message="Vault unlocked successfully"
+            ),
+            message="Vault unlocked"
         )
 
     except HTTPException:
         raise
+
     except Exception as e:
         _record_unlock_attempt(current_user.user_id, req.vault_id, False, 'biometric')
-        logger.error(f"Biometric unlock failed: {e}", exc_info=True)
+        logger.error(f"Biometric unlock failed", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to unlock vault"
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to unlock vault"
+            ).model_dump()
         )
 
 
-@router.post("/setup/dual-password", response_model=UnlockResponse)
+@router.post(
+    "/setup/dual-password",
+    response_model=SuccessResponse[UnlockResponse],
+    status_code=status.HTTP_201_CREATED,
+    summary="Setup dual-password mode",
+    description="Configure dual-password vault (sensitive + decoy for plausible deniability)"
+)
 async def setup_dual_password(
     request: DualPasswordSetupRequest,
     current_user: User = Depends(get_current_user)
-):
+) -> SuccessResponse[UnlockResponse]:
     """
     Setup dual-password mode (sensitive vs unsensitive vaults)
 
@@ -490,7 +535,10 @@ async def setup_dual_password(
         if request.password_sensitive == request.password_unsensitive:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Sensitive and unsensitive passwords must differ"
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message="Sensitive and decoy passwords must differ"
+                ).model_dump()
             )
 
         logger.info(
@@ -587,39 +635,52 @@ async def setup_dual_password(
 
         logger.info("Dual-password setup successful", extra={"user_id": current_user.user_id})
 
-        return UnlockResponse(
-            success=True,
-            session_id=session_id,
-            message="Dual-password vault configured successfully"
+        return SuccessResponse(
+            data=UnlockResponse(
+                success=True,
+                session_id=session_id,
+                message="Dual-password vault configured successfully"
+            ),
+            message="Dual-password mode configured"
         )
 
     except HTTPException:
         raise
+
     except Exception as e:
-        logger.error(f"Dual-password setup failed: {e}", exc_info=True)
+        logger.error(f"Dual-password setup failed", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to setup dual-password mode: {str(e)}"
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to setup dual-password mode"
+            ).model_dump()
         )
 
 
 # Backward compatibility alias
-@router.post("/setup/decoy", response_model=UnlockResponse, include_in_schema=False)
+@router.post("/setup/decoy", response_model=SuccessResponse[UnlockResponse], include_in_schema=False)
 async def setup_decoy_legacy(
     request: DualPasswordSetupRequest,
     current_user: User = Depends(get_current_user)
-):
+) -> SuccessResponse[UnlockResponse]:
     """Legacy endpoint - redirects to /setup/dual-password"""
     return await setup_dual_password(request, current_user)
 
 
-@router.post("/unlock/passphrase", response_model=UnlockResponse)
+@router.post(
+    "/unlock/passphrase",
+    response_model=SuccessResponse[UnlockResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Unlock vault with passphrase",
+    description="Unlock vault using passphrase. Supports dual-password mode. Rate limited: 5 attempts per 5 minutes."
+)
 async def unlock_passphrase(
-    vault_id: str,
-    passphrase: str,
-    request: Request,
+    vault_id: str = Query(..., description="Vault UUID"),
+    passphrase: str = Query(..., description="Vault passphrase"),
+    request: Request = None,
     current_user: User = Depends(get_current_user)
-):
+) -> SuccessResponse[UnlockResponse]:
     """
     Unlock vault with passphrase
 
@@ -636,7 +697,10 @@ async def unlock_passphrase(
         _record_unlock_attempt(current_user.user_id, vault_id, False, 'passphrase')
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many unlock attempts. Please wait 5 minutes."
+            detail=ErrorResponse(
+                error_code=ErrorCode.RATE_LIMITED,
+                message="Too many unlock attempts. Please wait 5 minutes."
+            ).model_dump()
         )
 
     try:
@@ -663,7 +727,10 @@ async def unlock_passphrase(
                 _record_unlock_attempt(current_user.user_id, vault_id, False, 'passphrase')
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Vault not configured"
+                    detail=ErrorResponse(
+                        error_code=ErrorCode.NOT_FOUND,
+                        message="Vault not configured"
+                    ).model_dump()
                 )
 
             salt_real_hex, wrapped_kek_real_hex, salt_decoy_hex, wrapped_kek_decoy_hex, decoy_enabled, wrap_method = row
@@ -676,7 +743,10 @@ async def unlock_passphrase(
             _record_unlock_attempt(current_user.user_id, vault_id, False, 'passphrase')
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Vault not properly configured"
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message="Vault not properly configured"
+                ).model_dump()
             )
 
         # Try real vault first
@@ -716,28 +786,41 @@ async def unlock_passphrase(
         logger.info("Passphrase unlock successful", extra={"user_id": current_user.user_id})
 
         # Do NOT disclose vault_type
-        return UnlockResponse(
-            success=True,
-            session_id=session_id,
-            message="Vault unlocked successfully"
+        return SuccessResponse(
+            data=UnlockResponse(
+                success=True,
+                session_id=session_id,
+                message="Vault unlocked successfully"
+            ),
+            message="Vault unlocked"
         )
 
     except HTTPException:
         raise
+
     except Exception as e:
         _record_unlock_attempt(current_user.user_id, vault_id, False, 'passphrase')
-        logger.error(f"Passphrase unlock failed: {e}", exc_info=True)
+        logger.error(f"Passphrase unlock failed", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to unlock vault"
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to unlock vault"
+            ).model_dump()
         )
 
 
-@router.get("/session/status")
+@router.get(
+    "/session/status",
+    response_model=SuccessResponse[Dict],
+    status_code=status.HTTP_200_OK,
+    summary="Check session status",
+    description="Check if vault is unlocked in current session (sessions expire after 1 hour)"
+)
 async def get_session_status(
-    vault_id: str,
+    vault_id: str = Query(..., description="Vault UUID"),
     current_user: User = Depends(get_current_user)
-):
+) -> SuccessResponse[Dict]:
     """
     Check if vault is unlocked in current session
 
@@ -750,27 +833,39 @@ async def get_session_status(
     if session_key in vault_sessions:
         session = vault_sessions[session_key]
 
-        # Check if session is still valid (e.g., < 1 hour old)
+        # Check if session is still valid (< 1 hour old)
         if time.time() - session['unlocked_at'] < 3600:
-            return {
-                "unlocked": True,
-                "session_id": session['session_id']
-            }
+            return SuccessResponse(
+                data={
+                    "unlocked": True,
+                    "session_id": session['session_id']
+                },
+                message="Vault is unlocked"
+            )
         else:
             # Session expired
             del vault_sessions[session_key]
 
-    return {
-        "unlocked": False,
-        "session_id": None
-    }
+    return SuccessResponse(
+        data={
+            "unlocked": False,
+            "session_id": None
+        },
+        message="Vault is locked"
+    )
 
 
-@router.post("/session/lock")
+@router.post(
+    "/session/lock",
+    response_model=SuccessResponse[Dict],
+    status_code=status.HTTP_200_OK,
+    summary="Lock vault",
+    description="Lock vault and clear session (KEK removed from memory)"
+)
 async def lock_vault(
-    vault_id: str,
+    vault_id: str = Query(..., description="Vault UUID"),
     current_user: User = Depends(get_current_user)
-):
+) -> SuccessResponse[Dict]:
     """
     Lock vault (clear session)
     """
@@ -780,4 +875,7 @@ async def lock_vault(
         del vault_sessions[session_key]
         logger.info("Vault locked", extra={"user_id": current_user.user_id, "vault_id": vault_id})
 
-    return {"success": True, "message": "Vault locked"}
+    return SuccessResponse(
+        data={"success": True},
+        message="Vault locked successfully"
+    )
