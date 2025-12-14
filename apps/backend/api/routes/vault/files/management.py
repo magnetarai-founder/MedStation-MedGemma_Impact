@@ -1,17 +1,16 @@
 """
 Vault Files Management Routes
 
-Handles file CRUD operations:
-- List files (simple and paginated)
-- Delete files
-- Rename files
-- Move files to different folders
+Handles file CRUD operations (list, delete, rename, move).
+
+Follows MagnetarStudio API standards (see API_STANDARDS.md).
 """
 
 import logging
 import sqlite3
-from typing import Dict, List
-from fastapi import APIRouter, HTTPException, Depends
+from typing import Dict, List, Any
+from fastapi import APIRouter, HTTPException, Depends, Query, status
+from pydantic import BaseModel
 
 try:
     from api.auth_middleware import get_current_user
@@ -19,6 +18,7 @@ except ImportError:
     from auth_middleware import get_current_user
 from api.services.vault.core import get_vault_service
 from api.services.vault.schemas import VaultFile
+from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 
 logger = logging.getLogger(__name__)
 
@@ -29,22 +29,108 @@ except ImportError:
     manager = None
     logger.warning("WebSocket manager not available for vault notifications")
 
-router = APIRouter()
+router = APIRouter(prefix="/api/v1/vault", tags=["vault-files"])
 
 
-@router.get("/files", response_model=List[VaultFile])
-async def list_vault_files(vault_type: str = "real", folder_path: str = None, current_user: Dict = Depends(get_current_user)):
-    """List all uploaded vault files, optionally filtered by folder"""
-    user_id = current_user["user_id"]
+class PaginatedFilesResponse(BaseModel):
+    """Paginated files response"""
+    files: List[Dict[str, Any]]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+    has_next: bool
+    has_prev: bool
 
-    if vault_type not in ('real', 'decoy'):
-        raise HTTPException(status_code=400, detail="vault_type must be 'real' or 'decoy'")
 
-    service = get_vault_service()
-    return service.list_files(user_id, vault_type, folder_path)
+class FileOperationResponse(BaseModel):
+    """Response for file operations"""
+    success: bool
+    file_id: str
+    message: str
 
 
-@router.get("/files-paginated")
+class RenameFileResponse(BaseModel):
+    """Response for file rename"""
+    success: bool
+    file_id: str
+    new_filename: str
+    message: str
+
+
+class MoveFileResponse(BaseModel):
+    """Response for file move"""
+    success: bool
+    file_id: str
+    new_folder_path: str
+    message: str
+
+
+@router.get(
+    "/files",
+    response_model=SuccessResponse[List[VaultFile]],
+    status_code=status.HTTP_200_OK,
+    name="vault_list_files",
+    summary="List files",
+    description="List vault files, optionally filtered by folder"
+)
+async def list_vault_files(
+    vault_type: str = "real",
+    folder_path: str = None,
+    current_user: Dict = Depends(get_current_user)
+) -> SuccessResponse[List[VaultFile]]:
+    """
+    List all uploaded vault files, optionally filtered by folder
+
+    Args:
+        vault_type: 'real' or 'decoy' (default: 'real')
+        folder_path: Optional folder path to filter by
+
+    Returns:
+        List of vault files
+    """
+    try:
+        user_id = current_user["user_id"]
+
+        if vault_type not in ('real', 'decoy'):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message="vault_type must be 'real' or 'decoy'"
+                ).model_dump()
+            )
+
+        service = get_vault_service()
+        files = service.list_files(user_id, vault_type, folder_path)
+
+        return SuccessResponse(
+            data=files,
+            message=f"Retrieved {len(files)} file{'s' if len(files) != 1 else ''}"
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        logger.error(f"Failed to list vault files", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to list files"
+            ).model_dump()
+        )
+
+
+@router.get(
+    "/files-paginated",
+    response_model=SuccessResponse[PaginatedFilesResponse],
+    status_code=status.HTTP_200_OK,
+    name="vault_list_files_paginated",
+    summary="List files (paginated)",
+    description="Get vault files with pagination and sorting"
+)
 async def get_vault_files_paginated(
     vault_type: str = "real",
     folder_path: str = "/",
@@ -52,154 +138,375 @@ async def get_vault_files_paginated(
     page_size: int = 50,
     sort_by: str = "name",
     current_user: Dict = Depends(get_current_user)
-):
-    """Get vault files with pagination"""
-    user_id = current_user["user_id"]
-    service = get_vault_service()
+) -> SuccessResponse[PaginatedFilesResponse]:
+    """
+    Get vault files with pagination
 
-    if vault_type not in ('real', 'decoy'):
-        raise HTTPException(status_code=400, detail="vault_type must be 'real' or 'decoy'")
+    Args:
+        vault_type: 'real' or 'decoy' (default: 'real')
+        folder_path: Folder path to list (default: '/')
+        page: Page number (default: 1)
+        page_size: Items per page (1-100, default: 50)
+        sort_by: Sort field - 'name', 'date', or 'size' (default: 'name')
 
-    if page < 1:
-        raise HTTPException(status_code=400, detail="page must be >= 1")
-
-    if page_size < 1 or page_size > 100:
-        raise HTTPException(status_code=400, detail="page_size must be between 1 and 100")
-
-    # Calculate offset
-    offset = (page - 1) * page_size
-
-    conn = sqlite3.connect(str(service.db_path))
-    cursor = conn.cursor()
-
+    Returns:
+        Paginated list of files with metadata
+    """
     try:
-        # Get total count
-        cursor.execute("""
-            SELECT COUNT(*) FROM vault_files
-            WHERE user_id = ? AND vault_type = ? AND folder_path = ? AND is_deleted = 0
-        """, (user_id, vault_type, folder_path))
-        total_count = cursor.fetchone()[0]
+        user_id = current_user["user_id"]
+        service = get_vault_service()
 
-        # Get paginated files
-        order_clause = {
-            'name': 'filename ASC',
-            'date': 'created_at DESC',
-            'size': 'file_size DESC'
-        }.get(sort_by, 'filename ASC')
+        if vault_type not in ('real', 'decoy'):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message="vault_type must be 'real' or 'decoy'"
+                ).model_dump()
+            )
 
-        cursor.execute(f"""
-            SELECT * FROM vault_files
-            WHERE user_id = ? AND vault_type = ? AND folder_path = ? AND is_deleted = 0
-            ORDER BY {order_clause}
-            LIMIT ? OFFSET ?
-        """, (user_id, vault_type, folder_path, page_size, offset))
+        if page < 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message="page must be >= 1"
+                ).model_dump()
+            )
 
-        files = []
-        for row in cursor.fetchall():
-            files.append({
-                "id": row[0],
-                "user_id": row[1],
-                "vault_type": row[2],
-                "filename": row[3],
-                "file_size": row[4],
-                "mime_type": row[5],
-                "encrypted_path": row[6],
-                "folder_path": row[7],
-                "created_at": row[8],
-                "updated_at": row[9]
-            })
+        if page_size < 1 or page_size > 100:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message="page_size must be between 1 and 100"
+                ).model_dump()
+            )
 
-        total_pages = (total_count + page_size - 1) // page_size
+        # Calculate offset
+        offset = (page - 1) * page_size
 
-        return {
-            "files": files,
-            "total": total_count,
-            "page": page,
-            "page_size": page_size,
-            "total_pages": total_pages,
-            "has_next": page < total_pages,
-            "has_prev": page > 1
-        }
-    finally:
-        conn.close()
+        conn = sqlite3.connect(str(service.db_path))
+        cursor = conn.cursor()
 
+        try:
+            # Get total count
+            cursor.execute("""
+                SELECT COUNT(*) FROM vault_files
+                WHERE user_id = ? AND vault_type = ? AND folder_path = ? AND is_deleted = 0
+            """, (user_id, vault_type, folder_path))
+            total_count = cursor.fetchone()[0]
 
-@router.delete("/files/{file_id}")
-async def delete_vault_file(file_id: str, vault_type: str = "real", current_user: Dict = Depends(get_current_user)):
-    """Delete a file"""
-    user_id = current_user["user_id"]
+            # Get paginated files
+            order_clause = {
+                'name': 'filename ASC',
+                'date': 'created_at DESC',
+                'size': 'file_size DESC'
+            }.get(sort_by, 'filename ASC')
 
-    if vault_type not in ('real', 'decoy'):
-        raise HTTPException(status_code=400, detail="vault_type must be 'real' or 'decoy'")
+            cursor.execute(f"""
+                SELECT * FROM vault_files
+                WHERE user_id = ? AND vault_type = ? AND folder_path = ? AND is_deleted = 0
+                ORDER BY {order_clause}
+                LIMIT ? OFFSET ?
+            """, (user_id, vault_type, folder_path, page_size, offset))
 
-    service = get_vault_service()
-    success = service.delete_file(user_id, vault_type, file_id)
+            files = []
+            for row in cursor.fetchall():
+                files.append({
+                    "id": row[0],
+                    "user_id": row[1],
+                    "vault_type": row[2],
+                    "filename": row[3],
+                    "file_size": row[4],
+                    "mime_type": row[5],
+                    "encrypted_path": row[6],
+                    "folder_path": row[7],
+                    "created_at": row[8],
+                    "updated_at": row[9]
+                })
 
-    if not success:
-        raise HTTPException(status_code=404, detail="File not found")
+            total_pages = (total_count + page_size - 1) // page_size
 
-    # Broadcast file deletion event
-    if manager:
-        await manager.broadcast_file_event(
-            event_type="file_deleted",
-            file_data={"id": file_id},
-            vault_type=vault_type,
-            user_id=user_id
+            result = PaginatedFilesResponse(
+                files=files,
+                total=total_count,
+                page=page,
+                page_size=page_size,
+                total_pages=total_pages,
+                has_next=page < total_pages,
+                has_prev=page > 1
+            )
+
+            return SuccessResponse(
+                data=result,
+                message=f"Retrieved page {page}/{total_pages} ({len(files)} files)"
+            )
+
+        finally:
+            conn.close()
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        logger.error(f"Failed to get paginated vault files", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to retrieve paginated files"
+            ).model_dump()
         )
 
-    return {"success": True, "message": "File deleted"}
 
+@router.delete(
+    "/files/{file_id}",
+    response_model=SuccessResponse[FileOperationResponse],
+    status_code=status.HTTP_200_OK,
+    name="vault_delete_file",
+    summary="Delete file",
+    description="Delete a file from the vault"
+)
+async def delete_vault_file(
+    file_id: str,
+    vault_type: str = "real",
+    current_user: Dict = Depends(get_current_user)
+) -> SuccessResponse[FileOperationResponse]:
+    """
+    Delete a file from the vault
 
-@router.put("/files/{file_id}/rename")
-async def rename_vault_file(file_id: str, new_filename: str, vault_type: str = "real", current_user: Dict = Depends(get_current_user)):
-    """Rename a file"""
-    user_id = current_user["user_id"]
+    Args:
+        file_id: File ID to delete
+        vault_type: 'real' or 'decoy' (default: 'real')
 
-    if vault_type not in ('real', 'decoy'):
-        raise HTTPException(status_code=400, detail="vault_type must be 'real' or 'decoy'")
+    Returns:
+        Success confirmation
+    """
+    try:
+        user_id = current_user["user_id"]
 
-    if not new_filename or not new_filename.strip():
-        raise HTTPException(status_code=400, detail="new_filename is required")
+        if vault_type not in ('real', 'decoy'):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message="vault_type must be 'real' or 'decoy'"
+                ).model_dump()
+            )
 
-    service = get_vault_service()
-    success = service.rename_file(user_id, vault_type, file_id, new_filename.strip())
+        service = get_vault_service()
+        success = service.delete_file(user_id, vault_type, file_id)
 
-    if not success:
-        raise HTTPException(status_code=404, detail="File not found")
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message="File not found"
+                ).model_dump()
+            )
 
-    # Broadcast file rename event
-    if manager:
-        await manager.broadcast_file_event(
-            event_type="file_renamed",
-            file_data={"id": file_id, "new_filename": new_filename.strip()},
-            vault_type=vault_type,
-            user_id=user_id
+        # Broadcast file deletion event
+        if manager:
+            await manager.broadcast_file_event(
+                event_type="file_deleted",
+                file_data={"id": file_id},
+                vault_type=vault_type,
+                user_id=user_id
+            )
+
+        return SuccessResponse(
+            data=FileOperationResponse(
+                success=True,
+                file_id=file_id,
+                message="File deleted"
+            ),
+            message="File deleted successfully"
         )
 
-    return {"success": True, "message": "File renamed", "new_filename": new_filename.strip()}
+    except HTTPException:
+        raise
 
-
-@router.put("/files/{file_id}/move")
-async def move_vault_file(file_id: str, new_folder_path: str, vault_type: str = "real", current_user: Dict = Depends(get_current_user)):
-    """Move a file to a different folder"""
-    user_id = current_user["user_id"]
-
-    if vault_type not in ('real', 'decoy'):
-        raise HTTPException(status_code=400, detail="vault_type must be 'real' or 'decoy'")
-
-    service = get_vault_service()
-    success = service.move_file(user_id, vault_type, file_id, new_folder_path)
-
-    if not success:
-        raise HTTPException(status_code=404, detail="File not found")
-
-    # Broadcast file move event
-    if manager:
-        await manager.broadcast_file_event(
-            event_type="file_moved",
-            file_data={"id": file_id, "new_folder_path": new_folder_path},
-            vault_type=vault_type,
-            user_id=user_id
+    except Exception as e:
+        logger.error(f"Failed to delete vault file {file_id}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to delete file"
+            ).model_dump()
         )
 
-    return {"success": True, "message": "File moved", "new_folder_path": new_folder_path}
+
+@router.put(
+    "/files/{file_id}/rename",
+    response_model=SuccessResponse[RenameFileResponse],
+    status_code=status.HTTP_200_OK,
+    name="vault_rename_file",
+    summary="Rename file",
+    description="Rename a vault file"
+)
+async def rename_vault_file(
+    file_id: str,
+    new_filename: str,
+    vault_type: str = "real",
+    current_user: Dict = Depends(get_current_user)
+) -> SuccessResponse[RenameFileResponse]:
+    """
+    Rename a vault file
+
+    Args:
+        file_id: File ID to rename
+        new_filename: New filename
+        vault_type: 'real' or 'decoy' (default: 'real')
+
+    Returns:
+        Success confirmation with new filename
+    """
+    try:
+        user_id = current_user["user_id"]
+
+        if vault_type not in ('real', 'decoy'):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message="vault_type must be 'real' or 'decoy'"
+                ).model_dump()
+            )
+
+        if not new_filename or not new_filename.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message="new_filename is required"
+                ).model_dump()
+            )
+
+        service = get_vault_service()
+        success = service.rename_file(user_id, vault_type, file_id, new_filename.strip())
+
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message="File not found"
+                ).model_dump()
+            )
+
+        # Broadcast file rename event
+        if manager:
+            await manager.broadcast_file_event(
+                event_type="file_renamed",
+                file_data={"id": file_id, "new_filename": new_filename.strip()},
+                vault_type=vault_type,
+                user_id=user_id
+            )
+
+        return SuccessResponse(
+            data=RenameFileResponse(
+                success=True,
+                file_id=file_id,
+                new_filename=new_filename.strip(),
+                message="File renamed"
+            ),
+            message=f"File renamed to '{new_filename.strip()}'"
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        logger.error(f"Failed to rename vault file {file_id}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to rename file"
+            ).model_dump()
+        )
+
+
+@router.put(
+    "/files/{file_id}/move",
+    response_model=SuccessResponse[MoveFileResponse],
+    status_code=status.HTTP_200_OK,
+    name="vault_move_file",
+    summary="Move file",
+    description="Move a file to a different folder"
+)
+async def move_vault_file(
+    file_id: str,
+    new_folder_path: str,
+    vault_type: str = "real",
+    current_user: Dict = Depends(get_current_user)
+) -> SuccessResponse[MoveFileResponse]:
+    """
+    Move a file to a different folder
+
+    Args:
+        file_id: File ID to move
+        new_folder_path: Destination folder path
+        vault_type: 'real' or 'decoy' (default: 'real')
+
+    Returns:
+        Success confirmation with new folder path
+    """
+    try:
+        user_id = current_user["user_id"]
+
+        if vault_type not in ('real', 'decoy'):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message="vault_type must be 'real' or 'decoy'"
+                ).model_dump()
+            )
+
+        service = get_vault_service()
+        success = service.move_file(user_id, vault_type, file_id, new_folder_path)
+
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message="File not found"
+                ).model_dump()
+            )
+
+        # Broadcast file move event
+        if manager:
+            await manager.broadcast_file_event(
+                event_type="file_moved",
+                file_data={"id": file_id, "new_folder_path": new_folder_path},
+                vault_type=vault_type,
+                user_id=user_id
+            )
+
+        return SuccessResponse(
+            data=MoveFileResponse(
+                success=True,
+                file_id=file_id,
+                new_folder_path=new_folder_path,
+                message="File moved"
+            ),
+            message=f"File moved to '{new_folder_path}'"
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        logger.error(f"Failed to move vault file {file_id}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to move file"
+            ).model_dump()
+        )
