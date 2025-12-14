@@ -1,17 +1,25 @@
 """
-Database Health Endpoint
+Database Health Routes
 
 Returns database path and table counts for admin monitoring.
+
+Follows MagnetarStudio API standards (see API_STANDARDS.md).
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Dict, Any
 import sqlite3
 import logging
 from pathlib import Path
 
+from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+
 logger = logging.getLogger(__name__)
-router = APIRouter()
+
+router = APIRouter(
+    prefix="/api/v1/system",
+    tags=["system"]
+)
 
 try:
     from api.config_paths import PATHS
@@ -22,14 +30,25 @@ except ImportError:
     from admin_service import require_founder_rights
 
 
-@router.get("/db-health")
-async def get_db_health(user: dict = Depends(require_founder_rights)) -> Dict[str, Any]:
+@router.get(
+    "/db-health",
+    response_model=SuccessResponse[Dict[str, Any]],
+    status_code=status.HTTP_200_OK,
+    name="get_database_health",
+    summary="Get database health",
+    description="Get database health information including path, size, and table counts (founder-only)"
+)
+async def get_db_health(
+    user: dict = Depends(require_founder_rights)
+) -> SuccessResponse[Dict[str, Any]]:
     """
-    Get database health information (Founder Rights only)
+    Get database health information
 
-    Returns:
-    - Database file path
-    - Table counts for key tables including Kanban workspace
+    Security:
+    - Requires founder rights
+
+    Returns database path, size, and table counts for monitoring.
+    Falls back to partial info on errors (non-critical).
     """
     try:
         db_path = str(PATHS.app_db)
@@ -58,7 +77,7 @@ async def get_db_health(user: dict = Depends(require_founder_rights)) -> Dict[st
 
         conn.close()
 
-        return {
+        data = {
             "status": "healthy",
             "database_path": db_path,
             "database_exists": Path(db_path).exists(),
@@ -66,12 +85,25 @@ async def get_db_health(user: dict = Depends(require_founder_rights)) -> Dict[st
             "table_counts": table_counts
         }
 
+        return SuccessResponse(
+            data=data,
+            message="Database health retrieved successfully"
+        )
+
+    except HTTPException:
+        raise
+
     except Exception as e:
-        logger.error(f"Failed to get database health: {e}", exc_info=True)
-        return {
+        logger.error(f"Failed to get database health", exc_info=True)
+        # Return partial health info even on error (non-critical monitoring endpoint)
+        partial_data = {
             "status": "error",
-            "error": str(e),
             "database_path": str(PATHS.app_db),
             "database_exists": False,
-            "table_counts": {}
+            "table_counts": {},
+            "partial": True
         }
+        return SuccessResponse(
+            data=partial_data,
+            message="Partial database health retrieved (error occurred)"
+        )

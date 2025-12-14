@@ -1,12 +1,23 @@
 """
-Vault WebSocket Routes - Real-time collaboration and notifications
+Vault WebSocket Routes
+
+Real-time collaboration and notifications via WebSocket connections.
+
+Follows MagnetarStudio API standards (see API_STANDARDS.md).
 """
 
 import logging
 import json
 from datetime import datetime
-from typing import Optional
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from typing import Optional, Dict, Any
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Depends, status
+
+from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+
+try:
+    from api.auth_middleware import get_current_user
+except ImportError:
+    from auth_middleware import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +28,10 @@ except ImportError:
     manager = None
     logger.warning("WebSocket manager not available for vault notifications")
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/api/v1/vault",
+    tags=["vault-ws"]
+)
 
 
 @router.websocket("/ws/{user_id}")
@@ -98,20 +112,51 @@ async def websocket_endpoint(
         logger.info(f"WebSocket disconnected: user={user_id}, vault={vault_type}")
 
 
-@router.get("/ws/online-users")
-async def get_online_users(vault_type: Optional[str] = None):
-    """Get list of currently online users"""
-    if not manager:
-        return {
-            "online_users": [],
-            "total_connections": 0,
-            "vault_type": vault_type,
-            "manager_available": False
-        }
+@router.get(
+    "/ws/online-users",
+    response_model=SuccessResponse[Dict[str, Any]],
+    status_code=status.HTTP_200_OK,
+    name="get_online_users",
+    summary="Get online users",
+    description="Get list of currently online users in vault WebSocket connections"
+)
+async def get_online_users(
+    vault_type: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+) -> SuccessResponse[Dict[str, Any]]:
+    """Get list of currently online users via WebSocket"""
+    try:
+        if not manager:
+            data = {
+                "online_users": [],
+                "total_connections": 0,
+                "vault_type": vault_type,
+                "manager_available": False
+            }
+            message = "WebSocket manager not available"
+        else:
+            data = {
+                "online_users": manager.get_online_users(vault_type),
+                "total_connections": manager.get_connection_count(),
+                "vault_type": vault_type,
+                "manager_available": True
+            }
+            message = f"Retrieved {len(data['online_users'])} online user(s)"
 
-    return {
-        "online_users": manager.get_online_users(vault_type),
-        "total_connections": manager.get_connection_count(),
-        "vault_type": vault_type,
-        "manager_available": True
-    }
+        return SuccessResponse(
+            data=data,
+            message=message
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        logger.error(f"Failed to get online users", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to retrieve online users"
+            ).model_dump()
+        )
