@@ -4,13 +4,15 @@ Vault Files Download Routes
 Handles file download operations:
 - File download with decryption
 - Thumbnail generation for images
+
+Follows MagnetarStudio API standards (see API_STANDARDS.md).
 """
 
 import logging
 import sqlite3
 from pathlib import Path
 from typing import Dict
-from fastapi import APIRouter, HTTPException, Request, Depends
+from fastapi import APIRouter, HTTPException, Request, Depends, status
 from fastapi.responses import FileResponse, Response
 from cryptography.fernet import Fernet
 
@@ -21,127 +23,250 @@ except ImportError:
 from api.services.vault.core import get_vault_service
 from api.rate_limiter import get_client_ip, rate_limiter
 from api.audit_logger import get_audit_logger
+from api.routes.schemas import ErrorResponse, ErrorCode
 
 logger = logging.getLogger(__name__)
 audit_logger = get_audit_logger()
 
-router = APIRouter()
+router = APIRouter(prefix="/api/v1/vault", tags=["vault-download"])
 
 
-@router.get("/files/{file_id}/thumbnail")
+@router.get(
+    "/files/{file_id}/thumbnail",
+    response_class=Response,
+    status_code=status.HTTP_200_OK,
+    name="vault_get_file_thumbnail",
+    summary="Get file thumbnail",
+    description="Get thumbnail for image files (200x200 max)"
+)
 async def get_file_thumbnail(
     file_id: str,
     vault_type: str = "real",
     vault_passphrase: str = "",
     current_user: Dict = Depends(get_current_user)
-):
-    """Get thumbnail for image files"""
-    user_id = current_user["user_id"]
-    service = get_vault_service()
+) -> Response:
+    """
+    Get thumbnail for image files
 
-    if vault_type not in ('real', 'decoy'):
-        raise HTTPException(status_code=400, detail="vault_type must be 'real' or 'decoy'")
+    Args:
+        file_id: File ID to generate thumbnail for
+        vault_type: 'real' or 'decoy' (default: 'real')
+        vault_passphrase: Vault passphrase for decryption
 
-    if not vault_passphrase:
-        raise HTTPException(status_code=400, detail="vault_passphrase is required")
-
-    # Get file metadata
-    conn = sqlite3.connect(service.db_path)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT * FROM vault_files
-        WHERE id = ? AND user_id = ? AND vault_type = ? AND is_deleted = 0
-    """, (file_id, user_id, vault_type))
-
-    file_row = cursor.fetchone()
-    conn.close()
-
-    if not file_row:
-        raise HTTPException(status_code=404, detail="File not found")
-
-    # Check if file is an image
-    if not file_row['mime_type'].startswith('image/'):
-        raise HTTPException(status_code=400, detail="File is not an image")
-
-    # Read and decrypt file
-    encrypted_path = file_row['encrypted_path']
-    file_path = service.files_path / encrypted_path
-
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="File data not found")
-
-    with open(file_path, 'rb') as f:
-        encrypted_data = f.read()
-
-    # Decrypt file
-    encryption_key, _ = service._get_encryption_key(vault_passphrase)
-    fernet = Fernet(encryption_key)
-
+    Returns:
+        JPEG thumbnail image (200x200 max)
+    """
     try:
-        decrypted_data = fernet.decrypt(encrypted_data)
+        user_id = current_user["user_id"]
+        service = get_vault_service()
+
+        if vault_type not in ('real', 'decoy'):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message="vault_type must be 'real' or 'decoy'"
+                ).model_dump()
+            )
+
+        if not vault_passphrase:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message="vault_passphrase is required"
+                ).model_dump()
+            )
+
+        # Get file metadata
+        conn = sqlite3.connect(service.db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT * FROM vault_files
+            WHERE id = ? AND user_id = ? AND vault_type = ? AND is_deleted = 0
+        """, (file_id, user_id, vault_type))
+
+        file_row = cursor.fetchone()
+        conn.close()
+
+        if not file_row:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message="File not found"
+                ).model_dump()
+            )
+
+        # Check if file is an image
+        if not file_row['mime_type'].startswith('image/'):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message="File is not an image"
+                ).model_dump()
+            )
+
+        # Read and decrypt file
+        encrypted_path = file_row['encrypted_path']
+        file_path = service.files_path / encrypted_path
+
+        if not file_path.exists():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message="File data not found"
+                ).model_dump()
+            )
+
+        with open(file_path, 'rb') as f:
+            encrypted_data = f.read()
+
+        # Decrypt file
+        encryption_key, _ = service._get_encryption_key(vault_passphrase)
+        fernet = Fernet(encryption_key)
+
+        try:
+            decrypted_data = fernet.decrypt(encrypted_data)
+        except Exception as e:
+            logger.error(f"Decryption failed for file {file_id}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message="Decryption failed - invalid passphrase"
+                ).model_dump()
+            )
+
+        # Generate thumbnail
+        thumbnail = service.generate_thumbnail(decrypted_data, max_size=(200, 200))
+
+        if not thumbnail:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.INTERNAL_ERROR,
+                    message="Thumbnail generation failed"
+                ).model_dump()
+            )
+
+        return Response(content=thumbnail, media_type="image/jpeg")
+
+    except HTTPException:
+        raise
+
     except Exception as e:
-        logger.error(f"Decryption failed: {e}")
-        raise HTTPException(status_code=400, detail="Decryption failed - invalid passphrase?")
-
-    # Generate thumbnail
-    thumbnail = service.generate_thumbnail(decrypted_data, max_size=(200, 200))
-
-    if not thumbnail:
-        raise HTTPException(status_code=500, detail="Thumbnail generation failed")
-
-    return Response(content=thumbnail, media_type="image/jpeg")
+        logger.error(f"Failed to generate thumbnail for file {file_id}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to generate thumbnail"
+            ).model_dump()
+        )
 
 
-@router.get("/files/{file_id}/download")
+@router.get(
+    "/files/{file_id}/download",
+    response_class=FileResponse,
+    status_code=status.HTTP_200_OK,
+    name="vault_download_file",
+    summary="Download file",
+    description="Download and decrypt a vault file (rate limited: 120 requests/minute)"
+)
 async def download_vault_file(
     request: Request,
     file_id: str,
     vault_type: str = "real",
     vault_passphrase: str = "",
     current_user: Dict = Depends(get_current_user)
-):
-    """Download and decrypt a vault file"""
-    # Rate limiting: 120 requests per minute per user
-    ip = get_client_ip(request)
-    key = f"vault:file:download:{current_user['user_id']}:{ip}"
-    if not rate_limiter.check_rate_limit(key, max_requests=120, window_seconds=60):
-        raise HTTPException(status_code=429, detail="Rate limit exceeded for vault.file.downloaded")
+) -> FileResponse:
+    """
+    Download and decrypt a vault file
 
-    user_id = current_user["user_id"]
+    Args:
+        file_id: File ID to download
+        vault_type: 'real' or 'decoy' (default: 'real')
+        vault_passphrase: Vault passphrase for decryption
 
-    if vault_type not in ('real', 'decoy'):
-        raise HTTPException(status_code=400, detail="vault_type must be 'real' or 'decoy'")
+    Returns:
+        Decrypted file as attachment
 
-    if not vault_passphrase:
-        raise HTTPException(status_code=400, detail="vault_passphrase is required")
-
-    service = get_vault_service()
-
-    # Get file metadata
-    conn = sqlite3.connect(service.db_path)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT * FROM vault_files
-        WHERE id = ? AND user_id = ? AND vault_type = ? AND is_deleted = 0
-    """, (file_id, user_id, vault_type))
-
-    file_row = cursor.fetchone()
-    conn.close()
-
-    if not file_row:
-        raise HTTPException(status_code=404, detail="File not found")
-
-    # Read encrypted file from disk
-    encrypted_file_path = Path(file_row['encrypted_path'])
-
-    if not encrypted_file_path.exists():
-        raise HTTPException(status_code=404, detail="Encrypted file not found on disk")
-
+    Rate limit: 120 requests per minute per user
+    """
     try:
+        # Rate limiting: 120 requests per minute per user
+        ip = get_client_ip(request)
+        key = f"vault:file:download:{current_user['user_id']}:{ip}"
+        if not rate_limiter.check_rate_limit(key, max_requests=120, window_seconds=60):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.RATE_LIMIT,
+                    message="Rate limit exceeded. Max 120 downloads per minute"
+                ).model_dump()
+            )
+
+        user_id = current_user["user_id"]
+
+        if vault_type not in ('real', 'decoy'):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message="vault_type must be 'real' or 'decoy'"
+                ).model_dump()
+            )
+
+        if not vault_passphrase:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message="vault_passphrase is required"
+                ).model_dump()
+            )
+
+        service = get_vault_service()
+
+        # Get file metadata
+        conn = sqlite3.connect(service.db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT * FROM vault_files
+            WHERE id = ? AND user_id = ? AND vault_type = ? AND is_deleted = 0
+        """, (file_id, user_id, vault_type))
+
+        file_row = cursor.fetchone()
+        conn.close()
+
+        if not file_row:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message="File not found"
+                ).model_dump()
+            )
+
+        # Read encrypted file from disk
+        encrypted_file_path = Path(file_row['encrypted_path'])
+
+        if not encrypted_file_path.exists():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message="Encrypted file not found on disk"
+                ).model_dump()
+            )
+
         with open(encrypted_file_path, 'rb') as f:
             encrypted_data = f.read()
 
@@ -172,6 +297,15 @@ async def download_vault_file(
             headers={"Content-Disposition": f"attachment; filename=\"{file_row['filename']}\""}
         )
 
+    except HTTPException:
+        raise
+
     except Exception as e:
-        logger.error(f"Failed to download file: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to decrypt file: {str(e)}")
+        logger.error(f"Failed to download file {file_id}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to decrypt and download file"
+            ).model_dump()
+        )
