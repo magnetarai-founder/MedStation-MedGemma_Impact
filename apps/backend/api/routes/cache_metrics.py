@@ -1,23 +1,21 @@
 """
 Cache Metrics API Endpoints
 
-Provides endpoints to monitor cache performance:
-- GET /api/cache/stats - Cache statistics (hit rate, size, etc.)
-- POST /api/cache/flush - Clear cache (admin only)
-- DELETE /api/cache/invalidate - Invalidate specific patterns
+Provides endpoints to monitor cache performance and management.
+
+Follows MagnetarStudio API standards (see API_STANDARDS.md).
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict, Any
 import logging
 
 from api.cache_service import get_cache
-# Uncomment when auth is integrated:
-# from api.auth_middleware import verify_token, require_founder
+from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/cache", tags=["cache"])
+router = APIRouter(prefix="/api/v1/cache", tags=["cache"])
 
 
 class CacheStatsResponse(BaseModel):
@@ -36,8 +34,15 @@ class InvalidateRequest(BaseModel):
     pattern: str
 
 
-@router.get("/stats", response_model=CacheStatsResponse)
-async def get_cache_stats():
+@router.get(
+    "/stats",
+    response_model=SuccessResponse[CacheStatsResponse],
+    status_code=status.HTTP_200_OK,
+    name="cache_get_stats",
+    summary="Get cache statistics",
+    description="Get cache performance statistics including hit rate, memory usage, and key counts"
+)
+async def get_cache_stats() -> SuccessResponse[CacheStatsResponse]:
     """
     Get cache performance statistics.
 
@@ -59,15 +64,40 @@ async def get_cache_stats():
         cache = get_cache()
         stats = cache.get_stats()
 
-        return CacheStatsResponse(**stats)
+        return SuccessResponse(
+            data=CacheStatsResponse(**stats),
+            message="Cache statistics retrieved successfully"
+        )
+
+    except HTTPException:
+        raise
 
     except Exception as e:
-        logger.error(f"Error getting cache stats: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get cache stats")
+        logger.error(f"Failed to get cache stats", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to retrieve cache statistics"
+            ).model_dump()
+        )
 
 
-@router.post("/flush")
-async def flush_cache():
+class FlushResponse(BaseModel):
+    status: str
+    message: str
+    warning: str
+
+
+@router.post(
+    "/flush",
+    response_model=SuccessResponse[FlushResponse],
+    status_code=status.HTTP_200_OK,
+    name="cache_flush",
+    summary="Flush cache",
+    description="Clear all cache entries (WARNING: Clears ALL cached data - admin only)"
+)
+async def flush_cache() -> SuccessResponse[FlushResponse]:
     """
     Clear all cache entries.
 
@@ -83,21 +113,47 @@ async def flush_cache():
         cache = get_cache()
         cache.flush_all()
 
-        logger.warning("⚠️ Cache flushed by API request")
+        logger.warning("Cache flushed by API request")
 
-        return {
-            "status": "success",
-            "message": "Cache flushed successfully",
-            "warning": "All cached data has been cleared"
-        }
+        return SuccessResponse(
+            data=FlushResponse(
+                status="success",
+                message="Cache flushed successfully",
+                warning="All cached data has been cleared"
+            ),
+            message="Cache flushed successfully"
+        )
+
+    except HTTPException:
+        raise
 
     except Exception as e:
-        logger.error(f"Error flushing cache: {e}")
-        raise HTTPException(status_code=500, detail="Failed to flush cache")
+        logger.error(f"Failed to flush cache", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to flush cache"
+            ).model_dump()
+        )
 
 
-@router.post("/invalidate")
-async def invalidate_cache_pattern(request: InvalidateRequest):
+class InvalidateResponse(BaseModel):
+    status: str
+    pattern: str
+    deleted_count: int
+    message: str
+
+
+@router.post(
+    "/invalidate",
+    response_model=SuccessResponse[InvalidateResponse],
+    status_code=status.HTTP_200_OK,
+    name="cache_invalidate_pattern",
+    summary="Invalidate cache pattern",
+    description="Invalidate cache entries matching a pattern (e.g., 'user:*', 'ollama:*')"
+)
+async def invalidate_cache_pattern(request: InvalidateRequest) -> SuccessResponse[InvalidateResponse]:
     """
     Invalidate cache entries matching a pattern.
 
@@ -109,11 +165,11 @@ async def invalidate_cache_pattern(request: InvalidateRequest):
 
     Examples:
         # Invalidate all user caches
-        POST /api/cache/invalidate
+        POST /api/v1/cache/invalidate
         {"pattern": "user:*"}
 
         # Invalidate all Ollama model lists
-        POST /api/cache/invalidate
+        POST /api/v1/cache/invalidate
         {"pattern": "ollama:models:*"}
 
     TODO: Add authentication
@@ -124,20 +180,45 @@ async def invalidate_cache_pattern(request: InvalidateRequest):
 
         logger.info(f"Invalidated {deleted} cache entries matching '{request.pattern}'")
 
-        return {
-            "status": "success",
-            "pattern": request.pattern,
-            "deleted_count": deleted,
-            "message": f"Invalidated {deleted} cache entries"
-        }
+        return SuccessResponse(
+            data=InvalidateResponse(
+                status="success",
+                pattern=request.pattern,
+                deleted_count=deleted,
+                message=f"Invalidated {deleted} cache entries"
+            ),
+            message=f"Invalidated {deleted} cache entr{'y' if deleted == 1 else 'ies'}"
+        )
+
+    except HTTPException:
+        raise
 
     except Exception as e:
-        logger.error(f"Error invalidating cache pattern: {e}")
-        raise HTTPException(status_code=500, detail="Failed to invalidate cache")
+        logger.error(f"Failed to invalidate cache pattern", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to invalidate cache"
+            ).model_dump()
+        )
 
 
-@router.delete("/key/{key}")
-async def delete_cache_key(key: str):
+class DeleteKeyResponse(BaseModel):
+    status: str
+    key: str
+    message: str
+
+
+@router.delete(
+    "/key/{key}",
+    response_model=SuccessResponse[DeleteKeyResponse],
+    status_code=status.HTTP_200_OK,
+    name="cache_delete_key",
+    summary="Delete cache key",
+    description="Delete a specific cache key"
+)
+async def delete_cache_key(key: str) -> SuccessResponse[DeleteKeyResponse]:
     """
     Delete a specific cache key.
 
@@ -154,25 +235,52 @@ async def delete_cache_key(key: str):
         deleted = cache.delete(key)
 
         if deleted:
-            return {
-                "status": "success",
-                "key": key,
-                "message": "Cache key deleted"
-            }
+            return SuccessResponse(
+                data=DeleteKeyResponse(
+                    status="success",
+                    key=key,
+                    message="Cache key deleted"
+                ),
+                message=f"Cache key '{key}' deleted successfully"
+            )
         else:
-            return {
-                "status": "not_found",
-                "key": key,
-                "message": "Cache key not found"
-            }
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message="Cache key not found"
+                ).model_dump()
+            )
+
+    except HTTPException:
+        raise
 
     except Exception as e:
-        logger.error(f"Error deleting cache key: {e}")
-        raise HTTPException(status_code=500, detail="Failed to delete cache key")
+        logger.error(f"Failed to delete cache key '{key}'", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to delete cache key"
+            ).model_dump()
+        )
 
 
-@router.get("/health")
-async def cache_health():
+class CacheHealthResponse(BaseModel):
+    status: str
+    redis_connected: bool
+    message: str
+
+
+@router.get(
+    "/health",
+    response_model=SuccessResponse[CacheHealthResponse],
+    status_code=status.HTTP_200_OK,
+    name="cache_health_check",
+    summary="Cache health check",
+    description="Check if Redis cache is healthy and operational"
+)
+async def cache_health() -> SuccessResponse[CacheHealthResponse]:
     """
     Check if Redis cache is healthy.
 
@@ -191,16 +299,23 @@ async def cache_health():
         # Try a simple operation
         cache.redis.ping()
 
-        return {
-            "status": "healthy",
-            "redis_connected": True,
-            "message": "Cache is operational"
-        }
+        return SuccessResponse(
+            data=CacheHealthResponse(
+                status="healthy",
+                redis_connected=True,
+                message="Cache is operational"
+            ),
+            message="Cache is healthy"
+        )
 
     except Exception as e:
-        logger.error(f"Cache health check failed: {e}")
-        return {
-            "status": "unhealthy",
-            "redis_connected": False,
-            "message": f"Cache error: {str(e)}"
-        }
+        logger.error(f"Cache health check failed", exc_info=True)
+        # Return unhealthy status but with 200 OK (not an error from API perspective)
+        return SuccessResponse(
+            data=CacheHealthResponse(
+                status="unhealthy",
+                redis_connected=False,
+                message=f"Cache error: {str(e)}"
+            ),
+            message="Cache is unhealthy"
+        )
