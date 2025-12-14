@@ -1,12 +1,14 @@
 """
-Analytics API Routes - Sprint 6 Theme A
+Analytics API Routes
 
 Provides analytics data for the dashboard and exports.
+
+Follows MagnetarStudio API standards (see API_STANDARDS.md).
 """
 
 import logging
-from typing import Optional, Literal
-from fastapi import APIRouter, Depends, Request, HTTPException
+from typing import Optional, Literal, Dict, Any
+from fastapi import APIRouter, Depends, Request, HTTPException, status
 from fastapi.responses import Response
 
 try:
@@ -17,34 +19,34 @@ except ImportError:
     from permission_engine import require_perm
 
 from api.services.analytics import get_analytics_service
+from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/analytics", tags=["Analytics"])
+router = APIRouter(prefix="/api/v1/analytics", tags=["analytics"])
 
 
-@router.get("/usage", name="analytics_get_usage")
+@router.get(
+    "/usage",
+    response_model=SuccessResponse[Dict[str, Any]],
+    status_code=status.HTTP_200_OK,
+    name="analytics_get_usage",
+    summary="Get usage analytics",
+    description="Get usage analytics summary with model usage, trends, and top users/teams (requires analytics.view permission)"
+)
 async def get_usage_analytics(
     request: Request,
     range: Literal["7d", "30d", "90d"] = "7d",
     team_id: Optional[str] = None,
     user_id: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
-):
+) -> SuccessResponse[Dict[str, Any]]:
     """
     Get usage analytics summary
 
-    Args:
-        range: Time range (7d, 30d, or 90d)
-        team_id: Filter by team (optional)
-        user_id: Filter by user (optional)
-
-    Returns:
-        Analytics summary with model usage, trends, and top users/teams
-
-    Permissions:
-        - Requires 'analytics.view' permission (founder/admin only)
-        - Non-admins can only view their own analytics (user_id filter enforced)
+    Security:
+    - Requires 'analytics.view' permission (founder/admin only)
+    - Non-admins can only view their own analytics (user_id filter enforced)
     """
     # Check permissions (require_perm is a decorator, not async)
     require_perm("analytics.view")(lambda: None)()
@@ -70,22 +72,40 @@ async def get_usage_analytics(
             user_id=user_id
         )
 
-        return {
-            "range": range,
-            "days": days,
-            "filters": {
-                "team_id": team_id,
-                "user_id": user_id
+        return SuccessResponse(
+            data={
+                "range": range,
+                "days": days,
+                "filters": {
+                    "team_id": team_id,
+                    "user_id": user_id
+                },
+                "data": summary
             },
-            "data": summary
-        }
+            message=f"Retrieved usage analytics for {range}"
+        )
+
+    except HTTPException:
+        raise
 
     except Exception as e:
-        logger.error(f"Failed to get usage analytics: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get usage analytics", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to retrieve usage analytics"
+            ).model_dump()
+        )
 
 
-@router.get("/export", name="analytics_export")
+@router.get(
+    "/export",
+    status_code=status.HTTP_200_OK,
+    name="analytics_export",
+    summary="Export analytics data",
+    description="Export analytics data as downloadable file (JSON or CSV, requires analytics.view permission)"
+)
 async def export_analytics(
     request: Request,
     format: Literal["json", "csv"] = "json",
@@ -95,20 +115,13 @@ async def export_analytics(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Export analytics data
+    Export analytics data as downloadable file
 
-    Args:
-        format: Export format (json or csv)
-        range: Time range (7d, 30d, or 90d)
-        team_id: Filter by team (optional)
-        user_id: Filter by user (optional)
+    Returns raw Response with file content (not wrapped in SuccessResponse).
 
-    Returns:
-        Downloadable file with analytics data
-
-    Permissions:
-        - Requires 'analytics.view' permission
-        - Non-admins restricted to own data
+    Security:
+    - Requires 'analytics.view' permission
+    - Non-admins restricted to own data
     """
     # Check permissions (require_perm is a decorator, not async)
     require_perm("analytics.view")(lambda: None)()
@@ -142,6 +155,15 @@ async def export_analytics(
             }
         )
 
+    except HTTPException:
+        raise
+
     except Exception as e:
-        logger.error(f"Failed to export analytics: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to export analytics", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to export analytics data"
+            ).model_dump()
+        )

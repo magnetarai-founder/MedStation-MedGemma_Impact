@@ -1,5 +1,5 @@
 """
-Mission Diagnostics Endpoint.
+System Diagnostics Routes
 
 Provides comprehensive system health monitoring for Mission Dashboard:
 - System metrics (CPU, RAM, disk)
@@ -8,7 +8,7 @@ Provides comprehensive system health monitoring for Mission Dashboard:
 - P2P network status
 - Database health
 
-GET /api/v1/diagnostics - returns all diagnostics
+Follows MagnetarStudio API standards (see API_STANDARDS.md).
 """
 
 from __future__ import annotations
@@ -19,19 +19,20 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import psutil
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 
 try:
     from api.auth_middleware import get_current_user
 except ImportError:
     from auth_middleware import get_current_user
 from api.config_paths import get_config_paths
+from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 
 logger = logging.getLogger(__name__)
 PATHS = get_config_paths()
 
 
-router = APIRouter(prefix="/api/v1", tags=["diagnostics"], dependencies=[Depends(get_current_user)])
+router = APIRouter(prefix="/api/v1", tags=["diagnostics"])
 
 
 def _system_overview() -> Dict[str, Any]:
@@ -137,12 +138,22 @@ def _database_overview() -> Dict[str, Any]:
         return {"status": "error", "error": str(e)}
 
 
-@router.get("/diagnostics")
-async def get_diagnostics():
-    """Return comprehensive system diagnostics for Mission Dashboard.
+@router.get(
+    "/diagnostics",
+    response_model=SuccessResponse[Dict[str, Any]],
+    status_code=status.HTTP_200_OK,
+    name="get_system_diagnostics",
+    summary="Get system diagnostics",
+    description="Get comprehensive system health metrics (CPU, RAM, disk, Metal/GPU, Ollama, P2P, database)"
+)
+async def get_diagnostics(
+    current_user: dict = Depends(get_current_user)
+) -> SuccessResponse[Dict[str, Any]]:
+    """
+    Return comprehensive system diagnostics for Mission Dashboard
 
-    Returns:
-        JSON with system, Metal, Ollama, P2P, and database metrics
+    Returns system, Metal, Ollama, P2P, and database metrics.
+    Falls back to partial diagnostics on error (non-critical).
     """
     try:
         data: Dict[str, Any] = {
@@ -155,17 +166,24 @@ async def get_diagnostics():
         }
 
         logger.debug("Diagnostics collected successfully")
-        return data
+        return SuccessResponse(
+            data=data,
+            message="System diagnostics retrieved successfully"
+        )
 
     except Exception as e:
-        logger.error(f"Diagnostics collection failed: {e}", exc_info=True)
-        # Return partial diagnostics even on error
-        return {
+        logger.error(f"Diagnostics collection failed", exc_info=True)
+        # Return partial diagnostics even on error (non-critical)
+        partial_data = {
             "system": _system_overview(),
             "metal": {"available": False, "error": "Collection failed"},
             "ollama": {"available": False, "error": "Collection failed"},
-            "p2p": {"status": "error", "peers": 0, "error": str(e)},
-            "database": {"status": "error", "error": str(e)},
-            "error": str(e)
+            "p2p": {"status": "error", "peers": 0},
+            "database": {"status": "error"},
+            "partial": True
         }
+        return SuccessResponse(
+            data=partial_data,
+            message="Partial diagnostics retrieved (some metrics unavailable)"
+        )
 

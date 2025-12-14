@@ -1,7 +1,29 @@
-from fastapi import APIRouter, Request
+"""
+Application Settings Routes
+
+Provides endpoints for managing user application settings.
+
+Follows MagnetarStudio API standards (see API_STANDARDS.md).
+"""
+
+import logging
+from typing import Dict, Any
+from fastapi import APIRouter, Request, HTTPException, Depends, status
 from pydantic import BaseModel
 
-router = APIRouter()
+from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+
+try:
+    from api.auth_middleware import get_current_user, User
+except ImportError:
+    from auth_middleware import get_current_user, User
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(
+    prefix="/api/v1/settings",
+    tags=["settings"]
+)
 
 # Import shared instances and functions from main.py
 def get_app_settings():
@@ -71,47 +93,134 @@ class AppSettings(BaseModel):
     session_timeout_hours: int = 24
     clear_temp_on_close: bool = True
 
-@router.get("")
-async def get_settings():
+@router.get(
+    "",
+    response_model=SuccessResponse[Dict[str, Any]],
+    status_code=status.HTTP_200_OK,
+    name="get_settings",
+    summary="Get settings",
+    description="Get current application settings"
+)
+async def get_settings(
+    current_user: User = Depends(get_current_user)
+) -> SuccessResponse[Dict[str, Any]]:
     """Get current app settings"""
-    app_settings = get_app_settings()
-    return app_settings.dict()
-
-@router.post("")
-async def update_settings(request: Request, settings: AppSettings):
-    """Update app settings"""
-    set_app_settings(settings)
-    save_func = get_save_app_settings()
-    save_func(settings)
-    return {"success": True, "settings": settings.dict()}
-
-@router.get("/memory-status")
-async def get_memory_status():
-    """Get current memory usage and allocation"""
-    app_settings = get_app_settings()
     try:
-        import psutil
-        process = psutil.Process()
-        mem_info = process.memory_info()
-        system_mem = psutil.virtual_memory()
+        app_settings = get_app_settings()
+        return SuccessResponse(
+            data=app_settings.dict(),
+            message="Settings retrieved successfully"
+        )
 
-        return {
-            "process_memory_mb": mem_info.rss / (1024 * 1024),
-            "system_total_mb": system_mem.total / (1024 * 1024),
-            "system_available_mb": system_mem.available / (1024 * 1024),
-            "system_percent_used": system_mem.percent,
-            "settings": {
-                "app_percent": app_settings.app_memory_percent,
-                "processing_percent": app_settings.processing_memory_percent,
-                "cache_percent": app_settings.cache_memory_percent,
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        logger.error(f"Failed to get settings", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to retrieve settings"
+            ).model_dump()
+        )
+
+@router.post(
+    "",
+    response_model=SuccessResponse[Dict[str, Any]],
+    status_code=status.HTTP_200_OK,
+    name="update_settings",
+    summary="Update settings",
+    description="Update application settings"
+)
+async def update_settings(
+    request: Request,
+    settings: AppSettings,
+    current_user: User = Depends(get_current_user)
+) -> SuccessResponse[Dict[str, Any]]:
+    """Update app settings"""
+    try:
+        set_app_settings(settings)
+        save_func = get_save_app_settings()
+        save_func(settings)
+
+        return SuccessResponse(
+            data={"settings": settings.dict()},
+            message="Settings updated successfully"
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        logger.error(f"Failed to update settings", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to update settings"
+            ).model_dump()
+        )
+
+@router.get(
+    "/memory-status",
+    response_model=SuccessResponse[Dict[str, Any]],
+    status_code=status.HTTP_200_OK,
+    name="get_memory_status",
+    summary="Get memory status",
+    description="Get current memory usage and allocation"
+)
+async def get_memory_status(
+    current_user: User = Depends(get_current_user)
+) -> SuccessResponse[Dict[str, Any]]:
+    """Get current memory usage and allocation"""
+    try:
+        app_settings = get_app_settings()
+
+        try:
+            import psutil
+            process = psutil.Process()
+            mem_info = process.memory_info()
+            system_mem = psutil.virtual_memory()
+
+            data = {
+                "process_memory_mb": mem_info.rss / (1024 * 1024),
+                "system_total_mb": system_mem.total / (1024 * 1024),
+                "system_available_mb": system_mem.available / (1024 * 1024),
+                "system_percent_used": system_mem.percent,
+                "settings": {
+                    "app_percent": app_settings.app_memory_percent,
+                    "processing_percent": app_settings.processing_memory_percent,
+                    "cache_percent": app_settings.cache_memory_percent,
+                }
             }
-        }
-    except ImportError:
-        return {
-            "error": "psutil not available",
-            "settings": {
-                "app_percent": app_settings.app_memory_percent,
-                "processing_percent": app_settings.processing_memory_percent,
-                "cache_percent": app_settings.cache_memory_percent,
+            message = "Memory status retrieved successfully"
+
+        except ImportError:
+            data = {
+                "psutil_available": False,
+                "settings": {
+                    "app_percent": app_settings.app_memory_percent,
+                    "processing_percent": app_settings.processing_memory_percent,
+                    "cache_percent": app_settings.cache_memory_percent,
+                }
             }
-        }
+            message = "Memory status retrieved (psutil not available)"
+
+        return SuccessResponse(
+            data=data,
+            message=message
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        logger.error(f"Failed to get memory status", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to retrieve memory status"
+            ).model_dump()
+        )
