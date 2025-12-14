@@ -1,12 +1,14 @@
 """
-Search API Routes - Sprint 6 Theme B
+Search Routes
 
-Full-text search over session messages.
+Full-text search over session messages with filtering and ranking.
+
+Follows MagnetarStudio API standards (see API_STANDARDS.md).
 """
 
 import logging
-from typing import Optional
-from fastapi import APIRouter, Depends, Request, HTTPException, Query
+from typing import Optional, Dict, Any
+from fastapi import APIRouter, Depends, Request, HTTPException, Query, status
 
 try:
     from api.auth_middleware import get_current_user
@@ -14,13 +16,21 @@ except ImportError:
     from auth_middleware import get_current_user
 
 from api.services.search import get_search_service
+from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/search", tags=["Search"])
+router = APIRouter(prefix="/api/v1/search", tags=["search"])
 
 
-@router.get("/sessions", name="search_sessions")
+@router.get(
+    "/sessions",
+    response_model=SuccessResponse[Dict[str, Any]],
+    status_code=status.HTTP_200_OK,
+    name="search_sessions",
+    summary="Search sessions",
+    description="Full-text search over session messages with filtering and ranking"
+)
 async def search_sessions(
     request: Request,
     q: str = Query(..., min_length=1, description="Search query"),
@@ -32,33 +42,16 @@ async def search_sessions(
     max_tokens: Optional[int] = Query(None, description="Maximum tokens"),
     limit: int = Query(50, le=100, description="Max results"),
     current_user: dict = Depends(get_current_user)
-):
+) -> SuccessResponse[Dict[str, Any]]:
     """
     Search sessions by message content
 
-    Args:
-        q: Search query (required)
-        team_id: Filter by team (optional)
-        model: Filter by model name (optional)
-        from_date: Start date filter (optional, ISO format)
-        to_date: End date filter (optional, ISO format)
-        min_tokens: Minimum token count (optional)
-        max_tokens: Maximum token count (optional)
-        limit: Max results (default 50, max 100)
-
-    Returns:
-        List of matching sessions with:
-        - session_id: Session ID
-        - title: Session title
-        - snippet: Highlighted text snippet
-        - ts: Timestamp of matching message
-        - model_name: Model used
-        - score: Relevance score
-        - match_count: Number of matching messages in session
+    Returns matching sessions with highlighted snippets, relevance scores,
+    and match counts. Results are ranked by relevance.
 
     Security:
-        - Non-admins can only search their own sessions
-        - Admins/founders can search team-wide
+    - Non-admins can only search their own sessions
+    - Admins/founders can search team-wide
     """
     try:
         search_service = get_search_service()
@@ -76,12 +69,24 @@ async def search_sessions(
             limit=limit
         )
 
-        return {
-            "query": q,
-            "total_results": len(results),
-            "results": results
-        }
+        return SuccessResponse(
+            data={
+                "query": q,
+                "total_results": len(results),
+                "results": results
+            },
+            message=f"Found {len(results)} matching session(s)"
+        )
+
+    except HTTPException:
+        raise
 
     except Exception as e:
-        logger.error(f"Search failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Search failed", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Search operation failed"
+            ).model_dump()
+        )

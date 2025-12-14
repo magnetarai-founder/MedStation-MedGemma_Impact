@@ -1,8 +1,30 @@
+"""
+Saved Queries Routes
+
+Provides CRUD operations for saved database queries.
+
+Follows MagnetarStudio API standards (see API_STANDARDS.md).
+"""
+
 import json
-from fastapi import APIRouter, HTTPException, Request, Query
+import logging
+from typing import Dict, Any
+from fastapi import APIRouter, HTTPException, Request, Query, Depends, status
 from pydantic import BaseModel
 
-router = APIRouter()
+from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+
+try:
+    from api.auth_middleware import get_current_user, User
+except ImportError:
+    from auth_middleware import get_current_user, User
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(
+    prefix="/api/v1/saved-queries",
+    tags=["saved-queries"]
+)
 
 # Import shared elohimos_memory instance from main.py
 def get_elohimos_memory():
@@ -26,8 +48,19 @@ class SavedQueryUpdateRequest(BaseModel):
     description: str | None = None
     tags: list[str] | None = None
 
-@router.post("")
-async def save_query(request: Request, body: SavedQueryRequest):
+@router.post(
+    "",
+    response_model=SuccessResponse[Dict[str, Any]],
+    status_code=status.HTTP_201_CREATED,
+    name="save_query",
+    summary="Save query",
+    description="Save a database query for later reuse"
+)
+async def save_query(
+    request: Request,
+    body: SavedQueryRequest,
+    current_user: User = Depends(get_current_user)
+) -> SuccessResponse[Dict[str, Any]]:
     """Save a query for later use"""
     elohimos_memory = get_elohimos_memory()
     try:
@@ -39,15 +72,37 @@ async def save_query(request: Request, body: SavedQueryRequest):
             description=body.description,
             tags=body.tags
         )
-        return {"id": query_id, "success": True}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return SuccessResponse(
+            data={"id": query_id},
+            message=f"Query '{body.name}' saved successfully"
+        )
 
-@router.get("")
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        logger.error(f"Failed to save query", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to save query"
+            ).model_dump()
+        )
+
+@router.get(
+    "",
+    response_model=SuccessResponse[Dict[str, Any]],
+    status_code=status.HTTP_200_OK,
+    name="get_saved_queries",
+    summary="Get saved queries",
+    description="Get all saved queries with optional filtering by folder and type"
+)
 async def get_saved_queries(
     folder: str | None = Query(None),
-    query_type: str | None = Query(None)
-):
+    query_type: str | None = Query(None),
+    current_user: User = Depends(get_current_user)
+) -> SuccessResponse[Dict[str, Any]]:
     """Get all saved queries"""
     elohimos_memory = get_elohimos_memory()
     try:
@@ -55,12 +110,38 @@ async def get_saved_queries(
             folder=folder,
             query_type=query_type
         )
-        return {"queries": queries}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return SuccessResponse(
+            data={"queries": queries},
+            message=f"Retrieved {len(queries)} saved quer{'y' if len(queries) == 1 else 'ies'}"
+        )
 
-@router.put("/{query_id}")
-async def update_saved_query(request: Request, query_id: int, body: SavedQueryUpdateRequest):
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        logger.error(f"Failed to get saved queries", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to retrieve saved queries"
+            ).model_dump()
+        )
+
+@router.put(
+    "/{query_id}",
+    response_model=SuccessResponse[Dict[str, Any]],
+    status_code=status.HTTP_200_OK,
+    name="update_saved_query",
+    summary="Update saved query",
+    description="Update a saved query (partial updates supported)"
+)
+async def update_saved_query(
+    request: Request,
+    query_id: int,
+    body: SavedQueryUpdateRequest,
+    current_user: User = Depends(get_current_user)
+) -> SuccessResponse[Dict[str, Any]]:
     """Update a saved query (partial updates supported)"""
     elohimos_memory = get_elohimos_memory()
     try:
@@ -69,7 +150,13 @@ async def update_saved_query(request: Request, query_id: int, body: SavedQueryUp
         existing = next((q for q in all_queries if q['id'] == query_id), None)
 
         if not existing:
-            raise HTTPException(status_code=404, detail="Query not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message="Query not found"
+                ).model_dump()
+            )
 
         # Merge updates with existing data
         elohimos_memory.update_saved_query(
@@ -81,18 +168,56 @@ async def update_saved_query(request: Request, query_id: int, body: SavedQueryUp
             description=body.description if body.description is not None else existing.get('description'),
             tags=body.tags if body.tags is not None else (json.loads(existing.get('tags', '[]')) if existing.get('tags') else None)
         )
-        return {"success": True}
+
+        return SuccessResponse(
+            data={"query_id": query_id},
+            message="Query updated successfully"
+        )
+
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
-@router.delete("/{query_id}")
-async def delete_saved_query(request: Request, query_id: int):
+    except Exception as e:
+        logger.error(f"Failed to update query {query_id}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to update query"
+            ).model_dump()
+        )
+
+@router.delete(
+    "/{query_id}",
+    response_model=SuccessResponse[Dict[str, Any]],
+    status_code=status.HTTP_200_OK,
+    name="delete_saved_query",
+    summary="Delete saved query",
+    description="Delete a saved query by ID"
+)
+async def delete_saved_query(
+    request: Request,
+    query_id: int,
+    current_user: User = Depends(get_current_user)
+) -> SuccessResponse[Dict[str, Any]]:
     """Delete a saved query"""
     elohimos_memory = get_elohimos_memory()
     try:
         elohimos_memory.delete_saved_query(query_id)
-        return {"success": True}
+        return SuccessResponse(
+            data={"query_id": query_id},
+            message="Query deleted successfully"
+        )
+
+    except HTTPException:
+        raise
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to delete query {query_id}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to delete query"
+            ).model_dump()
+        )
