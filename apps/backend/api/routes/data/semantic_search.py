@@ -1,18 +1,22 @@
 """
 Database Query Semantic Search Routes
-AI-powered semantic search for similar past queries using ANE Context Engine
+
+AI-powered semantic search for similar past queries using ANE Context Engine.
+
+Follows MagnetarStudio API standards (see API_STANDARDS.md).
 """
 
 import logging
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel
 
 from api.auth_middleware import get_current_user
+from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(prefix="/api/v1/data", tags=["data-semantic-search"])
 
 
 # MARK: - Request/Response Models
@@ -39,28 +43,39 @@ class QuerySemanticSearchResponse(BaseModel):
 
 # MARK: - Semantic Search Endpoint
 
-@router.post("/semantic-search-queries", response_model=QuerySemanticSearchResponse)
+@router.post(
+    "/semantic-search-queries",
+    response_model=SuccessResponse[QuerySemanticSearchResponse],
+    status_code=status.HTTP_200_OK,
+    name="semantic_search_queries",
+    summary="Semantic search for queries",
+    description="AI-powered semantic search for similar past database queries using ANE Context Engine"
+)
 async def semantic_search_queries(
     request: QuerySemanticSearchRequest,
     user_claims: dict = Depends(get_current_user)
-):
+) -> SuccessResponse[QuerySemanticSearchResponse]:
     """
     Semantic search for similar past database queries.
     Helps users find relevant queries they've run before.
     """
     try:
         user_id = user_claims["user_id"]
-        logger.info(f"🔍 Query semantic search: user={user_id}, query='{request.query[:50]}...'")
+        logger.info(f"Query semantic search: user={user_id}, query='{request.query[:50]}...'")
 
         # Get embedding for query
         query_embedding = await embed_query(request.query)
 
         if not query_embedding:
-            logger.warning("⚠️ Embeddings unavailable")
-            return QuerySemanticSearchResponse(
+            logger.warning("Embeddings unavailable")
+            response_data = QuerySemanticSearchResponse(
                 results=[],
                 query=request.query,
                 total_results=0
+            )
+            return SuccessResponse(
+                data=response_data,
+                message="No results found (embeddings unavailable)"
             )
 
         # Get query history from database service
@@ -91,17 +106,31 @@ async def semantic_search_queries(
         # Limit results
         results = results[:request.limit]
 
-        logger.info(f"✅ Found {len(results)} similar queries")
+        logger.info(f"Found {len(results)} similar queries")
 
-        return QuerySemanticSearchResponse(
+        response_data = QuerySemanticSearchResponse(
             results=results,
             query=request.query,
             total_results=len(results)
         )
 
+        return SuccessResponse(
+            data=response_data,
+            message=f"Found {len(results)} similar quer{'y' if len(results) == 1 else 'ies'}"
+        )
+
+    except HTTPException:
+        raise
+
     except Exception as e:
-        logger.error(f"❌ Query semantic search failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Query semantic search failed: {str(e)}")
+        logger.error(f"Query semantic search failed", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to perform semantic search"
+            ).model_dump()
+        )
 
 
 # MARK: - Helper Functions
