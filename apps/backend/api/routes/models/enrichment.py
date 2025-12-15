@@ -1,13 +1,17 @@
 """
 Model Enrichment Routes - AI-powered metadata generation for local models
 Uses Apple Foundation Models via intelligent routing to generate rich descriptions
+
+Follows MagnetarStudio API standards (see API_STANDARDS.md).
 """
 
 import logging
 import json
 from typing import Optional
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
+
+from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 
 logger = logging.getLogger(__name__)
 
@@ -40,11 +44,32 @@ class ModelEnrichmentResponse(BaseModel):
 
 # MARK: - Enrichment Endpoint
 
-@router.post("/enrich", response_model=ModelEnrichmentResponse)
-async def enrich_model(request: ModelEnrichmentRequest):
+@router.post(
+    "/enrich",
+    response_model=SuccessResponse[ModelEnrichmentResponse],
+    status_code=status.HTTP_200_OK,
+    name="models_enrich",
+    summary="Enrich model metadata",
+    description="Generate AI-powered metadata for local Ollama models using Apple Foundation Models"
+)
+async def enrich_model(request: ModelEnrichmentRequest) -> SuccessResponse[ModelEnrichmentResponse]:
     """
-    Enrich a local Ollama model with AI-generated metadata.
-    Uses Apple FM (Phi-3) to analyze model name and generate rich descriptions.
+    Enrich a local Ollama model with AI-generated metadata
+
+    Uses Apple FM (Phi-3) to analyze model name and generate rich descriptions including:
+    - Display name and description
+    - Capability classification (chat, code, vision, reasoning, data, general)
+    - Primary use cases and badges
+    - Strengths and ideal use cases
+    - Memory usage estimation
+
+    Args:
+        request: Model enrichment request with model name and metadata
+
+    Returns:
+        Enriched model metadata with AI-generated descriptions
+
+    Note: Falls back to rule-based enrichment if AI enrichment fails
     """
     try:
         logger.info(f"🔍 Enriching model: {request.modelName}")
@@ -59,12 +84,25 @@ async def enrich_model(request: ModelEnrichmentRequest):
         response = parse_enrichment_response(enriched_data, request)
 
         logger.info(f"✅ Successfully enriched {request.modelName}")
-        return response
+
+        return SuccessResponse(
+            data=response,
+            message=f"Model '{request.modelName}' enriched successfully"
+        )
+
+    except HTTPException:
+        raise
 
     except Exception as e:
-        logger.error(f"❌ Failed to enrich {request.modelName}: {e}", exc_info=True)
+        logger.error(f"❌ Failed to enrich {request.modelName}", exc_info=True)
         # Return fallback enrichment instead of error
-        return fallback_enrichment(request)
+        fallback_data = fallback_enrichment(request)
+        logger.info(f"Using fallback enrichment for {request.modelName}")
+
+        return SuccessResponse(
+            data=fallback_data,
+            message=f"Model '{request.modelName}' enriched with fallback (AI enrichment unavailable)"
+        )
 
 
 # MARK: - Enrichment Logic
