@@ -2,12 +2,16 @@
 Chat Models Routes - Model management, Ollama config, hot slots, performance monitoring
 NOTE: This file contains many endpoints from the original monolithic chat.py
 For a complete extraction, see the original file at api/routes/chat.py lines 249-1360
+
+Follows MagnetarStudio API standards (see API_STANDARDS.md).
 """
 
 import logging
 from typing import Optional
-from fastapi import APIRouter, HTTPException, Request, Depends
+from fastapi import APIRouter, HTTPException, Request, Depends, status
 from fastapi.responses import StreamingResponse
+
+from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 
 try:
     from api.auth_middleware import get_current_user
@@ -22,7 +26,12 @@ router = APIRouter()
 
 # ===== Model Listing & Status =====
 
-@router.get("/models", name="chat_list_models")
+@router.get(
+    "/models",
+    response_model=SuccessResponse[list],
+    status_code=status.HTTP_200_OK,
+    name="chat_list_models"
+)
 async def list_ollama_models_endpoint():
     """List available Ollama models (public endpoint)"""
     from api.services import chat
@@ -30,13 +39,25 @@ async def list_ollama_models_endpoint():
 
     try:
         models = await chat.list_ollama_models()
-        return [OllamaModel(**m) for m in models]
+        data = [OllamaModel(**m) for m in models]
+        return SuccessResponse(data=data, message=f"Found {len(data)} models")
     except Exception as e:
         logger.error(f"Failed to list models: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to list models"
+            ).model_dump()
+        )
 
 
-@router.get("/models/with-tags", name="chat_list_models_with_tags")
+@router.get(
+    "/models/with-tags",
+    response_model=SuccessResponse[list],
+    status_code=status.HTTP_200_OK,
+    name="chat_list_models_with_tags"
+)
 async def list_ollama_models_with_tags_endpoint():
     """List available Ollama models with auto-detected capability tags (public endpoint)"""
     from api.services import chat
@@ -68,54 +89,101 @@ async def list_ollama_models_with_tags_endpoint():
             }
             models_with_tags.append(model_with_tags)
 
-        return models_with_tags
+        return SuccessResponse(
+            data=models_with_tags,
+            message=f"Found {len(models_with_tags)} models with tags"
+        )
     except Exception as e:
         logger.error(f"Failed to list models with tags: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to list models with tags"
+            ).model_dump()
+        )
 
 
-@router.get("/models/tags", name="chat_get_all_tags")
+@router.get(
+    "/models/tags",
+    response_model=SuccessResponse[list],
+    status_code=status.HTTP_200_OK,
+    name="chat_get_all_tags"
+)
 async def get_all_tags_endpoint():
     """Get all available model capability tags (public endpoint)"""
     from api.services.model_tags import get_all_tags
 
     try:
         tags = get_all_tags()
-        return tags
+        return SuccessResponse(data=tags, message=f"Found {len(tags)} tags")
     except Exception as e:
         logger.error(f"Failed to get tags: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to get tags"
+            ).model_dump()
+        )
 
 
-@router.get("/health", name="chat_check_health")
+@router.get(
+    "/health",
+    response_model=SuccessResponse[dict],
+    status_code=status.HTTP_200_OK,
+    name="chat_check_health"
+)
 async def check_health_endpoint():
     """Check Ollama health status (public endpoint)"""
     from api.services import chat
 
     try:
         health = await chat.check_health()
-        return health
+        return SuccessResponse(data=health, message="Health check completed")
     except Exception as e:
         logger.error(f"Failed to check health: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to check health"
+            ).model_dump()
+        )
 
 
-@router.get("/models/status", name="chat_get_models_status")
+@router.get(
+    "/models/status",
+    response_model=SuccessResponse[dict],
+    status_code=status.HTTP_200_OK,
+    name="chat_get_models_status"
+)
 async def get_models_status_endpoint():
     """Get status of all models (public endpoint)"""
     from api.services import chat
 
     try:
-        status = await chat.get_models_status()
-        return status
+        models_status = await chat.get_models_status()
+        return SuccessResponse(data=models_status, message="Models status retrieved")
     except Exception as e:
         logger.error(f"Failed to get models status: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to get models status"
+            ).model_dump()
+        )
 
 
 # ===== Model Preloading =====
 
-@router.post("/models/preload", name="chat_preload_model")
+@router.post(
+    "/models/preload",
+    response_model=SuccessResponse[dict],
+    status_code=status.HTTP_200_OK,
+    name="chat_preload_model"
+)
 async def preload_model_endpoint(
     request: Request,
     model: str,
@@ -130,27 +198,48 @@ async def preload_model_endpoint(
         success = await chat.preload_model(model, keep_alive, source=source)
 
         if success:
-            return {
+            data = {
                 "status": "success",
                 "model": model,
                 "keep_alive": keep_alive,
-                "source": source,
-                "message": f"Model '{model}' pre-loaded successfully"
+                "source": source
             }
+            return SuccessResponse(
+                data=data,
+                message=f"Model '{model}' pre-loaded successfully"
+            )
         else:
             raise HTTPException(
-                status_code=500,
-                detail=f"Failed to pre-load model '{model}'"
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.INTERNAL_ERROR,
+                    message=f"Failed to pre-load model '{model}'"
+                ).model_dump()
             )
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to preload model: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to preload model"
+            ).model_dump()
+        )
 
 
-@router.post("/models/unload/{model_name}", name="chat_unload_model")
-async def unload_model_endpoint(request: Request, model_name: str, current_user: dict = Depends(get_current_user)):
+@router.post(
+    "/models/unload/{model_name}",
+    response_model=SuccessResponse[dict],
+    status_code=status.HTTP_200_OK,
+    name="chat_unload_model"
+)
+async def unload_model_endpoint(
+    request: Request,
+    model_name: str,
+    current_user: dict = Depends(get_current_user)
+):
     """Unload a specific model from memory"""
     from api.services import chat
 
@@ -158,36 +247,68 @@ async def unload_model_endpoint(request: Request, model_name: str, current_user:
         success = await chat.unload_model(model_name)
 
         if success:
-            return {
+            data = {
                 "status": "unloaded",
-                "model": model_name,
-                "message": f"Model '{model_name}' unloaded successfully"
+                "model": model_name
             }
+            return SuccessResponse(
+                data=data,
+                message=f"Model '{model_name}' unloaded successfully"
+            )
         else:
-            raise HTTPException(status_code=500, detail=f"Failed to unload model '{model_name}'")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.INTERNAL_ERROR,
+                    message=f"Failed to unload model '{model_name}'"
+                ).model_dump()
+            )
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to unload model: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to unload model"
+            ).model_dump()
+        )
 
 
 # ===== Hot Slots =====
 
-@router.get("/models/hot-slots", name="chat_get_hot_slots")
+@router.get(
+    "/models/hot-slots",
+    response_model=SuccessResponse[dict],
+    status_code=status.HTTP_200_OK,
+    name="chat_get_hot_slots"
+)
 async def get_hot_slots_endpoint():
     """Get current hot slot assignments (public endpoint)"""
     from api.services import chat
 
     try:
         slots = await chat.get_hot_slots()
-        return {"hot_slots": slots}
+        data = {"hot_slots": slots}
+        return SuccessResponse(data=data, message="Hot slots retrieved")
     except Exception as e:
         logger.error(f"Failed to get hot slots: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to get hot slots"
+            ).model_dump()
+        )
 
 
-@router.post("/models/hot-slots/{slot_number}", name="chat_assign_to_hot_slot")
+@router.post(
+    "/models/hot-slots/{slot_number}",
+    response_model=SuccessResponse[dict],
+    status_code=status.HTTP_200_OK,
+    name="chat_assign_to_hot_slot"
+)
 async def assign_to_hot_slot_endpoint(
     request: Request,
     slot_number: int,
@@ -198,26 +319,51 @@ async def assign_to_hot_slot_endpoint(
     from api.services import chat
 
     if slot_number not in [1, 2, 3, 4]:
-        raise HTTPException(status_code=400, detail="Slot number must be between 1 and 4")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=ErrorResponse(
+                error_code=ErrorCode.BAD_REQUEST,
+                message="Slot number must be between 1 and 4",
+                details={"slot_number": slot_number}
+            ).model_dump()
+        )
 
     try:
         current_slots = await chat.get_hot_slots()
         if current_slots[slot_number] is not None:
             raise HTTPException(
-                status_code=400,
-                detail=f"Slot {slot_number} is already occupied by {current_slots[slot_number]}"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.CONFLICT,
+                    message=f"Slot {slot_number} is already occupied by {current_slots[slot_number]}",
+                    details={"slot_number": slot_number, "current_model": current_slots[slot_number]}
+                ).model_dump()
             )
 
         result = await chat.assign_to_hot_slot(slot_number, model_name)
-        return result
+        return SuccessResponse(
+            data=result,
+            message=f"Model '{model_name}' assigned to slot {slot_number}"
+        )
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to assign to hot slot: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to assign to hot slot"
+            ).model_dump()
+        )
 
 
-@router.delete("/models/hot-slots/{slot_number}", name="chat_remove_from_hot_slot")
+@router.delete(
+    "/models/hot-slots/{slot_number}",
+    response_model=SuccessResponse[dict],
+    status_code=status.HTTP_200_OK,
+    name="chat_remove_from_hot_slot"
+)
 async def remove_from_hot_slot_endpoint(
     request: Request,
     slot_number: int,
@@ -227,23 +373,51 @@ async def remove_from_hot_slot_endpoint(
     from api.services import chat
 
     if slot_number not in [1, 2, 3, 4]:
-        raise HTTPException(status_code=400, detail="Slot number must be between 1 and 4")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=ErrorResponse(
+                error_code=ErrorCode.BAD_REQUEST,
+                message="Slot number must be between 1 and 4",
+                details={"slot_number": slot_number}
+            ).model_dump()
+        )
 
     try:
         current_slots = await chat.get_hot_slots()
         if current_slots[slot_number] is None:
-            raise HTTPException(status_code=400, detail=f"Slot {slot_number} is already empty")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.BAD_REQUEST,
+                    message=f"Slot {slot_number} is already empty",
+                    details={"slot_number": slot_number}
+                ).model_dump()
+            )
 
         result = await chat.remove_from_hot_slot(slot_number)
-        return result
+        return SuccessResponse(
+            data=result,
+            message=f"Slot {slot_number} cleared successfully"
+        )
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to remove from hot slot: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to remove from hot slot"
+            ).model_dump()
+        )
 
 
-@router.post("/models/load-hot-slots", name="chat_load_hot_slot_models")
+@router.post(
+    "/models/load-hot-slots",
+    response_model=SuccessResponse[dict],
+    status_code=status.HTTP_200_OK,
+    name="chat_load_hot_slot_models"
+)
 async def load_hot_slot_models_endpoint(
     request: Request,
     keep_alive: str = "1h",
@@ -254,66 +428,124 @@ async def load_hot_slot_models_endpoint(
 
     try:
         result = await chat.load_hot_slot_models(keep_alive)
-        return result
+        return SuccessResponse(data=result, message="Hot slot models loaded")
     except Exception as e:
         logger.error(f"Failed to load hot slots: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to load hot slots"
+            ).model_dump()
+        )
 
 
 # ===== Ollama Server Management =====
 
-@router.get("/system/memory", name="chat_get_system_memory")
+@router.get(
+    "/system/memory",
+    response_model=SuccessResponse[dict],
+    status_code=status.HTTP_200_OK,
+    name="chat_get_system_memory"
+)
 async def get_system_memory_endpoint():
     """Get system memory stats (public endpoint)"""
     from api.services import chat
 
     try:
-        return await chat.get_system_memory()
+        memory_stats = await chat.get_system_memory()
+        return SuccessResponse(data=memory_stats, message="System memory retrieved")
     except Exception as e:
         logger.error(f"Failed to get system memory: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to get system memory"
+            ).model_dump()
+        )
 
 
-@router.get("/ollama/server/status", name="chat_get_ollama_server_status")
+@router.get(
+    "/ollama/server/status",
+    response_model=SuccessResponse[dict],
+    status_code=status.HTTP_200_OK,
+    name="chat_get_ollama_server_status"
+)
 async def get_ollama_server_status_endpoint():
     """Check if Ollama server is running (public endpoint)"""
     from api.services import chat
 
     try:
-        status = await chat.get_ollama_server_status()
-        return status
+        server_status = await chat.get_ollama_server_status()
+        return SuccessResponse(data=server_status, message="Server status retrieved")
     except Exception as e:
         logger.debug(f"Ollama server check failed: {e}")
-        return {"running": False, "loaded_models": [], "model_count": 0}
+        # Return default status instead of raising error for this endpoint
+        default_status = {"running": False, "loaded_models": [], "model_count": 0}
+        return SuccessResponse(data=default_status, message="Server not running")
 
 
-@router.post("/ollama/server/shutdown", name="chat_shutdown_ollama_server")
-async def shutdown_ollama_server_endpoint(request: Request, current_user: dict = Depends(get_current_user)):
+@router.post(
+    "/ollama/server/shutdown",
+    response_model=SuccessResponse[dict],
+    status_code=status.HTTP_200_OK,
+    name="chat_shutdown_ollama_server"
+)
+async def shutdown_ollama_server_endpoint(
+    request: Request,
+    current_user: dict = Depends(get_current_user)
+):
     """Shutdown Ollama server"""
     from api.services import chat
 
     try:
         result = await chat.shutdown_ollama_server()
-        return result
+        return SuccessResponse(data=result, message="Ollama server shutdown initiated")
     except Exception as e:
         logger.error(f"Failed to shutdown Ollama: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to shutdown Ollama server"
+            ).model_dump()
+        )
 
 
-@router.post("/ollama/server/start", name="chat_start_ollama_server")
-async def start_ollama_server_endpoint(request: Request, current_user: dict = Depends(get_current_user)):
+@router.post(
+    "/ollama/server/start",
+    response_model=SuccessResponse[dict],
+    status_code=status.HTTP_200_OK,
+    name="chat_start_ollama_server"
+)
+async def start_ollama_server_endpoint(
+    request: Request,
+    current_user: dict = Depends(get_current_user)
+):
     """Start Ollama server in background"""
     from api.services import chat
 
     try:
         result = await chat.start_ollama_server()
-        return result
+        return SuccessResponse(data=result, message="Ollama server start initiated")
     except Exception as e:
         logger.error(f"Failed to start Ollama: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to start Ollama server"
+            ).model_dump()
+        )
 
 
-@router.post("/ollama/server/restart", name="chat_restart_ollama_server")
+@router.post(
+    "/ollama/server/restart",
+    response_model=SuccessResponse[dict],
+    status_code=status.HTTP_200_OK,
+    name="chat_restart_ollama_server"
+)
 async def restart_ollama_server_endpoint(
     request: Request,
     reload_models: bool = False,
@@ -332,15 +564,26 @@ async def restart_ollama_server_endpoint(
             models_to_load=body.models_to_load if body else None
         )
 
-        return result
+        return SuccessResponse(data=result, message="Ollama server restart initiated")
     except Exception as e:
         logger.error(f"Failed to restart Ollama: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to restart Ollama server"
+            ).model_dump()
+        )
 
 
 # ===== Model Download/Delete Operations =====
 
-@router.post("/models/pull/{model_name}", name="chat_pull_model")
+@router.post(
+    "/models/pull/{model_name}",
+    response_class=StreamingResponse,
+    status_code=status.HTTP_200_OK,
+    name="chat_pull_model"
+)
 async def pull_model_endpoint(
     model_name: str,
     current_user: dict = Depends(get_current_user)
@@ -363,7 +606,7 @@ async def pull_model_endpoint(
                 # Format as SSE data
                 yield f"data: {json.dumps(update)}\n\n"
         except Exception as e:
-            logger.error(f"Error in pull stream: {e}")
+            logger.error(f"Error in pull stream: {e}", exc_info=True)
             error_update = {
                 "status": "error",
                 "message": str(e),
@@ -382,7 +625,12 @@ async def pull_model_endpoint(
     )
 
 
-@router.delete("/models/{model_name}", name="chat_remove_model")
+@router.delete(
+    "/models/{model_name}",
+    response_model=SuccessResponse[dict],
+    status_code=status.HTTP_200_OK,
+    name="chat_remove_model"
+)
 async def remove_model_endpoint(
     model_name: str,
     current_user: dict = Depends(get_current_user)
@@ -394,33 +642,64 @@ async def remove_model_endpoint(
         result = await remove_model(model_name)
 
         if result["status"] == "success":
-            return result
+            return SuccessResponse(
+                data=result,
+                message=f"Model '{model_name}' removed successfully"
+            )
         else:
-            raise HTTPException(status_code=500, detail=result["message"])
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.INTERNAL_ERROR,
+                    message=result["message"]
+                ).model_dump()
+            )
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to remove model: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to remove model"
+            ).model_dump()
+        )
 
 
-@router.get("/ollama/version", name="chat_get_ollama_version")
+@router.get(
+    "/ollama/version",
+    response_model=SuccessResponse[dict],
+    status_code=status.HTTP_200_OK,
+    name="chat_get_ollama_version"
+)
 async def get_ollama_version_endpoint():
     """Check installed Ollama version (public endpoint)"""
     from api.services.chat.ollama_ops import check_ollama_version
 
     try:
         version_info = await check_ollama_version()
-        return version_info
+        return SuccessResponse(data=version_info, message="Ollama version retrieved")
     except Exception as e:
         logger.error(f"Failed to check Ollama version: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to check Ollama version"
+            ).model_dump()
+        )
 
 
 # ===== Model Discovery (Ollama Library) =====
 
-@router.get("/models/library", name="chat_browse_ollama_library")
+@router.get(
+    "/models/library",
+    response_model=SuccessResponse[dict],
+    status_code=status.HTTP_200_OK,
+    name="chat_browse_ollama_library"
+)
 async def browse_ollama_library_endpoint(
     search: Optional[str] = None,
     model_type: Optional[str] = None,
@@ -471,20 +750,40 @@ async def browse_ollama_library_endpoint(
 
             if response.status_code == 200:
                 data = response.json()
-                return data
+                return SuccessResponse(
+                    data=data,
+                    message="Ollama library models retrieved"
+                )
             else:
-                logger.error(f"ollamadb.dev API error: {response.status_code}")
+                logger.error(f"ollamadb.dev API error: {response.status_code}", exc_info=True)
                 raise HTTPException(
-                    status_code=502,
-                    detail=f"Upstream API error: {response.status_code}"
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail=ErrorResponse(
+                        error_code=ErrorCode.GATEWAY_ERROR,
+                        message=f"Upstream API error: {response.status_code}"
+                    ).model_dump()
                 )
 
     except httpx.TimeoutException:
-        logger.error("Timeout fetching from ollamadb.dev")
-        raise HTTPException(status_code=504, detail="Upstream API timeout")
+        logger.error("Timeout fetching from ollamadb.dev", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail=ErrorResponse(
+                error_code=ErrorCode.TIMEOUT,
+                message="Upstream API timeout"
+            ).model_dump()
+        )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to browse Ollama library: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to browse Ollama library"
+            ).model_dump()
+        )
 
 
 # NOTE: Additional endpoints from original chat.py include:
