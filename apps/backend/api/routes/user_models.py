@@ -3,18 +3,12 @@ User Models API Routes
 
 Per-user model preferences and hot slots endpoints.
 
-Endpoints:
-- GET /api/v1/users/me/setup/status - Get per-user setup completion status
-- GET /api/v1/users/me/models/preferences - Get user's model visibility preferences
-- PUT /api/v1/users/me/models/preferences - Update model visibility preferences
-- GET /api/v1/users/me/models/hot-slots - Get user's hot slots
-- PUT /api/v1/users/me/models/hot-slots - Update hot slots
-- GET /api/v1/models/catalog - Get global model catalog (installed models)
+Follows MagnetarStudio API standards (see API_STANDARDS.md).
 """
 
 import logging
 from typing import Dict, List, Optional, Any
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel, Field
 
 try:
@@ -29,6 +23,8 @@ except ImportError:
     from services.model_catalog import get_model_catalog
     from auth_middleware import get_current_user
     from permission_engine import require_perm
+
+from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 
 logger = logging.getLogger(__name__)
 
@@ -111,9 +107,16 @@ class UserSetupStatusResponse(BaseModel):
 
 # ===== API Endpoints =====
 
-@router.get("/users/me/setup/status", response_model=UserSetupStatusResponse)
+@router.get(
+    "/users/me/setup/status",
+    response_model=SuccessResponse[UserSetupStatusResponse],
+    status_code=status.HTTP_200_OK,
+    name="users_get_setup_status",
+    summary="Get user setup status",
+    description="Get per-user setup completion status (requires chat.use permission)"
+)
 @require_perm("chat.use")
-async def get_user_setup_status(current_user = Depends(get_current_user)):
+async def get_user_setup_status(current_user = Depends(get_current_user)) -> SuccessResponse[UserSetupStatusResponse]:
     """
     Get per-user setup completion status
 
@@ -134,7 +137,13 @@ async def get_user_setup_status(current_user = Depends(get_current_user)):
     try:
         user_id = current_user.get("user_id")
         if not user_id:
-            raise HTTPException(status_code=401, detail="User ID not found in token")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.AUTH_ERROR,
+                    message="User ID not found in token"
+                ).model_dump()
+            )
 
         prefs_storage = get_model_preferences_storage()
         hot_slots_storage = get_hot_slots_storage()
@@ -152,22 +161,41 @@ async def get_user_setup_status(current_user = Depends(get_current_user)):
         # (This means they've gone through the wizard or Settings)
         user_setup_completed = has_prefs
 
-        return UserSetupStatusResponse(
+        status_data = UserSetupStatusResponse(
             user_setup_completed=user_setup_completed,
             has_prefs=has_prefs,
             has_hot_slots=has_hot_slots,
             visible_count=visible_count
         )
 
+        return SuccessResponse(
+            data=status_data,
+            message="User setup status retrieved successfully"
+        )
+
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Failed to get user setup status: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get user setup status")
 
-@router.get("/users/me/models/preferences", response_model=ModelPreferencesResponse)
+    except Exception as e:
+        logger.error(f"Failed to get user setup status", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to retrieve user setup status"
+            ).model_dump()
+        )
+
+@router.get(
+    "/users/me/models/preferences",
+    response_model=SuccessResponse[ModelPreferencesResponse],
+    status_code=status.HTTP_200_OK,
+    name="users_get_model_preferences",
+    summary="Get model preferences",
+    description="Get user's model visibility preferences (requires chat.use permission)"
+)
 @require_perm("chat.use")
-async def get_user_model_preferences(current_user = Depends(get_current_user)):
+async def get_user_model_preferences(current_user = Depends(get_current_user)) -> SuccessResponse[ModelPreferencesResponse]:
     """
     Get user's model visibility preferences
 
@@ -178,7 +206,13 @@ async def get_user_model_preferences(current_user = Depends(get_current_user)):
     try:
         user_id = current_user.get("user_id")
         if not user_id:
-            raise HTTPException(status_code=401, detail="User ID not found in token")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.AUTH_ERROR,
+                    message="User ID not found in token"
+                ).model_dump()
+            )
 
         prefs_storage = get_model_preferences_storage()
         preferences = prefs_storage.get_preferences(user_id)
@@ -193,21 +227,40 @@ async def get_user_model_preferences(current_user = Depends(get_current_user)):
                 display_order=pref.display_order
             ))
 
-        return ModelPreferencesResponse(preferences=items)
+        prefs_data = ModelPreferencesResponse(preferences=items)
+
+        return SuccessResponse(
+            data=prefs_data,
+            message=f"Retrieved {len(items)} model preference{'s' if len(items) != 1 else ''}"
+        )
 
     except HTTPException:
         raise
+
     except Exception as e:
-        logger.error(f"Failed to get model preferences: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get model preferences")
+        logger.error(f"Failed to get model preferences", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to retrieve model preferences"
+            ).model_dump()
+        )
 
 
-@router.put("/users/me/models/preferences", response_model=UpdateModelPreferencesResponse)
+@router.put(
+    "/users/me/models/preferences",
+    response_model=SuccessResponse[UpdateModelPreferencesResponse],
+    status_code=status.HTTP_200_OK,
+    name="users_update_model_preferences",
+    summary="Update model preferences",
+    description="Update user's model visibility preferences (requires chat.use permission)"
+)
 @require_perm("chat.use")
 async def update_user_model_preferences(
     body: UpdateModelPreferencesRequest,
     current_user = Depends(get_current_user)
-):
+) -> SuccessResponse[UpdateModelPreferencesResponse]:
     """
     Update user's model visibility preferences
 
@@ -219,7 +272,13 @@ async def update_user_model_preferences(
     try:
         user_id = current_user.get("user_id")
         if not user_id:
-            raise HTTPException(status_code=401, detail="User ID not found in token")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.AUTH_ERROR,
+                    message="User ID not found in token"
+                ).model_dump()
+            )
 
         # Find models being hidden
         hidden_models = [pref.model_name for pref in body.preferences if not pref.visible]
@@ -277,29 +336,54 @@ async def update_user_model_preferences(
             # Commit transaction
             conn.commit()
 
-            return UpdateModelPreferencesResponse(
+            update_data = UpdateModelPreferencesResponse(
                 success=True,
                 updated_count=len(body.preferences)
+            )
+
+            return SuccessResponse(
+                data=update_data,
+                message=f"Updated {len(body.preferences)} model preference{'s' if len(body.preferences) != 1 else ''}"
             )
 
         except Exception as e:
             # Rollback on any error
             conn.rollback()
-            logger.error(f"Transaction failed, rolled back: {e}")
-            raise HTTPException(status_code=500, detail=f"Failed to update preferences: {str(e)}")
+            logger.error(f"Transaction failed, rolled back", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.INTERNAL_ERROR,
+                    message="Failed to update preferences"
+                ).model_dump()
+            )
         finally:
             conn.close()
 
     except HTTPException:
         raise
+
     except Exception as e:
-        logger.error(f"Failed to update model preferences: {e}")
-        raise HTTPException(status_code=500, detail="Failed to update model preferences")
+        logger.error(f"Failed to update model preferences", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to update model preferences"
+            ).model_dump()
+        )
 
 
-@router.get("/users/me/models/hot-slots", response_model=HotSlotsResponse)
+@router.get(
+    "/users/me/models/hot-slots",
+    response_model=SuccessResponse[HotSlotsResponse],
+    status_code=status.HTTP_200_OK,
+    name="users_get_hot_slots",
+    summary="Get hot slots",
+    description="Get user's hot slots configuration (requires chat.use permission)"
+)
 @require_perm("chat.use")
-async def get_user_hot_slots(current_user = Depends(get_current_user)):
+async def get_user_hot_slots(current_user = Depends(get_current_user)) -> SuccessResponse[HotSlotsResponse]:
     """
     Get user's hot slots configuration
 
@@ -310,26 +394,53 @@ async def get_user_hot_slots(current_user = Depends(get_current_user)):
     try:
         user_id = current_user.get("user_id")
         if not user_id:
-            raise HTTPException(status_code=401, detail="User ID not found in token")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.AUTH_ERROR,
+                    message="User ID not found in token"
+                ).model_dump()
+            )
 
         hot_slots_storage = get_hot_slots_storage()
         slots = hot_slots_storage.get_hot_slots(user_id)
 
-        return HotSlotsResponse(slots=slots)
+        slots_data = HotSlotsResponse(slots=slots)
+
+        assigned_count = sum(1 for v in slots.values() if v is not None)
+
+        return SuccessResponse(
+            data=slots_data,
+            message=f"Hot slots retrieved ({assigned_count} assigned)"
+        )
 
     except HTTPException:
         raise
+
     except Exception as e:
-        logger.error(f"Failed to get hot slots: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get hot slots")
+        logger.error(f"Failed to get hot slots", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to retrieve hot slots"
+            ).model_dump()
+        )
 
 
-@router.put("/users/me/models/hot-slots", response_model=UpdateHotSlotsResponse)
+@router.put(
+    "/users/me/models/hot-slots",
+    response_model=SuccessResponse[UpdateHotSlotsResponse],
+    status_code=status.HTTP_200_OK,
+    name="users_update_hot_slots",
+    summary="Update hot slots",
+    description="Update user's hot slots configuration (requires chat.use permission)"
+)
 @require_perm("chat.use")
 async def update_user_hot_slots(
     body: UpdateHotSlotsRequest,
     current_user = Depends(get_current_user)
-):
+) -> SuccessResponse[UpdateHotSlotsResponse]:
     """
     Update user's hot slots configuration
 
@@ -341,14 +452,23 @@ async def update_user_hot_slots(
     try:
         user_id = current_user.get("user_id")
         if not user_id:
-            raise HTTPException(status_code=401, detail="User ID not found in token")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.AUTH_ERROR,
+                    message="User ID not found in token"
+                ).model_dump()
+            )
 
         # Validate slot numbers
         for slot_num in body.slots.keys():
             if slot_num not in [1, 2, 3, 4]:
                 raise HTTPException(
-                    status_code=400,
-                    detail=f"Invalid slot number: {slot_num} (must be 1-4)"
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=ErrorResponse(
+                        error_code=ErrorCode.VALIDATION_ERROR,
+                        message=f"Invalid slot number: {slot_num} (must be 1-4)"
+                    ).model_dump()
                 )
 
         # Validate that assigned models are installed
@@ -360,7 +480,7 @@ async def update_user_hot_slots(
             if model_name and model_name not in installed_models:
                 # Model not installed - reject with machine-readable error
                 raise HTTPException(
-                    status_code=400,
+                    status_code=status.HTTP_400_BAD_REQUEST,
                     detail={
                         "code": "model_not_installed",
                         "model": model_name,
@@ -375,24 +495,49 @@ async def update_user_hot_slots(
         success = hot_slots_storage.set_hot_slots(user_id, body.slots)
 
         if not success:
-            raise HTTPException(status_code=500, detail="Failed to update hot slots")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.INTERNAL_ERROR,
+                    message="Failed to update hot slots"
+                ).model_dump()
+            )
 
         assigned_count = sum(1 for v in body.slots.values() if v is not None)
 
-        return UpdateHotSlotsResponse(
+        update_data = UpdateHotSlotsResponse(
             success=True,
+            message=f"Hot slots updated ({assigned_count} assigned)"
+        )
+
+        return SuccessResponse(
+            data=update_data,
             message=f"Hot slots updated ({assigned_count} assigned)"
         )
 
     except HTTPException:
         raise
+
     except Exception as e:
-        logger.error(f"Failed to update hot slots: {e}")
-        raise HTTPException(status_code=500, detail="Failed to update hot slots")
+        logger.error(f"Failed to update hot slots", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to update hot slots"
+            ).model_dump()
+        )
 
 
-@router.get("/models/catalog", response_model=ModelCatalogResponse)
-async def get_model_catalog_endpoint():
+@router.get(
+    "/models/catalog",
+    response_model=SuccessResponse[ModelCatalogResponse],
+    status_code=status.HTTP_200_OK,
+    name="models_get_catalog",
+    summary="Get model catalog",
+    description="Get global model catalog (public endpoint - no authentication required)"
+)
+async def get_model_catalog_endpoint() -> SuccessResponse[ModelCatalogResponse]:
     """
     Get global model catalog
 
@@ -417,14 +562,28 @@ async def get_model_catalog_endpoint():
                 last_seen=model.last_seen
             ))
 
-        return ModelCatalogResponse(
+        catalog_data = ModelCatalogResponse(
             models=items,
             total_count=len(items)
         )
 
+        return SuccessResponse(
+            data=catalog_data,
+            message=f"Retrieved {len(items)} model{'s' if len(items) != 1 else ''} from catalog"
+        )
+
+    except HTTPException:
+        raise
+
     except Exception as e:
-        logger.error(f"Failed to get model catalog: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get model catalog")
+        logger.error(f"Failed to get model catalog", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to retrieve model catalog"
+            ).model_dump()
+        )
 
 
 # Export router
