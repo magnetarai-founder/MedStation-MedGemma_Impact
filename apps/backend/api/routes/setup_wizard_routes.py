@@ -564,7 +564,7 @@ async def download_model_progress(model_name: str):
             yield "data: [DONE]\n\n"
 
         except Exception as e:
-            logger.error(f"❌ Download stream error: {e}")
+            logger.error(f"❌ Download stream error: {e}", exc_info=True)
             error_data = {
                 "model": model_name,
                 "status": "error",
