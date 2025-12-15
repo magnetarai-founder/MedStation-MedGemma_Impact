@@ -11,26 +11,14 @@ the existing founder_setup routes with full onboarding:
 - Hot slot configuration
 - Account creation
 
-Integrates with existing founder_setup_wizard.py for
-founder password initialization.
-
-Endpoints:
-- GET /api/v1/setup/status - Overall setup status
-- GET /api/v1/setup/ollama - Check Ollama installation/service
-- GET /api/v1/setup/resources - Detect system resources
-- GET /api/v1/setup/models/recommendations - Get recommended models
-- GET /api/v1/setup/models/installed - List installed models
-- POST /api/v1/setup/models/download - Download a model
-- POST /api/v1/setup/hot-slots - Configure hot slots
-- POST /api/v1/setup/account - Create local account
-- POST /api/v1/setup/complete - Mark setup as complete
+Follows MagnetarStudio API standards (see API_STANDARDS.md).
 """
 
 import logging
 import asyncio
 import json
 from typing import Dict, List, Optional, Any
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -40,6 +28,8 @@ try:
 except ImportError:
     from services.setup_wizard import get_setup_wizard
     from founder_setup_wizard import get_founder_wizard
+
+from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 
 logger = logging.getLogger(__name__)
 
@@ -155,8 +145,15 @@ class CompleteSetupResponse(BaseModel):
 
 # ===== API Endpoints =====
 
-@router.get("/status", response_model=SetupStatusResponse)
-async def get_setup_status():
+@router.get(
+    "/status",
+    response_model=SuccessResponse[SetupStatusResponse],
+    status_code=status.HTTP_200_OK,
+    name="setup_get_status",
+    summary="Get setup status",
+    description="Get overall setup wizard status (public endpoint - no authentication required)"
+)
+async def get_setup_status() -> SuccessResponse[SetupStatusResponse]:
     """
     Get overall setup status
 
@@ -171,6 +168,9 @@ async def get_setup_status():
     independent of setup status.
 
     Public endpoint - no authentication required.
+
+    Returns:
+        Setup status including founder setup completion
     """
     try:
         from auth_middleware import auth_service
@@ -182,20 +182,41 @@ async def get_setup_status():
         founder_wizard = get_founder_wizard()
         founder_info = founder_wizard.get_setup_info()
 
-        return SetupStatusResponse(
+        status_data = SetupStatusResponse(
             setup_completed=has_users,  # True if any users exist
             founder_setup_completed=founder_info["setup_completed"],
             founder_password_storage=founder_info.get("password_storage_type"),
             is_macos=founder_info.get("is_macos", False)
         )
 
+        return SuccessResponse(
+            data=status_data,
+            message="Setup status retrieved successfully"
+        )
+
+    except HTTPException:
+        raise
+
     except Exception as e:
-        logger.error(f"❌ Failed to get setup status: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get setup status")
+        logger.error(f"Failed to get setup status", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to retrieve setup status"
+            ).model_dump()
+        )
 
 
-@router.get("/ollama", response_model=OllamaStatusResponse)
-async def check_ollama():
+@router.get(
+    "/ollama",
+    response_model=SuccessResponse[OllamaStatusResponse],
+    status_code=status.HTTP_200_OK,
+    name="setup_check_ollama",
+    summary="Check Ollama status",
+    description="Check Ollama installation and service status (public endpoint)"
+)
+async def check_ollama() -> SuccessResponse[OllamaStatusResponse]:
     """
     Check Ollama installation and service status
 
@@ -206,20 +227,44 @@ async def check_ollama():
     - Platform-specific installation instructions
 
     Public endpoint - no authentication required (setup phase).
+
+    Returns:
+        Ollama installation and service status
     """
     try:
         wizard = get_setup_wizard()
-        status = await wizard.check_ollama_status()
+        ollama_status = await wizard.check_ollama_status()
 
-        return OllamaStatusResponse(**status)
+        status_data = OllamaStatusResponse(**ollama_status)
+
+        return SuccessResponse(
+            data=status_data,
+            message="Ollama status checked successfully"
+        )
+
+    except HTTPException:
+        raise
 
     except Exception as e:
-        logger.error(f"❌ Failed to check Ollama status: {e}")
-        raise HTTPException(status_code=500, detail="Failed to check Ollama status")
+        logger.error(f"Failed to check Ollama status", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to check Ollama status"
+            ).model_dump()
+        )
 
 
-@router.get("/resources", response_model=SystemResourcesResponse)
-async def get_system_resources():
+@router.get(
+    "/resources",
+    response_model=SuccessResponse[SystemResourcesResponse],
+    status_code=status.HTTP_200_OK,
+    name="setup_get_resources",
+    summary="Get system resources",
+    description="Detect system resources and recommend tier (public endpoint)"
+)
+async def get_system_resources() -> SuccessResponse[SystemResourcesResponse]:
     """
     Detect system resources (RAM, disk space)
 
@@ -229,20 +274,44 @@ async def get_system_resources():
     - Power User: 32GB+
 
     Public endpoint - no authentication required (setup phase).
+
+    Returns:
+        System resources and recommended tier
     """
     try:
         wizard = get_setup_wizard()
         resources = await wizard.detect_system_resources()
 
-        return SystemResourcesResponse(**resources)
+        resources_data = SystemResourcesResponse(**resources)
+
+        return SuccessResponse(
+            data=resources_data,
+            message=f"System resources detected ({resources_data.recommended_tier} tier)"
+        )
+
+    except HTTPException:
+        raise
 
     except Exception as e:
-        logger.error(f"❌ Failed to detect system resources: {e}")
-        raise HTTPException(status_code=500, detail="Failed to detect system resources")
+        logger.error(f"Failed to detect system resources", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to detect system resources"
+            ).model_dump()
+        )
 
 
-@router.get("/models/recommendations", response_model=ModelRecommendationsResponse)
-async def get_model_recommendations(tier: Optional[str] = None):
+@router.get(
+    "/models/recommendations",
+    response_model=SuccessResponse[ModelRecommendationsResponse],
+    status_code=status.HTTP_200_OK,
+    name="setup_get_model_recommendations",
+    summary="Get model recommendations",
+    description="Get recommended models for a tier based on system resources (public endpoint)"
+)
+async def get_model_recommendations(tier: Optional[str] = None) -> SuccessResponse[ModelRecommendationsResponse]:
     """
     Get recommended models for a tier
 
@@ -254,40 +323,88 @@ async def get_model_recommendations(tier: Optional[str] = None):
     with hot slot suggestions.
 
     Public endpoint - no authentication required (setup phase).
+
+    Returns:
+        Model recommendations and hot slot suggestions
     """
     try:
         wizard = get_setup_wizard()
         recommendations = await wizard.load_model_recommendations(tier=tier)
 
-        return ModelRecommendationsResponse(**recommendations)
+        recommendations_data = ModelRecommendationsResponse(**recommendations)
+
+        return SuccessResponse(
+            data=recommendations_data,
+            message=f"Retrieved {len(recommendations_data.models)} recommended model{'s' if len(recommendations_data.models) != 1 else ''}"
+        )
+
+    except HTTPException:
+        raise
 
     except Exception as e:
-        logger.error(f"❌ Failed to get model recommendations: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get model recommendations")
+        logger.error(f"Failed to get model recommendations", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to retrieve model recommendations"
+            ).model_dump()
+        )
 
 
-@router.get("/models/installed", response_model=InstalledModelsResponse)
-async def get_installed_models():
+@router.get(
+    "/models/installed",
+    response_model=SuccessResponse[InstalledModelsResponse],
+    status_code=status.HTTP_200_OK,
+    name="setup_get_installed_models",
+    summary="Get installed models",
+    description="Get list of installed Ollama models (public endpoint)"
+)
+async def get_installed_models() -> SuccessResponse[InstalledModelsResponse]:
     """
     Get list of installed Ollama models
 
     Queries Ollama API for currently installed models.
 
     Public endpoint - no authentication required (setup phase).
+
+    Returns:
+        List of installed models with size and modification date
     """
     try:
         wizard = get_setup_wizard()
         models = await wizard.get_installed_models()
 
-        return InstalledModelsResponse(models=models)
+        models_data = InstalledModelsResponse(models=models)
+
+        return SuccessResponse(
+            data=models_data,
+            message=f"Retrieved {len(models)} installed model{'s' if len(models) != 1 else ''}"
+        )
+
+    except HTTPException:
+        raise
 
     except Exception as e:
-        logger.error(f"❌ Failed to get installed models: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get installed models")
+        logger.error(f"Failed to get installed models", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to retrieve installed models"
+            ).model_dump()
+        )
 
 
-@router.post("/models/download", response_model=DownloadModelResponse)
-async def download_model(body: DownloadModelRequest):
+@router.post(
+    "/models/download",
+    response_model=SuccessResponse[DownloadModelResponse],
+    status_code=status.HTTP_200_OK,
+    name="setup_download_model",
+    summary="Download model (blocking)",
+    description="Download a model via Ollama (blocking, for progress use SSE endpoint)"
+)
+async def download_model(body: DownloadModelRequest) -> SuccessResponse[DownloadModelResponse]:
     """
     Download a model via Ollama
 
@@ -300,6 +417,9 @@ async def download_model(body: DownloadModelRequest):
     Public endpoint - no authentication required (setup phase).
 
     Note: This can take several minutes for large models.
+
+    Returns:
+        Download success confirmation
     """
     try:
         wizard = get_setup_wizard()
@@ -308,25 +428,47 @@ async def download_model(body: DownloadModelRequest):
         success = await wizard.download_model(body.model_name)
 
         if success:
-            return DownloadModelResponse(
+            download_data = DownloadModelResponse(
                 success=True,
                 model_name=body.model_name,
                 message=f"Model '{body.model_name}' downloaded successfully"
             )
+
+            return SuccessResponse(
+                data=download_data,
+                message=f"Model '{body.model_name}' downloaded successfully"
+            )
         else:
             raise HTTPException(
-                status_code=500,
-                detail=f"Failed to download model '{body.model_name}'"
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.INTERNAL_ERROR,
+                    message=f"Failed to download model '{body.model_name}'"
+                ).model_dump()
             )
 
     except HTTPException:
         raise
+
     except Exception as e:
-        logger.error(f"❌ Failed to download model: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to download model", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to download model"
+            ).model_dump()
+        )
 
 
-@router.get("/models/download/progress")
+@router.get(
+    "/models/download/progress",
+    response_class=StreamingResponse,
+    status_code=status.HTTP_200_OK,
+    name="setup_download_model_progress",
+    summary="Download model with progress (SSE)",
+    description="Download a model with real-time progress updates via Server-Sent Events"
+)
 async def download_model_progress(model_name: str):
     """
     Download a model with real-time progress updates via Server-Sent Events (SSE)
@@ -443,8 +585,15 @@ async def download_model_progress(model_name: str):
     )
 
 
-@router.post("/hot-slots", response_model=ConfigureHotSlotsResponse)
-async def configure_hot_slots(body: ConfigureHotSlotsRequest):
+@router.post(
+    "/hot-slots",
+    response_model=SuccessResponse[ConfigureHotSlotsResponse],
+    status_code=status.HTTP_200_OK,
+    name="setup_configure_hot_slots",
+    summary="Configure hot slots",
+    description="Configure hot slots (1-4 favorite models) for quick access (public endpoint)"
+)
+async def configure_hot_slots(body: ConfigureHotSlotsRequest) -> SuccessResponse[ConfigureHotSlotsResponse]:
     """
     Configure hot slots (1-4 favorite models)
 
@@ -463,6 +612,9 @@ async def configure_hot_slots(body: ConfigureHotSlotsRequest):
         }
 
     Public endpoint - no authentication required (setup phase).
+
+    Returns:
+        Hot slots configuration confirmation
     """
     try:
         wizard = get_setup_wizard()
@@ -471,30 +623,58 @@ async def configure_hot_slots(body: ConfigureHotSlotsRequest):
         for slot_num in body.slots.keys():
             if slot_num not in [1, 2, 3, 4]:
                 raise HTTPException(
-                    status_code=400,
-                    detail=f"Invalid slot number: {slot_num} (must be 1-4)"
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=ErrorResponse(
+                        error_code=ErrorCode.VALIDATION_ERROR,
+                        message=f"Invalid slot number: {slot_num} (must be 1-4)"
+                    ).model_dump()
                 )
 
         # Configure hot slots
         success = await wizard.configure_hot_slots(body.slots)
 
         if success:
-            return ConfigureHotSlotsResponse(
+            config_data = ConfigureHotSlotsResponse(
                 success=True,
                 message="Hot slots configured successfully"
             )
+
+            return SuccessResponse(
+                data=config_data,
+                message="Hot slots configured successfully"
+            )
         else:
-            raise HTTPException(status_code=500, detail="Failed to configure hot slots")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.INTERNAL_ERROR,
+                    message="Failed to configure hot slots"
+                ).model_dump()
+            )
 
     except HTTPException:
         raise
+
     except Exception as e:
-        logger.error(f"❌ Failed to configure hot slots: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to configure hot slots", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to configure hot slots"
+            ).model_dump()
+        )
 
 
-@router.post("/account", response_model=CreateAccountResponse)
-async def create_account(request: Request, body: CreateAccountRequest):
+@router.post(
+    "/account",
+    response_model=SuccessResponse[CreateAccountResponse],
+    status_code=status.HTTP_201_CREATED,
+    name="setup_create_account",
+    summary="Create account",
+    description="Create local super_admin account (public endpoint - first-time setup)"
+)
+async def create_account(request: Request, body: CreateAccountRequest) -> SuccessResponse[CreateAccountResponse]:
     """
     Create local super_admin account
 
@@ -510,13 +690,21 @@ async def create_account(request: Request, body: CreateAccountRequest):
         founder_password: Optional founder password (for founder_rights setup)
 
     Public endpoint - no authentication required (first-time setup).
+
+    Returns:
+        Account creation confirmation with user ID
     """
     try:
         # Validate password confirmation
         if body.password != body.confirm_password:
-            return CreateAccountResponse(
+            account_data = CreateAccountResponse(
                 success=False,
                 error="Passwords do not match"
+            )
+
+            return SuccessResponse(
+                data=account_data,
+                message="Password validation failed"
             )
 
         wizard = get_setup_wizard()
@@ -528,39 +716,81 @@ async def create_account(request: Request, body: CreateAccountRequest):
             founder_password=body.founder_password
         )
 
-        return CreateAccountResponse(**result)
+        account_data = CreateAccountResponse(**result)
+
+        return SuccessResponse(
+            data=account_data,
+            message="Account created successfully" if account_data.success else "Account creation failed"
+        )
+
+    except HTTPException:
+        raise
 
     except Exception as e:
-        logger.error(f"❌ Failed to create account: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to create account", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to create account"
+            ).model_dump()
+        )
 
 
-@router.post("/complete", response_model=CompleteSetupResponse)
-async def complete_setup():
+@router.post(
+    "/complete",
+    response_model=SuccessResponse[CompleteSetupResponse],
+    status_code=status.HTTP_200_OK,
+    name="setup_complete",
+    summary="Complete setup wizard",
+    description="Mark setup wizard as completed (public endpoint)"
+)
+async def complete_setup() -> SuccessResponse[CompleteSetupResponse]:
     """
     Mark setup wizard as completed
 
     This is called after all setup steps are finished.
 
     Public endpoint - no authentication required (setup phase).
+
+    Returns:
+        Setup completion confirmation
     """
     try:
         wizard = get_setup_wizard()
         success = await wizard.complete_setup()
 
         if success:
-            return CompleteSetupResponse(
+            complete_data = CompleteSetupResponse(
                 success=True,
                 message="Setup wizard completed successfully"
             )
+
+            return SuccessResponse(
+                data=complete_data,
+                message="Setup wizard completed successfully"
+            )
         else:
-            raise HTTPException(status_code=500, detail="Failed to complete setup")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.INTERNAL_ERROR,
+                    message="Failed to complete setup"
+                ).model_dump()
+            )
 
     except HTTPException:
         raise
+
     except Exception as e:
-        logger.error(f"❌ Failed to complete setup: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to complete setup", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to complete setup"
+            ).model_dump()
+        )
 
 
 # Export router
