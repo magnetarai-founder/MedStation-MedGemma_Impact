@@ -3,6 +3,8 @@ Natural Language Query (NLQ) Routes
 
 POST /api/v1/data/nlq - Convert natural language to SQL and execute
 GET  /api/v1/data/nlq/recent - Get recent NL→SQL analyses
+
+Follows MagnetarStudio API standards (see API_STANDARDS.md).
 """
 
 import logging
@@ -18,6 +20,7 @@ except ImportError:
 from api.services.nlq_service import get_nlq_service
 from api.utils import sanitize_for_log
 from api.config_paths import PATHS
+from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 
 logger = logging.getLogger(__name__)
 
@@ -46,11 +49,18 @@ class NLQResponse(BaseModel):
     suggestion: Optional[str] = None
 
 
-@router.post("/nlq", response_model=NLQResponse)
+@router.post(
+    "/nlq",
+    response_model=SuccessResponse[NLQResponse],
+    status_code=status.HTTP_200_OK,
+    name="data_natural_language_query",
+    summary="Natural language query",
+    description="Convert natural language question to SQL and execute (AI-powered)"
+)
 async def natural_language_query(
     request: NLQRequest,
     current_user: User = Depends(get_current_user)
-):
+) -> SuccessResponse[NLQResponse]:
     """
     Convert natural language question to SQL and execute
 
@@ -59,33 +69,32 @@ async def natural_language_query(
     - "What's the average price by region?"
     - "Find the top 10 customers by sales"
 
+    Args:
+        request: Natural language query request with question and optional dataset ID
+
     Returns:
-    - Generated SQL query (editable)
-    - Query results
-    - Natural language summary
-    - Execution metadata
+        Generated SQL query, results, and natural language summary
     """
-
-    # Log request (sanitized)
-    logger.info(
-        "NLQ request",
-        extra={
-            "user_id": current_user.user_id,
-            "question_length": len(request.question),
-            "dataset_id": request.dataset_id,
-            "session_id": request.session_id,
-            "model": request.model
-        }
-    )
-
-    # Log sanitized question (no secrets)
-    safe_question = sanitize_for_log(request.question)
-    logger.debug(f"NLQ question: {safe_question}")
-
-    # Process query
-    nlq_service = get_nlq_service()
-
     try:
+        # Log request (sanitized)
+        logger.info(
+            "NLQ request",
+            extra={
+                "user_id": current_user.user_id,
+                "question_length": len(request.question),
+                "dataset_id": request.dataset_id,
+                "session_id": request.session_id,
+                "model": request.model
+            }
+        )
+
+        # Log sanitized question (no secrets)
+        safe_question = sanitize_for_log(request.question)
+        logger.debug(f"NLQ question: {safe_question}")
+
+        # Process query
+        nlq_service = get_nlq_service()
+
         result = await nlq_service.process_nlq(
             question=request.question,
             dataset_id=request.dataset_id,
@@ -104,6 +113,11 @@ async def natural_language_query(
                     "warnings": len(result.get("warnings", []))
                 }
             )
+
+            return SuccessResponse(
+                data=NLQResponse(**result),
+                message=f"Query executed successfully ({result.get('row_count', 0)} rows)"
+            )
         else:
             logger.warning(
                 "NLQ failed",
@@ -113,17 +127,22 @@ async def natural_language_query(
                 }
             )
 
-        return NLQResponse(**result)
+            return SuccessResponse(
+                data=NLQResponse(**result),
+                message="Query processing completed with errors"
+            )
+
+    except HTTPException:
+        raise
 
     except Exception as e:
-        logger.error(f"NLQ processing error: {e}", exc_info=True)
+        logger.error(f"NLQ processing error", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "error": "Failed to process natural language query",
-                "details": str(e),
-                "suggestion": "Please try again or rephrase your question"
-            }
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to process natural language query"
+            ).model_dump()
         )
 
 
@@ -136,11 +155,18 @@ class NLQHistoryItem(BaseModel):
     created_at: str
 
 
-@router.get("/nlq/recent", response_model=List[NLQHistoryItem])
+@router.get(
+    "/nlq/recent",
+    response_model=SuccessResponse[List[NLQHistoryItem]],
+    status_code=status.HTTP_200_OK,
+    name="data_get_recent_nlq",
+    summary="Get recent NLQ history",
+    description="Get recent natural language to SQL query history for current user"
+)
 async def nlq_recent(
     limit: int = 20,
     current_user: User = Depends(get_current_user)
-):
+) -> SuccessResponse[List[NLQHistoryItem]]:
     """
     Get recent NL→SQL analyses for current user
 
@@ -150,11 +176,12 @@ async def nlq_recent(
     Returns:
         List of recent NLQ history items ordered by created_at DESC
     """
-    # Clamp limit
-    limit = max(1, min(limit, 50))
-
-    items: List[NLQHistoryItem] = []
     try:
+        # Clamp limit
+        limit = max(1, min(limit, 50))
+
+        items: List[NLQHistoryItem] = []
+
         with sqlite3.connect(str(PATHS.app_db)) as conn:
             conn.row_factory = sqlite3.Row
             cur = conn.execute(
@@ -171,9 +198,21 @@ async def nlq_recent(
                     summary=r["summary"],
                     created_at=r["created_at"],
                 ))
-    except Exception as e:
-        # Return empty list on error; logs elsewhere if desired
-        logger.warning(f"Failed to fetch NLQ history: {e}")
-        return []
 
-    return items
+        return SuccessResponse(
+            data=items,
+            message=f"Retrieved {len(items)} NLQ history item{'s' if len(items) != 1 else ''}"
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        logger.error(f"Failed to fetch NLQ history", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to retrieve NLQ history"
+            ).model_dump()
+        )
