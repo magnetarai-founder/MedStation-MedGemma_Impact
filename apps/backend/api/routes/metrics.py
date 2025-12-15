@@ -7,12 +7,7 @@ Exposes system metrics for monitoring and observability:
 - Cache performance (hit rate, memory usage)
 - Error tracking (recent errors, error types)
 
-Usage:
-    from fastapi import FastAPI
-    from api.routes.metrics import router as metrics_router
-
-    app = FastAPI()
-    app.include_router(metrics_router, prefix="/api/metrics", tags=["metrics"])
+Follows MagnetarStudio API standards (see API_STANDARDS.md).
 """
 
 from fastapi import APIRouter, HTTPException, status
@@ -37,10 +32,17 @@ router = APIRouter(
 )
 
 
-@router.get("/health", response_model=SuccessResponse[Dict])
+@router.get(
+    "/health",
+    response_model=SuccessResponse[Dict],
+    status_code=status.HTTP_200_OK,
+    name="metrics_health_check",
+    summary="Metrics health check",
+    description="Basic health check for monitoring systems"
+)
 async def health_check() -> SuccessResponse[Dict]:
     """
-    Basic health check for monitoring systems.
+    Basic health check for monitoring systems
 
     Returns:
         Simple health status
@@ -54,10 +56,17 @@ async def health_check() -> SuccessResponse[Dict]:
     )
 
 
-@router.get("/system")
-async def get_system_metrics() -> Dict:
+@router.get(
+    "/system",
+    response_model=SuccessResponse[Dict],
+    status_code=status.HTTP_200_OK,
+    name="metrics_get_system",
+    summary="Get system metrics",
+    description="Get combined system metrics from all sources (requests, database, cache)"
+)
+async def get_system_metrics() -> SuccessResponse[Dict]:
     """
-    Get combined system metrics from all sources.
+    Get combined system metrics from all sources
 
     Returns:
         Comprehensive system metrics including:
@@ -76,13 +85,20 @@ async def get_system_metrics() -> Dict:
         cache = get_cache()
         cache_stats = cache.get_stats()
 
-        return {
+        metrics_data = {
             "requests": request_stats,
             "database": db_stats,
             "cache": cache_stats
         }
+
+        return SuccessResponse(
+            data=metrics_data,
+            message="System metrics retrieved successfully"
+        )
+
     except HTTPException:
         raise
+
     except Exception as e:
         logger.error(f"Failed to get system metrics", exc_info=True)
         raise HTTPException(
@@ -94,10 +110,17 @@ async def get_system_metrics() -> Dict:
         )
 
 
-@router.get("/requests")
-async def get_request_stats() -> Dict:
+@router.get(
+    "/requests",
+    response_model=SuccessResponse[Dict],
+    status_code=status.HTTP_200_OK,
+    name="metrics_get_requests",
+    summary="Get request metrics",
+    description="Get request timing and throughput statistics"
+)
+async def get_request_stats() -> SuccessResponse[Dict]:
     """
-    Get request timing and throughput statistics.
+    Get request timing and throughput statistics
 
     Returns:
         - total_requests: Total number of requests handled
@@ -109,16 +132,37 @@ async def get_request_stats() -> Dict:
         - total_time_ms: Total processing time
     """
     try:
-        return get_request_metrics()
+        metrics_data = get_request_metrics()
+        return SuccessResponse(
+            data=metrics_data,
+            message="Request metrics retrieved successfully"
+        )
+
+    except HTTPException:
+        raise
+
     except Exception as e:
-        logger.error(f"Failed to get request metrics: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get request metrics: {str(e)}")
+        logger.error(f"Failed to get request metrics", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to retrieve request metrics"
+            ).model_dump()
+        )
 
 
-@router.get("/endpoints")
-async def get_endpoint_stats(limit: int = 10) -> Dict:
+@router.get(
+    "/endpoints",
+    response_model=SuccessResponse[Dict],
+    status_code=status.HTTP_200_OK,
+    name="metrics_get_endpoints",
+    summary="Get endpoint metrics",
+    description="Get per-endpoint performance statistics"
+)
+async def get_endpoint_stats(limit: int = 10) -> SuccessResponse[Dict]:
     """
-    Get per-endpoint performance statistics.
+    Get per-endpoint performance statistics
 
     Args:
         limit: Number of top endpoints to return (default: 10)
@@ -134,19 +178,41 @@ async def get_endpoint_stats(limit: int = 10) -> Dict:
     """
     try:
         endpoints = get_endpoint_metrics(limit=limit)
-        return {
+        metrics_data = {
             "endpoints": endpoints,
             "total_endpoints": len(endpoints)
         }
+
+        return SuccessResponse(
+            data=metrics_data,
+            message=f"Retrieved {len(endpoints)} endpoint{'s' if len(endpoints) != 1 else ''}"
+        )
+
+    except HTTPException:
+        raise
+
     except Exception as e:
-        logger.error(f"Failed to get endpoint metrics: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get endpoint metrics: {str(e)}")
+        logger.error(f"Failed to get endpoint metrics", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to retrieve endpoint metrics"
+            ).model_dump()
+        )
 
 
-@router.get("/errors")
-async def get_error_stats() -> Dict:
+@router.get(
+    "/errors",
+    response_model=SuccessResponse[Dict],
+    status_code=status.HTTP_200_OK,
+    name="metrics_get_errors",
+    summary="Get error metrics",
+    description="Get error tracking statistics"
+)
+async def get_error_stats() -> SuccessResponse[Dict]:
     """
-    Get error tracking statistics.
+    Get error tracking statistics
 
     Returns:
         - error_counts: Count of each error type
@@ -154,16 +220,37 @@ async def get_error_stats() -> Dict:
         - total_error_types: Number of unique error types
     """
     try:
-        return get_error_metrics()
+        metrics_data = get_error_metrics()
+        return SuccessResponse(
+            data=metrics_data,
+            message="Error metrics retrieved successfully"
+        )
+
+    except HTTPException:
+        raise
+
     except Exception as e:
-        logger.error(f"Failed to get error metrics: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get error metrics: {str(e)}")
+        logger.error(f"Failed to get error metrics", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to retrieve error metrics"
+            ).model_dump()
+        )
 
 
-@router.get("/database")
-async def get_database_stats() -> Dict:
+@router.get(
+    "/database",
+    response_model=SuccessResponse[Dict],
+    status_code=status.HTTP_200_OK,
+    name="metrics_get_database",
+    summary="Get database metrics",
+    description="Get database query performance statistics"
+)
+async def get_database_stats() -> SuccessResponse[Dict]:
     """
-    Get database query performance statistics.
+    Get database query performance statistics
 
     Returns:
         - total_queries: Total number of queries executed
@@ -174,16 +261,37 @@ async def get_database_stats() -> Dict:
         - total_time_ms: Total query execution time
     """
     try:
-        return get_query_stats()
+        metrics_data = get_query_stats()
+        return SuccessResponse(
+            data=metrics_data,
+            message="Database metrics retrieved successfully"
+        )
+
+    except HTTPException:
+        raise
+
     except Exception as e:
-        logger.error(f"Failed to get database metrics: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get database metrics: {str(e)}")
+        logger.error(f"Failed to get database metrics", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to retrieve database metrics"
+            ).model_dump()
+        )
 
 
-@router.get("/cache")
-async def get_cache_stats() -> Dict:
+@router.get(
+    "/cache",
+    response_model=SuccessResponse[Dict],
+    status_code=status.HTTP_200_OK,
+    name="metrics_get_cache",
+    summary="Get cache metrics",
+    description="Get cache performance statistics"
+)
+async def get_cache_stats() -> SuccessResponse[Dict]:
     """
-    Get cache performance statistics.
+    Get cache performance statistics
 
     Returns:
         - hits: Number of cache hits
@@ -202,18 +310,38 @@ async def get_cache_stats() -> Dict:
         stats['redis_memory_used'] = info.get('used_memory_human', 'unknown')
         stats['redis_keys'] = cache.redis.dbsize()
 
-        return stats
+        return SuccessResponse(
+            data=stats,
+            message="Cache metrics retrieved successfully"
+        )
+
+    except HTTPException:
+        raise
+
     except Exception as e:
-        logger.error(f"Failed to get cache metrics: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get cache metrics: {str(e)}")
+        logger.error(f"Failed to get cache metrics", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to retrieve cache metrics"
+            ).model_dump()
+        )
 
 
-@router.post("/reset")
-async def reset_all_metrics() -> Dict:
+@router.post(
+    "/reset",
+    response_model=SuccessResponse[Dict],
+    status_code=status.HTTP_200_OK,
+    name="metrics_reset",
+    summary="Reset all metrics",
+    description="Reset all metrics counters (use only for testing or after maintenance)"
+)
+async def reset_all_metrics() -> SuccessResponse[Dict]:
     """
-    Reset all metrics counters.
+    Reset all metrics counters
 
-    WARNING: This will clear all accumulated statistics.
+    ⚠️ WARNING: This will clear all accumulated statistics.
     Use only for testing or after maintenance.
 
     Returns:
@@ -233,23 +361,47 @@ async def reset_all_metrics() -> Dict:
 
         logger.info("🔄 All metrics reset")
 
-        return {
+        reset_data = {
             "status": "success",
-            "message": "All metrics have been reset",
             "timestamp": "now"
         }
+
+        return SuccessResponse(
+            data=reset_data,
+            message="All metrics have been reset"
+        )
+
+    except HTTPException:
+        raise
+
     except Exception as e:
-        logger.error(f"Failed to reset metrics: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to reset metrics: {str(e)}")
+        logger.error(f"Failed to reset metrics", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to reset metrics"
+            ).model_dump()
+        )
 
 
-@router.get("/summary")
-async def get_metrics_summary() -> Dict:
+@router.get(
+    "/summary",
+    response_model=SuccessResponse[Dict],
+    status_code=status.HTTP_200_OK,
+    name="metrics_get_summary",
+    summary="Get metrics summary",
+    description="Get a quick summary of all metrics for system performance overview"
+)
+async def get_metrics_summary() -> SuccessResponse[Dict]:
     """
-    Get a quick summary of all metrics.
+    Get a quick summary of all metrics
 
     Returns:
-        High-level overview of system performance
+        High-level overview of system performance including:
+        - Overview: total requests, success rate, response time
+        - Performance: cache hit rate, database query stats
+        - Health: failed requests, failed queries, error types
     """
     try:
         request_stats = get_request_metrics()
@@ -264,7 +416,7 @@ async def get_metrics_summary() -> Dict:
 
         slow_request_rate = (request_stats.get('slow_requests', 0) / total_requests * 100) if total_requests > 0 else 0
 
-        return {
+        summary_data = {
             "overview": {
                 "total_requests": total_requests,
                 "success_rate_percent": round(success_rate, 2),
@@ -283,6 +435,21 @@ async def get_metrics_summary() -> Dict:
                 "error_types": len(get_error_metrics().get('error_counts', {}))
             }
         }
+
+        return SuccessResponse(
+            data=summary_data,
+            message="Metrics summary retrieved successfully"
+        )
+
+    except HTTPException:
+        raise
+
     except Exception as e:
-        logger.error(f"Failed to get metrics summary: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get summary: {str(e)}")
+        logger.error(f"Failed to get metrics summary", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to retrieve metrics summary"
+            ).model_dump()
+        )
