@@ -1,5 +1,7 @@
 """
 Vault Automation Routes - File organization automation and decoy vault seeding
+
+Follows MagnetarStudio API standards (see API_STANDARDS.md).
 """
 
 import logging
@@ -8,13 +10,14 @@ import uuid
 import re
 from datetime import datetime
 from typing import Dict
-from fastapi import APIRouter, HTTPException, Form, Request, Depends
+from fastapi import APIRouter, HTTPException, Form, Request, Depends, status
 
 try:
     from api.auth_middleware import get_current_user
 except ImportError:
     from auth_middleware import get_current_user
 from api.services.vault.core import get_vault_service
+from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 
 logger = logging.getLogger(__name__)
 

@@ -1,7 +1,9 @@
 """
 Pattern Discovery Routes
 
-POST /api/v1/data/discover-patterns - Analyze dataset and discover patterns
+Analyze datasets to discover patterns, correlations, and insights.
+
+Follows MagnetarStudio API standards (see API_STANDARDS.md).
 """
 
 import logging
@@ -15,6 +17,7 @@ except ImportError:
     from auth_middleware import get_current_user, User
 from api.services.data_profiler import get_data_profiler
 from api.utils import sanitize_for_log
+from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 
 logger = logging.getLogger(__name__)
 
@@ -37,11 +40,18 @@ class PatternDiscoveryResponse(BaseModel):
     metadata: dict
 
 
-@router.post("/discover-patterns", response_model=PatternDiscoveryResponse)
+@router.post(
+    "/discover-patterns",
+    response_model=SuccessResponse[PatternDiscoveryResponse],
+    status_code=status.HTTP_200_OK,
+    name="discover_dataset_patterns",
+    summary="Discover patterns",
+    description="Analyze dataset to discover patterns, correlations, outliers, and insights"
+)
 async def discover_patterns(
     request: PatternDiscoveryRequest,
     current_user: User = Depends(get_current_user)
-):
+) -> SuccessResponse[PatternDiscoveryResponse]:
     """
     Discover patterns in dataset
 
@@ -55,24 +65,25 @@ async def discover_patterns(
     - Samples large datasets (50k rows default)
     - 30-second timeout
     - Returns partial results if time limit exceeded
-
-    Examples:
-    - {"session_id": "uuid", "table_name": "sales_data"}
-    - {"dataset_id": "uuid"}
-    - {"session_id": "uuid", "table_name": "customers", "sample_rows": 100000}
     """
 
     # Validate inputs
     if not request.dataset_id and not request.session_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Either dataset_id or session_id must be provided"
+            detail=ErrorResponse(
+                error_code=ErrorCode.VALIDATION_ERROR,
+                message="Either dataset_id or session_id must be provided"
+            ).model_dump()
         )
 
     if request.session_id and not request.table_name:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="table_name is required when using session_id"
+            detail=ErrorResponse(
+                error_code=ErrorCode.VALIDATION_ERROR,
+                message="table_name is required when using session_id"
+            ).model_dump()
         )
 
     # Log request (sanitized)
@@ -109,23 +120,33 @@ async def discover_patterns(
             }
         )
 
-        return PatternDiscoveryResponse(**result)
+        response_data = PatternDiscoveryResponse(**result)
+        return SuccessResponse(
+            data=response_data,
+            message=f"Analyzed {len(result.get('columns', {}))} column(s) with {len(result.get('insights', []))} insight(s)"
+        )
 
     except ValueError as e:
         # User error (dataset not found, etc.)
         logger.warning(f"Pattern discovery validation error: {e}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=ErrorResponse(
+                error_code=ErrorCode.VALIDATION_ERROR,
+                message=str(e)
+            ).model_dump()
         )
+
+    except HTTPException:
+        raise
+
     except Exception as e:
         # Internal error
-        logger.error(f"Pattern discovery processing error: {e}", exc_info=True)
+        logger.error(f"Pattern discovery processing error", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "error": "Failed to analyze dataset",
-                "details": str(e),
-                "suggestion": "Please try again or check if the dataset exists"
-            }
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to analyze dataset"
+            ).model_dump()
         )
