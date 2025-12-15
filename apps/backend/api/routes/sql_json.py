@@ -2,6 +2,8 @@
 SQL/JSON Router - Session-based data processing endpoints.
 
 Handles upload, query, validation, export, and JSON conversion operations.
+
+Follows MagnetarStudio API standards (see API_STANDARDS.md).
 """
 
 import asyncio
@@ -12,9 +14,10 @@ from pathlib import Path
 from typing import Optional
 
 import pandas as pd
-from fastapi import APIRouter, HTTPException, File, UploadFile, Form, Request, Header, Body, Query, Depends
+from fastapi import APIRouter, HTTPException, File, UploadFile, Form, Request, Header, Body, Query, Depends, status
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
+from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 from api.schemas.api_models import (
     FileUploadResponse,
     QueryResponse,
@@ -110,35 +113,62 @@ def get_sanitize_filename():
     return sanitize_filename
 
 # Endpoints
-@router.post("/{session_id}/upload", name="sessions_upload", response_model=FileUploadResponse)
+@router.post(
+    "/{session_id}/upload",
+    name="sessions_upload",
+    response_model=FileUploadResponse,
+    status_code=status.HTTP_200_OK
+)
 async def upload_file_router(
     session_id: str,
     file: UploadFile = File(...),
     sheet_name: str | None = Form(None)
-):
+) -> FileUploadResponse:
     """Upload and load an Excel file"""
+    logger = get_logger()
     sessions = get_sessions()
 
-    if session_id not in sessions:
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    if not file.filename.lower().endswith(('.xlsx', '.xls', '.xlsm', '.csv')):
-        raise HTTPException(status_code=400, detail="Only Excel (.xlsx, .xls, .xlsm) and CSV files are supported")
-
-    # Save file (streamed) and enforce max size
-    save_upload = get_save_upload()
-    file_path = await save_upload(file)
-    size_mb = file_path.stat().st_size / (1024 * 1024)
-    config = get_config()
-    max_mb = float(config.get("max_file_size_mb", 1000))
-    if size_mb > max_mb:
-        try:
-            file_path.unlink()
-        except Exception:
-            pass
-        raise HTTPException(status_code=413, detail=f"File too large: {size_mb:.1f} MB (limit {int(max_mb)} MB)")
-
     try:
+        if session_id not in sessions:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message=f"Session '{session_id}' not found",
+                    details={"session_id": session_id}
+                ).model_dump()
+            )
+
+        if not file.filename.lower().endswith(('.xlsx', '.xls', '.xlsm', '.csv')):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message="Only Excel (.xlsx, .xls, .xlsm) and CSV files are supported",
+                    details={"filename": file.filename}
+                ).model_dump()
+            )
+
+        # Save file (streamed) and enforce max size
+        save_upload = get_save_upload()
+        file_path = await save_upload(file)
+        size_mb = file_path.stat().st_size / (1024 * 1024)
+        config = get_config()
+        max_mb = float(config.get("max_file_size_mb", 1000))
+        if size_mb > max_mb:
+            try:
+                file_path.unlink()
+            except Exception:
+                pass
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message=f"File too large: {size_mb:.1f} MB (limit {int(max_mb)} MB)",
+                    details={"size_mb": size_mb, "max_mb": max_mb}
+                ).model_dump()
+            )
+
         engine = sessions[session_id]['engine']
 
         # Load into engine based on file type
@@ -153,19 +183,43 @@ async def upload_file_router(
 
         # Defensive checks in case engine returns unexpected value
         if result is None or not isinstance(result, QueryResult):
-            raise HTTPException(status_code=500, detail="Internal error: invalid engine result during load")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.INTERNAL_ERROR,
+                    message="Internal error: invalid engine result during load"
+                ).model_dump()
+            )
 
         if result.error:
-            raise HTTPException(status_code=400, detail=result.error)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message=result.error
+                ).model_dump()
+            )
 
         # Get preview data
         preview_result = engine.execute_sql("SELECT * FROM excel_file LIMIT 20")
 
         if preview_result is None or not isinstance(preview_result, QueryResult):
-            raise HTTPException(status_code=500, detail="Internal error: invalid engine result during preview")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.INTERNAL_ERROR,
+                    message="Internal error: invalid engine result during preview"
+                ).model_dump()
+            )
 
         if preview_result.error:
-            raise HTTPException(status_code=500, detail=preview_result.error)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.INTERNAL_ERROR,
+                    message=preview_result.error
+                ).model_dump()
+            )
 
         # Store file info
         file_info = {
@@ -184,30 +238,42 @@ async def upload_file_router(
         df_to_jsonsafe = get_df_to_jsonsafe_records()
         preview_records = df_to_jsonsafe(preview_result.data)
 
-        return {
-            "filename": file.filename,
-            "size_mb": file_info['size_mb'],
-            "row_count": result.row_count,
-            "column_count": len(result.column_names),
-            "columns": [c.model_dump() for c in columns],
-            "preview": preview_records
-        }
+        return FileUploadResponse(
+            filename=file.filename,
+            size_mb=file_info['size_mb'],
+            row_count=result.row_count,
+            column_count=len(result.column_names),
+            columns=[c.model_dump() for c in columns],
+            preview=preview_records
+        )
 
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Failed to upload file for session {session_id}", exc_info=True)
         # Clean up file on error
-        if file_path.exists():
+        if 'file_path' in locals() and file_path.exists():
             file_path.unlink()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to upload and process file"
+            ).model_dump()
+        )
 
-@router.post("/{session_id}/query", name="sessions_query", response_model=QueryResponse)
+@router.post(
+    "/{session_id}/query",
+    name="sessions_query",
+    response_model=QueryResponse,
+    status_code=status.HTTP_200_OK
+)
 async def execute_query_router(
     session_id: str,
     req: Request,
     body: dict = Body(...),
     idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key")
-):
+) -> QueryResponse:
     """Execute SQL query with deduplication support"""
     sessions = get_sessions()
     rate_limiter = get_rate_limiter()
@@ -219,249 +285,465 @@ async def execute_query_router(
     SQLProcessor = get_SQLProcessor()
     df_to_jsonsafe = get_df_to_jsonsafe_records()
 
-    # Request deduplication: Check if this is a duplicate request
-    if idempotency_key:
-        if is_duplicate_request(f"query:{idempotency_key}"):
-            logger.warning(f"Duplicate query request detected: {idempotency_key}")
+    try:
+        # Request deduplication: Check if this is a duplicate request
+        if idempotency_key:
+            if is_duplicate_request(f"query:{idempotency_key}"):
+                logger.warning(f"Duplicate query request detected: {idempotency_key}")
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=ErrorResponse(
+                        error_code=ErrorCode.CONFLICT,
+                        message="Duplicate request detected. This query was already executed recently. Please wait 60 seconds or use a different idempotency key.",
+                        details={"idempotency_key": idempotency_key}
+                    ).model_dump()
+                )
+
+        # Rate limit: 60 queries per minute
+        client_ip = get_client_ip_func(req)
+        if not rate_limiter.check_rate_limit(f"query:{client_ip}", max_requests=60, window_seconds=60):
             raise HTTPException(
-                status_code=409,
-                detail="Duplicate request detected. This query was already executed recently. Please wait 60 seconds or use a different idempotency key."
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.RATE_LIMITED,
+                    message="Rate limit exceeded. Max 60 queries per minute."
+                ).model_dump()
             )
 
-    # Rate limit: 60 queries per minute
-    client_ip = get_client_ip_func(req)
-    if not rate_limiter.check_rate_limit(f"query:{client_ip}", max_requests=60, window_seconds=60):
-        raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 60 queries per minute.")
+        # Sanitize SQL for logging (redact potential sensitive data)
+        sql_text = body.get('sql', '')
+        sanitized_sql = sanitize_for_log(sql_text[:100])
+        logger.info(f"Executing query for session {session_id}: {sanitized_sql}...")
 
-    # Sanitize SQL for logging (redact potential sensitive data)
-    sql_text = body.get('sql', '')
-    sanitized_sql = sanitize_for_log(sql_text[:100])
-    logger.info(f"Executing query for session {session_id}: {sanitized_sql}...")
+        if session_id not in sessions:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message=f"Session '{session_id}' not found",
+                    details={"session_id": session_id}
+                ).model_dump()
+            )
 
-    if session_id not in sessions:
-        raise HTTPException(status_code=404, detail="Session not found")
+        engine = sessions[session_id]['engine']
+        logger.info(f"Engine found for session {session_id}")
 
-    engine = sessions[session_id]['engine']
-    logger.info(f"Engine found for session {session_id}")
+        # Clean SQL (strip comments/trailing semicolons) to avoid parsing issues when embedding in LIMIT wrapper
+        cleaned_sql = SQLProcessor.clean_sql(sql_text)
+        sanitized_cleaned = sanitize_for_log(cleaned_sql[:100])
+        logger.info(f"Cleaned SQL: {sanitized_cleaned}...")
 
-    # Clean SQL (strip comments/trailing semicolons) to avoid parsing issues when embedding in LIMIT wrapper
-    cleaned_sql = SQLProcessor.clean_sql(sql_text)
-    sanitized_cleaned = sanitize_for_log(cleaned_sql[:100])
-    logger.info(f"Cleaned SQL: {sanitized_cleaned}...")
+        # Security: Validate query only accesses allowed tables (session's uploaded file)
+        from neutron_utils.sql_utils import SQLProcessor as SQLUtil
+        referenced_tables = SQLUtil.extract_table_names(cleaned_sql)
 
-    # Security: Validate query only accesses allowed tables (session's uploaded file)
-    from neutron_utils.sql_utils import SQLProcessor as SQLUtil
-    referenced_tables = SQLUtil.extract_table_names(cleaned_sql)
+        # Only allow queries to reference the excel_file table (or explicitly allowed tables)
+        allowed_tables = {'excel_file'}  # Default table for uploaded files
+        # TODO: Add support for multi-file sessions with explicit table names
 
-    # Only allow queries to reference the excel_file table (or explicitly allowed tables)
-    allowed_tables = {'excel_file'}  # Default table for uploaded files
-    # TODO: Add support for multi-file sessions with explicit table names
+        unauthorized_tables = set(referenced_tables) - allowed_tables
+        if unauthorized_tables:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.FORBIDDEN,
+                    message=f"Query references unauthorized tables: {', '.join(unauthorized_tables)}. Only 'excel_file' is allowed.",
+                    details={"unauthorized_tables": list(unauthorized_tables), "allowed_tables": list(allowed_tables)}
+                ).model_dump()
+            )
 
-    unauthorized_tables = set(referenced_tables) - allowed_tables
-    if unauthorized_tables:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Query references unauthorized tables: {', '.join(unauthorized_tables)}. Only 'excel_file' is allowed."
+        # Execute query with timeout protection
+        # NOTE: True async cancellation requires aiosqlite (MED-06)
+        # For now, we use asyncio.wait_for to enforce max query time
+        timeout = body.get('timeout_seconds') or 300  # 5min default
+
+        try:
+            result = await asyncio.wait_for(
+                asyncio.to_thread(
+                    engine.execute_sql,
+                    cleaned_sql,
+                    limit=body.get('limit')
+                ),
+                timeout=timeout
+            )
+            logger.info(f"Query execution completed, rows: {result.row_count if result else 'error'}")
+        except asyncio.TimeoutError:
+            logger.error(f"Query execution timed out after {timeout}s", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_408_REQUEST_TIMEOUT,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.INTERNAL_ERROR,
+                    message=f"Query execution exceeded timeout of {timeout} seconds. Consider adding a LIMIT clause or optimizing your query.",
+                    details={"timeout_seconds": timeout}
+                ).model_dump()
+            )
+
+        if result.error:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message=result.error
+                ).model_dump()
+            )
+
+        # Store full result for export (with size limits)
+        query_id = str(uuid.uuid4())
+        cached = store_query_result(query_id, result.data)
+
+        if not cached:
+            logger.warning(f"Query result not cached (too large), export will be unavailable")
+
+        # Store query info
+        sessions[session_id]['queries'][query_id] = {
+            "sql": sql_text,
+            "executed_at": datetime.now(),
+            "row_count": result.row_count
+        }
+
+        # Return preview (random sample of 100 rows if dataset is large) — JSON-safe
+        preview_limit = 100
+        if result.row_count > preview_limit:
+            # Random sample for better data representation
+            preview_df = result.data.sample(n=preview_limit, random_state=None)
+        else:
+            preview_df = result.data
+
+        preview_data = df_to_jsonsafe(preview_df)
+
+        return QueryResponse(
+            query_id=query_id,
+            row_count=result.row_count,
+            column_count=len(result.column_names),
+            columns=result.column_names,
+            execution_time_ms=result.execution_time_ms,
+            preview=preview_data,
+            has_more=result.row_count > preview_limit
         )
 
-    # Execute query with timeout protection
-    # NOTE: True async cancellation requires aiosqlite (MED-06)
-    # For now, we use asyncio.wait_for to enforce max query time
-    timeout = body.get('timeout_seconds') or 300  # 5min default
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Query execution failed for session {session_id}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to execute query"
+            ).model_dump()
+        )
+
+@router.post(
+    "/{session_id}/validate",
+    name="sessions_validate",
+    response_model=ValidationResponse,
+    status_code=status.HTTP_200_OK
+)
+async def validate_sql_router(
+    session_id: str,
+    body: ValidationRequest
+) -> ValidationResponse:
+    """Validate SQL syntax before execution"""
+    logger = get_logger()
+    sessions = get_sessions()
 
     try:
-        result = await asyncio.wait_for(
-            asyncio.to_thread(
-                engine.execute_sql,
-                cleaned_sql,
-                limit=body.get('limit')
-            ),
-            timeout=timeout
+        if session_id not in sessions:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message=f"Session '{session_id}' not found",
+                    details={"session_id": session_id}
+                ).model_dump()
+            )
+
+        from neutron_utils.sql_utils import SQLValidator
+        validator = SQLValidator()
+        is_valid, errors, warnings = validator.validate_sql(
+            body.sql,
+            expected_table="excel_file"
         )
-        logger.info(f"Query execution completed, rows: {result.row_count if result else 'error'}")
-    except asyncio.TimeoutError:
-        logger.error(f"Query execution timed out after {timeout}s")
-        raise HTTPException(
-            status_code=408,
-            detail=f"Query execution exceeded timeout of {timeout} seconds. Consider adding a LIMIT clause or optimizing your query."
+
+        return ValidationResponse(
+            is_valid=is_valid,
+            errors=errors,
+            warnings=warnings
         )
-    except Exception as e:
-        logger.error(f"Query execution failed: {str(e)}")
+
+    except HTTPException:
         raise
+    except Exception as e:
+        logger.error(f"SQL validation failed for session {session_id}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to validate SQL"
+            ).model_dump()
+        )
 
-    if result.error:
-        raise HTTPException(status_code=400, detail=result.error)
-
-    # Store full result for export (with size limits)
-    query_id = str(uuid.uuid4())
-    cached = store_query_result(query_id, result.data)
-
-    if not cached:
-        logger.warning(f"Query result not cached (too large), export will be unavailable")
-
-    # Store query info
-    sessions[session_id]['queries'][query_id] = {
-        "sql": sql_text,
-        "executed_at": datetime.now(),
-        "row_count": result.row_count
-    }
-
-    # Return preview (random sample of 100 rows if dataset is large) — JSON-safe
-    preview_limit = 100
-    if result.row_count > preview_limit:
-        # Random sample for better data representation
-        preview_df = result.data.sample(n=preview_limit, random_state=None)
-    else:
-        preview_df = result.data
-
-    preview_data = df_to_jsonsafe(preview_df)
-
-    return {
-        "query_id": query_id,
-        "row_count": result.row_count,
-        "column_count": len(result.column_names),
-        "columns": result.column_names,
-        "execution_time_ms": result.execution_time_ms,
-        "preview": preview_data,
-        "has_more": result.row_count > preview_limit
-    }
-
-@router.post("/{session_id}/validate", name="sessions_validate", response_model=ValidationResponse)
-async def validate_sql_router(session_id: str, body: ValidationRequest):
-    """Validate SQL syntax before execution"""
-    sessions = get_sessions()
-
-    if session_id not in sessions:
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    from neutron_utils.sql_utils import SQLValidator
-    validator = SQLValidator()
-    is_valid, errors, warnings = validator.validate_sql(
-        body.sql,
-        expected_table="excel_file"
-    )
-
-    return ValidationResponse(
-        is_valid=is_valid,
-        errors=errors,
-        warnings=warnings
-    )
-
-@router.get("/{session_id}/query-history", name="sessions_query_history", response_model=QueryHistoryResponse)
-async def get_query_history_router(session_id: str):
+@router.get(
+    "/{session_id}/query-history",
+    name="sessions_query_history",
+    response_model=QueryHistoryResponse,
+    status_code=status.HTTP_200_OK
+)
+async def get_query_history_router(session_id: str) -> QueryHistoryResponse:
     """Get query history for a session"""
+    logger = get_logger()
     sessions = get_sessions()
 
-    if session_id not in sessions:
-        raise HTTPException(status_code=404, detail="Session not found")
+    try:
+        if session_id not in sessions:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message=f"Session '{session_id}' not found",
+                    details={"session_id": session_id}
+                ).model_dump()
+            )
 
-    queries = sessions[session_id].get('queries', {})
-    history = []
+        queries = sessions[session_id].get('queries', {})
+        history = []
 
-    for query_id, query_info in queries.items():
-        history.append({
-            "id": query_id,
-            "query": query_info["sql"],
-            "timestamp": query_info["executed_at"].isoformat(),
-            "executionTime": query_info.get("execution_time_ms"),
-            "rowCount": query_info.get("row_count"),
-            "status": "success"  # We only store successful queries
-        })
+        for query_id, query_info in queries.items():
+            history.append({
+                "id": query_id,
+                "query": query_info["sql"],
+                "timestamp": query_info["executed_at"].isoformat(),
+                "executionTime": query_info.get("execution_time_ms"),
+                "rowCount": query_info.get("row_count"),
+                "status": "success"  # We only store successful queries
+            })
 
-    # Sort by timestamp descending (most recent first)
-    history.sort(key=lambda x: x["timestamp"], reverse=True)
+        # Sort by timestamp descending (most recent first)
+        history.sort(key=lambda x: x["timestamp"], reverse=True)
 
-    return {"history": history}
+        return QueryHistoryResponse(history=history)
 
-@router.delete("/{session_id}/query-history/{query_id}", name="sessions_query_history_delete", response_model=SuccessResponse)
-async def delete_query_from_history_router(session_id: str, query_id: str):
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get query history for session {session_id}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to retrieve query history"
+            ).model_dump()
+        )
+
+@router.delete(
+    "/{session_id}/query-history/{query_id}",
+    name="sessions_query_history_delete",
+    response_model=SuccessResponse,
+    status_code=status.HTTP_200_OK
+)
+async def delete_query_from_history_router(
+    session_id: str,
+    query_id: str
+) -> SuccessResponse:
     """Delete a query from history"""
+    logger = get_logger()
     sessions = get_sessions()
     query_results = get_query_results()
     query_result_sizes = get_query_result_sizes()
     main_module = get_total_cache_size_ref()
 
-    if session_id not in sessions:
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    queries = sessions[session_id].get('queries', {})
-    if query_id not in queries:
-        raise HTTPException(status_code=404, detail="Query not found")
-
-    del queries[query_id]
-
-    # Also remove from query_results cache if it exists
-    if query_id in query_results:
-        size = query_result_sizes.get(query_id, 0)
-        del query_results[query_id]
-        if query_id in query_result_sizes:
-            del query_result_sizes[query_id]
-        main_module._total_cache_size -= size
-
-    return SuccessResponse(success=True, message="Query deleted successfully")
-
-@router.get("/{session_id}/sheet-names", name="sessions_sheet_names", response_model=SheetNamesResponse)
-async def sheet_names_router(session_id: str, filename: str | None = Query(None)):
-    """List Excel sheet names for an uploaded file in this session."""
-    sessions = get_sessions()
-
-    if session_id not in sessions:
-        raise HTTPException(status_code=404, detail="Session not found")
     try:
-        from neutron_utils.excel_ops import ExcelReader
-    except Exception:
-        raise HTTPException(status_code=500, detail="Excel utilities unavailable")
+        if session_id not in sessions:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message=f"Session '{session_id}' not found",
+                    details={"session_id": session_id}
+                ).model_dump()
+            )
 
-    from pathlib import Path
-    files = sessions[session_id].get('files', {})
-    file_info = None
-    if filename and filename in files:
-        file_info = files[filename]
-    else:
-        # Pick first Excel file in session
-        for info in files.values():
-            if str(info.get('path', '')).lower().endswith(('.xlsx', '.xls', '.xlsm')):
-                file_info = info
-                break
-    if not file_info:
-        raise HTTPException(status_code=404, detail="No Excel file found in session")
-    path = Path(file_info['path'])
-    if not path.exists():
-        raise HTTPException(status_code=404, detail="File not found on server")
-    try:
-        sheets = ExcelReader.get_sheet_names(str(path))
-        return {"filename": file_info.get('filename', path.name), "sheets": sheets}
+        queries = sessions[session_id].get('queries', {})
+        if query_id not in queries:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message=f"Query '{query_id}' not found",
+                    details={"query_id": query_id, "session_id": session_id}
+                ).model_dump()
+            )
+
+        del queries[query_id]
+
+        # Also remove from query_results cache if it exists
+        if query_id in query_results:
+            size = query_result_sizes.get(query_id, 0)
+            del query_results[query_id]
+            if query_id in query_result_sizes:
+                del query_result_sizes[query_id]
+            main_module._total_cache_size -= size
+
+        return SuccessResponse(success=True, message="Query deleted successfully")
+
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to delete query {query_id} from session {session_id}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to delete query from history"
+            ).model_dump()
+        )
 
-@router.get("/{session_id}/tables", name="sessions_tables", response_model=TablesListResponse)
-async def list_tables_router(session_id: str):
-    """List loaded tables in session"""
+@router.get(
+    "/{session_id}/sheet-names",
+    name="sessions_sheet_names",
+    response_model=SheetNamesResponse,
+    status_code=status.HTTP_200_OK
+)
+async def sheet_names_router(
+    session_id: str,
+    filename: str | None = Query(None)
+) -> SheetNamesResponse:
+    """List Excel sheet names for an uploaded file in this session."""
+    logger = get_logger()
     sessions = get_sessions()
 
-    if session_id not in sessions:
-        raise HTTPException(status_code=404, detail="Session not found")
+    try:
+        if session_id not in sessions:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message=f"Session '{session_id}' not found",
+                    details={"session_id": session_id}
+                ).model_dump()
+            )
 
-    from pathlib import Path
-    engine = sessions[session_id]['engine']
-    tables = []
+        try:
+            from neutron_utils.excel_ops import ExcelReader
+        except Exception as e:
+            logger.error("Excel utilities unavailable", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.INTERNAL_ERROR,
+                    message="Excel utilities unavailable"
+                ).model_dump()
+            )
 
-    for table_name, file_path in engine.tables.items():
-        table_info = engine.get_table_info(table_name)
-        tables.append({
-            "name": table_name,
-            "file": Path(file_path).name,
-            "row_count": table_info.get('row_count', 0),
-            "column_count": len(table_info.get('columns', []))
-        })
+        from pathlib import Path
+        files = sessions[session_id].get('files', {})
+        file_info = None
+        if filename and filename in files:
+            file_info = files[filename]
+        else:
+            # Pick first Excel file in session
+            for info in files.values():
+                if str(info.get('path', '')).lower().endswith(('.xlsx', '.xls', '.xlsm')):
+                    file_info = info
+                    break
 
-    return {"tables": tables}
+        if not file_info:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message="No Excel file found in session",
+                    details={"session_id": session_id}
+                ).model_dump()
+            )
+
+        path = Path(file_info['path'])
+        if not path.exists():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message="File not found on server",
+                    details={"filename": file_info.get('filename')}
+                ).model_dump()
+            )
+
+        sheets = ExcelReader.get_sheet_names(str(path))
+        return SheetNamesResponse(
+            filename=file_info.get('filename', path.name),
+            sheets=sheets
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get sheet names for session {session_id}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to retrieve sheet names"
+            ).model_dump()
+        )
+
+@router.get(
+    "/{session_id}/tables",
+    name="sessions_tables",
+    response_model=TablesListResponse,
+    status_code=status.HTTP_200_OK
+)
+async def list_tables_router(session_id: str) -> TablesListResponse:
+    """List loaded tables in session"""
+    logger = get_logger()
+    sessions = get_sessions()
+
+    try:
+        if session_id not in sessions:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message=f"Session '{session_id}' not found",
+                    details={"session_id": session_id}
+                ).model_dump()
+            )
+
+        from pathlib import Path
+        engine = sessions[session_id]['engine']
+        tables = []
+
+        for table_name, file_path in engine.tables.items():
+            table_info = engine.get_table_info(table_name)
+            tables.append({
+                "name": table_name,
+                "file": Path(file_path).name,
+                "row_count": table_info.get('row_count', 0),
+                "column_count": len(table_info.get('columns', []))
+            })
+
+        return TablesListResponse(tables=tables)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to list tables for session {session_id}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to list tables"
+            ).model_dump()
+        )
 
 # ============================================================================
 # Export Endpoint
 # ============================================================================
 
-@router.post("/{session_id}/export", name="sessions_export")
+@router.post(
+    "/{session_id}/export",
+    name="sessions_export",
+    status_code=status.HTTP_200_OK
+)
 async def export_results_router(
     session_id: str,
     req: Request,
@@ -475,87 +757,150 @@ async def export_results_router(
     logger = get_logger()
     require_perm = get_require_perm()
 
-    # Apply permission check
-    perm_decorator = require_perm("data.export")
-    # Since we're inside a router, we need to call the decorator manually
-    # The decorator expects an async function, so we check directly
-    from api.main import has_permission
-    if not has_permission(current_user, "data.export"):
-        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    try:
+        # Apply permission check
+        perm_decorator = require_perm("data.export")
+        # Since we're inside a router, we need to call the decorator manually
+        # The decorator expects an async function, so we check directly
+        from api.main import has_permission
+        if not has_permission(current_user, "data.export"):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.FORBIDDEN,
+                    message="Insufficient permissions to export data",
+                    details={"required_permission": "data.export"}
+                ).model_dump()
+            )
 
-    if session_id not in sessions:
-        raise HTTPException(status_code=404, detail="Session not found")
+        if session_id not in sessions:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message=f"Session '{session_id}' not found",
+                    details={"session_id": session_id}
+                ).model_dump()
+            )
 
-    # Check if this is a JSON conversion result or SQL query result
-    if request.query_id.startswith('json_'):
-        # JSON conversion result
-        if 'json_result' not in sessions[session_id]:
-            raise HTTPException(status_code=404, detail="JSON conversion result not found. Please run the conversion first.")
+        # Check if this is a JSON conversion result or SQL query result
+        if request.query_id.startswith('json_'):
+            # JSON conversion result
+            if 'json_result' not in sessions[session_id]:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=ErrorResponse(
+                        error_code=ErrorCode.NOT_FOUND,
+                        message="JSON conversion result not found. Please run the conversion first.",
+                        details={"query_id": request.query_id}
+                    ).model_dump()
+                )
 
-        # Load the Excel file that was created during conversion
-        json_result = sessions[session_id]['json_result']
-        excel_path = json_result.get('excel_path')
+            # Load the Excel file that was created during conversion
+            json_result = sessions[session_id]['json_result']
+            excel_path = json_result.get('excel_path')
 
-        if not excel_path or not Path(excel_path).exists():
-            raise HTTPException(status_code=404, detail="JSON conversion output file not found. Please run the conversion again.")
+            if not excel_path or not Path(excel_path).exists():
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=ErrorResponse(
+                        error_code=ErrorCode.NOT_FOUND,
+                        message="JSON conversion output file not found. Please run the conversion again."
+                    ).model_dump()
+                )
 
-        # Read the Excel file into a DataFrame for export
-        logger.info(f"Exporting JSON conversion result from {excel_path}")
-        df = pd.read_excel(excel_path)
-    else:
-        # SQL query result
-        if request.query_id not in query_results:
-            raise HTTPException(status_code=404, detail="Query results not found. Please run the query again.")
+            # Read the Excel file into a DataFrame for export
+            logger.info(f"Exporting JSON conversion result from {excel_path}")
+            df = pd.read_excel(excel_path)
+        else:
+            # SQL query result
+            if request.query_id not in query_results:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=ErrorResponse(
+                        error_code=ErrorCode.NOT_FOUND,
+                        message="Query results not found. Please run the query again.",
+                        details={"query_id": request.query_id}
+                    ).model_dump()
+                )
 
-        df = query_results[request.query_id]
+            df = query_results[request.query_id]
 
-    # Generate filename
-    filename = request.filename or f"neutron_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        # Generate filename
+        filename = request.filename or f"neutron_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
-    # Export based on format
-    api_dir = Path(__file__).parent.parent
-    temp_dir = api_dir / "temp_exports"
-    temp_dir.mkdir(exist_ok=True)
+        # Export based on format
+        api_dir = Path(__file__).parent.parent
+        temp_dir = api_dir / "temp_exports"
+        temp_dir.mkdir(exist_ok=True)
 
-    if request.format == "excel":
-        file_path = temp_dir / f"{filename}.xlsx"
-        df.to_excel(file_path, index=False)
-        media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    elif request.format == "csv":
-        file_path = temp_dir / f"{filename}.csv"
-        df.to_csv(file_path, index=False)
-        media_type = "text/csv"
-    elif request.format == "tsv":
-        file_path = temp_dir / f"{filename}.tsv"
-        df.to_csv(file_path, index=False, sep='\t')
-        media_type = "text/tab-separated-values"
-    elif request.format == "parquet":
-        file_path = temp_dir / f"{filename}.parquet"
-        df.to_parquet(file_path, index=False)
-        media_type = "application/octet-stream"
-    elif request.format == "json":
-        file_path = temp_dir / f"{filename}.json"
-        # Convert to JSON-safe records and write with proper formatting
-        json_records = df_to_jsonsafe(df)
-        with open(file_path, 'w', encoding='utf-8') as f:
-            json.dump(json_records, f, indent=2, ensure_ascii=False)
-        media_type = "application/json"
-    else:
-        raise HTTPException(status_code=400, detail="Invalid export format")
+        if request.format == "excel":
+            file_path = temp_dir / f"{filename}.xlsx"
+            df.to_excel(file_path, index=False)
+            media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        elif request.format == "csv":
+            file_path = temp_dir / f"{filename}.csv"
+            df.to_csv(file_path, index=False)
+            media_type = "text/csv"
+        elif request.format == "tsv":
+            file_path = temp_dir / f"{filename}.tsv"
+            df.to_csv(file_path, index=False, sep='\t')
+            media_type = "text/tab-separated-values"
+        elif request.format == "parquet":
+            file_path = temp_dir / f"{filename}.parquet"
+            df.to_parquet(file_path, index=False)
+            media_type = "application/octet-stream"
+        elif request.format == "json":
+            file_path = temp_dir / f"{filename}.json"
+            # Convert to JSON-safe records and write with proper formatting
+            json_records = df_to_jsonsafe(df)
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(json_records, f, indent=2, ensure_ascii=False)
+            media_type = "application/json"
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message=f"Invalid export format: {request.format}",
+                    details={"format": request.format, "allowed_formats": ["excel", "csv", "tsv", "parquet", "json"]}
+                ).model_dump()
+            )
 
-    return FileResponse(
-        path=file_path,
-        filename=file_path.name,
-        media_type=media_type,
-        background=BackgroundTask(lambda: file_path.unlink(missing_ok=True))
-    )
+        return FileResponse(
+            path=file_path,
+            filename=file_path.name,
+            media_type=media_type,
+            background=BackgroundTask(lambda: file_path.unlink(missing_ok=True))
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Export failed for session {session_id}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to export results"
+            ).model_dump()
+        )
 
 # ============================================================================
 # JSON Processing Endpoints
 # ============================================================================
 
-@router.post("/{session_id}/json/upload", name="sessions_json_upload", response_model=JsonUploadResponse)
-async def upload_json_router(session_id: str, req: Request, file: UploadFile = File(...)):
+@router.post(
+    "/{session_id}/json/upload",
+    name="sessions_json_upload",
+    response_model=JsonUploadResponse,
+    status_code=status.HTTP_200_OK
+)
+async def upload_json_router(
+    session_id: str,
+    req: Request,
+    file: UploadFile = File(...)
+) -> JsonUploadResponse:
     """Upload and analyze JSON file"""
     sessions = get_sessions()
     rate_limiter = get_rate_limiter()
@@ -563,42 +908,66 @@ async def upload_json_router(session_id: str, req: Request, file: UploadFile = F
     sanitize_filename = get_sanitize_filename()
     df_to_jsonsafe = get_df_to_jsonsafe_records()
     logger = get_logger()
-    
-    # Rate limit: 10 uploads per minute
-    client_ip = get_client_ip_func(req)
-    if not rate_limiter.check_rate_limit(f"upload:{client_ip}", max_requests=10, window_seconds=60):
-        raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 10 uploads per minute.")
-
-    if session_id not in sessions:
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    if not file.filename.endswith('.json'):
-        raise HTTPException(status_code=400, detail="Only JSON files are supported")
-
-    # Security: Limit JSON file size to prevent OOM (100MB max)
-    MAX_JSON_SIZE = 100 * 1024 * 1024  # 100MB
-    file.file.seek(0, 2)  # Seek to end
-    file_size = file.file.tell()
-    file.file.seek(0)  # Reset to beginning
-
-    if file_size > MAX_JSON_SIZE:
-        raise HTTPException(
-            status_code=413,
-            detail=f"JSON file too large ({file_size / 1024 / 1024:.1f}MB). Maximum size is {MAX_JSON_SIZE / 1024 / 1024}MB"
-        )
-
-    # Save uploaded file temporarily
-    from pathlib import Path
-    import aiofiles
-    api_dir = Path(__file__).parent.parent
-    temp_dir = api_dir / "temp_uploads"
-    temp_dir.mkdir(exist_ok=True)
-
-    # Sanitize filename to prevent path traversal
-    safe_filename = sanitize_filename(file.filename)
-    file_path = temp_dir / f"{uuid.uuid4()}_{safe_filename}"
 
     try:
+        # Rate limit: 10 uploads per minute
+        client_ip = get_client_ip_func(req)
+        if not rate_limiter.check_rate_limit(f"upload:{client_ip}", max_requests=10, window_seconds=60):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.RATE_LIMITED,
+                    message="Rate limit exceeded. Max 10 uploads per minute."
+                ).model_dump()
+            )
+
+        if session_id not in sessions:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message=f"Session '{session_id}' not found",
+                    details={"session_id": session_id}
+                ).model_dump()
+            )
+
+        if not file.filename.endswith('.json'):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message="Only JSON files are supported",
+                    details={"filename": file.filename}
+                ).model_dump()
+            )
+
+        # Security: Limit JSON file size to prevent OOM (100MB max)
+        MAX_JSON_SIZE = 100 * 1024 * 1024  # 100MB
+        file.file.seek(0, 2)  # Seek to end
+        file_size = file.file.tell()
+        file.file.seek(0)  # Reset to beginning
+
+        if file_size > MAX_JSON_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message=f"JSON file too large ({file_size / 1024 / 1024:.1f}MB). Maximum size is {MAX_JSON_SIZE / 1024 / 1024}MB",
+                    details={"size_mb": file_size / 1024 / 1024, "max_mb": MAX_JSON_SIZE / 1024 / 1024}
+                ).model_dump()
+            )
+
+        # Save uploaded file temporarily
+        from pathlib import Path
+        import aiofiles
+        api_dir = Path(__file__).parent.parent
+        temp_dir = api_dir / "temp_uploads"
+        temp_dir.mkdir(exist_ok=True)
+
+        # Sanitize filename to prevent path traversal
+        safe_filename = sanitize_filename(file.filename)
+        file_path = temp_dir / f"{uuid.uuid4()}_{safe_filename}"
+
         # Stream file to disk instead of loading entirely into memory
         async with aiofiles.open(file_path, 'wb') as f:
             # Stream in chunks to avoid OOM
@@ -615,7 +984,13 @@ async def upload_json_router(session_id: str, req: Request, file: UploadFile = F
         load_result = engine.load_json(str(file_path))
 
         if not load_result['success']:
-            raise HTTPException(status_code=400, detail=load_result.get('error', 'Failed to load JSON'))
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message=load_result.get('error', 'Failed to load JSON')
+                ).model_dump()
+            )
 
         # Get column paths
         columns = load_result.get('columns', [])
@@ -675,44 +1050,69 @@ async def upload_json_router(session_id: str, req: Request, file: UploadFile = F
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"JSON upload failed: {str(e)}", exc_info=True)
-        if file_path.exists():
+        logger.error(f"JSON upload failed for session {session_id}", exc_info=True)
+        if 'file_path' in locals() and file_path.exists():
             file_path.unlink()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to upload and analyze JSON file"
+            ).model_dump()
+        )
 
 
-@router.post("/{session_id}/json/convert", name="sessions_json_convert", response_model=JsonConvertResponse)
-async def convert_json_router(session_id: str, body: JsonConvertRequest):
+@router.post(
+    "/{session_id}/json/convert",
+    name="sessions_json_convert",
+    response_model=JsonConvertResponse,
+    status_code=status.HTTP_200_OK
+)
+async def convert_json_router(
+    session_id: str,
+    body: JsonConvertRequest
+) -> JsonConvertResponse:
     """Convert JSON data to Excel format"""
     sessions = get_sessions()
     df_to_jsonsafe = get_df_to_jsonsafe_records()
     logger = get_logger()
 
-    if session_id not in sessions:
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    # Security: Enforce JSON size limit (100MB)
-    MAX_JSON_SIZE = 100 * 1024 * 1024  # 100MB
-    json_size = len(body.json_data.encode('utf-8'))
-
-    if json_size > MAX_JSON_SIZE:
-        raise HTTPException(
-            status_code=413,
-            detail=f"JSON payload too large ({json_size / 1024 / 1024:.1f}MB). Maximum size is {MAX_JSON_SIZE / 1024 / 1024}MB"
-        )
-
-    from pathlib import Path
-    import aiofiles
-    import pandas as pd
-    api_dir = Path(__file__).parent.parent
-    temp_dir = api_dir / "temp_uploads"
-    temp_dir.mkdir(exist_ok=True)
-
-    # Create temporary files
-    temp_json = temp_dir / f"{uuid.uuid4()}_input.json"
-    temp_excel = temp_dir / f"{uuid.uuid4()}_output.xlsx"
-
     try:
+        if session_id not in sessions:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message=f"Session '{session_id}' not found",
+                    details={"session_id": session_id}
+                ).model_dump()
+            )
+
+        # Security: Enforce JSON size limit (100MB)
+        MAX_JSON_SIZE = 100 * 1024 * 1024  # 100MB
+        json_size = len(body.json_data.encode('utf-8'))
+
+        if json_size > MAX_JSON_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message=f"JSON payload too large ({json_size / 1024 / 1024:.1f}MB). Maximum size is {MAX_JSON_SIZE / 1024 / 1024}MB",
+                    details={"size_mb": json_size / 1024 / 1024, "max_mb": MAX_JSON_SIZE / 1024 / 1024}
+                ).model_dump()
+            )
+
+        from pathlib import Path
+        import aiofiles
+        import pandas as pd
+        api_dir = Path(__file__).parent.parent
+        temp_dir = api_dir / "temp_uploads"
+        temp_dir.mkdir(exist_ok=True)
+
+        # Create temporary files
+        temp_json = temp_dir / f"{uuid.uuid4()}_input.json"
+        temp_excel = temp_dir / f"{uuid.uuid4()}_output.xlsx"
+
         # Write JSON data to temp file
         async with aiofiles.open(temp_json, 'w') as f:
             await f.write(body.json_data)
@@ -734,7 +1134,13 @@ async def convert_json_router(session_id: str, body: JsonConvertRequest):
 
             load_result = engine.load_json(str(temp_json))
             if not load_result['success']:
-                raise HTTPException(status_code=400, detail=load_result.get('error', 'Failed to analyze JSON'))
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=ErrorResponse(
+                        error_code=ErrorCode.VALIDATION_ERROR,
+                        message=load_result.get('error', 'Failed to analyze JSON')
+                    ).model_dump()
+                )
 
             # Return lightweight preview data with configurable limit
             preview_data = []
@@ -775,7 +1181,13 @@ async def convert_json_router(session_id: str, body: JsonConvertRequest):
             logger.info(f"Conversion completed with result: {result.get('success', False)}")
 
         if not result['success']:
-            raise HTTPException(status_code=400, detail=result.get('error', 'Conversion failed'))
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message=result.get('error', 'Conversion failed')
+                ).model_dump()
+            )
 
         # Store result in session (only if Excel file was actually created)
         if not preview_only:
@@ -846,77 +1258,120 @@ async def convert_json_router(session_id: str, body: JsonConvertRequest):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"JSON conversion failed: {str(e)}", exc_info=True)
+        logger.error(f"JSON conversion failed for session {session_id}", exc_info=True)
         # Cleanup temp files
-        for f in [temp_json, temp_excel]:
-            if f.exists():
-                f.unlink()
-        raise HTTPException(status_code=500, detail=str(e))
+        if 'temp_json' in locals() and temp_json.exists():
+            temp_json.unlink()
+        if 'temp_excel' in locals() and temp_excel.exists():
+            temp_excel.unlink()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to convert JSON to Excel"
+            ).model_dump()
+        )
     finally:
         # Always cleanup input JSON
-        if temp_json.exists():
+        if 'temp_json' in locals() and temp_json.exists():
             temp_json.unlink()
 
 
-@router.get("/{session_id}/json/download", name="sessions_json_download")
-async def download_json_result_router(session_id: str, format: str = "excel"):
+@router.get(
+    "/{session_id}/json/download",
+    name="sessions_json_download",
+    status_code=status.HTTP_200_OK
+)
+async def download_json_result_router(
+    session_id: str,
+    format: str = "excel"
+):
     """Download converted JSON as Excel or CSV"""
     sessions = get_sessions()
     logger = get_logger()
 
-    if session_id not in sessions:
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    if 'json_result' not in sessions[session_id]:
-        raise HTTPException(status_code=404, detail="No conversion result found")
-
-    json_result = sessions[session_id]['json_result']
-    excel_path_str = json_result.get('excel_path')
-
-    if not excel_path_str:
-        # Clean up stale session data
-        del sessions[session_id]['json_result']
-        raise HTTPException(status_code=404, detail="Result file path not found. Please convert again.")
-
-    from pathlib import Path
-    excel_path = Path(excel_path_str)
-
-    # Validate file still exists
-    if not excel_path.exists():
-        # Clean up stale session data
-        del sessions[session_id]['json_result']
-        raise HTTPException(
-            status_code=410,
-            detail="Result file expired or was cleaned up. Please run the conversion again."
-        )
-
-    # Check file age (auto-cleanup after 24 hours)
     try:
-        file_age_seconds = datetime.now().timestamp() - excel_path.stat().st_mtime
-        if file_age_seconds > 86400:  # 24 hours
-            excel_path.unlink(missing_ok=True)
+        if session_id not in sessions:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message=f"Session '{session_id}' not found",
+                    details={"session_id": session_id}
+                ).model_dump()
+            )
+
+        if 'json_result' not in sessions[session_id]:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message="No conversion result found"
+                ).model_dump()
+            )
+
+        json_result = sessions[session_id]['json_result']
+        excel_path_str = json_result.get('excel_path')
+
+        if not excel_path_str:
+            # Clean up stale session data
             del sessions[session_id]['json_result']
             raise HTTPException(
-                status_code=410,
-                detail="Result file expired (24-hour limit). Please run the conversion again."
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message="Result file path not found. Please convert again."
+                ).model_dump()
             )
-    except OSError:
-        # File stat failed, file probably doesn't exist
-        del sessions[session_id]['json_result']
-        raise HTTPException(
-            status_code=404,
-            detail="Result file not accessible. Please run the conversion again."
-        )
 
-    if format == "excel":
-        return FileResponse(
-            excel_path,
-            filename=f"export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-    else:
-        # Convert to other formats
+        from pathlib import Path
+        excel_path = Path(excel_path_str)
+
+        # Validate file still exists
+        if not excel_path.exists():
+            # Clean up stale session data
+            del sessions[session_id]['json_result']
+            raise HTTPException(
+                status_code=status.HTTP_410_GONE,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message="Result file expired or was cleaned up. Please run the conversion again."
+                ).model_dump()
+            )
+
+        # Check file age (auto-cleanup after 24 hours)
         try:
+            file_age_seconds = datetime.now().timestamp() - excel_path.stat().st_mtime
+            if file_age_seconds > 86400:  # 24 hours
+                excel_path.unlink(missing_ok=True)
+                del sessions[session_id]['json_result']
+                raise HTTPException(
+                    status_code=status.HTTP_410_GONE,
+                    detail=ErrorResponse(
+                        error_code=ErrorCode.NOT_FOUND,
+                        message="Result file expired (24-hour limit). Please run the conversion again."
+                    ).model_dump()
+                )
+        except OSError as e:
+            # File stat failed, file probably doesn't exist
+            logger.error(f"File stat failed for {excel_path}", exc_info=True)
+            del sessions[session_id]['json_result']
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message="Result file not accessible. Please run the conversion again."
+                ).model_dump()
+            )
+
+        if format == "excel":
+            return FileResponse(
+                excel_path,
+                filename=f"export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+        else:
+            # Convert to other formats
             import pandas as pd
             df = pd.read_excel(excel_path, sheet_name=0)
 
@@ -935,6 +1390,15 @@ async def download_json_result_router(session_id: str, format: str = "excel"):
                 df.to_parquet(output_path, index=False)
                 media_type = "application/octet-stream"
                 extension = ".parquet"
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=ErrorResponse(
+                        error_code=ErrorCode.VALIDATION_ERROR,
+                        message=f"Invalid format: {format}",
+                        details={"format": format, "allowed_formats": ["excel", "csv", "tsv", "parquet"]}
+                    ).model_dump()
+                )
 
             return FileResponse(
                 output_path,
@@ -942,7 +1406,16 @@ async def download_json_result_router(session_id: str, format: str = "excel"):
                 media_type=media_type,
                 background=BackgroundTask(lambda: output_path.unlink(missing_ok=True))
             )
-        except Exception as e:
-            logger.error(f"Format conversion failed: {str(e)}", exc_info=True)
-            raise HTTPException(status_code=500, detail=f"Format conversion failed: {str(e)}")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"JSON download failed for session {session_id}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to download conversion result"
+            ).model_dump()
+        )
 
