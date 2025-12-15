@@ -2,13 +2,15 @@
 """
 Model Recommendation API
 Provides curated model recommendations based on system capabilities
+
+Follows MagnetarStudio API standards (see API_STANDARDS.md).
 """
 
 import json
 import logging
 from pathlib import Path
 from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, status
 from pydantic import BaseModel, Field
 
 # Auth imports
@@ -16,6 +18,7 @@ try:
     from ..auth_middleware import get_current_user
 except ImportError:
     from auth_middleware import get_current_user
+from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 
 logger = logging.getLogger(__name__)
 
@@ -73,11 +76,23 @@ def load_curated_models() -> Dict[str, Any]:
         with open(data_path, "r") as f:
             return json.load(f)
     except FileNotFoundError:
-        logger.error(f"Curated models file not found: {data_path}")
-        raise HTTPException(status_code=500, detail="Model recommendations data not found")
+        logger.error(f"Curated models file not found: {data_path}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Model recommendations data not found"
+            ).model_dump()
+        )
     except json.JSONDecodeError as e:
-        logger.error(f"Invalid JSON in curated models: {e}")
-        raise HTTPException(status_code=500, detail="Invalid model recommendations data")
+        logger.error(f"Invalid JSON in curated models", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Invalid model recommendations data"
+            ).model_dump()
+        )
 
 
 # ===== Compatibility Logic =====
@@ -163,14 +178,21 @@ def get_primary_use_cases(tags: List[str]) -> List[str]:
 
 # ===== Main Endpoint =====
 
-@router.get("/recommended", response_model=RecommendationsResponse)
+@router.get(
+    "/recommended",
+    response_model=SuccessResponse[RecommendationsResponse],
+    status_code=status.HTTP_200_OK,
+    name="models_get_recommendations",
+    summary="Get model recommendations",
+    description="Get curated model recommendations filtered by system capabilities"
+)
 async def get_recommended_models(
     total_memory_gb: float = Query(..., description="Total system memory in GB"),
     cpu_cores: int = Query(..., description="Number of CPU cores"),
     has_metal: bool = Query(True, description="Metal GPU support"),
     installed_models: Optional[str] = Query(None, description="Comma-separated list of installed models"),
     current_user: Dict = Depends(get_current_user)
-):
+) -> SuccessResponse[RecommendationsResponse]:
     """
     Get curated model recommendations based on system capabilities
 
@@ -180,78 +202,145 @@ async def get_recommended_models(
     3. Experimental models mixed in with badges
     4. Filtered by hardware compatibility
 
-    Static recommendations - learning integration coming in future phase.
+    Args:
+        total_memory_gb: Total system memory in GB
+        cpu_cores: Number of CPU cores
+        has_metal: Metal GPU support (default: True)
+        installed_models: Comma-separated list of installed models
+
+    Returns:
+        Filtered and sorted model recommendations
+
+    Note: Static recommendations - learning integration coming in future phase
     """
+    try:
+        # Load curated models
+        data = load_curated_models()
+        all_models = data.get("models", [])
 
-    # Load curated models
-    data = load_curated_models()
-    all_models = data.get("models", [])
+        # Parse installed models
+        installed_set = set()
+        if installed_models:
+            installed_set = set(m.strip() for m in installed_models.split(","))
 
-    # Parse installed models
-    installed_set = set()
-    if installed_models:
-        installed_set = set(m.strip() for m in installed_models.split(","))
+        # Filter and build recommendations
+        recommendations = []
 
-    # Filter and build recommendations
-    recommendations = []
+        for model in all_models:
+            # Assess compatibility
+            compatibility = assess_compatibility(model, total_memory_gb)
 
-    for model in all_models:
-        # Assess compatibility
-        compatibility = assess_compatibility(model, total_memory_gb)
+            # Skip insufficient models (user can't run them)
+            if compatibility.performance == "insufficient":
+                continue
 
-        # Skip insufficient models (user can't run them)
-        if compatibility.performance == "insufficient":
-            continue
+            # Check if installed
+            is_installed = model["model_name"] in installed_set
 
-        # Check if installed
-        is_installed = model["model_name"] in installed_set
+            # Build recommendation
+            rec = RecommendedModel(
+                model_name=model["model_name"],
+                display_name=model["display_name"],
+                description=model["description"],
+                tags=model["tags"],
+                parameter_size=model["parameter_size"],
+                estimated_memory_gb=compatibility.estimated_memory_usage or model["min_memory_gb"],
+                compatibility=compatibility,
+                badges=model.get("badges", []),
+                is_installed=is_installed,
+                is_multi_purpose=model.get("is_multi_purpose", False),
+                primary_use_cases=get_primary_use_cases(model["tags"]),
+                popularity_rank=model.get("popularity_rank", 999),
+                capability=model.get("capability", "general")
+            )
 
-        # Build recommendation
-        rec = RecommendedModel(
-            model_name=model["model_name"],
-            display_name=model["display_name"],
-            description=model["description"],
-            tags=model["tags"],
-            parameter_size=model["parameter_size"],
-            estimated_memory_gb=compatibility.estimated_memory_usage or model["min_memory_gb"],
-            compatibility=compatibility,
-            badges=model.get("badges", []),
-            is_installed=is_installed,
-            is_multi_purpose=model.get("is_multi_purpose", False),
-            primary_use_cases=get_primary_use_cases(model["tags"]),
-            popularity_rank=model.get("popularity_rank", 999),
-            capability=model.get("capability", "general")
+            recommendations.append(rec)
+
+        # Sort by popularity_rank (lower = more recommended)
+        # This ensures recommended models appear first
+        recommendations.sort(key=lambda x: x.popularity_rank)
+
+        result = RecommendationsResponse(
+            recommendations=recommendations,
+            total_count=len(recommendations),
+            filtered_by_hardware=True,
+            learning_enabled=False,  # Phase 2
+            personalization_active=False  # Phase 2
         )
 
-        recommendations.append(rec)
+        return SuccessResponse(
+            data=result,
+            message=f"Retrieved {len(recommendations)} compatible model{'s' if len(recommendations) != 1 else ''}"
+        )
 
-    # Sort by popularity_rank (lower = more recommended)
-    # This ensures recommended models appear first
-    recommendations.sort(key=lambda x: x.popularity_rank)
+    except HTTPException:
+        raise
 
-    return RecommendationsResponse(
-        recommendations=recommendations,
-        total_count=len(recommendations),
-        filtered_by_hardware=True,
-        learning_enabled=False,  # Phase 2
-        personalization_active=False  # Phase 2
-    )
+    except Exception as e:
+        logger.error(f"Failed to get model recommendations", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to retrieve model recommendations"
+            ).model_dump()
+        )
 
 
 # ===== Health Check =====
 
-@router.get("/recommended/health")
-async def recommendations_health():
-    """Health check for recommendations system"""
-    data = load_curated_models()
+class RecommendationsHealthResponse(BaseModel):
+    """Health check response"""
+    status: str
+    version: str
+    last_updated: str
+    total_models: int
+    learning_enabled: bool
 
-    return {
-        "status": "healthy",
-        "version": data.get("version", "unknown"),
-        "last_updated": data.get("last_updated", "unknown"),
-        "total_models": len(data.get("models", [])),
-        "learning_enabled": False
-    }
+
+@router.get(
+    "/recommended/health",
+    response_model=SuccessResponse[RecommendationsHealthResponse],
+    status_code=status.HTTP_200_OK,
+    name="models_recommendations_health",
+    summary="Recommendations health check",
+    description="Check if model recommendations system is healthy"
+)
+async def recommendations_health() -> SuccessResponse[RecommendationsHealthResponse]:
+    """
+    Health check for recommendations system
+
+    Returns:
+        System health status and metadata
+    """
+    try:
+        data = load_curated_models()
+
+        health_data = RecommendationsHealthResponse(
+            status="healthy",
+            version=data.get("version", "unknown"),
+            last_updated=data.get("last_updated", "unknown"),
+            total_models=len(data.get("models", [])),
+            learning_enabled=False
+        )
+
+        return SuccessResponse(
+            data=health_data,
+            message="Recommendations system is healthy"
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        logger.error(f"Health check failed", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to check recommendations health"
+            ).model_dump()
+        )
 
 
 # ===== Model Enrichment Endpoint =====
