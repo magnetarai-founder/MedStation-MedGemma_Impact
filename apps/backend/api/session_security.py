@@ -23,6 +23,12 @@ from dataclasses import dataclass, field
 import sqlite3
 from pathlib import Path
 
+# CRITICAL-03 FIX: Use connection pooling instead of direct SQLite connections
+try:
+    from db_pool import get_connection_pool, SQLiteConnectionPool
+except ImportError:
+    from api.db_pool import get_connection_pool, SQLiteConnectionPool
+
 logger = logging.getLogger(__name__)
 
 
@@ -98,59 +104,67 @@ class SessionSecurityManager:
             db_path = data_dir / "session_security.db"
 
         self.db_path = db_path
+
+        # CRITICAL-03 FIX: Initialize connection pool instead of direct connections
+        self._pool = get_connection_pool(
+            self.db_path,
+            min_size=2,
+            max_size=5  # Session security doesn't need large pool
+        )
+
         self._init_db()
 
     def _init_db(self):
         """Initialize session security database schema"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
+        # CRITICAL-03 FIX: Use connection pool
+        with self._pool.get_connection() as conn:
+            cursor = conn.cursor()
 
-        # Session fingerprints table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS session_fingerprints (
-                session_id TEXT PRIMARY KEY,
-                user_id TEXT NOT NULL,
-                ip_address TEXT NOT NULL,
-                user_agent TEXT NOT NULL,
-                accept_language TEXT,
-                fingerprint_hash TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                last_activity TEXT NOT NULL,
-                is_active INTEGER DEFAULT 1
-            )
-        """)
+            # Session fingerprints table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS session_fingerprints (
+                    session_id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    ip_address TEXT NOT NULL,
+                    user_agent TEXT NOT NULL,
+                    accept_language TEXT,
+                    fingerprint_hash TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    last_activity TEXT NOT NULL,
+                    is_active INTEGER DEFAULT 1
+                )
+            """)
 
-        # Session anomalies table (for audit/analysis)
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS session_anomalies (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                session_id TEXT NOT NULL,
-                user_id TEXT NOT NULL,
-                anomaly_type TEXT NOT NULL,
-                suspicion_score REAL NOT NULL,
-                details TEXT,
-                detected_at TEXT NOT NULL
-            )
-        """)
+            # Session anomalies table (for audit/analysis)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS session_anomalies (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    session_id TEXT NOT NULL,
+                    user_id TEXT NOT NULL,
+                    anomaly_type TEXT NOT NULL,
+                    suspicion_score REAL NOT NULL,
+                    details TEXT,
+                    detected_at TEXT NOT NULL
+                )
+            """)
 
-        # Indexes
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_fingerprints_user_id
-            ON session_fingerprints(user_id)
-        """)
+            # Indexes
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_fingerprints_user_id
+                ON session_fingerprints(user_id)
+            """)
 
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_fingerprints_active
-            ON session_fingerprints(user_id, is_active)
-        """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_fingerprints_active
+                ON session_fingerprints(user_id, is_active)
+            """)
 
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_anomalies_user_id
-            ON session_anomalies(user_id, detected_at)
-        """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_anomalies_user_id
+                ON session_anomalies(user_id, detected_at)
+            """)
 
-        conn.commit()
-        conn.close()
+            conn.commit()
 
         logger.info(f"Session security database initialized: {self.db_path}")
 
@@ -168,27 +182,27 @@ class SessionSecurityManager:
             user_id: User ID
             fingerprint: SessionFingerprint data
         """
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
+        # CRITICAL-03 FIX: Use connection pool
+        with self._pool.get_connection() as conn:
+            cursor = conn.cursor()
 
-        cursor.execute("""
-            INSERT OR REPLACE INTO session_fingerprints
-            (session_id, user_id, ip_address, user_agent, accept_language,
-             fingerprint_hash, created_at, last_activity, is_active)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
-        """, (
-            session_id,
-            user_id,
-            fingerprint.ip_address,
-            fingerprint.user_agent,
-            fingerprint.accept_language,
-            fingerprint.compute_hash(),
-            fingerprint.created_at.isoformat(),
-            datetime.utcnow().isoformat()
-        ))
+            cursor.execute("""
+                INSERT OR REPLACE INTO session_fingerprints
+                (session_id, user_id, ip_address, user_agent, accept_language,
+                 fingerprint_hash, created_at, last_activity, is_active)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+            """, (
+                session_id,
+                user_id,
+                fingerprint.ip_address,
+                fingerprint.user_agent,
+                fingerprint.accept_language,
+                fingerprint.compute_hash(),
+                fingerprint.created_at.isoformat(),
+                datetime.utcnow().isoformat()
+            ))
 
-        conn.commit()
-        conn.close()
+            conn.commit()
 
         logger.debug(f"Recorded fingerprint for session {session_id}")
 
@@ -199,17 +213,17 @@ class SessionSecurityManager:
         Args:
             session_id: Session identifier
         """
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
+        # CRITICAL-03 FIX: Use connection pool
+        with self._pool.get_connection() as conn:
+            cursor = conn.cursor()
 
-        cursor.execute("""
-            UPDATE session_fingerprints
-            SET last_activity = ?
-            WHERE session_id = ? AND is_active = 1
-        """, (datetime.utcnow().isoformat(), session_id))
+            cursor.execute("""
+                UPDATE session_fingerprints
+                SET last_activity = ?
+                WHERE session_id = ? AND is_active = 1
+            """, (datetime.utcnow().isoformat(), session_id))
 
-        conn.commit()
-        conn.close()
+            conn.commit()
 
     def detect_anomalies(
         self,
@@ -237,21 +251,21 @@ class SessionSecurityManager:
         anomalies = []
         suspicion_score = 0.0
 
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
+        # CRITICAL-03 FIX: Use connection pool
+        with self._pool.get_connection() as conn:
+            cursor = conn.cursor()
 
-        # Get recent sessions for this user (last 24 hours)
-        cutoff_time = (datetime.utcnow() - timedelta(hours=24)).isoformat()
-        cursor.execute("""
-            SELECT ip_address, user_agent, fingerprint_hash, created_at
-            FROM session_fingerprints
-            WHERE user_id = ? AND created_at > ? AND is_active = 1
-            ORDER BY created_at DESC
-            LIMIT 5
-        """, (user_id, cutoff_time))
+            # Get recent sessions for this user (last 24 hours)
+            cutoff_time = (datetime.utcnow() - timedelta(hours=24)).isoformat()
+            cursor.execute("""
+                SELECT ip_address, user_agent, fingerprint_hash, created_at
+                FROM session_fingerprints
+                WHERE user_id = ? AND created_at > ? AND is_active = 1
+                ORDER BY created_at DESC
+                LIMIT 5
+            """, (user_id, cutoff_time))
 
-        recent_sessions = cursor.fetchall()
-        conn.close()
+            recent_sessions = cursor.fetchall()
 
         if not recent_sessions:
             # First session, no anomalies to detect
@@ -340,24 +354,24 @@ class SessionSecurityManager:
         details: str
     ):
         """Record detected anomaly for audit purposes"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
+        # CRITICAL-03 FIX: Use connection pool
+        with self._pool.get_connection() as conn:
+            cursor = conn.cursor()
 
-        cursor.execute("""
-            INSERT INTO session_anomalies
-            (session_id, user_id, anomaly_type, suspicion_score, details, detected_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (
-            session_id,
-            user_id,
-            anomaly_type,
-            suspicion_score,
-            details,
-            datetime.utcnow().isoformat()
-        ))
+            cursor.execute("""
+                INSERT INTO session_anomalies
+                (session_id, user_id, anomaly_type, suspicion_score, details, detected_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                session_id,
+                user_id,
+                anomaly_type,
+                suspicion_score,
+                details,
+                datetime.utcnow().isoformat()
+            ))
 
-        conn.commit()
-        conn.close()
+            conn.commit()
 
         logger.warning(
             f"Session anomaly detected: user={user_id}, type={anomaly_type}, "
@@ -374,27 +388,27 @@ class SessionSecurityManager:
         Returns:
             List of active session dictionaries
         """
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
+        # CRITICAL-03 FIX: Use connection pool
+        with self._pool.get_connection() as conn:
+            cursor = conn.cursor()
 
-        cursor.execute("""
-            SELECT session_id, ip_address, user_agent, created_at, last_activity
-            FROM session_fingerprints
-            WHERE user_id = ? AND is_active = 1
-            ORDER BY last_activity DESC
-        """, (user_id,))
+            cursor.execute("""
+                SELECT session_id, ip_address, user_agent, created_at, last_activity
+                FROM session_fingerprints
+                WHERE user_id = ? AND is_active = 1
+                ORDER BY last_activity DESC
+            """, (user_id,))
 
-        sessions = []
-        for row in cursor.fetchall():
-            sessions.append({
-                "session_id": row[0],
-                "ip_address": row[1],
-                "user_agent": row[2],
-                "created_at": row[3],
-                "last_activity": row[4]
-            })
+            sessions = []
+            for row in cursor.fetchall():
+                sessions.append({
+                    "session_id": row[0],
+                    "ip_address": row[1],
+                    "user_agent": row[2],
+                    "created_at": row[3],
+                    "last_activity": row[4]
+                })
 
-        conn.close()
         return sessions
 
     def enforce_concurrent_session_limit(self, user_id: str) -> int:
@@ -421,19 +435,19 @@ class SessionSecurityManager:
         to_terminate = len(active_sessions) - self.MAX_CONCURRENT_SESSIONS
         terminated = 0
 
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
+        # CRITICAL-03 FIX: Use connection pool
+        with self._pool.get_connection() as conn:
+            cursor = conn.cursor()
 
-        for session in active_sessions[:to_terminate]:
-            cursor.execute("""
-                UPDATE session_fingerprints
-                SET is_active = 0
-                WHERE session_id = ?
-            """, (session['session_id'],))
-            terminated += 1
+            for session in active_sessions[:to_terminate]:
+                cursor.execute("""
+                    UPDATE session_fingerprints
+                    SET is_active = 0
+                    WHERE session_id = ?
+                """, (session['session_id'],))
+                terminated += 1
 
-        conn.commit()
-        conn.close()
+            conn.commit()
 
         if terminated > 0:
             logger.info(f"Terminated {terminated} old sessions for user {user_id} (limit: {self.MAX_CONCURRENT_SESSIONS})")
@@ -447,18 +461,18 @@ class SessionSecurityManager:
         Args:
             user_id: User ID
         """
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
+        # CRITICAL-03 FIX: Use connection pool
+        with self._pool.get_connection() as conn:
+            cursor = conn.cursor()
 
-        cursor.execute("""
-            UPDATE session_fingerprints
-            SET is_active = 0
-            WHERE user_id = ?
-        """, (user_id,))
+            cursor.execute("""
+                UPDATE session_fingerprints
+                SET is_active = 0
+                WHERE user_id = ?
+            """, (user_id,))
 
-        terminated = cursor.rowcount
-        conn.commit()
-        conn.close()
+            terminated = cursor.rowcount
+            conn.commit()
 
         logger.info(f"Invalidated all {terminated} sessions for user {user_id}")
 
