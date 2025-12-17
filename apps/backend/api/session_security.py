@@ -18,7 +18,7 @@ Based on Sprint 1 (MED-03) requirements for improved session management.
 import hashlib
 import logging
 from typing import Optional, Dict, Any, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC  # MED-01 FIX: Import UTC for timezone-aware datetimes
 from dataclasses import dataclass, field
 import sqlite3
 from pathlib import Path
@@ -200,7 +200,7 @@ class SessionSecurityManager:
                 fingerprint.accept_language,
                 fingerprint.compute_hash(),
                 fingerprint.created_at.isoformat(),
-                datetime.utcnow().isoformat()
+                datetime.now(UTC).isoformat()  # MED-01 FIX: Use timezone-aware datetime
             ))
 
             conn.commit()
@@ -222,7 +222,7 @@ class SessionSecurityManager:
                 UPDATE session_fingerprints
                 SET last_activity = ?
                 WHERE session_id = ? AND is_active = 1
-            """, (datetime.utcnow().isoformat(), session_id))
+            """, (datetime.now(UTC).isoformat(), session_id))  # MED-01 FIX
 
             conn.commit()
 
@@ -257,7 +257,7 @@ class SessionSecurityManager:
             cursor = conn.cursor()
 
             # Get recent sessions for this user (last 24 hours)
-            cutoff_time = (datetime.utcnow() - timedelta(hours=24)).isoformat()
+            cutoff_time = (datetime.now(UTC) - timedelta(hours=24)).isoformat()  # MED-01 FIX
             cursor.execute("""
                 SELECT ip_address, user_agent, fingerprint_hash, created_at
                 FROM session_fingerprints
@@ -387,7 +387,7 @@ class SessionSecurityManager:
                 anomaly_type,
                 suspicion_score,
                 details,
-                datetime.utcnow().isoformat()
+                datetime.now(UTC).isoformat()  # MED-01 FIX: Use timezone-aware datetime
             ))
 
             conn.commit()

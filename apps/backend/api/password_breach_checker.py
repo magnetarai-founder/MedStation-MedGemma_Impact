@@ -21,7 +21,7 @@ import hashlib
 import logging
 import threading
 from typing import Optional, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC  # MED-01 FIX: Import UTC for timezone-aware datetimes
 import asyncio
 import aiohttp
 from functools import lru_cache
@@ -99,7 +99,7 @@ class PasswordBreachChecker:
         with self._cache_lock:  # CRITICAL-01: Thread-safe cache access
             if hash_prefix in self._cache:
                 breach_count, timestamp = self._cache[hash_prefix]
-                age = datetime.utcnow() - timestamp
+                age = datetime.now(UTC) - timestamp  # MED-01 FIX: Use timezone-aware datetime
                 if age < timedelta(hours=self.CACHE_TTL_HOURS):
                     self._cache_hits += 1
                     return (breach_count, timestamp)
@@ -119,7 +119,7 @@ class PasswordBreachChecker:
             breach_count: Number of breaches found
         """
         with self._cache_lock:  # CRITICAL-01: Thread-safe cache access
-            self._cache[hash_prefix] = (breach_count, datetime.utcnow())
+            self._cache[hash_prefix] = (breach_count, datetime.now(UTC))  # MED-01 FIX
 
             # Limit cache size to 10000 entries (prevents memory bloat)
             if len(self._cache) > 10000:
