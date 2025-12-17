@@ -22,7 +22,7 @@ import tempfile
 import pytest
 import time
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, UTC
 
 from api.migrations.auth import run_auth_migrations
 from api.device_identity import ensure_device_identity, get_device_identity
@@ -71,7 +71,7 @@ def test_existing_user_survives_migration():
             "testuser",
             "hash_placeholder",
             "device_abc",
-            datetime.utcnow().isoformat(),
+            datetime.now(UTC).isoformat(),
             "member",
             1
         ))
@@ -145,7 +145,7 @@ def test_all_auth_migrations_preserve_users():
             "alice",
             "hash123",
             "device_xyz",
-            datetime.utcnow().isoformat(),
+            datetime.now(UTC).isoformat(),
             "admin"
         ))
         conn.commit()
@@ -270,7 +270,7 @@ def test_device_identity_persists_after_user_deletion():
             "temp_user",
             "hash",
             "device_123",
-            datetime.utcnow().isoformat()
+            datetime.now(UTC).isoformat()
         ))
         conn.commit()
 
@@ -440,7 +440,7 @@ def test_complete_update_flow():
             cursor.execute("""
                 INSERT INTO users (user_id, username, password_hash, device_id, created_at, role)
                 VALUES (?, ?, ?, ?, ?, ?)
-            """, (user_id, username, f"hash_{username}", f"device_{user_id}", datetime.utcnow().isoformat(), role))
+            """, (user_id, username, f"hash_{username}", f"device_{user_id}", datetime.now(UTC).isoformat(), role))
 
         conn.commit()
 

@@ -10,7 +10,7 @@ import time
 import psutil
 from fastapi import APIRouter, HTTPException, Request, Depends
 from typing import Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, UTC
 
 logger = logging.getLogger(__name__)
 

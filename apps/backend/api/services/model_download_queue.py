@@ -9,7 +9,7 @@ import asyncio
 import logging
 from typing import Dict, List, Optional, Literal
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import Enum
 
 logger = logging.getLogger(__name__)

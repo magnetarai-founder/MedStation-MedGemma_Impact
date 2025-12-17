@@ -25,6 +25,7 @@ except ImportError:
     from permission_engine import require_perm
 
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from datetime import UTC
 
 logger = logging.getLogger(__name__)
 

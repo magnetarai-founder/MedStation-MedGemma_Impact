@@ -10,7 +10,7 @@ Provides intelligent model recommendations based on:
 
 import sqlite3
 from typing import List, Dict, Any, Optional, Literal
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 from api.config_paths import PATHS
 

@@ -7,7 +7,7 @@ import time
 import logging
 from typing import Dict, List, Optional
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 from collections import defaultdict
 from threading import Lock
 

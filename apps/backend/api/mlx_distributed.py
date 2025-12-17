@@ -11,7 +11,7 @@ import json
 import logging
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 import numpy as np
 

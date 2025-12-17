@@ -10,7 +10,7 @@ import json
 import logging
 from pathlib import Path
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, UTC
 
 try:
     from api.agent.orchestration.models import AgentSession

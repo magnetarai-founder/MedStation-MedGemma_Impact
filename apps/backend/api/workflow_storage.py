@@ -6,7 +6,7 @@ SQLite persistence for workflows and work items
 import sqlite3
 import json
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 import logging
 

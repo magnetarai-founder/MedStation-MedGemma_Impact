@@ -7,7 +7,7 @@ All raw DB operations for vault documents should go through this module.
 
 import sqlite3
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Optional, List, Dict, Any, Tuple
 
 from .schemas import VaultDocument, VaultDocumentCreate, VaultDocumentUpdate, VaultFile

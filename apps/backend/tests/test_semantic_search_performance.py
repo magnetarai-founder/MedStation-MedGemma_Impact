@@ -11,7 +11,7 @@ Expected improvement: 100x faster search (2000ms → 20ms)
 import pytest
 import time
 import json
-from datetime import datetime
+from datetime import datetime, UTC
 from api.chat_memory import NeutronChatMemory, ConversationEvent
 from api.cache_service import get_cache
 
@@ -61,7 +61,7 @@ def test_semantic_search_with_precomputed_embeddings(db, regular_user):
 
     for i, content in enumerate(test_messages):
         event = ConversationEvent(
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             role="user",
             content=content,
             model="llama2"
@@ -177,7 +177,7 @@ def test_cache_invalidation_on_new_messages(db, regular_user):
 
     # Add initial message
     event1 = ConversationEvent(
-        timestamp=datetime.utcnow().isoformat(),
+        timestamp=datetime.now(UTC).isoformat(),
         role="user",
         content="How do I implement caching in Python?",
         model="llama2"
@@ -196,7 +196,7 @@ def test_cache_invalidation_on_new_messages(db, regular_user):
 
     # Add new message (cache is still valid)
     event2 = ConversationEvent(
-        timestamp=datetime.utcnow().isoformat(),
+        timestamp=datetime.now(UTC).isoformat(),
         role="user",
         content="What are Redis caching strategies for high performance?",
         model="llama2"

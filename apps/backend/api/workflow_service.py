@@ -6,7 +6,7 @@ REST API and business logic for workflow operations
 from fastapi import APIRouter, HTTPException, Query, Request, Depends
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, UTC
 import logging
 
 # Phase 2: Import permission decorators

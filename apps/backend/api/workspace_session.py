@@ -7,7 +7,7 @@ Provides unified session IDs across Chat, Terminal, Code, and Agent tabs
 import logging
 import sqlite3
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Dict, Optional, Any
 import json

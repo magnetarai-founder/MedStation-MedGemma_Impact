@@ -7,7 +7,7 @@ Provides REST endpoints for emergency security operations
 import logging
 import os
 import time
-from datetime import datetime
+from datetime import datetime, UTC
 from fastapi import APIRouter, HTTPException, Request, Body
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any, List

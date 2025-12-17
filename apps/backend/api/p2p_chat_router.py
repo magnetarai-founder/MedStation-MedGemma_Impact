@@ -5,7 +5,7 @@ Provides REST API endpoints for the frontend
 
 import asyncio
 from typing import List, Optional, Dict
-from datetime import datetime
+from datetime import datetime, UTC
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import StreamingResponse
 import logging

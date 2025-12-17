@@ -6,7 +6,7 @@ Handles event recording, aggregation, and querying for usage analytics.
 
 import sqlite3
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Optional, Dict, Any, List
 from uuid import uuid4
 

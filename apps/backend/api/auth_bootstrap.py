@@ -13,7 +13,7 @@ import sqlite3
 import secrets
 import hashlib
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Optional
 
 logger = logging.getLogger(__name__)

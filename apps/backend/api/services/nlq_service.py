@@ -12,7 +12,7 @@ import asyncio
 import sqlite3
 import secrets
 from typing import Dict, List, Any, Optional, Tuple
-from datetime import datetime
+from datetime import datetime, UTC
 
 try:
     from api.config import get_settings

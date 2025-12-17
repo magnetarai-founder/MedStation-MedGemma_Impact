@@ -21,7 +21,7 @@ import sqlite3
 import json
 import logging
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, UTC
 
 logger = logging.getLogger(__name__)
 

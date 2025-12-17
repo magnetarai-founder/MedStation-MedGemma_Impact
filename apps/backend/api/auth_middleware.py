@@ -11,7 +11,7 @@ import hashlib
 import secrets
 import logging
 from typing import Optional, Dict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from pathlib import Path
 from fastapi import HTTPException, Request, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials

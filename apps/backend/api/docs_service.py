@@ -16,7 +16,7 @@ import sqlite3
 import sys
 from pathlib import Path
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, UTC
 import logging
 
 from fastapi import APIRouter, HTTPException, Request, Depends, Response

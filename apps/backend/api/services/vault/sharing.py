@@ -10,7 +10,7 @@ import hashlib
 import secrets
 import logging
 from typing import Optional, Dict, Any, List
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 
 from api.config_paths import get_config_paths

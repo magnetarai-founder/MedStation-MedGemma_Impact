@@ -18,7 +18,7 @@ import json
 import logging
 import secrets
 import sqlite3
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any, Dict, List, Optional
 
 from api.config_paths import PATHS

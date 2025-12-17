@@ -44,7 +44,7 @@ import time
 import re
 import asyncio
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 MAX_WS_CONNECTIONS_PER_IP = 5
 MAX_WS_CONNECTIONS_TOTAL = 100

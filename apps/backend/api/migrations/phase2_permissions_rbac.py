@@ -14,7 +14,7 @@ Non-interactive and idempotent - safe to run multiple times.
 import sqlite3
 import logging
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, UTC
 import json
 
 logger = logging.getLogger(__name__)

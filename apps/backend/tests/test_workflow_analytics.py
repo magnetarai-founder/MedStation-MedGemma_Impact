@@ -6,7 +6,7 @@ Tests enhanced metrics and analytics functionality
 import pytest
 import tempfile
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 from api.workflow_models import (
     Workflow,
@@ -112,7 +112,7 @@ class TestWorkflowAnalyticsBasic:
     ):
         """Test analytics with completed work items"""
         # Create completed work items
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         for i in range(5):
             work_item = WorkItem(
                 workflow_id=test_workflow.id,
@@ -141,7 +141,7 @@ class TestWorkflowAnalyticsBasic:
         self, storage, analytics, test_workflow, test_user_id
     ):
         """Test analytics with items in various statuses"""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         # 3 completed
         for i in range(3):
@@ -204,7 +204,7 @@ class TestCycleTimeMetrics:
         self, storage, analytics, test_workflow, test_user_id
     ):
         """Test average cycle time is calculated correctly"""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         # Item 1: 1 hour cycle time
         work_item1 = WorkItem(
@@ -255,7 +255,7 @@ class TestStageMetrics:
         self, storage, analytics, test_workflow, test_user_id
     ):
         """Test that stage transitions are tracked in analytics"""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         # Create work item with transitions
         work_item = WorkItem(
@@ -307,7 +307,7 @@ class TestStageMetrics:
         self, storage, analytics, test_workflow, test_user_id
     ):
         """Test that stage entered counts are correct"""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         # Create 3 work items that all enter stage2
         for i in range(3):

@@ -22,7 +22,7 @@ import time
 import logging
 import traceback
 from typing import Callable, Dict, List
-from datetime import datetime
+from datetime import datetime, UTC
 from collections import defaultdict
 
 from fastapi import FastAPI, Request, Response

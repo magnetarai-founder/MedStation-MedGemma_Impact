@@ -16,7 +16,7 @@ import uuid
 import os
 from pathlib import Path
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, UTC
 from cryptography.fernet import Fernet
 
 from .schemas import VaultFile

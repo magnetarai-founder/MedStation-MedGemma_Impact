@@ -14,7 +14,7 @@ import json
 import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Callable, TYPE_CHECKING
-from datetime import datetime
+from datetime import datetime, UTC
 
 # Conditional libp2p import
 try:

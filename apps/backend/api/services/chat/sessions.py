@@ -10,7 +10,7 @@ Phase 2.3a - Session orchestration following Team service pattern.
 import logging
 import uuid
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, UTC
 
 from . import storage
 from .types import SessionDict, MessageDict

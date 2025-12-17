@@ -9,7 +9,7 @@ import sqlite3
 import logging
 import uuid
 from typing import List, Dict, Any
-from datetime import datetime
+from datetime import datetime, UTC
 
 logger = logging.getLogger(__name__)
 

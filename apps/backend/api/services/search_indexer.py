@@ -7,7 +7,7 @@ Manages FTS5 index for session message search.
 import sqlite3
 import logging
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, UTC
 
 logger = logging.getLogger(__name__)
 

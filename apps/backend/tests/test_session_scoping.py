@@ -14,7 +14,7 @@ import pytest
 import os
 import tempfile
 import sqlite3
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Dict, Any
 
 try:
@@ -78,7 +78,7 @@ def create_test_session(
     attached_work_item_id: str = None,
 ) -> AgentSession:
     """Helper to create test session"""
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     return AgentSession(
         id=session_id,
         user_id=user_id,

@@ -23,7 +23,7 @@ import json
 import threading
 import time
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 
@@ -182,9 +182,9 @@ class TestAuditLogCreation:
 
     def test_audit_log_includes_timestamp(self, audit_logger):
         """Test that audit logs include timestamp"""
-        before = datetime.utcnow()
+        before = datetime.now(UTC)
         audit_logger.log(user_id="user_789", action="DATA_ACCESS")
-        after = datetime.utcnow()
+        after = datetime.now(UTC)
 
         logs = audit_logger.get_logs(limit=1)
         assert len(logs) == 1
@@ -246,7 +246,7 @@ class TestAuditLogRetrieval:
         audit_logger.log(user_id="old_user", action="OLD_ACTION")
         time.sleep(0.1)
 
-        midpoint = datetime.utcnow()
+        midpoint = datetime.now(UTC)
         time.sleep(0.1)
 
         audit_logger.log(user_id="new_user", action="NEW_ACTION")
@@ -271,7 +271,7 @@ class TestAuditLogRetrieval:
         audit_logger.log(user_id="old", action="OLD")
         time.sleep(0.1)
 
-        cutoff = datetime.utcnow()
+        cutoff = datetime.now(UTC)
         time.sleep(0.1)
 
         # Create 5 new logs
@@ -297,7 +297,7 @@ class TestCleanup:
         audit_logger.log(user_id="old_user", action="OLD_ACTION")
 
         # Modify timestamp to be 100 days old
-        old_timestamp = (datetime.utcnow() - timedelta(days=100)).isoformat()
+        old_timestamp = (datetime.now(UTC) - timedelta(days=100)).isoformat()
         cursor.execute(
             "UPDATE audit_log_encrypted SET timestamp = ? WHERE id = 1",
             (old_timestamp,)

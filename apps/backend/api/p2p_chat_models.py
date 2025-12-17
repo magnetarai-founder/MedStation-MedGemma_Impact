@@ -3,7 +3,7 @@ P2P Team Chat Data Models
 Secure, offline-first peer-to-peer messaging for missionary teams
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Optional, List, Dict, Any
 from enum import Enum
 from pydantic import BaseModel, Field

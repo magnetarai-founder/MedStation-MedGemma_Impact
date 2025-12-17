@@ -9,7 +9,7 @@ Security: Decoy vault must look convincing to be effective
 import logging
 import uuid
 import base64
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import List, Dict, Any
 from pathlib import Path
 import sqlite3

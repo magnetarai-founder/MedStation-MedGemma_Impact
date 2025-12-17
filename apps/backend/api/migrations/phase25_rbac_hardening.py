@@ -13,7 +13,7 @@ Builds on Phase 2 to add:
 import sqlite3
 import logging
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, UTC
 
 logger = logging.getLogger(__name__)
 

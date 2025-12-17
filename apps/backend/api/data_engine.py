@@ -18,7 +18,7 @@ import hashlib
 import re
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
-from datetime import datetime
+from datetime import datetime, UTC
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading

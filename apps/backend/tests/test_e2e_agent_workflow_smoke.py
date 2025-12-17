@@ -11,7 +11,7 @@ These tests validate that the full stack works end-to-end.
 """
 
 import pytest
-from datetime import datetime
+from datetime import datetime, UTC
 from unittest.mock import patch, MagicMock
 
 try:
@@ -71,8 +71,8 @@ def create_agent_assist_template(template_id: str, visibility: str = "global") -
         is_template=True,
         visibility=visibility,
         created_by="system",
-        created_at=datetime.utcnow().isoformat(),
-        updated_at=datetime.utcnow().isoformat(),
+        created_at=datetime.now(UTC).isoformat(),
+        updated_at=datetime.now(UTC).isoformat(),
         enabled=True,
         stages=[
             Stage(
@@ -151,8 +151,8 @@ class TestE2EWorkflowFromTemplate:
             visibility="team",
             owner_team_id=TEAM_A,
             created_by=USER_A,
-            created_at=datetime.utcnow().isoformat(),
-            updated_at=datetime.utcnow().isoformat(),
+            created_at=datetime.now(UTC).isoformat(),
+            updated_at=datetime.now(UTC).isoformat(),
             enabled=True,
             stages=template.stages,  # Copy stages from template
             triggers=template.triggers,  # Copy triggers
@@ -338,8 +338,8 @@ class TestE2EWorkflowTriggers:
             visibility="global",
             owner_team_id=TEAM_A,
             created_by=USER_A,
-            created_at=datetime.utcnow().isoformat(),
-            updated_at=datetime.utcnow().isoformat(),
+            created_at=datetime.now(UTC).isoformat(),
+            updated_at=datetime.now(UTC).isoformat(),
             enabled=True,
             stages=[
                 Stage(
@@ -406,8 +406,8 @@ class TestE2EWorkflowTriggers:
                 visibility="global",
                 owner_team_id=TEAM_A,
                 created_by=USER_A,
-                created_at=datetime.utcnow().isoformat(),
-                updated_at=datetime.utcnow().isoformat(),
+                created_at=datetime.now(UTC).isoformat(),
+                updated_at=datetime.now(UTC).isoformat(),
                 enabled=True,
                 stages=[
                     Stage(

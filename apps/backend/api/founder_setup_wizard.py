@@ -31,7 +31,7 @@ import platform
 import sqlite3
 import subprocess
 from typing import Dict, Any, Optional, Tuple
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 import hashlib
 import secrets

@@ -27,7 +27,7 @@ import socket
 import uuid
 import hashlib
 import json
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Optional, Dict, Any
 

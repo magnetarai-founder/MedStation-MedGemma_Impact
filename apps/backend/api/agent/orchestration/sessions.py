@@ -7,7 +7,7 @@ Provides CRUD operations and session lifecycle management.
 
 import uuid
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Optional, Dict, Any, List
 
 try:

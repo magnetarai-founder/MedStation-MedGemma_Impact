@@ -8,6 +8,7 @@ import os
 from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
+from datetime import UTC
 
 try:
     from .auth_middleware import auth_service, get_current_user, get_current_user_optional

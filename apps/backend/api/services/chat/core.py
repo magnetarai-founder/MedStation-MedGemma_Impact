@@ -12,7 +12,7 @@ import asyncio
 import logging
 from pathlib import Path
 from typing import Optional, List, Dict, Any, AsyncGenerator
-from datetime import datetime
+from datetime import datetime, UTC
 
 # Phase 2.3a - Session/storage delegation
 from . import sessions as sessions_mod

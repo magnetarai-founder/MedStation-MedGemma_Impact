@@ -12,7 +12,7 @@ import logging
 import json
 import uuid
 from typing import Dict, List, Optional, Any
-from datetime import datetime
+from datetime import datetime, UTC
 
 from .storage import get_db_connection
 

@@ -8,7 +8,7 @@ import sqlite3
 import uuid
 import logging
 from typing import Dict, Any, List
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 
 from api.config_paths import get_config_paths

@@ -7,7 +7,7 @@ import asyncio
 import json
 import logging
 from typing import Dict, List, Optional, Callable
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 
 # Phase 4: Team cryptography for P2P sync

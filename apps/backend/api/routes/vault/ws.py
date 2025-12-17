@@ -8,7 +8,7 @@ Follows MagnetarStudio API standards (see API_STANDARDS.md).
 
 import logging
 import json
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Optional, Dict, Any
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Depends, status
 

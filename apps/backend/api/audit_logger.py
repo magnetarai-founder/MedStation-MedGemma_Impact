@@ -20,7 +20,7 @@ or use SQLCipher as a drop-in replacement for sqlite3.
 import json
 import sqlite3
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Optional, Dict, Any, List
 from functools import wraps
 import logging

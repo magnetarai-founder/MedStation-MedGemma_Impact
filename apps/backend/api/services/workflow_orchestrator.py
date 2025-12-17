@@ -18,7 +18,7 @@ Extracted from workflow_orchestrator.py during Phase 6.3e modularization.
 """
 
 from typing import Dict, List, Optional, Any, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 import logging
 from collections import defaultdict
 

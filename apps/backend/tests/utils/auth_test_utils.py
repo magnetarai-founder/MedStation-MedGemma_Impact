@@ -21,7 +21,7 @@ import sqlite3
 import secrets
 from pathlib import Path
 from typing import Tuple
-from datetime import datetime
+from datetime import datetime, UTC
 
 
 class ROLES:
@@ -79,7 +79,7 @@ def create_user_with_role(
         username,
         password_hash,
         "test_device",
-        datetime.utcnow().isoformat(),
+        datetime.now(UTC).isoformat(),
         role,
         1
     ))
@@ -184,7 +184,7 @@ def grant_permission_to_user(
         perm_set_id,
         f"Test permission set for {user_id}",
         f"Grants {permission_key} to {user_id}",
-        datetime.utcnow().isoformat(),
+        datetime.now(UTC).isoformat(),
         1
     ))
 
@@ -208,7 +208,7 @@ def grant_permission_to_user(
             f"Test permission {permission_key}",
             "system",
             "level",
-            datetime.utcnow().isoformat()
+            datetime.now(UTC).isoformat()
         ))
 
     # Add permission to set
@@ -220,7 +220,7 @@ def grant_permission_to_user(
         permission_id,
         1,
         permission_level,
-        datetime.utcnow().isoformat()
+        datetime.now(UTC).isoformat()
     ))
 
     # Assign set to user
@@ -230,7 +230,7 @@ def grant_permission_to_user(
     """, (
         user_id,
         perm_set_id,
-        datetime.utcnow().isoformat()
+        datetime.now(UTC).isoformat()
     ))
 
     conn.commit()

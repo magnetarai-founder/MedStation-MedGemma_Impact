@@ -13,7 +13,7 @@ import logging
 import sqlite3
 from pathlib import Path
 from typing import Dict, Optional
-from datetime import datetime
+from datetime import datetime, UTC
 
 logger = logging.getLogger(__name__)
 

@@ -10,7 +10,7 @@ All DB operations delegate to storage.py.
 import logging
 import hashlib
 from typing import List, Tuple, Optional, Dict, TYPE_CHECKING
-from datetime import datetime
+from datetime import datetime, UTC
 
 from . import storage
 

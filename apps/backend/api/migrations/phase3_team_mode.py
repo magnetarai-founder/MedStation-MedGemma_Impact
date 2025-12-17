@@ -15,7 +15,7 @@ Enables full Team Mode with:
 import sqlite3
 import logging
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, UTC
 
 logger = logging.getLogger(__name__)
 

@@ -8,7 +8,7 @@ import logging
 import sqlite3
 import uuid
 import base64
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Optional, Dict
 from fastapi import APIRouter, HTTPException, Form, Depends, Request, status
 
@@ -76,7 +76,7 @@ async def create_share_link_endpoint(
 
         # Apply default 24h TTL if not provided
         if not expires_at:
-            from datetime import datetime, timedelta
+            from datetime import datetime, timedelta, UTC
             now = datetime.now(UTC)
             default_expiry = now + timedelta(hours=24)
             expires_at = default_expiry.isoformat()

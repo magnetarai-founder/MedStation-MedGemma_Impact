@@ -19,7 +19,7 @@ Features:
 
 from enum import Enum
 from typing import Optional, Dict, Any, Callable
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 import sqlite3
 import json
 from pathlib import Path

@@ -17,7 +17,7 @@ import base64
 import hashlib
 from pathlib import Path
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, UTC
 from cryptography.fernet import Fernet
 
 from api.config_paths import get_config_paths

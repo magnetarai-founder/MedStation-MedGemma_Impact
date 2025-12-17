@@ -8,7 +8,7 @@ import logging
 import sqlite3
 import uuid
 import re
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Dict
 from fastapi import APIRouter, HTTPException, Form, Request, Depends, status
 

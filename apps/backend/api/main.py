@@ -14,7 +14,7 @@ import math
 import os
 import re
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -612,7 +612,7 @@ async def progress_stream(task_id: str):
 
                         # Format SSE event
                         import json
-                        from datetime import datetime
+                        from datetime import datetime, UTC
                         event_data = {
                             "task_id": task_id,
                             "status": task_data.get("status", "running"),
@@ -680,7 +680,7 @@ async def update_progress(
         progress = body.get("progress", 0)
         message = body.get("message", "")
 
-        from datetime import datetime
+        from datetime import datetime, UTC
         _progress_streams[task_id] = {
             "status": status,
             "progress": progress,

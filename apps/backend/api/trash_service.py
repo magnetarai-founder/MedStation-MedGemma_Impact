@@ -9,7 +9,7 @@ import sqlite3
 import logging
 from pathlib import Path
 from typing import Optional, List, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from pydantic import BaseModel
 from fastapi import APIRouter, HTTPException
 

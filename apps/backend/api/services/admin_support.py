@@ -25,7 +25,7 @@ import logging
 import secrets
 import string
 from typing import Dict, List, Optional, Any
-from datetime import datetime
+from datetime import datetime, UTC
 from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)

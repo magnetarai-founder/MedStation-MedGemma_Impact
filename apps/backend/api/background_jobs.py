@@ -6,7 +6,7 @@ Manages scheduled cleanup tasks and maintenance operations
 import asyncio
 import logging
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Dict, Callable, Optional, List
 from dataclasses import dataclass
 
@@ -184,7 +184,7 @@ async def cleanup_temp_files(max_age_hours: int = 24):
     This function is async-compatible and can be registered directly.
     """
     from pathlib import Path
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, UTC
 
     # Determine API directory
     try:
@@ -223,7 +223,7 @@ def cleanup_expired_sessions(session_storage: Dict, max_age_hours: int = 24):
         session_storage: Dict of sessions (from main.py)
         max_age_hours: Maximum session age
     """
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, UTC
 
     cutoff_time = datetime.now() - timedelta(hours=max_age_hours)
     expired_sessions = []
@@ -304,7 +304,7 @@ async def aggregate_analytics_daily():
     """
     try:
         from api.services.analytics import get_analytics_service
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, UTC
 
         analytics = get_analytics_service()
 

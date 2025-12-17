@@ -7,7 +7,7 @@ import logging
 import json
 from typing import Any, Dict, Optional
 from contextvars import ContextVar
-from datetime import datetime
+from datetime import datetime, UTC
 
 # Import request_id context from main
 try:

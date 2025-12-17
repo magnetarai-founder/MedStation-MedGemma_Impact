@@ -8,7 +8,7 @@ Sprint 5 Theme A: Team-Level Model Policies
 import json
 import logging
 import sqlite3
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 

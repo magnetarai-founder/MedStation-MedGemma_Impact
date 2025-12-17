@@ -6,7 +6,7 @@ Shares context across Chat, Terminal, and Code tabs with 200k+ rolling window
 
 import logging
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field

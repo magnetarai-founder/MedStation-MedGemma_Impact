@@ -23,7 +23,7 @@ from typing import Optional, Tuple, Dict
 import hashlib
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 
 logger = logging.getLogger(__name__)
 

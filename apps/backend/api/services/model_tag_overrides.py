@@ -7,7 +7,7 @@ import json
 import sqlite3
 from typing import List, Set, Optional
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, UTC
 
 # Database path
 DB_PATH = Path.home() / ".magnetar_studio" / "model_tags.db"

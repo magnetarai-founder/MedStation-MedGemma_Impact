@@ -17,7 +17,7 @@ import pytest
 from pathlib import Path
 from typing import Generator
 from unittest.mock import Mock, patch
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 # Add api to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -406,7 +406,7 @@ def chat_session_factory(db: sqlite3.Connection):
         db.execute("""
             INSERT INTO chat_sessions (id, user_id, title, model, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?)
-        """, (session_id, user_id, title, model, datetime.utcnow().isoformat(), datetime.utcnow().isoformat()))
+        """, (session_id, user_id, title, model, datetime.now(UTC).isoformat(), datetime.now(UTC).isoformat()))
 
         return session_id
 
@@ -428,7 +428,7 @@ def chat_message_factory(db: sqlite3.Connection):
         db.execute("""
             INSERT INTO chat_messages (id, session_id, role, content, created_at)
             VALUES (?, ?, ?, ?, ?)
-        """, (message_id, session_id, role, content, datetime.utcnow().isoformat()))
+        """, (message_id, session_id, role, content, datetime.now(UTC).isoformat()))
 
         return message_id
 
@@ -450,7 +450,7 @@ def vault_item_factory(db: sqlite3.Connection):
         db.execute("""
             INSERT INTO vault_items (id, user_id, name, content, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?)
-        """, (item_id, user_id, name, content, datetime.utcnow().isoformat(), datetime.utcnow().isoformat()))
+        """, (item_id, user_id, name, content, datetime.now(UTC).isoformat(), datetime.now(UTC).isoformat()))
 
         return item_id
 

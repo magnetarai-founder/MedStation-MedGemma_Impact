@@ -7,7 +7,7 @@ the new opinionated stage types (CODE_REVIEW, TEST_ENRICHMENT, DOC_UPDATE).
 
 import logging
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, UTC
 import uuid
 
 try:

@@ -8,7 +8,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 from typing import Dict, Set, Optional
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 
 logger = logging.getLogger(__name__)
 
