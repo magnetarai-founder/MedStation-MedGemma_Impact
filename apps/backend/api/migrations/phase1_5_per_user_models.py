@@ -186,8 +186,8 @@ def migrate_phase1_5_per_user_models(app_db_path: Path, config_dir: Path) -> boo
                                     user_id,
                                     slot_num,
                                     model_name,
-                                    datetime.utcnow().isoformat(),
-                                    datetime.utcnow().isoformat()
+                                    datetime.now(UTC).isoformat(),
+                                    datetime.now(UTC).isoformat()
                                 ))
                                 migrated_count += 1
                         except (ValueError, TypeError) as e:
@@ -225,7 +225,7 @@ def migrate_phase1_5_per_user_models(app_db_path: Path, config_dir: Path) -> boo
             VALUES (?, ?, ?)
         """, (
             '2025_11_12_phase1_5_per_user_models',
-            datetime.utcnow().isoformat(),
+            datetime.now(UTC).isoformat(),
             'Phase 1.5: Per-User Model Preferences and Hot Slots'
         ))
 

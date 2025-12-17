@@ -95,7 +95,7 @@ class WorkspaceSessionManager:
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
 
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
 
         cursor.execute("""
             INSERT INTO workspace_sessions
@@ -193,7 +193,7 @@ class WorkspaceSessionManager:
             UPDATE workspace_sessions
             SET chat_id = ?, last_activity = ?
             WHERE session_id = ?
-        """, (chat_id, datetime.utcnow().isoformat(), session_id))
+        """, (chat_id, datetime.now(UTC).isoformat(), session_id))
 
         conn.commit()
         conn.close()
@@ -207,7 +207,7 @@ class WorkspaceSessionManager:
             UPDATE workspace_sessions
             SET terminal_id = ?, last_activity = ?
             WHERE session_id = ?
-        """, (terminal_id, datetime.utcnow().isoformat(), session_id))
+        """, (terminal_id, datetime.now(UTC).isoformat(), session_id))
 
         conn.commit()
         conn.close()
@@ -221,7 +221,7 @@ class WorkspaceSessionManager:
             UPDATE workspace_sessions
             SET workspace_root = ?, last_activity = ?
             WHERE session_id = ?
-        """, (workspace_root, datetime.utcnow().isoformat(), session_id))
+        """, (workspace_root, datetime.now(UTC).isoformat(), session_id))
 
         conn.commit()
         conn.close()
@@ -235,7 +235,7 @@ class WorkspaceSessionManager:
             UPDATE workspace_sessions
             SET active_files = ?, last_activity = ?
             WHERE session_id = ?
-        """, (json.dumps(file_paths), datetime.utcnow().isoformat(), session_id))
+        """, (json.dumps(file_paths), datetime.now(UTC).isoformat(), session_id))
 
         conn.commit()
         conn.close()
@@ -249,7 +249,7 @@ class WorkspaceSessionManager:
             UPDATE workspace_sessions
             SET last_activity = ?
             WHERE session_id = ?
-        """, (datetime.utcnow().isoformat(), session_id))
+        """, (datetime.now(UTC).isoformat(), session_id))
 
         conn.commit()
         conn.close()
@@ -331,7 +331,7 @@ class WorkspaceSessionManager:
             UPDATE workspace_sessions
             SET is_active = 0, last_activity = ?
             WHERE session_id = ?
-        """, (datetime.utcnow().isoformat(), session_id))
+        """, (datetime.now(UTC).isoformat(), session_id))
 
         conn.commit()
         conn.close()

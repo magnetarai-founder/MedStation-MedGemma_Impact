@@ -89,7 +89,7 @@ class HotSlotsStorage:
             conn = sqlite3.connect(str(self.db_path))
             cursor = conn.cursor()
 
-            now = datetime.utcnow().isoformat()
+            now = datetime.now(UTC).isoformat()
 
             # Update or insert each slot
             for slot_num, model_name in slots.items():

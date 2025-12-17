@@ -441,7 +441,7 @@ class WorkflowP2PSync:
                 # Remote wins
                 work_item.assigned_to = message.payload.get("assigned_to")
                 work_item.status = WorkItemStatus(message.payload.get("status", "claimed"))
-                work_item.updated_at = datetime.utcnow()
+                work_item.updated_at = datetime.now(UTC)
 
                 self.storage.save_work_item(work_item)
                 logger.info(f"🔄 Resolved claim conflict (remote wins): {work_item_id}")
@@ -455,7 +455,7 @@ class WorkflowP2PSync:
             if claimed_at_str:
                 work_item.claimed_at = datetime.fromisoformat(claimed_at_str)
 
-            work_item.updated_at = datetime.utcnow()
+            work_item.updated_at = datetime.now(UTC)
 
             self.orchestrator.active_work_items[work_item.id] = work_item
             self.storage.save_work_item(work_item)
@@ -492,7 +492,7 @@ class WorkflowP2PSync:
         if message.payload.get("completed_at"):
             work_item.completed_at = datetime.fromisoformat(message.payload["completed_at"])
 
-        work_item.updated_at = datetime.utcnow()
+        work_item.updated_at = datetime.now(UTC)
 
         self.orchestrator.active_work_items[work_item.id] = work_item
         self.storage.save_work_item(work_item)

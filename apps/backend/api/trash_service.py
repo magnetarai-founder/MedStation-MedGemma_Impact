@@ -116,7 +116,7 @@ class TrashService:
             item_name: Display name
             original_data: JSON serialized original item data
         """
-        deleted_at = datetime.utcnow()
+        deleted_at = datetime.now(UTC)
         permanent_delete_at = deleted_at + timedelta(days=self.RETENTION_DAYS)
 
         trash_item = TrashItem(
@@ -201,7 +201,7 @@ class TrashService:
             item_type, item_id, permanent_delete_at = row
 
             # Check if expired
-            if datetime.fromisoformat(permanent_delete_at) < datetime.utcnow():
+            if datetime.fromisoformat(permanent_delete_at) < datetime.now(UTC):
                 logger.warning(f"Trash item expired: {trash_id}")
                 return False
 
@@ -348,7 +348,7 @@ class TrashService:
         Should be run periodically (e.g., daily cron job)
         Returns number of items deleted
         """
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
 
         with sqlite3.connect(self.db_path) as conn:
             # Get expired items

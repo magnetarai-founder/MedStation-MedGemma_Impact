@@ -566,8 +566,8 @@ async def terminal_websocket(websocket: WebSocket, terminal_id: str, token: Opti
         return
 
     # Initialize session metadata for TTL and inactivity tracking
-    session_start = datetime.utcnow()
-    last_activity = datetime.utcnow()
+    session_start = datetime.now(UTC)
+    last_activity = datetime.now(UTC)
     _session_metadata[terminal_id] = {
         'start': session_start,
         'last_activity': last_activity
@@ -600,7 +600,7 @@ async def terminal_websocket(websocket: WebSocket, terminal_id: str, token: Opti
         while session.active:
             await asyncio.sleep(60)  # Check every minute
 
-            now = datetime.utcnow()
+            now = datetime.now(UTC)
             metadata = _session_metadata.get(terminal_id)
             if not metadata:
                 break
@@ -649,7 +649,7 @@ async def terminal_websocket(websocket: WebSocket, terminal_id: str, token: Opti
                 break
 
             # Update last activity timestamp
-            _session_metadata[terminal_id]['last_activity'] = datetime.utcnow()
+            _session_metadata[terminal_id]['last_activity'] = datetime.now(UTC)
 
             try:
                 data = json.loads(message)

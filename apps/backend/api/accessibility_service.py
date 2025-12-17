@@ -196,7 +196,7 @@ class AccessibilityService:
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
 
-        updated_at = datetime.utcnow().isoformat()
+        updated_at = datetime.now(UTC).isoformat()
 
         indicator_style_json = json.dumps(preferences.status_indicator_style.dict())
         custom_json = json.dumps(preferences.custom_settings) if preferences.custom_settings else None

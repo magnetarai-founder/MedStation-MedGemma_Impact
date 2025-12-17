@@ -89,7 +89,7 @@ class TeamModelPolicyService:
             conn = self._get_connection()
             cursor = conn.cursor()
 
-            now = datetime.utcnow().isoformat()
+            now = datetime.now(UTC).isoformat()
             allowed_models_json = json.dumps(allowed_models)
 
             cursor.execute("""

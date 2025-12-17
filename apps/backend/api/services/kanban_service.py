@@ -7,7 +7,7 @@ and Wiki pages for the Kanban workspace.
 Implementations should:
 - Call ensure_schema() once (import time or first use)
 - Use PATHS.app_db for storage
-- Use ISO timestamps via datetime.utcnow().isoformat()
+- Use ISO timestamps via datetime.now(UTC).isoformat()
 - Store tags as JSON strings in tasks.tags
 - Use REAL 'position' fields for ordering and provide a rebalance helper
 """
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 def _utcnow() -> str:
-    return datetime.utcnow().isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _conn() -> sqlite3.Connection:

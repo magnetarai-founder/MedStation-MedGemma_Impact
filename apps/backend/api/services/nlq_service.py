@@ -130,7 +130,7 @@ class NLQService:
                 "metadata": {...}
             }
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(UTC)
 
         try:
             # Get schema for dataset
@@ -198,7 +198,7 @@ class NLQService:
                 model=model
             )
 
-            execution_time = (datetime.utcnow() - start_time).total_seconds()
+            execution_time = (datetime.now(UTC) - start_time).total_seconds()
 
             # Persist to history (best-effort)
             if user_id:

@@ -174,7 +174,7 @@ def save_peer(db_path: Path, peer_id: str, display_name: str, device_name: str,
         INSERT OR REPLACE INTO peers
         (peer_id, display_name, device_name, public_key, status, last_seen)
         VALUES (?, ?, ?, ?, ?, ?)
-    """, (peer_id, display_name, device_name, public_key, status, datetime.utcnow().isoformat()))
+    """, (peer_id, display_name, device_name, public_key, status, datetime.now(UTC).isoformat()))
 
     conn.commit()
     conn.close()
@@ -187,7 +187,7 @@ def update_peer_status(db_path: Path, peer_id: str, status: str) -> None:
 
     cursor.execute("""
         UPDATE peers SET status = ?, last_seen = ? WHERE peer_id = ?
-    """, (status, datetime.utcnow().isoformat(), peer_id))
+    """, (status, datetime.now(UTC).isoformat(), peer_id))
 
     conn.commit()
     conn.close()
@@ -221,7 +221,7 @@ def save_channel(db_path: Path, channel_id: str, name: str, channel_type: str,
         (id, name, type, created_at, created_by, description, topic, members, admins, dm_participants)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
-        channel_id, name, channel_type, datetime.utcnow().isoformat(), created_by,
+        channel_id, name, channel_type, datetime.now(UTC).isoformat(), created_by,
         description, topic, json.dumps(members), json.dumps(admins),
         json.dumps(dm_participants) if dm_participants else None
     ))
@@ -387,7 +387,7 @@ def save_file_transfer(db_path: Path, transfer_id: str, file_name: str, file_siz
     """, (
         transfer_id, file_name, file_size, mime_type, sender_id,
         json.dumps(recipient_ids), channel_id, chunks_total,
-        datetime.utcnow().isoformat(), 'active'
+        datetime.now(UTC).isoformat(), 'active'
     ))
 
     conn.commit()
@@ -400,7 +400,7 @@ def update_file_transfer_progress(db_path: Path, transfer_id: str, chunks_receiv
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
 
-    completed_at = datetime.utcnow().isoformat() if status == 'completed' else None
+    completed_at = datetime.now(UTC).isoformat() if status == 'completed' else None
 
     cursor.execute("""
         UPDATE file_transfers

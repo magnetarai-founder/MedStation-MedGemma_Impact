@@ -94,7 +94,7 @@ def _create_code_review_template() -> Workflow:
     3. Human Review (HUMAN) - Final decision and comments
     """
     workflow_id = str(uuid.uuid4())
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
 
     stages = [
         Stage(
@@ -170,7 +170,7 @@ def _create_bug_fix_test_template() -> Workflow:
     4. Implement Fix (HUMAN) - Human implements fix and runs tests
     """
     workflow_id = str(uuid.uuid4())
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
 
     stages = [
         Stage(
@@ -256,7 +256,7 @@ def _create_release_notes_docs_template() -> Workflow:
     3. Docs Review & Publish (HUMAN) - Final review and publish
     """
     workflow_id = str(uuid.uuid4())
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
 
     stages = [
         Stage(

@@ -313,7 +313,7 @@ def migrate_phase0_user_db(app_db_path: Path, legacy_users_db_path: Path) -> boo
             VALUES (?, ?, ?)
         """, (
             '2025_11_02_phase0_user_db',
-            datetime.utcnow().isoformat(),
+            datetime.now(UTC).isoformat(),
             'Phase 0: Database Architecture Consolidation - Multi-user with single app_db'
         ))
 

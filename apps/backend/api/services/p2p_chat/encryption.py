@@ -60,8 +60,8 @@ def init_device_keys(db_path: Path, device_id: str, passphrase: str) -> Dict:
         public_key,
         fingerprint,
         bytes(e2e_service._signing_keypair.verify_key) if e2e_service._signing_keypair else b'',
-        datetime.utcnow().isoformat(),
-        datetime.utcnow().isoformat()
+        datetime.now(UTC).isoformat(),
+        datetime.now(UTC).isoformat()
     ))
 
     conn.commit()
@@ -114,7 +114,7 @@ def store_peer_key(db_path: Path, peer_device_id: str, public_key: bytes, verify
             INSERT INTO safety_number_changes
             (peer_device_id, old_safety_number, new_safety_number, changed_at)
             VALUES (?, ?, ?, ?)
-        """, (peer_device_id, existing[0], safety_number, datetime.utcnow().isoformat()))
+        """, (peer_device_id, existing[0], safety_number, datetime.now(UTC).isoformat()))
         logger.warning(f"⚠️ Safety number changed for peer {peer_device_id}")
 
     # Store/update peer key
@@ -129,8 +129,8 @@ def store_peer_key(db_path: Path, peer_device_id: str, public_key: bytes, verify
         verify_key,
         safety_number,
         peer_device_id,
-        datetime.utcnow().isoformat(),
-        datetime.utcnow().isoformat() if existing else None
+        datetime.now(UTC).isoformat(),
+        datetime.now(UTC).isoformat() if existing else None
     ))
 
     conn.commit()
@@ -161,7 +161,7 @@ def verify_peer_fingerprint(db_path: Path, peer_device_id: str) -> bool:
         UPDATE peer_keys
         SET verified = 1, verified_at = ?
         WHERE peer_device_id = ?
-    """, (datetime.utcnow().isoformat(), peer_device_id))
+    """, (datetime.now(UTC).isoformat(), peer_device_id))
 
     conn.commit()
     conn.close()
@@ -232,7 +232,7 @@ def acknowledge_safety_change(db_path: Path, change_id: int) -> bool:
         UPDATE safety_number_changes
         SET acknowledged = 1, acknowledged_at = ?
         WHERE id = ?
-    """, (datetime.utcnow().isoformat(), change_id))
+    """, (datetime.now(UTC).isoformat(), change_id))
 
     conn.commit()
     conn.close()

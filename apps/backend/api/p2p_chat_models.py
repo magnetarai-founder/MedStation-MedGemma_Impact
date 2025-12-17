@@ -56,7 +56,7 @@ class Channel(BaseModel):
     id: str = Field(default_factory=lambda: f"ch_{uuid.uuid4().hex[:12]}")
     name: str
     type: ChannelType
-    created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
     created_by: str  # peer_id of creator
 
     # Members
@@ -85,7 +85,7 @@ class Message(BaseModel):
     encrypted: bool = True  # All messages encrypted by default
 
     # Timestamps
-    timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    timestamp: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
     edited_at: Optional[str] = None
 
     # File attachments (if type=FILE)
@@ -123,7 +123,7 @@ class FileTransfer(BaseModel):
 
     # Status
     status: str = "pending"  # pending, transferring, completed, failed
-    started_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    started_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
     completed_at: Optional[str] = None
 
     # Storage
@@ -135,7 +135,7 @@ class TypingIndicator(BaseModel):
     channel_id: str
     peer_id: str
     display_name: str
-    started_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    started_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
 # ===== Request/Response Models =====

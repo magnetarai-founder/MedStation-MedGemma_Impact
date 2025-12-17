@@ -42,7 +42,7 @@ def create_folder(
         folder_path = f"{parent_path}/{folder_name}"
 
     folder_id = str(uuid.uuid4())
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
 
     conn = sqlite3.connect(str(service.db_path))
     cursor = conn.cursor()
@@ -161,7 +161,7 @@ def delete_folder(
     """
     conn = sqlite3.connect(str(service.db_path))
     cursor = conn.cursor()
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
 
     try:
         # Delete folder
@@ -219,7 +219,7 @@ def rename_folder(
     """
     conn = sqlite3.connect(str(service.db_path))
     cursor = conn.cursor()
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
 
     try:
         # Calculate new path

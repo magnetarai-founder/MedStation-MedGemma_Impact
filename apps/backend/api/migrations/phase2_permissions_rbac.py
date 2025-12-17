@@ -200,7 +200,7 @@ def seed_permissions(conn: sqlite3.Connection) -> None:
 
     logger.info("  Seeding permission registry...")
 
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
 
     permissions = []
 
@@ -310,7 +310,7 @@ def seed_base_profiles(conn: sqlite3.Connection) -> None:
 
     logger.info("  Seeding base permission profiles...")
 
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
 
     # Profile 1: Admin Profile
     cursor.execute("""
@@ -546,7 +546,7 @@ def record_migration(conn: sqlite3.Connection) -> None:
     """Record migration completion in migrations table"""
     cursor = conn.cursor()
 
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
 
     cursor.execute("""
         INSERT OR IGNORE INTO migrations (migration_name, applied_at)

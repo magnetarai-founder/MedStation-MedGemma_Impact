@@ -175,7 +175,7 @@ class UndoService:
             Created undo action
         """
         timeout = timeout_seconds or self.default_timeout
-        created_at = datetime.utcnow()
+        created_at = datetime.now(UTC)
         expires_at = created_at + timedelta(seconds=timeout)
 
         conn = sqlite3.connect(str(self.db_path))
@@ -273,7 +273,7 @@ class UndoService:
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
 
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
 
         cursor.execute("""
             SELECT id, action_type, user_id, resource_type, resource_id,
@@ -354,7 +354,7 @@ class UndoService:
 
         # Check if expired
         expires_at = datetime.fromisoformat(action.expires_at)
-        if datetime.utcnow() > expires_at:
+        if datetime.now(UTC) > expires_at:
             return UndoResult(
                 success=False,
                 action_id=action_id,
@@ -397,7 +397,7 @@ class UndoService:
             UPDATE undo_actions
             SET is_undone = 1, undone_at = ?
             WHERE id = ?
-        """, (datetime.utcnow().isoformat(), action_id))
+        """, (datetime.now(UTC).isoformat(), action_id))
 
         conn.commit()
         conn.close()
@@ -442,7 +442,7 @@ class UndoService:
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
 
-        cutoff_date = datetime.utcnow() - timedelta(days=days_to_keep)
+        cutoff_date = datetime.now(UTC) - timedelta(days=days_to_keep)
 
         cursor.execute("""
             DELETE FROM undo_actions

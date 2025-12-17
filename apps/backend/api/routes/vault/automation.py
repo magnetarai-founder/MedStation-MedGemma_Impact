@@ -75,7 +75,7 @@ async def create_organization_rule(
             )
 
         rule_id = str(uuid.uuid4())
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
 
         conn = sqlite3.connect(service.db_path)
         cursor = conn.cursor()
@@ -276,7 +276,7 @@ async def run_organization_rules(
                                 UPDATE vault_files
                                 SET folder_path = ?, updated_at = ?
                                 WHERE id = ?
-                            """, (rule['action_value'], datetime.utcnow().isoformat(), file['id']))
+                            """, (rule['action_value'], datetime.now(UTC).isoformat(), file['id']))
 
                         elif rule['action_type'] == 'add_tag':
                             # Add tag if it doesn't exist
@@ -287,14 +287,14 @@ async def run_organization_rules(
                                     (id, file_id, user_id, vault_type, tag_name, created_at)
                                     VALUES (?, ?, ?, ?, ?, ?)
                                 """, (tag_id, file['id'], user_id, vault_type,
-                                      rule['action_value'], datetime.utcnow().isoformat()))
+                                      rule['action_value'], datetime.now(UTC).isoformat()))
                             except sqlite3.IntegrityError:
                                 pass  # Tag already exists
 
                         files_matched += 1
 
                 # Update rule stats
-                now = datetime.utcnow().isoformat()
+                now = datetime.now(UTC).isoformat()
                 cursor.execute("""
                     UPDATE vault_organization_rules
                     SET last_run = ?, files_processed = files_processed + ?

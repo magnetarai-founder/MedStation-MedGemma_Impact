@@ -200,8 +200,8 @@ async def create_document(
         if not is_team_member(team_id, user_id):
             raise HTTPException(status_code=403, detail="Not a member of this team")
 
-    doc_id = f"doc_{datetime.utcnow().timestamp()}_{os.urandom(4).hex()}"
-    now = datetime.utcnow().isoformat()
+    doc_id = f"doc_{datetime.now(UTC).timestamp()}_{os.urandom(4).hex()}"
+    now = datetime.now(UTC).isoformat()
 
     conn = get_db()
     cursor = conn.cursor()
@@ -478,7 +478,7 @@ async def update_document(
             values.append(json.dumps(updates.shared_with))
 
         # Always update timestamp
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
         update_fields.append("updated_at = ?")
         values.append(now)
 
@@ -605,7 +605,7 @@ async def sync_documents(
     """
     conn = get_db()
     cursor = conn.cursor()
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
     user_id = current_user["user_id"]
     conflicts = []
     updated_documents = []

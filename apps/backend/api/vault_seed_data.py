@@ -118,7 +118,7 @@ class DecoyVaultSeeder:
     def _generate_realistic_timestamp(self) -> str:
         """Generate realistic timestamp (random date in past 6 months)"""
         days_ago = uuid.uuid4().int % 180  # 0-180 days ago
-        timestamp = datetime.utcnow() - timedelta(days=days_ago)
+        timestamp = datetime.now(UTC) - timedelta(days=days_ago)
         return timestamp.isoformat()
 
     def clear_decoy_vault(self, user_id: str) -> Dict[str, Any]:

@@ -308,7 +308,7 @@ class MeshRelay:
             latency_ms=latency_ms,
             hop_count=1,
             reliability=1.0,
-            last_measured=datetime.utcnow().isoformat()
+            last_measured=datetime.now(UTC).isoformat()
         )
         self.route_metrics[(self.local_peer_id, peer_id)] = metrics
 
@@ -377,7 +377,7 @@ class MeshRelay:
             payload=payload,
             ttl=ttl or self.MAX_TTL,
             route_history=[self.local_peer_id],
-            timestamp=datetime.utcnow().isoformat()
+            timestamp=datetime.now(UTC).isoformat()
         )
 
         # Check if we have a route
@@ -550,7 +550,7 @@ class MeshRelay:
                     latency_ms=10.0,  # Default - should be measured
                     hop_count=new_hop_count,
                     reliability=0.95,
-                    last_measured=datetime.utcnow().isoformat()
+                    last_measured=datetime.now(UTC).isoformat()
                 )
 
                 self.routes_discovered += 1
@@ -582,7 +582,7 @@ class MeshRelay:
             'type': 'route_advertisement',
             'peer_id': self.local_peer_id,
             'reachable_peers': reachable_peers,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(UTC).isoformat()
         }
 
     def _generate_message_id(self, dest_peer_id: str, payload: dict) -> str:
@@ -593,7 +593,7 @@ class MeshRelay:
             'source': self.local_peer_id,
             'dest': dest_peer_id,
             'payload': payload,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(UTC).isoformat()
         }, sort_keys=True)
 
         return hashlib.sha256(content.encode()).hexdigest()[:16]

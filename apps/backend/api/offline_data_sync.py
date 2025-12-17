@@ -157,7 +157,7 @@ class OfflineDataSync:
             operation=operation,
             row_id=str(row_id),
             data=data,
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             peer_id=self.local_peer_id,
             version=self.local_version,
             team_id=team_id
@@ -255,7 +255,7 @@ class OfflineDataSync:
             state.conflicts_resolved += conflicts
 
             # Step 5: Update sync state
-            state.last_sync = datetime.utcnow().isoformat()
+            state.last_sync = datetime.now(UTC).isoformat()
             state.status = 'idle'
 
             await self._save_sync_state(state)

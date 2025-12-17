@@ -43,7 +43,7 @@ def pin_file(
 
     try:
         pin_id = str(uuid.uuid4())
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
 
         cursor.execute("""
             INSERT INTO vault_pinned_files (
@@ -181,7 +181,7 @@ def set_folder_color(
     cursor = conn.cursor()
 
     try:
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
 
         # Try to update existing color
         cursor.execute("""
@@ -339,7 +339,7 @@ def export_vault_data(
 
         return {
             "vault_type": vault_type,
-            "export_date": datetime.utcnow().isoformat(),
+            "export_date": datetime.now(UTC).isoformat(),
             "files": files,
             "folders": folders,
             "tags": tags

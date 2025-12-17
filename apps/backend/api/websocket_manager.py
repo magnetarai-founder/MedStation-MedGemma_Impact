@@ -43,8 +43,8 @@ class ConnectionManager:
         self.user_presence[user_id] = {
             "status": "online",
             "vault_type": vault_type,
-            "connected_at": datetime.utcnow().isoformat(),
-            "last_activity": datetime.utcnow().isoformat()
+            "connected_at": datetime.now(UTC).isoformat(),
+            "last_activity": datetime.now(UTC).isoformat()
         }
 
         logger.info(f"WebSocket connected: user={user_id}, vault={vault_type}")
@@ -54,7 +54,7 @@ class ConnectionManager:
             "type": "user_presence",
             "user_id": user_id,
             "status": "online",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(UTC).isoformat()
         }, vault_type)
 
     def disconnect(self, websocket: WebSocket, user_id: str, vault_type: str = "real"):
@@ -125,7 +125,7 @@ class ConnectionManager:
             "file": file_data,
             "vault_type": vault_type,
             "user_id": user_id,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(UTC).isoformat()
         }
         await self.broadcast_to_all(message, vault_type)
 
@@ -138,7 +138,7 @@ class ConnectionManager:
             "details": details,
             "vault_type": vault_type,
             "user_id": user_id,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(UTC).isoformat()
         }
         await self.broadcast_to_all(message, vault_type)
 

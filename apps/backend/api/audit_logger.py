@@ -292,7 +292,7 @@ class AuditLogger:
             conn = sqlite3.connect(str(self.db_path))
             cursor = conn.cursor()
 
-            timestamp = datetime.utcnow().isoformat()
+            timestamp = datetime.now(UTC).isoformat()
 
             # Sanitize details before storing
             sanitized_details = sanitize_for_log(details) if details else None
@@ -480,7 +480,7 @@ class AuditLogger:
             conn = sqlite3.connect(str(self.db_path))
             cursor = conn.cursor()
 
-            cutoff_date = datetime.utcnow() - timedelta(days=retention_days)
+            cutoff_date = datetime.now(UTC) - timedelta(days=retention_days)
 
             cursor.execute("""
                 DELETE FROM audit_log

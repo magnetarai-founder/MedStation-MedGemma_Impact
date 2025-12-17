@@ -48,7 +48,7 @@ def add_tag_to_file(
     """
     conn = sqlite3.connect(str(vault_service.db_path))
     cursor = conn.cursor()
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
     tag_id = str(uuid.uuid4())
 
     try:

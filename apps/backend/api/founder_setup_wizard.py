@@ -399,7 +399,7 @@ class FounderSetupWizard:
                 setup_ip_address = ?
             WHERE id = 1
         """, (
-            datetime.utcnow().isoformat(),
+            datetime.now(UTC).isoformat(),
             storage_type,
             user_id,
             ip_address
@@ -419,7 +419,7 @@ class FounderSetupWizard:
                 resource_id="setup",
                 details={
                     "storage_type": storage_type,
-                    "timestamp": datetime.utcnow().isoformat()
+                    "timestamp": datetime.now(UTC).isoformat()
                 }
             )
         except Exception as e:

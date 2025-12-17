@@ -57,7 +57,7 @@ def upload_file(
     """
     # Generate unique file ID
     file_id = str(uuid.uuid4())
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
 
     # Encrypt file data
     key, salt = encryption.get_encryption_key(passphrase)
@@ -127,7 +127,7 @@ def delete_file(service, user_id: str, vault_type: str, file_id: str) -> bool:
     Returns:
         True if file was deleted, False otherwise
     """
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
     return storage.delete_file_record(file_id, user_id, vault_type, now)
 
 
@@ -151,7 +151,7 @@ def rename_file(
     Returns:
         True if file was renamed, False otherwise
     """
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
     return storage.rename_file_record(file_id, user_id, vault_type, new_filename, now)
 
 
@@ -175,7 +175,7 @@ def move_file(
     Returns:
         True if file was moved, False otherwise
     """
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
     return storage.move_file_record(file_id, user_id, vault_type, new_folder_path, now)
 
 
@@ -225,7 +225,7 @@ def create_file_version(
 
         # Create version record
         version_id = str(uuid.uuid4())
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
 
         cursor.execute("""
             INSERT INTO vault_file_versions (
@@ -366,7 +366,7 @@ def restore_file_version(
             shutil.copy2(version_path, current_path)
 
         # Update file record
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
         cursor.execute("""
             UPDATE vault_files
             SET file_size = ?, mime_type = ?, updated_at = ?
@@ -476,7 +476,7 @@ def move_to_trash(
     cursor = conn.cursor()
 
     try:
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
 
         cursor.execute("""
             UPDATE vault_files
@@ -718,7 +718,7 @@ def secure_delete_file(
             os.remove(file_path)
 
         # Mark as deleted in database
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
         cursor.execute("""
             UPDATE vault_files
             SET is_deleted = 1, deleted_at = ?

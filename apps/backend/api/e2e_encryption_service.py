@@ -320,7 +320,7 @@ class E2EEncryptionService:
             "device_id": self._device_id,
             "identity_private_key": bytes(self._identity_keypair).hex(),
             "signing_private_key": bytes(self._signing_keypair).hex(),
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(UTC).isoformat()
         }
 
         # Encrypt bundle with passphrase

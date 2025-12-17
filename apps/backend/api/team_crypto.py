@@ -18,6 +18,7 @@ import hmac
 import hashlib
 import json
 import logging
+from datetime import datetime, UTC
 from typing import Optional, Dict, Any
 
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -121,7 +122,7 @@ def sign_payload(payload: Dict[str, Any], team_id: Optional[str]) -> str:
         payload = {
             "action": "doc.create",
             "doc_id": "doc_123",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "team_id": "team_abc"
         }
         signature = sign_payload(payload, "team_abc")

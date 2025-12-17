@@ -277,7 +277,7 @@ class WorkflowOrchestrator:
 
         # Calculate SLA if stage has time limit
         if first_stage.sla_minutes:
-            work_item.sla_due_at = datetime.utcnow() + timedelta(minutes=first_stage.sla_minutes)
+            work_item.sla_due_at = datetime.now(UTC) + timedelta(minutes=first_stage.sla_minutes)
 
         # Record initial transition
         transition = StageTransition(
@@ -397,9 +397,9 @@ class WorkflowOrchestrator:
 
         # Claim the item
         work_item.assigned_to = user_id
-        work_item.claimed_at = datetime.utcnow()
+        work_item.claimed_at = datetime.now(UTC)
         work_item.status = WorkItemStatus.CLAIMED
-        work_item.updated_at = datetime.utcnow()
+        work_item.updated_at = datetime.now(UTC)
 
         # Update in-memory cache
         self.active_work_items[work_item_id] = work_item
@@ -441,7 +441,7 @@ class WorkflowOrchestrator:
             raise ValueError(f"Work item not assigned to user {user_id}")
 
         work_item.status = WorkItemStatus.IN_PROGRESS
-        work_item.updated_at = datetime.utcnow()
+        work_item.updated_at = datetime.now(UTC)
 
         # Update in-memory cache
         self.active_work_items[work_item_id] = work_item
@@ -502,13 +502,13 @@ class WorkflowOrchestrator:
 
         # Merge stage data into work item data
         work_item.data.update(stage_data)
-        work_item.updated_at = datetime.utcnow()
+        work_item.updated_at = datetime.now(UTC)
 
         # Calculate time spent in this stage
         last_transition = work_item.history[-1] if work_item.history else None
         duration_seconds = None
         if last_transition:
-            duration = datetime.utcnow() - last_transition.transitioned_at
+            duration = datetime.now(UTC) - last_transition.transitioned_at
             duration_seconds = int(duration.total_seconds())
 
         logger.info(f"✅ Stage completed: {current_stage.name} for work item {work_item_id}")
@@ -530,7 +530,7 @@ class WorkflowOrchestrator:
         else:
             # No next stage - workflow complete
             work_item.status = WorkItemStatus.COMPLETED
-            work_item.completed_at = datetime.utcnow()
+            work_item.completed_at = datetime.now(UTC)
 
             transition = StageTransition(
                 from_stage_id=current_stage.id,
@@ -677,7 +677,7 @@ class WorkflowOrchestrator:
 
         # Calculate new SLA if stage has time limit
         if next_stage.sla_minutes:
-            work_item.sla_due_at = datetime.utcnow() + timedelta(minutes=next_stage.sla_minutes)
+            work_item.sla_due_at = datetime.now(UTC) + timedelta(minutes=next_stage.sla_minutes)
         else:
             work_item.sla_due_at = None
             work_item.is_overdue = False
@@ -736,7 +736,7 @@ class WorkflowOrchestrator:
             if stage.assigned_user_id:
                 work_item.assigned_to = stage.assigned_user_id
                 work_item.status = WorkItemStatus.CLAIMED
-                work_item.claimed_at = datetime.utcnow()
+                work_item.claimed_at = datetime.now(UTC)
                 logger.info(f"👤 Auto-assigned to user: {stage.assigned_user_id}")
 
         elif stage.assignment_type == AssignmentType.AUTOMATION:
@@ -865,7 +865,7 @@ class WorkflowOrchestrator:
         Returns:
             List of overdue work items (filtered by user)
         """
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         overdue = []
 
         # Load work items for this user from storage if available

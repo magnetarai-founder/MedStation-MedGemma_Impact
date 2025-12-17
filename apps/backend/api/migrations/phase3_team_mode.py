@@ -295,7 +295,7 @@ def update_rbac_for_teams(conn: sqlite3.Connection) -> None:
 def record_migration(conn: sqlite3.Connection) -> None:
     """Record migration in migrations table"""
     cursor = conn.cursor()
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
 
     cursor.execute("""
         INSERT INTO migrations (migration_name, applied_at)

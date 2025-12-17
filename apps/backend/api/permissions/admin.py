@@ -131,7 +131,7 @@ async def create_profile(
 
     # Generate profile ID
     profile_id = f"profile_{uuid.uuid4().hex[:12]}"
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
 
     cur.execute("""
         INSERT INTO permission_profiles (
@@ -261,7 +261,7 @@ async def update_profile(
         raise HTTPException(status_code=400, detail="No fields to update")
 
     update_parts.append("modified_at = ?")
-    params.append(datetime.utcnow().isoformat())
+    params.append(datetime.now(UTC).isoformat())
 
     params.append(profile_id)
 
@@ -458,7 +458,7 @@ async def assign_profile_to_user(
         conn.close()
         raise HTTPException(status_code=404, detail="User not found")
 
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
 
     cur.execute("""
         INSERT INTO user_permission_profiles (
@@ -645,7 +645,7 @@ async def create_permission_set(
 
     # Generate set ID
     set_id = f"permset_{uuid.uuid4().hex[:12]}"
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
 
     cur.execute("""
         INSERT INTO permission_sets (
@@ -716,7 +716,7 @@ async def assign_permission_set_to_user(
         conn.close()
         raise HTTPException(status_code=404, detail="User not found")
 
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
 
     cur.execute("""
         INSERT INTO user_permission_sets (
@@ -841,7 +841,7 @@ async def update_permission_set_grants(
         raise HTTPException(status_code=404, detail="Permission set not found")
 
     # Upsert grants
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
     for grant in grants:
         cur.execute("""
             INSERT INTO permission_set_permissions (

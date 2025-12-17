@@ -45,7 +45,7 @@ def store_document_record(
     Returns:
         Stored vault document
     """
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
     size_bytes = len(doc.encrypted_blob) + len(doc.encrypted_metadata)
 
     conn = _get_vault_conn()
@@ -261,7 +261,7 @@ def update_document_record(
     conn = _get_vault_conn()
     cursor = conn.cursor()
 
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
     size_bytes = len(update.encrypted_blob) + len(update.encrypted_metadata)
 
     try:
@@ -339,7 +339,7 @@ def delete_document_record(
     conn = _get_vault_conn()
     cursor = conn.cursor()
 
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
 
     try:
         if team_id:

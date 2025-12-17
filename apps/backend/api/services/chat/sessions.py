@@ -254,7 +254,7 @@ async def save_message_to_session(
     # Create ConversationEvent structure (matches chat_memory expectation)
     from api.chat_memory import ConversationEvent
 
-    timestamp = datetime.utcnow().isoformat()
+    timestamp = datetime.now(UTC).isoformat()
 
     event = ConversationEvent(
         timestamp=timestamp,

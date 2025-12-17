@@ -246,7 +246,7 @@ class NeutronChatMemory:
 
         Phase 5: Accepts team_id for team-scoped chat sessions
         """
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
         conn = self._get_connection()
 
         with self._write_lock:
@@ -482,7 +482,7 @@ class NeutronChatMemory:
                     embedding = SimpleEmbedding.create_embedding(event.content)
                     embedding_json = json.dumps(embedding)
 
-                    now = datetime.utcnow().isoformat()
+                    now = datetime.now(UTC).isoformat()
                     conn.execute("""
                         INSERT INTO message_embeddings (message_id, session_id, embedding_json, created_at, team_id)
                         VALUES (?, ?, ?, ?, ?)
@@ -493,7 +493,7 @@ class NeutronChatMemory:
                     logger.warning(f"Failed to pre-compute embedding for message {message_id}: {e}")
 
             # Update session metadata
-            now = datetime.utcnow().isoformat()
+            now = datetime.now(UTC).isoformat()
             conn.execute("""
                 UPDATE chat_sessions
                 SET updated_at = ?, message_count = message_count + 1
@@ -607,7 +607,7 @@ class NeutronChatMemory:
             if ev.model:
                 models_used.add(ev.model)
 
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
         events_json = json.dumps([asdict(ev) for ev in trimmed])
 
         conn = self._get_connection()
@@ -643,7 +643,7 @@ class NeutronChatMemory:
 
     def update_session_model(self, session_id: str, model: str) -> None:
         """Update the model for a chat session"""
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
         conn = self._get_connection()
         with self._write_lock:
             conn.execute("""
@@ -662,7 +662,7 @@ class NeutronChatMemory:
             selected_mode: "intelligent" (Apple FM orchestrator) or "manual" (specific model)
             selected_model_id: Model ID when in manual mode, None when in intelligent mode
         """
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
         conn = self._get_connection()
         with self._write_lock:
             conn.execute("""
@@ -701,7 +701,7 @@ class NeutronChatMemory:
 
     def set_session_archived(self, session_id: str, archived: bool) -> None:
         """Archive or unarchive a chat session"""
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
         conn = self._get_connection()
         with self._write_lock:
             conn.execute("""
@@ -754,7 +754,7 @@ class NeutronChatMemory:
 
     def store_document_chunks(self, session_id: str, chunks: List[Dict[str, Any]]):
         """Store document chunks for RAG"""
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
         conn = self._get_connection()
 
         with self._write_lock:

@@ -157,7 +157,7 @@ class ModelPreferencesStorage:
             conn = sqlite3.connect(str(self.db_path))
             cursor = conn.cursor()
 
-            now = datetime.utcnow().isoformat()
+            now = datetime.now(UTC).isoformat()
 
             # Check if preference exists
             cursor.execute("""
@@ -241,7 +241,7 @@ class ModelPreferencesStorage:
             conn = sqlite3.connect(str(self.db_path))
             cursor = conn.cursor()
 
-            now = datetime.utcnow().isoformat()
+            now = datetime.now(UTC).isoformat()
 
             for pref in preferences:
                 model_name = pref.get("model_name")

@@ -228,7 +228,7 @@ class OfflineMeshDiscovery:
                 ip_address=ip_address,
                 port=info.port,
                 capabilities=properties.get('capabilities', '').split(','),
-                last_seen=datetime.utcnow().isoformat(),
+                last_seen=datetime.now(UTC).isoformat(),
                 status='online'
             )
 

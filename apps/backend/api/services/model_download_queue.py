@@ -121,7 +121,7 @@ class ModelDownloadQueue:
 
             # Update status
             job.status = DownloadStatus.CANCELED
-            job.completed_at = datetime.utcnow()
+            job.completed_at = datetime.now(UTC)
 
             logger.info(f"Canceled download for {model_name}")
 
@@ -189,7 +189,7 @@ class ModelDownloadQueue:
 
             job = self.jobs[model_name]
             job.status = DownloadStatus.COMPLETED if success else DownloadStatus.FAILED
-            job.completed_at = datetime.utcnow()
+            job.completed_at = datetime.now(UTC)
             job.progress = 100.0 if success else job.progress
             if error:
                 job.error = error
@@ -219,7 +219,7 @@ class ModelDownloadQueue:
 
             job = self.jobs[model_name]
             job.status = DownloadStatus.DOWNLOADING
-            job.started_at = datetime.utcnow()
+            job.started_at = datetime.now(UTC)
             job.position = None  # Clear position when starting
 
             self.active.append(model_name)

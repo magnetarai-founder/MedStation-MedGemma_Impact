@@ -249,7 +249,7 @@ def update_session(session_id: str, updates: Dict[str, Any]) -> None:
     Example:
         update_session("session_123", {
             "current_plan": {...},
-            "last_activity_at": datetime.utcnow()
+            "last_activity_at": datetime.now(UTC)
         })
     """
     init_db()  # Ensure DB is initialized
@@ -301,7 +301,7 @@ def archive_session(session_id: str) -> None:
         session_id,
         {
             "status": "archived",
-            "last_activity_at": datetime.utcnow(),
+            "last_activity_at": datetime.now(UTC),
         }
     )
 

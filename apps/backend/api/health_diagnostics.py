@@ -92,7 +92,7 @@ class HealthDiagnostics:
 
         health = {
             "status": "healthy",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "uptime_seconds": int(time.time() - self.start_time),
             "checks": {}
         }
@@ -162,7 +162,7 @@ class HealthDiagnostics:
 
         diagnostics = {
             "status": "healthy",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "uptime_seconds": int(time.time() - self.start_time),
             "cached": False,
             "components": {},

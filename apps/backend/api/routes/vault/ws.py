@@ -91,12 +91,12 @@ async def websocket_endpoint(
                 # Handle different message types
                 if message.get("type") == "ping":
                     # Respond to keepalive ping
-                    await websocket.send_json({"type": "pong", "timestamp": datetime.utcnow().isoformat()})
+                    await websocket.send_json({"type": "pong", "timestamp": datetime.now(UTC).isoformat()})
 
                 elif message.get("type") == "activity_update":
                     # Update user's last activity timestamp
                     if manager and user_id in manager.user_presence:
-                        manager.user_presence[user_id]["last_activity"] = datetime.utcnow().isoformat()
+                        manager.user_presence[user_id]["last_activity"] = datetime.now(UTC).isoformat()
 
                 else:
                     # Echo unknown messages for debugging

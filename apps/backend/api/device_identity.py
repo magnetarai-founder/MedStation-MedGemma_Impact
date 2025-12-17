@@ -175,7 +175,7 @@ def ensure_device_identity(conn: sqlite3.Connection) -> str:
 
         row = cursor.fetchone()
 
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
 
         if row:
             # Device identity exists - update last_boot_at

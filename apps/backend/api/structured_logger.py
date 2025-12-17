@@ -34,7 +34,7 @@ class StructuredLogFormatter(logging.Formatter):
         request_id = request_id_ctx.get()
 
         log_obj = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(UTC).isoformat() + "Z",
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),

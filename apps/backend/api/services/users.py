@@ -89,7 +89,7 @@ async def get_or_create_user_profile():
     user_id = str(uuid.uuid4())
     display_name = "Field Worker"
     device_name = os.uname().nodename if hasattr(os, 'uname') else "ElohimOS Device"
-    created_at = datetime.utcnow().isoformat()
+    created_at = datetime.now(UTC).isoformat()
     avatar_color = "#3b82f6"  # Default blue
 
     cursor.execute("""

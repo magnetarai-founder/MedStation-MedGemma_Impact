@@ -280,7 +280,7 @@ async def detect_bottlenecks():
         issues = diagnostics.detect_bottlenecks()
 
         return {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "issues": issues,
             "has_bottlenecks": any("✅" not in issue for issue in issues)
         }
@@ -321,7 +321,7 @@ async def get_services_status():
             status[service_name] = "down"
 
     return {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "services": status
     }
 
@@ -339,7 +339,7 @@ async def get_system_resources():
         disk = psutil.disk_usage('/')
 
         return {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "cpu": {
                 "percent": round(cpu_percent, 2),
                 "count": psutil.cpu_count()

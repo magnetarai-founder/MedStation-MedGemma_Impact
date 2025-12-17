@@ -111,7 +111,7 @@ class PrometheusMetricsExporter:
 
         # Add header
         metrics.append("# Prometheus metrics for ElohimOS")
-        metrics.append(f"# Collected at: {datetime.utcnow().isoformat()}")
+        metrics.append(f"# Collected at: {datetime.now(UTC).isoformat()}")
         metrics.append("")
 
         # System metrics

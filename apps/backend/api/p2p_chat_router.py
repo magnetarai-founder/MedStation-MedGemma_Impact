@@ -271,7 +271,7 @@ async def invite_to_channel(
             "peer_id": peer_id,
             "channel_id": channel_id,
             "invited_by": user_id,
-            "invited_at": datetime.utcnow().isoformat(),
+            "invited_at": datetime.now(UTC).isoformat(),
             "status": "pending"
         }
         _channel_invitations[channel_id].append(invitation)
@@ -352,7 +352,7 @@ async def accept_channel_invitation(
 
     # Update invitation status
     invitation["status"] = "accepted"
-    invitation["accepted_at"] = datetime.utcnow().isoformat()
+    invitation["accepted_at"] = datetime.now(UTC).isoformat()
 
     logger.info(f"User {peer_id} accepted invitation to channel {channel_id}")
 
@@ -387,7 +387,7 @@ async def decline_channel_invitation(
 
     # Update invitation status
     invitation["status"] = "declined"
-    invitation["declined_at"] = datetime.utcnow().isoformat()
+    invitation["declined_at"] = datetime.now(UTC).isoformat()
 
     logger.info(f"User {peer_id} declined invitation to channel {channel_id}")
 
@@ -488,7 +488,7 @@ async def mark_message_as_read(
         "peer_id": user_id,
         "message_id": message_id,
         "channel_id": channel_id,
-        "read_at": datetime.utcnow().isoformat()
+        "read_at": datetime.now(UTC).isoformat()
     }
     _read_receipts[message_id].append(receipt)
 

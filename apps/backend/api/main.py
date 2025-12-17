@@ -464,7 +464,7 @@ async def _fallback_admin_device_overview(request: Request, current_user: dict =
                 "data_dir_size_bytes": None,
                 "data_dir_size_human": None,
             },
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(UTC).isoformat()
         }
 
 # Fallback Terminal spawn endpoint to avoid 404 if terminal router fails to load
@@ -618,7 +618,7 @@ async def progress_stream(task_id: str):
                             "status": task_data.get("status", "running"),
                             "progress": task_data.get("progress", 0),
                             "message": task_data.get("message", ""),
-                            "timestamp": datetime.utcnow().isoformat()
+                            "timestamp": datetime.now(UTC).isoformat()
                         }
 
                         yield f"data: {json.dumps(event_data)}\n\n"
@@ -685,7 +685,7 @@ async def update_progress(
             "status": status,
             "progress": progress,
             "message": message,
-            "updated_at": datetime.utcnow().isoformat()
+            "updated_at": datetime.now(UTC).isoformat()
         }
 
         logger.debug(f"Updated progress for task {task_id}: {status} ({progress}%)")

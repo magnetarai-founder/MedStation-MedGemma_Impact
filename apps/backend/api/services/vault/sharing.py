@@ -67,7 +67,7 @@ def create_share_link(
         # Generate secure share token
         share_token = secrets.token_urlsafe(32)
         share_id = str(uuid.uuid4())
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
 
         # Hash password if provided
         password_hash = None
@@ -157,7 +157,7 @@ def get_share_link(
         # Check if expired
         if expires_at:
             expires_dt = datetime.fromisoformat(expires_at)
-            if datetime.utcnow() > expires_dt:
+            if datetime.now(UTC) > expires_dt:
                 raise ValueError("Share link has expired")
 
         # Check download limit
@@ -242,7 +242,7 @@ def increment_share_download(
     cursor = conn.cursor()
 
     try:
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
 
         cursor.execute("""
             UPDATE vault_file_shares

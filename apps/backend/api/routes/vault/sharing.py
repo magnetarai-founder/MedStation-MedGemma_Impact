@@ -77,7 +77,7 @@ async def create_share_link_endpoint(
         # Apply default 24h TTL if not provided
         if not expires_at:
             from datetime import datetime, timedelta
-            now = datetime.utcnow()
+            now = datetime.now(UTC)
             default_expiry = now + timedelta(hours=24)
             expires_at = default_expiry.isoformat()
 
@@ -388,7 +388,7 @@ async def register_user(
 
         # Generate user ID
         user_id = str(uuid.uuid4())
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
 
         # Hash password with PBKDF2
         password_key, salt = service._get_encryption_key(password)
@@ -499,7 +499,7 @@ async def login_user(
                 )
 
             # Update last login
-            now = datetime.utcnow().isoformat()
+            now = datetime.now(UTC).isoformat()
             cursor.execute("""
                 UPDATE vault_users SET last_login = ? WHERE user_id = ?
             """, (now, user['user_id']))
@@ -570,7 +570,7 @@ async def grant_file_permission(
             )
 
         acl_id = str(uuid.uuid4())
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
 
         conn = sqlite3.connect(service.db_path)
         cursor = conn.cursor()
@@ -856,7 +856,7 @@ async def create_sharing_invitation(
         import secrets
         invitation_id = str(uuid.uuid4())
         invitation_token = secrets.token_urlsafe(32)
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         expires_at = (now + timedelta(days=expires_in_days)).isoformat()
         now_iso = now.isoformat()
 
@@ -953,7 +953,7 @@ async def accept_sharing_invitation(
 
             # Create ACL entry
             acl_id = str(uuid.uuid4())
-            now = datetime.utcnow().isoformat()
+            now = datetime.now(UTC).isoformat()
 
             if invitation['resource_type'] == 'file':
                 cursor.execute("""

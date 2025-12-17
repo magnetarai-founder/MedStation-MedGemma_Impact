@@ -100,7 +100,7 @@ class OfflineFileShare:
         try:
             data = {
                 'files': [asdict(f) for f in self.shared_files.values()],
-                'updated_at': datetime.utcnow().isoformat()
+                'updated_at': datetime.now(UTC).isoformat()
             }
 
             index_file.write_text(json.dumps(data, indent=2))
@@ -153,7 +153,7 @@ class OfflineFileShare:
             sha256_hash=sha256_hash,
             shared_by_peer_id=shared_by_peer_id,
             shared_by_name=shared_by_name,
-            shared_at=datetime.utcnow().isoformat(),
+            shared_at=datetime.now(UTC).isoformat(),
             description=description,
             tags=tags or []
         )

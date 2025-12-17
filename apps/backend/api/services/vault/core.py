@@ -827,7 +827,7 @@ class VaultService:
 
         try:
             comment_id = str(uuid.uuid4())
-            now = datetime.utcnow().isoformat()
+            now = datetime.now(UTC).isoformat()
 
             cursor.execute("""
                 INSERT INTO vault_file_comments (
@@ -885,7 +885,7 @@ class VaultService:
         cursor = conn.cursor()
 
         try:
-            now = datetime.utcnow().isoformat()
+            now = datetime.now(UTC).isoformat()
 
             cursor.execute("""
                 UPDATE vault_file_comments
@@ -942,7 +942,7 @@ class VaultService:
         cursor = conn.cursor()
 
         try:
-            now = datetime.utcnow().isoformat()
+            now = datetime.now(UTC).isoformat()
 
             # Try to update existing metadata
             cursor.execute("""

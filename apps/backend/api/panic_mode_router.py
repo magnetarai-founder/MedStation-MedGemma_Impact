@@ -279,7 +279,7 @@ async def trigger_emergency_mode(
             passes=7,
             method="DoD 5220.22-M",
             duration_seconds=duration,
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             errors=result['errors']
         )
 

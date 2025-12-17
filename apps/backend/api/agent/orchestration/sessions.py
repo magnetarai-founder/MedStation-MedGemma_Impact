@@ -53,7 +53,7 @@ def create_agent_session(
         session_a1b2c3d4
     """
     session_id = f"session_{uuid.uuid4().hex[:12]}"
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
 
     session = AgentSession(
         id=session_id,
@@ -155,7 +155,7 @@ def update_session_plan(session_id: str, plan_payload: Dict[str, Any]) -> None:
             session_id,
             {
                 "current_plan": plan_payload,
-                "last_activity_at": datetime.utcnow(),
+                "last_activity_at": datetime.now(UTC),
             },
         )
         logger.info(f"Updated plan for session {session_id}")
@@ -194,7 +194,7 @@ def touch_session(session_id: str) -> None:
         session_storage.update_session(
             session_id,
             {
-                "last_activity_at": datetime.utcnow(),
+                "last_activity_at": datetime.now(UTC),
             },
         )
         logger.debug(f"Touched session {session_id}")
@@ -221,7 +221,7 @@ def complete_session(session_id: str) -> None:
         session_id,
         {
             "status": "completed",
-            "last_activity_at": datetime.utcnow(),
+            "last_activity_at": datetime.now(UTC),
         },
     )
     logger.info(f"Completed session {session_id}")
@@ -279,7 +279,7 @@ def reactivate_session(session_id: str) -> None:
         session_id,
         {
             "status": "active",
-            "last_activity_at": datetime.utcnow(),
+            "last_activity_at": datetime.now(UTC),
         },
     )
     logger.info(f"Reactivated session {session_id}")
@@ -304,7 +304,7 @@ def attach_work_item(session_id: str, work_item_id: str) -> None:
         session_id,
         {
             "attached_work_item_id": work_item_id,
-            "last_activity_at": datetime.utcnow(),
+            "last_activity_at": datetime.now(UTC),
         },
     )
     logger.info(f"Attached work item {work_item_id} to session {session_id}")
@@ -328,7 +328,7 @@ def detach_work_item(session_id: str) -> None:
         session_id,
         {
             "attached_work_item_id": None,
-            "last_activity_at": datetime.utcnow(),
+            "last_activity_at": datetime.now(UTC),
         },
     )
     logger.info(f"Detached work item from session {session_id}")

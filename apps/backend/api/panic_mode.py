@@ -30,7 +30,7 @@ class PanicMode:
         """
 
         self.panic_triggered = True
-        self.last_panic_time = datetime.utcnow()
+        self.last_panic_time = datetime.now(UTC)
 
         logger.critical(f"🚨 PANIC MODE ACTIVATED: {reason}")
 

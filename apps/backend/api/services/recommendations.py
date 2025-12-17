@@ -67,7 +67,7 @@ class RecommendationsService:
             allowed_models = self._get_allowed_models(cursor, team_id)
 
             # Get model performance metrics from analytics_daily
-            start_date = (datetime.utcnow() - timedelta(days=days_lookback)).strftime('%Y-%m-%d')
+            start_date = (datetime.now(UTC) - timedelta(days=days_lookback)).strftime('%Y-%m-%d')
 
             where_parts = ["date >= ?", "model_name IS NOT NULL"]
             params = [start_date]

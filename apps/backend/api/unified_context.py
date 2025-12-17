@@ -158,7 +158,7 @@ class UnifiedContextManager:
             entry_type,
             content,
             json.dumps(metadata or {}),
-            datetime.utcnow().isoformat(),
+            datetime.now(UTC).isoformat(),
             tokens_estimate
         ))
 
@@ -173,9 +173,9 @@ class UnifiedContextManager:
             session_id,
             user_id,
             tokens_estimate,
-            datetime.utcnow().isoformat(),
+            datetime.now(UTC).isoformat(),
             tokens_estimate,
-            datetime.utcnow().isoformat()
+            datetime.now(UTC).isoformat()
         ))
 
         conn.commit()
@@ -458,7 +458,7 @@ class UnifiedContextManager:
         """, (
             workspace_root,
             json.dumps(active_files),
-            datetime.utcnow().isoformat(),
+            datetime.now(UTC).isoformat(),
             session_id
         ))
 

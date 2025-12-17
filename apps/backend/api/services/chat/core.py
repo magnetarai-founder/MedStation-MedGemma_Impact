@@ -319,7 +319,7 @@ async def send_message_stream(
     await sessions_mod.auto_title_session_if_needed(chat_id, content)
 
     # Save user message
-    timestamp = datetime.utcnow().isoformat()
+    timestamp = datetime.now(UTC).isoformat()
     await append_message(chat_id, "user", content, timestamp)
 
     # Add to unified context for cross-component persistence
@@ -500,7 +500,7 @@ async def send_message_stream(
 
     # Stream response
     full_response = ""
-    start_time = datetime.utcnow()  # Track start time for analytics
+    start_time = datetime.now(UTC)  # Track start time for analytics
 
     try:
         # Send SSE header
@@ -518,7 +518,7 @@ async def send_message_stream(
             yield f"data: {json.dumps({'content': chunk})}\n\n"
 
         # Save assistant message
-        assistant_timestamp = datetime.utcnow().isoformat()
+        assistant_timestamp = datetime.now(UTC).isoformat()
         await append_message(
             chat_id,
             "assistant",
@@ -545,7 +545,7 @@ async def send_message_stream(
         # Record analytics event (Sprint 6 Theme A)
         try:
             from api.services.analytics import get_analytics_service
-            duration_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+            duration_ms = int((datetime.now(UTC) - start_time).total_seconds() * 1000)
             tokens = len(full_response.split())  # Rough token estimate
 
             analytics = get_analytics_service()
@@ -623,7 +623,7 @@ async def upload_file_to_chat(chat_id: str, filename: str, content: bytes, conte
         "stored_name": stored_filename,
         "size": len(content),
         "type": content_type,
-        "uploaded_at": datetime.utcnow().isoformat()
+        "uploaded_at": datetime.now(UTC).isoformat()
     }
 
     # Try to extract text for RAG
@@ -854,7 +854,7 @@ async def export_data_to_chat(session_id: str, query_id: str, query: str, result
 
     # Save CSV file
     csv_file_id = uuid.uuid4().hex[:12]
-    csv_filename = f"query_results_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.csv"
+    csv_filename = f"query_results_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}.csv"
     csv_stored_filename = f"{chat_id}_{csv_file_id}.csv"
     csv_file_path = uploads_dir / csv_stored_filename
 
@@ -932,7 +932,7 @@ I can help you:
 
 What would you like to know about this data?"""
 
-    timestamp = datetime.utcnow().isoformat()
+    timestamp = datetime.now(UTC).isoformat()
     await append_message(
         chat_id,
         "assistant",

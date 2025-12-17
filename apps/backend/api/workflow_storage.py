@@ -421,7 +421,7 @@ class WorkflowStorage:
             UPDATE workflows
             SET enabled = 0, updated_at = ?
             WHERE id = ? AND user_id = ?
-        """, (datetime.utcnow().isoformat(), workflow_id, user_id))
+        """, (datetime.now(UTC).isoformat(), workflow_id, user_id))
 
         conn.commit()
         conn.close()
@@ -760,7 +760,7 @@ class WorkflowStorage:
                 return False
 
             # Star the workflow
-            now = datetime.utcnow().isoformat()
+            now = datetime.now(UTC).isoformat()
             cursor.execute("""
                 INSERT OR IGNORE INTO starred_workflows (user_id, workflow_id, starred_at)
                 VALUES (?, ?, ?)

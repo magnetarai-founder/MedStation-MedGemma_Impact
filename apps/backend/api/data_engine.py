@@ -182,7 +182,7 @@ class DataEngine:
                 dataset_id,
                 filename,
                 table_name,
-                datetime.utcnow().isoformat(),
+                datetime.now(UTC).isoformat(),
                 len(df),
                 len(df.columns),
                 json.dumps(schema),

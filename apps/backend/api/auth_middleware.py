@@ -280,7 +280,7 @@ class AuthService:
 
             user_id = secrets.token_urlsafe(16)
             password_hash, _ = self._hash_password(password)
-            created_at = datetime.utcnow().isoformat()
+            created_at = datetime.now(UTC).isoformat()
 
             cursor.execute("""
                 INSERT INTO users (user_id, username, password_hash, device_id, created_at)
@@ -331,26 +331,26 @@ class AuthService:
                 return None
 
             # Update last login
-            last_login = datetime.utcnow().isoformat()
+            last_login = datetime.now(UTC).isoformat()
             cursor.execute("""
                 UPDATE users SET last_login = ? WHERE user_id = ?
             """, (last_login, user_id))
 
             # Create JWT token
-            expiration = datetime.utcnow() + timedelta(hours=JWT_EXPIRATION_HOURS)
+            expiration = datetime.now(UTC) + timedelta(hours=JWT_EXPIRATION_HOURS)
             token_payload = {
                 "user_id": user_id,
                 "username": username,
                 "device_id": device_id,
                 "role": role or "member",  # Default to member if role is None
                 "exp": expiration.timestamp(),
-                "iat": datetime.utcnow().timestamp()
+                "iat": datetime.now(UTC).timestamp()
             }
 
             token = jwt.encode(token_payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
             # LOW-02: Generate refresh token (longer-lived)
-            refresh_expiration = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRATION_DAYS)
+            refresh_expiration = datetime.now(UTC) + timedelta(days=REFRESH_TOKEN_EXPIRATION_DAYS)
             refresh_token = secrets.token_urlsafe(32)  # Longer random token
             refresh_token_hash = hashlib.sha256(refresh_token.encode()).hexdigest()
 
@@ -367,11 +367,11 @@ class AuthService:
                 user_id,
                 token_hash,
                 refresh_token_hash,
-                datetime.utcnow().isoformat(),
+                datetime.now(UTC).isoformat(),
                 expiration.isoformat(),
                 refresh_expiration.isoformat(),
                 device_fingerprint,
-                datetime.utcnow().isoformat()  # Initial last_activity
+                datetime.now(UTC).isoformat()  # Initial last_activity
             ))
 
             conn.commit()
@@ -436,7 +436,7 @@ class AuthService:
                 session_id, expires_at, last_activity = row
 
                 # Check expiration
-                if datetime.fromisoformat(expires_at) < datetime.utcnow():
+                if datetime.fromisoformat(expires_at) < datetime.now(UTC):
                     safe_username = sanitize_for_log(payload.get('username', 'unknown'))
                     logger.warning(f"Token expired: {safe_username}")
                     return None
@@ -444,7 +444,7 @@ class AuthService:
                 # AUTH-P3: Check idle timeout using module-level constant
                 if last_activity:
                     last_active = datetime.fromisoformat(last_activity)
-                    idle_time = datetime.utcnow() - last_active
+                    idle_time = datetime.now(UTC) - last_active
                     if idle_time > timedelta(hours=IDLE_TIMEOUT_HOURS):
                         safe_username = sanitize_for_log(payload.get('username', 'unknown'))
                         logger.warning(f"Session idle timeout for user: {safe_username} (idle for {idle_time})")
@@ -458,7 +458,7 @@ class AuthService:
                     UPDATE sessions
                     SET last_activity = ?
                     WHERE session_id = ?
-                """, (datetime.utcnow().isoformat(), session_id))
+                """, (datetime.now(UTC).isoformat(), session_id))
                 conn.commit()
 
             return payload
@@ -501,7 +501,7 @@ class AuthService:
                 user_id, session_id, refresh_expires_at, device_fingerprint = row
 
                 # Check if refresh token expired
-                if datetime.fromisoformat(refresh_expires_at) < datetime.utcnow():
+                if datetime.fromisoformat(refresh_expires_at) < datetime.now(UTC):
                     logger.warning(f"Refresh token expired for user: {user_id}")
                     # Delete expired session
                     cursor.execute("DELETE FROM sessions WHERE session_id = ?", (session_id,))
@@ -522,14 +522,14 @@ class AuthService:
                 username, device_id, role = user_row
 
                 # Generate new access token
-                expiration = datetime.utcnow() + timedelta(hours=JWT_EXPIRATION_HOURS)
+                expiration = datetime.now(UTC) + timedelta(hours=JWT_EXPIRATION_HOURS)
                 token_payload = {
                     "user_id": user_id,
                     "username": username,
                     "device_id": device_id,
                     "role": role or "member",
                     "exp": expiration.timestamp(),
-                    "iat": datetime.utcnow().timestamp()
+                    "iat": datetime.now(UTC).timestamp()
                 }
 
                 new_token = jwt.encode(token_payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
@@ -540,7 +540,7 @@ class AuthService:
                     UPDATE sessions
                     SET token_hash = ?, expires_at = ?, last_activity = ?
                     WHERE session_id = ?
-                """, (new_token_hash, expiration.isoformat(), datetime.utcnow().isoformat(), session_id))
+                """, (new_token_hash, expiration.isoformat(), datetime.now(UTC).isoformat(), session_id))
 
                 conn.commit()
 

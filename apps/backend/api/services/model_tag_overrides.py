@@ -70,7 +70,7 @@ def set_manual_tags(model_name: str, tags: List[str]) -> None:
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
     tags_json = json.dumps(sorted(tags))
 
     # Check if exists

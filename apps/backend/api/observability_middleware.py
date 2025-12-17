@@ -173,7 +173,7 @@ class RequestMetrics:
 
         # Store recent error
         cls._recent_errors.append({
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "method": method,
             "path": path,
             "error_type": error_type,

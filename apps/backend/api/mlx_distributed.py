@@ -147,7 +147,7 @@ class MLXDistributed:
             status='idle',
             current_load=0.0,
             jobs_completed=0,
-            last_seen=datetime.utcnow().isoformat()
+            last_seen=datetime.now(UTC).isoformat()
         )
 
         # Add ourselves to nodes
@@ -302,7 +302,7 @@ class MLXDistributed:
             status='pending',
             assigned_node=None,
             result=None,
-            created_at=datetime.utcnow().isoformat(),
+            created_at=datetime.now(UTC).isoformat(),
             completed_at=None
         )
 
@@ -429,7 +429,7 @@ class MLXDistributed:
         """Mark job as completed"""
         job.status = 'completed'
         job.result = result
-        job.completed_at = datetime.utcnow().isoformat()
+        job.completed_at = datetime.now(UTC).isoformat()
 
         del self.active_jobs[job.job_id]
         self.completed_jobs.append(job)

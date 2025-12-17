@@ -101,7 +101,7 @@ def ensure_dev_founder_user(conn: sqlite3.Connection) -> None:
 
     user_id = f"founder_{secrets.token_urlsafe(8)}"
     password_hash, _ = _hash_password_pbkdf2(founder_password)
-    created_at = datetime.utcnow().isoformat()
+    created_at = datetime.now(UTC).isoformat()
     device_id = "founder_device"
 
     try:
@@ -167,7 +167,7 @@ def create_founder_user_explicit(
     # Create Founder user
     user_id = f"founder_{secrets.token_urlsafe(8)}"
     password_hash, _ = _hash_password_pbkdf2(password)
-    created_at = datetime.utcnow().isoformat()
+    created_at = datetime.now(UTC).isoformat()
 
     try:
         cursor.execute("""

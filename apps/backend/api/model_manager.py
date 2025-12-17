@@ -175,7 +175,7 @@ class ModelManager:
 
             data = {
                 'hot_slots': self.hot_slots,
-                'updated_at': datetime.utcnow().isoformat()
+                'updated_at': datetime.now(UTC).isoformat()
             }
 
             file_exists = HOT_SLOTS_FILE.exists()

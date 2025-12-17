@@ -57,7 +57,7 @@ class AnalyticsService:
             Event ID
         """
         event_id = str(uuid4())
-        ts = datetime.utcnow().isoformat()
+        ts = datetime.now(UTC).isoformat()
 
         conn = self._get_conn()
         cursor = conn.cursor()
@@ -107,7 +107,7 @@ class AnalyticsService:
             Event ID
         """
         event_id = str(uuid4())
-        ts = datetime.utcnow().isoformat()
+        ts = datetime.now(UTC).isoformat()
 
         conn = self._get_conn()
         cursor = conn.cursor()
@@ -261,7 +261,7 @@ class AnalyticsService:
         Returns:
             Dictionary with model_usage, tokens_trend, sessions_trend, errors_trend, top_users, top_teams
         """
-        start_date = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d')
+        start_date = (datetime.now(UTC) - timedelta(days=days)).strftime('%Y-%m-%d')
         conn = self._get_conn()
         cursor = conn.cursor()
 
@@ -382,12 +382,12 @@ class AnalyticsService:
         if format == 'json':
             return {
                 "data": json.dumps(summary, indent=2),
-                "filename": f"analytics-{datetime.utcnow().strftime('%Y%m%d')}.json",
+                "filename": f"analytics-{datetime.now(UTC).strftime('%Y%m%d')}.json",
                 "content_type": "application/json"
             }
         elif format == 'csv':
             # Simple CSV export of daily aggregates
-            start_date = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d')
+            start_date = (datetime.now(UTC) - timedelta(days=days)).strftime('%Y-%m-%d')
             conn = self._get_conn()
             cursor = conn.cursor()
 
@@ -429,7 +429,7 @@ class AnalyticsService:
 
                 return {
                     "data": "\n".join(csv_lines),
-                    "filename": f"analytics-{datetime.utcnow().strftime('%Y%m%d')}.csv",
+                    "filename": f"analytics-{datetime.now(UTC).strftime('%Y%m%d')}.csv",
                     "content_type": "text/csv"
                 }
 

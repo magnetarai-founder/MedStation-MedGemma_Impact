@@ -110,7 +110,7 @@ class SearchIndexer:
                         if isinstance(msg, dict) and 'content' in msg:
                             content = msg.get('content', '')
                             role = msg.get('role', 'user')
-                            timestamp = msg.get('timestamp', datetime.utcnow().isoformat())
+                            timestamp = msg.get('timestamp', datetime.now(UTC).isoformat())
 
                             if content and content.strip():
                                 cursor.execute("""

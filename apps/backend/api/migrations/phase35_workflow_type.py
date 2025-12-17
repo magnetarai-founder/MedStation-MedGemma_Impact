@@ -85,7 +85,7 @@ def migrate_phase35_workflow_type(app_db_path: Path, workflows_db_path: Path) ->
         app_cursor = app_conn.cursor()
 
         # Record migration as applied
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
         app_cursor.execute("""
             INSERT INTO migrations (migration_name, applied_at, description)
             VALUES (?, ?, ?)

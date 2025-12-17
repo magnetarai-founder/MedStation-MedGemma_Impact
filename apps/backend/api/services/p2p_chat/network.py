@@ -281,7 +281,7 @@ async def _save_discovered_peer(service: 'P2PChatService', peer_id: str, multiad
             f"Peer {peer_id[:8]}",  # Temporary name until we get real info
             "Unknown Device",
             PeerStatus.ONLINE.value,
-            datetime.utcnow().isoformat()
+            datetime.now(UTC).isoformat()
         ))
     else:
         cursor.execute("""
@@ -290,7 +290,7 @@ async def _save_discovered_peer(service: 'P2PChatService', peer_id: str, multiad
             WHERE peer_id = ?
         """, (
             PeerStatus.ONLINE.value,
-            datetime.utcnow().isoformat(),
+            datetime.now(UTC).isoformat(),
             peer_id
         ))
 
@@ -311,7 +311,7 @@ async def _request_peer_info(service: 'P2PChatService', peer_id_str: str) -> Non
             "peer_id": service.peer_id,
             "display_name": service.display_name,
             "device_name": service.device_name,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(UTC).isoformat()
         }
 
         await stream.write(json.dumps(request).encode())
@@ -361,7 +361,7 @@ async def _heartbeat_loop(service: 'P2PChatService') -> None:
                 UPDATE peers
                 SET last_seen = ?
                 WHERE peer_id = ?
-            """, (datetime.utcnow().isoformat(), service.peer_id))
+            """, (datetime.now(UTC).isoformat(), service.peer_id))
 
             conn.commit()
             conn.close()
@@ -383,7 +383,7 @@ async def _check_stale_peers(service: 'P2PChatService') -> None:
     cursor = conn.cursor()
 
     # Get peers not seen in last 30 seconds
-    thirty_seconds_ago = (datetime.utcnow().timestamp() - 30)
+    thirty_seconds_ago = (datetime.now(UTC).timestamp() - 30)
     thirty_seconds_ago_iso = datetime.fromtimestamp(thirty_seconds_ago).isoformat()
 
     cursor.execute("""
@@ -417,7 +417,7 @@ async def _save_self_peer(service: 'P2PChatService') -> None:
         service.device_name,
         service.key_pair.public_key.serialize().hex(),
         PeerStatus.ONLINE.value,
-        datetime.utcnow().isoformat()
+        datetime.now(UTC).isoformat()
     ))
 
     conn.commit()
@@ -443,7 +443,7 @@ async def _handle_chat_stream(service: 'P2PChatService', stream: 'INetStream') -
                 "display_name": service.display_name,
                 "device_name": service.device_name,
                 "public_key": service.key_pair.public_key.serialize().hex() if service.key_pair else "",
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(UTC).isoformat()
             }
             await stream.write(json.dumps(response).encode())
             await stream.close()
@@ -492,7 +492,7 @@ async def _handle_chat_stream(service: 'P2PChatService', stream: 'INetStream') -
             ack = {
                 "type": "ack",
                 "message_id": message.id,
-                "received_at": datetime.utcnow().isoformat()
+                "received_at": datetime.now(UTC).isoformat()
             }
             await stream.write(json.dumps(ack).encode())
 

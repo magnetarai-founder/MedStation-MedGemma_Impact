@@ -240,7 +240,7 @@ def schedule_delayed_promotion(
             return False, f"User already has a scheduled promotion (execute at: {existing['execute_at']})"
 
         # Schedule promotion
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         execute_at = now + timedelta(days=delay_days)
 
         success = storage.create_delayed_promotion_record(
@@ -282,7 +282,7 @@ def execute_delayed_promotions(
         # Get pending promotions
         promotions = storage.get_pending_delayed_promotions(team_id)
         results = []
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
 
         for promo in promotions:
             # Execute promotion
@@ -367,7 +367,7 @@ def promote_admin_temporarily(
             return False, f"Failed to promote admin: {message}"
 
         # Record temp promotion
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
         storage.create_temp_promotion_record(
             team_id=team_id,
             original_super_admin_id=offline_super_admin_id,
@@ -421,7 +421,7 @@ def approve_temp_promotion(
             return False, f"Temp promotion status is '{promo['status']}', expected 'active'"
 
         # Mark as approved
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
         success = storage.update_temp_promotion_status(
             temp_promotion_id,
             'approved',
@@ -475,7 +475,7 @@ def revert_temp_promotion(
             return False, f"Failed to demote: {message}"
 
         # Mark as reverted
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
         storage.update_temp_promotion_status(
             temp_promotion_id,
             'reverted',

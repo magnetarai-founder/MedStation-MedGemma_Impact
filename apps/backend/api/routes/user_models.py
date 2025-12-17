@@ -310,7 +310,7 @@ async def update_user_model_preferences(
 
             # 2. Update preferences
             from datetime import datetime
-            now = datetime.utcnow().isoformat()
+            now = datetime.now(UTC).isoformat()
 
             for pref in body.preferences:
                 # Upsert preference

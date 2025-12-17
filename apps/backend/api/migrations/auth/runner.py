@@ -67,7 +67,7 @@ def _record_migration(conn: sqlite3.Connection, migration_name: str, description
         description: Human-readable description
     """
     cursor = conn.cursor()
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
 
     cursor.execute("""
         INSERT OR REPLACE INTO migrations (migration_name, applied_at, description)

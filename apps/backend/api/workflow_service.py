@@ -278,7 +278,7 @@ async def delete_workflow(
         raise HTTPException(status_code=404, detail=f"Workflow not found or access denied: {workflow_id}")
 
     workflow.enabled = False
-    workflow.updated_at = datetime.utcnow()
+    workflow.updated_at = datetime.now(UTC)
 
     logger.info(f"🗑️  Deleted workflow: {workflow.name}")
 
@@ -577,8 +577,8 @@ async def cancel_work_item(
         raise HTTPException(status_code=404, detail=f"Work item not found or access denied: {work_item_id}")
 
     work_item.status = WorkItemStatus.CANCELLED
-    work_item.updated_at = datetime.utcnow()
-    work_item.completed_at = datetime.utcnow()
+    work_item.updated_at = datetime.now(UTC)
+    work_item.completed_at = datetime.now(UTC)
 
     # Add to history
     try:

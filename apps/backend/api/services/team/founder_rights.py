@@ -55,7 +55,7 @@ def grant_god_rights(
         if auth_key:
             auth_key_hash = hashlib.sha256(auth_key.encode()).hexdigest()
 
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
 
         if existing:
             # Reactivate if previously revoked
@@ -116,7 +116,7 @@ def revoke_god_rights(
             return False, f"User {user_id} does not have active Founder Rights"
 
         # Revoke rights
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
         success = storage.revoke_god_rights_record(user_id, now, revoked_by)
 
         if success:

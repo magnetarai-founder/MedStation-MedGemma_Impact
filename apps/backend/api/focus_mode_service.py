@@ -118,7 +118,7 @@ class FocusModeService:
         cursor.execute("""
             INSERT OR IGNORE INTO focus_mode_state (id, current_mode, changed_at)
             VALUES (1, 'field', ?)
-        """, (datetime.utcnow().isoformat(),))
+        """, (datetime.now(UTC).isoformat(),))
 
         # Insert default configurations
         for mode in FocusMode:
@@ -165,7 +165,7 @@ class FocusModeService:
         # Fallback to default
         return FocusModeState(
             current_mode=FocusMode.FIELD,
-            changed_at=datetime.utcnow().isoformat()
+            changed_at=datetime.now(UTC).isoformat()
         )
 
     def set_mode(
@@ -196,13 +196,13 @@ class FocusModeService:
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
 
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = datetime.now(UTC).isoformat()
 
         # Calculate duration of previous mode
         if current_state.changed_at:
             try:
                 prev_time = datetime.fromisoformat(current_state.changed_at)
-                now_time = datetime.utcnow()
+                now_time = datetime.now(UTC)
                 duration = int((now_time - prev_time).total_seconds())
             except (ValueError, TypeError):
                 duration = None

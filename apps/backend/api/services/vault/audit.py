@@ -59,7 +59,7 @@ def log_audit(
 
     try:
         log_id = str(uuid.uuid4())
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
 
         cursor.execute("""
             INSERT INTO vault_audit_logs (

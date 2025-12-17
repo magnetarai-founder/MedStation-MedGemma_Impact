@@ -502,7 +502,7 @@ async def get_device_overview_metrics() -> Dict[str, Any]:
 
     return {
         "device_overview": overview,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(UTC).isoformat()
     }
 
 

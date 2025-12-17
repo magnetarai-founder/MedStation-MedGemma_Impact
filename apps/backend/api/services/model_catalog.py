@@ -97,7 +97,7 @@ class ModelCatalog:
             conn = sqlite3.connect(str(self.db_path))
             cursor = conn.cursor()
 
-            now = datetime.utcnow().isoformat()
+            now = datetime.now(UTC).isoformat()
 
             for model in models:
                 model_name = model.get("name")
@@ -266,7 +266,7 @@ class ModelCatalog:
             conn = sqlite3.connect(str(self.db_path))
             cursor = conn.cursor()
 
-            now = datetime.utcnow().isoformat()
+            now = datetime.now(UTC).isoformat()
 
             cursor.execute("""
                 UPDATE model_installations

@@ -145,7 +145,7 @@ class HotSlotsMetadataStorage:
                 )
 
             # Fill empty slots
-            now = datetime.utcnow()
+            now = datetime.now(UTC)
             result = []
             for slot_num in range(1, 5):
                 if slot_num in slots_dict:
@@ -166,7 +166,7 @@ class HotSlotsMetadataStorage:
         except Exception as e:
             logger.error(f"Failed to get all slots: {e}")
             # Return empty slots on error
-            now = datetime.utcnow()
+            now = datetime.now(UTC)
             return [
                 HotSlotMetadata(i, None, False, None, None, now, now)
                 for i in range(1, 5)
@@ -184,7 +184,7 @@ class HotSlotsMetadataStorage:
             conn = sqlite3.connect(str(self.db_path))
             cursor = conn.cursor()
 
-            now = datetime.utcnow().isoformat()
+            now = datetime.now(UTC).isoformat()
 
             cursor.execute("""
                 INSERT INTO user_hot_slots_v2
@@ -255,7 +255,7 @@ class HotSlotsMetadataStorage:
             new_pin = not current_pin
 
             # Update
-            now = datetime.utcnow().isoformat()
+            now = datetime.now(UTC).isoformat()
             cursor.execute("""
                 UPDATE user_hot_slots_v2
                 SET is_pinned = ?, updated_at = ?
@@ -278,7 +278,7 @@ class HotSlotsMetadataStorage:
             conn = sqlite3.connect(str(self.db_path))
             cursor = conn.cursor()
 
-            now = datetime.utcnow().isoformat()
+            now = datetime.now(UTC).isoformat()
             cursor.execute("""
                 UPDATE user_hot_slots_v2
                 SET last_used = ?, updated_at = ?

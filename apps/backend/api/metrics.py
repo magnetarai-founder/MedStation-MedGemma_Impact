@@ -50,7 +50,7 @@ class OperationMetrics:
         self.total_duration_ms += duration_ms
         self.min_duration_ms = min(self.min_duration_ms, duration_ms)
         self.max_duration_ms = max(self.max_duration_ms, duration_ms)
-        self.last_recorded = datetime.utcnow()
+        self.last_recorded = datetime.now(UTC)
 
         if error:
             self.errors += 1

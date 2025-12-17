@@ -82,7 +82,7 @@ class BackgroundJobManager:
                         await asyncio.to_thread(job_config.task)
 
                     # Update stats
-                    job_config.last_run = datetime.utcnow()
+                    job_config.last_run = datetime.now(UTC)
                     job_config.run_count += 1
 
                     logger.debug(f"✅ Completed: {job_config.name} (run #{job_config.run_count})")
@@ -285,7 +285,7 @@ async def aggregate_analytics_hourly():
         from datetime import datetime
 
         analytics = get_analytics_service()
-        today = datetime.utcnow().date().strftime('%Y-%m-%d')
+        today = datetime.now(UTC).date().strftime('%Y-%m-%d')
 
         # Re-aggregate today (idempotent)
         await asyncio.to_thread(analytics.aggregate_daily, today)
@@ -309,7 +309,7 @@ async def aggregate_analytics_daily():
         analytics = get_analytics_service()
 
         # Aggregate yesterday and today
-        today = datetime.utcnow().date()
+        today = datetime.now(UTC).date()
         yesterday = today - timedelta(days=1)
 
         await asyncio.to_thread(analytics.aggregate_daily, yesterday.strftime('%Y-%m-%d'))

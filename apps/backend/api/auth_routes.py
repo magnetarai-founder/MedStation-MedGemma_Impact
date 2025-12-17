@@ -365,7 +365,7 @@ async def change_password_first_login(request: Request, body: ChangePasswordFirs
             SET password_hash = ?, must_change_password = 0, last_login = ?
             WHERE user_id = ?
             """,
-            (new_password_hash, datetime.utcnow().isoformat(), user_id)
+            (new_password_hash, datetime.now(UTC).isoformat(), user_id)
         )
 
         conn.commit()
