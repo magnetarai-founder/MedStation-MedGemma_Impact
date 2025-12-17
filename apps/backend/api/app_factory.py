@@ -226,6 +226,14 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Error closing connection pools: {e}")
 
+    # Close password breach checker session (MED-02)
+    try:
+        from api.password_breach_checker import cleanup_breach_checker
+        await cleanup_breach_checker()
+        logger.info("Password breach checker session closed")
+    except Exception as e:
+        logger.warning(f"Error closing breach checker: {e}")
+
     cleanup_sessions()
 
 

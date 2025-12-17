@@ -305,6 +305,21 @@ async def change_password_first_login(request: Request, body: ChangePasswordFirs
         if not re.search(r'[!@#$%^&*(),.?":{}|<>]', body.new_password):
             raise bad_request(ErrorCode.SYSTEM_VALIDATION_FAILED, errors="Password must contain at least one special character")
 
+        # MED-02: Check password against breach database (HaveIBeenPwned)
+        try:
+            from password_breach_checker import check_password_breach
+            is_breached, breach_count = await check_password_breach(body.new_password)
+            if is_breached:
+                logger.warning(f"User {body.username} attempted to use breached password (found in {breach_count} breaches)")
+                raise bad_request(
+                    ErrorCode.SYSTEM_VALIDATION_FAILED,
+                    errors=f"This password has been exposed in {breach_count} data breach(es). Please choose a different password."
+                )
+        except Exception as e:
+            # If breach check fails, log but don't block password change
+            # (fail open to prevent DOS via API unavailability)
+            logger.warning(f"Password breach check failed: {e}")
+
         # Load user by username
         conn = sqlite3.connect(str(auth_service.db_path))
         cursor = conn.cursor()
