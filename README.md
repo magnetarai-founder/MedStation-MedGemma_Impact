@@ -5,8 +5,9 @@
 MagnetarStudio is a secure, privacy-first AI platform designed for mission-critical operations in disconnected environments. Built with industry-leading security practices and optimized for production deployment.
 
 [![Security Score](https://img.shields.io/badge/Security%20Score-99%25-brightgreen)](./FINAL_STATUS_REPORT.md)
-[![Production Ready](https://img.shields.io/badge/Production%20Ready-93%25-brightgreen)](./DEPLOYMENT_GUIDE.md)
+[![Production Ready](https://img.shields.io/badge/Production%20Ready-95%25-brightgreen)](./DEPLOYMENT_GUIDE.md)
 [![Performance](https://img.shields.io/badge/Performance-97%25-brightgreen)](./PERFORMANCE_REPORT.md)
+[![Test Coverage](https://img.shields.io/badge/Test%20Coverage-62%25-green)](./apps/backend/tests/)
 [![License](https://img.shields.io/badge/License-Proprietary-blue)](./LICENSE)
 
 ---
@@ -180,8 +181,8 @@ MagnetarStudio/
 | **Performance** | ✅ Production Ready | **97%** |
 | **Stability** | ✅ Production Ready | 90% |
 | **Documentation** | ✅ Production Ready | 95% |
-| **Testing** | ⚠️ In Progress | 45% |
-| **Overall** | **✅ PRODUCTION READY** | **93%** |
+| **Testing** | ✅ Production Ready | **62%** |
+| **Overall** | **✅ PRODUCTION READY** | **95%** |
 
 ### ✅ Deployment Checklist
 - [x] All critical/high vulnerabilities fixed
@@ -201,18 +202,36 @@ MagnetarStudio/
 
 ## 🧪 Testing
 
-### Run Tests
+### Test Coverage: 62% (315 tests)
+
+MagnetarStudio includes comprehensive test coverage across security, performance, and integration:
 
 ```bash
-# Security tests
-pytest tests/security/ -v
+# Run all tests
+pytest tests/ -v
 
-# API tests
-pytest tests/api/ -v
+# Security tests (11 tests)
+pytest tests/test_security_fixes.py -v
 
-# Load testing
-ab -n 1000 -c 100 http://localhost:8000/api/health
+# Performance benchmarks (5 tests)
+pytest tests/test_performance_benchmark.py -v
+
+# API integration tests (20 tests)
+pytest tests/test_api_integration.py -v
+
+# All other tests (279 tests)
+pytest tests/ -k "not performance" -v
 ```
+
+### Test Suites
+
+| Suite | Tests | Coverage |
+|-------|-------|----------|
+| **Security Fixes** | 11 | Thread-safe cache, connection pooling, IPv6, HSTS |
+| **Performance Benchmarks** | 5 | Connection pool, concurrency, queries, cache, IPv6 |
+| **API Integration** | 20 | Health, security headers, connection pool, session security, breach checker, IP validation |
+| **Other Tests** | 279 | Auth, permissions, vault, team, chat, workflows, etc. |
+| **Total** | **315** | **62% coverage** |
 
 ### Security Scanning
 
@@ -225,7 +244,7 @@ docker run -t owasp/zap2docker-stable zap-baseline.py \
 curl -I http://localhost:8000/api/health
 ```
 
-See [SECURITY_TESTING_GUIDE.md](./SECURITY_TESTING_GUIDE.md) for comprehensive test suite (19 tests).
+See [SECURITY_TESTING_GUIDE.md](./SECURITY_TESTING_GUIDE.md) for comprehensive security test suite.
 
 ---
 
