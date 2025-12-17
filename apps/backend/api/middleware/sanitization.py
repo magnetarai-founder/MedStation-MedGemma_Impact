@@ -259,6 +259,9 @@ class SanitizationMiddleware(BaseHTTPMiddleware):
         Returns:
             Response
         """
+        # Get request ID for correlated logging
+        request_id = request.headers.get("X-Request-ID", "unknown")
+
         # Skip sanitization for certain endpoints
         if any(request.url.path.startswith(path) for path in self.SKIP_SANITIZATION_PATHS):
             return await call_next(request)
