@@ -22,6 +22,7 @@ from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 import sqlite3
 from pathlib import Path
+import ipaddress  # HIGH-02 FIX: For proper IPv4/IPv6 subnet checking
 
 # CRITICAL-03 FIX: Use connection pooling instead of direct SQLite connections
 try:
@@ -325,24 +326,42 @@ class SessionSecurityManager:
 
     def _ips_in_same_subnet(self, ip1: str, ip2: str, prefix_len: int = 16) -> bool:
         """
-        Check if two IPs are in the same subnet (rough check)
+        Check if two IPs are in the same subnet
+
+        HIGH-02 FIX: Now properly handles both IPv4 and IPv6 addresses.
 
         Args:
-            ip1: First IP address
-            ip2: Second IP address
-            prefix_len: Subnet prefix length (default /16)
+            ip1: First IP address (IPv4 or IPv6)
+            ip2: Second IP address (IPv4 or IPv6)
+            prefix_len: Subnet prefix length (default /16 for IPv4, /64 for IPv6)
 
         Returns:
             True if IPs appear to be in same subnet
         """
         try:
-            # Simple check: compare first two octets for /16
-            parts1 = ip1.split('.')
-            parts2 = ip2.split('.')
-            if len(parts1) != 4 or len(parts2) != 4:
+            # Parse IP addresses
+            addr1 = ipaddress.ip_address(ip1)
+            addr2 = ipaddress.ip_address(ip2)
+
+            # Different IP versions are never in the same subnet
+            if addr1.version != addr2.version:
                 return False
-            return parts1[0] == parts2[0] and parts1[1] == parts2[1]
-        except:
+
+            # Adjust prefix length for IPv6 (typical subnet is /64, not /16)
+            if addr1.version == 6:
+                prefix_len = 64  # Standard IPv6 subnet
+
+            # Create network objects with the prefix length
+            network1 = ipaddress.ip_network(f"{ip1}/{prefix_len}", strict=False)
+            network2 = ipaddress.ip_network(f"{ip2}/{prefix_len}", strict=False)
+
+            # Check if networks are the same
+            return network1 == network2
+        except (ValueError, ipaddress.AddressValueError) as e:
+            logger.warning(f"Invalid IP address in subnet check: {ip1} or {ip2}: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error in subnet check: {e}")
             return False
 
     def _record_anomaly(
