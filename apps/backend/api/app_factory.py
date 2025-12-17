@@ -218,6 +218,14 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Error stopping background jobs: {e}")
 
+    # Close all database connection pools (Sprint 1 - RACE-04)
+    try:
+        from api.db_pool import close_all_pools
+        close_all_pools()
+        logger.info("Database connection pools closed")
+    except Exception as e:
+        logger.warning(f"Error closing connection pools: {e}")
+
     cleanup_sessions()
 
 
@@ -280,6 +288,10 @@ Global limit: 100 requests/minute. Endpoint-specific limits documented below.
         configure_rate_limiting,
         register_error_handlers
     )
+    from api.middleware.security_headers import add_security_headers
+
+    # Security headers (MED-04 fix - add OWASP recommended headers)
+    add_security_headers(app)
 
     configure_cors(app)
     limiter = configure_rate_limiting(app)

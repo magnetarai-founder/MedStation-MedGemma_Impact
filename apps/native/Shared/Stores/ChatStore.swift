@@ -67,7 +67,11 @@ final class ChatStore {
 
     func fetchModels() async {
         do {
-            let url = URL(string: "http://localhost:8000/api/v1/chat/models")!
+            // SECURITY (CRIT-05): Use guard let instead of force unwrap
+            guard let url = URL(string: "http://localhost:8000/api/v1/chat/models") else {
+                print("❌ Invalid URL for models endpoint")
+                return
+            }
             let (data, _) = try await URLSession.shared.data(from: url)
 
             // API now returns SuccessResponse wrapper
@@ -475,7 +479,10 @@ final class ChatStore {
             messages.append(assistantMessage)
 
             // Build request using backend session ID
-            let url = URL(string: "http://localhost:8000/api/v1/chat/sessions/\(backendSessionId)/messages")!
+            // SECURITY (CRIT-05): Use guard let instead of force unwrap
+            guard let url = URL(string: "http://localhost:8000/api/v1/chat/sessions/\(backendSessionId)/messages") else {
+                throw ChatError.sendFailed("Invalid URL for session messages")
+            }
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")

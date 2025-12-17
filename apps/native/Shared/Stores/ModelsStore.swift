@@ -25,7 +25,10 @@ final class ModelsStore {
 
         do {
             // Fetch basic models list (no tags to avoid complexity)
-            let url = URL(string: "http://localhost:8000/api/v1/chat/models")!
+            // SECURITY (CRIT-05): Use guard let instead of force unwrap
+            guard let url = URL(string: "http://localhost:8000/api/v1/chat/models") else {
+                throw ApiError.invalidResponse
+            }
             var request = URLRequest(url: url)
             request.httpMethod = "GET"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
