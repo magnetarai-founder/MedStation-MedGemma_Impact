@@ -39,8 +39,16 @@ final class ModelsStore {
             if httpResponse.statusCode == 200 {
                 let decoder = JSONDecoder()
                 decoder.keyDecodingStrategy = .convertFromSnakeCase
-                let fetchedModels = try decoder.decode([OllamaModel].self, from: data)
-                self.models = fetchedModels
+
+                // API now returns SuccessResponse wrapper
+                struct ModelsResponse: Codable {
+                    let success: Bool
+                    let data: [OllamaModel]
+                    let message: String?
+                }
+
+                let response = try decoder.decode(ModelsResponse.self, from: data)
+                self.models = response.data
             } else {
                 throw ApiError.httpError(httpResponse.statusCode, data)
             }

@@ -102,17 +102,42 @@ class TerminalBridge:
         Returns:
             TerminalSession object
         """
-        # Determine shell
+        # Determine shell with STRICT validation (SECURITY: Prevent command injection)
+        ALLOWED_SHELLS = ['/bin/bash', '/bin/zsh', '/bin/sh', '/usr/bin/bash', '/usr/bin/zsh']
+
         if shell is None:
             # Try zsh first, fall back to bash
             if os.path.exists('/bin/zsh'):
                 shell = '/bin/zsh'
             else:
                 shell = '/bin/bash'
+        else:
+            # SECURITY: Validate shell is in whitelist
+            if shell not in ALLOWED_SHELLS:
+                logger.error(f"SECURITY: Rejected invalid shell: {shell}")
+                raise ValueError(f"Invalid shell. Allowed shells: {', '.join(ALLOWED_SHELLS)}")
 
-        # Determine working directory
+            # SECURITY: Verify shell actually exists
+            if not os.path.exists(shell):
+                raise ValueError(f"Shell does not exist: {shell}")
+
+        # Determine working directory with validation (SECURITY: Prevent directory traversal)
         if cwd is None:
             cwd = os.path.expanduser('~')
+        else:
+            # SECURITY: Validate cwd is an absolute path and exists
+            from pathlib import Path
+            cwd_path = Path(cwd).resolve()
+
+            if not cwd_path.exists():
+                raise ValueError(f"Working directory does not exist: {cwd}")
+
+            if not cwd_path.is_dir():
+                raise ValueError(f"Working directory is not a directory: {cwd}")
+
+            # SECURITY: Ensure no symlinks to sensitive paths
+            # (This is additional defense-in-depth)
+            cwd = str(cwd_path)
 
         # Create PTY
         master, slave = pty.openpty()

@@ -10,16 +10,15 @@ final class DatabaseService {
     // MARK: - Session Management
 
     func createSession() async throws -> SessionResponse {
-        try await apiClient.request(
-            path: "/sessions/create",
-            method: .post,
-            jsonBody: nil
-        )
+        // SQL/JSON sessions are just UUIDs - no backend endpoint needed
+        // The session ID is used in subsequent requests like /{session_id}/upload
+        let sessionId = UUID().uuidString
+        return SessionResponse(sessionId: sessionId)
     }
 
     func deleteSession(id: String) async {
         _ = try? await apiClient.request(
-            path: "/sessions/\(id)",
+            path: "/api/v1/sql-json/sessions/\(id)",
             method: .delete,
             jsonBody: nil
         ) as EmptyResponse
@@ -29,7 +28,7 @@ final class DatabaseService {
 
     func uploadFile(sessionId: String, fileURL: URL) async throws -> FileUploadResponse {
         try await apiClient.multipart(
-            path: "/sessions/\(sessionId)/upload",
+            path: "/api/v1/sql-json/\(sessionId)/upload",
             fileField: "file",
             fileURL: fileURL
         )
@@ -37,7 +36,7 @@ final class DatabaseService {
 
     func uploadJson(sessionId: String, fileURL: URL) async throws -> JsonUploadResponse {
         try await apiClient.multipart(
-            path: "/sessions/\(sessionId)/json/upload",
+            path: "/api/v1/sql-json/\(sessionId)/json/upload",
             fileField: "file",
             fileURL: fileURL
         )
@@ -60,7 +59,7 @@ final class DatabaseService {
         }
 
         var response: QueryResponse = try await apiClient.request(
-            path: "/sessions/\(sessionId)/query",
+            path: "/api/v1/sql-json/\(sessionId)/query",
             method: .post,
             jsonBody: payload
         )
@@ -79,7 +78,7 @@ final class DatabaseService {
         options: [String: Any] = [:]
     ) async throws -> JsonConvertResponse {
         try await apiClient.request(
-            path: "/sessions/\(sessionId)/json/convert",
+            path: "/api/v1/sql-json/\(sessionId)/json/convert",
             method: .post,
             jsonBody: ["json_data": json, "options": options]
         )
@@ -102,7 +101,7 @@ final class DatabaseService {
         }
 
         return try await apiClient.requestRaw(
-            path: "/sessions/\(sessionId)/export",
+            path: "/api/v1/sql-json/\(sessionId)/export",
             method: .post,
             jsonBody: payload
         )
@@ -110,7 +109,7 @@ final class DatabaseService {
 
     func downloadJsonResult(sessionId: String, format: String) async throws -> Data {
         try await apiClient.requestRaw(
-            path: "/sessions/\(sessionId)/json/download?format=\(format)",
+            path: "/api/v1/sql-json/\(sessionId)/json/download?format=\(format)",
             method: .get
         )
     }
@@ -119,7 +118,7 @@ final class DatabaseService {
 
     func fetchQueryHistory(sessionId: String) async throws -> [QueryHistoryItem] {
         let response: QueryHistoryResponse = try await apiClient.request(
-            path: "/sessions/\(sessionId)/query-history",
+            path: "/api/v1/sql-json/\(sessionId)/query-history",
             method: .get
         )
         return response.history
@@ -127,7 +126,7 @@ final class DatabaseService {
 
     func deleteHistoryItem(sessionId: String, historyId: String) async throws {
         _ = try await apiClient.request(
-            path: "/sessions/\(sessionId)/query-history/\(historyId)",
+            path: "/api/v1/sql-json/\(sessionId)/query-history/\(historyId)",
             method: .delete,
             jsonBody: nil
         ) as EmptyResponse

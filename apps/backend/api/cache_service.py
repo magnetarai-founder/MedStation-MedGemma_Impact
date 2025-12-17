@@ -19,8 +19,15 @@ import logging
 import time
 from functools import wraps
 from typing import Any, Callable, Optional
-import redis
-from redis.connection import ConnectionPool
+
+try:
+    import redis
+    from redis.connection import ConnectionPool
+    REDIS_AVAILABLE = True
+except ImportError:
+    redis = None
+    ConnectionPool = None
+    REDIS_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +60,16 @@ class CacheService:
             db: Redis database number
             max_connections: Max connections in pool
         """
+        # Metrics
+        self.hits = 0
+        self.misses = 0
+
+        if not REDIS_AVAILABLE:
+            logger.warning("⚠️  Redis not available - cache will be disabled")
+            self.pool = None
+            self.redis = None
+            return
+
         # Connection pool (reuses connections for performance)
         self.pool = ConnectionPool(
             host=host,
@@ -63,10 +80,6 @@ class CacheService:
         )
 
         self.redis = redis.Redis(connection_pool=self.pool)
-
-        # Metrics
-        self.hits = 0
-        self.misses = 0
 
         # Test connection
         try:
@@ -90,6 +103,9 @@ class CacheService:
         Returns:
             Cached value or None if not found
         """
+        if not self.redis:
+            return None
+
         try:
             value = self.redis.get(key)
 

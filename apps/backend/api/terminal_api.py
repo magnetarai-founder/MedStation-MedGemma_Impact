@@ -240,28 +240,15 @@ exec $SHELL
                 if not spawned:
                     terminal_app = 'terminal'
             if terminal_app == 'iterm' and not spawned:
-                # Try AppleScript first, then open -a iTerm
-                applescript = f'''
-                tell application "iTerm"
-                    activate
-                    create window with default profile
-                    tell current session of current window
-                        write text "{bridge_script_path}"
-                    end tell
-                end tell
-                '''
-                spawned = _run(['osascript', '-e', applescript]) or _open_with_app('iTerm', bridge_script_path)
+                # SECURITY: Use subprocess list args instead of AppleScript string interpolation
+                # to prevent command injection via bridge_script_path
+                spawned = _open_with_app('iTerm', bridge_script_path)
                 if not spawned:
                     terminal_app = 'terminal'
             if terminal_app == 'terminal' and not spawned:
-                # Try AppleScript, fallback to open -a Terminal
-                applescript = f'''
-                tell application "Terminal"
-                    activate
-                    do script "{bridge_script_path}"
-                end tell
-                '''
-                spawned = _run(['osascript', '-e', applescript]) or _open_with_app('Terminal', bridge_script_path)
+                # SECURITY: Use open -a instead of AppleScript to avoid injection
+                # AppleScript with f-string interpolation is a command injection vector
+                spawned = _open_with_app('Terminal', bridge_script_path)
         except Exception:
             spawned = False
 

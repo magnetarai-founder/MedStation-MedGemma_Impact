@@ -70,8 +70,17 @@ final class ChatStore {
             let url = URL(string: "http://localhost:8000/api/v1/chat/models")!
             let (data, _) = try await URLSession.shared.data(from: url)
 
-            let models = try JSONDecoder().decode([ModelResponse].self, from: data)
-            availableModels = models.map { $0.name }
+            // API now returns SuccessResponse wrapper
+            struct ModelsResponse: Codable {
+                let success: Bool
+                let data: [ModelResponse]
+                let message: String?
+            }
+
+            let decoder = JSONDecoder()
+            decoder.keyDecodingStrategy = .convertFromSnakeCase
+            let response = try decoder.decode(ModelsResponse.self, from: data)
+            availableModels = response.data.map { $0.name }
 
             // Set default model if none selected
             if selectedModel.isEmpty, let first = availableModels.first {
