@@ -19,6 +19,7 @@ Reference: https://www.troyhunt.com/ive-just-launched-pwned-passwords-version-2/
 
 import hashlib
 import logging
+import threading
 from typing import Optional, Tuple
 from datetime import datetime, timedelta
 import asyncio
@@ -48,6 +49,7 @@ class PasswordBreachChecker:
     def __init__(self):
         self._session: Optional[aiohttp.ClientSession] = None
         self._cache: dict[str, Tuple[int, datetime]] = {}  # hash_prefix -> (count, timestamp)
+        self._cache_lock = threading.Lock()  # CRITICAL-01: Thread-safe cache access
         self._cache_hits = 0
         self._cache_misses = 0
 
@@ -94,18 +96,19 @@ class PasswordBreachChecker:
         Returns:
             Tuple of (breach_count, timestamp) or None if not cached or expired
         """
-        if hash_prefix in self._cache:
-            breach_count, timestamp = self._cache[hash_prefix]
-            age = datetime.utcnow() - timestamp
-            if age < timedelta(hours=self.CACHE_TTL_HOURS):
-                self._cache_hits += 1
-                return (breach_count, timestamp)
-            else:
-                # Expired, remove from cache
-                del self._cache[hash_prefix]
+        with self._cache_lock:  # CRITICAL-01: Thread-safe cache access
+            if hash_prefix in self._cache:
+                breach_count, timestamp = self._cache[hash_prefix]
+                age = datetime.utcnow() - timestamp
+                if age < timedelta(hours=self.CACHE_TTL_HOURS):
+                    self._cache_hits += 1
+                    return (breach_count, timestamp)
+                else:
+                    # Expired, remove from cache
+                    del self._cache[hash_prefix]
 
-        self._cache_misses += 1
-        return None
+            self._cache_misses += 1
+            return None
 
     def _set_cache(self, hash_prefix: str, breach_count: int):
         """
@@ -115,18 +118,19 @@ class PasswordBreachChecker:
             hash_prefix: First 5 chars of SHA-1 hash
             breach_count: Number of breaches found
         """
-        self._cache[hash_prefix] = (breach_count, datetime.utcnow())
+        with self._cache_lock:  # CRITICAL-01: Thread-safe cache access
+            self._cache[hash_prefix] = (breach_count, datetime.utcnow())
 
-        # Limit cache size to 10000 entries (prevents memory bloat)
-        if len(self._cache) > 10000:
-            # Remove oldest 20% of entries
-            sorted_cache = sorted(
-                self._cache.items(),
-                key=lambda x: x[1][1]  # Sort by timestamp
-            )
-            to_remove = len(self._cache) // 5
-            for key, _ in sorted_cache[:to_remove]:
-                del self._cache[key]
+            # Limit cache size to 10000 entries (prevents memory bloat)
+            if len(self._cache) > 10000:
+                # Remove oldest 20% of entries
+                sorted_cache = sorted(
+                    self._cache.items(),
+                    key=lambda x: x[1][1]  # Sort by timestamp
+                )
+                to_remove = len(self._cache) // 5
+                for key, _ in sorted_cache[:to_remove]:
+                    del self._cache[key]
 
     async def check_password(self, password: str) -> Tuple[bool, int]:
         """
