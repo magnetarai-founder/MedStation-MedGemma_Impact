@@ -33,3 +33,4 @@ libp2p>=0.1.5
 
 # MLX for Apple Silicon (optional - not available on Python 3.14+ yet)
 # Install manually if on Python 3.12 or lower: pip install mlx mlx-lm
+aiohttp>=3.13.0
