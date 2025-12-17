@@ -102,7 +102,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
         # Strict-Transport-Security: Enforce HTTPS (production only)
         # OWASP: Only add if serving over HTTPS
-        if is_production and request.url.scheme == "https":
+        # HIGH-05 FIX: Check X-Forwarded-Proto header for reverse proxy support
+        forwarded_proto = request.headers.get("X-Forwarded-Proto", "")
+        is_https = request.url.scheme == "https" or forwarded_proto.lower() == "https"
+
+        if is_production and is_https:
             # max-age=31536000: 1 year in seconds
             # includeSubDomains: Apply to all subdomains
             # preload: Allow submission to browser preload lists
