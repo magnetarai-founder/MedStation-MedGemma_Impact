@@ -1,33 +1,25 @@
 """
-Chat service for ElohimOS - Business logic for chat management (Compatibility Wrapper)
+Chat Service Core Module
 
-This module maintains backwards compatibility by re-exporting all functions
-from the refactored core submodule.
+This module combines all chat service functionality into focused sub-modules:
+- lazy_init: Lazy initialization helpers for all dependencies
+- messages: Message operations (append, get, stream)
+- files: File upload and RAG integration
+- session_ops: Session operations (update model/title, archive, export)
+- health: Health checks and system status
+- router_ops: Router mode, stats, feedback, recursive prompts
+- performance: Performance monitoring and panic mode
+- learning: Learning system operations
+- delegations: Delegation wrappers for other chat modules
 
 The original 1,255-line core.py has been refactored into focused modules
-organized under api/services/chat/core/:
-- lazy_init.py - Lazy initialization helpers (195 lines)
-- messages.py - Message operations including streaming chat (388 lines)
-- files.py - File upload and RAG integration (92 lines)
-- session_ops.py - Session update operations (203 lines)
-- health.py - Health checks and system status (50 lines)
-- router_ops.py - Router operations and recursive prompts (115 lines)
-- performance.py - Performance monitoring and panic mode (73 lines)
-- learning.py - Learning system operations (108 lines)
-- delegations.py - Delegation wrappers to other modules (208 lines)
-
-All functionality is preserved exactly as before. This wrapper ensures
-that existing imports continue to work without modification.
-
-Thin service layer with lazy imports to avoid circular dependencies.
-All heavy dependencies are imported inside function bodies.
+for better maintainability and code organization.
 
 Follows MagnetarStudio API standards (see API_STANDARDS.md).
 """
 
-# Re-export all functions from the refactored core module
-from api.services.chat.core import (
-    # Lazy initialization helpers
+# Import all functions from sub-modules
+from .lazy_init import (
     _get_memory,
     _get_ane_engine,
     _get_token_counter,
@@ -40,28 +32,33 @@ from api.services.chat.core import (
     _get_performance_monitor,
     _get_panic_mode,
     _get_ollama_client,
-    _get_chat_uploads_dir,
+    _get_chat_uploads_dir
+)
 
-    # Messages
+from .messages import (
     append_message,
     get_messages,
     send_message_stream,
-    current_router_mode,
+    current_router_mode
+)
 
-    # Files
-    upload_file_to_chat,
+from .files import (
+    upload_file_to_chat
+)
 
-    # Session operations
+from .session_ops import (
     update_session_model,
     update_session_title,
     set_session_archived,
-    export_data_to_chat,
+    export_data_to_chat
+)
 
-    # Health
+from .health import (
     check_health,
-    get_system_memory,
+    get_system_memory
+)
 
-    # Router operations
+from .router_ops import (
     submit_router_feedback,
     get_router_stats,
     explain_routing,
@@ -69,9 +66,10 @@ from api.services.chat.core import (
     set_router_mode,
     get_combined_router_stats,
     execute_recursive_prompt,
-    get_recursive_stats,
+    get_recursive_stats
+)
 
-    # Performance
+from .performance import (
     get_current_performance,
     get_performance_statistics,
     get_performance_history,
@@ -79,54 +77,46 @@ from api.services.chat.core import (
     reset_performance_metrics,
     trigger_panic_mode,
     get_panic_status,
-    reset_panic_mode,
+    reset_panic_mode
+)
 
-    # Learning
+from .learning import (
     get_learning_patterns,
     get_recommendations,
     accept_recommendation,
     reject_recommendation,
     get_optimal_model_for_task,
-    track_usage_manually,
+    track_usage_manually
+)
 
-    # Delegations (session management)
+from .delegations import (
     create_session,
     get_session,
     list_sessions,
     delete_session,
-
-    # Delegations (model management)
     list_ollama_models,
     preload_model,
     unload_model,
     get_models_status,
     get_orchestrator_suitable_models,
-
-    # Delegations (hot slots)
     get_hot_slots,
     assign_to_hot_slot,
     remove_from_hot_slot,
     load_hot_slot_models,
-
-    # Delegations (analytics)
     semantic_search,
     get_analytics,
     get_session_analytics,
-
-    # Delegations (system)
     get_ane_stats,
     search_ane_context,
     get_embedding_info,
     get_token_count,
-
-    # Delegations (Ollama operations)
     get_ollama_server_status,
     shutdown_ollama_server,
     start_ollama_server,
     restart_ollama_server,
     get_ollama_configuration,
     set_ollama_mode,
-    auto_detect_ollama_config,
+    auto_detect_ollama_config
 )
 
 __all__ = [
