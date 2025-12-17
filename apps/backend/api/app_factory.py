@@ -294,12 +294,19 @@ Global limit: 100 requests/minute. Endpoint-specific limits documented below.
     from api.middleware import (
         configure_cors,
         configure_rate_limiting,
-        register_error_handlers
+        register_error_handlers,
+        SanitizationMiddleware
     )
     from api.middleware.security_headers import add_security_headers
+    import os
 
     # Security headers (MED-04 fix - add OWASP recommended headers)
     add_security_headers(app)
+
+    # MED-06: Input sanitization middleware (XSS/injection prevention)
+    # Use strict mode in production (rejects dangerous patterns)
+    is_production = os.getenv('ELOHIM_ENV', 'production').lower() == 'production'
+    app.add_middleware(SanitizationMiddleware, strict_mode=is_production)
 
     configure_cors(app)
     limiter = configure_rate_limiting(app)

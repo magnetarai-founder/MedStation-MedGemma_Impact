@@ -149,10 +149,15 @@ async def register(request: Request, body: RegisterRequest):
 @router.post("/login", response_model=LoginResponse)
 async def login(request: Request, body: LoginRequest):
     """
-    Login and receive JWT token
+    Login and receive JWT access token + refresh token
+
+    **MED-05 Security Enhancement:**
+    - Access token: 1 hour lifetime (short-lived for security)
+    - Refresh token: 30 day lifetime (use to get new access tokens)
+    - When access token expires, call `/auth/refresh` with refresh token
 
     Rate limited to prevent brute force attacks:
-    - 10 attempts per minute per IP
+    - 10 attempts per minute per IP (dev: 30/min)
     """
     # Rate limit login attempts (prevent brute force)
     # BUT: Skip rate limiting for privileged accounts:
@@ -394,10 +399,13 @@ async def change_password_first_login(request: Request, body: ChangePasswordFirs
 @router.post("/refresh", response_model=LoginResponse)
 async def refresh_token(request: Request, body: RefreshRequest):
     """
-    LOW-02: Refresh access token using refresh token
+    MED-05: Refresh access token using refresh token
 
-    When the access token expires (7 days), use the refresh token (30 days)
+    When the access token expires (1 hour), use the refresh token (30 days)
     to get a new access token without requiring login again.
+
+    **Security**: Access tokens are short-lived (1 hour) to limit exposure window.
+    Use this endpoint to automatically refresh without re-authentication.
 
     Rate limited to prevent abuse:
     - 10 requests per minute per IP

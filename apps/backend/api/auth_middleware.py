@@ -96,8 +96,10 @@ JWT_SECRET = _get_or_create_jwt_secret()
 
 JWT_ALGORITHM = "HS256"
 
-# Access token lifetime: 7 days absolute expiry from creation
-JWT_EXPIRATION_HOURS = 24 * 7  # 168 hours = 7 days
+# MED-05: Access token lifetime reduced from 7 days to 1 hour for security
+# Short-lived access tokens reduce window of compromise if token is leaked
+# Use refresh token endpoint (/api/v1/auth/refresh) to get new access token
+JWT_EXPIRATION_HOURS = 1  # 1 hour (OWASP recommended: 15min-1hr)
 
 # Refresh token lifetime: 30 days absolute expiry (used for token refresh without re-login)
 REFRESH_TOKEN_EXPIRATION_DAYS = 30  # 30 days (longer-lived)
