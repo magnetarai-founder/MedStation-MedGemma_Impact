@@ -204,7 +204,7 @@ class FocusModeService:
                 prev_time = datetime.fromisoformat(current_state.changed_at)
                 now_time = datetime.utcnow()
                 duration = int((now_time - prev_time).total_seconds())
-            except:
+            except (ValueError, TypeError):
                 duration = None
         else:
             duration = None

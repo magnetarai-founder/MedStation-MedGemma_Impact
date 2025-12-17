@@ -370,7 +370,7 @@ def migrate_phase4_performance_indexes(db_path: Path) -> bool:
             conn.rollback()
             conn.close()
             logger.error("⚠️  Migration rolled back due to error")
-        except:
+        except Exception:
             pass
 
         logger.error(f"❌ Phase 4 migration failed: {e}")
@@ -455,7 +455,7 @@ if __name__ == "__main__":
         from config_paths import get_config_paths
         paths = get_config_paths()
         db_path = paths.app_db
-    except:
+    except Exception:
         db_path = Path("elohimos.db")
 
     if len(sys.argv) > 1 and sys.argv[1] == "rollback":

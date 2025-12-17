@@ -621,7 +621,7 @@ if __name__ == "__main__":
         from config_paths import get_config_paths
         paths = get_config_paths()
         app_db = paths.app_db
-    except:
+    except Exception:
         app_db = Path(__file__).parent.parent.parent.parent / ".neutron_data" / "elohimos_app.db"
 
     print(f"\nUsing app_db: {app_db}\n")

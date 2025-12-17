@@ -329,7 +329,7 @@ class EncryptedAuditLogger:
                 if details_json and details_json != "[DECRYPTION_FAILED]":
                     try:
                         details = json.loads(details_json)
-                    except:
+                    except (json.JSONDecodeError, ValueError):
                         pass
 
                 entries.append({

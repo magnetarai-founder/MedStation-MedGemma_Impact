@@ -73,7 +73,7 @@ def _generate_machine_id() -> str:
         try:
             hostname = socket.gethostname()
             identifiers.append(f"hostname:{hostname}")
-        except:
+        except (OSError, socket.error):
             pass
 
         # 2. Platform info (stable)
@@ -85,7 +85,7 @@ def _generate_machine_id() -> str:
         try:
             node = platform.node()
             identifiers.append(f"node:{node}")
-        except:
+        except (OSError, AttributeError):
             pass
 
         # 4. getnode() - MAC address as integer

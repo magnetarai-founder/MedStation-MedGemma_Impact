@@ -265,7 +265,7 @@ class Metal4MPSEmbedder:
                 engine = get_metal4_engine()
                 optimization_settings = engine.optimize_for_operation('embedding')
                 batch_size = optimization_settings.get('batch_size', 32)
-            except:
+            except Exception:
                 batch_size = 32
 
         try:

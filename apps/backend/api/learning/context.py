@@ -181,7 +181,7 @@ def _analyze_project(project_path: str) -> ProjectContext:
                     frameworks.append('express')
                 if 'vue' in dependencies:
                     frameworks.append('vue')
-        except:
+        except (FileNotFoundError, IOError, json.JSONDecodeError):
             pass
 
     # Detect project type and frameworks - Python
@@ -200,7 +200,7 @@ def _analyze_project(project_path: str) -> ProjectContext:
                     frameworks.append('flask')
                 if 'fastapi' in dependencies:
                     frameworks.append('fastapi')
-            except:
+            except (FileNotFoundError, IOError):
                 pass
 
     # Detect other project types
