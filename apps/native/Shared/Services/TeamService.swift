@@ -323,11 +323,19 @@ public final class TeamService {
     // MARK: - Channels
 
     public func listChannels() async throws -> [TeamChannel] {
-        try await apiClient.request(
+        let response: ChannelListResponse = try await apiClient.request(
             path: "/v1/team/channels",
             method: .get
         )
+        return response.channels
     }
+}
+
+// MARK: - Channel Response Models
+
+private struct ChannelListResponse: Codable {
+    let channels: [TeamChannel]
+    let total: Int
 }
 
 // MARK: - Message Models
