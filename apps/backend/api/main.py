@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # LOGGING CONFIGURATION
 # ============================================================================
 
-from api.main.logging_config import configure_logging
+from api.core.logging_config import configure_logging
 
 configure_logging()
 
@@ -30,11 +30,21 @@ configure_logging()
 # GLOBAL STATE AND CONFIGURATION
 # ============================================================================
 
-from api.main import (
+from api.core.app_settings import (
     AppSettings,
     load_app_settings,
     save_app_settings,
     set_elohimos_memory,
+)
+
+# Import state management (needed early for other modules to import from api.main)
+from api.core.state import (
+    sessions,
+    query_results,
+    get_progress_stream,
+    update_progress_stream,
+    delete_progress_stream,
+    list_progress_streams,
 )
 
 # Import configuration
@@ -138,8 +148,9 @@ app.include_router(data_engine_router)
 # EXPORT APP SETTINGS FUNCTIONS
 # ============================================================================
 
-# Export for use in other modules (including state for backward compatibility)
-from api.main.state import sessions, query_results
+# ============================================================================
+# EXPORT PUBLIC API
+# ============================================================================
 
 __all__ = [
     "app",
@@ -153,6 +164,10 @@ __all__ = [
     "AppSettings",
     "sessions",
     "query_results",
+    "get_progress_stream",
+    "update_progress_stream",
+    "delete_progress_stream",
+    "list_progress_streams",
 ]
 
 # ============================================================================
