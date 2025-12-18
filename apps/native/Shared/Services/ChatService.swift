@@ -10,10 +10,17 @@ final class ChatService {
     // MARK: - Session Management
 
     func listSessions() async throws -> [ApiChatSession] {
-        try await apiClient.request(
+        struct SessionsResponse: Codable {
+            let success: Bool
+            let data: [ApiChatSession]
+            let message: String?
+        }
+
+        let response: SessionsResponse = try await apiClient.request(
             path: "/v1/chat/sessions",
             method: .get
         )
+        return response.data
     }
 
     func createSession(title: String? = nil, model: String? = nil) async throws -> ApiChatSession {
