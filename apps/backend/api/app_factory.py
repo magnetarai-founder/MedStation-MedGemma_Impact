@@ -12,6 +12,7 @@ import signal
 import uuid as uuid_lib
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -321,6 +322,12 @@ Global limit: 100 requests/minute. Endpoint-specific limits documented below.
         response = await call_next(request)
         response.headers["X-Request-ID"] = request_id
         return response
+
+    # Add /health endpoint directly to app (needed by Swift frontend)
+    @app.get("/health")
+    async def health_check():
+        """Simple health check endpoint for frontend"""
+        return {"status": "ok", "timestamp": datetime.now(UTC).isoformat()}
 
     return app
 
