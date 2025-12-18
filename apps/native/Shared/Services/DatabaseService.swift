@@ -13,7 +13,8 @@ final class DatabaseService {
         // SQL/JSON sessions are just UUIDs - no backend endpoint needed
         // The session ID is used in subsequent requests like /{session_id}/upload
         let sessionId = UUID().uuidString
-        return SessionResponse(sessionId: sessionId)
+        let createdAt = ISO8601DateFormatter().string(from: Date())
+        return SessionResponse(sessionId: sessionId, createdAt: createdAt)
     }
 
     func deleteSession(id: String) async {
