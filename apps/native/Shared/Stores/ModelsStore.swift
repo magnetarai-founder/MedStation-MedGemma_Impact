@@ -168,8 +168,17 @@ struct OllamaModel: Codable, Identifiable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case name, size, digest, details
-        case modifiedAt = "modified_at"
+        case name, size, digest, details, modifiedAt = "modified_at"
+    }
+
+    // Custom decoder to handle optional modified_at gracefully
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        name = try container.decode(String.self, forKey: .name)
+        size = try container.decode(Int64.self, forKey: .size)
+        digest = try container.decodeIfPresent(String.self, forKey: .digest)
+        modifiedAt = try container.decodeIfPresent(String.self, forKey: .modifiedAt)
+        details = try container.decodeIfPresent(ModelDetails.self, forKey: .details)
     }
 
     struct ModelDetails: Codable {
