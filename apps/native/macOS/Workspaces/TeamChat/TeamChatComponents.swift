@@ -159,12 +159,9 @@ struct TeamChatSidebar: View {
             privateChannels = allChannels.filter { $0.type == "private" }
             directMessages = allChannels.filter { $0.type == "direct" }
         } catch {
-            // Silently handle P2P service not initialized (expected in dev without libp2p)
-            if error.localizedDescription.contains("P2P service not initialized") {
-                print("ℹ️ P2P service not available (libp2p not installed) - using default channels")
-            } else {
-                print("Failed to load channels: \(error.localizedDescription)")
-            }
+            // Backend returns default channels when P2P isn't initialized
+            // so errors here are unexpected - log them for debugging
+            print("⚠️ Unexpected error loading channels: \(error.localizedDescription)")
             // Keep default channels on error
         }
     }
@@ -316,21 +313,13 @@ struct TeamChatWindow: View {
                     errorMessage = nil
                 }
             } catch {
-                // Silently handle P2P service not initialized (expected in dev without libp2p)
-                if error.localizedDescription.contains("P2P service not initialized") {
-                    print("ℹ️ P2P service not available (libp2p not installed) - messages unavailable")
-                    await MainActor.run {
-                        messages = []
-                        isLoadingMessages = false
-                        errorMessage = nil  // Don't show error for expected P2P unavailability
-                    }
-                } else {
-                    print("Failed to load messages: \(error.localizedDescription)")
-                    await MainActor.run {
-                        messages = []
-                        isLoadingMessages = false
-                        errorMessage = "Failed to load messages: \(error.localizedDescription)"
-                    }
+                // Backend returns empty messages when P2P isn't initialized
+                // so errors here are unexpected - log them for debugging
+                print("⚠️ Unexpected error loading messages: \(error.localizedDescription)")
+                await MainActor.run {
+                    messages = []
+                    isLoadingMessages = false
+                    errorMessage = "Failed to load messages: \(error.localizedDescription)"
                 }
             }
         }

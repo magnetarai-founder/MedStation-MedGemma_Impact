@@ -203,7 +203,27 @@ async def list_channels():
     service = get_p2p_chat_service()
 
     if not service:
-        raise HTTPException(status_code=503, detail="P2P service not initialized")
+        # Return default channels when P2P service isn't initialized
+        # This allows the app to function without P2P being set up
+        default_channels = [
+            Channel(
+                id="general",
+                name="general",
+                type="public",
+                created_at=datetime.now(UTC).isoformat(),
+                created_by="system",
+                members=[],
+                admins=[],
+                description="General discussion channel",
+                topic=None,
+                pinned_messages=[],
+                dm_participants=None
+            )
+        ]
+        return ChannelListResponse(
+            channels=default_channels,
+            total=len(default_channels)
+        )
 
     channels = await service.list_channels()
 
@@ -433,7 +453,13 @@ async def get_messages(channel_id: str, limit: int = 50):
     service = get_p2p_chat_service()
 
     if not service:
-        raise HTTPException(status_code=503, detail="P2P service not initialized")
+        # Return empty messages when P2P service isn't initialized
+        return MessageListResponse(
+            channel_id=channel_id,
+            messages=[],
+            total=0,
+            has_more=False
+        )
 
     channel = await service.get_channel(channel_id)
 
