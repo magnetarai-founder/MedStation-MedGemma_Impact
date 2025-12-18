@@ -139,6 +139,8 @@ struct MainAppView: View {
                             KanbanWorkspace()
                         case .database:
                             DatabaseWorkspace()
+                        case .trust:
+                            TrustWorkspace()
                         case .magnetarHub:
                             MagnetarHubWorkspace()
                         }

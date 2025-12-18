@@ -66,6 +66,7 @@ enum Workspace: String, CaseIterable, Identifiable, Hashable {
     case code
     case database
     case kanban
+    case trust
     case magnetarHub
 
     var id: String { rawValue }
@@ -77,6 +78,7 @@ enum Workspace: String, CaseIterable, Identifiable, Hashable {
         case .code: return "Code"
         case .database: return "Database"
         case .kanban: return "Kanban"
+        case .trust: return "MagnetarTrust"
         case .magnetarHub: return "MagnetarHub"
         }
     }
@@ -88,6 +90,7 @@ enum Workspace: String, CaseIterable, Identifiable, Hashable {
         case .code: return "chevron.left.forwardslash.chevron.right"
         case .database: return "cylinder"
         case .kanban: return "square.grid.2x2"
+        case .trust: return "network"
         case .magnetarHub: return "cube.box"
         }
     }
@@ -99,7 +102,8 @@ enum Workspace: String, CaseIterable, Identifiable, Hashable {
         case .code: return "3"
         case .database: return "4"
         case .kanban: return "5"
-        case .magnetarHub: return "6"
+        case .trust: return "6"
+        case .magnetarHub: return "7"
         }
     }
 
@@ -110,6 +114,7 @@ enum Workspace: String, CaseIterable, Identifiable, Hashable {
         case .code: return "Code"
         case .database: return "Data"
         case .kanban: return "Board"
+        case .trust: return "Trust"
         case .magnetarHub: return "Hub"
         }
     }
