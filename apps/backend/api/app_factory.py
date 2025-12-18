@@ -24,8 +24,8 @@ request_id_ctx: ContextVar[str] = ContextVar("request_id", default="")
 
 def cleanup_sessions():
     """Clean up all active sessions and close database connections"""
-    # Import sessions dict from main module scope
-    from api.main import sessions
+    # Import sessions dict from main.state module
+    from api.main.state import sessions
 
     logger.info("Cleaning up sessions...")
     try:

@@ -453,3 +453,150 @@ async def get_metrics_summary() -> SuccessResponse[Dict]:
                 message="Failed to retrieve metrics summary"
             ).model_dump()
         )
+
+
+# ============================================================================
+# OPERATION-LEVEL METRICS (from metrics.py service)
+# ============================================================================
+
+
+@router.get(
+    "/operations/summary",
+    response_model=SuccessResponse[Dict],
+    status_code=status.HTTP_200_OK,
+    name="metrics_get_operations_summary",
+    summary="Get operation-level metrics summary",
+    description="Get system-wide observability metrics for operations"
+)
+async def get_operations_summary() -> SuccessResponse[Dict]:
+    """
+    Get system-wide observability metrics
+
+    Returns summary of operation counts, latencies, and errors for:
+    - SQL query execution
+    - Data uploads
+    - P2P sync operations
+    - File transfers
+
+    Useful for identifying bottlenecks and performance issues in production.
+    """
+    try:
+        from metrics import get_metrics
+        metrics_collector = get_metrics()
+        summary = metrics_collector.get_summary()
+
+        return SuccessResponse(
+            data=summary,
+            message="Operations metrics summary retrieved successfully"
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        logger.error(f"Failed to get operations summary", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to retrieve operations metrics summary"
+            ).model_dump()
+        )
+
+
+@router.get(
+    "/operations/{operation}",
+    response_model=SuccessResponse[Dict],
+    status_code=status.HTTP_200_OK,
+    name="metrics_get_operation",
+    summary="Get detailed metrics for specific operation",
+    description="Get detailed metrics including latencies and error rates for a specific operation"
+)
+async def get_operation_metrics_detail(operation: str) -> SuccessResponse[Dict]:
+    """
+    Get detailed metrics for a specific operation
+
+    Args:
+        operation: Operation name (e.g., 'sql_query_execution', 'data_upload', 'p2p_sync')
+
+    Returns:
+        Detailed metrics including count, avg/p50/p95/p99 latencies, error rate
+    """
+    try:
+        from metrics import get_metrics
+        metrics_collector = get_metrics()
+        snapshot = metrics_collector.get_snapshot(operation)
+
+        if not snapshot:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message=f"No metrics found for operation: {operation}"
+                ).model_dump()
+            )
+
+        return SuccessResponse(
+            data=snapshot,
+            message=f"Metrics for operation '{operation}' retrieved successfully"
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        logger.error(f"Failed to get operation metrics for {operation}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message=f"Failed to retrieve metrics for operation: {operation}"
+            ).model_dump()
+        )
+
+
+@router.post(
+    "/operations/reset",
+    response_model=SuccessResponse[Dict],
+    status_code=status.HTTP_200_OK,
+    name="metrics_reset_operations",
+    summary="Reset operation metrics",
+    description="Reset metrics for all operations or a specific operation (admin only)"
+)
+async def reset_operation_metrics(operation: str | None = None) -> SuccessResponse[Dict]:
+    """
+    Reset metrics (admin only)
+
+    Args:
+        operation: Optional operation to reset. If not provided, resets all metrics.
+
+    Returns:
+        Confirmation of reset
+    """
+    try:
+        from metrics import get_metrics
+        metrics_collector = get_metrics()
+        metrics_collector.reset(operation)
+
+        reset_data = {
+            "status": "reset",
+            "operation": operation or "all"
+        }
+
+        return SuccessResponse(
+            data=reset_data,
+            message=f"Metrics reset for {operation or 'all operations'}"
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        logger.error(f"Failed to reset operation metrics", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code=ErrorCode.INTERNAL_ERROR,
+                message="Failed to reset operation metrics"
+            ).model_dump()
+        )
