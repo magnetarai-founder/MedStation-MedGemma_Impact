@@ -106,6 +106,16 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
         services_failed.append("P2P Chat")
         logger.error("Failed to load P2P chat router", exc_info=True)
 
+    # MagnetarTrust - Trust Network (MagnetarMission Phase 1)
+    try:
+        from api.trust_router import router as trust_router, public_router as trust_public_router
+        app.include_router(trust_router)
+        app.include_router(trust_public_router)
+        services_loaded.append("MagnetarTrust")
+    except Exception as e:
+        services_failed.append("MagnetarTrust")
+        logger.error("Failed to load trust network router", exc_info=True)
+
     # LAN Discovery
     try:
         from api.lan_service import router as lan_router
