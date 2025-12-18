@@ -129,8 +129,8 @@ final class ChatStore {
             // 2. User creates a new session
             // 3. User sends a message (auto-creates session if needed)
         } catch ApiError.unauthorized {
-            print("⚠️ Unauthorized when loading sessions - session may not be initialized yet")
-            // Don't show error to user for auth issues - they just logged in
+            // Auth token not fully propagated yet during auto-login - this is expected
+            // Silently handle by setting empty sessions - they'll load on next refresh
             sessions = []
         } catch {
             print("Failed to load sessions: \(error)")

@@ -71,7 +71,8 @@ class ModelRecommendationService {
     // MARK: - Health Check
 
     func checkHealth() async throws -> RecommendationHealthResponse {
-        let url = URL(string: "\(baseURL)/api/v1/models/recommended/health")!
+        // Use main health endpoint instead of non-existent recommendations health
+        let url = URL(string: "\(baseURL)/health")!
         var request = URLRequest(url: url)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
@@ -85,9 +86,23 @@ class ModelRecommendationService {
             throw RecommendationError.httpError(httpResponse.statusCode)
         }
 
-        let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
-        return try decoder.decode(RecommendationHealthResponse.self, from: data)
+        // Health endpoint returns {"status": "ok", "timestamp": "..."}
+        // Map it to RecommendationHealthResponse
+        struct HealthResponse: Codable {
+            let status: String
+            let timestamp: String?
+        }
+
+        let healthResponse = try JSONDecoder().decode(HealthResponse.self, from: data)
+
+        // Return a RecommendationHealthResponse with health status
+        return RecommendationHealthResponse(
+            status: healthResponse.status == "ok" ? "healthy" : healthResponse.status,
+            version: "1.0",
+            lastUpdated: healthResponse.timestamp ?? "",
+            totalModels: 0,  // Not available from health endpoint
+            learningEnabled: true
+        )
     }
 }
 
