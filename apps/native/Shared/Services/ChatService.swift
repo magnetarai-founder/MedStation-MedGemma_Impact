@@ -24,19 +24,27 @@ final class ChatService {
     }
 
     func createSession(title: String? = nil, model: String? = nil) async throws -> ApiChatSession {
-        var payload: [String: Any] = [:]
-        if let title = title {
-            payload["title"] = title
-        }
-        if let model = model {
-            payload["model"] = model
+        struct SessionResponse: Codable {
+            let success: Bool
+            let data: ApiChatSession
+            let message: String?
         }
 
-        return try await apiClient.request(
+        // Build JSON body - always send a valid dictionary (empty dict if no params)
+        var jsonBody: [String: Any] = [:]
+        if let title = title {
+            jsonBody["title"] = title
+        }
+        if let model = model {
+            jsonBody["model"] = model
+        }
+
+        let response: SessionResponse = try await apiClient.request(
             path: "/v1/chat/sessions",
             method: .post,
-            jsonBody: payload.isEmpty ? nil : payload
+            jsonBody: jsonBody
         )
+        return response.data
     }
 
     func deleteSession(sessionId: String) async throws {
