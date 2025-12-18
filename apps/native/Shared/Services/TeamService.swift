@@ -298,10 +298,17 @@ public final class TeamService {
     // MARK: - Permissions
 
     public func getUserPermissions() async throws -> UserPermissions {
-        try await apiClient.request(
+        struct PermissionsResponse: Codable {
+            let success: Bool
+            let data: UserPermissions
+            let message: String?
+        }
+
+        let response: PermissionsResponse = try await apiClient.request(
             path: "/v1/teams/user/permissions",
             method: .get
         )
+        return response.data
     }
 
     // MARK: - P2P Network
