@@ -625,11 +625,16 @@ enum ChatError: LocalizedError {
 struct ModelResponse: Codable {
     let name: String
     let size: Int
-    let modifiedAt: String
+    let modifiedAt: String?
 
     enum CodingKeys: String, CodingKey {
-        case name
-        case size
-        case modifiedAt = "modified_at"
+        case name, size, modifiedAt = "modified_at"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        name = try container.decode(String.self, forKey: .name)
+        size = try container.decode(Int.self, forKey: .size)
+        modifiedAt = try container.decodeIfPresent(String.self, forKey: .modifiedAt)
     }
 }
