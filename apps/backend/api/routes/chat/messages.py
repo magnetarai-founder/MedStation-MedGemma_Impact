@@ -25,7 +25,6 @@ from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="/api/v1/chat",
     tags=["chat-messages"]
 )
 

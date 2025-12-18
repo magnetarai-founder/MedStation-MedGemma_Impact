@@ -25,7 +25,6 @@ from pydantic import BaseModel, Field
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="/api/v1/chat",
     tags=["chat-sessions"]
 )
 
