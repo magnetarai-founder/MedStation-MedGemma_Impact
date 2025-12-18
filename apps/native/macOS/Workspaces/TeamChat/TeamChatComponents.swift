@@ -159,9 +159,8 @@ struct TeamChatSidebar: View {
             privateChannels = allChannels.filter { $0.type == "private" }
             directMessages = allChannels.filter { $0.type == "direct" }
         } catch {
-            // Backend returns default channels when P2P isn't initialized
-            // so errors here are unexpected - log them for debugging
-            print("⚠️ Unexpected error loading channels: \(error.localizedDescription)")
+            // P2P should be initialized on startup, so log real errors
+            print("❌ Error loading channels: \(error.localizedDescription)")
             // Keep default channels on error
         }
     }
@@ -313,9 +312,8 @@ struct TeamChatWindow: View {
                     errorMessage = nil
                 }
             } catch {
-                // Backend returns empty messages when P2P isn't initialized
-                // so errors here are unexpected - log them for debugging
-                print("⚠️ Unexpected error loading messages: \(error.localizedDescription)")
+                // P2P should be initialized on startup, so log real errors
+                print("❌ Error loading messages: \(error.localizedDescription)")
                 await MainActor.run {
                     messages = []
                     isLoadingMessages = false

@@ -193,6 +193,28 @@ async def lifespan(app: FastAPI):
         logger.warning(f"Could not import health_diagnostics: {e}")
         health_diagnostics = None
 
+    # Initialize P2P Chat Service (Core feature for offline/LAN operation)
+    try:
+        from api.p2p_chat_service import init_p2p_chat_service
+        import socket
+
+        # Get hostname for device identification
+        hostname = socket.gethostname()
+        device_name = f"MagnetarStudio-{hostname}"
+        display_name = "MagnetarStudio"
+
+        # Initialize P2P service
+        p2p_service = init_p2p_chat_service(display_name, device_name)
+
+        # Start the P2P service
+        await p2p_service.start()
+
+        services_loaded.append("P2P Chat Network (Active)")
+        logger.info(f"✅ P2P Chat Service initialized: {device_name}")
+    except Exception as e:
+        logger.warning(f"⚠️  P2P Chat Service initialization failed: {e}")
+        services_failed.append(f"P2P Chat Network: {str(e)}")
+
     # Log summary of loaded services
     if services_loaded:
         logger.info(f"✓ Services: {', '.join(services_loaded)}")
@@ -218,6 +240,16 @@ async def lifespan(app: FastAPI):
         await job_manager.stop()
     except Exception as e:
         logger.warning(f"Error stopping background jobs: {e}")
+
+    # Stop P2P Chat Service
+    try:
+        from api.p2p_chat_service import get_p2p_chat_service
+        p2p_service = get_p2p_chat_service()
+        if p2p_service:
+            await p2p_service.stop()
+            logger.info("P2P Chat Service stopped")
+    except Exception as e:
+        logger.warning(f"Error stopping P2P Chat Service: {e}")
 
     # Close all database connection pools (Sprint 1 - RACE-04)
     try:
