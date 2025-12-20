@@ -12,7 +12,7 @@ Follows MagnetarStudio API standards (see API_STANDARDS.md).
 
 import logging
 from typing import Optional, Dict, List
-from fastapi import APIRouter, HTTPException, Request, Depends, Query, status
+from fastapi import APIRouter, HTTPException, Request, Depends, Query, status, Body
 
 try:
     from api.auth_middleware import get_current_user, User
@@ -20,6 +20,7 @@ except ImportError:
     from auth_middleware import get_current_user, User
 from api.permission_engine import require_perm_team
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.schemas.chat_models import CreateChatRequest, ChatSession
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
@@ -39,13 +40,12 @@ router = APIRouter(
 )
 @require_perm_team("chat.use")
 async def create_chat_session(
-    body: 'CreateChatRequest',
+    body: CreateChatRequest = Body(...),
     current_user: User = Depends(get_current_user),
     team_id: Optional[str] = None
 ) -> SuccessResponse[Dict]:
     """Create a new chat session"""
     from api.services import chat
-    from api.schemas.chat_models import CreateChatRequest, ChatSession
 
     try:
         result = await chat.create_session(

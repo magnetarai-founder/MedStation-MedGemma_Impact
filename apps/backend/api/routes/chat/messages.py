@@ -12,7 +12,7 @@ Follows MagnetarStudio API standards (see API_STANDARDS.md).
 
 import logging
 from typing import Optional, Dict, List
-from fastapi import APIRouter, HTTPException, Request, Depends, Query, status
+from fastapi import APIRouter, HTTPException, Request, Depends, Query, status, Body
 from fastapi.responses import StreamingResponse
 
 try:
@@ -21,6 +21,7 @@ except ImportError:
     from auth_middleware import get_current_user, User
 from api.permission_engine import require_perm_team
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.schemas.chat_models import SendMessageRequest
 
 logger = logging.getLogger(__name__)
 
@@ -104,13 +105,12 @@ async def get_messages(
 @require_perm_team("chat.use")
 async def send_message(
     chat_id: str,
-    body: 'SendMessageRequest',
+    body: SendMessageRequest = Body(...),
     current_user: User = Depends(get_current_user),
     team_id: Optional[str] = None
 ) -> StreamingResponse:
     """Send a message and get streaming response"""
     from api.services import chat as chat_service
-    from api.schemas.chat_models import SendMessageRequest
 
     try:
         user_id = current_user.get("user_id") if isinstance(current_user, dict) else current_user.user_id

@@ -10,12 +10,9 @@ import Foundation
 class ModelRecommendationService {
     static let shared = ModelRecommendationService()
 
-    private let baseURL: String
-    private let session = URLSession.shared
+    private let apiClient = ApiClient.shared
 
-    init() {
-        self.baseURL = UserDefaults.standard.string(forKey: "apiBaseURL") ?? "http://localhost:8000"
-    }
+    init() {}
 
     // MARK: - Get Recommendations
 
@@ -26,81 +23,55 @@ class ModelRecommendationService {
         installedModels: [String]
     ) async throws -> RecommendationsResponse {
         // Build query parameters
-        var components = URLComponents(string: "\(baseURL)/api/v1/models/recommended")!
-
-        components.queryItems = [
-            URLQueryItem(name: "total_memory_gb", value: String(totalMemoryGB)),
-            URLQueryItem(name: "cpu_cores", value: String(cpuCores)),
-            URLQueryItem(name: "has_metal", value: String(hasMetal)),
-        ]
+        var path = "/v1/models/recommendations?total_memory_gb=\(totalMemoryGB)&cpu_cores=\(cpuCores)&has_metal=\(hasMetal)"
 
         // Add installed models as comma-separated list
         if !installedModels.isEmpty {
-            components.queryItems?.append(
-                URLQueryItem(name: "installed_models", value: installedModels.joined(separator: ","))
-            )
+            let modelsParam = installedModels.joined(separator: ",")
+            path += "&installed_models=\(modelsParam)"
         }
 
-        guard let url = components.url else {
-            throw RecommendationError.invalidURL
+        // Backend returns SuccessResponse<Dict> with data.recommendations
+        struct RecommendationsData: Codable {
+            let task: String
+            let recommendations: [BackendRecommendedModel]
+            let count: Int
         }
 
-        var request = URLRequest(url: url)
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        // This endpoint uses new API standard with SuccessResponse envelope
+        let data: RecommendationsData = try await apiClient.request(path, method: .get, unwrapEnvelope: true)
 
-        // Add auth token
-        if let token = KeychainService.shared.loadToken() {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-
-        let (data, response) = try await session.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw RecommendationError.invalidResponse
-        }
-
-        guard httpResponse.statusCode == 200 else {
-            throw RecommendationError.httpError(httpResponse.statusCode)
-        }
-
-        let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
-        return try decoder.decode(RecommendationsResponse.self, from: data)
+        return RecommendationsResponse(
+            recommendations: data.recommendations,
+            totalCount: data.count,
+            filteredByHardware: true,
+            learningEnabled: true,
+            personalizationActive: false
+        )
     }
 
     // MARK: - Health Check
 
     func checkHealth() async throws -> RecommendationHealthResponse {
-        // Use main health endpoint instead of non-existent recommendations health
-        let url = URL(string: "\(baseURL)/health")!
-        var request = URLRequest(url: url)
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        let (data, response) = try await session.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw RecommendationError.invalidResponse
-        }
-
-        guard httpResponse.statusCode == 200 else {
-            throw RecommendationError.httpError(httpResponse.statusCode)
-        }
-
-        // Health endpoint returns {"status": "ok", "timestamp": "..."}
-        // Map it to RecommendationHealthResponse
+        // Health endpoint doesn't use SuccessResponse envelope
         struct HealthResponse: Codable {
             let status: String
             let timestamp: String?
         }
 
-        let healthResponse = try JSONDecoder().decode(HealthResponse.self, from: data)
+        // Use the /health endpoint which returns plain JSON (no envelope)
+        let healthResponse: HealthResponse = try await apiClient.request(
+            "/health",
+            method: .get,
+            authenticated: false,
+            unwrapEnvelope: false
+        )
 
-        // Return a RecommendationHealthResponse with health status
         return RecommendationHealthResponse(
             status: healthResponse.status == "ok" ? "healthy" : healthResponse.status,
             version: "1.0",
             lastUpdated: healthResponse.timestamp ?? "",
-            totalModels: 0,  // Not available from health endpoint
+            totalModels: 0,
             learningEnabled: true
         )
     }

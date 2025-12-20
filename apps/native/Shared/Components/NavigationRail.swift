@@ -57,6 +57,16 @@ struct NavigationRail: View {
                     navigationStore.activeWorkspace = .database
                 }
                 .help("Database (⌘4)")
+
+                // Insights (Voice Notes)
+                RailButton(
+                    icon: "waveform",
+                    workspace: .insights,
+                    isActive: navigationStore.activeWorkspace == .insights
+                ) {
+                    navigationStore.activeWorkspace = .insights
+                }
+                .help("Insights (⌘6)")
             }
             .padding(.top, 20)
 

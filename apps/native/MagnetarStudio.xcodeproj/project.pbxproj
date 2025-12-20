@@ -92,6 +92,10 @@
 		76604907D534F2D1B4B90231 /* VaultResourcesTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58A0523A9291CBF8B0969A33 /* VaultResourcesTab.swift */; };
 		78FBE10A96F03C9151E62A9E /* ChatSessionRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D543F96E3B46F2588608167 /* ChatSessionRow.swift */; };
 		7B7E8A766BB7FC3F6725F19B /* DatabaseWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = A90C0C6D0ED2910BC2EE2A2D /* DatabaseWorkspace.swift */; };
+		7C97B41A3B3DE3836BC0498D /* TrustWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17B37288EB0E2045E95355D0 /* TrustWorkspace.swift */; };
+		9F0BB6A438C9403583F1B0C9 /* InsightsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F47E63AEFC7747B19381364F /* InsightsService.swift */; };
+		4690CCF4FD994934AB9F71F3 /* InsightsWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = A91ECD22957B4016A5BF4AD2 /* InsightsWorkspace.swift */; };
+		7BF38CC1B1724419935FB9C5 /* TemplateEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54BD663C0F6C48B3832DB59E /* TemplateEditorSheet.swift */; };
 		7D52C320EC4DC723D4A73932 /* SecuritySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84BA14924AAE8B77761B548B /* SecuritySettingsView.swift */; };
 		7DB98B2613859268D5044625 /* HotSlotCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 077737498A29BA7612A5B626 /* HotSlotCard.swift */; };
 		7DE4E160EC55A4FB38FD3F81 /* ChatWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AD7D3D6C33E1F8331C5A193 /* ChatWindow.swift */; };
@@ -152,6 +156,7 @@
 		C53221D23E846FE6D425B460 /* EditDocumentModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = E581C17B318E0B2B62A104F1 /* EditDocumentModal.swift */; };
 		C5DE8EEB7CE2C2BF8F02B802 /* MagnetarCloudSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADF668599FE3C90653A436E2 /* MagnetarCloudSettingsView.swift */; };
 		C6F6EB90EF484C51BF4451F3 /* AuthStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00280C486C0A463EACC552E6 /* AuthStore.swift */; };
+		C782BDDC2D78F8F66671EB1E /* TrustService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FB0BA61EE0482C69AA312CF /* TrustService.swift */; };
 		C8CE1D6E95657B5967D53579 /* BiometricAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A904439226AE3F48234C22A0 /* BiometricAuthService.swift */; };
 		CA2EC71E90324844890DF29C /* SidebarTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B42850187A449F9B295DF2 /* SidebarTabs.swift */; };
 		CC297974B1F32A1CB838E79F /* WorkflowDashboardModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1433426296987C711963E4B6 /* WorkflowDashboardModels.swift */; };
@@ -217,7 +222,7 @@
 		0778AFC21FEAC66F85763B6E /* StructuredModal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StructuredModal.swift; sourceTree = "<group>"; };
 		08785DE309A344AF8765E6BC /* NavigationRail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationRail.swift; sourceTree = "<group>"; };
 		0AC0B72A8EEED4EFEFDF8859 /* JsonConverterModal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = JsonConverterModal.swift; sourceTree = "<group>"; };
-		103BCE5F6B11D8ACD6D6DDF6 /* ModelManagerWindow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ModelManagerWindow.swift; path = ModelManagerWindow.swift; sourceTree = "<group>"; };
+		103BCE5F6B11D8ACD6D6DDF6 /* ModelManagerWindow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelManagerWindow.swift; sourceTree = "<group>"; };
 		10638E9FCC4780B2CD9DB340 /* ModelDiscoveryDetailPane.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ModelDiscoveryDetailPane.swift; path = ModelDiscovery/ModelDiscoveryDetailPane.swift; sourceTree = "<group>"; };
 		10F8272E2D6EF476FDDCC185 /* CodeEditorService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CodeEditorService.swift; sourceTree = "<group>"; };
 		135878BCF808DF3CD29A158E /* VaultAdminHeader.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VaultAdminHeader.swift; path = Panels/VaultAdmin/VaultAdminHeader.swift; sourceTree = "<group>"; };
@@ -225,6 +230,10 @@
 		1433426296987C711963E4B6 /* WorkflowDashboardModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowDashboardModels.swift; sourceTree = "<group>"; };
 		156F8AE5F0EC647C629EC26B /* TeamWorkspaceModelsV2.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TeamWorkspaceModelsV2.swift; path = Team/TeamWorkspaceModelsV2.swift; sourceTree = "<group>"; };
 		15FE1501F89969EF649D1C57 /* ModelDiscoveryDataManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ModelDiscoveryDataManager.swift; path = ModelDiscovery/ModelDiscoveryDataManager.swift; sourceTree = "<group>"; };
+		17B37288EB0E2045E95355D0 /* TrustWorkspace.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TrustWorkspace.swift; sourceTree = "<group>"; };
+		F47E63AEFC7747B19381364F /* InsightsService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = InsightsService.swift; sourceTree = "<group>"; };
+		A91ECD22957B4016A5BF4AD2 /* InsightsWorkspace.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = InsightsWorkspace.swift; sourceTree = "<group>"; };
+		54BD663C0F6C48B3832DB59E /* TemplateEditorSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TemplateEditorSheet.swift; sourceTree = "<group>"; };
 		17B48CFFB13864D1927C04F8 /* VaultWorkspaceView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VaultWorkspaceView.swift; path = Vault/VaultWorkspaceView.swift; sourceTree = "<group>"; };
 		181392C49DEAE5A86F4C528B /* WorkflowBuilderView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowBuilderView.swift; sourceTree = "<group>"; };
 		18B586A66184033619AD6FEF /* TeamChatWindowHeader.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TeamChatWindowHeader.swift; path = TeamChat/TeamChatWindowHeader.swift; sourceTree = "<group>"; };
@@ -243,7 +252,7 @@
 		20907FD471EE97E659184AAC /* ModelManagementSettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ModelManagementSettingsView.swift; path = Settings/ModelManagementSettingsView.swift; sourceTree = "<group>"; };
 		2311BD5A73E62FEED76C9A13 /* CodeWorkspace.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CodeWorkspace.swift; sourceTree = "<group>"; };
 		26E9E5E9E5784B339818979B /* SettingsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsService.swift; sourceTree = "<group>"; };
-		2773A6C7CAE78696090B41B7 /* ModelTag.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ModelTag.swift; path = ModelTag.swift; sourceTree = "<group>"; };
+		2773A6C7CAE78696090B41B7 /* ModelTag.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelTag.swift; sourceTree = "<group>"; };
 		28E3301816CD44269E126C96 /* LoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingView.swift; sourceTree = "<group>"; };
 		2C969A3D6C92097E6DF1F837 /* MagnetarStudio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MagnetarStudio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2D684EFED023D2A6542AAB1F /* KanbanWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KanbanWorkspace.swift; sourceTree = "<group>"; };
@@ -301,6 +310,7 @@
 		6B62F9D0C6BDD57B0674F0C5 /* KanbanCRUDOperations.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KanbanCRUDOperations.swift; sourceTree = "<group>"; };
 		6CE26C88BCDE81BD11937A38 /* TeamChatModals.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TeamChatModals.swift; path = TeamChat/TeamChatModals.swift; sourceTree = "<group>"; };
 		6EBEB2F057FF41A4A120A4DB /* OllamaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaService.swift; sourceTree = "<group>"; };
+		6FB0BA61EE0482C69AA312CF /* TrustService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TrustService.swift; sourceTree = "<group>"; };
 		758F62B637F9DF75E26BAB65 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		76B654E79648895F9402737A /* KanbanService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KanbanService.swift; sourceTree = "<group>"; };
 		771AABD283DC532F95BF7AB1 /* VaultListView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VaultListView.swift; path = Vault/VaultListView.swift; sourceTree = "<group>"; };
@@ -316,7 +326,7 @@
 		84E52B19F550F05D5B06F5CE /* DocsEditorView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DocsEditorView.swift; path = Docs/DocsEditorView.swift; sourceTree = "<group>"; };
 		8727E981A8450A6B3430ECAF /* HubCloudStatus.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HubCloudStatus.swift; path = MagnetarHub/HubCloudStatus.swift; sourceTree = "<group>"; };
 		87815974F16A9DC291E9CEF3 /* FlowLayout.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
-		8838BDE42960AA40D4057FA2 /* SmartModelPicker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SmartModelPicker.swift; path = SmartModelPicker.swift; sourceTree = "<group>"; };
+		8838BDE42960AA40D4057FA2 /* SmartModelPicker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SmartModelPicker.swift; sourceTree = "<group>"; };
 		89716A7193DFB13FD786929D /* DataLabView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DataLabView.swift; path = ../../../macOS/Workspaces/Database/DataLabView.swift; sourceTree = "<group>"; };
 		898F04454F2A15A0E171CBF4 /* VaultGridView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VaultGridView.swift; path = Vault/VaultGridView.swift; sourceTree = "<group>"; };
 		8B185920987FF40C42A24A06 /* ControlCenterSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ControlCenterSheet.swift; path = Shared/Components/Header/ControlCenterSheet.swift; sourceTree = "<group>"; };
@@ -432,7 +442,6 @@
 				1433426296987C711963E4B6 /* WorkflowDashboardModels.swift */,
 				68C7A01DBA5D26E64121533A /* WorkflowDashboardView.swift */,
 			);
-			name = Dashboard;
 			path = Dashboard;
 			sourceTree = "<group>";
 		};
@@ -506,7 +515,6 @@
 				80E8F3E349787A7F13EE9989 /* MetricCard.swift */,
 				6031A3F0EC42EA6C42386DBF /* StagePerformanceTable.swift */,
 			);
-			name = Components;
 			path = Components;
 			sourceTree = "<group>";
 		};
@@ -554,7 +562,6 @@
 				E9DC720A6D6990C4CFE6EB62 /* WorkflowQueueModels.swift */,
 				FC37E911002B5D5042A19F36 /* WorkflowQueueView.swift */,
 			);
-			name = Queue;
 			path = Queue;
 			sourceTree = "<group>";
 		};
@@ -599,6 +606,9 @@
 				9FD4899FD04C556C7AFE42BF /* ModelDiscovery */,
 				B38DC70D7C507EE21E312EB3 /* Chat */,
 				E5E5699826C8C8CCD54EA154 /* Code */,
+				17B37288EB0E2045E95355D0 /* TrustWorkspace.swift */,
+				A91ECD22957B4016A5BF4AD2 /* InsightsWorkspace.swift */,
+				54BD663C0F6C48B3832DB59E /* TemplateEditorSheet.swift */,
 			);
 			path = Workspaces;
 			sourceTree = "<group>";
@@ -665,7 +675,6 @@
 			children = (
 				D5A0FB3AB9BEAFE307364AF6 /* WorkflowDesignerView.swift */,
 			);
-			name = Designer;
 			path = Designer;
 			sourceTree = "<group>";
 		};
@@ -675,17 +684,12 @@
 				1E2B507942CA31394CF87244 /* KanbanRows.swift */,
 				1B381CF91266AC9E9F7CD5D0 /* Header */,
 			);
-			name = Components;
 			path = Components;
 			sourceTree = "<group>";
 		};
 		8ADDF1C432AED938847B3F4E /* Header */ = {
 			isa = PBXGroup;
 			children = (
-				1A5261BA0381BAC909F8C068 /* HeaderModels.swift */,
-				994B66D5357CD6810E75411D /* HeaderComponents.swift */,
-				8B185920987FF40C42A24A06 /* ControlCenterSheet.swift */,
-				5AA9D046DA2BBDADF3FB5FF4 /* PanicModeSheet.swift */,
 			);
 			name = Header;
 			sourceTree = "<group>";
@@ -717,8 +721,6 @@
 		9FD4899FD04C556C7AFE42BF /* ModelDiscovery */ = {
 			isa = PBXGroup;
 			children = (
-				53DB5DE47A18C5A9E02B13EF /* ModelDiscoveryModels.swift */,
-				53776A551B485D6A1CAA1EAA /* LibraryModelRow.swift */,
 				4C322BC815081691E6AB7976 /* ModelDiscoveryFiltersPane.swift */,
 				6239AE73F6B81E6500E92810 /* ModelDiscoveryListPane.swift */,
 				10638E9FCC4780B2CD9DB340 /* ModelDiscoveryDetailPane.swift */,
@@ -774,7 +776,6 @@
 				B88F1DF620990AC5B9436505 /* Analytics */,
 				3B96F261A933D190EB2ADDB2 /* Queue */,
 			);
-			name = AutomationWorkspace;
 			path = AutomationWorkspace;
 			sourceTree = "<group>";
 		};
@@ -788,7 +789,6 @@
 				D0D54827E80A5EF1F6723F74 /* KanbanDataManager.swift */,
 				6B62F9D0C6BDD57B0674F0C5 /* KanbanCRUDOperations.swift */,
 			);
-			name = Kanban;
 			path = Kanban;
 			sourceTree = "<group>";
 		};
@@ -822,7 +822,6 @@
 				58A9CD34F4FDC94F15684B48 /* WorkflowCardView.swift */,
 				D15890D5596882B29171E952 /* AgentAssistCard.swift */,
 			);
-			name = Components;
 			path = Components;
 			sourceTree = "<group>";
 		};
@@ -833,7 +832,6 @@
 				C70DAEBD9922168A2B6BCBF6 /* WorkflowAnalyticsModels.swift */,
 				9F52290D220C60A04F37F79C /* WorkflowAnalyticsView.swift */,
 			);
-			name = Analytics;
 			path = Analytics;
 			sourceTree = "<group>";
 		};
@@ -858,7 +856,6 @@
 			children = (
 				D37009FC1ECC7770D86FFB7F /* DotPattern.swift */,
 			);
-			name = Components;
 			path = Components;
 			sourceTree = "<group>";
 		};
@@ -874,7 +871,6 @@
 				1A828D5AD30F9FFB223DEEB0 /* SaveQueryDialog.swift */,
 				0AC0B72A8EEED4EFEFDF8859 /* JsonConverterModal.swift */,
 			);
-			name = Database;
 			path = Database;
 			sourceTree = "<group>";
 		};
@@ -892,7 +888,6 @@
 				BBAB507DA8568AF26D8FE18A /* Components */,
 				181392C49DEAE5A86F4C528B /* WorkflowBuilderView.swift */,
 			);
-			name = Builder;
 			path = Builder;
 			sourceTree = "<group>";
 		};
@@ -949,7 +944,6 @@
 				1DD9755F803656A491BC9DD1 /* QueueItemCard.swift */,
 				4AA3D182930C6B24DCA20C52 /* QueueComponents.swift */,
 			);
-			name = Components;
 			path = Components;
 			sourceTree = "<group>";
 		};
@@ -1041,6 +1035,8 @@
 				A7F6B585438FCCD38BEB7E4E /* ModelRecommendationService.swift */,
 				52327976284A111B087DC761 /* ModelEnrichmentService.swift */,
 				76B654E79648895F9402737A /* KanbanService.swift */,
+				6FB0BA61EE0482C69AA312CF /* TrustService.swift */,
+				F47E63AEFC7747B19381364F /* InsightsService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -1072,7 +1068,6 @@
 				BBE06911108B1F5DEE2D80A4 /* WorkflowTabButton.swift */,
 				AAA2269970A9B04DD1CB88BE /* AutomationWorkspaceView.swift */,
 			);
-			name = Core;
 			path = Core;
 			sourceTree = "<group>";
 		};
@@ -1101,7 +1096,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 2610;
+				LastUpgradeCheck = 2620;
 				TargetAttributes = {
 					CF12937F0A3EEB2B08F068A2 = {
 						ProvisioningStyle = Automatic;
@@ -1329,6 +1324,11 @@
 				10E887FDCC11A331C3F03849 /* TeamWorkspaceModelsV2.swift in Sources */,
 				7DB98B2613859268D5044625 /* HotSlotCard.swift in Sources */,
 				A89AF952F1BCD20705015CED /* HotSlotModelPicker.swift in Sources */,
+				7C97B41A3B3DE3836BC0498D /* TrustWorkspace.swift in Sources */,
+				C782BDDC2D78F8F66671EB1E /* TrustService.swift in Sources */,
+				9F0BB6A438C9403583F1B0C9 /* InsightsService.swift in Sources */,
+				4690CCF4FD994934AB9F71F3 /* InsightsWorkspace.swift in Sources */,
+				7BF38CC1B1724419935FB9C5 /* TemplateEditorSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1416,12 +1416,15 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS = NO;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = MagnetarStudio.entitlements;
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEAD_CODE_STRIPPING = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				INFOPLIST_FILE = macOS/Info.plist;
 				INFOPLIST_KEY_NSMainStoryboardFile = "";
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
@@ -1438,12 +1441,15 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS = NO;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = MagnetarStudio.entitlements;
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEAD_CODE_STRIPPING = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				INFOPLIST_FILE = macOS/Info.plist;
 				INFOPLIST_KEY_NSMainStoryboardFile = "";
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;

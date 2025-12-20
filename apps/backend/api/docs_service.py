@@ -23,6 +23,8 @@ from fastapi import APIRouter, HTTPException, Request, Depends, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from api.routes.schemas import SuccessResponse
+
 # Import user service (migrated to services layer)
 try:
     from services.users import get_or_create_user_profile as get_or_create_user
@@ -338,7 +340,7 @@ async def list_documents(
         else:
             print("⚠️ DOCS DEBUG: No documents found", flush=True)
 
-        return documents
+        return SuccessResponse(data=documents, message=f"Found {len(documents)} document(s)")
 
     except Exception as e:
         logger.error(f"Failed to list documents: {e}")

@@ -1,5 +1,32 @@
 import Foundation
 
+/// Standard API response envelope matching backend SuccessResponse<T>
+struct SuccessResponse<T: Decodable>: Decodable {
+    let success: Bool
+    let data: T
+    let message: String?
+    let timestamp: String
+}
+
+/// Standard API error response
+struct ErrorResponse: Decodable {
+    let success: Bool
+    let errorCode: String
+    let message: String
+    let details: [String: String]?
+    let timestamp: String
+    let requestId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case success
+        case errorCode = "error_code"
+        case message
+        case details
+        case timestamp
+        case requestId = "request_id"
+    }
+}
+
 /// Shared HTTP client with auth header injection
 final class ApiClient {
     static let shared = ApiClient()
@@ -49,7 +76,8 @@ final class ApiClient {
         _ endpoint: String,
         method: HTTPMethod = .get,
         body: Encodable? = nil,
-        authenticated: Bool = true
+        authenticated: Bool = true,
+        unwrapEnvelope: Bool = false
     ) async throws -> T {
         let url = try buildURL(endpoint)
         var request = URLRequest(url: url)
@@ -84,10 +112,19 @@ final class ApiClient {
             throw ApiError.httpError(httpResponse.statusCode, data)
         }
 
-        // Decode response
+        // Decode response (with or without envelope unwrapping)
         do {
-            return try decoder.decode(T.self, from: data)
+            if unwrapEnvelope {
+                let envelope = try decoder.decode(SuccessResponse<T>.self, from: data)
+                return envelope.data
+            } else {
+                return try decoder.decode(T.self, from: data)
+            }
         } catch {
+            // Log raw response for debugging
+            if let rawResponse = String(data: data, encoding: .utf8) {
+                print("⚠️ APIClient decode error - Raw response: \(rawResponse.prefix(200))")
+            }
             throw ApiError.decodingError(error)
         }
     }
@@ -192,7 +229,9 @@ final class ApiClient {
             throw ApiError.httpError(httpResponse.statusCode, data)
         }
 
-        return try decoder.decode(T.self, from: data)
+        // Decode response envelope and unwrap data
+        let envelope = try decoder.decode(SuccessResponse<T>.self, from: data)
+        return envelope.data
     }
 
     /// Multipart upload returning decoded response
@@ -259,7 +298,9 @@ final class ApiClient {
             throw ApiError.httpError(httpResponse.statusCode, data)
         }
 
-        return try decoder.decode(T.self, from: data)
+        // Decode response envelope and unwrap data
+        let envelope = try decoder.decode(SuccessResponse<T>.self, from: data)
+        return envelope.data
     }
 
     /// Request returning raw Data (for blobs/downloads)

@@ -29,7 +29,6 @@ final class AuthService {
             deviceId: deviceId
         )
 
-        // First register the user
         let _: UserResponse = try await apiClient.request(
             "/v1/auth/register",
             method: .post,

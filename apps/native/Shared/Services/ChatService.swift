@@ -10,26 +10,16 @@ final class ChatService {
     // MARK: - Session Management
 
     func listSessions() async throws -> [ApiChatSession] {
-        struct SessionsResponse: Codable {
-            let success: Bool
-            let data: [ApiChatSession]
-            let message: String?
-        }
-
-        let response: SessionsResponse = try await apiClient.request(
+        // Backend returns SuccessResponse<List<ApiChatSession>>
+        // The convenience method auto-unwraps the envelope
+        let sessions: [ApiChatSession] = try await apiClient.request(
             path: "/v1/chat/sessions",
             method: .get
         )
-        return response.data
+        return sessions
     }
 
     func createSession(title: String? = nil, model: String? = nil) async throws -> ApiChatSession {
-        struct SessionResponse: Codable {
-            let success: Bool
-            let data: ApiChatSession
-            let message: String?
-        }
-
         // Build JSON body - always send a valid dictionary (empty dict if no params)
         var jsonBody: [String: Any] = [:]
         if let title = title {
@@ -39,12 +29,14 @@ final class ChatService {
             jsonBody["model"] = model
         }
 
-        let response: SessionResponse = try await apiClient.request(
+        // Backend returns SuccessResponse<ApiChatSession>
+        // The convenience method auto-unwraps the envelope
+        let session: ApiChatSession = try await apiClient.request(
             path: "/v1/chat/sessions",
             method: .post,
             jsonBody: jsonBody
         )
-        return response.data
+        return session
     }
 
     func deleteSession(sessionId: String) async throws {
