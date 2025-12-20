@@ -218,10 +218,9 @@ struct InsightsWorkspace: View {
 
     private func loadData() async {
         isLoading = true
-        async let recordingsTask = loadRecordings()
-        async let templatesTask = loadTemplates()
-        await recordingsTask
-        await templatesTask
+        async let recordingsLoad: () = loadRecordings()
+        async let templatesLoad: () = loadTemplates()
+        _ = await (recordingsLoad, templatesLoad)
         isLoading = false
     }
 
@@ -278,7 +277,7 @@ struct InsightsWorkspace: View {
 
     private func applyTemplate(recordingId: String, templateId: String) async {
         do {
-            let response = try await service.applyTemplate(recordingId: recordingId, templateId: templateId)
+            _ = try await service.applyTemplate(recordingId: recordingId, templateId: templateId)
             // Reload outputs
             let detail = try await service.getRecording(recordingId: recordingId)
             selectedOutputs = detail.outputs

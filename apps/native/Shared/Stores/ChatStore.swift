@@ -554,6 +554,7 @@ final class ChatStore {
             }
 
             // Auto-store context for future semantic search (Phase 5)
+            // Note: Context storage is optional - fails silently if endpoint unavailable
             Task {
                 do {
                     try await ContextService.shared.storeContext(
@@ -569,9 +570,14 @@ final class ChatStore {
                             "response_length": fullContent.count
                         ]
                     )
-                    print("✅ Stored chat context in ANE for session \(session.id.uuidString)")
                 } catch {
-                    print("⚠️ Failed to store context in ANE: \(error)")
+                    // Context storage is optional - silently ignore 404s (endpoint not available)
+                    // Only log unexpected errors for debugging
+                    #if DEBUG
+                    if !"\(error)".contains("404") {
+                        print("⚠️ Context storage error: \(error)")
+                    }
+                    #endif
                 }
             }
 

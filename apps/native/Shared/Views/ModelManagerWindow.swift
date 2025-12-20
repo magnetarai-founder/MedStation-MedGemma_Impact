@@ -378,12 +378,17 @@ struct ModelManagerWindow: View {
 
             struct ModelResponseWithTags: Codable {
                 let name: String
-                let size: Int
+                let size: Int?
                 let tags: [String]
             }
 
-            let models = try JSONDecoder().decode([ModelResponseWithTags].self, from: data)
-            availableModels = models.map { ModelWithTags(name: $0.name, tags: $0.tags) }
+            struct SuccessResponseWithTags: Codable {
+                let data: [ModelResponseWithTags]
+                let message: String?
+            }
+
+            let response = try JSONDecoder().decode(SuccessResponseWithTags.self, from: data)
+            availableModels = response.data.map { ModelWithTags(name: $0.name, tags: $0.tags) }
         } catch {
             print("Failed to fetch models with tags: \(error)")
             // Fallback to basic models endpoint
@@ -395,8 +400,13 @@ struct ModelManagerWindow: View {
                     let name: String
                 }
 
-                let models = try JSONDecoder().decode([ModelResponse].self, from: data)
-                availableModels = models.map { ModelWithTags(name: $0.name, tags: []) }
+                struct SuccessResponseBasic: Codable {
+                    let data: [ModelResponse]
+                    let message: String?
+                }
+
+                let response = try JSONDecoder().decode(SuccessResponseBasic.self, from: data)
+                availableModels = response.data.map { ModelWithTags(name: $0.name, tags: []) }
             } catch {
                 print("Failed to fetch basic models: \(error)")
             }
