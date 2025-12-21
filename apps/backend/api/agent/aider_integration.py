@@ -228,7 +228,7 @@ class AiderLibrary:
             return f"Error: {e}"
 
 
-def test_aider_integration():
+def test_aider_integration() -> bool:
     """Test Aider library integration"""
     try:
         aider = AiderLibrary(

@@ -66,7 +66,7 @@ class TrashService:
         self._init_db()
         logger.info(f"🗑️ Trash service initialized: {db_path}")
 
-    def _init_db(self):
+    def _init_db(self) -> None:
         """Initialize trash table"""
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("""
