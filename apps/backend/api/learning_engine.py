@@ -41,7 +41,7 @@ class LearningEngine:
         self.conn.row_factory = sqlite3.Row
         self._init_database()
 
-    def _init_database(self):
+    def _init_database(self) -> None:
         """Initialize learning database tables"""
         cursor = self.conn.cursor()
 
@@ -100,7 +100,7 @@ class LearningEngine:
         tokens_used: int = 0,
         session_duration_seconds: int = 0,
         task_detected: Optional[str] = None
-    ):
+    ) -> None:
         """
         Track model usage for learning
 
@@ -355,7 +355,7 @@ class LearningEngine:
             logger.error(f"Failed to get optimal model for task '{task_type}': {e}")
             return []
 
-    def close(self):
+    def close(self) -> None:
         """Close database connection"""
         if self.conn:
             self.conn.close()

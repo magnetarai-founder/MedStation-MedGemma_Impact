@@ -141,7 +141,7 @@ class MLXSentenceTransformer:
             logger.error(f"MLX-only encoding failed: {e}")
             return np.array([])
     
-    def mean_pooling(self, model_output, attention_mask):
+    def mean_pooling(self, model_output, attention_mask) -> "torch.Tensor":
         """Mean pooling - take attention mask into account for correct averaging"""
         import torch
         token_embeddings = model_output
@@ -154,7 +154,7 @@ def create_mlx_embedder() -> MLXSentenceTransformer:
     return MLXSentenceTransformer()
 
 
-def test_mlx_sentence_transformer():
+def test_mlx_sentence_transformer() -> None:
     """Test the MLX sentence transformer"""
     print("Testing MLX Sentence Transformer...")
     

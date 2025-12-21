@@ -36,7 +36,7 @@ class MetalEmbedder:
         
         self._initialize()
     
-    def _initialize(self):
+    def _initialize(self) -> None:
         """Initialize Metal-accelerated embedding model"""
         try:
             import torch
@@ -81,7 +81,7 @@ class MetalEmbedder:
             import traceback
             traceback.print_exc()
     
-    def _warmup(self):
+    def _warmup(self) -> None:
         """Warm up Metal compute graphs for optimal performance"""
         if not self.initialized and self.model:
             try:

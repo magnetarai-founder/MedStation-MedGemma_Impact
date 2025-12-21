@@ -11,7 +11,7 @@ Built for the persecuted Church - no cloud, no central servers.
 import socket
 import asyncio
 import logging
-from typing import Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 from dataclasses import dataclass, asdict
 from datetime import datetime
 from zeroconf import ServiceInfo, Zeroconf, ServiceBrowser, ServiceListener
@@ -33,7 +33,7 @@ class LANDevice:
     version: str
     discovered_at: str
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
 
 
