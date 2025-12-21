@@ -87,7 +87,7 @@ class Metal4MetalFXRenderer:
         # Initialize
         self._initialize()
 
-    def _initialize(self):
+    def _initialize(self) -> None:
         """Initialize MetalFX renderer"""
         logger.info(f"Initializing MetalFX renderer (target: {self.target_fps}fps)...")
 
@@ -133,7 +133,7 @@ class Metal4MetalFXRenderer:
             logger.warning(f"MetalFX check failed: {e}")
             return False
 
-    def _init_metalfx_scaler(self):
+    def _init_metalfx_scaler(self) -> None:
         """Initialize MetalFX temporal scaler"""
         try:
             # Note: MetalFX Python bindings are limited
@@ -255,7 +255,7 @@ class Metal4MetalFXRenderer:
             quality_preset=self.quality_preset
         )
 
-    def _adjust_quality(self):
+    def _adjust_quality(self) -> None:
         """
         Adjust rendering quality based on performance
 
@@ -340,7 +340,7 @@ class Metal4MetalFXRenderer:
             'avg_frame_time_ms': sum(self.frame_times[-60:]) / min(60, len(self.frame_times)) if self.frame_times else 0.0
         }
 
-    def reset_stats(self):
+    def reset_stats(self) -> None:
         """Reset renderer statistics"""
         self.frame_count = 0
         self.interpolated_frames = 0
@@ -350,7 +350,7 @@ class Metal4MetalFXRenderer:
     # Quality Presets
     # ========================================================================
 
-    def set_quality_preset(self, preset: str):
+    def set_quality_preset(self, preset: str) -> None:
         """
         Set quality preset
 
@@ -372,7 +372,7 @@ class Metal4MetalFXRenderer:
 
         logger.info(f"Quality preset: {preset} (resolution scale: {self.resolution_scale})")
 
-    def set_target_fps(self, fps: int):
+    def set_target_fps(self, fps: int) -> None:
         """
         Set target FPS
 

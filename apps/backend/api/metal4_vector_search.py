@@ -73,7 +73,7 @@ class Metal4VectorSearch:
         # Initialize
         self._initialize()
 
-    def _initialize(self):
+    def _initialize(self) -> None:
         """Initialize Metal 4 GPU acceleration"""
         logger.info("Initializing Metal 4 vector search...")
 
@@ -111,7 +111,7 @@ class Metal4VectorSearch:
             logger.warning(f"Metal 4 check failed: {e}")
             return False
 
-    def _init_metal_pipelines(self):
+    def _init_metal_pipelines(self) -> None:
         """Initialize Metal compute pipelines from shader code"""
         try:
             import Metal
@@ -199,7 +199,7 @@ class Metal4VectorSearch:
             logger.error(f"Pipeline creation failed for {function_name}: {e}")
             return None
 
-    def load_database(self, embeddings: np.ndarray):
+    def load_database(self, embeddings: np.ndarray) -> None:
         """
         Load embedding database into GPU memory
 
@@ -508,7 +508,7 @@ class Metal4VectorSearch:
 
         return stats
 
-    def reset_stats(self):
+    def reset_stats(self) -> None:
         """Reset performance statistics"""
         self.stats = {
             'searches_executed': 0,

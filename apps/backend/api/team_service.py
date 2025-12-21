@@ -28,7 +28,7 @@ Migrated as part of R2 Team Service Split refactoring.
 import functools
 import warnings
 import logging
-from typing import Optional
+from typing import Any, Callable, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ router = _team_routes.router
 
 # ===== Deprecation Decorator =====
 
-def deprecated(new_path: str):
+def deprecated(new_path: str) -> Callable:
     """
     Decorator to mark functions as deprecated with migration guidance.
 
@@ -57,9 +57,9 @@ def deprecated(new_path: str):
     Returns:
         Decorated function that emits DeprecationWarning
     """
-    def decorator(func):
+    def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             warnings.warn(
                 f"{func.__name__} is deprecated. Import from {new_path} instead.",
                 DeprecationWarning,

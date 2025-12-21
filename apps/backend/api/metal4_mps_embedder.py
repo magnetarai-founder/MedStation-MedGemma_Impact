@@ -78,7 +78,7 @@ class Metal4MPSEmbedder:
         # Initialize
         self._initialize()
 
-    def _initialize(self):
+    def _initialize(self) -> None:
         """Initialize Metal 4 GPU acceleration and model"""
         logger.info(f"Initializing Metal 4 MPS embedder with {self.model_name}")
 
@@ -127,7 +127,7 @@ class Metal4MPSEmbedder:
             logger.warning(f"Metal 4 check failed: {e}")
             return False
 
-    def _init_model(self):
+    def _init_model(self) -> None:
         """Initialize tokenizer and model"""
         try:
             from transformers import AutoTokenizer, AutoModel
@@ -157,7 +157,7 @@ class Metal4MPSEmbedder:
             logger.error(f"Model initialization failed: {e}")
             raise
 
-    def _init_metal_acceleration(self):
+    def _init_metal_acceleration(self) -> None:
         """Initialize Metal 4 GPU acceleration with MPS Graph"""
         try:
             import torch
@@ -197,7 +197,7 @@ class Metal4MPSEmbedder:
             import traceback
             traceback.print_exc()
 
-    def _warmup(self):
+    def _warmup(self) -> None:
         """Warm up Metal compute graphs for optimal performance"""
         if not self.model:
             return
@@ -421,7 +421,7 @@ class Metal4MPSEmbedder:
 
         return stats
 
-    def reset_stats(self):
+    def reset_stats(self) -> None:
         """Reset performance statistics"""
         self.stats = {
             'embeddings_created': 0,

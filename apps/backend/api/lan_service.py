@@ -6,7 +6,7 @@ FastAPI routes for LAN discovery and central hub management.
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
-from typing import List, Dict, Optional
+from typing import Any, Dict, List, Optional
 import logging
 
 from .lan_discovery import lan_service
@@ -35,7 +35,7 @@ class JoinDeviceRequest(BaseModel):
 
 
 @router.post("/discovery/start")
-async def start_discovery(request: Request):
+async def start_discovery(request: Request) -> Dict[str, Any]:
     """
     Start discovering ElohimOS instances on the local network
 
@@ -55,7 +55,7 @@ async def start_discovery(request: Request):
 
 
 @router.post("/discovery/stop")
-async def stop_discovery(request: Request):
+async def stop_discovery(request: Request) -> Dict[str, Any]:
     """
     Stop LAN discovery
 
@@ -74,7 +74,7 @@ async def stop_discovery(request: Request):
 
 
 @router.get("/devices")
-async def get_discovered_devices():
+async def get_discovered_devices() -> Dict[str, Any]:
     """
     Get list of discovered ElohimOS instances on the network
 
@@ -94,7 +94,7 @@ async def get_discovered_devices():
 
 
 @router.post("/hub/start")
-async def start_hub(request: Request, body: StartHubRequest):
+async def start_hub(request: Request, body: StartHubRequest) -> Dict[str, Any]:
     """
     Start this instance as a central hub
     Other devices can discover and connect to this hub
@@ -128,7 +128,7 @@ async def start_hub(request: Request, body: StartHubRequest):
 
 
 @router.post("/hub/stop")
-async def stop_hub(request: Request):
+async def stop_hub(request: Request) -> Dict[str, Any]:
     """
     Stop broadcasting as hub
 
@@ -147,7 +147,7 @@ async def stop_hub(request: Request):
 
 
 @router.post("/connect")
-async def connect_to_device(request: Request, body: JoinDeviceRequest):
+async def connect_to_device(request: Request, body: JoinDeviceRequest) -> Dict[str, Any]:
     """
     Connect to a discovered device
 
@@ -183,7 +183,7 @@ async def connect_to_device(request: Request, body: JoinDeviceRequest):
 
 
 @router.get("/status")
-async def get_lan_status():
+async def get_lan_status() -> Dict[str, Any]:
     """
     Get current LAN discovery status
 
