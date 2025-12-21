@@ -9,6 +9,7 @@ import json
 import logging
 from datetime import UTC, datetime
 
+from typing import Any, Dict
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
@@ -24,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.get("/{task_id}")
-async def progress_stream(task_id: str):
+async def progress_stream(task_id: str) -> StreamingResponse:
     """
     Server-Sent Events (SSE) endpoint for streaming progress updates
 
@@ -106,7 +107,7 @@ async def progress_stream(task_id: str):
 async def update_progress(
     task_id: str,
     request: Request
-):
+) -> Dict[str, Any]:
     """
     Update progress for a task (internal use or webhook)
 
@@ -135,7 +136,7 @@ async def update_progress(
 
 
 @router.delete("/{task_id}")
-async def clear_progress(task_id: str):
+async def clear_progress(task_id: str) -> Dict[str, Any]:
     """Clear progress tracking for a completed task"""
     cleared = delete_progress_stream(task_id)
 
@@ -147,7 +148,7 @@ async def clear_progress(task_id: str):
 
 
 @router.get("")
-async def list_active_tasks():
+async def list_active_tasks() -> Dict[str, Any]:
     """List all active progress tracking tasks"""
     tasks = list_progress_streams()
     return {

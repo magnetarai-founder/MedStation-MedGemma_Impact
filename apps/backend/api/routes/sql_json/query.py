@@ -7,7 +7,7 @@ Handles SQL query execution with rate limiting, deduplication, and security chec
 import asyncio
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Request, Header, Body, status
 from api.schemas.api_models import QueryResponse
@@ -183,7 +183,7 @@ async def execute_query_router(
     response_model=None,  # Will use TablesListResponse from schemas
     status_code=status.HTTP_200_OK
 )
-async def list_tables_router(session_id: str):
+async def list_tables_router(session_id: str) -> Any:
     """List loaded tables in session"""
     from pathlib import Path
     from api.schemas.api_models import TablesListResponse
