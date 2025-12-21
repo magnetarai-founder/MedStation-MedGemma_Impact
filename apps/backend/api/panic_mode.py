@@ -88,7 +88,7 @@ class PanicMode:
             "status": "SECURE" if not errors else "PARTIAL"
         }
 
-    async def _close_p2p_connections(self):
+    async def _close_p2p_connections(self) -> None:
         """Close all P2P connections immediately"""
         try:
             # Import P2P service and close all connections
@@ -106,7 +106,7 @@ class PanicMode:
         except Exception as e:
             raise
 
-    def _wipe_chat_cache(self):
+    def _wipe_chat_cache(self) -> None:
         """Wipe all chat session cache"""
         from config_paths import get_config_paths
         paths = get_config_paths()
@@ -125,7 +125,7 @@ class PanicMode:
                 except Exception as e:
                     logger.error(f"Failed to wipe {cache_path}: {e}")
 
-    def _wipe_uploads(self):
+    def _wipe_uploads(self) -> None:
         """Wipe all uploaded files"""
         from config_paths import get_config_paths
         paths = get_config_paths()
@@ -159,7 +159,7 @@ class PanicMode:
                 except Exception as e:
                     logger.error(f"Failed to wipe {upload_path}: {e}")
 
-    def _secure_databases(self):
+    def _secure_databases(self) -> None:
         """Ensure databases are encrypted and discover all DBs via config_paths"""
         from config_paths import get_config_paths
         paths = get_config_paths()
@@ -191,7 +191,7 @@ class PanicMode:
                 except Exception as e:
                     logger.error(f"Failed to secure {db_path}: {e}")
 
-    def _log_panic_event(self, reason: str, actions: List[str], errors: List[str]):
+    def _log_panic_event(self, reason: str, actions: List[str], errors: List[str]) -> None:
         """Log panic event (PII-scrubbed)"""
         from config_paths import get_config_paths
         paths = get_config_paths()
@@ -225,7 +225,7 @@ Errors:
             "secure_mode": self.panic_triggered
         }
 
-    def reset_panic(self):
+    def reset_panic(self) -> None:
         """Reset panic mode (requires admin)"""
         self.panic_triggered = False
         logger.info("🔓 Panic mode reset")

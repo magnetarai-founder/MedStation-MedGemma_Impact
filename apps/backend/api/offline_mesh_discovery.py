@@ -88,7 +88,7 @@ class OfflineMeshDiscovery:
         peer_id = hashlib.sha256(mac.encode()).hexdigest()[:16]
         return peer_id
 
-    async def start(self):
+    async def start(self) -> bool:
         """Start mDNS service discovery and announcement"""
         if not ZEROCONF_AVAILABLE:
             logger.error("❌ zeroconf not available - cannot start discovery")
@@ -121,7 +121,7 @@ class OfflineMeshDiscovery:
             logger.error(f"Failed to start mesh discovery: {e}")
             return False
 
-    async def _register_service(self):
+    async def _register_service(self) -> None:
         """Register this device as an available peer"""
         if not self.zeroconf:
             return
@@ -177,7 +177,7 @@ class OfflineMeshDiscovery:
         except Exception:
             return "127.0.0.1"
 
-    def _on_service_state_change(self, zeroconf: Zeroconf, service_type: str, name: str, state_change: ServiceStateChange):
+    def _on_service_state_change(self, zeroconf: Zeroconf, service_type: str, name: str, state_change: ServiceStateChange) -> None:
         """Handle service discovery events"""
         try:
             if state_change is ServiceStateChange.Added:
@@ -191,7 +191,7 @@ class OfflineMeshDiscovery:
         except Exception as e:
             logger.error(f"Error handling service change: {e}")
 
-    async def _handle_peer_added(self, zeroconf: Zeroconf, service_type: str, name: str):
+    async def _handle_peer_added(self, zeroconf: Zeroconf, service_type: str, name: str) -> None:
         """Handle newly discovered peer"""
         try:
             # Get service info
@@ -247,7 +247,7 @@ class OfflineMeshDiscovery:
         except Exception as e:
             logger.error(f"Error handling peer added: {e}")
 
-    def _handle_peer_removed(self, name: str):
+    def _handle_peer_removed(self, name: str) -> None:
         """Handle peer leaving"""
         # Find and remove peer
         for peer_id, peer in list(self.peers.items()):
@@ -265,7 +265,7 @@ class OfflineMeshDiscovery:
                 # Remove after delay (in case they come back)
                 asyncio.create_task(self._remove_peer_delayed(peer_id))
 
-    async def _remove_peer_delayed(self, peer_id: str, delay: int = 30):
+    async def _remove_peer_delayed(self, peer_id: str, delay: int = 30) -> None:
         """Remove peer after delay"""
         await asyncio.sleep(delay)
         if peer_id in self.peers and self.peers[peer_id].status == 'offline':
@@ -283,11 +283,11 @@ class OfflineMeshDiscovery:
         """Alias for get_peer - get specific peer by ID"""
         return self.get_peer(peer_id)
 
-    def on_peer_event(self, callback: Callable):
+    def on_peer_event(self, callback: Callable) -> None:
         """Register callback for peer events"""
         self.peer_callbacks.append(callback)
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Stop discovery service"""
         if not self.is_running:
             return

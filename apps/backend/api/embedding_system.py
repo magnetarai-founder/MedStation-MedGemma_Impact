@@ -55,7 +55,7 @@ class EmbeddingSystem:
         except ImportError:
             print("ℹ Using local embedding fallback (install sentence-transformers for better embeddings)")
     
-    def _load_model_if_needed(self):
+    def _load_model_if_needed(self) -> None:
         """Lazy load the model only when needed"""
         if self.use_transformer and not self._model_loaded:
             try:
@@ -268,7 +268,7 @@ class EmbeddingSystem:
         
         return clusters
     
-    def save_cache(self):
+    def save_cache(self) -> None:
         """Save embedding cache to disk using JSON (secure serialization)"""
         cache_file = self.cache_dir / "embedding_cache.json"
         # Convert numpy arrays to lists for JSON serialization
@@ -281,7 +281,7 @@ class EmbeddingSystem:
         with open(cache_file, 'w') as f:
             json.dump(serializable_cache, f)
     
-    def load_cache(self):
+    def load_cache(self) -> None:
         """Load embedding cache from disk using JSON (secure deserialization)"""
         cache_file = self.cache_dir / "embedding_cache.json"
         if cache_file.exists():
@@ -405,8 +405,8 @@ class TrainingDataCollector:
         
         return self.training_data
     
-    def add_training_example(self, input_text: str, task_type: str, 
-                            tool: str, success: bool, output: str = ""):
+    def add_training_example(self, input_text: str, task_type: str,
+                            tool: str, success: bool, output: str = "") -> None:
         """Add a training example"""
         example = {
             "input": input_text,
@@ -455,20 +455,20 @@ class TrainingDataCollector:
         
         return X, y
     
-    def save_training_data(self):
+    def save_training_data(self) -> None:
         """Save training data to disk"""
         data_file = self.data_dir / "training_data.json"
         with open(data_file, 'w') as f:
             json.dump(self.training_data, f, indent=2)
     
-    def load_training_data(self):
+    def load_training_data(self) -> None:
         """Load training data from disk"""
         data_file = self.data_dir / "training_data.json"
         if data_file.exists():
             with open(data_file, 'r') as f:
                 self.training_data = json.load(f)
     
-    def export_for_fine_tuning(self, output_path: str):
+    def export_for_fine_tuning(self, output_path: str) -> None:
         """Export data in format suitable for fine-tuning LLMs"""
         fine_tune_data = []
         

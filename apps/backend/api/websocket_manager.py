@@ -30,7 +30,7 @@ class ConnectionManager:
         # Track user presence
         self.user_presence: Dict[str, dict] = {}
 
-    async def connect(self, websocket: WebSocket, user_id: str, vault_type: str = "real"):
+    async def connect(self, websocket: WebSocket, user_id: str, vault_type: str = "real") -> None:
         """Accept and register a WebSocket connection"""
         await websocket.accept()
 
@@ -57,7 +57,7 @@ class ConnectionManager:
             "timestamp": datetime.now(UTC).isoformat()
         }, vault_type)
 
-    def disconnect(self, websocket: WebSocket, user_id: str, vault_type: str = "real"):
+    def disconnect(self, websocket: WebSocket, user_id: str, vault_type: str = "real") -> None:
         """Remove and cleanup a WebSocket connection"""
         if user_id in self.active_connections:
             self.active_connections[user_id].discard(websocket)
@@ -70,7 +70,7 @@ class ConnectionManager:
 
         logger.info(f"WebSocket disconnected: user={user_id}")
 
-    async def send_personal_message(self, message: dict, user_id: str):
+    async def send_personal_message(self, message: dict, user_id: str) -> None:
         """Send message to specific user's connections"""
         if user_id in self.active_connections:
             disconnected = set()
@@ -85,7 +85,7 @@ class ConnectionManager:
             for conn in disconnected:
                 self.active_connections[user_id].discard(conn)
 
-    async def broadcast_to_all(self, message: dict, vault_type: Optional[str] = None):
+    async def broadcast_to_all(self, message: dict, vault_type: Optional[str] = None) -> None:
         """Broadcast message to all connected users"""
         disconnected_users = []
 
@@ -117,7 +117,7 @@ class ConnectionManager:
             if user_id in self.user_presence:
                 del self.user_presence[user_id]
 
-    async def broadcast_file_event(self, event_type: str, file_data: dict, vault_type: str, user_id: str):
+    async def broadcast_file_event(self, event_type: str, file_data: dict, vault_type: str, user_id: str) -> None:
         """Broadcast file-related events"""
         message = {
             "type": "file_event",
@@ -129,7 +129,7 @@ class ConnectionManager:
         }
         await self.broadcast_to_all(message, vault_type)
 
-    async def broadcast_activity(self, action: str, resource_type: str, details: str, vault_type: str, user_id: str):
+    async def broadcast_activity(self, action: str, resource_type: str, details: str, vault_type: str, user_id: str) -> None:
         """Broadcast activity events"""
         message = {
             "type": "activity",

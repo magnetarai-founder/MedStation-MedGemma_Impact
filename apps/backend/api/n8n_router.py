@@ -33,7 +33,7 @@ from fastapi import Depends
 from auth_middleware import get_current_user
 
 # Dependency to check if n8n is enabled
-def require_n8n_enabled():
+def require_n8n_enabled() -> N8NIntegrationService:
     """Dependency that raises 404 if n8n is not configured/enabled"""
     service = get_n8n_service()
     if not service or not service.config.enabled:
@@ -79,7 +79,7 @@ class N8NWebhookRequest(BaseModel):
 # ============================================
 
 @router.post("/configure")
-async def configure_n8n(config: N8NConfigRequest):
+async def configure_n8n(config: N8NConfigRequest) -> Dict[str, Any]:
     """
     Configure n8n integration
 
@@ -121,7 +121,7 @@ async def configure_n8n(config: N8NConfigRequest):
 
 
 @router.get("/config")
-async def get_n8n_config():
+async def get_n8n_config() -> Dict[str, Any]:
     """Get current n8n configuration"""
     service = get_n8n_service()
 
@@ -143,7 +143,7 @@ async def get_n8n_config():
 # ============================================
 
 @router.get("/workflows")
-async def list_n8n_workflows(service: N8NIntegrationService = Depends(require_n8n_enabled)):
+async def list_n8n_workflows(service: N8NIntegrationService = Depends(require_n8n_enabled)) -> Dict[str, Any]:
     """List all n8n workflows"""
     try:
         workflows = await service.client.list_workflows()
@@ -154,7 +154,7 @@ async def list_n8n_workflows(service: N8NIntegrationService = Depends(require_n8
 
 
 @router.post("/export-stage")
-async def export_stage_to_n8n(request: ExportStageRequest, service: N8NIntegrationService = Depends(require_n8n_enabled)):
+async def export_stage_to_n8n(request: ExportStageRequest, service: N8NIntegrationService = Depends(require_n8n_enabled)) -> Dict[str, Any]:
     """
     Export ElohimOS workflow stage to n8n
 
@@ -206,7 +206,7 @@ async def export_stage_to_n8n(request: ExportStageRequest, service: N8NIntegrati
 # ============================================
 
 @router.post("/webhook/result")
-async def handle_n8n_webhook(webhook_data: N8NWebhookRequest):
+async def handle_n8n_webhook(webhook_data: N8NWebhookRequest) -> Dict[str, Any]:
     """
     Receive results from n8n workflow execution
 
@@ -250,7 +250,7 @@ async def execute_n8n_workflow(
     n8n_workflow_id: str,
     data: Dict[str, Any] = Body(...),
     service: N8NIntegrationService = Depends(require_n8n_enabled)
-):
+) -> Dict[str, Any]:
     """
     Execute n8n workflow programmatically
 
@@ -279,7 +279,7 @@ async def execute_n8n_workflow(
 # ============================================
 
 @router.get("/mappings")
-async def get_stage_mappings(service: N8NIntegrationService = Depends(require_n8n_enabled)):
+async def get_stage_mappings(service: N8NIntegrationService = Depends(require_n8n_enabled)) -> Dict[str, Any]:
     """Get all ElohimOS <-> n8n stage mappings"""
     mappings = [
         {
@@ -300,7 +300,7 @@ async def get_stage_mappings(service: N8NIntegrationService = Depends(require_n8
 # ============================================
 
 @router.get("/health")
-async def n8n_health_check():
+async def n8n_health_check() -> Dict[str, Any]:
     """Check n8n integration health"""
     service = get_n8n_service()
 
