@@ -53,6 +53,38 @@ PATHS = get_config_paths()
 DOCS_DB_PATH = PATHS.data_dir / "docs.db"
 DOCS_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
+# Whitelisted columns for SQL UPDATE to prevent injection
+DOCUMENT_UPDATE_COLUMNS = frozenset({
+    "title", "content", "is_private", "security_level", "shared_with", "updated_at"
+})
+
+
+def build_safe_update(updates_dict: Dict[str, Any], allowed_columns: frozenset) -> tuple:
+    """
+    Build safe SQL UPDATE clause with whitelist validation.
+
+    Args:
+        updates_dict: Dict of column_name -> value pairs
+        allowed_columns: Frozenset of allowed column names
+
+    Returns:
+        Tuple of (update_clauses, params) for use in SQL query
+
+    Raises:
+        ValueError: If any column is not in the whitelist
+    """
+    clauses = []
+    params = []
+
+    for column, value in updates_dict.items():
+        if column not in allowed_columns:
+            raise ValueError(f"Invalid column for update: {column}")
+        clauses.append(f"{column} = ?")
+        params.append(value)
+
+    return clauses, params
+
+
 router = APIRouter(
     prefix="/api/v1/docs",
     tags=["Docs"]
@@ -455,35 +487,25 @@ async def update_document(
         if not row:
             raise HTTPException(status_code=404, detail="Document not found or access denied")
 
-        # Build update query dynamically
-        update_fields = []
-        values = []
-
+        # Build update dict with whitelisted columns only
+        updates_dict = {}
         if updates.title is not None:
-            update_fields.append("title = ?")
-            values.append(updates.title)
-
+            updates_dict["title"] = updates.title
         if updates.content is not None:
-            update_fields.append("content = ?")
-            values.append(json.dumps(updates.content))
-
+            updates_dict["content"] = json.dumps(updates.content)
         if updates.is_private is not None:
-            update_fields.append("is_private = ?")
-            values.append(1 if updates.is_private else 0)
-
+            updates_dict["is_private"] = 1 if updates.is_private else 0
         if updates.security_level is not None:
-            update_fields.append("security_level = ?")
-            values.append(updates.security_level)
-
+            updates_dict["security_level"] = updates.security_level
         if updates.shared_with is not None:
-            update_fields.append("shared_with = ?")
-            values.append(json.dumps(updates.shared_with))
+            updates_dict["shared_with"] = json.dumps(updates.shared_with)
 
         # Always update timestamp
         now = datetime.now(UTC).isoformat()
-        update_fields.append("updated_at = ?")
-        values.append(now)
+        updates_dict["updated_at"] = now
 
+        # Use safe builder with whitelist validation
+        update_fields, values = build_safe_update(updates_dict, DOCUMENT_UPDATE_COLUMNS)
         values.append(doc_id)
 
         # Phase 3: Update with team context
