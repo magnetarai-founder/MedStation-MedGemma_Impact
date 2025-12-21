@@ -4,7 +4,7 @@ Delegates to services/code_editor for all business logic
 """
 
 import logging
-from typing import Optional
+from typing import Any, Dict, Optional
 from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Request, Depends
@@ -156,7 +156,7 @@ async def open_database_workspace(
 
 @router.get("/workspaces")
 @require_perm("code.use")
-async def list_workspaces(current_user: dict = Depends(get_current_user)):
+async def list_workspaces(current_user: dict = Depends(get_current_user)) -> Dict[str, Any]:
     """Get all workspaces"""
     try:
         # Delegate to service
@@ -182,7 +182,7 @@ async def list_workspaces(current_user: dict = Depends(get_current_user)):
 
 @router.get("/workspaces/{workspace_id}/files")
 @require_perm("code.use")
-async def get_workspace_files(workspace_id: str, current_user: dict = Depends(get_current_user)):
+async def get_workspace_files(workspace_id: str, current_user: dict = Depends(get_current_user)) -> Dict[str, Any]:
     """Get file tree for workspace"""
     try:
         # Delegate to service
@@ -199,7 +199,7 @@ async def sync_workspace(
     request: Request,
     workspace_id: str,
     current_user: dict = Depends(get_current_user)
-):
+) -> Dict[str, Any]:
     """Sync disk workspace with filesystem"""
     try:
         # Get workspace

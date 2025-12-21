@@ -8,7 +8,9 @@ import logging
 import subprocess
 from datetime import UTC, datetime
 
+from typing import Any, Dict
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import PlainTextResponse
 
 from api.auth_middleware import get_current_user
 
@@ -77,7 +79,7 @@ async def get_system_info(current_user: dict = Depends(get_current_user)) -> dic
 
 
 @router.get("/metrics")
-async def prometheus_metrics(current_user: dict = Depends(get_current_user)):
+async def prometheus_metrics(current_user: dict = Depends(get_current_user)) -> PlainTextResponse:
     """
     Prometheus metrics endpoint (Phase 5.2)
 
@@ -222,7 +224,7 @@ async def _fallback_admin_device_overview(request: Request, current_user: dict =
 
 
 @router.post("/api/v1/terminal/spawn-system")
-async def _fallback_spawn_system_terminal(current_user: dict = Depends(get_current_user)):
+async def _fallback_spawn_system_terminal(current_user: dict = Depends(get_current_user)) -> Dict[str, Any]:
     """Fallback Terminal spawn endpoint to avoid 404 if terminal router fails to load"""
     # Allow only founder_rights or super_admin by default
     role = current_user.get("role")

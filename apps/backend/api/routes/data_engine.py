@@ -145,7 +145,7 @@ async def get_dataset(dataset_id: str) -> Dict[str, Any]:
 
 
 @router.delete("/datasets/{dataset_id}")
-async def delete_dataset(request: Request, dataset_id: str):
+async def delete_dataset(request: Request, dataset_id: str) -> Dict[str, Any]:
     """Delete a dataset"""
     if _data_engine is None:
         raise HTTPException(status_code=503, detail="Data engine not initialized")
@@ -168,7 +168,7 @@ async def delete_dataset(request: Request, dataset_id: str):
 
 @router.post("/query")
 @require_perm("data.run_sql")
-async def execute_data_query(req: Request, request: QueryRequest, current_user: dict = Depends(get_current_user)):
+async def execute_data_query(req: Request, request: QueryRequest, current_user: dict = Depends(get_current_user)) -> Dict[str, Any]:
     """Execute SQL query on loaded datasets"""
     if _data_engine is None:
         raise HTTPException(status_code=503, detail="Data engine not initialized")
@@ -185,7 +185,7 @@ async def execute_data_query(req: Request, request: QueryRequest, current_user: 
 
 
 @router.post("/discover/{dataset_id}")
-async def rediscover_queries(request: Request, dataset_id: str):
+async def rediscover_queries(request: Request, dataset_id: str) -> Dict[str, Any]:
     """Re-run brute-force discovery on a dataset"""
     if _data_engine is None:
         raise HTTPException(status_code=503, detail="Data engine not initialized")
