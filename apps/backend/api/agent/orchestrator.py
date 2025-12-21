@@ -129,7 +129,7 @@ async def get_capabilities(current_user: Dict = Depends(get_current_user)):
 
 
 @router.get("/models")
-async def get_models(current_user: Dict = Depends(get_current_user)):
+async def get_models(current_user: Dict = Depends(get_current_user)) -> Dict[str, Any]:
     """
     Get model configuration and orchestrator status
 

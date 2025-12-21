@@ -13,6 +13,7 @@ import aiofiles
 import pandas as pd
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel
+from typing import Any, Dict
 
 from api.auth_middleware import get_current_user
 from api.permission_engine import require_perm
@@ -122,7 +123,7 @@ async def list_datasets(session_id: str | None = None):
 
 
 @router.get("/datasets/{dataset_id}")
-async def get_dataset(dataset_id: str):
+async def get_dataset(dataset_id: str) -> Dict[str, Any]:
     """Get dataset metadata"""
     if _data_engine is None:
         raise HTTPException(status_code=503, detail="Data engine not initialized")

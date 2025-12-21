@@ -21,7 +21,7 @@ Refactored in Phase 6.3b: Router layer separated from business logic.
 """
 
 import logging
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
@@ -72,7 +72,7 @@ def require_founder_rights(current_user: dict = Depends(get_current_user)) -> di
 # ===== User Account Endpoints =====
 
 @router.get("/users")
-async def list_all_users(request: Request, current_user: dict = Depends(require_founder_rights)):
+async def list_all_users(request: Request, current_user: dict = Depends(require_founder_rights)) -> Dict[str, Any]:
     """List all users on the system (Founder Rights only)
 
     Returns user account metadata (username, user_id, email, created_at)
@@ -99,7 +99,7 @@ async def get_user_details(
     request: Request,
     target_user_id: str,
     current_user: dict = Depends(require_founder_rights)
-):
+) -> Dict[str, Any]:
     """Get specific user's account details (Founder Rights only)
 
     Returns user account metadata for support purposes.
@@ -128,7 +128,7 @@ async def get_user_chats(
     request: Request,
     target_user_id: str,
     current_user: dict = Depends(require_founder_rights)
-):
+) -> Dict[str, Any]:
     """Get user's chat sessions (Founder Rights only - for support)
 
     Returns chat session metadata (session_id, timestamp, message count).
@@ -156,7 +156,7 @@ async def get_user_chats(
 
 
 @router.get("/chats")
-async def list_all_chats(request: Request, current_user: dict = Depends(require_founder_rights)):
+async def list_all_chats(request: Request, current_user: dict = Depends(require_founder_rights)) -> Dict[str, Any]:
     """List all chat sessions (Founder Rights only - for monitoring)
 
     Returns chat session metadata across all users.
@@ -183,7 +183,7 @@ async def reset_user_password(
     request: Request,
     target_user_id: str,
     current_user: dict = Depends(require_founder_rights)
-):
+) -> Dict[str, Any]:
     """Reset user's password (Founder Rights only - for support)
 
     Generates a secure temporary password and sets must_change_password flag.
@@ -224,7 +224,7 @@ async def unlock_user_account(
     request: Request,
     target_user_id: str,
     current_user: dict = Depends(require_founder_rights)
-):
+) -> Dict[str, Any]:
     """Unlock user account after failed login attempts (Founder Rights only)
 
     Clears failed login counters and re-enables account.
@@ -259,7 +259,7 @@ async def get_user_vault_status(
     request: Request,
     target_user_id: str,
     current_user: dict = Depends(require_founder_rights)
-):
+) -> Dict[str, Any]:
     """Get user's vault status (Founder Rights only - for support)
 
     Returns vault METADATA only:
@@ -302,7 +302,7 @@ async def get_user_vault_status(
 async def get_device_overview(
     request: Request,
     current_user: dict = Depends(require_founder_rights)
-):
+) -> Dict[str, Any]:
     """
     Get device-wide overview statistics (Founder Rights only)
 
@@ -347,7 +347,7 @@ async def get_device_overview(
 
 @router.get("/device-overview")
 @require_perm("system.view_admin_dashboard")
-async def get_device_overview_alias(request: Request, current_user: dict = Depends(require_founder_rights)):
+async def get_device_overview_alias(request: Request, current_user: dict = Depends(require_founder_rights)) -> Dict[str, Any]:
     """Alias for /device/overview endpoint"""
     return await get_device_overview(request, current_user)
 
@@ -359,7 +359,7 @@ async def get_user_workflows(
     request: Request,
     target_user_id: str,
     current_user: dict = Depends(require_founder_rights)
-):
+) -> Dict[str, Any]:
     """Get specific user's workflows (Founder Rights only - for support)
 
     Returns the user's workflow definitions and work items.
@@ -400,7 +400,7 @@ async def get_audit_logs(
     limit: int = 100,
     offset: int = 0,
     current_user: dict = Depends(get_current_user)
-):
+) -> Dict[str, Any]:
     """
     Get audit logs with filters (requires system.view_audit_logs permission)
 
@@ -452,7 +452,7 @@ async def export_audit_logs(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
-):
+) -> Response:
     """
     Export audit logs as CSV (requires system.export_audit_logs permission)
 
