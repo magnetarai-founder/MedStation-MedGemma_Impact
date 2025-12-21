@@ -40,7 +40,7 @@ class JsonToExcelEngine:
         except Exception as e:
             return {'success': False, 'error': str(e)}
 
-    def convert_to_excel(self, data, output_path: str, selected_columns=None):
+    def convert_to_excel(self, data, output_path: str, selected_columns=None) -> dict:
         """Convert JSON data to Excel"""
         try:
             if isinstance(data, list):

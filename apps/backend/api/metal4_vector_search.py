@@ -176,7 +176,7 @@ class Metal4VectorSearch:
             import traceback
             traceback.print_exc()
 
-    def _create_pipeline(self, library, function_name: str):
+    def _create_pipeline(self, library, function_name: str) -> Optional[Any]:
         """Create compute pipeline from shader function"""
         try:
             function = library.newFunctionWithName_(function_name)

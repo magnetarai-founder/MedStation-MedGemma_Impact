@@ -204,7 +204,7 @@ class PatchBus:
         }
 
     @staticmethod
-    def _auto_ingest_changed_files(proposal: ChangeProposal):
+    def _auto_ingest_changed_files(proposal: ChangeProposal) -> None:
         """Auto-ingest changed files into RAG system with 'touched' tag (opt-in)."""
         # Gate behind env to avoid repo bloat or heavy side effects by default
         if not PatchBus._truthy(os.getenv("RAG_AUTO_INGEST", "0")):

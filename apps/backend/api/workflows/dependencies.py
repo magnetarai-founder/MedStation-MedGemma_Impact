@@ -56,7 +56,7 @@ analytics = WorkflowAnalytics(db_path=storage.db_path)
 workflow_sync = None
 
 
-def setup_p2p_sync(peer_id: str):
+def setup_p2p_sync(peer_id: str) -> None:
     """Setup P2P sync when P2P service is ready"""
     global workflow_sync
     if not workflow_sync:

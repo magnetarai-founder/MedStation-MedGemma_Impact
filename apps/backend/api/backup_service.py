@@ -311,7 +311,7 @@ class BackupService:
                 with tarfile.open(tar_path, 'r') as tar:
                     # SECURITY: Prevent path traversal when extracting archives
                     # Only extract members that are safely contained within extract_dir
-                    def is_within_directory(directory, target):
+                    def is_within_directory(directory, target) -> bool:
                         try:
                             directory = os.path.realpath(directory)
                             target = os.path.realpath(target)
