@@ -9,7 +9,7 @@ import json
 import os
 import asyncio
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 import sys
 
 # Import our dev assistant
@@ -26,7 +26,7 @@ class DevOrchestrator:
         self.aider_process = None
         self.continue_config = Path.home() / ".continue" / "config.yaml"
         
-    def start_aider_session(self, model: str = "ollama/qwen2.5-coder:32b-instruct", files: List[str] = None):
+    def start_aider_session(self, model: str = "ollama/qwen2.5-coder:32b-instruct", files: List[str] = None) -> subprocess.Popen:
         """Start an Aider session in the background"""
         cmd = ["aider", "--model", model]
         if files:
@@ -43,7 +43,7 @@ class DevOrchestrator:
         print(f"Started Aider with model {model}")
         return self.aider_process
     
-    def send_to_aider(self, command: str):
+    def send_to_aider(self, command: str) -> None:
         """Send a command to Aider"""
         if self.aider_process and self.aider_process.poll() is None:
             self.aider_process.stdin.write(command + "\n")
@@ -52,7 +52,7 @@ class DevOrchestrator:
         else:
             print("Aider is not running")
     
-    def parallel_workflow(self, main_task: str, support_tasks: List[DevelopmentTask]):
+    def parallel_workflow(self, main_task: str, support_tasks: List[DevelopmentTask]) -> None:
         """
         Execute a parallel workflow:
         - Main task goes to Aider
@@ -95,7 +95,7 @@ class DevOrchestrator:
         print("\n💡 Continue working with Aider for the main task")
         print("   or check the results above for insights")
     
-    def smart_split(self, requirement: str):
+    def smart_split(self, requirement: str) -> Tuple[str, List[DevelopmentTask]]:
         """
         Intelligently split a requirement into main and support tasks
         """

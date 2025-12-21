@@ -80,7 +80,7 @@ class DevAssistant:
         # Initialize agents
         self.setup_agents()
         
-    def build_knowledge_base(self):
+    def build_knowledge_base(self) -> None:
         """Build a knowledge base from the project files"""
         print("Building knowledge base from project files...")
         
@@ -106,7 +106,7 @@ class DevAssistant:
         else:
             print("No code files found in project")
     
-    def setup_agents(self):
+    def setup_agents(self) -> None:
         """Setup CrewAI agents for different tasks"""
         
         # Code Reviewer Agent
@@ -204,7 +204,7 @@ class DevAssistant:
         )
         return response.text
     
-    def add_task(self, task: DevelopmentTask):
+    def add_task(self, task: DevelopmentTask) -> None:
         """Add a task to the queue"""
         self.task_queue.put(task)
         print(f"Task added: {task.task_type.value} - {task.description}")
@@ -300,7 +300,7 @@ class DevAssistant:
         
         return result
     
-    def worker_thread(self):
+    def worker_thread(self) -> None:
         """Worker thread to process tasks"""
         while self.running:
             try:
@@ -313,14 +313,14 @@ class DevAssistant:
             except Exception as e:
                 print(f"Worker error: {e}")
     
-    def start(self):
+    def start(self) -> None:
         """Start the assistant"""
         self.running = True
         self.worker = threading.Thread(target=self.worker_thread)
         self.worker.start()
         print("Dev Assistant started! Ready to help with your coding tasks.")
     
-    def stop(self):
+    def stop(self) -> None:
         """Stop the assistant"""
         self.running = False
         if hasattr(self, 'worker'):
@@ -334,7 +334,7 @@ class DevAssistant:
             results.append(self.results_queue.get())
         return results
     
-    def interactive_mode(self):
+    def interactive_mode(self) -> None:
         """Run in interactive mode"""
         print("\n🤖 Dev Assistant Interactive Mode")
         print("=" * 50)
@@ -407,7 +407,7 @@ class DevAssistant:
 
 
 # CLI integration
-def main():
+def main() -> None:
     import argparse
     parser = argparse.ArgumentParser(description="Software Developer Assistant")
     parser.add_argument("--project", default=".", help="Project path")
