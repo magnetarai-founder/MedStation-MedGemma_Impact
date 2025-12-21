@@ -4,6 +4,7 @@ Workflow Health Check Endpoint
 Service health and diagnostics.
 """
 
+from typing import Any, Dict
 from fastapi import APIRouter
 import logging
 
@@ -14,7 +15,7 @@ router = APIRouter()
 
 
 @router.get("/health")
-async def health_check():
+async def health_check() -> Dict[str, Any]:
     """
     Health check endpoint with storage path info
 

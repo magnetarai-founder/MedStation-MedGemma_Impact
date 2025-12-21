@@ -109,7 +109,7 @@ def _cleanup_expired_challenges() -> None:
 
 # ===== Database Initialization =====
 
-def _init_vault_auth_db():
+def _init_vault_auth_db() -> None:
     """Initialize vault auth metadata table"""
     VAULT_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
@@ -228,7 +228,7 @@ def _check_rate_limit(user_id: str, vault_id: str, client_ip: str) -> bool:
     return rate_limiter.check_rate_limit(rate_key, max_requests=UNLOCK_RATE_LIMIT, window_seconds=UNLOCK_WINDOW_SECONDS)
 
 
-def _record_unlock_attempt(user_id: str, vault_id: str, success: bool, method: str):
+def _record_unlock_attempt(user_id: str, vault_id: str, success: bool, method: str) -> None:
     """Record unlock attempt for audit"""
     with sqlite3.connect(str(VAULT_DB_PATH)) as conn:
         cursor = conn.cursor()
