@@ -464,7 +464,7 @@ final class ChatStore {
         error = nil
 
         do {
-            // Phase 4: Determine which model to use (intelligent routing or manual)
+            // Determine which model to use (intelligent routing or manual)
             let modelToUse = await determineModelForQuery(text, sessionId: backendSessionId)
 
             // Create assistant message placeholder with model tracking
@@ -476,108 +476,21 @@ final class ChatStore {
             )
             messages.append(assistantMessage)
 
-            // Build request using backend session ID
-            // SECURITY (CRIT-05): Use guard let instead of force unwrap
-            guard let url = URL(string: "http://localhost:8000/api/v1/chat/sessions/\(backendSessionId)/messages") else {
-                throw ChatError.sendFailed("Invalid URL for session messages")
-            }
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            // Stream the AI response
+            let fullContent = try await streamMessageResponse(
+                sessionId: backendSessionId,
+                localSessionId: session.id,
+                content: text,
+                model: modelToUse
+            )
 
-            // Get token if available (will be nil in DEBUG mode)
-            if let token = KeychainService.shared.loadToken() {
-                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            }
-
-            let requestBody: [String: Any] = [
-                "content": text,
-                "model": modelToUse
-            ]
-            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
-
-            // Stream response
-            let (bytes, response) = try await URLSession.shared.bytes(for: request)
-
-            guard let httpResponse = response as? HTTPURLResponse else {
-                throw ChatError.sendFailed("Invalid response")
-            }
-
-            if httpResponse.statusCode != 200 {
-                throw ChatError.sendFailed("Server returned status \(httpResponse.statusCode)")
-            }
-
-            // Parse SSE stream
-            var fullContent = ""
-            for try await line in bytes.lines {
-                // SSE format: "data: {...}\n\n"
-                if line.hasPrefix("data: ") {
-                    let jsonString = String(line.dropFirst(6)) // Remove "data: "
-
-                    // Skip [START] marker
-                    if jsonString == "[START]" {
-                        continue
-                    }
-
-                    // Parse JSON
-                    if let jsonData = jsonString.data(using: .utf8) {
-                        if let dict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
-                            // Check for error
-                            if let errorMsg = dict["error"] as? String {
-                                throw ChatError.sendFailed(errorMsg)
-                            }
-
-                            // Check for content chunk
-                            if let chunk = dict["content"] as? String {
-                                fullContent += chunk
-                                // Update last message (assistant) while preserving modelId
-                                if let lastIndex = messages.indices.last {
-                                    messages[lastIndex] = ChatMessage(
-                                        id: messages[lastIndex].id,
-                                        role: .assistant,
-                                        content: fullContent,
-                                        sessionId: session.id,
-                                        modelId: modelToUse
-                                    )
-                                }
-                            }
-
-                            // Check for done
-                            if let done = dict["done"] as? Bool, done {
-                                break
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Auto-store context for future semantic search (Phase 5)
-            // Note: Context storage is optional - fails silently if endpoint unavailable
-            Task {
-                do {
-                    try await ContextService.shared.storeContext(
-                        sessionId: session.id.uuidString,
-                        workspaceType: "chat",
-                        content: """
-                        User: \(text)
-                        Assistant: \(fullContent)
-                        """,
-                        metadata: [
-                            "model": modelToUse,
-                            "user_query": text,
-                            "response_length": fullContent.count
-                        ]
-                    )
-                } catch {
-                    // Context storage is optional - silently ignore 404s (endpoint not available)
-                    // Only log unexpected errors for debugging
-                    #if DEBUG
-                    if !"\(error)".contains("404") {
-                        print("⚠️ Context storage error: \(error)")
-                    }
-                    #endif
-                }
-            }
+            // Store context for semantic search (fire and forget)
+            storeMessageContext(
+                sessionId: session.id,
+                userQuery: text,
+                response: fullContent,
+                model: modelToUse
+            )
 
         } catch {
             self.error = .sendFailed(error.localizedDescription)
@@ -586,6 +499,157 @@ final class ChatStore {
 
         isLoading = false
         isStreaming = false
+    }
+
+    // MARK: - Streaming Helpers
+
+    /// Build and send streaming request, returning full response content
+    private func streamMessageResponse(
+        sessionId: String,
+        localSessionId: UUID,
+        content: String,
+        model: String
+    ) async throws -> String {
+        // Build request
+        let request = try buildMessageRequest(
+            sessionId: sessionId,
+            content: content,
+            model: model
+        )
+
+        // Execute streaming request
+        let (bytes, response) = try await URLSession.shared.bytes(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw ChatError.sendFailed("Invalid response")
+        }
+
+        if httpResponse.statusCode != 200 {
+            throw ChatError.sendFailed("Server returned status \(httpResponse.statusCode)")
+        }
+
+        // Parse SSE stream and update messages in real-time
+        return try await parseSSEStream(
+            bytes: bytes,
+            localSessionId: localSessionId,
+            model: model
+        )
+    }
+
+    /// Build HTTP request for sending a message
+    private func buildMessageRequest(
+        sessionId: String,
+        content: String,
+        model: String
+    ) throws -> URLRequest {
+        guard let url = URL(string: "http://localhost:8000/api/v1/chat/sessions/\(sessionId)/messages") else {
+            throw ChatError.sendFailed("Invalid URL for session messages")
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        // Get token if available (will be nil in DEBUG mode)
+        if let token = KeychainService.shared.loadToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        let requestBody: [String: Any] = [
+            "content": content,
+            "model": model
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+
+        return request
+    }
+
+    /// Parse SSE stream and update assistant message in real-time
+    private func parseSSEStream(
+        bytes: URLSession.AsyncBytes,
+        localSessionId: UUID,
+        model: String
+    ) async throws -> String {
+        var fullContent = ""
+
+        for try await line in bytes.lines {
+            // SSE format: "data: {...}\n\n"
+            guard line.hasPrefix("data: ") else { continue }
+
+            let jsonString = String(line.dropFirst(6)) // Remove "data: "
+
+            // Skip [START] marker
+            if jsonString == "[START]" { continue }
+
+            // Parse JSON chunk
+            guard let jsonData = jsonString.data(using: .utf8),
+                  let dict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] else {
+                continue
+            }
+
+            // Check for error
+            if let errorMsg = dict["error"] as? String {
+                throw ChatError.sendFailed(errorMsg)
+            }
+
+            // Check for content chunk
+            if let chunk = dict["content"] as? String {
+                fullContent += chunk
+                updateAssistantMessage(content: fullContent, sessionId: localSessionId, model: model)
+            }
+
+            // Check for done
+            if let done = dict["done"] as? Bool, done {
+                break
+            }
+        }
+
+        return fullContent
+    }
+
+    /// Update the last assistant message with streaming content
+    private func updateAssistantMessage(content: String, sessionId: UUID, model: String) {
+        guard let lastIndex = messages.indices.last else { return }
+        messages[lastIndex] = ChatMessage(
+            id: messages[lastIndex].id,
+            role: .assistant,
+            content: content,
+            sessionId: sessionId,
+            modelId: model
+        )
+    }
+
+    /// Store message context for semantic search (fire and forget)
+    private func storeMessageContext(
+        sessionId: UUID,
+        userQuery: String,
+        response: String,
+        model: String
+    ) {
+        Task {
+            do {
+                try await ContextService.shared.storeContext(
+                    sessionId: sessionId.uuidString,
+                    workspaceType: "chat",
+                    content: """
+                    User: \(userQuery)
+                    Assistant: \(response)
+                    """,
+                    metadata: [
+                        "model": model,
+                        "user_query": userQuery,
+                        "response_length": response.count
+                    ]
+                )
+            } catch {
+                // Context storage is optional - silently ignore 404s
+                #if DEBUG
+                if !"\(error)".contains("404") {
+                    print("⚠️ Context storage error: \(error)")
+                }
+                #endif
+            }
+        }
     }
 
     func regenerateLastResponse() async {
