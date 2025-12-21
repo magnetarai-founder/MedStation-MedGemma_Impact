@@ -139,7 +139,7 @@ class ModelManager:
         self.hot_slots: Dict[int, Optional[str]] = {1: None, 2: None, 3: None, 4: None}
         self.load_hot_slots()
 
-    def load_hot_slots(self):
+    def load_hot_slots(self) -> None:
         """
         Load hot slots from disk
 
@@ -161,7 +161,7 @@ class ModelManager:
             logger.error(f"❌ Failed to load hot slots: {e}")
             self.hot_slots = {1: None, 2: None, 3: None, 4: None}
 
-    def save_hot_slots(self):
+    def save_hot_slots(self) -> None:
         """
         Save hot slots to disk (creates file if doesn't exist)
 

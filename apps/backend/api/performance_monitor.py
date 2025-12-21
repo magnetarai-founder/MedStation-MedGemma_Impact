@@ -40,7 +40,7 @@ class PerformanceMonitor:
         self.start_time = time.time()
         self.last_token_time = time.time()
 
-    def record_tokens(self, num_tokens: int):
+    def record_tokens(self, num_tokens: int) -> None:
         """Record tokens generated"""
         self.total_tokens += num_tokens
         self.last_token_time = time.time()
@@ -193,7 +193,7 @@ class PerformanceMonitor:
         else:
             return "No action needed"
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset all metrics"""
         self.total_tokens = 0
         self.start_time = time.time()

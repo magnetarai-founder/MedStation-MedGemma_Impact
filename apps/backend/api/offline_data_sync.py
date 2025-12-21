@@ -83,7 +83,7 @@ class OfflineDataSync:
 
         logger.info(f"🔄 Data sync initialized for peer {local_peer_id}")
 
-    def _init_sync_db(self):
+    def _init_sync_db(self) -> None:
         """Initialize sync metadata database"""
         conn = sqlite3.connect(str(self.sync_db_path))
         cursor = conn.cursor()
@@ -141,7 +141,7 @@ class OfflineDataSync:
                              operation: str,
                              row_id: Any,
                              data: Optional[dict] = None,
-                             team_id: Optional[str] = None):
+                             team_id: Optional[str] = None) -> None:
         """
         Track a local database operation for syncing
 
@@ -587,7 +587,7 @@ class OfflineDataSync:
             logger.error(f"Failed to exchange operations with {peer_id}: {e}")
             return []
 
-    async def _save_sync_state(self, state: SyncState):
+    async def _save_sync_state(self, state: SyncState) -> None:
         """Save sync state to database"""
         conn = sqlite3.connect(str(self.sync_db_path))
         cursor = conn.cursor()
@@ -609,19 +609,19 @@ class OfflineDataSync:
         conn.close()
 
     def _generate_op_id(self) -> str:
-        """Generate unique operation ID"""
+        """Generate unique operation ID using UUID"""
         import uuid
         return str(uuid.uuid4())
 
     def get_sync_state(self, peer_id: str) -> Optional[SyncState]:
-        """Get sync state with a specific peer"""
+        """Get sync state with a specific peer by ID"""
         return self.sync_states.get(peer_id)
 
     def get_all_sync_states(self) -> List[SyncState]:
-        """Get all peer sync states"""
+        """Get all peer sync states as a list"""
         return list(self.sync_states.values())
 
-    def get_stats(self) -> dict:
+    def get_stats(self) -> Dict[str, Any]:
         """Get sync statistics"""
         total_sent = sum(s.operations_sent for s in self.sync_states.values())
         total_received = sum(s.operations_received for s in self.sync_states.values())
