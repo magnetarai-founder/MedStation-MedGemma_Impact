@@ -20,7 +20,7 @@ import threading
 import time
 import logging
 from pathlib import Path
-from typing import Union, Optional
+from typing import Union, Optional, Any
 from contextlib import contextmanager
 from queue import Queue, Empty
 from dataclasses import dataclass, field
@@ -118,7 +118,7 @@ class SQLiteConnectionPool:
             f"min={min_size}, max={max_size}, lifetime={max_lifetime}s"
         )
 
-    def _initialize_pool(self):
+    def _initialize_pool(self) -> None:
         """Create minimum number of connections on startup"""
         for _ in range(self.min_size):
             pooled_conn = self._create_connection()
@@ -219,7 +219,7 @@ class SQLiteConnectionPool:
                     f"Timeout acquiring connection from pool after {self.timeout}s"
                 )
 
-    def checkin(self, conn: sqlite3.Connection):
+    def checkin(self, conn: sqlite3.Connection) -> None:
         """
         Return a connection to the pool
 
@@ -275,7 +275,7 @@ class SQLiteConnectionPool:
         finally:
             self.checkin(conn)
 
-    def _close_connection(self, pooled_conn: PooledConnection):
+    def _close_connection(self, pooled_conn: PooledConnection) -> None:
         """
         Close a pooled connection and remove from tracking
 
@@ -291,7 +291,7 @@ class SQLiteConnectionPool:
             if pooled_conn in self._all_connections:
                 self._all_connections.remove(pooled_conn)
 
-    def close(self):
+    def close(self) -> None:
         """
         Close all connections in the pool
 
@@ -323,7 +323,7 @@ class SQLiteConnectionPool:
 
         logger.info("Connection pool closed")
 
-    def stats(self) -> dict:
+    def stats(self) -> dict[str, Any]:
         """
         Get pool statistics
 
@@ -387,7 +387,7 @@ def get_connection_pool(
         return _connection_pools[db_path]
 
 
-def close_all_pools():
+def close_all_pools() -> None:
     """
     Close all connection pools
 

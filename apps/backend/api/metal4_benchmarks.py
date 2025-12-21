@@ -92,7 +92,7 @@ class Metal4Benchmarks:
 
         return summary
 
-    def _benchmark_single_embedding(self):
+    def _benchmark_single_embedding(self) -> None:
         """Benchmark single text embedding"""
         logger.info("\n--- Benchmark 1: Single Embedding Performance ---")
 
@@ -185,7 +185,7 @@ class Metal4Benchmarks:
         except Exception as e:
             logger.error(f"CPU baseline failed: {e}")
 
-    def _benchmark_batch_embedding(self):
+    def _benchmark_batch_embedding(self) -> None:
         """Benchmark batch embedding performance"""
         logger.info("\n--- Benchmark 2: Batch Embedding Performance ---")
 
@@ -267,7 +267,7 @@ class Metal4Benchmarks:
         except Exception as e:
             logger.error(f"CPU batch baseline failed: {e}")
 
-    def _benchmark_vector_search(self):
+    def _benchmark_vector_search(self) -> None:
         """Benchmark vector similarity search"""
         logger.info("\n--- Benchmark 3: Vector Similarity Search ---")
 
@@ -357,7 +357,7 @@ class Metal4Benchmarks:
         except Exception as e:
             logger.error(f"CPU search baseline failed: {e}")
 
-    def _benchmark_sparse_storage(self):
+    def _benchmark_sparse_storage(self) -> None:
         """Benchmark sparse embedding storage"""
         logger.info("\n--- Benchmark 4: Sparse Storage Performance ---")
 
@@ -430,7 +430,7 @@ class Metal4Benchmarks:
             import traceback
             traceback.print_exc()
 
-    def _benchmark_rag_pipeline(self):
+    def _benchmark_rag_pipeline(self) -> None:
         """Benchmark end-to-end RAG pipeline"""
         logger.info("\n--- Benchmark 5: End-to-End RAG Pipeline ---")
 
@@ -502,7 +502,7 @@ class Metal4Benchmarks:
             traceback.print_exc()
 
     def _generate_summary(self) -> Dict[str, Any]:
-        """Generate benchmark summary"""
+        """Generate benchmark summary and print results"""
         summary = {
             'total_benchmarks': len(self.results),
             'successful': sum(1 for r in self.results if r.success),

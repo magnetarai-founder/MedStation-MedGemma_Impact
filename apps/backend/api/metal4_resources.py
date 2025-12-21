@@ -7,7 +7,7 @@ Handles buffers, tensors, and unified memory heap allocations
 """
 
 import logging
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Dict, Any
 from enum import Enum
 
 logger = logging.getLogger(__name__)
@@ -69,7 +69,7 @@ class Metal4ResourceManager:
         buffer_type: BufferType,
         size: Optional[int] = None,
         label: Optional[str] = None
-    ):
+    ) -> Optional[Any]:
         """
         Allocate a Metal buffer from the unified memory heap
 
@@ -124,7 +124,7 @@ class Metal4ResourceManager:
         shape: Tuple[int, ...],
         dtype_size: int = 4,
         label: Optional[str] = None
-    ):
+    ) -> Optional[Any]:
         """
         Allocate a buffer for tensor data
 
@@ -149,7 +149,7 @@ class Metal4ResourceManager:
             label=label or f"tensor_{'x'.join(map(str, shape))}"
         )
 
-    def release_buffer(self, buffer):
+    def release_buffer(self, buffer: Any) -> None:
         """
         Release a buffer (Python wrapper - Metal handles actual deallocation)
 
@@ -167,7 +167,7 @@ class Metal4ResourceManager:
             logger.debug(f"✓ Released buffer: {size / 1024:.2f} KB")
             logger.debug(f"  Total allocated: {self.total_allocated / (1024**2):.2f} MB")
 
-    def get_memory_stats(self):
+    def get_memory_stats(self) -> Dict[str, float]:
         """Get current memory usage statistics"""
         return {
             'heap_size_mb': self.heap.size() / (1024**2),
@@ -177,7 +177,7 @@ class Metal4ResourceManager:
             'heap_utilization_pct': (self.heap.usedSize() / self.heap.size()) * 100
         }
 
-    def create_embedding_buffers(self, batch_size: int = 64, embed_dim: int = 384):
+    def create_embedding_buffers(self, batch_size: int = 64, embed_dim: int = 384) -> Dict[str, Any]:
         """
         Create buffers for embedding pipeline
 
@@ -201,7 +201,7 @@ class Metal4ResourceManager:
             )
         }
 
-    def create_rag_buffers(self, num_vectors: int = 1000, vector_dim: int = 384):
+    def create_rag_buffers(self, num_vectors: int = 1000, vector_dim: int = 384) -> Dict[str, Any]:
         """
         Create buffers for RAG vector search
 
@@ -235,7 +235,7 @@ class Metal4ResourceManager:
 _resource_manager: Optional[Metal4ResourceManager] = None
 
 
-def get_resource_manager():
+def get_resource_manager() -> Optional[Metal4ResourceManager]:
     """Get singleton resource manager instance"""
     global _resource_manager
 

@@ -17,7 +17,7 @@ import secrets
 import base64
 import hashlib
 import logging
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Dict, Any
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -337,7 +337,7 @@ async def retrieve_key(request: Request, body: RetrieveKeyRequest):
 
 
 @router.delete("/delete-key/{key_id}")
-async def delete_key(request: Request, key_id: str):
+async def delete_key(request: Request, key_id: str) -> Dict[str, Any]:
     """Delete encryption key from macOS Keychain"""
     try:
         if not key_exists_in_keychain(key_id):
@@ -361,7 +361,7 @@ async def delete_key(request: Request, key_id: str):
 
 
 @router.get("/check-key/{key_id}")
-async def check_key_exists(key_id: str):
+async def check_key_exists(key_id: str) -> Dict[str, Any]:
     """Check if an encryption key exists in the Keychain"""
     exists = key_exists_in_keychain(key_id)
 
@@ -373,7 +373,7 @@ async def check_key_exists(key_id: str):
 
 
 @router.get("/health")
-async def health_check():
+async def health_check() -> Dict[str, Any]:
     """Health check for Secure Enclave service"""
     try:
         # Test if Keychain is accessible

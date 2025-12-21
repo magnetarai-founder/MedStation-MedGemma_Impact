@@ -59,7 +59,7 @@ class UnifiedContextManager:
         self.max_tokens_per_session = 200_000
         self.max_tokens_global = 1_000_000  # Across all sessions
 
-    def _init_db(self):
+    def _init_db(self) -> None:
         """Initialize unified context database"""
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
@@ -382,7 +382,7 @@ class UnifiedContextManager:
 
         return "\n\n".join(context_parts)
 
-    def _cleanup_session(self, session_id: str):
+    def _cleanup_session(self, session_id: str) -> None:
         """Remove old entries if session exceeds token limit"""
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
@@ -413,7 +413,7 @@ class UnifiedContextManager:
         conn.commit()
         conn.close()
 
-    def _cleanup_global_tokens(self, user_id: str):
+    def _cleanup_global_tokens(self, user_id: str) -> None:
         """Remove old entries across all sessions if user exceeds global token limit"""
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
@@ -446,7 +446,7 @@ class UnifiedContextManager:
         conn.commit()
         conn.close()
 
-    def update_session_workspace(self, session_id: str, workspace_root: str, active_files: List[str]):
+    def update_session_workspace(self, session_id: str, workspace_root: str, active_files: List[str]) -> None:
         """Update session workspace metadata"""
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
