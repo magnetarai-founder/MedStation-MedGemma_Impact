@@ -23,7 +23,7 @@ Performance Target:
 
 import os
 import logging
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Callable
 from dataclasses import dataclass
 from enum import Enum
 
@@ -239,7 +239,7 @@ class Metal4Engine:
             logger.warning("Metal 4 not available - using CPU fallback")
             self.initialization_error = "Metal 4 not available on this system"
 
-    def _initialize_metal4(self):
+    def _initialize_metal4(self) -> None:
         """
         Initialize full Metal 4 pipeline with unified command queues
 
@@ -319,7 +319,7 @@ class Metal4Engine:
             traceback.print_exc()
             self.initialization_error = f"Metal 4 initialization failed: {e}"
 
-    def _initialize_metal3_fallback(self):
+    def _initialize_metal3_fallback(self) -> None:
         """Initialize with Metal 3 fallback (basic MPS)"""
         try:
             import torch
@@ -392,7 +392,7 @@ class Metal4Engine:
     # TICK FLOW - Metal 4 Unified Command Buffer Architecture
     # ========================================================================
 
-    def kick_frame(self):
+    def kick_frame(self) -> None:
         """
         Start new frame - signal all queues
 
@@ -423,7 +423,12 @@ class Metal4Engine:
         except Exception as e:
             logger.error(f"❌ Failed to kick frame: {e}")
 
-    def process_chat_message(self, user_message: str, embedder=None, rag_retriever=None):
+    def process_chat_message(
+        self,
+        user_message: str,
+        embedder: Optional[Callable[[str], Any]] = None,
+        rag_retriever: Optional[Callable[[Any], Any]] = None
+    ) -> Optional[Dict[str, Any]]:
         """
         Full chat pipeline on ML queue with event-based synchronization
 
@@ -521,7 +526,12 @@ class Metal4Engine:
             traceback.print_exc()
             return None
 
-    def _process_chat_cpu_fallback(self, user_message: str, embedder, rag_retriever):
+    def _process_chat_cpu_fallback(
+        self,
+        user_message: str,
+        embedder: Optional[Callable[[str], Any]],
+        rag_retriever: Optional[Callable[[Any], Any]]
+    ) -> Dict[str, Any]:
         """CPU fallback when Metal not available"""
         import time
         start_time = time.time()
@@ -538,7 +548,11 @@ class Metal4Engine:
             'fallback': True
         }
 
-    def process_sql_query(self, sql: str, embedder=None):
+    def process_sql_query(
+        self,
+        sql: str,
+        embedder: Optional[Callable[[str], Any]] = None
+    ) -> Optional[Dict[str, Any]]:
         """
         DuckDB query + embedding on ML queue
         Runs in parallel with UI and chat!
@@ -616,7 +630,11 @@ class Metal4Engine:
             traceback.print_exc()
             return None
 
-    def _process_sql_cpu_fallback(self, sql: str, embedder):
+    def _process_sql_cpu_fallback(
+        self,
+        sql: str,
+        embedder: Optional[Callable[[str], Any]]
+    ) -> Dict[str, Any]:
         """CPU fallback for SQL processing"""
         import time
         start_time = time.time()
@@ -643,7 +661,7 @@ class Metal4Engine:
             'fallback': True
         }
 
-    def render_ui_frame(self, rag_ready: bool = False):
+    def render_ui_frame(self, rag_ready: bool = False) -> Dict[str, Any]:
         """
         Render UI with last-known data
         NEVER waits for ML to complete!
@@ -708,7 +726,7 @@ class Metal4Engine:
             logger.error(f"❌ UI render failed: {e}")
             return {'rendered': False, 'error': str(e)}
 
-    def async_memory_operations(self, source_buffer, dest_buffer):
+    def async_memory_operations(self, source_buffer: Any, dest_buffer: Any) -> Optional[Any]:
         """
         Background transfers - keep off critical path
         Uses Q_blit for async data movement

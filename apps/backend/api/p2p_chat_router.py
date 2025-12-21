@@ -4,7 +4,7 @@ Provides REST API endpoints for the frontend
 """
 
 import asyncio
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 from datetime import datetime, UTC
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import StreamingResponse
@@ -41,7 +41,7 @@ active_connections: List[WebSocket] = []
 # ===== Initialization Endpoint =====
 
 @router.post("/initialize")
-async def initialize_p2p_service(request: Request, display_name: str, device_name: str):
+async def initialize_p2p_service(request: Request, display_name: str, device_name: str) -> Dict[str, Any]:
     """
     Initialize the P2P chat service
     Called once when the app starts
@@ -65,7 +65,7 @@ async def initialize_p2p_service(request: Request, display_name: str, device_nam
 # ===== Status & Peers =====
 
 @router.get("/status", response_model=P2PStatusResponse)
-async def get_p2p_status():
+async def get_p2p_status() -> P2PStatusResponse:
     """Get current P2P network status"""
     service = get_p2p_chat_service()
 
@@ -92,7 +92,7 @@ async def get_p2p_status():
 
 
 @router.get("/peers", response_model=PeerListResponse)
-async def list_peers():
+async def list_peers() -> PeerListResponse:
     """List all discovered peers"""
     service = get_p2p_chat_service()
 
@@ -108,7 +108,7 @@ async def list_peers():
 
 
 @router.get("/peers/{peer_id}", response_model=Peer)
-async def get_peer(peer_id: str):
+async def get_peer(peer_id: str) -> Peer:
     """Get details about a specific peer"""
     service = get_p2p_chat_service()
 
@@ -127,7 +127,7 @@ async def get_peer(peer_id: str):
 # ===== Channels =====
 
 @router.post("/channels", response_model=Channel)
-async def create_channel(request: Request, body: CreateChannelRequest):
+async def create_channel(request: Request, body: CreateChannelRequest) -> Channel:
     """Create a new channel"""
     service = get_p2p_chat_service()
 
@@ -151,7 +151,7 @@ async def create_channel(request: Request, body: CreateChannelRequest):
 
 
 @router.post("/dm", response_model=Channel)
-async def create_direct_message(request: Request, body: CreateDMRequest):
+async def create_direct_message(request: Request, body: CreateDMRequest) -> Channel:
     """Create a direct message channel with another peer"""
     service = get_p2p_chat_service()
 
@@ -198,7 +198,7 @@ async def create_direct_message(request: Request, body: CreateDMRequest):
 
 
 @router.get("/channels", response_model=ChannelListResponse)
-async def list_channels():
+async def list_channels() -> ChannelListResponse:
     """List all channels (public, private, and DMs)"""
     service = get_p2p_chat_service()
 
@@ -214,7 +214,7 @@ async def list_channels():
 
 
 @router.get("/channels/{channel_id}", response_model=Channel)
-async def get_channel(channel_id: str):
+async def get_channel(channel_id: str) -> Channel:
     """Get a specific channel"""
     service = get_p2p_chat_service()
 
@@ -234,8 +234,8 @@ async def invite_to_channel(
     request: Request,
     channel_id: str,
     body: InviteToChannelRequest,
-    current_user: dict = Depends(get_current_user)
-):
+    current_user: Dict[str, Any] = Depends(get_current_user)
+) -> Dict[str, Any]:
     """Invite peers to a channel"""
     service = get_p2p_chat_service()
 
@@ -291,8 +291,8 @@ async def invite_to_channel(
 async def list_channel_invitations(
     channel_id: str,
     status: Optional[str] = None,
-    current_user: dict = Depends(get_current_user)
-):
+    current_user: Dict[str, Any] = Depends(get_current_user)
+) -> Dict[str, Any]:
     """List invitations for a channel"""
     service = get_p2p_chat_service()
 
@@ -327,8 +327,8 @@ async def list_channel_invitations(
 async def accept_channel_invitation(
     channel_id: str,
     peer_id: str,
-    current_user: dict = Depends(get_current_user)
-):
+    current_user: Dict[str, Any] = Depends(get_current_user)
+) -> Dict[str, Any]:
     """Accept a channel invitation"""
     service = get_p2p_chat_service()
 
@@ -368,8 +368,8 @@ async def accept_channel_invitation(
 async def decline_channel_invitation(
     channel_id: str,
     peer_id: str,
-    current_user: dict = Depends(get_current_user)
-):
+    current_user: Dict[str, Any] = Depends(get_current_user)
+) -> Dict[str, Any]:
     """Decline a channel invitation"""
     user_id = current_user.get("user_id")
     if peer_id != user_id:
@@ -401,7 +401,7 @@ async def decline_channel_invitation(
 # ===== Messages =====
 
 @router.post("/channels/{channel_id}/messages", response_model=Message)
-async def send_message(request: Request, channel_id: str, body: SendMessageRequest):
+async def send_message(request: Request, channel_id: str, body: SendMessageRequest) -> Message:
     """Send a message to a channel"""
     service = get_p2p_chat_service()
 
@@ -428,7 +428,7 @@ async def send_message(request: Request, channel_id: str, body: SendMessageReque
 
 
 @router.get("/channels/{channel_id}/messages", response_model=MessageListResponse)
-async def get_messages(channel_id: str, limit: int = 50):
+async def get_messages(channel_id: str, limit: int = 50) -> MessageListResponse:
     """Get messages for a channel"""
     service = get_p2p_chat_service()
 
@@ -455,8 +455,8 @@ async def mark_message_as_read(
     request: Request,
     channel_id: str,
     message_id: str,
-    current_user: dict = Depends(get_current_user)
-):
+    current_user: Dict[str, Any] = Depends(get_current_user)
+) -> Dict[str, Any]:
     """Mark a message as read"""
     service = get_p2p_chat_service()
 
@@ -505,8 +505,8 @@ async def mark_message_as_read(
 async def get_message_receipts(
     channel_id: str,
     message_id: str,
-    current_user: dict = Depends(get_current_user)
-):
+    current_user: Dict[str, Any] = Depends(get_current_user)
+) -> Dict[str, Any]:
     """Get read receipts for a message"""
     service = get_p2p_chat_service()
 
@@ -527,8 +527,8 @@ async def get_message_receipts(
 @router.get("/channels/{channel_id}/receipts")
 async def get_channel_receipts(
     channel_id: str,
-    current_user: dict = Depends(get_current_user)
-):
+    current_user: Dict[str, Any] = Depends(get_current_user)
+) -> Dict[str, Any]:
     """Get all read receipts for messages in a channel"""
     service = get_p2p_chat_service()
 
@@ -553,7 +553,7 @@ async def get_channel_receipts(
 # ===== WebSocket for Real-time Updates =====
 
 @router.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_endpoint(websocket: WebSocket) -> None:
     """
     WebSocket connection for real-time chat updates
     Sends events for new messages, peer status changes, etc.
@@ -582,7 +582,7 @@ async def websocket_endpoint(websocket: WebSocket):
             active_connections.remove(websocket)
 
 
-async def broadcast_event(event: dict):
+async def broadcast_event(event: Dict[str, Any]) -> None:
     """Broadcast an event to all connected WebSocket clients"""
     import json
 
@@ -604,7 +604,7 @@ async def broadcast_event(event: dict):
 # ===== E2E Encryption Endpoints =====
 
 @router.post("/e2e/init")
-async def initialize_e2e_keys(request: Request, device_id: str, passphrase: str):
+async def initialize_e2e_keys(request: Request, device_id: str, passphrase: str) -> Dict[str, Any]:
     """
     Initialize E2E encryption keys for this device
 
@@ -629,7 +629,7 @@ async def initialize_e2e_keys(request: Request, device_id: str, passphrase: str)
 
 
 @router.post("/e2e/peers/{peer_id}/keys")
-async def store_peer_public_key(request: Request, peer_id: str, public_key_hex: str, verify_key_hex: str):
+async def store_peer_public_key(request: Request, peer_id: str, public_key_hex: str, verify_key_hex: str) -> Dict[str, Any]:
     """
     Store a peer's public key and generate safety number
 
@@ -659,7 +659,7 @@ async def store_peer_public_key(request: Request, peer_id: str, public_key_hex: 
 
 
 @router.post("/e2e/peers/{peer_id}/verify")
-async def verify_peer(request: Request, peer_id: str):
+async def verify_peer(request: Request, peer_id: str) -> Dict[str, str]:
     """
     Mark a peer's fingerprint as verified
 
@@ -683,7 +683,7 @@ async def verify_peer(request: Request, peer_id: str):
 
 
 @router.get("/e2e/safety-changes")
-async def get_safety_changes():
+async def get_safety_changes() -> Dict[str, Any]:
     """
     Get list of unacknowledged safety number changes
 
@@ -704,7 +704,7 @@ async def get_safety_changes():
 
 
 @router.post("/e2e/safety-changes/{change_id}/acknowledge")
-async def acknowledge_safety_change(request: Request, change_id: int):
+async def acknowledge_safety_change(request: Request, change_id: int) -> Dict[str, Any]:
     """
     Mark a safety number change as acknowledged
 
@@ -728,7 +728,7 @@ async def acknowledge_safety_change(request: Request, change_id: int):
 
 
 @router.post("/e2e/export")
-async def export_identity(request: Request, passphrase: str):
+async def export_identity(request: Request, passphrase: str) -> Dict[str, Any]:
     """
     Export identity keypair for linking to another device (QR code)
 
@@ -759,7 +759,7 @@ async def import_identity(
     nonce: str,
     passphrase: str,
     new_device_id: str
-):
+) -> Dict[str, str]:
     """
     Import identity keypair from another device (from QR code)
 

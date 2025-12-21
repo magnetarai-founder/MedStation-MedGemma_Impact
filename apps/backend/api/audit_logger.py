@@ -21,8 +21,10 @@ import json
 import sqlite3
 from pathlib import Path
 from datetime import datetime, timedelta, UTC
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Callable, TypeVar
 from functools import wraps
+
+F = TypeVar('F', bound=Callable[..., Any])
 import logging
 
 from fastapi import Request
@@ -212,7 +214,7 @@ class AuditLogger:
         self.db_path = db_path
         self._init_db()
 
-    def _init_db(self):
+    def _init_db(self) -> None:
         """Initialize audit database schema"""
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
@@ -578,7 +580,7 @@ def audit_log(
     action: str,
     resource: Optional[str] = None,
     resource_id: Optional[str] = None
-):
+) -> Callable[[F], F]:
     """
     Decorator to automatically log API endpoint calls
 
@@ -593,7 +595,7 @@ def audit_log(
         resource: Resource type
         resource_id: Resource ID (if not in path params)
     """
-    def decorator(func):
+    def decorator(func: F) -> F:
         @wraps(func)
         async def wrapper(*args, **kwargs):
             # Extract request and user info
@@ -647,7 +649,7 @@ def audit_log_sync(
     resource: Optional[str] = None,
     resource_id: Optional[str] = None,
     details: Optional[Dict[str, Any]] = None
-):
+) -> None:
     """
     Synchronous audit logging (for non-decorator use)
 

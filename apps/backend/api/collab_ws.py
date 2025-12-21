@@ -18,7 +18,7 @@ import logging
 import json
 import asyncio
 import time
-from typing import Dict, Optional, Set
+from typing import Dict, Optional, Set, Any, Union
 from pathlib import Path
 from datetime import datetime, timedelta
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, status
@@ -81,7 +81,7 @@ def verify_jwt_token(token: str) -> Optional[Dict]:
         return None
 
 
-def get_or_create_ydoc(doc_id: str):
+def get_or_create_ydoc(doc_id: str) -> Any:
     """
     Get or create Y.Doc for document ID
 
@@ -89,7 +89,7 @@ def get_or_create_ydoc(doc_id: str):
         doc_id: Document UUID
 
     Returns:
-        Y.Doc instance
+        Y.Doc instance (or MockYDoc if ypy unavailable)
     """
     if doc_id not in collab_docs:
         try:
@@ -150,7 +150,7 @@ def get_or_create_ydoc(doc_id: str):
     return collab_docs[doc_id]["ydoc"]
 
 
-def save_snapshot(doc_id: str):
+def save_snapshot(doc_id: str) -> None:
     """
     Save Y.Doc snapshot to disk
 
@@ -193,7 +193,7 @@ def save_snapshot(doc_id: str):
         logger.error(f"Failed to save snapshot for {doc_id}: {e}")
 
 
-def cleanup_old_snapshots():
+def cleanup_old_snapshots() -> None:
     """Remove snapshots older than SNAPSHOT_RETENTION_HOURS"""
     try:
         cutoff_time = time.time() - (SNAPSHOT_RETENTION_HOURS * 3600)
@@ -207,7 +207,7 @@ def cleanup_old_snapshots():
         logger.error(f"Snapshot cleanup failed: {e}")
 
 
-async def broadcast_to_doc(doc_id: str, message: bytes, exclude: Optional[WebSocket] = None):
+async def broadcast_to_doc(doc_id: str, message: bytes, exclude: Optional[WebSocket] = None) -> None:
     """
     Broadcast message to all connections on a document
 
@@ -288,7 +288,7 @@ set_snapshot_applier(_apply_snapshot_impl)
 
 # ===== Background Tasks =====
 
-async def snapshot_task():
+async def snapshot_task() -> None:
     """Background task to periodically save snapshots"""
     while True:
         try:
@@ -312,14 +312,14 @@ async def snapshot_task():
 # Don't start here as event loop may not be running during import
 _snapshot_task: Optional[asyncio.Task] = None
 
-async def start_snapshot_task():
+async def start_snapshot_task() -> None:
     """Start the background snapshot task (called by app lifespan)"""
     global _snapshot_task
     if _snapshot_task is None:
         _snapshot_task = asyncio.create_task(snapshot_task())
         logger.info("✅ Snapshot task started")
 
-async def stop_snapshot_task():
+async def stop_snapshot_task() -> None:
     """Stop the background snapshot task (called by app shutdown)"""
     global _snapshot_task
     if _snapshot_task:
@@ -339,7 +339,7 @@ async def collab_websocket(
     websocket: WebSocket,
     doc_id: str,
     token: Optional[str] = Query(None)
-):
+) -> None:
     """
     WebSocket endpoint for real-time collaborative editing
 
@@ -490,7 +490,7 @@ async def collab_websocket(
 # ===== REST Endpoints =====
 
 @router.get("/docs/{doc_id}/status")
-async def get_doc_status(doc_id: str):
+async def get_doc_status(doc_id: str) -> Union[JSONResponse, Dict[str, Any]]:
     """
     Get collaboration status for a document
 
@@ -515,7 +515,7 @@ async def get_doc_status(doc_id: str):
 
 
 @router.post("/docs/{doc_id}/snapshot")
-async def trigger_snapshot(doc_id: str):
+async def trigger_snapshot(doc_id: str) -> Union[JSONResponse, Dict[str, Any]]:
     """
     Manually trigger snapshot save for a document
     """

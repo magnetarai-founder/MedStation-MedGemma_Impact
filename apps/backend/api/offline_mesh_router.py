@@ -86,7 +86,7 @@ class SyncResponse(BaseModel):
 # ============================================================================
 
 @router.post("/discovery/start", response_model=DiscoveryStartResponse)
-async def start_discovery(request: Request, display_name: str, device_name: str):
+async def start_discovery(request: Request, display_name: str, device_name: str) -> DiscoveryStartResponse:
     """
     Start mDNS peer discovery on local network
 
@@ -132,7 +132,7 @@ async def start_discovery(request: Request, display_name: str, device_name: str)
 
 
 @router.get("/discovery/peers", response_model=PeersListResponse)
-async def get_discovered_peers():
+async def get_discovered_peers() -> PeersListResponse:
     """Get list of discovered peers on local network"""
     try:
         discovery = get_mesh_discovery()
@@ -161,7 +161,7 @@ async def get_discovered_peers():
 
 
 @router.get("/discovery/stats")
-async def get_discovery_stats():
+async def get_discovery_stats() -> Dict[str, Any]:
     """Get discovery statistics"""
     try:
         discovery = get_mesh_discovery()
@@ -173,7 +173,7 @@ async def get_discovery_stats():
 
 
 @router.post("/discovery/stop", response_model=StatusResponse)
-async def stop_discovery(request: Request):
+async def stop_discovery(request: Request) -> StatusResponse:
     """Stop peer discovery"""
     try:
         discovery = get_mesh_discovery()
@@ -199,7 +199,7 @@ class ShareFileRequest(BaseModel):
 
 
 @router.post("/files/share", response_model=FileShareResponse)
-async def share_file(request: Request, body: ShareFileRequest):
+async def share_file(request: Request, body: ShareFileRequest) -> FileShareResponse:
     """
     Share a file on the local mesh network
 
@@ -261,7 +261,7 @@ async def share_file(request: Request, body: ShareFileRequest):
 
 
 @router.get("/files/list")
-async def list_shared_files(tags: Optional[str] = None):
+async def list_shared_files(tags: Optional[str] = None) -> Dict[str, Any]:
     """Get list of shared files (optionally filtered by tags)"""
     try:
         file_share = get_file_share()
@@ -300,7 +300,7 @@ class DownloadFileRequest(BaseModel):
 
 
 @router.post("/files/download")
-async def download_file(request: Request, body: DownloadFileRequest):
+async def download_file(request: Request, body: DownloadFileRequest) -> Dict[str, Any]:
     """Download file from peer"""
     try:
         file_share = get_file_share()
@@ -325,7 +325,7 @@ async def download_file(request: Request, body: DownloadFileRequest):
 
 
 @router.get("/files/transfers")
-async def get_active_transfers():
+async def get_active_transfers() -> Dict[str, Any]:
     """Get active file transfers"""
     try:
         file_share = get_file_share()
@@ -354,7 +354,7 @@ async def get_active_transfers():
 
 
 @router.delete("/files/{file_id}")
-async def delete_shared_file(request: Request, file_id: str):
+async def delete_shared_file(request: Request, file_id: str) -> Dict[str, str]:
     """Remove file from sharing"""
     try:
         file_share = get_file_share()
@@ -374,7 +374,7 @@ async def delete_shared_file(request: Request, file_id: str):
 
 
 @router.get("/files/stats")
-async def get_file_sharing_stats():
+async def get_file_sharing_stats() -> Dict[str, Any]:
     """Get file sharing statistics"""
     try:
         file_share = get_file_share()
@@ -390,7 +390,7 @@ async def get_file_sharing_stats():
 # ============================================================================
 
 @router.post("/relay/peer/add", response_model=RelayPeerResponse)
-async def add_relay_peer(request: Request, peer_id: str, latency_ms: float = 10.0):
+async def add_relay_peer(request: Request, peer_id: str, latency_ms: float = 10.0) -> RelayPeerResponse:
     """Add a direct peer to relay network"""
     try:
         relay = get_mesh_relay()
@@ -408,7 +408,7 @@ async def add_relay_peer(request: Request, peer_id: str, latency_ms: float = 10.
 
 
 @router.delete("/relay/peer/{peer_id}")
-async def remove_relay_peer(request: Request, peer_id: str):
+async def remove_relay_peer(request: Request, peer_id: str) -> Dict[str, str]:
     """Remove peer from relay network"""
     try:
         relay = get_mesh_relay()
@@ -428,7 +428,7 @@ class SendMessageRequest(BaseModel):
 
 
 @router.post("/relay/send")
-async def send_relay_message(request: Request, body: SendMessageRequest):
+async def send_relay_message(request: Request, body: SendMessageRequest) -> Dict[str, Any]:
     """Send message through relay network"""
     try:
         relay = get_mesh_relay()
@@ -450,7 +450,7 @@ async def send_relay_message(request: Request, body: SendMessageRequest):
 
 
 @router.get("/relay/route/{peer_id}")
-async def get_route_to_peer(peer_id: str):
+async def get_route_to_peer(peer_id: str) -> Dict[str, Any]:
     """Get route to destination peer"""
     try:
         relay = get_mesh_relay()
@@ -473,7 +473,7 @@ async def get_route_to_peer(peer_id: str):
 
 
 @router.get("/relay/stats")
-async def get_relay_stats():
+async def get_relay_stats() -> Dict[str, Any]:
     """Get relay statistics"""
     try:
         relay = get_mesh_relay()
@@ -485,7 +485,7 @@ async def get_relay_stats():
 
 
 @router.get("/relay/routing-table")
-async def get_routing_table():
+async def get_routing_table() -> Dict[str, Any]:
     """Get current routing table"""
     try:
         relay = get_mesh_relay()
@@ -506,7 +506,7 @@ class SyncRequest(BaseModel):
 
 
 @router.post("/sync/start", response_model=SyncResponse)
-async def start_sync(request: Request, body: SyncRequest):
+async def start_sync(request: Request, body: SyncRequest) -> SyncResponse:
     """
     Start data synchronization with peer
 
@@ -573,7 +573,7 @@ async def start_sync(request: Request, body: SyncRequest):
 
 
 @router.get("/sync/state/{peer_id}")
-async def get_sync_state(peer_id: str):
+async def get_sync_state(peer_id: str) -> Dict[str, Any]:
     """Get sync state with specific peer"""
     try:
         sync = get_data_sync()
@@ -599,7 +599,7 @@ async def get_sync_state(peer_id: str):
 
 
 @router.get("/sync/states")
-async def get_all_sync_states():
+async def get_all_sync_states() -> Dict[str, Any]:
     """Get all peer sync states"""
     try:
         sync = get_data_sync()
@@ -626,7 +626,7 @@ async def get_all_sync_states():
 
 
 @router.get("/sync/stats")
-async def get_sync_stats():
+async def get_sync_stats() -> Dict[str, Any]:
     """Get data sync statistics"""
     try:
         sync = get_data_sync()
@@ -644,7 +644,7 @@ class SyncExchangeRequest(BaseModel):
 
 
 @router.post("/sync/exchange")
-async def exchange_sync_operations(request: Request, body: SyncExchangeRequest):
+async def exchange_sync_operations(request: Request, body: SyncExchangeRequest) -> Dict[str, Any]:
     """
     Exchange sync operations with peer (called by remote peer during sync)
 
@@ -707,7 +707,7 @@ async def exchange_sync_operations(request: Request, body: SyncExchangeRequest):
 # ============================================================================
 
 @router.post("/compute/start")
-async def start_compute_server(request: Request, port: int = 8766):
+async def start_compute_server(request: Request, port: int = 8766) -> Dict[str, Any]:
     """Start MLX distributed compute server"""
     try:
         distributed = get_mlx_distributed()
@@ -730,7 +730,7 @@ async def start_compute_server(request: Request, port: int = 8766):
 
 
 @router.get("/compute/nodes")
-async def get_compute_nodes():
+async def get_compute_nodes() -> Dict[str, Any]:
     """Get available compute nodes"""
     try:
         distributed = get_mlx_distributed()
@@ -769,7 +769,7 @@ class SubmitJobRequest(BaseModel):
 
 
 @router.post("/compute/job/submit")
-async def submit_compute_job(request: Request, body: SubmitJobRequest):
+async def submit_compute_job(request: Request, body: SubmitJobRequest) -> Dict[str, Any]:
     """Submit job for distributed execution"""
     try:
         distributed = get_mlx_distributed()
@@ -794,7 +794,7 @@ async def submit_compute_job(request: Request, body: SubmitJobRequest):
 
 
 @router.get("/compute/job/{job_id}")
-async def get_job_status(job_id: str):
+async def get_job_status(job_id: str) -> Dict[str, Any]:
     """Get job status"""
     try:
         distributed = get_mlx_distributed()
@@ -821,7 +821,7 @@ async def get_job_status(job_id: str):
 
 
 @router.get("/compute/stats")
-async def get_compute_stats():
+async def get_compute_stats() -> Dict[str, Any]:
     """Get distributed computing statistics"""
     try:
         distributed = get_mlx_distributed()
