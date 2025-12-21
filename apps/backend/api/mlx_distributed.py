@@ -114,7 +114,7 @@ class MLXDistributed:
 
         logger.info(f"🖥️ MLX Distributed initialized for {device_name}")
 
-    def _init_local_node(self):
+    def _init_local_node(self) -> None:
         """Initialize local compute node information"""
         import psutil
 
@@ -164,7 +164,7 @@ class MLXDistributed:
         except Exception:
             return "127.0.0.1"
 
-    async def start_server(self):
+    async def start_server(self) -> bool:
         """Start WebSocket server for receiving job requests"""
         if not WEBSOCKETS_AVAILABLE:
             logger.error("❌ websockets not available")
@@ -188,7 +188,7 @@ class MLXDistributed:
             logger.error(f"Failed to start server: {e}")
             return False
 
-    async def _advertise_service(self):
+    async def _advertise_service(self) -> None:
         """Advertise compute service via mDNS"""
         try:
             from zeroconf import ServiceInfo, Zeroconf
@@ -228,7 +228,7 @@ class MLXDistributed:
         except Exception as e:
             logger.error(f"Failed to advertise service: {e}")
 
-    async def _handle_client(self, websocket, path):
+    async def _handle_client(self, websocket: Any, path: str) -> None:
         """Handle incoming WebSocket connections"""
         node_id = None
 
@@ -262,7 +262,7 @@ class MLXDistributed:
                 del self.ws_connections[node_id]
                 logger.info(f"❌ Node disconnected: {node_id}")
 
-    async def _process_message(self, data: dict, from_node: str):
+    async def _process_message(self, data: dict, from_node: str) -> None:
         """Process incoming message"""
         msg_type = data.get('type')
 
@@ -311,7 +311,7 @@ class MLXDistributed:
 
         return job
 
-    async def _schedule_job(self, job: DistributedJob):
+    async def _schedule_job(self, job: DistributedJob) -> None:
         """Schedule job to best available node"""
         # Find best node (lowest load)
         best_node = None
@@ -372,7 +372,7 @@ class MLXDistributed:
             logger.error(f"Job execution failed: {e}")
             return {'error': str(e)}
 
-    async def _send_job_to_node(self, job: DistributedJob, node: ComputeNode):
+    async def _send_job_to_node(self, job: DistributedJob, node: ComputeNode) -> None:
         """Send job to remote node via WebSocket"""
         if node.node_id not in self.ws_connections:
             # Connect to node
@@ -397,7 +397,7 @@ class MLXDistributed:
                 self.pending_jobs.append(job)
                 del self.active_jobs[job.job_id]
 
-    async def _connect_to_node(self, node: ComputeNode):
+    async def _connect_to_node(self, node: ComputeNode) -> None:
         """Connect to remote node via WebSocket"""
         if not WEBSOCKETS_AVAILABLE:
             return
@@ -422,7 +422,7 @@ class MLXDistributed:
         except Exception as e:
             logger.error(f"Failed to connect to node {node.device_name}: {e}")
 
-    async def _complete_job(self, job: DistributedJob, result: Any):
+    async def _complete_job(self, job: DistributedJob, result: Any) -> None:
         """Mark job as completed"""
         job.status = 'completed'
         job.result = result
@@ -440,7 +440,7 @@ class MLXDistributed:
         import uuid
         return str(uuid.uuid4())[:8]
 
-    def add_node(self, node: ComputeNode):
+    def add_node(self, node: ComputeNode) -> None:
         """Manually add a compute node"""
         self.nodes[node.node_id] = node
         logger.info(f"➕ Node added: {node.device_name} at {node.ip_address}:{node.port}")
@@ -467,7 +467,7 @@ class MLXDistributed:
 
         return None
 
-    def get_stats(self) -> dict:
+    def get_stats(self) -> Dict[str, Any]:
         """Get distributed computing statistics"""
         total_nodes = len(self.nodes)
         idle_nodes = sum(1 for n in self.nodes.values() if n.status == 'idle')

@@ -106,7 +106,7 @@ class Metal4SparseEmbeddings:
         cache_dir.mkdir(parents=True, exist_ok=True)
         return str(cache_dir / f"sparse_embeddings_{self.embed_dim}d.mmap")
 
-    def _initialize(self):
+    def _initialize(self) -> None:
         """Initialize sparse embedding storage"""
         logger.info(f"Initializing Metal 4 sparse embeddings...")
         logger.info(f"   Max vectors: {self.max_vectors:,}")
@@ -127,7 +127,7 @@ class Metal4SparseEmbeddings:
         logger.info(f"   Sparse resources: {self._use_sparse_resources}")
         logger.info(f"   Total capacity: {self._get_capacity_info()}")
 
-    def _init_backing_store(self):
+    def _init_backing_store(self) -> None:
         """Initialize memory-mapped backing store"""
         try:
             # Calculate total size
@@ -190,7 +190,7 @@ class Metal4SparseEmbeddings:
             logger.warning(f"Sparse resources check failed: {e}")
             return False
 
-    def _init_sparse_resources(self):
+    def _init_sparse_resources(self) -> None:
         """Initialize Metal 4 sparse resources (virtual GPU memory)"""
         try:
             import Metal
@@ -244,7 +244,7 @@ class Metal4SparseEmbeddings:
             import traceback
             traceback.print_exc()
 
-    def add_embedding(self, vector_id: int, embedding: np.ndarray):
+    def add_embedding(self, vector_id: int, embedding: np.ndarray) -> None:
         """
         Add or update an embedding
 
@@ -268,7 +268,7 @@ class Metal4SparseEmbeddings:
         if vector_id >= self.stats['total_vectors']:
             self.stats['total_vectors'] = vector_id + 1
 
-    def add_embeddings_batch(self, vector_ids: List[int], embeddings: np.ndarray):
+    def add_embeddings_batch(self, vector_ids: List[int], embeddings: np.ndarray) -> None:
         """
         Add multiple embeddings efficiently
 
@@ -361,7 +361,7 @@ class Metal4SparseEmbeddings:
 
         return embeddings
 
-    def _page_in(self, vector_id: int):
+    def _page_in(self, vector_id: int) -> None:
         """
         Page embedding into GPU cache
 
@@ -384,7 +384,7 @@ class Metal4SparseEmbeddings:
         # TODO: Actually copy to sparse buffer when needed
         # For now, just track in cache dict
 
-    def _evict_lru(self):
+    def _evict_lru(self) -> None:
         """Evict least recently used embedding from GPU cache"""
         if not self.lru_queue:
             return
@@ -395,14 +395,14 @@ class Metal4SparseEmbeddings:
             del self.gpu_cache[evict_id]
             self.stats['page_outs'] += 1
 
-    def _update_lru(self, vector_id: int):
+    def _update_lru(self, vector_id: int) -> None:
         """Update LRU queue for cache hit"""
         if vector_id in self.lru_queue:
             self.lru_queue.remove(vector_id)
 
         self.lru_queue.append(vector_id)
 
-    def save_metadata(self):
+    def save_metadata(self) -> None:
         """Save metadata about stored embeddings"""
         try:
             import json
@@ -444,7 +444,7 @@ class Metal4SparseEmbeddings:
 
         return stats
 
-    def close(self):
+    def close(self) -> None:
         """Close and flush all resources"""
         try:
             # Save metadata
@@ -464,7 +464,7 @@ class Metal4SparseEmbeddings:
         except Exception as e:
             logger.error(f"Error closing sparse embeddings: {e}")
 
-    def __del__(self):
+    def __del__(self) -> None:
         """Cleanup on deletion"""
         self.close()
 

@@ -5,12 +5,13 @@ Wrapper around existing p2p_chat_service for the Network Selector UI.
 Provides simple API for peer discovery, connection codes, and mesh networking.
 """
 
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 import logging
 import secrets
 import string
+import json
 
 from api.p2p_chat_service import get_p2p_chat_service, init_p2p_chat_service
 
@@ -57,7 +58,7 @@ PATHS = get_config_paths()
 CODES_DB_PATH = PATHS.data_dir / "p2p_connection_codes.db"
 
 
-def _init_codes_db():
+def _init_codes_db() -> None:
     """Initialize database for connection codes"""
     CODES_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(str(CODES_DB_PATH)) as conn:
@@ -73,7 +74,7 @@ def _init_codes_db():
         conn.commit()
 
 
-def _save_connection_code(code: str, connection: ConnectionCode):
+def _save_connection_code(code: str, connection: ConnectionCode) -> None:
     """Save connection code to persistent storage"""
     with sqlite3.connect(str(CODES_DB_PATH)) as conn:
         conn.execute("""
@@ -131,7 +132,7 @@ def generate_connection_code() -> str:
 
 
 @router.post("/start")
-async def start_p2p_mesh(request: Request, display_name: str = "ElohimOS User", device_name: str = "My Device"):
+async def start_p2p_mesh(request: Request, display_name: str = "ElohimOS User", device_name: str = "My Device") -> Dict[str, Any]:
     """
     Start P2P mesh networking
     Initializes libp2p and begins peer discovery
@@ -176,7 +177,7 @@ async def start_p2p_mesh(request: Request, display_name: str = "ElohimOS User", 
 
 
 @router.post("/stop")
-async def stop_p2p_mesh(request: Request):
+async def stop_p2p_mesh(request: Request) -> Dict[str, str]:
     """
     Stop P2P mesh networking
 
@@ -200,7 +201,7 @@ async def stop_p2p_mesh(request: Request):
 
 
 @router.get("/peers")
-async def get_p2p_peers():
+async def get_p2p_peers() -> Dict[str, Any]:
     """
     Get list of connected P2P peers
 
@@ -243,7 +244,7 @@ async def get_p2p_peers():
 
 
 @router.post("/connection-code")
-async def generate_connection_code_endpoint(request: Request):
+async def generate_connection_code_endpoint(request: Request) -> Dict[str, Any]:
     """
     Generate a connection code for this peer
     Other peers can use this code to connect
@@ -289,7 +290,7 @@ async def generate_connection_code_endpoint(request: Request):
 
 
 @router.post("/connect")
-async def connect_to_peer(request: Request, body: AddPeerRequest):
+async def connect_to_peer(request: Request, body: AddPeerRequest) -> Dict[str, Any]:
     """
     Connect to a peer using their connection code
 
@@ -356,7 +357,7 @@ async def connect_to_peer(request: Request, body: AddPeerRequest):
 
 
 @router.get("/status")
-async def get_p2p_mesh_status():
+async def get_p2p_mesh_status() -> Dict[str, Any]:
     """
     Get current P2P mesh status
 

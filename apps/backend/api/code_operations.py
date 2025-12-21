@@ -28,7 +28,7 @@ try:
     from audit_logger import log_action
 except ImportError:
     # Fallback: no-op audit logging
-    async def log_action(**kwargs):
+    async def log_action(**kwargs: Any) -> None:
         pass
 
 # Import service layer
@@ -61,7 +61,7 @@ permission_layer = PermissionLayer(
 # ============================================================================
 
 @router.get("/health")
-async def health_check():
+async def health_check() -> Dict[str, Any]:
     """Health check endpoint"""
     return {
         "status": "ok",
@@ -79,8 +79,8 @@ async def get_file_tree(
     path: str = ".",
     recursive: bool = True,
     absolute_path: str = None,
-    current_user: Dict = Depends(get_current_user)
-):
+    current_user: Dict[str, Any] = Depends(get_current_user)
+) -> Dict[str, Any]:
     """
     Get file tree for user's code workspace or validated absolute path
     Security: absolute_path is restricted to code_workspaces
@@ -167,8 +167,8 @@ async def read_file(
     offset: int = 1,
     limit: int = 2000,
     absolute_path: bool = False,
-    current_user: Dict = Depends(get_current_user)
-):
+    current_user: Dict[str, Any] = Depends(get_current_user)
+) -> Dict[str, Any]:
     """
     Read file content with line numbers
     Supports offset and limit for large files
@@ -271,7 +271,7 @@ async def read_file(
 # ============================================================================
 
 @router.get("/workspace/info")
-async def get_workspace_info(current_user: Dict = Depends(get_current_user)):
+async def get_workspace_info(current_user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
     """Get information about user's code workspace"""
     try:
         user_id = current_user["user_id"]
@@ -317,8 +317,8 @@ async def get_workspace_info(current_user: Dict = Depends(get_current_user)):
 @router.post("/diff/preview")
 async def preview_diff(
     request: code_service.DiffPreviewRequest,
-    current_user: Dict = Depends(get_current_user)
-):
+    current_user: Dict[str, Any] = Depends(get_current_user)
+) -> Dict[str, Any]:
     """
     Preview changes before saving
     Shows unified diff of changes
@@ -376,8 +376,8 @@ async def preview_diff(
 @router.post("/write")
 async def write_file(
     request: code_service.WriteFileRequest,
-    current_user: Dict = Depends(get_current_user)
-):
+    current_user: Dict[str, Any] = Depends(get_current_user)
+) -> Dict[str, Any]:
     """
     Write file with permission checking and rate limiting
     Rate limited: 30 writes/min per user
@@ -460,8 +460,8 @@ async def write_file(
 @router.delete("/delete")
 async def delete_file(
     path: str,
-    current_user: Dict = Depends(get_current_user)
-):
+    current_user: Dict[str, Any] = Depends(get_current_user)
+) -> Dict[str, Any]:
     """
     Delete file with permission checking and rate limiting
     Rate limited: 20 deletes/min per user
@@ -557,7 +557,7 @@ def get_library_db_path() -> Path:
     return db_path
 
 
-def init_library_db():
+def init_library_db() -> None:
     """Initialize project library database"""
     db_path = get_library_db_path()
     conn = sqlite3.connect(str(db_path))
@@ -585,7 +585,7 @@ init_library_db()
 
 
 @router.get("/library")
-async def get_library_documents(current_user: Dict = Depends(get_current_user)):
+async def get_library_documents(current_user: Dict[str, Any] = Depends(get_current_user)) -> List[Dict[str, Any]]:
     """Get all project library documents"""
     try:
         import json
@@ -622,7 +622,7 @@ async def get_library_documents(current_user: Dict = Depends(get_current_user)):
 
 
 @router.post("/library")
-async def create_library_document(doc: ProjectLibraryDocument, current_user: Dict = Depends(get_current_user)):
+async def create_library_document(doc: ProjectLibraryDocument, current_user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
     """Create new project library document"""
     try:
         import json
@@ -664,7 +664,7 @@ async def create_library_document(doc: ProjectLibraryDocument, current_user: Dic
 
 
 @router.patch("/library/{doc_id}")
-async def update_library_document(doc_id: int, update: UpdateDocumentRequest, current_user: Dict = Depends(get_current_user)):
+async def update_library_document(doc_id: int, update: UpdateDocumentRequest, current_user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, bool]:
     """Update project library document"""
     try:
         import json
@@ -719,7 +719,7 @@ async def update_library_document(doc_id: int, update: UpdateDocumentRequest, cu
 
 
 @router.delete("/library/{doc_id}")
-async def delete_library_document(doc_id: int, current_user: Dict = Depends(get_current_user)):
+async def delete_library_document(doc_id: int, current_user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, bool]:
     """Delete project library document"""
     try:
         user_id = current_user["user_id"]
@@ -762,7 +762,7 @@ class WorkspaceRootRequest(BaseModel):
 
 
 @router.post("/workspace/set")
-async def set_workspace_root(request: WorkspaceRootRequest):
+async def set_workspace_root(request: WorkspaceRootRequest) -> Dict[str, Any]:
     """
     Set the current workspace root path
     Frontend calls this when user opens a folder
@@ -794,7 +794,7 @@ async def set_workspace_root(request: WorkspaceRootRequest):
 
 
 @router.get("/git/log")
-async def get_git_log(current_user: Dict = Depends(get_current_user)):
+async def get_git_log(current_user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
     """
     Get git commit history from the currently opened project folder
     Returns commits from the workspace root stored in localStorage

@@ -8,7 +8,7 @@ Perfect for missionaries spread across buildings/areas
 import asyncio
 import json
 import logging
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple, Any
 from dataclasses import dataclass, asdict
 from datetime import datetime, UTC
 from collections import defaultdict, deque
@@ -49,7 +49,7 @@ class MeshConnection:
     message_count: int = 0
     is_healthy: bool = True
 
-    async def send(self, data: dict):
+    async def send(self, data: dict) -> None:
         """Send data through connection"""
         # TODO: Implement actual send logic based on connection type
         logger.debug(f"Sending data to {self.peer_id}: {data}")
@@ -61,7 +61,7 @@ class MeshConnection:
         # TODO: Implement actual ping logic
         return self.is_healthy
 
-    async def close(self):
+    async def close(self) -> None:
         """Close the connection"""
         # TODO: Implement actual close logic
         logger.debug(f"Closing connection to {self.peer_id}")
@@ -90,13 +90,13 @@ class MeshConnectionPool:
 
         logger.info(f"🔌 Connection pool initialized (max_size={max_size}, idle_timeout={idle_timeout}s)")
 
-    async def start(self):
+    async def start(self) -> None:
         """Start background cleanup task"""
         if not self._cleanup_task:
             self._cleanup_task = asyncio.create_task(self._cleanup_loop())
             logger.info("🧹 Connection pool cleanup task started")
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Stop cleanup task and close all connections"""
         if self._cleanup_task:
             self._cleanup_task.cancel()
@@ -141,7 +141,7 @@ class MeshConnectionPool:
         logger.debug(f"✨ Created new connection to {peer_id}")
         return conn
 
-    async def release(self, peer_id: str, conn: MeshConnection):
+    async def release(self, peer_id: str, conn: MeshConnection) -> None:
         """Return connection to pool"""
         self._active[peer_id] = max(0, self._active.get(peer_id, 1) - 1)
 
@@ -197,7 +197,7 @@ class MeshConnectionPool:
         logger.debug(f"Created connection to {peer_id}")
         return conn
 
-    async def _cleanup_loop(self):
+    async def _cleanup_loop(self) -> None:
         """Background task to cleanup stale connections"""
         while True:
             try:
@@ -208,7 +208,7 @@ class MeshConnectionPool:
             except Exception as e:
                 logger.error(f"Error in cleanup loop: {e}")
 
-    async def _cleanup_stale_connections(self):
+    async def _cleanup_stale_connections(self) -> None:
         """Remove stale connections from pool"""
         now = time.time()
         cleaned = 0
@@ -241,7 +241,7 @@ class MeshConnectionPool:
         if cleaned > 0:
             logger.info(f"🧹 Cleaned up {cleaned} stale connections")
 
-    def get_stats(self) -> dict:
+    def get_stats(self) -> Dict[str, Any]:
         """Get connection pool statistics"""
         pooled_count = sum(len(q) for q in self._pool.values())
         active_count = sum(self._active.values())
@@ -299,7 +299,7 @@ class MeshRelay:
 
         logger.info(f"🔀 Mesh relay initialized for peer {local_peer_id}")
 
-    def add_direct_peer(self, peer_id: str, latency_ms: float = 10.0):
+    def add_direct_peer(self, peer_id: str, latency_ms: float = 10.0) -> None:
         """Register a directly connected peer"""
         self.direct_peers.add(peer_id)
 
@@ -317,7 +317,7 @@ class MeshRelay:
 
         logger.info(f"✅ Direct peer added: {peer_id} ({latency_ms}ms)")
 
-    def remove_direct_peer(self, peer_id: str):
+    def remove_direct_peer(self, peer_id: str) -> None:
         """Remove a peer that disconnected"""
         if peer_id in self.direct_peers:
             self.direct_peers.remove(peer_id)
@@ -327,7 +327,7 @@ class MeshRelay:
 
             logger.info(f"❌ Direct peer removed: {peer_id}")
 
-    def _invalidate_routes_through(self, peer_id: str):
+    def _invalidate_routes_through(self, peer_id: str) -> None:
         """Invalidate all routes that go through a specific peer"""
         routes_to_remove = []
 
@@ -445,7 +445,7 @@ class MeshRelay:
 
         return False
 
-    async def _forward_message(self, message: MeshMessage, next_hop: str):
+    async def _forward_message(self, message: MeshMessage, next_hop: str) -> None:
         """Forward message to next hop using connection pool"""
         try:
             # Acquire connection from pool
@@ -495,7 +495,7 @@ class MeshRelay:
         scored_hops.sort()
         return scored_hops[0][1]
 
-    async def _discover_route(self, dest_peer_id: str):
+    async def _discover_route(self, dest_peer_id: str) -> None:
         """Discover route to destination peer"""
         logger.info(f"🔍 Discovering route to {dest_peer_id}...")
 
@@ -511,7 +511,7 @@ class MeshRelay:
             # TODO: Actually send route request
             logger.debug(f"Sending route request to {peer_id}")
 
-    def update_route_from_advertisement(self, route_ad: dict):
+    def update_route_from_advertisement(self, route_ad: dict) -> None:
         """
         Update routing table from route advertisement
 
@@ -562,7 +562,7 @@ class MeshRelay:
                     for msg in pending:
                         asyncio.create_task(self.send_message(dest_peer, msg.payload, msg.ttl))
 
-    def generate_route_advertisement(self) -> dict:
+    def generate_route_advertisement(self) -> Dict[str, Any]:
         """
         Generate route advertisement for broadcasting
 
@@ -611,7 +611,7 @@ class MeshRelay:
         # For now, just return next hop
         return [self.local_peer_id, next_hops[0], dest_peer_id]
 
-    def get_stats(self) -> dict:
+    def get_stats(self) -> Dict[str, Any]:
         """Get relay statistics including connection pool metrics"""
         pool_stats = self.connection_pool.get_stats()
 
@@ -626,7 +626,7 @@ class MeshRelay:
             'connection_pool': pool_stats
         }
 
-    def get_routing_table(self) -> dict:
+    def get_routing_table(self) -> Dict[str, Any]:
         """Get current routing table (for debugging)"""
         return {
             dest: {
