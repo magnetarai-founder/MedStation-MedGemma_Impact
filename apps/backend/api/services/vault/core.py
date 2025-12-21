@@ -69,7 +69,7 @@ class VaultService:
         self._init_db()
         logger.info("Vault service initialized")
 
-    def _init_db(self):
+    def _init_db(self) -> None:
         """Initialize SQLite database"""
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
@@ -691,7 +691,7 @@ class VaultService:
 
     # ===== Access Logging & Recent Files =====
 
-    def log_file_access(self, user_id: str, vault_type: str, file_id: str, access_type: str = "view"):
+    def log_file_access(self, user_id: str, vault_type: str, file_id: str, access_type: str = "view") -> None:
         """Log file access for recent files tracking"""
         return analytics_mod.log_file_access(self, user_id, vault_type, file_id, access_type)
 

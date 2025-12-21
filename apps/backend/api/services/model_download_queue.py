@@ -158,7 +158,7 @@ class ModelDownloadQueue:
         async with self._lock:
             return self.jobs.get(model_name)
 
-    async def update_progress(self, model_name: str, progress: float, speed: Optional[str] = None):
+    async def update_progress(self, model_name: str, progress: float, speed: Optional[str] = None) -> None:
         """
         Update download progress (called by download task)
 
@@ -174,7 +174,7 @@ class ModelDownloadQueue:
                 if speed:
                     job.speed = speed
 
-    async def mark_completed(self, model_name: str, success: bool = True, error: Optional[str] = None):
+    async def mark_completed(self, model_name: str, success: bool = True, error: Optional[str] = None) -> None:
         """
         Mark download as completed or failed
 
@@ -204,13 +204,13 @@ class ModelDownloadQueue:
             self._update_positions()
             await self._start_next_downloads()
 
-    def _update_positions(self):
+    def _update_positions(self) -> None:
         """Update queue positions for all queued jobs"""
         for idx, model_name in enumerate(self.queue):
             if model_name in self.jobs:
                 self.jobs[model_name].position = idx + 1
 
-    async def _start_next_downloads(self):
+    async def _start_next_downloads(self) -> None:
         """Start downloads up to max_concurrent limit"""
         while len(self.active) < self.max_concurrent and self.queue:
             model_name = self.queue.pop(0)
@@ -229,7 +229,7 @@ class ModelDownloadQueue:
             # Note: Actual download task would be started here by the caller
             # This queue manages state; actual downloads happen elsewhere
 
-    async def clear_completed(self):
+    async def clear_completed(self) -> None:
         """Remove completed/failed/canceled jobs from history"""
         async with self._lock:
             to_remove = [

@@ -469,7 +469,7 @@ async def download_model(body: DownloadModelRequest) -> SuccessResponse[Download
     summary="Download model with progress (SSE)",
     description="Download a model with real-time progress updates via Server-Sent Events"
 )
-async def download_model_progress(model_name: str):
+async def download_model_progress(model_name: str) -> StreamingResponse:
     """
     Download a model with real-time progress updates via Server-Sent Events (SSE)
 
