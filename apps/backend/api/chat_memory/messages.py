@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class MessageMixin:
     """Mixin providing message operations"""
 
-    def add_message(self, session_id: str, event: ConversationEvent):
+    def add_message(self, session_id: str, event: ConversationEvent) -> None:
         """
         Add a message to the session
 

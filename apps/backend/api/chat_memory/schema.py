@@ -10,7 +10,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def setup_schema(conn: sqlite3.Connection):
+def setup_schema(conn: sqlite3.Connection) -> None:
     """Create memory tables and run migrations"""
 
     # Session metadata

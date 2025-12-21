@@ -60,7 +60,7 @@ class ChatMemoryBase:
 
         return self._local.conn
 
-    def _setup_database(self):
+    def _setup_database(self) -> None:
         """Create memory tables"""
         conn = self._get_connection()
         setup_schema(conn)

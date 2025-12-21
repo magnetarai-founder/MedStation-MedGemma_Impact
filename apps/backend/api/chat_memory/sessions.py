@@ -225,7 +225,7 @@ class SessionMixin:
         logger.info(f"Deleted chat session: {session_id} (user: {user_id}, role: {role})")
         return True
 
-    def update_session_title(self, session_id: str, title: str, auto_titled: bool = False):
+    def update_session_title(self, session_id: str, title: str, auto_titled: bool = False) -> None:
         """Update session title"""
         conn = self._get_connection()
         with self._write_lock:

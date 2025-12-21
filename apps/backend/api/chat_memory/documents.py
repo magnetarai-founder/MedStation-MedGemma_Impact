@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class DocumentMixin:
     """Mixin providing document/RAG operations"""
 
-    def store_document_chunks(self, session_id: str, chunks: List[Dict[str, Any]]):
+    def store_document_chunks(self, session_id: str, chunks: List[Dict[str, Any]]) -> None:
         """Store document chunks for RAG"""
         now = datetime.now(UTC).isoformat()
         conn = self._get_connection()

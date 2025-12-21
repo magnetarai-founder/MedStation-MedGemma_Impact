@@ -101,7 +101,7 @@ class EncryptedAuditLogger:
 
         return new_key
 
-    def _init_db(self):
+    def _init_db(self) -> None:
         """Initialize encrypted audit database schema"""
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
