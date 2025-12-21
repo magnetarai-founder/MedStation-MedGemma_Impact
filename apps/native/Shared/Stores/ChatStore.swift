@@ -273,8 +273,8 @@ final class ChatStore {
         if currentSession?.id == session.id {
             currentSession = sessions.first
             if let newCurrent = currentSession {
-                Task {
-                    await selectSession(newCurrent)
+                Task { [weak self] in
+                    await self?.selectSession(newCurrent)
                 }
             } else {
                 messages = []
@@ -282,18 +282,19 @@ final class ChatStore {
         }
 
         // Delete from backend using mapped backend ID
-        Task {
+        Task { [weak self] in
+            guard let self else { return }
             do {
                 // Get backend ID from mapping
-                guard let backendId = sessionIdMapping[session.id] else {
+                guard let backendId = self.sessionIdMapping[session.id] else {
                     print("⚠️ No backend ID mapping found for session \(session.id)")
                     return
                 }
 
-                try await chatService.deleteSession(sessionId: backendId)
+                try await self.chatService.deleteSession(sessionId: backendId)
 
                 // Remove from mapping after successful delete
-                sessionIdMapping.removeValue(forKey: session.id)
+                self.sessionIdMapping.removeValue(forKey: session.id)
             } catch {
                 print("Failed to delete session from backend: \(error)")
                 // Session already removed from UI, just log the error

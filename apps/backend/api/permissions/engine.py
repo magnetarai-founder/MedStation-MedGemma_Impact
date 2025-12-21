@@ -284,7 +284,7 @@ class PermissionEngine:
                     if scope_data:
                         try:
                             permissions[perm_key] = json.loads(scope_data)
-                        except:
+                        except (json.JSONDecodeError, TypeError):
                             permissions[perm_key] = {}
                     else:
                         permissions[perm_key] = {}
@@ -344,7 +344,7 @@ class PermissionEngine:
                 if scope_data:
                     try:
                         grants[perm_key] = json.loads(scope_data)
-                    except:
+                    except (json.JSONDecodeError, TypeError):
                         grants[perm_key] = {}
                 else:
                     grants[perm_key] = {}

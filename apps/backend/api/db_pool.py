@@ -230,8 +230,8 @@ class SQLiteConnectionPool:
             logger.warning("Attempted to checkin connection to closed pool")
             try:
                 conn.close()
-            except:
-                pass
+            except (sqlite3.Error, OSError):
+                pass  # Connection may already be closed
             return
 
         # Find the pooled connection wrapper
@@ -241,8 +241,8 @@ class SQLiteConnectionPool:
                     # Rollback any uncommitted transaction
                     try:
                         conn.rollback()
-                    except:
-                        pass
+                    except sqlite3.Error:
+                        pass  # Connection may be in bad state
 
                     # Return to pool
                     self._pool.put(pooled_conn)
@@ -254,8 +254,8 @@ class SQLiteConnectionPool:
             logger.error("Attempted to checkin unknown connection")
             try:
                 conn.close()
-            except:
-                pass
+            except (sqlite3.Error, OSError):
+                pass  # Connection may already be closed
 
     @contextmanager
     def get_connection(self):

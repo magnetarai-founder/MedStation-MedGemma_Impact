@@ -24,6 +24,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 from utils import sanitize_for_log
 from metrics import get_metrics
+from api.security.sql_safety import quote_identifier
 
 logger = logging.getLogger(__name__)
 metrics = get_metrics()
@@ -462,8 +463,8 @@ class DataEngine:
             return False
 
         with self._write_lock:
-            # Drop table
-            self.conn.execute(f"DROP TABLE IF EXISTS {table_name}")
+            # Drop table (quote_identifier provides defense in depth)
+            self.conn.execute(f"DROP TABLE IF EXISTS {quote_identifier(table_name)}")
 
             # Delete metadata
             self.conn.execute("""

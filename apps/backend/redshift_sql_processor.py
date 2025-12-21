@@ -14,6 +14,14 @@ from difflib import get_close_matches
 from neutron_utils.sql_utils import ColumnNameCleaner
 from neutron_utils.config import config, bootstrap_logging
 
+# SQL safety - Excel sheet names can contain special chars, must escape single quotes
+def _escape_sheet_name(name: str) -> str:
+    """Escape single quotes in sheet name for DuckDB st_read layer parameter"""
+    if not name:
+        return name
+    # Escape single quotes by doubling them
+    return name.replace("'", "''")
+
 logger = logging.getLogger(__name__)
 
 _RESERVED_WORDS = {
@@ -1968,12 +1976,14 @@ class RedshiftSQLProcessor:
             # Try direct Excel query first
             try:
                 # Create or replace the table from Excel file
+                # Note: table_name is validated by _preprocess_sql, sheet_name needs escaping
                 if sheet_name:
-                    # Query specific sheet
+                    # Query specific sheet (escape single quotes in sheet name)
+                    safe_sheet = _escape_sheet_name(sheet_name)
                     self.conn.execute(
                         f"""
-                        CREATE OR REPLACE TABLE {table_name} AS 
-                        SELECT * FROM st_read(?, layer='{sheet_name}')
+                        CREATE OR REPLACE TABLE {table_name} AS
+                        SELECT * FROM st_read(?, layer='{safe_sheet}')
                     """,
                         [file_path],
                     )
@@ -1981,7 +1991,7 @@ class RedshiftSQLProcessor:
                     # Query default (first) sheet
                     self.conn.execute(
                         f"""
-                        CREATE OR REPLACE TABLE {table_name} AS 
+                        CREATE OR REPLACE TABLE {table_name} AS
                         SELECT * FROM st_read(?)
                     """,
                         [file_path],

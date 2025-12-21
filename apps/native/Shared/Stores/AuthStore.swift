@@ -46,12 +46,10 @@ final class AuthStore: ObservableObject {
         print("✓ Backend is ready, proceeding with auth")
 
         // DEVELOPMENT BYPASS: Auto-login for fast iteration
+        // Set DEV_USERNAME and DEV_PASSWORD environment variables in Xcode scheme
         #if DEBUG
-        print("⚠️ DEBUG MODE: Auto-login enabled for fast iteration")
-
         // Check if we already have a valid token
         if keychain.loadToken() != nil {
-            // Try to use existing token
             do {
                 let user: ApiUser = try await apiClient.request("/v1/auth/me")
                 self.user = user
@@ -60,61 +58,67 @@ final class AuthStore: ObservableObject {
                 loading = false
                 return
             } catch {
-                // Token invalid, will try to login below
-                print("DEBUG: Existing token invalid, will attempt auto-login")
+                print("DEBUG: Existing token invalid, will attempt auto-login if env vars set")
             }
         }
 
-        // Auto-login with founder credentials
-        do {
-            struct LoginRequest: Codable {
-                let username: String
-                let password: String
-            }
+        // Auto-login only if environment variables are set (never hardcode credentials)
+        if let devUsername = ProcessInfo.processInfo.environment["DEV_USERNAME"],
+           let devPassword = ProcessInfo.processInfo.environment["DEV_PASSWORD"],
+           !devUsername.isEmpty, !devPassword.isEmpty {
 
-            struct LoginResponse: Codable {
-                let token: String
-                let refreshToken: String?
-                let userId: String
-                let username: String
-                let deviceId: String
-                let role: String
-                let expiresIn: Int
+            print("⚠️ DEBUG MODE: Auto-login using environment credentials")
 
-                enum CodingKeys: String, CodingKey {
-                    case token
-                    case refreshToken = "refresh_token"
-                    case userId = "user_id"
-                    case username
-                    case deviceId = "device_id"
-                    case role
-                    case expiresIn = "expires_in"
+            do {
+                struct LoginRequest: Codable {
+                    let username: String
+                    let password: String
                 }
+
+                struct LoginResponse: Codable {
+                    let token: String
+                    let refreshToken: String?
+                    let userId: String
+                    let username: String
+                    let deviceId: String
+                    let role: String
+                    let expiresIn: Int
+
+                    enum CodingKeys: String, CodingKey {
+                        case token
+                        case refreshToken = "refresh_token"
+                        case userId = "user_id"
+                        case username
+                        case deviceId = "device_id"
+                        case role
+                        case expiresIn = "expires_in"
+                    }
+                }
+
+                let response: LoginResponse = try await apiClient.request(
+                    "/v1/auth/login",
+                    method: .post,
+                    body: LoginRequest(username: devUsername, password: devPassword),
+                    authenticated: false
+                )
+
+                try keychain.saveToken(response.token)
+                self.user = ApiUser(
+                    userId: response.userId,
+                    username: response.username,
+                    deviceId: response.deviceId,
+                    role: response.role
+                )
+                userSetupComplete = true
+                authState = .authenticated
+                loading = false
+                print("✅ DEBUG: Auto-login successful")
+                return
+
+            } catch {
+                print("⚠️ DEBUG: Auto-login failed: \(error.localizedDescription)")
+                print("   Falling through to normal auth flow...")
             }
-
-            let response: LoginResponse = try await apiClient.request(
-                "/v1/auth/login",
-                method: .post,
-                body: LoginRequest(username: "founder", password: "Jesus33"),
-                authenticated: false
-            )
-
-            try keychain.saveToken(response.token)
-            self.user = ApiUser(
-                userId: response.userId,
-                username: response.username,
-                deviceId: response.deviceId,
-                role: response.role
-            )
-            userSetupComplete = true
-            authState = .authenticated
-            loading = false
-            print("✅ DEBUG: Auto-login successful")
-            return
-
-        } catch {
-            print("⚠️ DEBUG: Auto-login failed: \(error.localizedDescription)")
-            print("   Falling through to normal auth flow...")
         }
         #endif
 

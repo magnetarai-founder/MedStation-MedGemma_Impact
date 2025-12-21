@@ -104,7 +104,8 @@ async def check_setup_needed():
         conn.close()
 
         return {"setup_needed": count == 0}
-    except:
+    except (sqlite3.Error, OSError) as e:
+        logger.warning(f"Database check failed, assuming setup needed: {e}")
         return {"setup_needed": True}
 
 
@@ -198,10 +199,10 @@ async def login(request: Request, body: LoginRequest):
                     # Check if admin has been granted bypass permission
                     if context.effective_permissions.get('auth.bypass_rate_limit', False):
                         is_privileged = True
-                except:
-                    pass  # If permission check fails, apply rate limiting
-    except:
-        pass  # If check fails, apply rate limiting as normal
+                except Exception as e:
+                    logger.debug(f"Permission check failed: {e}")  # Apply rate limiting
+    except Exception as e:
+        logger.debug(f"Privilege check failed: {e}")  # Apply rate limiting as normal
 
     # Apply rate limiting only to non-privileged accounts
     if not is_privileged:

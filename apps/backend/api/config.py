@@ -14,11 +14,12 @@ Usage:
 
 import os
 import platform
+import secrets
 from pathlib import Path
 from typing import Optional, Literal
 from functools import lru_cache
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 import psutil
 
@@ -87,13 +88,13 @@ class ElohimOSSettings(BaseSettings):
     # ============================================
 
     jwt_secret_key: str = Field(
-        default="CHANGE_ME_IN_PRODUCTION_12345678901234567890",
-        description="JWT signing secret key (change in production!)"
+        default="",
+        description="JWT signing secret key (REQUIRED - set via ELOHIMOS_JWT_SECRET_KEY)"
     )
 
-    jwt_algorithm: str = Field(
+    jwt_algorithm: Literal["HS256", "HS384", "HS512"] = Field(
         default="HS256",
-        description="JWT signing algorithm"
+        description="JWT signing algorithm (only HMAC algorithms allowed)"
     )
 
     jwt_access_token_expire_minutes: int = Field(
@@ -145,6 +146,43 @@ class ElohimOSSettings(BaseSettings):
         """Ensure data directory exists"""
         v.mkdir(parents=True, exist_ok=True)
         return v
+
+    @model_validator(mode="after")
+    def validate_jwt_secret(self) -> "ElohimOSSettings":
+        """Validate JWT secret is properly configured"""
+        insecure_defaults = [
+            "",
+            "CHANGE_ME_IN_PRODUCTION_12345678901234567890",
+            "secret",
+            "changeme",
+        ]
+
+        if self.jwt_secret_key.lower() in [s.lower() for s in insecure_defaults]:
+            if self.environment == "production":
+                raise ValueError(
+                    "JWT_SECRET_KEY must be set in production! "
+                    "Set ELOHIMOS_JWT_SECRET_KEY environment variable to a secure random string (at least 32 chars)"
+                )
+            else:
+                # In development, auto-generate a random secret
+                import warnings
+                object.__setattr__(self, "jwt_secret_key", secrets.token_urlsafe(32))
+                warnings.warn(
+                    "JWT_SECRET_KEY not set - using auto-generated secret. "
+                    "This is fine for development but tokens will be invalidated on restart. "
+                    "Set ELOHIMOS_JWT_SECRET_KEY for persistent sessions.",
+                    UserWarning,
+                    stacklevel=2
+                )
+
+        if len(self.jwt_secret_key) < 32:
+            if self.environment == "production":
+                raise ValueError(
+                    f"JWT_SECRET_KEY is too short ({len(self.jwt_secret_key)} chars). "
+                    "Must be at least 32 characters for security."
+                )
+
+        return self
 
     # ============================================
     # DATABASE SETTINGS
