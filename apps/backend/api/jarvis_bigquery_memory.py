@@ -618,7 +618,7 @@ class JarvisBigQueryMemory:
             output=output
         )
     
-    def add_semantic_memory(self, command: str, context: Dict[str, Any]):
+    def add_semantic_memory(self, command: str, context: Dict[str, Any]) -> None:
         """Add semantic memory entry"""
         # Generate embedding
         embedding = self._generate_embedding(command)
@@ -652,7 +652,7 @@ class JarvisBigQueryMemory:
         return [dict(row) for row in results]
 
 
-def test_memory_system():
+def test_memory_system() -> None:
     """Test the BigQuery-inspired memory system"""
     
     memory = JarvisBigQueryMemory(Path("/tmp/test_jarvis_memory.db"))
