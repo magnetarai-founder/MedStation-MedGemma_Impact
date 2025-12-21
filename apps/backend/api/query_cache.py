@@ -271,7 +271,7 @@ class QueryCache:
             }
 
     def _evict_oldest(self) -> None:
-        """Evict the oldest cache entry (LRU)"""
+        """Evict the oldest cache entry using LRU policy"""
         if not self.cache:
             return
 
@@ -388,7 +388,7 @@ def get_query_cache_stats() -> Dict[str, Any]:
 # Cache key builders for common queries
 
 def build_user_cache_key(user_id: int) -> str:
-    """Build cache key for user profile"""
+    """Build cache key for user profile lookup"""
     return f"user_profile_{user_id}"
 
 

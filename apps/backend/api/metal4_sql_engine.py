@@ -21,7 +21,7 @@ Architecture:
 
 import logging
 import time
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional, Tuple, Union
 import numpy as np
 from pathlib import Path
 
@@ -68,7 +68,7 @@ class Metal4SQLEngine:
         # Initialize
         self._initialize()
 
-    def _initialize(self):
+    def _initialize(self) -> None:
         """Initialize Metal 4 SQL acceleration"""
         logger.info("Initializing Metal 4 SQL engine...")
 
@@ -100,7 +100,7 @@ class Metal4SQLEngine:
             logger.warning(f"Metal check failed: {e}")
             return False
 
-    def _compile_shaders(self):
+    def _compile_shaders(self) -> None:
         """Compile Metal SQL kernels"""
         try:
             import Metal
@@ -165,7 +165,7 @@ class Metal4SQLEngine:
             import traceback
             traceback.print_exc()
 
-    def _create_pipeline(self, library, function_name: str):
+    def _create_pipeline(self, library: Any, function_name: str) -> Optional[Any]:
         """Create compute pipeline from function"""
         try:
             function = library.newFunctionWithName_(function_name)
@@ -483,7 +483,7 @@ class Metal4SQLEngine:
 
         return stats
 
-    def reset_stats(self):
+    def reset_stats(self) -> None:
         """Reset performance statistics"""
         self.stats = {
             'queries_executed': 0,

@@ -71,7 +71,7 @@ class Metal4TensorOps:
         # Initialize
         self._initialize()
 
-    def _initialize(self):
+    def _initialize(self) -> None:
         """Initialize tensor operations engine"""
         logger.info("Initializing Metal 4 tensor operations...")
 
@@ -107,7 +107,7 @@ class Metal4TensorOps:
             logger.warning(f"Metal check failed: {e}")
             return False
 
-    def _compile_shaders(self):
+    def _compile_shaders(self) -> None:
         """Compile tensor operation shaders"""
         try:
             import Metal
@@ -170,7 +170,7 @@ class Metal4TensorOps:
             import traceback
             traceback.print_exc()
 
-    def _create_pipeline(self, library, function_name: str):
+    def _create_pipeline(self, library: Any, function_name: str) -> Optional[Any]:
         """Create compute pipeline"""
         try:
             function = library.newFunctionWithName_(function_name)
@@ -192,7 +192,7 @@ class Metal4TensorOps:
             logger.error(f"Pipeline creation failed for {function_name}: {e}")
             return None
 
-    def _init_unified_memory(self):
+    def _init_unified_memory(self) -> None:
         """Initialize unified memory heap"""
         if not self.supports_unified_memory:
             logger.info("Unified memory not available (Intel GPU or older macOS)")

@@ -115,7 +115,7 @@ class SessionSecurityManager:
 
         self._init_db()
 
-    def _init_db(self):
+    def _init_db(self) -> None:
         """Initialize session security database schema"""
         # CRITICAL-03 FIX: Use connection pool
         with self._pool.get_connection() as conn:
@@ -174,7 +174,7 @@ class SessionSecurityManager:
         session_id: str,
         user_id: str,
         fingerprint: SessionFingerprint
-    ):
+    ) -> None:
         """
         Record session fingerprint for tracking
 
@@ -207,7 +207,7 @@ class SessionSecurityManager:
 
         logger.debug(f"Recorded fingerprint for session {session_id}")
 
-    def update_session_activity(self, session_id: str):
+    def update_session_activity(self, session_id: str) -> None:
         """
         Update last activity timestamp for a session
 
@@ -371,7 +371,7 @@ class SessionSecurityManager:
         anomaly_type: str,
         suspicion_score: float,
         details: str
-    ):
+    ) -> None:
         """Record detected anomaly for audit purposes"""
         # CRITICAL-03 FIX: Use connection pool
         with self._pool.get_connection() as conn:
@@ -473,7 +473,7 @@ class SessionSecurityManager:
 
         return terminated
 
-    def invalidate_all_sessions(self, user_id: str):
+    def invalidate_all_sessions(self, user_id: str) -> None:
         """
         Invalidate all sessions for a user (e.g., on password change)
 
