@@ -17,13 +17,13 @@ logger = logging.getLogger(__name__)
 
 
 @router.get("/")
-async def root():
+async def root() -> dict:
     """Root endpoint"""
     return {"message": "ElohimOS API", "version": "1.0.0"}
 
 
 @router.get("/api/system/info")
-async def get_system_info(current_user: dict = Depends(get_current_user)):
+async def get_system_info(current_user: dict = Depends(get_current_user)) -> dict:
     """
     Get system information including Metal GPU capabilities and memory.
 
@@ -114,7 +114,7 @@ async def prometheus_metrics(current_user: dict = Depends(get_current_user)):
 
 
 @router.get("/health")
-async def health_check():
+async def health_check() -> dict:
     """
     Quick health check endpoint (Phase 5.4)
 
@@ -147,7 +147,7 @@ async def health_check():
 
 
 @router.get("/diagnostics")
-async def system_diagnostics(force_refresh: bool = False):
+async def system_diagnostics(force_refresh: bool = False) -> dict:
     """
     Comprehensive system diagnostics endpoint (Phase 5.4)
 
@@ -190,7 +190,7 @@ async def system_diagnostics(force_refresh: bool = False):
 
 
 @router.get("/api/v1/admin/device/overview")
-async def _fallback_admin_device_overview(request: Request, current_user: dict = Depends(get_current_user)):
+async def _fallback_admin_device_overview(request: Request, current_user: dict = Depends(get_current_user)) -> dict:
     """Fallback Admin device overview endpoint to avoid 404 if admin router fails to load"""
     # Require Founder Rights (Founder Admin)
     if current_user.get("role") != "founder_rights":

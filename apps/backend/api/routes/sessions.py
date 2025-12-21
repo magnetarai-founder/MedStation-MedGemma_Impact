@@ -25,11 +25,11 @@ router = APIRouter(
 # Import shared state from main.py
 # NOTE: Circular import is OK here during migration - sessions/query_results
 # are module-level vars that get populated after all imports complete
-def get_sessions():
+def get_sessions() -> Dict:
     from api import main
     return main.sessions
 
-def get_query_results():
+def get_query_results() -> Dict:
     from api import main
     return main.query_results
 

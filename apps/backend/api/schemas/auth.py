@@ -40,7 +40,7 @@ class RegisterRequest(BaseModel):
     device_fingerprint: Optional[str] = None
 
     @validator('password')
-    def validate_password_strength(cls, v):
+    def validate_password_strength(cls, v) -> str:
         """Ensure password meets security requirements."""
         if len(v) < 8:
             raise ValueError('Password must be at least 8 characters')
@@ -80,7 +80,7 @@ class ChangePasswordRequest(BaseModel):
     new_password: str = Field(..., min_length=8)
 
     @validator('new_password')
-    def validate_password_strength(cls, v):
+    def validate_password_strength(cls, v) -> str:
         """Ensure new password meets security requirements."""
         if len(v) < 8:
             raise ValueError('Password must be at least 8 characters')
