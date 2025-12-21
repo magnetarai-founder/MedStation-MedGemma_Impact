@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 current_router_mode = 'ane'  # Default to ANE for battery life
 
 
-async def append_message(chat_id: str, role: str, content: str, timestamp: str, model: Optional[str] = None, tokens: Optional[int] = None, files: Optional[List[Dict]] = None):
+async def append_message(chat_id: str, role: str, content: str, timestamp: str, model: Optional[str] = None, tokens: Optional[int] = None, files: Optional[List[Dict]] = None) -> None:
     """Append a message to chat history"""
     # Import sessions module for delegation
     from .. import sessions as sessions_mod

@@ -22,7 +22,7 @@ from .messages import current_router_mode
 logger = logging.getLogger(__name__)
 
 
-async def submit_router_feedback(command: str, tool_used: str, success: bool, execution_time: float, user_satisfaction: Optional[int] = None):
+async def submit_router_feedback(command: str, tool_used: str, success: bool, execution_time: float, user_satisfaction: Optional[int] = None) -> Dict[str, Any]:
     """Submit feedback for adaptive router to learn from"""
     from .. import system as system_mod
     return await system_mod.submit_router_feedback(command, tool_used, success, execution_time, user_satisfaction)

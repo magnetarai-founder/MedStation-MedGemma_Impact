@@ -82,21 +82,21 @@ class NLQService:
         self.data_engine = None
         self.sql_validator = None
 
-    def _get_ollama_client(self):
+    def _get_ollama_client(self) -> Any:
         """Lazy init for Ollama client"""
         if self.ollama_client is None:
             from api.services.chat.streaming import OllamaClient
             self.ollama_client = OllamaClient()
         return self.ollama_client
 
-    def _get_data_engine(self):
+    def _get_data_engine(self) -> Any:
         """Lazy init for data engine"""
         if self.data_engine is None:
             from api.data_engine import DataEngine
             self.data_engine = DataEngine()
         return self.data_engine
 
-    def _get_sql_validator(self):
+    def _get_sql_validator(self) -> Any:
         """Lazy init for SQL validator"""
         if self.sql_validator is None:
             from sql_validator import SQLValidator

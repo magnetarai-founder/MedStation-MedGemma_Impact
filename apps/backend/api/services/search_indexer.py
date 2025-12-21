@@ -6,7 +6,7 @@ Manages FTS5 index for session message search.
 
 import sqlite3
 import logging
-from typing import Optional
+from typing import Dict, Optional
 from datetime import datetime, UTC
 
 logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ class SearchIndexer:
         content: str,
         timestamp: str,
         user_id: str
-    ):
+    ) -> None:
         """
         Add a message to the FTS5 index
 
@@ -66,7 +66,7 @@ class SearchIndexer:
         finally:
             conn.close()
 
-    def backfill_from_chat_memory(self, limit: Optional[int] = None):
+    def backfill_from_chat_memory(self, limit: Optional[int] = None) -> int:
         """
         Backfill FTS index from existing chat_memory messages
 
@@ -134,7 +134,7 @@ class SearchIndexer:
         finally:
             conn.close()
 
-    def rebuild_index(self):
+    def rebuild_index(self) -> None:
         """
         Rebuild the entire FTS index (maintenance operation)
 
@@ -156,7 +156,7 @@ class SearchIndexer:
         finally:
             conn.close()
 
-    def optimize_index(self):
+    def optimize_index(self) -> None:
         """
         Optimize the FTS index (improves search performance)
 
@@ -177,7 +177,7 @@ class SearchIndexer:
         finally:
             conn.close()
 
-    def get_index_stats(self):
+    def get_index_stats(self) -> Dict[str, int]:
         """Get statistics about the FTS index"""
         conn = self._get_conn()
         cursor = conn.cursor()
