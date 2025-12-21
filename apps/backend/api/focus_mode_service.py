@@ -72,7 +72,7 @@ class FocusModeService:
         self.db_path = db_path
         self._init_db()
 
-    def _init_db(self):
+    def _init_db(self) -> None:
         """Initialize focus mode tables"""
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()

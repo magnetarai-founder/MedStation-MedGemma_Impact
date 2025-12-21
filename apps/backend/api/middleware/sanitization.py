@@ -248,7 +248,7 @@ class SanitizationMiddleware(BaseHTTPMiddleware):
         self.sanitizer = InputSanitizer(strict_mode=strict_mode)
         self.strict_mode = strict_mode
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next) -> Response:
         """
         Process request/response with sanitization
 
