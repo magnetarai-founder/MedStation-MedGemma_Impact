@@ -794,36 +794,4 @@ final class EmergencyModeService: ObservableObject {
 }
 
 // MARK: - Supporting Types
-
-struct BackendEmergencyResponse: Codable {
-    let success: Bool
-    let filesWiped: Int
-    let passes: Int
-    let durationSeconds: Double
-    let errors: [String]
-
-    enum CodingKeys: String, CodingKey {
-        case success
-        case filesWiped = "files_wiped"
-        case passes
-        case durationSeconds = "duration_seconds"
-        case errors
-    }
-}
-
-enum EmergencyModeError: LocalizedError {
-    case disabledInDebug
-    case backendFailed
-    case alreadyInProgress
-
-    var errorDescription: String? {
-        switch self {
-        case .disabledInDebug:
-            return "Emergency mode disabled in debug build (safety measure)"
-        case .backendFailed:
-            return "Backend emergency wipe failed"
-        case .alreadyInProgress:
-            return "Emergency mode already in progress"
-        }
-    }
-}
+// See EmergencyModeModels.swift for type definitions

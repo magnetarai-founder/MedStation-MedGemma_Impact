@@ -21,7 +21,8 @@ import logging
 
 from fastapi import APIRouter, HTTPException, Request, Depends, Response
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+from typing import Literal
 
 from api.routes.schemas import SuccessResponse
 
@@ -49,9 +50,18 @@ try:
     from config_paths import get_config_paths
 except ImportError:
     from api.config_paths import get_config_paths
+
+try:
+    from db_pool import SQLiteConnectionPool
+except ImportError:
+    from api.db_pool import SQLiteConnectionPool
+
 PATHS = get_config_paths()
 DOCS_DB_PATH = PATHS.data_dir / "docs.db"
 DOCS_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+# Connection pool for docs database (replaces per-request connections)
+_docs_pool: Optional[SQLiteConnectionPool] = None
 
 # Whitelisted columns for SQL UPDATE to prevent injection
 DOCUMENT_UPDATE_COLUMNS = frozenset({
@@ -94,20 +104,63 @@ router = APIRouter(
 
 # ===== Models =====
 
+# Valid document types and security levels
+VALID_DOC_TYPES = {"doc", "sheet", "insight"}
+VALID_SECURITY_LEVELS = {"public", "private", "team", "sensitive", "top-secret"}
+
+
 class DocumentCreate(BaseModel):
     type: str = Field(..., description="doc, sheet, or insight")
-    title: str
+    title: str = Field(..., min_length=1, max_length=500)
     content: Any
     is_private: bool = False
     security_level: Optional[str] = None
 
+    @field_validator("type")
+    @classmethod
+    def validate_type(cls, v: str) -> str:
+        if v not in VALID_DOC_TYPES:
+            raise ValueError(f"type must be one of: {', '.join(VALID_DOC_TYPES)}")
+        return v
+
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("title cannot be empty or whitespace")
+        return v
+
+    @field_validator("security_level")
+    @classmethod
+    def validate_security_level(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in VALID_SECURITY_LEVELS:
+            raise ValueError(f"security_level must be one of: {', '.join(VALID_SECURITY_LEVELS)}")
+        return v
+
 
 class DocumentUpdate(BaseModel):
-    title: Optional[str] = None
+    title: Optional[str] = Field(None, min_length=1, max_length=500)
     content: Optional[Any] = None
     is_private: Optional[bool] = None
     security_level: Optional[str] = None
     shared_with: Optional[List[str]] = None
+
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            v = v.strip()
+            if not v:
+                raise ValueError("title cannot be empty or whitespace")
+        return v
+
+    @field_validator("security_level")
+    @classmethod
+    def validate_security_level(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in VALID_SECURITY_LEVELS:
+            raise ValueError(f"security_level must be one of: {', '.join(VALID_SECURITY_LEVELS)}")
+        return v
 
 
 class Document(BaseModel):
@@ -204,11 +257,32 @@ def init_db():
 init_db()
 
 
+def _get_pool() -> SQLiteConnectionPool:
+    """Get or create the connection pool"""
+    global _docs_pool
+    if _docs_pool is None:
+        _docs_pool = SQLiteConnectionPool(
+            database=DOCS_DB_PATH,
+            min_size=2,
+            max_size=10,
+            max_lifetime=3600.0  # 1 hour
+        )
+        logger.info("📦 Docs connection pool initialized (min=2, max=10)")
+    return _docs_pool
+
+
 def get_db():
-    """Get database connection"""
-    conn = sqlite3.connect(DOCS_DB_PATH)
+    """Get database connection from pool"""
+    pool = _get_pool()
+    conn = pool.checkout()
     conn.row_factory = sqlite3.Row  # Return rows as dictionaries
     return conn
+
+
+def release_db(conn: sqlite3.Connection):
+    """Return connection to pool"""
+    pool = _get_pool()
+    pool.checkin(conn)
 
 
 # ===== CRUD Operations =====

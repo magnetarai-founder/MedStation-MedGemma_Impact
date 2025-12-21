@@ -25,6 +25,10 @@ from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
+# Module-level cache for token counts (persists across requests)
+_token_count_cache: Dict[str, Dict] = {}
+_TOKEN_COUNT_CACHE_TTL = 30  # seconds
+
 router = APIRouter(
     tags=["chat-sessions"]
 )
@@ -531,9 +535,8 @@ async def get_token_count_cached(
     from api.services import chat
     import time
 
-    # In-memory cache
-    _token_count_cache: Dict[str, Dict] = {}
-    _TOKEN_COUNT_CACHE_TTL = 30
+    # Use module-level cache (defined at top of file)
+    global _token_count_cache
 
     try:
         user_id = current_user.get("user_id") if isinstance(current_user, dict) else current_user.user_id

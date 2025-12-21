@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 request_id_ctx: ContextVar[str] = ContextVar("request_id", default="")
 
 
-def cleanup_sessions():
+def cleanup_sessions() -> None:
     """Clean up all active sessions and close database connections"""
     # Import sessions dict from core.state module
     from api.core.state import sessions
@@ -45,7 +45,7 @@ def cleanup_sessions():
         logger.error(f"Error during session cleanup: {e}")
 
 
-def handle_shutdown_signal(signum, frame):
+def handle_shutdown_signal(signum: int, frame) -> None:
     """Handle SIGTERM/SIGINT for graceful shutdown"""
     sig_name = signal.Signals(signum).name
     logger.warning(f"Received {sig_name} - initiating graceful shutdown...")
@@ -55,7 +55,7 @@ def handle_shutdown_signal(signum, frame):
     os._exit(0)
 
 
-async def cleanup_old_temp_files():
+async def cleanup_old_temp_files() -> None:
     """Background task to clean up old temporary files"""
     from datetime import datetime, timedelta
 
@@ -78,7 +78,7 @@ async def cleanup_old_temp_files():
             logger.error(f"Temp file cleanup error: {e}")
 
 
-async def vacuum_databases():
+async def vacuum_databases() -> None:
     """
     Background task to VACUUM SQLite databases weekly
 
