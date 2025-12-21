@@ -77,7 +77,7 @@ class Metal4MLPipeline:
         # Initialize
         self._initialize()
 
-    def _initialize(self):
+    def _initialize(self) -> None:
         """Initialize all components with progressive enhancement"""
         logger.info("=" * 60)
         logger.info("Metal 4 ML Pipeline Initialization")
@@ -100,7 +100,7 @@ class Metal4MLPipeline:
 
         logger.info("=" * 60)
 
-    def _detect_metal_capabilities(self):
+    def _detect_metal_capabilities(self) -> None:
         """Detect Metal GPU capabilities"""
         try:
             from metal4_engine import get_metal4_engine
@@ -122,7 +122,7 @@ class Metal4MLPipeline:
         except Exception as e:
             logger.warning(f"Metal detection failed: {e}")
 
-    def _init_embedder(self):
+    def _init_embedder(self) -> None:
         """Initialize embedder with best available backend"""
         logger.info("\n--- Initializing Embedder ---")
 
@@ -160,7 +160,7 @@ class Metal4MLPipeline:
         logger.warning("⚠️  Using hash-based embedding fallback")
         self.capabilities['embedder_backend'] = "hash"
 
-    def _init_vector_search(self):
+    def _init_vector_search(self) -> None:
         """Initialize vector search with best available backend"""
         logger.info("\n--- Initializing Vector Search ---")
 
@@ -184,7 +184,7 @@ class Metal4MLPipeline:
         logger.info("✅ Vector Search: CPU fallback")
         self.capabilities['vector_search_backend'] = "CPU"
 
-    def _init_sparse_storage(self):
+    def _init_sparse_storage(self) -> None:
         """Initialize sparse embedding storage"""
         logger.info("\n--- Initializing Sparse Storage ---")
 
@@ -212,7 +212,7 @@ class Metal4MLPipeline:
             logger.warning(f"Sparse storage initialization failed: {e}")
             logger.warning("⚠️  Large-scale storage unavailable")
 
-    def _print_initialization_summary(self):
+    def _print_initialization_summary(self) -> None:
         """Print initialization summary"""
         logger.info("\n--- Initialization Complete ---")
         logger.info(f"Metal Version: {self.capabilities['metal_version'] or 'Not available'}")
@@ -296,7 +296,7 @@ class Metal4MLPipeline:
             logger.warning("Vector search not initialized or empty database")
             return [], []
 
-    def load_database(self, embeddings: np.ndarray):
+    def load_database(self, embeddings: np.ndarray) -> None:
         """
         Load embedding database for searching
 
@@ -309,7 +309,7 @@ class Metal4MLPipeline:
         else:
             logger.error("Vector search not initialized")
 
-    def store_embedding(self, vector_id: int, text: str):
+    def store_embedding(self, vector_id: int, text: str) -> None:
         """
         Store embedding in sparse storage
 
@@ -389,7 +389,7 @@ class Metal4MLPipeline:
 
         return vec
 
-    def close(self):
+    def close(self) -> None:
         """Close and cleanup all resources"""
         if self.sparse_storage:
             self.sparse_storage.close()

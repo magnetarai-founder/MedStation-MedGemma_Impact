@@ -5,7 +5,7 @@ Provides real-time terminal access via WebSocket for the Code Tab.
 """
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, Query, Request
-from typing import Optional
+from typing import Any, Dict, List, Optional
 import json
 import os
 import subprocess
@@ -80,7 +80,7 @@ async def spawn_terminal(
     shell: Optional[str] = None,
     cwd: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
-):
+) -> Dict[str, Any]:
     """
     Spawn a new terminal session
 
@@ -129,7 +129,7 @@ async def spawn_terminal(
 
 @router.post("/spawn-system")
 @require_perm("code.terminal")
-async def spawn_system_terminal(current_user: dict = Depends(get_current_user)):
+async def spawn_system_terminal(current_user: dict = Depends(get_current_user)) -> Dict[str, Any]:
     """
     Spawn a system terminal (Warp, iTerm2, Terminal.app) with bridge script
 
@@ -326,7 +326,7 @@ async def start_terminal_socket(
     terminal_app: Optional[str] = None,
     workspace_root: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
-):
+) -> Dict[str, Any]:
     """
     Start a Unix socket listener for external terminal output capture
 
@@ -384,7 +384,7 @@ async def start_terminal_socket(
 
 
 @router.get("/sessions")
-async def list_terminal_sessions(current_user: dict = Depends(get_current_user)):
+async def list_terminal_sessions(current_user: dict = Depends(get_current_user)) -> Dict[str, Any]:
     """
     List all terminal sessions for current user
 
@@ -401,7 +401,7 @@ async def list_terminal_sessions(current_user: dict = Depends(get_current_user))
 
 
 @router.get("/{terminal_id}")
-async def get_terminal_session(terminal_id: str, current_user: dict = Depends(get_current_user)):
+async def get_terminal_session(terminal_id: str, current_user: dict = Depends(get_current_user)) -> Dict[str, Any]:
     """
     Get terminal session info
 
@@ -431,7 +431,7 @@ async def get_terminal_session(terminal_id: str, current_user: dict = Depends(ge
 
 
 @router.delete("/{terminal_id}")
-async def close_terminal_session(terminal_id: str, current_user: dict = Depends(get_current_user)):
+async def close_terminal_session(terminal_id: str, current_user: dict = Depends(get_current_user)) -> Dict[str, Any]:
     """
     Close a terminal session
 
@@ -470,7 +470,7 @@ async def get_terminal_context(
     terminal_id: str,
     lines: int = Query(default=100, ge=1, le=1000),
     current_user: dict = Depends(get_current_user)
-):
+) -> Dict[str, Any]:
     """
     Get terminal context (recent output) for AI/LLM
 
@@ -501,7 +501,7 @@ async def get_terminal_context(
 
 
 @router.websocket("/ws/{terminal_id}")
-async def terminal_websocket(websocket: WebSocket, terminal_id: str, token: Optional[str] = Query(None)):
+async def terminal_websocket(websocket: WebSocket, terminal_id: str, token: Optional[str] = Query(None)) -> None:
     """
     WebSocket endpoint for real-time terminal I/O
 
@@ -763,7 +763,7 @@ async def resize_terminal(
     rows: int = Query(..., ge=1, le=1000),
     cols: int = Query(..., ge=1, le=1000),
     current_user: dict = Depends(get_current_user)
-):
+) -> Dict[str, Any]:
     """
     Resize terminal window (HTTP endpoint as alternative to WebSocket)
 

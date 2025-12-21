@@ -111,7 +111,7 @@ class PermissionLayer:
         # Load saved rules
         self._load_rules()
 
-    def _load_rules(self):
+    def _load_rules(self) -> None:
         """Load saved permission rules"""
         if self.config_path.exists():
             try:
@@ -138,7 +138,7 @@ class PermissionLayer:
             except Exception as e:
                 print(f"{YELLOW}Could not load permission rules: {e}{RESET}")
 
-    def _save_rules(self):
+    def _save_rules(self) -> None:
         """Save permission rules"""
         try:
             data = {
@@ -455,7 +455,7 @@ class PermissionLayer:
                 )
                 return PermissionResponse.NO
 
-    def _explain_command(self, request: PermissionRequest):
+    def _explain_command(self, request: PermissionRequest) -> None:
         """Explain what a command does"""
         print(f"\n{BOLD}Command Explanation:{RESET}")
 
@@ -588,7 +588,7 @@ class PermissionLayer:
         else:
             return base
 
-    def _save_permanent_rule(self, request: PermissionRequest):
+    def _save_permanent_rule(self, request: PermissionRequest) -> None:
         """Save a permanent permission rule"""
         print(f"\n{BOLD}Save Permission Rule:{RESET}")
         print("1. Always allow this exact command")
@@ -659,14 +659,14 @@ class PermissionLayer:
             )
             print(f"{DIM}[Auto {icon}] {request.command[:50]}...{RESET}")
 
-    def reset_session_rules(self):
+    def reset_session_rules(self) -> None:
         """Reset session-specific rules"""
         self.session_rules.clear()
         self.yes_to_all = False
         self.no_to_all = False
         print(f"{YELLOW}Session rules reset{RESET}")
 
-    def show_rules(self):
+    def show_rules(self) -> None:
         """Display current permission rules"""
         print(f"\n{BOLD}Current Permission Rules:{RESET}")
 
@@ -718,7 +718,7 @@ class PermissionLayer:
         }
 
 
-def test_permission_layer():
+def test_permission_layer() -> None:
     """Test the permission layer"""
     print(f"{BOLD}Testing Permission Layer{RESET}")
 

@@ -41,7 +41,7 @@ class WorkspaceSessionManager:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
 
-    def _init_db(self):
+    def _init_db(self) -> None:
         """Initialize workspace sessions database"""
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
@@ -184,7 +184,7 @@ class WorkspaceSessionManager:
             # Create new session
             return self.create_session(user_id, workspace_root, chat_id)
 
-    def link_chat(self, session_id: str, chat_id: str):
+    def link_chat(self, session_id: str, chat_id: str) -> None:
         """Link a chat session to workspace session"""
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
@@ -198,7 +198,7 @@ class WorkspaceSessionManager:
         conn.commit()
         conn.close()
 
-    def link_terminal(self, session_id: str, terminal_id: str):
+    def link_terminal(self, session_id: str, terminal_id: str) -> None:
         """Link a terminal session to workspace session"""
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
@@ -212,7 +212,7 @@ class WorkspaceSessionManager:
         conn.commit()
         conn.close()
 
-    def update_workspace_root(self, session_id: str, workspace_root: str):
+    def update_workspace_root(self, session_id: str, workspace_root: str) -> None:
         """Update workspace root for session"""
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
@@ -226,7 +226,7 @@ class WorkspaceSessionManager:
         conn.commit()
         conn.close()
 
-    def update_active_files(self, session_id: str, file_paths: list[str]):
+    def update_active_files(self, session_id: str, file_paths: list[str]) -> None:
         """Update active files for session"""
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
@@ -240,7 +240,7 @@ class WorkspaceSessionManager:
         conn.commit()
         conn.close()
 
-    def update_activity(self, session_id: str):
+    def update_activity(self, session_id: str) -> None:
         """Update last activity timestamp"""
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
@@ -322,7 +322,7 @@ class WorkspaceSessionManager:
 
         return sessions
 
-    def close_session(self, session_id: str):
+    def close_session(self, session_id: str) -> None:
         """Mark session as inactive"""
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()

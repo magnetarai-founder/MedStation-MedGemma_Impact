@@ -6,7 +6,7 @@ Part of MagnetarMission free tier.
 """
 
 import logging
-from typing import Optional
+from typing import Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Depends
 from datetime import UTC, datetime
 
@@ -223,7 +223,7 @@ public_router = APIRouter(
 )
 
 @public_router.get("/health")
-async def trust_health():
+async def trust_health() -> Dict[str, Any]:
     """Health check for MagnetarTrust service (public endpoint)"""
     storage = get_trust_storage()
     all_nodes = storage.list_nodes()
