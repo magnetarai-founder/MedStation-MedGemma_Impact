@@ -273,7 +273,7 @@ class MetalBenchmarks:
         return self.results
 
 
-def run_benchmarks():
+def run_benchmarks() -> dict:
     """Run Metal 4 performance benchmarks"""
     bench = MetalBenchmarks()
     return bench.run_all_benchmarks()

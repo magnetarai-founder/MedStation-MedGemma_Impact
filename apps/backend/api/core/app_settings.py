@@ -11,7 +11,7 @@ from pydantic import BaseModel
 _elohimos_memory = None
 
 
-def set_elohimos_memory(memory):
+def set_elohimos_memory(memory) -> None:
     """Set the ElohimOS memory instance (called from main.py during initialization)"""
     global _elohimos_memory
     _elohimos_memory = memory

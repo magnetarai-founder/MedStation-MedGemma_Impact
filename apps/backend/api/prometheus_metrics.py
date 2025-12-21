@@ -60,7 +60,7 @@ class PrometheusMetricsExporter:
         # Initialize
         self._initialize()
 
-    def _initialize(self):
+    def _initialize(self) -> None:
         """Initialize metrics exporter"""
         logger.info("Initializing Prometheus metrics exporter...")
 

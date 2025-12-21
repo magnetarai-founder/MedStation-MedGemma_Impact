@@ -264,7 +264,7 @@ class OfflineFileShare:
             # Clean up transfer progress after delay
             asyncio.create_task(self._cleanup_transfer(file_id))
 
-    async def _cleanup_transfer(self, file_id: str, delay: int = 60):
+    async def _cleanup_transfer(self, file_id: str, delay: int = 60) -> None:
         """Remove transfer progress after delay"""
         await asyncio.sleep(delay)
         self.active_transfers.pop(file_id, None)
