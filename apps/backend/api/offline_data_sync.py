@@ -437,7 +437,7 @@ class OfflineDataSync:
 
         return False
 
-    async def _execute_operation(self, conn: sqlite3.Connection, op: SyncOperation):
+    async def _execute_operation(self, conn: sqlite3.Connection, op: SyncOperation) -> None:
         """Execute database operation"""
         cursor = conn.cursor()
 
@@ -491,7 +491,7 @@ class OfflineDataSync:
             logger.error(f"Failed to execute {op.operation} on {op.table_name}: {e}")
             raise
 
-    async def _update_version_tracking(self, op: SyncOperation):
+    async def _update_version_tracking(self, op: SyncOperation) -> None:
         """Update version tracking for conflict detection"""
         conn = sqlite3.connect(str(self.sync_db_path))
         cursor = conn.cursor()

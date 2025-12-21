@@ -92,7 +92,7 @@ async def vacuum_databases() -> None:
     """
     import sqlite3
 
-    def _vacuum_db(db_path: Path, db_name: str):
+    def _vacuum_db(db_path: Path, db_name: str) -> None:
         """Helper to VACUUM a single database"""
         with sqlite3.connect(str(db_path)) as conn:
             conn.isolation_level = None  # Autocommit mode required for VACUUM
