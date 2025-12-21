@@ -32,7 +32,7 @@ router = APIRouter(
 
 
 @router.get("/health")
-async def get_system_health(request: Request):
+async def get_system_health(request: Request) -> Dict[str, Any]:
     """
     Comprehensive system health check
 
@@ -217,7 +217,7 @@ async def get_system_health(request: Request):
 
 
 @router.get("/metal4")
-async def get_metal4_stats(request: Request):
+async def get_metal4_stats(request: Request) -> Dict[str, Any]:
     """
     Get Metal 4 GPU performance statistics
 
@@ -260,7 +260,7 @@ async def get_metal4_stats(request: Request):
 
 
 @router.get("/metal4/bottlenecks")
-async def detect_bottlenecks():
+async def detect_bottlenecks() -> Dict[str, Any]:
     """
     Detect performance bottlenecks in Metal 4 pipeline
 
@@ -296,7 +296,7 @@ async def detect_bottlenecks():
 
 
 @router.get("/services/status")
-async def get_services_status():
+async def get_services_status() -> Dict[str, Any]:
     """
     Quick status check for all services
 
@@ -327,7 +327,7 @@ async def get_services_status():
 
 
 @router.get("/system/resources")
-async def get_system_resources():
+async def get_system_resources() -> Dict[str, Any]:
     """
     Get system resource utilization
 

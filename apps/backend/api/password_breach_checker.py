@@ -65,7 +65,7 @@ class PasswordBreachChecker:
             self._session = aiohttp.ClientSession(headers=headers, timeout=timeout)
         return self._session
 
-    async def close(self):
+    async def close(self) -> None:
         """Close the aiohttp session"""
         if self._session and not self._session.closed:
             await self._session.close()
@@ -110,7 +110,7 @@ class PasswordBreachChecker:
             self._cache_misses += 1
             return None
 
-    def _set_cache(self, hash_prefix: str, breach_count: int):
+    def _set_cache(self, hash_prefix: str, breach_count: int) -> None:
         """
         Cache breach count for a hash prefix
 
@@ -268,7 +268,7 @@ async def check_password_breach(password: str) -> Tuple[bool, int]:
     return await checker.check_password(password)
 
 
-async def cleanup_breach_checker():
+async def cleanup_breach_checker() -> None:
     """
     Close the global breach checker session
 
