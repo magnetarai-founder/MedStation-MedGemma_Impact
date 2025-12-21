@@ -345,7 +345,7 @@ class Metal4MPSEmbedder:
 
         return embeddings.tolist()
 
-    def _mean_pooling(self, model_output, attention_mask):
+    def _mean_pooling(self, model_output, attention_mask) -> "torch.Tensor":
         """
         Mean pooling - take attention mask into account for proper averaging
 

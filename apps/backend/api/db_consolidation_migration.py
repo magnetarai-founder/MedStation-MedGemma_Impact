@@ -34,7 +34,7 @@ NEW_APP_DB = PATHS.data_dir / "elohimos_app.db"
 BACKUP_DIR = PATHS.data_dir / f"db_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
 
-def backup_old_databases():
+def backup_old_databases() -> None:
     """Backup old databases before migration"""
     print("📦 Backing up old databases...")
     BACKUP_DIR.mkdir(parents=True, exist_ok=True)
@@ -46,7 +46,7 @@ def backup_old_databases():
             print(f"   ✓ Backed up {db_path} → {backup_path}")
 
 
-def attach_and_copy(conn, db_name, db_path):
+def attach_and_copy(conn: sqlite3.Connection, db_name: str, db_path: Path) -> None:
     """Attach a database and copy all its tables"""
     if not db_path.exists():
         print(f"   ⚠️  Skipping {db_name} (file not found: {db_path})")
@@ -96,7 +96,7 @@ def attach_and_copy(conn, db_name, db_path):
             pass  # Database already detached or doesn't exist
 
 
-def migrate_databases():
+def migrate_databases() -> None:
     """Main migration function"""
     print("=" * 80)
     print("DATABASE CONSOLIDATION MIGRATION")

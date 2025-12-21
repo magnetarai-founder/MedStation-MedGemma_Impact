@@ -60,7 +60,7 @@ class RoutePattern:
     context_hints: List[str] = None
     negative_patterns: List[str] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.context_hints is None:
             self.context_hints = []
         if self.negative_patterns is None:

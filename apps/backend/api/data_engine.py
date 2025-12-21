@@ -88,7 +88,7 @@ class DataEngine:
 
         logger.info(f"✅ Data Engine initialized: {self.db_path}")
 
-    def _setup_metadata(self):
+    def _setup_metadata(self) -> None:
         """Store metadata about uploaded datasets"""
         with self._write_lock:
             self.conn.execute("""
