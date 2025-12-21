@@ -468,7 +468,7 @@ async def apply_plan(
 
 
 @router.get("/models/validate")
-async def validate_models(current_user: Dict = Depends(get_current_user)):
+async def validate_models(current_user: Dict = Depends(get_current_user)) -> Dict[str, Any]:
     """
     Validate model configuration and provide setup guidance
 
@@ -483,7 +483,7 @@ async def validate_models(current_user: Dict = Depends(get_current_user)):
 async def auto_fix_models(
     request: Request,
     current_user: Dict = Depends(get_current_user)
-):
+) -> Dict[str, Any]:
     """
     Automatically fix model configuration using intelligent defaults
 

@@ -5,7 +5,7 @@ Overdue items and workflow statistics.
 """
 
 from fastapi import APIRouter, Depends
-from typing import List, Dict
+from typing import Any, Dict, List
 import logging
 
 from ..dependencies import (
@@ -41,7 +41,7 @@ async def get_overdue_items(current_user: Dict = Depends(get_current_user)):
 async def get_workflow_statistics(
     workflow_id: str,
     current_user: Dict = Depends(get_current_user)
-):
+) -> Dict[str, Any]:
     """
     Get statistics for a workflow
 

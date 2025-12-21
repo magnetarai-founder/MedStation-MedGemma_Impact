@@ -8,7 +8,7 @@ All functions use lazy imports to break circular dependencies.
 import json
 import shutil
 from pathlib import Path
-from typing import Dict
+from typing import Any, Dict
 
 
 async def reset_all_data() -> Dict[str, any]:
@@ -183,7 +183,7 @@ async def reset_data() -> Dict[str, any]:
     return {"success": True, "message": "All data deleted, settings preserved"}
 
 
-async def export_all_data(current_user: dict):
+async def export_all_data(current_user: dict) -> Any:
     """Export complete backup as ZIP"""
     from datetime import datetime
     from starlette.background import BackgroundTask
@@ -218,7 +218,7 @@ async def export_all_data(current_user: dict):
     )
 
 
-async def export_chats():
+async def export_chats() -> Any:
     """Export AI chat history as JSON"""
     from datetime import datetime
     from starlette.background import BackgroundTask
@@ -248,7 +248,7 @@ async def export_chats():
     )
 
 
-async def export_queries():
+async def export_queries() -> Any:
     """Export query library as JSON"""
     from datetime import datetime
     from starlette.background import BackgroundTask

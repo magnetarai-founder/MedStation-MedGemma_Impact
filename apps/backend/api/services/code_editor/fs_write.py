@@ -5,6 +5,7 @@ Write and delete operations with risk assessment and rate limiting
 
 import logging
 from pathlib import Path
+from typing import Any, Optional, Tuple
 from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
@@ -73,7 +74,7 @@ def delete_file_from_disk(file_path: Path) -> dict:
 # RISK ASSESSMENT INTEGRATION
 # ============================================================================
 
-def assess_write_risk(file_path: Path, operation: str, permission_layer):
+def assess_write_risk(file_path: Path, operation: str, permission_layer) -> Tuple[Optional[Any], str]:
     """
     Assess risk of write operation using permission layer
     Returns (risk_level, risk_reason)
@@ -101,7 +102,7 @@ def assess_write_risk(file_path: Path, operation: str, permission_layer):
         return None, "Risk assessment unavailable"
 
 
-def assess_delete_risk(file_path: Path, permission_layer):
+def assess_delete_risk(file_path: Path, permission_layer) -> Tuple[Optional[Any], str]:
     """
     Assess risk of delete operation using permission layer
     Returns (risk_level, risk_reason)
