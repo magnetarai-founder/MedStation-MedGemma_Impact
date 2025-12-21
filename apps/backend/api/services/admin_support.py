@@ -50,7 +50,7 @@ def get_admin_db_connection() -> sqlite3.Connection:
     return conn
 
 
-def _get_memory():
+def _get_memory() -> Any:
     """Get memory (chat) service instance."""
     try:
         from api.chat_memory import get_memory
@@ -59,7 +59,7 @@ def _get_memory():
     return get_memory()
 
 
-def _get_auth_service():
+def _get_auth_service() -> Any:
     """Get auth service instance."""
     try:
         from api.auth_middleware import auth_service

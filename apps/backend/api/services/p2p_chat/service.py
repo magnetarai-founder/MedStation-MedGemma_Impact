@@ -138,15 +138,15 @@ class P2PChatService:
 
     # ===== Network Lifecycle =====
 
-    async def start(self):
+    async def start(self) -> None:
         """Start the P2P service with libp2p."""
         await network.start_network(self)
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Stop the P2P service."""
         await network.stop_network(self)
 
-    async def close_all_connections(self):
+    async def close_all_connections(self) -> None:
         """Emergency: Close all P2P connections immediately (for panic mode)."""
         await network.close_all_connections(self)
 
@@ -291,7 +291,7 @@ class P2PChatService:
 
     # ===== Message Handler Registration =====
 
-    def register_message_handler(self, handler: Callable):
+    def register_message_handler(self, handler: Callable) -> None:
         """
         Register a callback for new messages.
 

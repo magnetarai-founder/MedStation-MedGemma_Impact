@@ -100,7 +100,7 @@ async def send_message(service: 'P2PChatService', request: SendMessageRequest) -
     return message
 
 
-async def _send_to_peer(service: 'P2PChatService', peer_id_str: str, message: Message):
+async def _send_to_peer(service: 'P2PChatService', peer_id_str: str, message: Message) -> None:
     """Send a message to a specific peer with E2E encryption."""
     try:
         # Convert peer_id string to PeerID object

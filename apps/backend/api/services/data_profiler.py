@@ -34,7 +34,7 @@ class DataProfiler:
     def __init__(self):
         self.data_engine = None
 
-    def _get_data_engine(self):
+    def _get_data_engine(self) -> Any:
         """Lazy init for data engine"""
         if self.data_engine is None:
             from api.data_engine import DataEngine
