@@ -42,7 +42,7 @@ def check_thermal_throttling() -> Dict[str, Any]:
     return performance_monitor.check_thermal_throttling()
 
 
-def reset_performance_metrics():
+def reset_performance_metrics() -> Dict[str, Any]:
     """Reset performance metrics"""
     performance_monitor = _get_performance_monitor()
     performance_monitor.reset()
@@ -62,7 +62,7 @@ def get_panic_status() -> Dict[str, Any]:
     return panic_mode.get_panic_status()
 
 
-def reset_panic_mode():
+def reset_panic_mode() -> Dict[str, Any]:
     """Reset panic mode"""
     panic_mode = _get_panic_mode()
     panic_mode.reset_panic()

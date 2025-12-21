@@ -7,6 +7,7 @@ to avoid circular dependencies and reduce startup time.
 
 import logging
 from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ _panic_mode = None
 _ollama_client = None
 
 
-def _get_memory():
+def _get_memory() -> Any:
     """Lazy init for memory"""
     global _memory
     if _memory is None:
@@ -39,7 +40,7 @@ def _get_memory():
     return _memory
 
 
-def _get_ane_engine():
+def _get_ane_engine() -> Any:
     """Lazy init for ANE engine"""
     global _ane_engine
     if _ane_engine is None:
@@ -51,7 +52,7 @@ def _get_ane_engine():
     return _ane_engine
 
 
-def _get_token_counter():
+def _get_token_counter() -> Any:
     """Lazy init for token counter"""
     global _token_counter
     if _token_counter is None:
@@ -63,7 +64,7 @@ def _get_token_counter():
     return _token_counter
 
 
-def _get_model_manager():
+def _get_model_manager() -> Any:
     """Lazy init for model manager"""
     global _model_manager
     if _model_manager is None:
@@ -75,7 +76,7 @@ def _get_model_manager():
     return _model_manager
 
 
-def _get_metal4_engine():
+def _get_metal4_engine() -> Any:
     """Lazy init for Metal4 engine"""
     global _metal4_engine
     if _metal4_engine is None:
@@ -87,7 +88,7 @@ def _get_metal4_engine():
     return _metal4_engine
 
 
-def _get_adaptive_router():
+def _get_adaptive_router() -> Any:
     """Lazy init for adaptive router"""
     global _adaptive_router
     if _adaptive_router is None:
@@ -106,7 +107,7 @@ def _get_adaptive_router():
     return _adaptive_router
 
 
-def _get_ane_router():
+def _get_ane_router() -> Any:
     """Lazy init for ANE router"""
     global _ane_router
     if _ane_router is None:
@@ -118,7 +119,7 @@ def _get_ane_router():
     return _ane_router
 
 
-def _get_recursive_library():
+def _get_recursive_library() -> Any:
     """Lazy init for recursive library"""
     global _recursive_library
     if _recursive_library is None:
@@ -130,7 +131,7 @@ def _get_recursive_library():
     return _recursive_library
 
 
-def _get_ollama_config():
+def _get_ollama_config() -> Any:
     """Lazy init for Ollama config"""
     global _ollama_config
     if _ollama_config is None:
@@ -142,7 +143,7 @@ def _get_ollama_config():
     return _ollama_config
 
 
-def _get_performance_monitor():
+def _get_performance_monitor() -> Any:
     """Lazy init for performance monitor"""
     global _performance_monitor
     if _performance_monitor is None:
@@ -154,7 +155,7 @@ def _get_performance_monitor():
     return _performance_monitor
 
 
-def _get_panic_mode():
+def _get_panic_mode() -> Any:
     """Lazy init for panic mode"""
     global _panic_mode
     if _panic_mode is None:
@@ -166,7 +167,7 @@ def _get_panic_mode():
     return _panic_mode
 
 
-def _get_ollama_client():
+def _get_ollama_client() -> Any:
     """Lazy init for Ollama client"""
     global _ollama_client
     if _ollama_client is None:
@@ -175,7 +176,7 @@ def _get_ollama_client():
     return _ollama_client
 
 
-def _get_chat_uploads_dir():
+def _get_chat_uploads_dir() -> Path:
     """Get chat uploads directory"""
     from config_paths import get_config_paths
     uploads_dir = get_config_paths().uploads_dir
