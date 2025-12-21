@@ -96,7 +96,7 @@ class JarvisBigQueryMemory:
         self.memory_templates = self.templates  # Alias for compatibility
         self._setup_database()
         
-    def _setup_database(self):
+    def _setup_database(self) -> None:
         """Create advanced memory tables"""
         
         # Main command memory with embeddings
@@ -408,8 +408,8 @@ class JarvisBigQueryMemory:
             
         return dot_product / (norm1 * norm2)
         
-    def _update_pattern_stats(self, task_type: str, tool: str, 
-                             success: bool, execution_time: float):
+    def _update_pattern_stats(self, task_type: str, tool: str,
+                             success: bool, execution_time: float) -> None:
         """Update pattern statistics"""
         pattern_key = f"{task_type}_{tool}"
         
@@ -447,7 +447,7 @@ class JarvisBigQueryMemory:
             
         self.conn.commit()
         
-    def _detect_workflow_patterns(self):
+    def _detect_workflow_patterns(self) -> None:
         """Detect and store workflow patterns from recent commands"""
         
         # Get recent command sequences

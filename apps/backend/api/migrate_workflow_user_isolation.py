@@ -17,7 +17,7 @@ from datetime import datetime
 DB_PATH = Path(__file__).parent / "data" / "workflows.db"
 BACKUP_PATH = Path(__file__).parent / "data" / f"workflows_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
 
-def backup_database():
+def backup_database() -> None:
     """Create backup before migration"""
     import shutil
     print(f"📦 Creating backup: {BACKUP_PATH}")
@@ -25,7 +25,7 @@ def backup_database():
     print(f"✅ Backup created: {BACKUP_PATH}")
 
 
-def get_user_id_mapping(conn):
+def get_user_id_mapping(conn) -> dict:
     """
     Map created_by usernames to actual user_ids from auth database
 
@@ -71,7 +71,7 @@ def get_user_id_mapping(conn):
     return mapping
 
 
-def migrate_schema(conn):
+def migrate_schema(conn) -> None:
     """Add user_id columns to all tables"""
     cursor = conn.cursor()
 
@@ -125,7 +125,7 @@ def migrate_schema(conn):
     print("✅ Schema migration complete\n")
 
 
-def migrate_data(conn, user_mapping):
+def migrate_data(conn, user_mapping) -> None:
     """Populate user_id columns based on created_by"""
     cursor = conn.cursor()
 
@@ -188,7 +188,7 @@ def migrate_data(conn, user_mapping):
     print("✅ Data migration complete\n")
 
 
-def create_indexes(conn):
+def create_indexes(conn) -> None:
     """Create indexes on user_id columns for performance"""
     cursor = conn.cursor()
 
@@ -210,7 +210,7 @@ def create_indexes(conn):
     print("✅ Indexes created\n")
 
 
-def verify_migration(conn):
+def verify_migration(conn) -> None:
     """Verify migration was successful"""
     cursor = conn.cursor()
 
@@ -263,7 +263,7 @@ def verify_migration(conn):
         sys.exit(1)
 
 
-def main():
+def main() -> None:
     """Run the migration"""
     print("=" * 60)
     print("🚀 Workflow Database Migration - Add user_id columns")

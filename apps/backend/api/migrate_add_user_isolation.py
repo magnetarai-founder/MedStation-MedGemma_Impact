@@ -70,7 +70,7 @@ class MigrationError(Exception):
     pass
 
 
-def backup_databases(backup_dir: Path):
+def backup_databases(backup_dir: Path) -> None:
     """Backup all databases before migration"""
     backup_dir.mkdir(parents=True, exist_ok=True)
 
@@ -122,7 +122,7 @@ def table_has_column(conn: sqlite3.Connection, table: str, column: str) -> bool:
     return column in columns
 
 
-def migrate_database(db_path: Path, tables: list, first_user_id: str, dry_run: bool = False):
+def migrate_database(db_path: Path, tables: list, first_user_id: str, dry_run: bool = False) -> None:
     """Migrate a single database"""
     if not db_path.exists():
         logger.warning(f"⚠️  Database not found: {db_path}")
@@ -192,7 +192,7 @@ def migrate_database(db_path: Path, tables: list, first_user_id: str, dry_run: b
         conn.close()
 
 
-def rollback_migration(backup_dir: Path):
+def rollback_migration(backup_dir: Path) -> bool:
     """Rollback migration by restoring from backup"""
     if not backup_dir.exists():
         logger.error(f"❌ Backup directory not found: {backup_dir}")
@@ -214,7 +214,7 @@ def rollback_migration(backup_dir: Path):
     return True
 
 
-def verify_migration():
+def verify_migration() -> bool:
     """Verify that migration was successful"""
     logger.info("\n🔍 Verifying migration...")
 
@@ -258,7 +258,7 @@ def verify_migration():
     return all_good
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description='ElohimOS User Isolation Migration')
     parser.add_argument('--dry-run', action='store_true', help='Preview changes without executing')
     parser.add_argument('--backup', action='store_true', help='Backup databases and execute migration')

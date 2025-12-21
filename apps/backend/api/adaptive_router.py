@@ -158,7 +158,7 @@ class EnhancedRouter:
             ),
         ]
 
-    def _compile_regex_patterns(self):
+    def _compile_regex_patterns(self) -> None:
         """Pre-compile regex patterns for performance"""
         for pattern in self.patterns:
             if pattern.pattern_type == 'regex':
@@ -411,7 +411,7 @@ class AdaptiveRouter:
 
         return None
 
-    def _store_routing_decision(self, command: str, result: AdaptiveRouteResult):
+    def _store_routing_decision(self, command: str, result: AdaptiveRouteResult) -> None:
         """Store routing decision for future learning"""
 
         self.routing_history.append({
@@ -427,7 +427,7 @@ class AdaptiveRouter:
             self.routing_history = self.routing_history[-100:]
 
     def record_execution_result(self, command: str, tool: str,
-                               success: bool, execution_time: float):
+                               success: bool, execution_time: float) -> None:
         """Record execution result for learning"""
 
         # Track in learning system
@@ -461,6 +461,6 @@ class AdaptiveRouter:
         }
 
     def record_feedback(self, command: str, task_type: str, tool: str,
-                        success: bool, execution_time: float):
+                        success: bool, execution_time: float) -> None:
         """Record feedback for adaptive learning"""
         self.record_execution_result(command, tool, success, execution_time)

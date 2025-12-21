@@ -163,7 +163,7 @@ async def save_workflow(request: Request, body: WorkflowSaveRequest):
 
 
 @router.get("/workflows")
-async def list_workflows():
+async def list_workflows() -> Dict[str, Any]:
     """
     List all saved workflows
     """
@@ -175,7 +175,7 @@ async def list_workflows():
 
 
 @router.get("/workflows/{workflow_id}")
-async def get_workflow(workflow_id: str):
+async def get_workflow(workflow_id: str) -> Dict[str, Any]:
     """
     Get workflow by ID
     """
@@ -184,7 +184,7 @@ async def get_workflow(workflow_id: str):
 
 
 @router.delete("/workflows/{workflow_id}")
-async def delete_workflow(request: Request, workflow_id: str):
+async def delete_workflow(request: Request, workflow_id: str) -> Dict[str, Any]:
     """
     Delete workflow
     """
