@@ -267,8 +267,6 @@ final class ChatStore {
         }
     }
 
-    private struct EmptyResponse: Codable {}
-
     func deleteSession(_ session: ChatSession) {
         // Optimistically remove from UI
         sessions.removeAll { $0.id == session.id }

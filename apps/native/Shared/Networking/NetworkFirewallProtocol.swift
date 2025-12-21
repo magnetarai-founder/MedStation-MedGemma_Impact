@@ -39,7 +39,12 @@ final class NetworkFirewallProtocol: URLProtocol, @unchecked Sendable {
 
     override func startLoading() {
         // Mark request as handled to avoid infinite loop
-        let mutableRequest = (request as NSURLRequest).mutableCopy() as! NSMutableURLRequest
+        guard let mutableRequest = (request as NSURLRequest).mutableCopy() as? NSMutableURLRequest else {
+            let error = NSError(domain: "com.magnetarstudio.firewall", code: -1,
+                                userInfo: [NSLocalizedDescriptionKey: "Failed to create mutable request"])
+            client?.urlProtocol(self, didFailWithError: error)
+            return
+        }
         NetworkFirewallProtocol.setProperty(true, forKey: "NetworkFirewallHandled", in: mutableRequest)
 
         // Check firewall on main actor

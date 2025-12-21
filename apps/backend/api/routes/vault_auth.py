@@ -32,9 +32,19 @@ from api.utils import sanitize_for_log
 from api.rate_limiter import rate_limiter, get_client_ip
 from api.services.crypto_wrap import wrap_key, unwrap_key
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
-# from api.services.webauthn_verify import verify_assertion, verify_registration
+from api.services.webauthn_verify import verify_assertion, verify_registration
 
 logger = logging.getLogger(__name__)
+
+# WebAuthn configuration - should be from environment/settings in production
+WEBAUTHN_RP_ID = "localhost"  # Relying Party ID (domain)
+WEBAUTHN_ORIGIN = "http://localhost:3000"  # Expected origin
+
+# In-memory challenge storage with TTL (5 minutes)
+# Format: {(user_id, vault_id): {'challenge': bytes, 'created_at': timestamp}}
+# In production, use Redis with TTL for distributed systems
+webauthn_challenges: Dict[tuple, Dict[str, Any]] = {}
+CHALLENGE_TTL_SECONDS = 300  # 5 minutes
 
 router = APIRouter(prefix="/api/v1/vault", tags=["vault-auth"])
 
@@ -49,6 +59,52 @@ vault_sessions: Dict[tuple, Dict[str, Any]] = {}
 # Rate limiting for unlock attempts
 UNLOCK_RATE_LIMIT = 5  # attempts
 UNLOCK_WINDOW_SECONDS = 300  # 5 minutes
+
+
+# ===== WebAuthn Challenge Management =====
+
+def _generate_challenge(user_id: str, vault_id: str) -> bytes:
+    """Generate and store a WebAuthn challenge for biometric unlock."""
+    challenge = secrets.token_bytes(32)
+    webauthn_challenges[(user_id, vault_id)] = {
+        'challenge': challenge,
+        'created_at': time.time()
+    }
+    return challenge
+
+
+def _get_challenge(user_id: str, vault_id: str) -> Optional[bytes]:
+    """Get stored challenge if still valid (within TTL)."""
+    key = (user_id, vault_id)
+    if key not in webauthn_challenges:
+        return None
+
+    entry = webauthn_challenges[key]
+    if time.time() - entry['created_at'] > CHALLENGE_TTL_SECONDS:
+        # Challenge expired, remove it
+        del webauthn_challenges[key]
+        return None
+
+    return entry['challenge']
+
+
+def _consume_challenge(user_id: str, vault_id: str) -> Optional[bytes]:
+    """Get and remove challenge (one-time use)."""
+    challenge = _get_challenge(user_id, vault_id)
+    if challenge:
+        del webauthn_challenges[(user_id, vault_id)]
+    return challenge
+
+
+def _cleanup_expired_challenges():
+    """Remove expired challenges (call periodically)."""
+    now = time.time()
+    expired = [
+        key for key, entry in webauthn_challenges.items()
+        if now - entry['created_at'] > CHALLENGE_TTL_SECONDS
+    ]
+    for key in expired:
+        del webauthn_challenges[key]
 
 
 # ===== Database Initialization =====
@@ -190,12 +246,22 @@ def _record_unlock_attempt(user_id: str, vault_id: str, success: bool, method: s
         conn.commit()
 
 
+# PBKDF2 iteration count - OWASP 2023 recommends 600,000 for SHA-256
+# NOTE: Client-side derivation must use the same iteration count
+PBKDF2_ITERATIONS = 600_000
+
+
 def _derive_kek_from_passphrase(passphrase: str, salt: bytes) -> bytes:
     """
-    Derive KEK from passphrase using PBKDF2
-    (This should match client-side derivation)
+    Derive KEK from passphrase using PBKDF2 with 600K iterations.
+
+    Security note: Uses OWASP 2023 recommended iteration count.
+    This must match client-side derivation (VaultService.swift).
+
+    Migration: Existing vaults may use 100K iterations. Store iteration
+    count in vault metadata for backwards compatibility if needed.
     """
-    return hashlib.pbkdf2_hmac('sha256', passphrase.encode(), salt, iterations=100000, dklen=32)
+    return hashlib.pbkdf2_hmac('sha256', passphrase.encode(), salt, iterations=PBKDF2_ITERATIONS, dklen=32)
 
 
 def _wrap_kek(kek: bytes, wrap_key: bytes, method: str = "aes_kw") -> bytes:
@@ -375,6 +441,55 @@ async def setup_biometric(
         )
 
 
+class ChallengeResponse(BaseModel):
+    """WebAuthn challenge for biometric verification"""
+    challenge: str = Field(..., description="Base64url-encoded challenge")
+    timeout: int = Field(default=300000, description="Challenge timeout in milliseconds")
+
+
+@router.post(
+    "/challenge/biometric",
+    response_model=SuccessResponse[ChallengeResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Get WebAuthn challenge",
+    description="Request a challenge for biometric unlock. Must be used within 5 minutes."
+)
+async def get_biometric_challenge(
+    vault_id: str = Query(..., description="Vault ID to unlock"),
+    current_user: User = Depends(get_current_user)
+) -> SuccessResponse[ChallengeResponse]:
+    """
+    Generate and return a WebAuthn challenge for biometric unlock.
+
+    The challenge must be signed by the client's biometric credential
+    and submitted to /unlock/biometric within 5 minutes.
+    """
+    import base64
+
+    # Cleanup expired challenges periodically
+    _cleanup_expired_challenges()
+
+    # Generate new challenge
+    challenge_bytes = _generate_challenge(current_user.user_id, vault_id)
+    challenge_b64 = base64.urlsafe_b64encode(challenge_bytes).rstrip(b'=').decode('ascii')
+
+    logger.info(
+        "Generated biometric challenge",
+        extra={
+            "user_id": current_user.user_id,
+            "vault_id": sanitize_for_log(vault_id)
+        }
+    )
+
+    return SuccessResponse(
+        data=ChallengeResponse(
+            challenge=challenge_b64,
+            timeout=CHALLENGE_TTL_SECONDS * 1000  # Convert to milliseconds
+        ),
+        message="Challenge generated"
+    )
+
+
 @router.post(
     "/unlock/biometric",
     response_model=SuccessResponse[UnlockResponse],
@@ -444,22 +559,46 @@ async def unlock_biometric(
             credential_id, public_key, wrapped_kek_hex, salt_hex, wrap_method = row
             wrap_method = wrap_method or "xor_legacy"  # Default for old entries
 
-        # Verify WebAuthn assertion
-        # TODO: Full WebAuthn verification with challenge validation
-        # To enable, uncomment webauthn_verify import and use:
-        #   settings = get_settings()
-        #   challenge = get_stored_challenge(current_user.user_id, req.vault_id)  # Implement challenge storage
-        #   verified = verify_assertion(
-        #       assert_response=req.webauthn_assertion,
-        #       rp_id=settings.webauthn_rp_id,
-        #       origin=settings.webauthn_origin,
-        #       public_key_pem=public_key,
-        #       challenge=challenge,
-        #       credential_id=credential_id,
-        #       current_sign_count=row[4] if len(row) > 4 else 0  # Fetch webauthn_counter from DB
-        #   )
-        #   # Update sign_count in DB to prevent replay attacks
-        # For now, we trust the client has verified the credential
+        # Verify WebAuthn assertion with challenge validation
+        challenge = _consume_challenge(current_user.user_id, req.vault_id)
+        if not challenge:
+            _record_unlock_attempt(current_user.user_id, req.vault_id, False, 'biometric')
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message="No valid challenge found. Please request a new challenge."
+                ).model_dump()
+            )
+
+        try:
+            # Verify the WebAuthn assertion cryptographically
+            verified = verify_assertion(
+                assert_response=req.webauthn_assertion,
+                rp_id=WEBAUTHN_RP_ID,
+                origin=WEBAUTHN_ORIGIN,
+                public_key_pem=public_key,
+                challenge=challenge,
+                credential_id=credential_id,
+                current_sign_count=0  # TODO: Fetch from DB and update after verification
+            )
+            logger.info(
+                "WebAuthn assertion verified",
+                extra={
+                    "user_id": current_user.user_id,
+                    "credential_id": credential_id[:16] + "..."
+                }
+            )
+        except Exception as e:
+            _record_unlock_attempt(current_user.user_id, req.vault_id, False, 'biometric')
+            logger.warning(f"WebAuthn verification failed: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.UNAUTHORIZED,
+                    message="Biometric verification failed"
+                ).model_dump()
+            )
 
         # Unwrap KEK using the stored wrap method
         wrap_key = hashlib.sha256(credential_id.encode()).digest()

@@ -113,28 +113,28 @@ final class OllamaService {
         // Create streaming task
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     onComplete(.failure(error))
                 }
                 return
             }
 
             guard let httpResponse = response as? HTTPURLResponse else {
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     onComplete(.failure(OllamaError.invalidResponse))
                 }
                 return
             }
 
             guard httpResponse.statusCode == 200 else {
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     onComplete(.failure(OllamaError.httpError(httpResponse.statusCode)))
                 }
                 return
             }
 
             guard let data = data else {
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     onComplete(.failure(OllamaError.noData))
                 }
                 return
@@ -151,7 +151,7 @@ final class OllamaService {
                         do {
                             let progress = try JSONDecoder().decode(OllamaProgress.self, from: jsonData)
 
-                            DispatchQueue.main.async {
+                            Task { @MainActor in
                                 onProgress(progress)
 
                                 // Call completion on final status

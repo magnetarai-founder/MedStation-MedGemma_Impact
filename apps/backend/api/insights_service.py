@@ -48,6 +48,37 @@ from api.schemas.insights_models import (
     TemplateCategory, OutputFormat
 )
 
+
+# Whitelisted columns for SQL UPDATE to prevent injection
+RECORDING_UPDATE_COLUMNS = frozenset({"title", "tags", "folder_id"})
+TEMPLATE_UPDATE_COLUMNS = frozenset({"name", "description", "system_prompt", "category", "output_format"})
+
+
+def build_safe_update(updates_dict: Dict[str, Any], allowed_columns: frozenset) -> tuple[list, list]:
+    """
+    Build safe SQL UPDATE clause with whitelist validation.
+
+    Args:
+        updates_dict: Dict of column_name -> value pairs
+        allowed_columns: Frozenset of allowed column names
+
+    Returns:
+        Tuple of (update_clauses, params) for use in SQL query
+
+    Raises:
+        ValueError: If any column is not in the whitelist
+    """
+    clauses = []
+    params = []
+
+    for column, value in updates_dict.items():
+        if column not in allowed_columns:
+            raise ValueError(f"Invalid column for update: {column}")
+        clauses.append(f"{column} = ?")
+        params.append(value)
+
+    return clauses, params
+
 router = APIRouter(
     prefix="/api/v1/insights",
     tags=["Insights Lab"],
@@ -681,22 +712,18 @@ async def update_recording(
         conn.close()
         raise HTTPException(status_code=404, detail="Recording not found")
 
-    updates = []
-    params = []
-
+    # Build updates dict with whitelisted columns only
+    updates_dict = {}
     if request.title is not None:
-        updates.append("title = ?")
-        params.append(request.title)
-
+        updates_dict["title"] = request.title
     if request.tags is not None:
-        updates.append("tags = ?")
-        params.append(json.dumps(request.tags))
-
+        updates_dict["tags"] = json.dumps(request.tags)
     if request.folder_id is not None:
-        updates.append("folder_id = ?")
-        params.append(request.folder_id)
+        updates_dict["folder_id"] = request.folder_id
 
-    if updates:
+    if updates_dict:
+        # Use safe builder with whitelist validation
+        updates, params = build_safe_update(updates_dict, RECORDING_UPDATE_COLUMNS)
         params.append(recording_id)
         cursor.execute(f"UPDATE recordings SET {', '.join(updates)} WHERE id = ?", params)
         conn.commit()
@@ -844,30 +871,22 @@ async def update_template(
         conn.close()
         raise HTTPException(status_code=403, detail="Cannot modify built-in templates")
 
-    updates = []
-    params = []
-
+    # Build updates dict with whitelisted columns only
+    updates_dict = {}
     if request.name is not None:
-        updates.append("name = ?")
-        params.append(request.name)
-
+        updates_dict["name"] = request.name
     if request.description is not None:
-        updates.append("description = ?")
-        params.append(request.description)
-
+        updates_dict["description"] = request.description
     if request.system_prompt is not None:
-        updates.append("system_prompt = ?")
-        params.append(request.system_prompt)
-
+        updates_dict["system_prompt"] = request.system_prompt
     if request.category is not None:
-        updates.append("category = ?")
-        params.append(request.category.value)
-
+        updates_dict["category"] = request.category.value
     if request.output_format is not None:
-        updates.append("output_format = ?")
-        params.append(request.output_format.value)
+        updates_dict["output_format"] = request.output_format.value
 
-    if updates:
+    if updates_dict:
+        # Use safe builder with whitelist validation
+        updates, params = build_safe_update(updates_dict, TEMPLATE_UPDATE_COLUMNS)
         params.append(template_id)
         cursor.execute(f"UPDATE templates SET {', '.join(updates)} WHERE id = ?", params)
         conn.commit()

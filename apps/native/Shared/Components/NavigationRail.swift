@@ -67,6 +67,16 @@ struct NavigationRail: View {
                     navigationStore.activeWorkspace = .insights
                 }
                 .help("Insights (⌘6)")
+
+                // Trust Network
+                RailButton(
+                    icon: "checkmark.shield",
+                    workspace: .trust,
+                    isActive: navigationStore.activeWorkspace == .trust
+                ) {
+                    navigationStore.activeWorkspace = .trust
+                }
+                .help("Trust Network (⌘7)")
             }
             .padding(.top, 20)
 

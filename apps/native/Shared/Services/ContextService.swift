@@ -153,7 +153,6 @@ class ContextService {
             metadata: metadata.mapValues { AnyCodable($0) }
         )
 
-        struct EmptyResponse: Codable {}
         let _: EmptyResponse = try await apiClient.request(
             "/api/v1/context/store",
             method: .post,
