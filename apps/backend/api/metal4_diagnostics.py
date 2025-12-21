@@ -318,7 +318,7 @@ class Metal4Diagnostics:
 _diagnostics: Optional[Metal4Diagnostics] = None
 
 
-def get_diagnostics():
+def get_diagnostics() -> Optional[Any]:
     """Get singleton diagnostics instance"""
     global _diagnostics
 

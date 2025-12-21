@@ -150,11 +150,11 @@ class CoreNLPLibrary:
 
         return response
 
-    def add_custom_template(self, template: NLPTemplate):
+    def add_custom_template(self, template: NLPTemplate) -> None:
         """Add a custom template to the library"""
         self.templates.append(template)
 
-    def export_templates(self, path: str):
+    def export_templates(self, path: str) -> None:
         """Export templates to JSON for backup/sharing"""
         data = []
         for template in self.templates:

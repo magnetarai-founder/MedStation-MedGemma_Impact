@@ -65,7 +65,7 @@ class HealthDiagnostics:
         # Initialize
         self._initialize()
 
-    def _initialize(self):
+    def _initialize(self) -> None:
         """Initialize diagnostics system"""
         logger.info("Initializing health diagnostics...")
         self._initialized = True

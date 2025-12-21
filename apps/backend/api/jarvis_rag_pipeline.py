@@ -9,7 +9,7 @@ RAG pipeline for Jarvis.
 import os
 import re
 from pathlib import Path
-from typing import List, Tuple
+from typing import Any, List, Tuple
 import json
 import math
 import os
@@ -21,7 +21,7 @@ try:
     from rag_pipeline_enhanced import EnhancedRAGPipeline
     _enhanced_pipeline = None
     
-    def get_enhanced_pipeline():
+    def get_enhanced_pipeline() -> Any:
         global _enhanced_pipeline
         if _enhanced_pipeline is None:
             _enhanced_pipeline = EnhancedRAGPipeline()
@@ -83,7 +83,7 @@ def retrieve_context_for_command(command: str, memory=None, max_snippets: int = 
     return snippets[:max_snippets]
 
 
-def ingest_paths(paths: List[str], tags: List[str] = None, chunk_lines: int = 80):
+def ingest_paths(paths: List[str], tags: List[str] = None, chunk_lines: int = 80) -> None:
     """Delegate to enhanced pipeline ingestion when available."""
     if _enhanced_pipeline is not None:
         try:

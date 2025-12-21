@@ -193,7 +193,7 @@ class AdaptiveRouter:
         
         return tool_type in compatibility.get(task_type, [])
         
-    def _store_routing_decision(self, command: str, result: AdaptiveRouteResult):
+    def _store_routing_decision(self, command: str, result: AdaptiveRouteResult) -> None:
         """Store routing decision for future learning"""
         
         self.routing_history.append({

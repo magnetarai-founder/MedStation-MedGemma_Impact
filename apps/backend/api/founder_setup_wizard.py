@@ -81,7 +81,7 @@ class FounderSetupWizard:
         # Initialize database table
         self._init_db()
 
-    def _init_db(self):
+    def _init_db(self) -> None:
         """Initialize founder_setup table"""
         conn = sqlite3.connect(str(self.db_path))
         cur = conn.cursor()
