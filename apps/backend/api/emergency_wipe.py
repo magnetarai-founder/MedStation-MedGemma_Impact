@@ -97,7 +97,7 @@ async def perform_dod_wipe(file_paths: List[str]) -> Dict[str, Any]:
     }
 
 
-async def wipe_single_file(file_path: str):
+async def wipe_single_file(file_path: str) -> None:
     """
     Wipe a single file using DoD 5220.22-M 7-pass overwrite.
 

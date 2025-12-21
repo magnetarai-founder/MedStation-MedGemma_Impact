@@ -170,7 +170,7 @@ class MLXEmbedder:
             logger.error(f"MLX encoding failed: {e}")
             return np.array([])
 
-    def _mean_pooling(self, model_output, attention_mask):
+    def _mean_pooling(self, model_output, attention_mask) -> Any:
         """Mean pooling - take attention mask into account"""
         import torch
         token_embeddings = model_output

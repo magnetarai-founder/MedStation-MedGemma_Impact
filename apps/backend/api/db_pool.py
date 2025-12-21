@@ -20,7 +20,7 @@ import threading
 import time
 import logging
 from pathlib import Path
-from typing import Union, Optional, Any
+from typing import Generator, Union, Optional, Any
 from contextlib import contextmanager
 from queue import Queue, Empty
 from dataclasses import dataclass, field
@@ -258,7 +258,7 @@ class SQLiteConnectionPool:
                 pass  # Connection may already be closed
 
     @contextmanager
-    def get_connection(self):
+    def get_connection(self) -> Generator[sqlite3.Connection, None, None]:
         """
         Context manager for getting a connection
 

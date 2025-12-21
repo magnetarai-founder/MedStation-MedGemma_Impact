@@ -37,7 +37,7 @@ class MetalSQLKernels:
         
         self._initialize()
     
-    def _initialize(self):
+    def _initialize(self) -> None:
         """Initialize Metal compute pipelines for SQL operations"""
         try:
             import Metal

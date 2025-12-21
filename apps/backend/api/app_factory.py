@@ -10,6 +10,7 @@ import logging
 import os
 import signal
 import uuid as uuid_lib
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from datetime import UTC, datetime
@@ -138,7 +139,7 @@ async def vacuum_databases() -> None:
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     Application lifespan context manager.
 

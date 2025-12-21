@@ -8,6 +8,7 @@ Usage:
     python3 -m uvicorn api.network_api:app --reload --port 8001
 """
 
+from typing import Any, Dict
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
@@ -48,7 +49,7 @@ except Exception as e:
 
 
 @app.get("/")
-async def root():
+async def root() -> Dict[str, Any]:
     return {
         "service": "ElohimOS Network API",
         "status": "running",
@@ -60,7 +61,7 @@ async def root():
 
 
 @app.get("/health")
-async def health():
+async def health() -> Dict[str, str]:
     return {"status": "healthy"}
 
 
