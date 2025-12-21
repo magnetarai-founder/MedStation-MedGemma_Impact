@@ -55,7 +55,7 @@ class TeamManager:
         # Database is initialized via Phase 3 migration, not here
         # self._init_database()
 
-    def _init_database(self):
+    def _init_database(self) -> None:
         """Initialize team database tables"""
         cursor = self.conn.cursor()
 

@@ -20,7 +20,7 @@ _model_manager = None
 _ollama_client = None
 
 
-def _get_model_manager():
+def _get_model_manager() -> Any:
     """Lazy init for model manager"""
     global _model_manager
     if _model_manager is None:
@@ -32,7 +32,7 @@ def _get_model_manager():
     return _model_manager
 
 
-def _get_ollama_client():
+def _get_ollama_client() -> Any:
     """Lazy init for Ollama client - recreate on each call for now"""
     from .streaming import OllamaClient
     return OllamaClient()

@@ -136,7 +136,7 @@ class RequestMetrics:
     _max_recent_errors = 50
 
     @classmethod
-    def record_request(cls, method: str, path: str, status_code: int, elapsed_ms: float):
+    def record_request(cls, method: str, path: str, status_code: int, elapsed_ms: float) -> None:
         """Record a successful request."""
         cls._total_requests += 1
         cls._total_time_ms += elapsed_ms
@@ -156,7 +156,7 @@ class RequestMetrics:
             cls._endpoint_stats[endpoint_key]["errors"] += 1
 
     @classmethod
-    def record_error(cls, method: str, path: str, error_type: str, elapsed_ms: float):
+    def record_error(cls, method: str, path: str, error_type: str, elapsed_ms: float) -> None:
         """Record a request error."""
         cls._failed_requests += 1
         cls._total_requests += 1
@@ -231,7 +231,7 @@ class RequestMetrics:
         }
 
     @classmethod
-    def reset(cls):
+    def reset(cls) -> None:
         """Reset all statistics."""
         cls._total_requests = 0
         cls._slow_requests = 0
@@ -243,7 +243,7 @@ class RequestMetrics:
         cls._recent_errors.clear()
 
 
-def add_observability_middleware(app: FastAPI):
+def add_observability_middleware(app: FastAPI) -> None:
     """
     Add observability middleware to FastAPI app.
 
@@ -273,6 +273,6 @@ def get_error_metrics() -> Dict:
     return RequestMetrics.get_error_stats()
 
 
-def reset_metrics():
+def reset_metrics() -> None:
     """Reset all metrics."""
     RequestMetrics.reset()

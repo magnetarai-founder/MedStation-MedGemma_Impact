@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 _memory = None
 
 
-def _get_memory():
+def _get_memory() -> Any:
     """Lazy initialization of chat memory"""
     global _memory
     if _memory is None:

@@ -98,7 +98,7 @@ def regenerate_invite_code(team_id: str, expires_days: int = 30) -> str:
 # INVITE CODE VALIDATION
 # ========================================================================
 
-def record_invite_attempt(invite_code: str, ip_address: str, success: bool):
+def record_invite_attempt(invite_code: str, ip_address: str, success: bool) -> None:
     """Record an invite code validation attempt (HIGH-05)"""
     record_invite_attempt_db(invite_code, ip_address, success)
 
