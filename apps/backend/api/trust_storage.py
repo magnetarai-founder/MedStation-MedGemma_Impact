@@ -41,7 +41,7 @@ class TrustStorage:
         self._init_db()
         logger.info(f"📡 Trust network storage initialized: {db_path}")
 
-    def _init_db(self):
+    def _init_db(self) -> None:
         """Initialize database schema"""
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("""

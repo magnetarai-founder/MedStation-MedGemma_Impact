@@ -209,7 +209,7 @@ class SyncResponse(BaseModel):
 
 # ===== Database =====
 
-def init_db():
+def init_db() -> None:
     """Initialize the documents database"""
     conn = sqlite3.connect(DOCS_DB_PATH)
     cursor = conn.cursor()
@@ -271,7 +271,7 @@ def _get_pool() -> SQLiteConnectionPool:
     return _docs_pool
 
 
-def get_db():
+def get_db() -> sqlite3.Connection:
     """Get database connection from pool"""
     pool = _get_pool()
     conn = pool.checkout()
@@ -279,7 +279,7 @@ def get_db():
     return conn
 
 
-def release_db(conn: sqlite3.Connection):
+def release_db(conn: sqlite3.Connection) -> None:
     """Return connection to pool"""
     pool = _get_pool()
     pool.checkin(conn)
