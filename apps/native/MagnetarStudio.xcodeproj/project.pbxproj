@@ -95,6 +95,12 @@
 		7C97B41A3B3DE3836BC0498D /* TrustWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17B37288EB0E2045E95355D0 /* TrustWorkspace.swift */; };
 		9F0BB6A438C9403583F1B0C9 /* InsightsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F47E63AEFC7747B19381364F /* InsightsService.swift */; };
 		4690CCF4FD994934AB9F71F3 /* InsightsWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = A91ECD22957B4016A5BF4AD2 /* InsightsWorkspace.swift */; };
+		1A2B3C4D5E6F7890ABCDEF08 /* RecordingRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F7890ABCDEF02 /* RecordingRow.swift */; };
+		1A2B3C4D5E6F7890ABCDEF09 /* OutputCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F7890ABCDEF03 /* OutputCard.swift */; };
+		1A2B3C4D5E6F7890ABCDEF0A /* RecordingDetailPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F7890ABCDEF04 /* RecordingDetailPane.swift */; };
+		1A2B3C4D5E6F7890ABCDEF0B /* UploadRecordingSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F7890ABCDEF05 /* UploadRecordingSheet.swift */; };
+		1A2B3C4D5E6F7890ABCDEF0C /* TemplateCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F7890ABCDEF06 /* TemplateCard.swift */; };
+		1A2B3C4D5E6F7890ABCDEF0D /* TemplateLibrarySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F7890ABCDEF07 /* TemplateLibrarySheet.swift */; };
 		7BF38CC1B1724419935FB9C5 /* TemplateEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54BD663C0F6C48B3832DB59E /* TemplateEditorSheet.swift */; };
 		7D52C320EC4DC723D4A73932 /* SecuritySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84BA14924AAE8B77761B548B /* SecuritySettingsView.swift */; };
 		7DB98B2613859268D5044625 /* HotSlotCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 077737498A29BA7612A5B626 /* HotSlotCard.swift */; };
@@ -233,6 +239,12 @@
 		17B37288EB0E2045E95355D0 /* TrustWorkspace.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TrustWorkspace.swift; sourceTree = "<group>"; };
 		F47E63AEFC7747B19381364F /* InsightsService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = InsightsService.swift; sourceTree = "<group>"; };
 		A91ECD22957B4016A5BF4AD2 /* InsightsWorkspace.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = InsightsWorkspace.swift; sourceTree = "<group>"; };
+		1A2B3C4D5E6F7890ABCDEF02 /* RecordingRow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RecordingRow.swift; path = InsightsWorkspace/RecordingRow.swift; sourceTree = "<group>"; };
+		1A2B3C4D5E6F7890ABCDEF03 /* OutputCard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = OutputCard.swift; path = InsightsWorkspace/OutputCard.swift; sourceTree = "<group>"; };
+		1A2B3C4D5E6F7890ABCDEF04 /* RecordingDetailPane.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RecordingDetailPane.swift; path = InsightsWorkspace/RecordingDetailPane.swift; sourceTree = "<group>"; };
+		1A2B3C4D5E6F7890ABCDEF05 /* UploadRecordingSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = UploadRecordingSheet.swift; path = InsightsWorkspace/UploadRecordingSheet.swift; sourceTree = "<group>"; };
+		1A2B3C4D5E6F7890ABCDEF06 /* TemplateCard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TemplateCard.swift; path = InsightsWorkspace/TemplateCard.swift; sourceTree = "<group>"; };
+		1A2B3C4D5E6F7890ABCDEF07 /* TemplateLibrarySheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TemplateLibrarySheet.swift; path = InsightsWorkspace/TemplateLibrarySheet.swift; sourceTree = "<group>"; };
 		54BD663C0F6C48B3832DB59E /* TemplateEditorSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TemplateEditorSheet.swift; sourceTree = "<group>"; };
 		17B48CFFB13864D1927C04F8 /* VaultWorkspaceView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VaultWorkspaceView.swift; path = Vault/VaultWorkspaceView.swift; sourceTree = "<group>"; };
 		181392C49DEAE5A86F4C528B /* WorkflowBuilderView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowBuilderView.swift; sourceTree = "<group>"; };
@@ -609,6 +621,7 @@
 				E5E5699826C8C8CCD54EA154 /* Code */,
 				17B37288EB0E2045E95355D0 /* TrustWorkspace.swift */,
 				A91ECD22957B4016A5BF4AD2 /* InsightsWorkspace.swift */,
+				1A2B3C4D5E6F7890ABCDEF01 /* InsightsWorkspace */,
 				54BD663C0F6C48B3832DB59E /* TemplateEditorSheet.swift */,
 			);
 			path = Workspaces;
@@ -728,6 +741,19 @@
 				15FE1501F89969EF649D1C57 /* ModelDiscoveryDataManager.swift */,
 			);
 			name = ModelDiscovery;
+			sourceTree = "<group>";
+		};
+		1A2B3C4D5E6F7890ABCDEF01 /* InsightsWorkspace */ = {
+			isa = PBXGroup;
+			children = (
+				1A2B3C4D5E6F7890ABCDEF02 /* RecordingRow.swift */,
+				1A2B3C4D5E6F7890ABCDEF03 /* OutputCard.swift */,
+				1A2B3C4D5E6F7890ABCDEF04 /* RecordingDetailPane.swift */,
+				1A2B3C4D5E6F7890ABCDEF05 /* UploadRecordingSheet.swift */,
+				1A2B3C4D5E6F7890ABCDEF06 /* TemplateCard.swift */,
+				1A2B3C4D5E6F7890ABCDEF07 /* TemplateLibrarySheet.swift */,
+			);
+			name = InsightsWorkspace;
 			sourceTree = "<group>";
 		};
 		A1B2C3D4E5F6A7B8C9D0E1F2 /* Views */ = {
@@ -1329,6 +1355,12 @@
 				C782BDDC2D78F8F66671EB1E /* TrustService.swift in Sources */,
 				9F0BB6A438C9403583F1B0C9 /* InsightsService.swift in Sources */,
 				4690CCF4FD994934AB9F71F3 /* InsightsWorkspace.swift in Sources */,
+				1A2B3C4D5E6F7890ABCDEF08 /* RecordingRow.swift in Sources */,
+				1A2B3C4D5E6F7890ABCDEF09 /* OutputCard.swift in Sources */,
+				1A2B3C4D5E6F7890ABCDEF0A /* RecordingDetailPane.swift in Sources */,
+				1A2B3C4D5E6F7890ABCDEF0B /* UploadRecordingSheet.swift in Sources */,
+				1A2B3C4D5E6F7890ABCDEF0C /* TemplateCard.swift in Sources */,
+				1A2B3C4D5E6F7890ABCDEF0D /* TemplateLibrarySheet.swift in Sources */,
 				7BF38CC1B1724419935FB9C5 /* TemplateEditorSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
