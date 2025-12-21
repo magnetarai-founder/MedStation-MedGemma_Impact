@@ -92,7 +92,7 @@ class UserResponse(BaseModel):
 
 
 @router.get("/setup-needed")
-async def check_setup_needed():
+async def check_setup_needed() -> Dict[str, bool]:
     """Check if initial setup is required (no users exist)"""
     import sqlite3
 
@@ -110,7 +110,7 @@ async def check_setup_needed():
 
 
 @router.post("/register", response_model=UserResponse)
-async def register(request: Request, body: RegisterRequest):
+async def register(request: Request, body: RegisterRequest) -> UserResponse:
     """
     Register a new user
 
@@ -149,7 +149,7 @@ async def register(request: Request, body: RegisterRequest):
 
 
 @router.post("/login", response_model=LoginResponse)
-async def login(request: Request, body: LoginRequest):
+async def login(request: Request, body: LoginRequest) -> LoginResponse:
     """
     Login and receive JWT access token + refresh token
 
@@ -272,7 +272,7 @@ async def login(request: Request, body: LoginRequest):
 
 
 @router.post("/change-password-first-login")
-async def change_password_first_login(request: Request, body: ChangePasswordFirstLoginRequest):
+async def change_password_first_login(request: Request, body: ChangePasswordFirstLoginRequest) -> Dict[str, bool]:
     """
     Forced password change after admin reset
 
@@ -399,7 +399,7 @@ async def change_password_first_login(request: Request, body: ChangePasswordFirs
 
 
 @router.post("/refresh", response_model=LoginResponse)
-async def refresh_token(request: Request, body: RefreshRequest):
+async def refresh_token(request: Request, body: RefreshRequest) -> LoginResponse:
     """
     MED-05: Refresh access token using refresh token
 
@@ -439,7 +439,7 @@ async def refresh_token(request: Request, body: RefreshRequest):
 
 
 @router.post("/logout")
-async def logout(request: Request):
+async def logout(request: Request) -> Dict[str, str]:
     """
     Logout current user - works even with expired tokens
 
@@ -502,7 +502,7 @@ async def logout(request: Request):
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_current_user_info(user: dict = Depends(get_current_user)):
+async def get_current_user_info(user: Dict[str, Any] = Depends(get_current_user)) -> UserResponse:
     """
     Get current user information
     """
@@ -515,7 +515,7 @@ async def get_current_user_info(user: dict = Depends(get_current_user)):
 
 
 @router.get("/verify")
-async def verify_token(user: dict = Depends(get_current_user)):
+async def verify_token(user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
     """
     Verify if token is still valid
     """
@@ -527,7 +527,7 @@ async def verify_token(user: dict = Depends(get_current_user)):
 
 
 @router.post("/cleanup-sessions")
-async def cleanup_expired_sessions(request: Request):
+async def cleanup_expired_sessions(request: Request) -> Dict[str, str]:
     """
     Cleanup expired sessions (can be called by a cron job)
     """
@@ -542,8 +542,8 @@ async def cleanup_expired_sessions(request: Request):
 @router.get("/permissions")
 async def get_current_user_permissions(
     team_id: Optional[str] = None,
-    user: dict = Depends(get_current_user)
-):
+    user: Dict[str, Any] = Depends(get_current_user)
+) -> Dict[str, Any]:
     """
     Get current user's effective permissions - Cached for 10 minutes
 

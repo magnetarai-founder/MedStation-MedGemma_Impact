@@ -7,7 +7,7 @@ import asyncio
 import logging
 from pathlib import Path
 from datetime import datetime, timedelta, UTC
-from typing import Dict, Callable, Optional, List
+from typing import Dict, Callable, Optional, List, Any
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
@@ -50,10 +50,10 @@ class BackgroundJobManager:
         self,
         name: str,
         interval_seconds: int,
-        task: Callable,
+        task: Callable[[], Any],
         description: str,
         enabled: bool = True
-    ):
+    ) -> None:
         """Register a background job"""
         if name in self.jobs:
             logger.warning(f"Job '{name}' already registered, overwriting")
@@ -67,7 +67,7 @@ class BackgroundJobManager:
         )
         logger.info(f"📋 Registered background job: {name} (every {interval_seconds}s)")
 
-    async def _run_job_loop(self, job_config: JobConfig):
+    async def _run_job_loop(self, job_config: JobConfig) -> None:
         """Run a job on its scheduled interval"""
         while self.running:
             try:
@@ -94,7 +94,7 @@ class BackgroundJobManager:
             # Wait for next run
             await asyncio.sleep(job_config.interval_seconds)
 
-    async def start(self):
+    async def start(self) -> None:
         """Start all enabled background jobs"""
         if self.running:
             logger.warning("Background jobs already running")
@@ -110,7 +110,7 @@ class BackgroundJobManager:
                 self._tasks.append(task)
                 logger.info(f"▶️  Started: {job_config.name}")
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Stop all background jobs"""
         if not self.running:
             return
@@ -128,7 +128,7 @@ class BackgroundJobManager:
         self._tasks.clear()
         logger.info("✅ All background jobs stopped")
 
-    def get_status(self) -> Dict:
+    def get_status(self) -> Dict[str, Any]:
         """Get status of all jobs"""
         return {
             "running": self.running,
@@ -148,13 +148,13 @@ class BackgroundJobManager:
             ]
         }
 
-    def enable_job(self, name: str):
+    def enable_job(self, name: str) -> None:
         """Enable a job"""
         if name in self.jobs:
             self.jobs[name].enabled = True
             logger.info(f"Enabled job: {name}")
 
-    def disable_job(self, name: str):
+    def disable_job(self, name: str) -> None:
         """Disable a job"""
         if name in self.jobs:
             self.jobs[name].enabled = False
@@ -177,7 +177,7 @@ def get_job_manager() -> BackgroundJobManager:
 # COMMON CLEANUP JOBS
 # ============================================================================
 
-async def cleanup_temp_files(max_age_hours: int = 24):
+async def cleanup_temp_files(max_age_hours: int = 24) -> None:
     """
     Clean up temporary files older than max_age_hours
 
@@ -215,7 +215,7 @@ async def cleanup_temp_files(max_age_hours: int = 24):
         logger.info(f"🧹 Cleaned {cleaned_count} temp files older than {max_age_hours}h")
 
 
-def cleanup_expired_sessions(session_storage: Dict, max_age_hours: int = 24):
+def cleanup_expired_sessions(session_storage: Dict[str, Any], max_age_hours: int = 24) -> None:
     """
     Clean up expired sessions from session storage
 
@@ -248,7 +248,7 @@ def cleanup_expired_sessions(session_storage: Dict, max_age_hours: int = 24):
         logger.info(f"🧹 Cleaned {len(expired_sessions)} expired sessions")
 
 
-async def cleanup_audit_logs(max_age_days: int = 90):
+async def cleanup_audit_logs(max_age_days: int = 90) -> None:
     """
     Clean up old audit logs
 
@@ -274,7 +274,7 @@ async def cleanup_audit_logs(max_age_days: int = 90):
 # ANALYTICS AGGREGATION JOBS (Sprint 6 Theme A)
 # ============================================================================
 
-async def aggregate_analytics_hourly():
+async def aggregate_analytics_hourly() -> None:
     """
     Aggregate analytics data hourly
 
@@ -296,7 +296,7 @@ async def aggregate_analytics_hourly():
         logger.error(f"Failed to aggregate analytics: {e}", exc_info=True)
 
 
-async def aggregate_analytics_daily():
+async def aggregate_analytics_daily() -> None:
     """
     Aggregate analytics data daily
 
@@ -321,7 +321,7 @@ async def aggregate_analytics_daily():
         logger.error(f"Failed to run daily analytics aggregation: {e}", exc_info=True)
 
 
-def register_analytics_jobs(manager: Optional[BackgroundJobManager] = None):
+def register_analytics_jobs(manager: Optional[BackgroundJobManager] = None) -> None:
     """
     Register analytics aggregation jobs with the background job manager
 

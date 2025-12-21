@@ -37,7 +37,7 @@ class ServiceContainer:
         self._lock = threading.Lock()
         self._overrides: Dict[str, Any] = {}
 
-    def register_factory(self, name: str, factory: Callable):
+    def register_factory(self, name: str, factory: Callable[[], Any]) -> None:
         """
         Register a factory function for lazy initialization
 
@@ -84,7 +84,7 @@ class ServiceContainer:
             self._services[name] = instance
             return instance
 
-    def override(self, name: str, instance: Any):
+    def override(self, name: str, instance: Any) -> None:
         """
         Override service with mock (for testing)
 
@@ -94,11 +94,11 @@ class ServiceContainer:
         """
         self._overrides[name] = instance
 
-    def clear_override(self, name: str):
+    def clear_override(self, name: str) -> None:
         """Clear service override"""
         self._overrides.pop(name, None)
 
-    def clear_all_overrides(self):
+    def clear_all_overrides(self) -> None:
         """Clear all overrides (useful for test cleanup)"""
         self._overrides.clear()
 
@@ -106,7 +106,7 @@ class ServiceContainer:
         """Check if service is initialized"""
         return name in self._services
 
-    def shutdown_all(self):
+    def shutdown_all(self) -> None:
         """Shutdown all services (call close/cleanup methods)"""
         with self._lock:
             for name, instance in self._services.items():
@@ -125,7 +125,7 @@ class ServiceContainer:
             # Clear all cached instances
             self._services.clear()
 
-    def get_all_service_names(self) -> list:
+    def get_all_service_names(self) -> list[str]:
         """Get list of all registered service names"""
         return list(self._factories.keys())
 
@@ -137,7 +137,7 @@ services = ServiceContainer()
 
 # ===== Register Existing Services =====
 
-def register_core_services():
+def register_core_services() -> None:
     """
     Register all core services with their factories.
 
@@ -145,56 +145,56 @@ def register_core_services():
     """
 
     # Data Engine
-    def create_data_engine():
+    def create_data_engine() -> Any:
         from data_engine import get_data_engine
         return get_data_engine()
 
     services.register_factory("data_engine", create_data_engine)
 
     # Chat Memory
-    def create_chat_memory():
+    def create_chat_memory() -> Any:
         from chat_memory import get_memory
         return get_memory()
 
     services.register_factory("chat_memory", create_chat_memory)
 
     # Metal4 Diagnostics
-    def create_metal4_diagnostics():
+    def create_metal4_diagnostics() -> Any:
         from metal4_diagnostics import get_diagnostics
         return get_diagnostics()
 
     services.register_factory("metal4_diagnostics", create_metal4_diagnostics)
 
     # Metal4 Engine
-    def create_metal4_engine():
+    def create_metal4_engine() -> Any:
         from metal4_engine import get_metal4_engine
         return get_metal4_engine()
 
     services.register_factory("metal4_engine", create_metal4_engine)
 
     # Vault Service
-    def create_vault_service():
+    def create_vault_service() -> Any:
         from vault_service import get_vault_service
         return get_vault_service()
 
     services.register_factory("vault_service", create_vault_service)
 
     # User Service (migrated to services layer)
-    def create_user_service():
+    def create_user_service() -> Any:
         from services.users import get_or_create_user_profile
         return get_or_create_user_profile
 
     services.register_factory("user_service", create_user_service)
 
     # Docs Service
-    def create_docs_service():
+    def create_docs_service() -> Any:
         from docs_service import get_docs_service
         return get_docs_service()
 
     services.register_factory("docs_service", create_docs_service)
 
     # Model Manager
-    def create_model_manager():
+    def create_model_manager() -> Any:
         from model_manager import get_model_manager
         return get_model_manager()
 
@@ -212,6 +212,6 @@ def get_service(name: str) -> Any:
     return services.get(name)
 
 
-def shutdown_services():
+def shutdown_services() -> None:
     """Shutdown all services (call from app shutdown)"""
     services.shutdown_all()

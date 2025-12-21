@@ -5,7 +5,8 @@ Tracks operation counts and latencies for production bottleneck identification
 
 import time
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any, Type
+from types import TracebackType
 from dataclasses import dataclass, field
 from datetime import datetime, UTC
 from collections import defaultdict
@@ -44,7 +45,7 @@ class OperationMetrics:
     # Keep last 1000 durations for percentile calculation
     max_durations_stored: int = 1000
 
-    def record(self, duration_ms: float, error: bool = False):
+    def record(self, duration_ms: float, error: bool = False) -> None:
         """Record a new operation execution"""
         self.count += 1
         self.total_duration_ms += duration_ms
@@ -130,7 +131,7 @@ class MetricsCollector:
         self._metrics: Dict[str, OperationMetrics] = defaultdict(OperationMetrics)
         self._lock = Lock()
 
-    def record(self, operation: str, duration_ms: float, error: bool = False):
+    def record(self, operation: str, duration_ms: float, error: bool = False) -> None:
         """Record an operation execution"""
         with self._lock:
             self._metrics[operation].record(duration_ms, error)
@@ -138,11 +139,11 @@ class MetricsCollector:
             if duration_ms > 1000:  # Log slow operations (>1s)
                 logger.warning(f"⏱️  Slow operation '{operation}': {duration_ms:.2f}ms")
 
-    def track(self, operation: str):
+    def track(self, operation: str) -> "_MetricsContext":
         """Context manager for tracking operation duration"""
         return _MetricsContext(self, operation)
 
-    def increment_error(self, operation: str):
+    def increment_error(self, operation: str) -> None:
         """Increment error count for an operation"""
         with self._lock:
             self._metrics[operation].errors += 1
@@ -162,7 +163,7 @@ class MetricsCollector:
                 for op_name, metrics in self._metrics.items()
             ]
 
-    def get_summary(self) -> Dict:
+    def get_summary(self) -> Dict[str, Any]:
         """Get summary of all metrics"""
         snapshots = self.get_all_snapshots()
 
@@ -183,7 +184,7 @@ class MetricsCollector:
             ]
         }
 
-    def reset(self, operation: Optional[str] = None):
+    def reset(self, operation: Optional[str] = None) -> None:
         """Reset metrics for specific operation or all operations"""
         with self._lock:
             if operation:
@@ -202,11 +203,16 @@ class _MetricsContext:
         self.start_time = None
         self.error = False
 
-    def __enter__(self):
+    def __enter__(self) -> "_MetricsContext":
         self.start_time = time.time()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType]
+    ) -> bool:
         if self.start_time is not None:
             duration_ms = (time.time() - self.start_time) * 1000
             self.error = exc_type is not None

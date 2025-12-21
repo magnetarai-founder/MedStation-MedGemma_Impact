@@ -28,7 +28,9 @@ Migrated as part of R1 Vault Service Split refactoring.
 import functools
 import warnings
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Callable, TypeVar
+
+F = TypeVar('F', bound=Callable[..., Any])
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +49,7 @@ router = _vault_routes.router
 
 # ===== Deprecation Decorator =====
 
-def deprecated(new_path: str):
+def deprecated(new_path: str) -> Callable[[F], F]:
     """
     Decorator to mark functions as deprecated with migration guidance.
 
@@ -57,16 +59,16 @@ def deprecated(new_path: str):
     Returns:
         Decorated function that emits DeprecationWarning
     """
-    def decorator(func):
+    def decorator(func: F) -> F:
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             warnings.warn(
                 f"{func.__name__} is deprecated. Import from {new_path} instead.",
                 DeprecationWarning,
                 stacklevel=2
             )
             return func(*args, **kwargs)
-        return wrapper
+        return wrapper  # type: ignore[return-value]
     return decorator
 
 
@@ -77,14 +79,14 @@ def deprecated(new_path: str):
 # implementation in services.vault.core
 
 @deprecated("api.services.vault.core")
-def get_vault_service():
+def get_vault_service() -> Any:
     """Get vault service instance - DEPRECATED"""
     from api.services.vault.core import get_vault_service as _get_vault_service
     return _get_vault_service()
 
 
 @deprecated("api.services.vault.core.VaultService.store_document")
-def create_vault_document(user_id: str, document: Dict[str, Any], team_id: Optional[str] = None):
+def create_vault_document(user_id: str, document: Dict[str, Any], team_id: Optional[str] = None) -> Dict[str, Any]:
     """Store vault document - DEPRECATED"""
     from api.services.vault.core import get_vault_service as _get_vault_service
     service = _get_vault_service()
@@ -99,7 +101,7 @@ def create_vault_document(user_id: str, document: Dict[str, Any], team_id: Optio
 
 
 @deprecated("api.services.vault.core.VaultService.get_document")
-def get_document(user_id: str, doc_id: str, vault_type: str, team_id: Optional[str] = None):
+def get_document(user_id: str, doc_id: str, vault_type: str, team_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
     """Get vault document - DEPRECATED"""
     from api.services.vault.core import get_vault_service as _get_vault_service
     service = _get_vault_service()
@@ -107,7 +109,7 @@ def get_document(user_id: str, doc_id: str, vault_type: str, team_id: Optional[s
 
 
 @deprecated("api.services.vault.core.VaultService.list_documents")
-def list_documents(user_id: str, vault_type: str, team_id: Optional[str] = None):
+def list_documents(user_id: str, vault_type: str, team_id: Optional[str] = None) -> List[Dict[str, Any]]:
     """List vault documents - DEPRECATED"""
     from api.services.vault.core import get_vault_service as _get_vault_service
     service = _get_vault_service()
@@ -116,7 +118,7 @@ def list_documents(user_id: str, vault_type: str, team_id: Optional[str] = None)
 
 @deprecated("api.services.vault.core.VaultService.update_document")
 def update_document(user_id: str, doc_id: str, vault_type: str,
-                   encrypted_blob: str, encrypted_metadata: str, team_id: Optional[str] = None):
+                   encrypted_blob: str, encrypted_metadata: str, team_id: Optional[str] = None) -> Dict[str, Any]:
     """Update vault document - DEPRECATED"""
     from api.services.vault.core import get_vault_service as _get_vault_service
     service = _get_vault_service()
@@ -131,7 +133,7 @@ def update_document(user_id: str, doc_id: str, vault_type: str,
 
 
 @deprecated("api.services.vault.core.VaultService.delete_document")
-def delete_document(user_id: str, doc_id: str, vault_type: str, team_id: Optional[str] = None):
+def delete_document(user_id: str, doc_id: str, vault_type: str, team_id: Optional[str] = None) -> bool:
     """Delete vault document - DEPRECATED"""
     from api.services.vault.core import get_vault_service as _get_vault_service
     service = _get_vault_service()
@@ -140,7 +142,7 @@ def delete_document(user_id: str, doc_id: str, vault_type: str, team_id: Optiona
 
 @deprecated("api.services.vault.core.VaultService.upload_file")
 def upload_file(user_id: str, filename: str, file_data: bytes, vault_type: str,
-               mime_type: str, folder_path: str = "/", team_id: Optional[str] = None):
+               mime_type: str, folder_path: str = "/", team_id: Optional[str] = None) -> Dict[str, Any]:
     """Upload file to vault - DEPRECATED"""
     from api.services.vault.core import get_vault_service as _get_vault_service
     service = _get_vault_service()
@@ -156,7 +158,7 @@ def upload_file(user_id: str, filename: str, file_data: bytes, vault_type: str,
 
 
 @deprecated("api.services.vault.core.VaultService.list_files")
-def list_files(user_id: str, vault_type: str, folder_path: Optional[str] = None, team_id: Optional[str] = None):
+def list_files(user_id: str, vault_type: str, folder_path: Optional[str] = None, team_id: Optional[str] = None) -> List[Dict[str, Any]]:
     """List vault files - DEPRECATED"""
     from api.services.vault.core import get_vault_service as _get_vault_service
     service = _get_vault_service()
@@ -164,7 +166,7 @@ def list_files(user_id: str, vault_type: str, folder_path: Optional[str] = None,
 
 
 @deprecated("api.services.vault.core.VaultService.delete_file")
-def delete_file(user_id: str, file_id: str, vault_type: str, team_id: Optional[str] = None):
+def delete_file(user_id: str, file_id: str, vault_type: str, team_id: Optional[str] = None) -> bool:
     """Delete vault file - DEPRECATED"""
     from api.services.vault.core import get_vault_service as _get_vault_service
     service = _get_vault_service()
@@ -173,7 +175,7 @@ def delete_file(user_id: str, file_id: str, vault_type: str, team_id: Optional[s
 
 @deprecated("api.services.vault.core.VaultService.create_folder")
 def create_folder(user_id: str, vault_type: str, folder_name: str,
-                 parent_path: str = "/", team_id: Optional[str] = None):
+                 parent_path: str = "/", team_id: Optional[str] = None) -> Dict[str, Any]:
     """Create vault folder - DEPRECATED"""
     from api.services.vault.core import get_vault_service as _get_vault_service
     service = _get_vault_service()
@@ -187,7 +189,7 @@ def create_folder(user_id: str, vault_type: str, folder_name: str,
 
 
 @deprecated("api.services.vault.core.VaultService.list_folders")
-def list_folders(user_id: str, vault_type: str, parent_path: Optional[str] = None, team_id: Optional[str] = None):
+def list_folders(user_id: str, vault_type: str, parent_path: Optional[str] = None, team_id: Optional[str] = None) -> List[Dict[str, Any]]:
     """List vault folders - DEPRECATED"""
     from api.services.vault.core import get_vault_service as _get_vault_service
     service = _get_vault_service()
@@ -195,7 +197,7 @@ def list_folders(user_id: str, vault_type: str, parent_path: Optional[str] = Non
 
 
 @deprecated("api.services.vault.core.VaultService.get_vault_stats")
-def get_vault_stats(user_id: str, vault_type: str, team_id: Optional[str] = None):
+def get_vault_stats(user_id: str, vault_type: str, team_id: Optional[str] = None) -> Dict[str, Any]:
     """Get vault statistics - DEPRECATED"""
     from api.services.vault.core import get_vault_service as _get_vault_service
     service = _get_vault_service()
