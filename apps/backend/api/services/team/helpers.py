@@ -7,7 +7,7 @@ and database connections.
 
 import sqlite3
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ def require_team_admin(team_id: str, user_id: str) -> None:
         raise HTTPException(status_code=403, detail="Team admin required")
 
 
-def get_team_manager():
+def get_team_manager() -> Any:
     """
     Get singleton TeamManager instance.
 

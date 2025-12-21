@@ -13,7 +13,7 @@ from datetime import datetime, UTC
 DB_PATH = Path.home() / ".magnetar_studio" / "model_tags.db"
 
 
-def init_database():
+def init_database() -> None:
     """Initialize the model tags override database"""
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 

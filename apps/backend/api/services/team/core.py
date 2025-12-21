@@ -350,7 +350,7 @@ class TeamManager:
         """Generate a new invite code for team (invalidates old ones)"""
         return await asyncio.to_thread(invitations_mod.regenerate_invite_code, team_id, expires_days)
 
-    async def record_invite_attempt(self, invite_code: str, ip_address: str, success: bool):
+    async def record_invite_attempt(self, invite_code: str, ip_address: str, success: bool) -> None:
         """Record an invite code validation attempt (HIGH-05)"""
         await asyncio.to_thread(invitations_mod.record_invite_attempt, invite_code, ip_address, success)
 

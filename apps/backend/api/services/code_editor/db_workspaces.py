@@ -4,6 +4,7 @@ All workspace and file CRUD operations
 """
 
 import logging
+from typing import Any, List, Optional
 from elohimos_memory import ElohimOSMemory
 
 logger = logging.getLogger(__name__)
@@ -16,7 +17,7 @@ memory = ElohimOSMemory()
 # DATABASE INITIALIZATION
 # ============================================================================
 
-def init_code_editor_db():
+def init_code_editor_db() -> None:
     """Initialize code editor database tables"""
     conn = memory.memory.conn
 
@@ -55,7 +56,7 @@ def init_code_editor_db():
 # WORKSPACE CRUD OPERATIONS
 # ============================================================================
 
-def create_workspace(workspace_id: str, name: str, source_type: str, disk_path: str = None):
+def create_workspace(workspace_id: str, name: str, source_type: str, disk_path: str = None) -> None:
     """Create new workspace in database"""
     conn = memory.memory.conn
 
@@ -73,7 +74,7 @@ def create_workspace(workspace_id: str, name: str, source_type: str, disk_path: 
     conn.commit()
 
 
-def get_workspace(workspace_id: str):
+def get_workspace(workspace_id: str) -> Optional[Any]:
     """Get workspace by ID"""
     conn = memory.memory.conn
 
@@ -86,7 +87,7 @@ def get_workspace(workspace_id: str):
     return workspace
 
 
-def list_workspaces():
+def list_workspaces() -> List[Any]:
     """List all workspaces"""
     conn = memory.memory.conn
 
@@ -99,7 +100,7 @@ def list_workspaces():
     return workspaces
 
 
-def update_workspace_timestamp(workspace_id: str):
+def update_workspace_timestamp(workspace_id: str) -> None:
     """Update workspace updated_at timestamp"""
     conn = memory.memory.conn
 
@@ -112,7 +113,7 @@ def update_workspace_timestamp(workspace_id: str):
     conn.commit()
 
 
-def delete_workspace(workspace_id: str):
+def delete_workspace(workspace_id: str) -> None:
     """Delete workspace (CASCADE will delete files)"""
     conn = memory.memory.conn
 
@@ -124,7 +125,7 @@ def delete_workspace(workspace_id: str):
 # FILE CRUD OPERATIONS
 # ============================================================================
 
-def create_file(file_id: str, workspace_id: str, name: str, path: str, content: str, language: str):
+def create_file(file_id: str, workspace_id: str, name: str, path: str, content: str, language: str) -> None:
     """Create new file in database"""
     conn = memory.memory.conn
 
@@ -136,7 +137,7 @@ def create_file(file_id: str, workspace_id: str, name: str, path: str, content: 
     conn.commit()
 
 
-def get_file(file_id: str):
+def get_file(file_id: str) -> Optional[Any]:
     """Get file by ID"""
     conn = memory.memory.conn
 
@@ -149,7 +150,7 @@ def get_file(file_id: str):
     return file
 
 
-def get_file_for_diff(file_id: str):
+def get_file_for_diff(file_id: str) -> Optional[Any]:
     """Get file content and updated_at for diff operations"""
     conn = memory.memory.conn
 
@@ -162,7 +163,7 @@ def get_file_for_diff(file_id: str):
     return file
 
 
-def get_files_by_workspace(workspace_id: str):
+def get_files_by_workspace(workspace_id: str) -> List[Any]:
     """Get all files for a workspace"""
     conn = memory.memory.conn
 
@@ -176,7 +177,7 @@ def get_files_by_workspace(workspace_id: str):
     return files
 
 
-def get_file_info_before_delete(file_id: str):
+def get_file_info_before_delete(file_id: str) -> Optional[Any]:
     """Get file info before deletion"""
     conn = memory.memory.conn
 
@@ -189,7 +190,7 @@ def get_file_info_before_delete(file_id: str):
     return file_info
 
 
-def update_file(file_id: str, updates: dict):
+def update_file(file_id: str, updates: dict) -> None:
     """Update file with dynamic fields"""
     conn = memory.memory.conn
 
@@ -222,7 +223,7 @@ def update_file(file_id: str, updates: dict):
     conn.commit()
 
 
-def get_file_current_state(file_id: str):
+def get_file_current_state(file_id: str) -> Optional[Any]:
     """Get current file state for optimistic concurrency check"""
     conn = memory.memory.conn
 
@@ -235,7 +236,7 @@ def get_file_current_state(file_id: str):
     return current
 
 
-def delete_file(file_id: str):
+def delete_file(file_id: str) -> None:
     """Delete file from database"""
     conn = memory.memory.conn
 
@@ -243,7 +244,7 @@ def delete_file(file_id: str):
     conn.commit()
 
 
-def delete_files_by_workspace(workspace_id: str):
+def delete_files_by_workspace(workspace_id: str) -> None:
     """Delete all files for a workspace"""
     conn = memory.memory.conn
 
