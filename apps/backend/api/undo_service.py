@@ -98,7 +98,7 @@ class UndoService:
         self._undo_handlers: Dict[ActionType, Callable] = {}
         self._init_db()
 
-    def _init_db(self):
+    def _init_db(self) -> None:
         """Initialize undo actions table"""
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
@@ -137,7 +137,7 @@ class UndoService:
 
         logger.info("Undo service initialized")
 
-    def register_undo_handler(self, action_type: ActionType, handler: Callable):
+    def register_undo_handler(self, action_type: ActionType, handler: Callable) -> None:
         """
         Register a handler function for undoing an action type
 

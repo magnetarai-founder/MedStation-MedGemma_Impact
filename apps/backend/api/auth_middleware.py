@@ -142,7 +142,7 @@ class AuthService:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
 
-    def _init_db(self):
+    def _init_db(self) -> None:
         """
         Initialize authentication database with optimized settings for concurrency
 
@@ -558,7 +558,7 @@ class AuthService:
             logger.error(f"Token refresh failed: {e}")
             return None
 
-    def logout(self, token: str):
+    def logout(self, token: str) -> None:
         """Logout user by removing session"""
         try:
             payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
@@ -581,7 +581,7 @@ class AuthService:
         except Exception as e:
             logger.error(f"Logout failed: {e}")
 
-    def cleanup_expired_sessions(self):
+    def cleanup_expired_sessions(self) -> None:
         """Remove expired sessions"""
         with sqlite3.connect(str(self.db_path)) as conn:
             cursor = conn.cursor()

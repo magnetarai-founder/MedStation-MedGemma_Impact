@@ -33,7 +33,7 @@ try:
     from audit_logger import log_action
 except ImportError:
     # Fallback for testing
-    async def log_action(user_id: str, action: str, details):
+    async def log_action(user_id: str, action: str, details) -> None:
         print(f"[AUDIT] {user_id} - {action} - {details}")
 
 router = APIRouter(prefix="/api/v1/terminal", tags=["terminal"])

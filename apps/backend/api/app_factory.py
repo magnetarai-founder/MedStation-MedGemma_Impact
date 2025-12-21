@@ -358,7 +358,7 @@ Global limit: 100 requests/minute. Endpoint-specific limits documented below.
     # Add /health endpoint directly to app (needed by Swift frontend)
     @app.get("/health")
     @app.get("/api/health")  # Also available at /api/health for ApiClient
-    async def health_check():
+    async def health_check() -> Dict[str, Any]:
         """Simple health check endpoint for frontend"""
         return {"status": "ok", "timestamp": datetime.now(UTC).isoformat()}
 

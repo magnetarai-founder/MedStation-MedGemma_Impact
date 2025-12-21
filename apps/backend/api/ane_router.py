@@ -159,7 +159,7 @@ class ANERouter:
             'estimated_power_draw': '<0.1W'
         }
 
-    def reset_stats(self):
+    def reset_stats(self) -> None:
         """Reset routing statistics"""
         self.total_routes = 0
         self.route_counts = {target: 0 for target in RouteTarget}
@@ -197,7 +197,7 @@ class CoreMLRouter:
         except Exception as e:
             logger.warning(f"Core ML model not available, using pattern-based routing: {e}")
 
-    def _load_or_create_model(self):
+    def _load_or_create_model(self) -> None:
         """Load existing Core ML model or create a new one"""
         try:
             import coremltools as ct
