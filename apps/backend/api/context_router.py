@@ -140,7 +140,7 @@ async def store_context(
 
 
 @router.get("/status")
-async def get_context_status(current_user = Depends(get_current_user)):
+async def get_context_status(current_user = Depends(get_current_user)) -> Dict[str, Any]:
     """
     Get ANE Context Engine status
     Returns available features, queue depth, vector count

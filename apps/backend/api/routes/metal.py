@@ -91,7 +91,7 @@ async def validate_metal_setup() -> Dict[str, Any]:
 
 
 @router.get("/optimize/{operation_type}")
-async def get_optimization_settings(operation_type: str):
+async def get_optimization_settings(operation_type: str) -> Dict[str, Any]:
     """
     Get optimization settings for a specific operation type
 
