@@ -136,7 +136,7 @@ async def get_panic_status():
 
 
 @router.post("/reset")
-async def reset_panic_mode(request: Request):
+async def reset_panic_mode(request: Request) -> Dict[str, Any]:
     """
     Reset panic mode (requires admin privileges)
 
@@ -158,7 +158,7 @@ async def reset_panic_mode(request: Request):
 
 
 @router.get("/health")
-async def panic_health_check():
+async def panic_health_check() -> Dict[str, Any]:
     """
     Health check for panic mode system
     """

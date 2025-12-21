@@ -51,7 +51,7 @@ class PromptStep:
     depth: int = 0              # Track recursion depth
     retry_count: int = 0        # Track retries for this step
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.depends_on is None:
             self.depends_on = []
 

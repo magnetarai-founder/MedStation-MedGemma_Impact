@@ -78,7 +78,7 @@ class OfflineFileShare:
 
         logger.info(f"📁 File sharing initialized: {self.storage_dir}")
 
-    def _load_index(self):
+    def _load_index(self) -> None:
         """Load shared files index from disk"""
         index_file = self.storage_dir / "index.json"
 
@@ -93,7 +93,7 @@ class OfflineFileShare:
             except Exception as e:
                 logger.error(f"Failed to load file index: {e}")
 
-    def _save_index(self):
+    def _save_index(self) -> None:
         """Save shared files index to disk"""
         index_file = self.storage_dir / "index.json"
 

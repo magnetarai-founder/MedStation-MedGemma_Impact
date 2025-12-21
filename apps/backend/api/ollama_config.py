@@ -45,7 +45,7 @@ class OllamaConfig:
     # Performance Mode
     mode: str = "performance"          # performance, balanced, silent
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Adjust settings based on mode"""
         if self.mode == "balanced":
             self.num_gpu_layers = 80
@@ -88,7 +88,7 @@ class OllamaConfigManager:
         self.save_config(config)
         return config
 
-    def save_config(self, config: Optional[OllamaConfig] = None):
+    def save_config(self, config: Optional[OllamaConfig] = None) -> None:
         """Save config to file"""
         if config is None:
             config = self.config
@@ -121,7 +121,7 @@ class OllamaConfigManager:
         options.update(overrides)
         return options
 
-    def set_mode(self, mode: str):
+    def set_mode(self, mode: str) -> None:
         """Change performance mode"""
         if mode not in ["performance", "balanced", "silent"]:
             raise ValueError(f"Invalid mode: {mode}")

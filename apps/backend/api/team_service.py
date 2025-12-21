@@ -87,14 +87,14 @@ def require_team_admin(team_id: str, user_id: str) -> None:
 
 
 @deprecated("api.services.team")
-def get_team_manager():
+def get_team_manager() -> Any:
     """Get TeamManager instance - DEPRECATED"""
     from api.services.team import get_team_manager as _get_team_manager
     return _get_team_manager()
 
 
 @deprecated("api.services.team.helpers")
-def _get_app_conn():
+def _get_app_conn() -> Any:
     """Get app database connection - DEPRECATED"""
     from api.services.team.helpers import _get_app_conn as _get_conn
     return _get_conn()
