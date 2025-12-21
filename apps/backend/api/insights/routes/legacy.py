@@ -14,7 +14,10 @@ import aiofiles
 from fastapi import APIRouter, HTTPException, UploadFile, File, Request
 from pydantic import BaseModel
 
-from utils import sanitize_filename
+try:
+    from api.utils import sanitize_filename
+except ImportError:
+    from utils import sanitize_filename
 from ..database import INSIGHTS_DIR
 from ..transcription import transcribe_audio_with_whisper
 

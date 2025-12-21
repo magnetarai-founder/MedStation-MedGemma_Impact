@@ -10,7 +10,10 @@ from datetime import datetime, UTC
 from pathlib import Path
 from typing import Any, Dict
 
-from config_paths import get_config_paths
+try:
+    from api.config_paths import get_config_paths
+except ImportError:
+    from config_paths import get_config_paths
 
 logger = logging.getLogger(__name__)
 

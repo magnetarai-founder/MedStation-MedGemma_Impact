@@ -19,7 +19,10 @@ This module has been refactored from insights_service.py (1,224 lines) into:
 
 from fastapi import APIRouter, Depends
 
-from auth_middleware import get_current_user
+try:
+    from api.auth_middleware import get_current_user
+except ImportError:
+    from auth_middleware import get_current_user
 
 from .database import init_insights_db, get_db, INSIGHTS_DIR, RECORDINGS_DIR
 from .templates import BUILTIN_TEMPLATES, DEFAULT_TEMPLATE_IDS

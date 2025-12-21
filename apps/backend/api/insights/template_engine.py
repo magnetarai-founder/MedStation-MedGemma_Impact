@@ -16,7 +16,10 @@ logger = logging.getLogger(__name__)
 async def apply_template_with_ollama(transcript: str, system_prompt: str) -> str:
     """Apply template using local Ollama"""
     try:
-        from chat_service import ollama_client
+        try:
+            from api.chat_service import ollama_client
+        except ImportError:
+            from chat_service import ollama_client
 
         messages = [
             {"role": "system", "content": system_prompt},

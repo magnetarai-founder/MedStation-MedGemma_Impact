@@ -15,8 +15,12 @@ from uuid import uuid4
 import aiofiles
 from fastapi import APIRouter, HTTPException, UploadFile, File, Request, Form, Depends
 
-from auth_middleware import get_current_user
-from utils import sanitize_filename
+try:
+    from api.auth_middleware import get_current_user
+    from api.utils import sanitize_filename
+except ImportError:
+    from auth_middleware import get_current_user
+    from utils import sanitize_filename
 from api.schemas.insights_models import (
     Recording, CreateRecordingResponse, RecordingListResponse, UpdateRecordingRequest
 )
