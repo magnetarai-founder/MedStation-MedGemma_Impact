@@ -42,8 +42,8 @@ def init_device_keys(db_path: Path, device_id: str, passphrase: str) -> Dict:
         # Try to load existing keys first
         public_key, fingerprint = e2e_service.load_identity_keypair(device_id, passphrase)
         logger.info(f"Loaded existing E2E keys for device {device_id}")
-    except:
-        # Generate new keys if they don't exist
+    except (FileNotFoundError, ValueError, KeyError):
+        # Generate new keys if they don't exist or are invalid
         public_key, fingerprint = e2e_service.generate_identity_keypair(device_id, passphrase)
         logger.info(f"Generated new E2E keys for device {device_id}")
 

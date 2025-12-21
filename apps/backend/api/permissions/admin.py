@@ -402,8 +402,8 @@ async def get_profile_grants(profile_id: str) -> List[Dict]:
         if row['permission_scope']:
             try:
                 scope_data = json.loads(row['permission_scope'])
-            except:
-                pass
+            except (json.JSONDecodeError, TypeError):
+                pass  # Invalid JSON in scope
 
         grants.append({
             "permission_id": row['permission_id'],

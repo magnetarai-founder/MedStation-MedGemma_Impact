@@ -70,8 +70,8 @@ async def shutdown_ollama_server() -> Dict[str, Any]:
             if response.status_code == 200:
                 data = response.json()
                 loaded_models = [model.get("name") for model in data.get("models", [])]
-    except:
-        pass
+    except (httpx.RequestError, httpx.TimeoutException, KeyError):
+        pass  # Server may not be running
 
     # Kill ollama process
     try:
@@ -126,8 +126,8 @@ async def start_ollama_server() -> Dict[str, Any]:
                     "message": "Ollama server started successfully",
                     "pid": process.pid
                 }
-    except:
-        pass
+    except (httpx.RequestError, httpx.TimeoutException):
+        pass  # Server not ready yet
 
     raise Exception("Ollama server started but not responding. Check logs.")
 
@@ -156,8 +156,8 @@ async def restart_ollama_server(reload_models: bool = False, models_to_load: Opt
             if response.status_code == 200:
                 data = response.json()
                 previous_models = [model.get("name") for model in data.get("models", [])]
-    except:
-        pass
+    except (httpx.RequestError, httpx.TimeoutException, KeyError):
+        pass  # Server may not be running
 
     # Shutdown first
     subprocess.run(["killall", "-9", "ollama"], check=False, capture_output=True)

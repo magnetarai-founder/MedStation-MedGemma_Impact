@@ -189,7 +189,7 @@ async def cleanup_temp_files(max_age_hours: int = 24):
     # Determine API directory
     try:
         api_dir = Path(__file__).parent
-    except:
+    except NameError:
         logger.error("Could not determine API directory for cleanup")
         return
 

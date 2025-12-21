@@ -182,7 +182,7 @@ class EmbeddingSystem:
                     try:
                         emb = self.transformer_model.encode(chunk, convert_to_numpy=True)
                         embeddings.append(emb)
-                    except:
+                    except (RuntimeError, ValueError, TypeError):
                         # If encoding fails, use local fallback
                         emb = self._local_embedding(chunk)
                         embeddings.append(emb)

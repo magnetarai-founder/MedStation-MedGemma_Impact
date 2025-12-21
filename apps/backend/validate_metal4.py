@@ -23,7 +23,7 @@ try:
             else:
                 # Fallback to Metal's recommended max
                 total_memory_gb = engine.device.recommendedMaxWorkingSetSize() / (1024**3)
-        except:
+        except (subprocess.SubprocessError, ValueError, IndexError, AttributeError):
             # Fallback to Metal's recommended max
             total_memory_gb = engine.device.recommendedMaxWorkingSetSize() / (1024**3)
 

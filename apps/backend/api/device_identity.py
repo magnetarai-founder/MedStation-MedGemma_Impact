@@ -92,7 +92,7 @@ def _generate_machine_id() -> str:
         try:
             mac = uuid.getnode()
             identifiers.append(f"mac:{mac}")
-        except:
+        except (OSError, AttributeError):
             pass
 
         # Hash all identifiers together

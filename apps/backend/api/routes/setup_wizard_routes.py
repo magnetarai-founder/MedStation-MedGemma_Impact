@@ -523,8 +523,8 @@ async def download_model_progress(model_name: str):
                     try:
                         percent_str = line.split("%")[0].split()[-1]
                         progress_data["progress"] = float(percent_str)
-                    except:
-                        pass
+                    except (ValueError, IndexError):
+                        pass  # Progress parsing failed
 
                 # Check for completion
                 if "success" in line.lower() or "already" in line.lower():

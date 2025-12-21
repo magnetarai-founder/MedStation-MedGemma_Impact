@@ -139,8 +139,8 @@ class Metal4Diagnostics:
                     return 'medium'
                 else:
                     return 'low'
-        except:
-            pass
+        except (AttributeError, ZeroDivisionError):
+            pass  # Metal heap not available
 
         return 'unknown'
 

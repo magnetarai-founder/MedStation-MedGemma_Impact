@@ -246,7 +246,7 @@ def analyze_index_impact():
                 print(f"   🎯 HIGH IMPACT: Vault and member queries will be much faster")
             else:
                 print(f"   ✓ GOOD FOUNDATION: Indexes ready for scale")
-        except:
+        except sqlite3.Error:
             print(f"\n👥 teams.db: Schema exists, ready for indexing")
 
         conn.close()

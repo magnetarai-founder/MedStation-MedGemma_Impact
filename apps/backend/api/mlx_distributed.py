@@ -126,12 +126,9 @@ class MLXDistributed:
         metal_version = 0
         if MLX_AVAILABLE:
             # Try to detect Metal version
-            try:
-                # This is a placeholder - actual Metal version detection
-                # would require platform-specific code
-                metal_version = 4  # Assume Metal 4 on modern systems
-            except:
-                metal_version = 0
+            # This is a placeholder - actual Metal version detection
+            # would require platform-specific code
+            metal_version = 4  # Assume Metal 4 on modern systems
 
         # Get local IP
         local_ip = self._get_local_ip()

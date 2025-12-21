@@ -92,8 +92,8 @@ def attach_and_copy(conn, db_name, db_path):
         print(f"   ❌ Error migrating {db_name}: {e}")
         try:
             cursor.execute(f"DETACH DATABASE {db_name}")
-        except:
-            pass
+        except sqlite3.Error:
+            pass  # Database already detached or doesn't exist
 
 
 def migrate_databases():

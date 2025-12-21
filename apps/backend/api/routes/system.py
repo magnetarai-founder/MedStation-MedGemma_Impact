@@ -44,8 +44,8 @@ async def get_system_info(current_user: dict = Depends(get_current_user)):
         if result.returncode == 0:
             memsize = int(result.stdout.split(':')[1].strip())
             info["total_memory_gb"] = round(memsize / (1024**3), 1)
-    except:
-        pass
+    except (subprocess.SubprocessError, ValueError, IndexError):
+        pass  # System info not available
 
     # Get Metal device info and recommendedMaxWorkingSetSize
     try:

@@ -127,7 +127,7 @@ class LANDiscoveryService:
         try:
             hostname = socket.gethostname()
             return f"{hostname}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
-        except:
+        except OSError:
             return f"omnistudio_{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
     def _get_local_ip(self) -> str:
@@ -139,7 +139,7 @@ class LANDiscoveryService:
             local_ip = s.getsockname()[0]
             s.close()
             return local_ip
-        except:
+        except OSError:
             return "127.0.0.1"
 
     async def start_discovery(self) -> None:

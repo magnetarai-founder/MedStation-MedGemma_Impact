@@ -288,7 +288,7 @@ class Metal4Engine:
             try:
                 heap_desc.setType_(Metal.MTLHeapTypePlacement)
                 logger.info("   Using Metal 4 placement heaps (sparse allocation)")
-            except:
+            except AttributeError:
                 logger.warning("   Metal 4 placement heaps not available - using automatic")
 
             self.H_main = device.newHeapWithDescriptor_(heap_desc)
@@ -503,8 +503,8 @@ class Metal4Engine:
                 diag = get_diagnostics()
                 if diag:
                     diag.record_operation('embeddings', elapsed_ms, 'ml')
-            except:
-                pass
+            except (ImportError, AttributeError):
+                pass  # Diagnostics not available
 
             return {
                 'embedding': embedding,
@@ -694,8 +694,8 @@ class Metal4Engine:
                 diag = get_diagnostics()
                 if diag:
                     diag.record_frame()
-            except:
-                pass
+            except (ImportError, AttributeError):
+                pass  # Diagnostics not available
 
             return {
                 'rendered': True,

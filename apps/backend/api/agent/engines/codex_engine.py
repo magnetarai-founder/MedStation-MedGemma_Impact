@@ -903,8 +903,8 @@ class CodexEngine:
                     # Try to rollback the move
                     try:
                         shutil.move(str(new_file), str(old_file))
-                    except:
-                        pass
+                    except (OSError, shutil.Error):
+                        pass  # Rollback failed, file may be in inconsistent state
                     return False, f"Failed to update imports: {msg}"
                     
         return True, f"Moved {old_path} to {new_path}"

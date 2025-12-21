@@ -372,8 +372,8 @@ class DataEngine:
                         if diag:
                             diag.record_operation('sql_queries', execution_time * 1000, 'ml')
                             logger.info(f"⚡ SQL query executed: {execution_time * 1000:.2f}ms (Metal4 tracked)")
-                    except:
-                        pass
+                    except (ImportError, AttributeError):
+                        pass  # Diagnostics not available
                 # ===== END METAL 4 DIAGNOSTICS =====
 
                 # METRICS: Record row count for query size tracking

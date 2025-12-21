@@ -81,7 +81,7 @@ class SetupWizardService:
                 from config_paths import get_config_paths
                 paths = get_config_paths()
                 config_path = paths.api_dir / "config" / "recommended_models.json"
-            except:
+            except ImportError:
                 # Fallback to relative path
                 config_path = Path(__file__).parent.parent / "config" / "recommended_models.json"
 
@@ -357,8 +357,8 @@ class SetupWizardService:
 
                         if progress_callback:
                             progress_callback(progress_pct, f"Downloading {model_name}")
-                    except:
-                        pass
+                    except (ValueError, IndexError):
+                        pass  # Progress parsing failed, continue
 
                 # Status updates
                 if "success" in line.lower() or "already" in line.lower():

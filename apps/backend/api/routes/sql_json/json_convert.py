@@ -181,7 +181,7 @@ async def convert_json_router(
                 try:
                     df_cols = pd.read_excel(temp_excel, nrows=0)
                     column_list = list(df_cols.columns)[:50]
-                except:
+                except (ValueError, OSError, pd.errors.EmptyDataError):
                     column_list = []
 
         # Get sheet information

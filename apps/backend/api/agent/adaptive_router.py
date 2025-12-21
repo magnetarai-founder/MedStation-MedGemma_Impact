@@ -64,8 +64,8 @@ class AdaptiveRouter:
             try:
                 project_context = self.learning.detect_project_context()
                 context['project'] = project_context
-            except:
-                pass
+            except (AttributeError, OSError):
+                pass  # Context detection not available
                 
         # Get learning recommendations
         recommendations = self.learning.get_recommendations(command, context)

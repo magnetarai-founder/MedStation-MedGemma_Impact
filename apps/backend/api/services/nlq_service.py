@@ -352,7 +352,8 @@ class NLQService:
                 try:
                     logger.info(f"Trying fallback model: {fallback_model}")
                     return await self._generate_sql(question, schema_data, fallback_model)
-                except:
+                except Exception as fallback_error:
+                    logger.debug(f"Fallback model {fallback_model} failed: {fallback_error}")
                     continue
 
             return {

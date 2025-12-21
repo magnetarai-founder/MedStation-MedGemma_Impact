@@ -218,12 +218,9 @@ def validate_mlx_setup() -> Dict[str, Any]:
         status['mlx_available'] = True
 
         # Check Metal availability
-        try:
-            # MLX automatically uses Metal on macOS
-            status['metal_available'] = True
-            status['ane_available'] = True  # ANE is used automatically when beneficial
-        except:
-            pass
+        # MLX automatically uses Metal on macOS
+        status['metal_available'] = True
+        status['ane_available'] = True  # ANE is used automatically when beneficial
 
         embedder = get_mlx_embedder()
         status['model_name'] = embedder.model_name
