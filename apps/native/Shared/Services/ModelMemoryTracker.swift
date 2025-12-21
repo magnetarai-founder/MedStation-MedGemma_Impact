@@ -60,8 +60,8 @@ class ModelMemoryTracker: ObservableObject {
 
     private init() {
         // Auto-refresh on init
-        Task {
-            await refresh()
+        Task { [weak self] in
+            await self?.refresh()
         }
     }
 
@@ -141,12 +141,12 @@ class ModelMemoryTracker: ObservableObject {
     func startAutoRefresh(intervalMinutes: Int = 5) {
         updateTask?.cancel()
 
-        updateTask = Task {
+        updateTask = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: UInt64(intervalMinutes) * 60 * 1_000_000_000)
 
                 if !Task.isCancelled {
-                    await refresh()
+                    await self?.refresh()
                 }
             }
         }

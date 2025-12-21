@@ -283,6 +283,11 @@ class AppleFMOrchestrator: ModelOrchestrator {
         availableModels: [AvailableModel],
         systemResources: SystemResourceState
     ) -> AvailableModel {
+        // Precondition: must have at least one model (caller ensures this)
+        guard let fallbackModel = availableModels.first else {
+            preconditionFailure("selectBestModel called with empty availableModels array")
+        }
+
         var scoredModels: [(model: AvailableModel, score: Float)] = []
 
         for model in availableModels {
@@ -377,7 +382,7 @@ class AppleFMOrchestrator: ModelOrchestrator {
         scoredModels.sort { $0.score > $1.score }
 
         // Return highest scoring model
-        return scoredModels.first?.model ?? availableModels.first!
+        return scoredModels.first?.model ?? fallbackModel
     }
 
     // MARK: - Hot Slot Management

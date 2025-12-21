@@ -33,8 +33,8 @@ class ResourceMonitor: ObservableObject {
 
     func startMonitoring() {
         // Initial update
-        Task {
-            await updateResourceState()
+        Task { [weak self] in
+            await self?.updateResourceState()
         }
 
         // Periodic updates
