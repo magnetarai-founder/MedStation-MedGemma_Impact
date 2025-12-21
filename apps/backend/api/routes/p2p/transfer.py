@@ -77,7 +77,7 @@ def _load_metadata(transfer_id: str) -> Optional[Dict]:
         return json.load(f)
 
 
-def _save_metadata(transfer_id: str, metadata: Dict):
+def _save_metadata(transfer_id: str, metadata: Dict) -> None:
     """Save transfer metadata"""
     metadata_path = _get_metadata_path(transfer_id)
     with open(metadata_path, 'w') as f:

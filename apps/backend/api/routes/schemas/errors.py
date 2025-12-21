@@ -5,7 +5,7 @@ Provides structured error handling for all API endpoints.
 """
 
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 from fastapi import status
 
 
@@ -292,7 +292,7 @@ class TimeoutError(APIError):
 
 
 # Helper function to convert APIError to HTTPException
-def api_error_to_http_exception(error: APIError):
+def api_error_to_http_exception(error: APIError) -> Any:
     """
     Convert APIError to FastAPI HTTPException.
 

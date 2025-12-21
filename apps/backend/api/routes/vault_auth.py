@@ -96,7 +96,7 @@ def _consume_challenge(user_id: str, vault_id: str) -> Optional[bytes]:
     return challenge
 
 
-def _cleanup_expired_challenges():
+def _cleanup_expired_challenges() -> None:
     """Remove expired challenges (call periodically)."""
     now = time.time()
     expired = [

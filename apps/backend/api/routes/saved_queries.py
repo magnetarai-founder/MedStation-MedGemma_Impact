@@ -27,7 +27,7 @@ router = APIRouter(
 )
 
 # Import shared elohimos_memory instance from main.py
-def get_elohimos_memory():
+def get_elohimos_memory() -> Any:
     from api import main
     return main.elohimos_memory
 

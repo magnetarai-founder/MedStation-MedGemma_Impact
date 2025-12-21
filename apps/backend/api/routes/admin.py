@@ -12,6 +12,7 @@ AUTH-P5: All operations now audited to audit.db for security accountability.
 Follows MagnetarStudio API standards (see API_STANDARDS.md).
 """
 
+from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from api.permissions import require_perm
@@ -23,7 +24,7 @@ router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
 
 # Helper to get current user without importing at module level
-def get_current_user_dep():
+def get_current_user_dep() -> Any:
     """Lazy import of get_current_user dependency"""
     from api.auth_middleware import get_current_user
     return get_current_user

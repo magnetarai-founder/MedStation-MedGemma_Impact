@@ -26,19 +26,19 @@ router = APIRouter(
 )
 
 # Import shared instances and functions from main.py
-def get_app_settings():
+def get_app_settings() -> Any:
     from api import main
     return main.app_settings
 
-def set_app_settings(settings):
+def set_app_settings(settings) -> None:
     import api.main as main
     main.app_settings = settings
 
-def get_save_app_settings():
+def get_save_app_settings() -> Any:
     from api import main
     return main.save_app_settings
 
-def get_elohimos_memory():
+def get_elohimos_memory() -> Any:
     from api import main
     return main.elohimos_memory
 
