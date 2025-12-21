@@ -8,7 +8,7 @@ import json
 import asyncio
 import logging
 from pathlib import Path
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Dict
 from datetime import datetime, UTC
 from uuid import uuid4
 
@@ -183,7 +183,7 @@ async def get_recording(
     recording_id: str,
     request: Request,
     current_user: dict = Depends(get_current_user)
-):
+) -> Dict[str, Any]:
     """Get a single recording with all its formatted outputs"""
     from api.schemas.insights_models import FormattedOutput, OutputFormat
 
@@ -236,7 +236,7 @@ async def update_recording(
     recording_id: str,
     request: UpdateRecordingRequest,
     current_user: dict = Depends(get_current_user)
-):
+) -> Dict[str, str]:
     """Update recording metadata"""
     conn = get_db()
     cursor = conn.cursor()
@@ -273,7 +273,7 @@ async def delete_recording(
     recording_id: str,
     request: Request,
     current_user: dict = Depends(get_current_user)
-):
+) -> Dict[str, str]:
     """Delete a recording and its outputs"""
     conn = get_db()
     cursor = conn.cursor()

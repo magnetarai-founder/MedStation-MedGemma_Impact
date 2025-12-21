@@ -24,7 +24,7 @@ class SummaryMixin:
         events: Optional[List[ConversationEvent]] = None,
         max_events: int = 30,
         max_summary_chars: int = 1200
-    ):
+    ) -> None:
         """Create or update a rolling summary of the conversation"""
 
         # Get recent events if not provided

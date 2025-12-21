@@ -7,7 +7,7 @@ Requires backups.use permission.
 
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
@@ -144,7 +144,7 @@ async def create_backup(
 @require_perm("backups.use")
 async def list_backups(
     current_user: dict = Depends(get_current_user)
-):
+) -> Dict[str, Any]:
     """
     List all available backups
 
@@ -176,7 +176,7 @@ async def verify_backup(
     request: Request,
     payload: BackupVerifyRequest,
     current_user: dict = Depends(get_current_user)
-):
+) -> Dict[str, Any]:
     """
     Verify a backup's integrity
 
@@ -239,7 +239,7 @@ async def restore_backup(
     request: Request,
     payload: BackupRestoreRequest,
     current_user: dict = Depends(get_current_user)
-):
+) -> Dict[str, Any]:
     """
     Restore a backup
 
@@ -302,7 +302,7 @@ async def cleanup_old_backups(
     request: Request,
     payload: BackupCleanupRequest | None = None,
     current_user: dict = Depends(get_current_user)
-):
+) -> Dict[str, Any]:
     """
     Clean up old backups (older than 7 days)
 
@@ -346,7 +346,7 @@ async def download_backup(
     request: Request,
     backup_name: str,
     current_user: dict = Depends(get_current_user)
-):
+) -> FileResponse:
     """
     Download an encrypted backup file
 

@@ -9,6 +9,8 @@ import logging
 from datetime import datetime, UTC
 from uuid import uuid4
 
+from typing import Any, Dict
+
 from fastapi import APIRouter, HTTPException, Request, Depends, Body
 
 try:
@@ -155,7 +157,7 @@ async def list_recording_outputs(
     recording_id: str,
     request: Request,
     current_user: dict = Depends(get_current_user)
-):
+) -> Dict[str, Any]:
     """List all formatted outputs for a recording"""
     conn = get_db()
     cursor = conn.cursor()
@@ -185,7 +187,7 @@ async def delete_output(
     output_id: str,
     request: Request,
     current_user: dict = Depends(get_current_user)
-):
+) -> Dict[str, str]:
     """Delete a formatted output"""
     conn = get_db()
     cursor = conn.cursor()

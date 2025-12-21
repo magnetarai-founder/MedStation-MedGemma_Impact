@@ -297,8 +297,8 @@ class JarvisMemory:
             ),
         ]
         
-    def store_command(self, command: str, task_type: str, tool: str, 
-                     success: bool, execution_time: float, output: str = "", context: Dict = None):
+    def store_command(self, command: str, task_type: str, tool: str,
+                     success: bool, execution_time: float, output: str = "", context: Dict = None) -> None:
         """Store a command execution in memory"""
         
         # Handle None command values
@@ -610,9 +610,9 @@ class JarvisMemory:
         return self.find_similar_commands(query, limit)
     
     def add_command(self, command: str, task_type: str, tool_used: str,
-                    success: bool, execution_time: float, output: str = ""):
+                    success: bool, execution_time: float, output: str = "") -> None:
         """Add a command to memory (alias for store_command)"""
-        return self.store_command(
+        self.store_command(
             command=command,
             task_type=task_type,
             tool=tool_used,
@@ -621,10 +621,10 @@ class JarvisMemory:
             output=output
         )
     
-    def log_command(self, command: str, output: str = "", success: bool = True, 
-                    execution_time: float = 0.0, task_type: str = "general"):
+    def log_command(self, command: str, output: str = "", success: bool = True,
+                    execution_time: float = 0.0, task_type: str = "general") -> None:
         """Log a command execution (simplified interface)"""
-        return self.store_command(
+        self.store_command(
             command=command,
             task_type=task_type,
             tool="unknown",

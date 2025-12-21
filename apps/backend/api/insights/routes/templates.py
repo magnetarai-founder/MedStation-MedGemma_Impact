@@ -5,7 +5,7 @@ CRUD endpoints for templates.
 """
 
 import logging
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Dict
 from datetime import datetime, UTC
 from uuid import uuid4
 
@@ -79,7 +79,7 @@ async def list_templates(
 async def create_template(
     request: CreateTemplateRequest = Body(...),
     current_user: dict = Depends(get_current_user)
-):
+) -> Dict[str, str]:
     """Create a custom template"""
     user_id = current_user.get("user_id") or current_user.get("id")
     template_id = f"tmpl_{uuid4().hex[:12]}"
@@ -115,7 +115,7 @@ async def update_template(
     template_id: str,
     request: UpdateTemplateRequest = Body(...),
     current_user: dict = Depends(get_current_user)
-):
+) -> Dict[str, str]:
     """Update a custom template (cannot update built-in templates)"""
     conn = get_db()
     cursor = conn.cursor()
@@ -161,7 +161,7 @@ async def delete_template(
     template_id: str,
     request: Request,
     current_user: dict = Depends(get_current_user)
-):
+) -> Dict[str, str]:
     """Delete a custom template (cannot delete built-in templates)"""
     conn = get_db()
     cursor = conn.cursor()
