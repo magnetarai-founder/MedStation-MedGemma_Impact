@@ -32,13 +32,13 @@ router = APIRouter(prefix="/api/data", tags=["Data Engine"])
 logger = logging.getLogger(__name__)
 
 
-def set_data_engine(engine):
+def set_data_engine(engine) -> None:
     """Set the data engine instance (called from main.py during initialization)"""
     global _data_engine
     _data_engine = engine
 
 
-def set_settings(settings):
+def set_settings(settings) -> None:
     """Set the settings instance (called from main.py during initialization)"""
     global _settings
     _settings = settings

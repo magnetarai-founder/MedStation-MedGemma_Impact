@@ -42,7 +42,7 @@ async def apply_template_with_ollama(transcript: str, system_prompt: str) -> str
         raise HTTPException(status_code=500, detail=f"Template application failed: {str(e)}")
 
 
-async def auto_apply_default_templates(recording_id: str, transcript: str, user_id: str):
+async def auto_apply_default_templates(recording_id: str, transcript: str, user_id: str) -> None:
     """Auto-apply the 3 default templates on upload (background task)"""
     # Lazy imports to avoid circular dependency
     from .database import get_db

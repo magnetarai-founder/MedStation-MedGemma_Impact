@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 _metal4_engine = None
 
 
-def set_metal4_engine(engine):
+def set_metal4_engine(engine) -> None:
     """Set the Metal 4 engine instance (called from main.py during initialization)"""
     global _metal4_engine
     _metal4_engine = engine

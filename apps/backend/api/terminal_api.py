@@ -607,7 +607,7 @@ async def terminal_websocket(websocket: WebSocket, terminal_id: str, token: Opti
     output_queue = []
 
     # Register broadcast callback for this WebSocket with throttling
-    async def send_output(data: str):
+    async def send_output(data: str) -> None:
         """Callback to send terminal output to WebSocket with burst control"""
         try:
             output_queue.append(data)
@@ -625,7 +625,7 @@ async def terminal_websocket(websocket: WebSocket, terminal_id: str, token: Opti
     terminal_bridge.register_broadcast_callback(terminal_id, send_output)
 
     # Background task to check TTL and inactivity
-    async def check_timeouts():
+    async def check_timeouts() -> None:
         """Check session TTL and inactivity, close if exceeded"""
         while session.active:
             await asyncio.sleep(60)  # Check every minute

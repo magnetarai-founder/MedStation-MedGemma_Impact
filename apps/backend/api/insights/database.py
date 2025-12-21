@@ -121,7 +121,7 @@ def build_safe_update(updates_dict: Dict[str, Any], allowed_columns: frozenset) 
     return clauses, params
 
 
-def init_insights_db():
+def init_insights_db() -> None:
     """Initialize insights database tables and built-in templates"""
     from .templates import BUILTIN_TEMPLATES
 
