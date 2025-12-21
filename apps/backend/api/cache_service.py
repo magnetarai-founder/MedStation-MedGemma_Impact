@@ -18,7 +18,10 @@ import json
 import logging
 import time
 from functools import wraps
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, TypeVar, ParamSpec
+
+P = ParamSpec('P')
+R = TypeVar('R')
 
 try:
     import redis
@@ -261,7 +264,7 @@ class CacheService:
 
         return (self.hits / total) * 100
 
-    def get_stats(self) -> dict:
+    def get_stats(self) -> dict[str, Any]:
         """
         Get cache statistics.
 
@@ -292,7 +295,7 @@ class CacheService:
                 "error": str(e)
             }
 
-    def reset_stats(self):
+    def reset_stats(self) -> None:
         """Reset hit/miss counters."""
         self.hits = 0
         self.misses = 0
@@ -301,7 +304,7 @@ class CacheService:
     # Utility Methods
     # ========================================================================
 
-    def flush_all(self):
+    def flush_all(self) -> None:
         """
         Clear all cache entries.
 
@@ -314,7 +317,7 @@ class CacheService:
         except Exception as e:
             logger.error(f"Cache FLUSH error: {e}")
 
-    def close(self):
+    def close(self) -> None:
         """Close Redis connection pool."""
         try:
             self.pool.disconnect()
@@ -331,7 +334,7 @@ def cached(
     ttl: int = 3600,
     key_prefix: str = "",
     cache_instance: Optional[CacheService] = None
-):
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """
     Decorator to cache function results.
 
@@ -355,9 +358,9 @@ def cached(
         # Second call within 1 hour: from cache (fast!)
         models = list_ollama_models()
     """
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
         @wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             # Use global cache if not provided
             cache = cache_instance or get_cache()
 
@@ -413,7 +416,7 @@ def get_cache() -> CacheService:
     return _cache_instance
 
 
-def close_cache():
+def close_cache() -> None:
     """Close global cache instance."""
     global _cache_instance
 

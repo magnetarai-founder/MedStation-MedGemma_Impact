@@ -19,7 +19,8 @@ Usage:
 import sqlite3
 import time
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, Generator, Type
+from types import TracebackType
 from pathlib import Path
 from contextlib import contextmanager
 
@@ -90,7 +91,7 @@ class ProfiledCursor:
             )
             raise
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         """Delegate all other methods to underlying cursor."""
         return getattr(self._cursor, name)
 
@@ -111,15 +112,20 @@ class ProfiledConnection:
         cursor = self.cursor()
         return cursor.execute(sql, parameters)
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         """Delegate all other methods to underlying connection."""
         return getattr(self._connection, name)
 
-    def __enter__(self):
+    def __enter__(self) -> "ProfiledConnection":
         """Context manager support."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType]
+    ) -> None:
         """Context manager cleanup."""
         self._connection.close()
 
@@ -171,7 +177,7 @@ def get_profiled_connection(
 def profiled_connection(
     db_path: str | Path,
     timeout: float = 30.0
-):
+) -> Generator[ProfiledConnection, None, None]:
     """
     Context manager for profiled database connections.
     Ensures connection is properly closed.
@@ -242,7 +248,7 @@ class QueryStats:
         self.failed_queries = 0
         self.total_time_ms = 0.0
 
-    def record_query(self, elapsed_ms: float, failed: bool = False):
+    def record_query(self, elapsed_ms: float, failed: bool = False) -> None:
         """Record a query execution."""
         self.total_queries += 1
         self.total_time_ms += elapsed_ms
@@ -254,7 +260,7 @@ class QueryStats:
         elif elapsed_ms > SLOW_QUERY_THRESHOLD_MS:
             self.slow_queries += 1
 
-    def get_stats(self) -> dict:
+    def get_stats(self) -> dict[str, Any]:
         """Get query statistics."""
         avg_time = self.total_time_ms / self.total_queries if self.total_queries > 0 else 0
 
@@ -267,7 +273,7 @@ class QueryStats:
             "total_time_ms": round(self.total_time_ms, 2)
         }
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset statistics."""
         self.total_queries = 0
         self.slow_queries = 0
@@ -280,11 +286,11 @@ class QueryStats:
 _query_stats = QueryStats()
 
 
-def get_query_stats() -> dict:
+def get_query_stats() -> dict[str, Any]:
     """Get global query statistics."""
     return _query_stats.get_stats()
 
 
-def reset_query_stats():
+def reset_query_stats() -> None:
     """Reset global query statistics."""
     _query_stats.reset()
