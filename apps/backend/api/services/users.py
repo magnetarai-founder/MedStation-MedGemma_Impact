@@ -16,7 +16,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-async def get_or_create_user_profile():
+async def get_or_create_user_profile() -> Any:
     """
     Get the current user profile or create one if none exists.
 
@@ -119,7 +119,7 @@ async def get_or_create_user_profile():
     return new_profile
 
 
-async def update_user_profile(updates: Dict[str, Any]):
+async def update_user_profile(updates: Dict[str, Any]) -> Any:
     """
     Update the user profile.
 
@@ -181,7 +181,7 @@ async def update_user_profile(updates: Dict[str, Any]):
     return await get_or_create_user_profile()
 
 
-async def reset_user_profile():
+async def reset_user_profile() -> Dict[str, Any]:
     """
     Reset user profile (for testing/dev).
 
@@ -204,7 +204,7 @@ async def reset_user_profile():
     return {"message": "User profile reset", "user": new_user}
 
 
-def init_user_db():
+def init_user_db() -> None:
     """
     Initialize the user_profiles table in app_db.
 

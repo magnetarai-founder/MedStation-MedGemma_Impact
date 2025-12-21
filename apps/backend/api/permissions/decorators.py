@@ -14,7 +14,7 @@ from .engine import get_permission_engine
 logger = logging.getLogger(__name__)
 
 
-def require_perm(permission_key: str, level: Optional[str] = None):
+def require_perm(permission_key: str, level: Optional[str] = None) -> Callable:
     """
     FastAPI decorator to require a specific permission
 
@@ -33,7 +33,7 @@ def require_perm(permission_key: str, level: Optional[str] = None):
     Returns:
         Decorator function
     """
-    def decorator(func: Callable):
+    def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def wrapper(*args, **kwargs):
             # Extract current_user from kwargs (must be injected by get_current_user dependency)
@@ -87,7 +87,7 @@ def require_perm(permission_key: str, level: Optional[str] = None):
     return decorator
 
 
-def require_perm_team(permission_key: str, level: Optional[str] = None, team_kw: str = "team_id"):
+def require_perm_team(permission_key: str, level: Optional[str] = None, team_kw: str = "team_id") -> Callable:
     """
     FastAPI decorator to require a specific permission with team context (Phase 3)
 
@@ -113,7 +113,7 @@ def require_perm_team(permission_key: str, level: Optional[str] = None, team_kw:
     Returns:
         Decorator function
     """
-    def decorator(func: Callable):
+    def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def wrapper(*args, **kwargs):
             # Extract current_user from kwargs

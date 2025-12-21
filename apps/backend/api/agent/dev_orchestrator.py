@@ -142,7 +142,7 @@ class DevOrchestrator:
                 DevelopmentTask(TaskType.TESTING, f"Write tests for: {requirement}")
             ]
     
-    def analyze_project(self):
+    def analyze_project(self) -> List[str]:
         """Analyze the entire project and suggest improvements"""
         print("\n🔍 Analyzing project...")
         
@@ -183,7 +183,7 @@ class DevOrchestrator:
         return issues
 
 
-def main():
+def main() -> None:
     """Interactive orchestrator"""
     import argparse
     parser = argparse.ArgumentParser(description="Development Orchestrator")

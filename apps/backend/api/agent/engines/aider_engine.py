@@ -15,7 +15,7 @@ except ImportError:
     from patchbus import ChangeProposal
 
 # Stub for tooling_integrations
-def build_context_block(snippets):
+def build_context_block(snippets) -> str:
     """Build context block from snippets"""
     if not snippets:
         return ""

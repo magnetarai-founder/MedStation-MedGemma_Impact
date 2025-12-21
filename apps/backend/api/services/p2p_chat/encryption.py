@@ -8,13 +8,13 @@ and safety number change tracking for Signal-style E2E encryption.
 import sqlite3
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from datetime import datetime, UTC
 
 logger = logging.getLogger(__name__)
 
 
-def get_e2e_service():
+def get_e2e_service() -> Any:
     """Get the E2E encryption service singleton."""
     try:
         from api.e2e_encryption_service import get_e2e_service
