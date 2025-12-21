@@ -180,7 +180,7 @@ class SimpleEmbedding:
         embedding = []
 
         for i in range(dim):
-            hash_val = hashlib.md5(f"{text}:{i}".encode()).hexdigest()
+            hash_val = hashlib.sha256(f"{text}:{i}".encode()).hexdigest()
             embedding.append((int(hash_val[:8], 16) % 1000) / 500 - 1)
 
         # L2 normalize

@@ -382,7 +382,7 @@ class Metal4MPSEmbedder:
         # Create hash-based embedding for compatibility
         hashes = []
         for i in range((self.embed_dim + 15) // 16):
-            h = hashlib.md5(f"{text}_{i}".encode()).digest()
+            h = hashlib.sha256(f"{text}_{i}".encode()).digest()
             hashes.extend(int.from_bytes(h[j:j+2], 'big') for j in range(0, 16, 2))
 
         # Normalize to [-1, 1]

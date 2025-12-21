@@ -266,7 +266,7 @@ class LearningSystem:
             'timestamp': datetime.now().isoformat()
         }
 
-        pattern_hash = hashlib.md5(
+        pattern_hash = hashlib.sha256(
             f"model_perf_{model}_{datetime.now().date()}".encode()
         ).hexdigest()
 

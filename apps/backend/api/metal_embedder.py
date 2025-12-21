@@ -176,7 +176,7 @@ class MetalEmbedder:
         """Simple CPU fallback using basic hashing"""
         # Very basic fallback - just for safety
         import hashlib
-        hash_val = hashlib.md5(text.encode()).digest()
+        hash_val = hashlib.sha256(text.encode()).digest()
         # Convert to 384-dim vector for compatibility
         embedding = []
         for i in range(384):

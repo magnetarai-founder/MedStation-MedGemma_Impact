@@ -48,7 +48,7 @@ def track_execution(
         """, (command, tool, execution_time, success, json.dumps(context or {})))
 
         # Update success patterns
-        pattern_hash = hashlib.md5(f"{command}_{tool}".encode()).hexdigest()
+        pattern_hash = hashlib.sha256(f"{command}_{tool}".encode()).hexdigest()
 
         cursor = conn.execute("""
             SELECT success_count, failure_count, avg_time
@@ -111,7 +111,7 @@ def get_success_rate(conn: sqlite3.Connection, command: str, tool: str) -> float
     Returns:
         Success rate (0.0 to 1.0), defaults to 0.5 if unknown
     """
-    pattern_hash = hashlib.md5(f"{command}_{tool}".encode()).hexdigest()
+    pattern_hash = hashlib.sha256(f"{command}_{tool}".encode()).hexdigest()
 
     cursor = conn.execute("""
         SELECT confidence FROM success_patterns

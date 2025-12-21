@@ -106,7 +106,7 @@ class ElohimOSMemory:
     ) -> int:
         """Add a query to history with embedding for semantic search"""
 
-        query_hash = hashlib.md5(query.encode()).hexdigest()
+        query_hash = hashlib.sha256(query.encode()).hexdigest()
 
         # Generate embedding for semantic search
         embedding = self.memory._generate_embedding(query)

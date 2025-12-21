@@ -10,7 +10,6 @@ import json
 import hashlib
 from pathlib import Path
 from dataclasses import dataclass
-import pickle
 import threading
 
 
@@ -84,7 +83,7 @@ class EmbeddingSystem:
             ngrams = [text_lower[i:i+n] for i in range(len(text_lower)-n+1)]
             ngram_features = [0] * 50  # 50 dimensions per n-gram size
             for ng in ngrams[:50]:  # Limit to first 50
-                hash_val = int(hashlib.md5(ng.encode()).hexdigest()[:8], 16)
+                hash_val = int(hashlib.sha256(ng.encode()).hexdigest()[:8], 16)
                 ngram_features[hash_val % 50] += 1
             features.extend(ngram_features)
         
@@ -92,7 +91,7 @@ class EmbeddingSystem:
         words = text_lower.split()
         word_features = [0] * 100
         for word in words[:30]:  # Limit to first 30 words
-            hash_val = int(hashlib.md5(word.encode()).hexdigest()[:8], 16)
+            hash_val = int(hashlib.sha256(word.encode()).hexdigest()[:8], 16)
             word_features[hash_val % 100] += 1
         features.extend(word_features)
         
@@ -135,8 +134,8 @@ class EmbeddingSystem:
         
         # 5. Position-sensitive features (beginning/end of text)
         if words:
-            first_word_hash = int(hashlib.md5(words[0].encode()).hexdigest()[:8], 16)
-            last_word_hash = int(hashlib.md5(words[-1].encode()).hexdigest()[:8], 16)
+            first_word_hash = int(hashlib.sha256(words[0].encode()).hexdigest()[:8], 16)
+            last_word_hash = int(hashlib.sha256(words[-1].encode()).hexdigest()[:8], 16)
             position_features = [
                 first_word_hash % 100 / 100,
                 last_word_hash % 100 / 100
@@ -165,7 +164,7 @@ class EmbeddingSystem:
             text = text[:max_text_length] + "..."
         
         # Check cache
-        text_hash = hashlib.md5(text.encode()).hexdigest()
+        text_hash = hashlib.sha256(text.encode()).hexdigest()
         if use_cache and text_hash in self.embedding_cache:
             return self.embedding_cache[text_hash]
         
@@ -270,25 +269,41 @@ class EmbeddingSystem:
         return clusters
     
     def save_cache(self):
-        """Save embedding cache to disk"""
-        cache_file = self.cache_dir / "embedding_cache.pkl"
-        with open(cache_file, 'wb') as f:
-            pickle.dump(self.embedding_cache, f)
+        """Save embedding cache to disk using JSON (secure serialization)"""
+        cache_file = self.cache_dir / "embedding_cache.json"
+        # Convert numpy arrays to lists for JSON serialization
+        serializable_cache = {}
+        for key, value in self.embedding_cache.items():
+            if isinstance(value, np.ndarray):
+                serializable_cache[key] = {"_type": "ndarray", "data": value.tolist()}
+            else:
+                serializable_cache[key] = value
+        with open(cache_file, 'w') as f:
+            json.dump(serializable_cache, f)
     
     def load_cache(self):
-        """Load embedding cache from disk"""
-        cache_file = self.cache_dir / "embedding_cache.pkl"
+        """Load embedding cache from disk using JSON (secure deserialization)"""
+        cache_file = self.cache_dir / "embedding_cache.json"
         if cache_file.exists():
             try:
-                with open(cache_file, 'rb') as f:
-                    self.embedding_cache = pickle.load(f)
-            except:
+                with open(cache_file, 'r') as f:
+                    data = json.load(f)
+                # Convert lists back to numpy arrays
                 self.embedding_cache = {}
+                for key, value in data.items():
+                    if isinstance(value, dict) and value.get("_type") == "ndarray":
+                        self.embedding_cache[key] = np.array(value["data"])
+                    else:
+                        self.embedding_cache[key] = value
+            except (json.JSONDecodeError, KeyError):
+                self.embedding_cache = {}
+        else:
+            self.embedding_cache = {}
     
     def create_semantic_index(self, texts: List[str]) -> Dict[str, Any]:
         """Create a semantic index for fast similarity search"""
         embeddings = self.get_embeddings_batch(texts)
-        
+
         # Create index structure
         index = {
             "texts": texts,
@@ -296,31 +311,42 @@ class EmbeddingSystem:
             "dimension": self.model_config.dimension,
             "size": len(texts)
         }
-        
-        # Save to disk
-        index_file = self.cache_dir / "semantic_index.pkl"
-        with open(index_file, 'wb') as f:
-            pickle.dump(index, f)
-        
+
+        # Save to disk using JSON (secure serialization)
+        index_file = self.cache_dir / "semantic_index.json"
+        serializable_index = {
+            "texts": index["texts"],
+            "embeddings": [emb.tolist() if isinstance(emb, np.ndarray) else emb for emb in embeddings],
+            "dimension": index["dimension"],
+            "size": index["size"]
+        }
+        with open(index_file, 'w') as f:
+            json.dump(serializable_index, f)
+
         return index
     
     def search_semantic_index(self, query: str, top_k: int = 5) -> List[Tuple[str, float]]:
         """Search the semantic index"""
-        index_file = self.cache_dir / "semantic_index.pkl"
+        index_file = self.cache_dir / "semantic_index.json"
         if not index_file.exists():
             return []
-        
-        with open(index_file, 'rb') as f:
-            index = pickle.load(f)
-        
+
+        try:
+            with open(index_file, 'r') as f:
+                index = json.load(f)
+            # Convert embeddings back to numpy arrays
+            embeddings = [np.array(emb) for emb in index["embeddings"]]
+        except (json.JSONDecodeError, KeyError):
+            return []
+
         query_emb = self.get_embedding(query)
-        
+
         # Calculate similarities
         similarities = []
-        for idx, emb in enumerate(index["embeddings"]):
+        for idx, emb in enumerate(embeddings):
             sim = self.cosine_similarity(query_emb, emb)
             similarities.append((index["texts"][idx], sim))
-        
+
         similarities.sort(key=lambda x: x[1], reverse=True)
         return similarities[:top_k]
 

@@ -196,7 +196,7 @@ class UnifiedEmbedder:
         # Create multiple hash values for higher dimensions
         hashes = []
         for i in range((dim + 15) // 16):  # Each MD5 gives 16 bytes
-            h = hashlib.md5(f"{text}_{i}".encode()).digest()
+            h = hashlib.sha256(f"{text}_{i}".encode()).digest()
             hashes.extend(int.from_bytes(h[j:j+2], 'big') for j in range(0, 16, 2))
         
         # Normalize to [-1, 1] range

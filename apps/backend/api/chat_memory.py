@@ -832,7 +832,7 @@ class NeutronChatMemory:
         from api.cache_service import get_cache
 
         # Cache key based on query, user, and team context
-        cache_key = f"semantic_search:{hashlib.md5(query.encode()).hexdigest()}:{user_id or 'none'}:{team_id or 'none'}:{limit}"
+        cache_key = f"semantic_search:{hashlib.sha256(query.encode()).hexdigest()}:{user_id or 'none'}:{team_id or 'none'}:{limit}"
         cache = get_cache()
 
         # Check cache first

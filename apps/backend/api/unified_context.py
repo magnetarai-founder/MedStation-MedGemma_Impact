@@ -137,7 +137,7 @@ class UnifiedContextManager:
         import time
 
         # Generate entry ID
-        entry_id = f"{source}_{int(time.time())}_{hashlib.md5(content.encode()).hexdigest()[:8]}"
+        entry_id = f"{source}_{int(time.time())}_{hashlib.sha256(content.encode()).hexdigest()[:8]}"
 
         # Estimate tokens (rough: 1 token ≈ 4 chars)
         tokens_estimate = len(content) // 4

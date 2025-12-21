@@ -23,9 +23,11 @@ async def root():
 
 
 @router.get("/api/system/info")
-async def get_system_info():
+async def get_system_info(current_user: dict = Depends(get_current_user)):
     """
-    Get system information including Metal GPU capabilities and memory
+    Get system information including Metal GPU capabilities and memory.
+
+    Requires authentication to prevent fingerprinting attacks.
     """
     info = {
         "total_memory_gb": 0,
@@ -75,11 +77,13 @@ async def get_system_info():
 
 
 @router.get("/metrics")
-async def prometheus_metrics():
+async def prometheus_metrics(current_user: dict = Depends(get_current_user)):
     """
     Prometheus metrics endpoint (Phase 5.2)
 
     Returns metrics in Prometheus text format for scraping.
+    Requires authentication to protect operational data.
+
     Includes:
     - System metrics (CPU, RAM, disk, network)
     - Metal 4 GPU metrics (if available)

@@ -307,7 +307,7 @@ class JarvisMemory:
         
         # Generate embedding (simplified - in real version would use actual embedding model)
         embedding = self._generate_embedding(command)
-        command_hash = hashlib.md5(command.encode()).hexdigest()
+        command_hash = hashlib.sha256(command.encode()).hexdigest()
         
         # Use thread lock for write operations
         with self._write_lock:
@@ -548,7 +548,7 @@ class JarvisMemory:
     def get_error_solution(self, error_message: str) -> Optional[Dict]:
         """Find solution for an error"""
         
-        error_hash = hashlib.md5(error_message.encode()).hexdigest()
+        error_hash = hashlib.sha256(error_message.encode()).hexdigest()
         
         # Use the error solution template
         template = next(t for t in self.templates if t.id == "ERR_001")

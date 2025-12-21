@@ -378,7 +378,7 @@ class Metal4MLPipeline:
 
         hashes = []
         for i in range((dim + 15) // 16):
-            h = hashlib.md5(f"{text}_{i}".encode()).digest()
+            h = hashlib.sha256(f"{text}_{i}".encode()).digest()
             hashes.extend(int.from_bytes(h[j:j+2], 'big') for j in range(0, 16, 2))
 
         vec = [(h / 32768.0 - 1.0) for h in hashes[:dim]]

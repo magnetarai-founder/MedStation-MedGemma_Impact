@@ -63,7 +63,7 @@ class PatchBus:
             from engines.codex_engine import CodexEngine
         from pathlib import Path
 
-        patch_id = f"P{int(time.time())}_{hashlib.md5(proposal.diff.encode()).hexdigest()[:8]}"
+        patch_id = f"P{int(time.time())}_{hashlib.sha256(proposal.diff.encode()).hexdigest()[:8]}"
 
         # Use provided repo_root or default to cwd
         if repo_root:

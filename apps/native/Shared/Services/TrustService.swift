@@ -7,6 +7,8 @@
 //
 
 import Foundation
+import Security
+import CryptoKit
 
 // MARK: - Enums
 
@@ -185,9 +187,251 @@ public struct TrustHealthResponse: Codable {
     }
 }
 
+// MARK: - Cryptographic Key Management
+
+public enum TrustKeyError: Error, LocalizedError {
+    case keyGenerationFailed(OSStatus)
+    case keyNotFound
+    case keychainError(OSStatus)
+    case signingFailed
+    case invalidPublicKey
+    case encodingFailed
+
+    public var errorDescription: String? {
+        switch self {
+        case .keyGenerationFailed(let status):
+            return "Failed to generate key pair: \(status)"
+        case .keyNotFound:
+            return "Trust key not found in Keychain"
+        case .keychainError(let status):
+            return "Keychain error: \(status)"
+        case .signingFailed:
+            return "Failed to sign data"
+        case .invalidPublicKey:
+            return "Invalid public key format"
+        case .encodingFailed:
+            return "Failed to encode key data"
+        }
+    }
+}
+
+public final class TrustKeyManager {
+    public static let shared = TrustKeyManager()
+
+    private let keyTag = "com.magnetarstudio.trust.identity"
+    private let keychainService = "MagnetarTrust"
+
+    private init() {}
+
+    // MARK: - Key Generation
+
+    public func generateKeyPair() throws -> SecKey {
+        // Delete existing key if present
+        deleteKeyPair()
+
+        let attributes: [String: Any] = [
+            kSecAttrKeyType as String: kSecAttrKeyTypeECSECPrimeRandom,
+            kSecAttrKeySizeInBits as String: 256,
+            kSecPrivateKeyAttrs as String: [
+                kSecAttrIsPermanent as String: true,
+                kSecAttrApplicationTag as String: keyTag.data(using: .utf8)!,
+                kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+            ]
+        ]
+
+        var error: Unmanaged<CFError>?
+        guard let privateKey = SecKeyCreateRandomKey(attributes as CFDictionary, &error) else {
+            let status = (error?.takeRetainedValue() as? NSError)?.code ?? -1
+            throw TrustKeyError.keyGenerationFailed(OSStatus(status))
+        }
+
+        return privateKey
+    }
+
+    // MARK: - Key Retrieval
+
+    public func getPrivateKey() throws -> SecKey {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassKey,
+            kSecAttrApplicationTag as String: keyTag.data(using: .utf8)!,
+            kSecAttrKeyType as String: kSecAttrKeyTypeECSECPrimeRandom,
+            kSecReturnRef as String: true
+        ]
+
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+
+        guard status == errSecSuccess, let key = item else {
+            if status == errSecItemNotFound {
+                throw TrustKeyError.keyNotFound
+            }
+            throw TrustKeyError.keychainError(status)
+        }
+
+        // SecItemCopyMatching with kSecReturnRef for kSecClassKey returns SecKey
+        // Swift can't introspect CoreFoundation types at runtime, so we use unsafeBitCast
+        // This is safe because the query specifically requests a key reference
+        return unsafeBitCast(key, to: SecKey.self)
+    }
+
+    public func getPublicKey() throws -> SecKey {
+        let privateKey = try getPrivateKey()
+        guard let publicKey = SecKeyCopyPublicKey(privateKey) else {
+            throw TrustKeyError.invalidPublicKey
+        }
+        return publicKey
+    }
+
+    public func getPublicKeyBase64() throws -> String {
+        let publicKey = try getPublicKey()
+
+        var error: Unmanaged<CFError>?
+        guard let publicKeyData = SecKeyCopyExternalRepresentation(publicKey, &error) as Data? else {
+            throw TrustKeyError.encodingFailed
+        }
+
+        return publicKeyData.base64EncodedString()
+    }
+
+    public func hasKeyPair() -> Bool {
+        do {
+            _ = try getPrivateKey()
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    // MARK: - Key Deletion
+
+    @discardableResult
+    public func deleteKeyPair() -> Bool {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassKey,
+            kSecAttrApplicationTag as String: keyTag.data(using: .utf8)!
+        ]
+
+        let status = SecItemDelete(query as CFDictionary)
+        return status == errSecSuccess || status == errSecItemNotFound
+    }
+
+    // MARK: - Signing
+
+    public func sign(data: Data) throws -> Data {
+        let privateKey = try getPrivateKey()
+
+        var error: Unmanaged<CFError>?
+        guard let signature = SecKeyCreateSignature(
+            privateKey,
+            .ecdsaSignatureMessageX962SHA256,
+            data as CFData,
+            &error
+        ) as Data? else {
+            throw TrustKeyError.signingFailed
+        }
+
+        return signature
+    }
+
+    public func sign(message: String) throws -> String {
+        guard let data = message.data(using: .utf8) else {
+            throw TrustKeyError.encodingFailed
+        }
+        let signature = try sign(data: data)
+        return signature.base64EncodedString()
+    }
+
+    // MARK: - Verification
+
+    public func verify(signature: Data, for data: Data, publicKey: SecKey) -> Bool {
+        var error: Unmanaged<CFError>?
+        return SecKeyVerifySignature(
+            publicKey,
+            .ecdsaSignatureMessageX962SHA256,
+            data as CFData,
+            signature as CFData,
+            &error
+        )
+    }
+
+    public func publicKey(fromBase64 base64String: String) throws -> SecKey {
+        guard let keyData = Data(base64Encoded: base64String) else {
+            throw TrustKeyError.invalidPublicKey
+        }
+
+        let attributes: [String: Any] = [
+            kSecAttrKeyType as String: kSecAttrKeyTypeECSECPrimeRandom,
+            kSecAttrKeyClass as String: kSecAttrKeyClassPublic,
+            kSecAttrKeySizeInBits as String: 256
+        ]
+
+        var error: Unmanaged<CFError>?
+        guard let publicKey = SecKeyCreateWithData(keyData as CFData, attributes as CFDictionary, &error) else {
+            throw TrustKeyError.invalidPublicKey
+        }
+
+        return publicKey
+    }
+
+    // MARK: - Attestation
+
+    public func createAttestation(targetNodeId: String, level: TrustLevel, note: String?) throws -> SignedAttestation {
+        let timestamp = ISO8601DateFormatter().string(from: Date())
+        let payload = AttestationPayload(
+            targetNodeId: targetNodeId,
+            level: level,
+            note: note,
+            timestamp: timestamp
+        )
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+        let payloadData = try encoder.encode(payload)
+        let payloadBase64 = payloadData.base64EncodedString()
+
+        let signature = try sign(data: payloadData)
+        let publicKey = try getPublicKeyBase64()
+
+        return SignedAttestation(
+            payload: payloadBase64,
+            signature: signature.base64EncodedString(),
+            signerPublicKey: publicKey
+        )
+    }
+}
+
+// MARK: - Attestation Models
+
+public struct AttestationPayload: Codable {
+    public let targetNodeId: String
+    public let level: TrustLevel
+    public let note: String?
+    public let timestamp: String
+
+    public enum CodingKeys: String, CodingKey {
+        case targetNodeId = "target_node_id"
+        case level
+        case note
+        case timestamp
+    }
+}
+
+public struct SignedAttestation: Codable {
+    public let payload: String
+    public let signature: String
+    public let signerPublicKey: String
+
+    public enum CodingKeys: String, CodingKey {
+        case payload
+        case signature
+        case signerPublicKey = "signer_public_key"
+    }
+}
+
 // MARK: - Trust Service
 
 public final class TrustService {
+    private let keyManager = TrustKeyManager.shared
     public static let shared = TrustService()
     private let apiClient = ApiClient.shared
 
@@ -286,5 +530,69 @@ public final class TrustService {
             path: path,
             method: .get
         )
+    }
+
+    // MARK: - Cryptographic Operations
+
+    public func registerNodeWithNewIdentity(
+        publicName: String,
+        type: NodeType,
+        alias: String? = nil,
+        bio: String? = nil,
+        location: String? = nil,
+        displayMode: DisplayMode = .peacetime
+    ) async throws -> TrustNode {
+        // Generate new cryptographic identity
+        _ = try keyManager.generateKeyPair()
+        let publicKey = try keyManager.getPublicKeyBase64()
+
+        let request = RegisterNodeRequest(
+            publicKey: publicKey,
+            publicName: publicName,
+            type: type,
+            alias: alias,
+            bio: bio,
+            location: location,
+            displayMode: displayMode
+        )
+
+        return try await registerNode(request)
+    }
+
+    public func vouchWithSignature(
+        targetNodeId: String,
+        level: TrustLevel = .vouched,
+        note: String? = nil
+    ) async throws -> TrustRelationship {
+        // Create signed attestation
+        let attestation = try keyManager.createAttestation(
+            targetNodeId: targetNodeId,
+            level: level,
+            note: note
+        )
+
+        // Send vouch request with cryptographic proof
+        return try await apiClient.request(
+            path: "/v1/trust/vouch",
+            method: .post,
+            jsonBody: [
+                "target_node_id": targetNodeId,
+                "level": level.rawValue,
+                "note": note as Any,
+                "attestation": [
+                    "payload": attestation.payload,
+                    "signature": attestation.signature,
+                    "signer_public_key": attestation.signerPublicKey
+                ]
+            ]
+        )
+    }
+
+    public func hasIdentity() -> Bool {
+        return keyManager.hasKeyPair()
+    }
+
+    public func getMyPublicKey() throws -> String {
+        return try keyManager.getPublicKeyBase64()
     }
 }

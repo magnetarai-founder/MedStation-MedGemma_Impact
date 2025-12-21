@@ -170,7 +170,7 @@
 		D2CCB34F2EDE7C5E00E20014 /* SecurityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2CCB34E2EDE7C5E00E20014 /* SecurityManager.swift */; };
 		D2CCB3512EDE7C8200E20014 /* NetworkFirewallProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2CCB3502EDE7C8200E20014 /* NetworkFirewallProtocol.swift */; };
 		D2CCB3532EDE7C9E00E20014 /* NetworkApprovalModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2CCB3522EDE7C9E00E20014 /* NetworkApprovalModal.swift */; };
-		D2CCB3552EDE7CC000E20014 /* NetworkFirewallModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2CCB3542EDE7CC000E20014 /* NetworkFirewallModifier.swift */; };
+		D2CCB3562EDE7CD000E20014 /* NetworkFirewallModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2CCB3572EDE7CD000E20014 /* NetworkFirewallModifier.swift */; };
 		D2F4756D2EDFBA8400F95E34 /* ModelManagerWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2F4756C2EDFBA8400F95E34 /* ModelManagerWindow.swift */; };
 		D2F4756F2EDFBAA100F95E34 /* SmartModelPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2F4756E2EDFBAA100F95E34 /* SmartModelPicker.swift */; };
 		D3328E1213054F595CC7CC59 /* KanbanModals.swift in Sources */ = {isa = PBXBuildFile; fileRef = 611796B61D64D3EA27C7F979 /* KanbanModals.swift */; };
@@ -389,7 +389,7 @@
 		D2CCB34E2EDE7C5E00E20014 /* SecurityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityManager.swift; sourceTree = "<group>"; };
 		D2CCB3502EDE7C8200E20014 /* NetworkFirewallProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkFirewallProtocol.swift; sourceTree = "<group>"; };
 		D2CCB3522EDE7C9E00E20014 /* NetworkApprovalModal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkApprovalModal.swift; sourceTree = "<group>"; };
-		D2CCB3542EDE7CC000E20014 /* NetworkFirewallModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkFirewallModifier.swift; sourceTree = "<group>"; };
+		D2CCB3572EDE7CD000E20014 /* NetworkFirewallModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkFirewallModifier.swift; sourceTree = "<group>"; };
 		D2E4C8D5779CFC154820FA9D /* HubOllamaManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HubOllamaManager.swift; path = MagnetarHub/HubOllamaManager.swift; sourceTree = "<group>"; };
 		D2F4756C2EDFBA8400F95E34 /* ModelManagerWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelManagerWindow.swift; sourceTree = "<group>"; };
 		D2F4756E2EDFBAA100F95E34 /* SmartModelPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartModelPicker.swift; sourceTree = "<group>"; };
@@ -568,9 +568,10 @@
 		4E36A8E7580169C9E6979E17 /* Modifiers */ = {
 			isa = PBXGroup;
 			children = (
-				D2CCB3542EDE7CC000E20014 /* NetworkFirewallModifier.swift */,
+				D2CCB3572EDE7CD000E20014 /* NetworkFirewallModifier.swift */,
 			);
 			name = Modifiers;
+			path = Modifiers;
 			sourceTree = "<group>";
 		};
 		528FBB69AF9283A6DB1E6DA7 /* VaultAdmin */ = {
@@ -1133,7 +1134,6 @@
 				E68789013473A49D03D15C8B /* ChatWorkspace.swift in Sources */,
 				87AC91711BE8494C52DC1524 /* Colors.swift in Sources */,
 				284B09009A694A4E0263B311 /* ContentView.swift in Sources */,
-				D2CCB3552EDE7CC000E20014 /* NetworkFirewallModifier.swift in Sources */,
 				7B7E8A766BB7FC3F6725F19B /* DatabaseWorkspace.swift in Sources */,
 				BD7253C573C97E44DCD6BE0A /* GlassButton.swift in Sources */,
 				30393230363164342D646637312D343666382D613263632D /* ThreePaneLayout.swift in Sources */,
@@ -1147,6 +1147,7 @@
 				B64BDA375B00040180CE49A6 /* TeamWorkspace.swift in Sources */,
 				EFBA62F8E6B41580CE0730B2 /* User.swift in Sources */,
 				D2CCB3512EDE7C8200E20014 /* NetworkFirewallProtocol.swift in Sources */,
+				D2CCB3562EDE7CD000E20014 /* NetworkFirewallModifier.swift in Sources */,
 				4FCFAC2E0DD745DFB5813F74 /* NavigationRail.swift in Sources */,
 				C4D33031AF8A4EDDAFDA3841 /* Header.swift in Sources */,
 				E597B05474B74E02887E7C99 /* FileUpload.swift in Sources */,

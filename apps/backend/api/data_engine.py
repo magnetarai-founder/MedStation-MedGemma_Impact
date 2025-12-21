@@ -161,7 +161,7 @@ class DataEngine:
         df = self._auto_clean(df)
 
         # 3. Generate unique table name
-        file_hash = hashlib.md5(file_path.read_bytes()).hexdigest()[:8]
+        file_hash = hashlib.sha256(file_path.read_bytes()).hexdigest()[:8]
         table_name = f"ds_{file_hash}"
         dataset_id = f"dataset_{file_hash}"
 

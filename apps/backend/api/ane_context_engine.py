@@ -45,7 +45,7 @@ def _cpu_embed_fallback(text: str, dims: int = 384) -> List[float]:
 
     # Multiple hashes for better distribution
     for i in range((dims + 15) // 16):
-        h = hashlib.md5(f"{text}_{i}".encode()).digest()
+        h = hashlib.sha256(f"{text}_{i}".encode()).digest()
         for j in range(min(16, dims - i * 16)):
             vec[i * 16 + j] = h[j] / 255.0
 

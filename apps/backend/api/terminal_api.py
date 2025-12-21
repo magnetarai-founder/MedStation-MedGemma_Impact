@@ -171,19 +171,49 @@ async def spawn_system_terminal(current_user: dict = Depends(get_current_user)):
         # Get workspace root from marker file if exists
         from config_paths import PATHS
         import shlex
+        import re
         marker_file = PATHS.data_dir / "current_workspace.txt"
         workspace_root = home_dir  # default
+
+        # Allowed workspace root directories (security whitelist)
+        ALLOWED_WORKSPACE_ROOTS = [
+            Path(home_dir),
+            Path(home_dir) / "Documents",
+            Path(home_dir) / "Projects",
+            Path(home_dir) / "Developer",
+            Path(home_dir) / "Code",
+            Path("/tmp"),
+        ]
+
+        # Valid path character pattern (prevents command injection via special chars)
+        VALID_PATH_PATTERN = re.compile(r'^[a-zA-Z0-9/_.\-\s]+$')
+
         if marker_file.exists():
             workspace_root_raw = marker_file.read_text().strip()
 
-            # Validate workspace path to prevent command injection
-            workspace_path = Path(workspace_root_raw)
-            if workspace_path.is_dir():
-                # Normalize path and escape for shell
-                workspace_root = str(workspace_path.resolve())
-            else:
-                logger.warning(f"Invalid workspace path: {workspace_root_raw}, using home directory")
+            # Step 1: Validate path characters BEFORE any Path operations
+            if not VALID_PATH_PATTERN.match(workspace_root_raw):
+                logger.warning(f"Invalid path characters in workspace: {workspace_root_raw!r}")
                 workspace_root = home_dir
+            elif not workspace_root_raw.startswith('/'):
+                logger.warning(f"Workspace path must be absolute: {workspace_root_raw}")
+                workspace_root = home_dir
+            else:
+                # Step 2: Now safe to create Path object
+                workspace_path = Path(workspace_root_raw).resolve()
+
+                # Step 3: Verify path is within allowed roots (prevent traversal)
+                is_allowed = any(
+                    workspace_path == allowed_root or
+                    (allowed_root in workspace_path.parents)
+                    for allowed_root in ALLOWED_WORKSPACE_ROOTS
+                )
+
+                if is_allowed and workspace_path.is_dir():
+                    workspace_root = str(workspace_path)
+                else:
+                    logger.warning(f"Workspace path not in allowed directories: {workspace_path}")
+                    workspace_root = home_dir
 
         # Create bridge wrapper script
         # Use shlex.quote() to prevent shell injection via workspace path
