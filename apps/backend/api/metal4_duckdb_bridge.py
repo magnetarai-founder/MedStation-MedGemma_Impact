@@ -69,7 +69,7 @@ class Metal4DuckDBBridge:
         # Initialize
         self._initialize()
 
-    def _initialize(self):
+    def _initialize(self) -> None:
         """Initialize bridge components"""
         logger.info("Initializing Metal 4 DuckDB bridge...")
 
@@ -271,7 +271,7 @@ class Metal4DuckDBBridge:
         self,
         name: str,
         df: pd.DataFrame
-    ):
+    ) -> None:
         """
         Register DataFrame as DuckDB table
 
@@ -318,7 +318,7 @@ class Metal4DuckDBBridge:
     import re
     _IDENTIFIER_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
 
-    def _validate_identifier(self, name: str, kind: str = "identifier"):
+    def _validate_identifier(self, name: str, kind: str = "identifier") -> None:
         """Validate DuckDB identifier (table/column) to prevent SQL injection."""
         if not isinstance(name, str) or not self._IDENTIFIER_RE.match(name):
             raise ValueError(f"Invalid {kind}: {name!r}")
@@ -469,7 +469,7 @@ class Metal4DuckDBBridge:
 
         return stats
 
-    def reset_stats(self):
+    def reset_stats(self) -> None:
         """Reset performance statistics"""
         self.stats = {
             'total_queries': 0,

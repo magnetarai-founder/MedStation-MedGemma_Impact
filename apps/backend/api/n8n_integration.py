@@ -58,7 +58,7 @@ class N8NClient:
             )
         return self.session
 
-    async def close(self):
+    async def close(self) -> None:
         """Close the session"""
         if self.session and not self.session.closed:
             await self.session.close()
@@ -279,7 +279,7 @@ class N8NIntegrationService:
         self.client = N8NClient(config)
         self.mappings: Dict[str, N8NWorkflowMapping] = {}
 
-    async def close(self):
+    async def close(self) -> None:
         """Cleanup resources"""
         await self.client.close()
 

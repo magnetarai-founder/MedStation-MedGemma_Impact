@@ -34,7 +34,7 @@ class ElohimOSMemory:
         self._cache_ttl = 300  # 5 minutes TTL
         self._cache_timestamps: Dict[str, float] = {}
 
-    def _setup_elohimos_tables(self):
+    def _setup_elohimos_tables(self) -> None:
         """Create ElohimOS-specific tables"""
 
         # Query history table (replaces localStorage)
@@ -136,7 +136,7 @@ class ElohimOSMemory:
 
             return cursor.lastrowid
 
-    def _invalidate_history_cache(self):
+    def _invalidate_history_cache(self) -> None:
         """Clear the in-memory cache to force fresh data on next request"""
         self._history_cache.clear()
         self._cache_timestamps.clear()
@@ -532,6 +532,6 @@ class ElohimOSMemory:
                 """, (key, json.dumps(value)))
             self.memory.conn.commit()
 
-    def close(self):
+    def close(self) -> None:
         """Close the database connection"""
         self.memory.conn.close()

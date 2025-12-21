@@ -257,7 +257,7 @@ async def vector_search(
 async def load_database(
     request: LoadDatabaseRequest,
     user: dict = Depends(get_current_user)
-):
+) -> Dict[str, Any]:
     """
     Load vector database for searching
 
@@ -293,7 +293,7 @@ async def load_database(
 async def store_embedding(
     request: StoreEmbeddingRequest,
     user: dict = Depends(get_current_user)
-):
+) -> Dict[str, Any]:
     """
     Store embedding in sparse storage
 
@@ -325,7 +325,7 @@ async def store_embedding(
 async def retrieve_embedding(
     vector_id: int,
     user: dict = Depends(get_current_user)
-):
+) -> Dict[str, Any]:
     """
     Retrieve embedding from sparse storage
 
@@ -355,7 +355,7 @@ async def retrieve_embedding(
 
 
 @router.post("/validate")
-async def validate_setup(user: dict = Depends(get_current_user)):
+async def validate_setup(user: dict = Depends(get_current_user)) -> Dict[str, Any]:
     """
     Validate Metal 4 ML pipeline setup
 
@@ -386,7 +386,7 @@ async def validate_setup(user: dict = Depends(get_current_user)):
 
 
 @router.post("/benchmark")
-async def run_benchmark(user: dict = Depends(get_current_user)):
+async def run_benchmark(user: dict = Depends(get_current_user)) -> Dict[str, Any]:
     """
     Run performance benchmarks
 

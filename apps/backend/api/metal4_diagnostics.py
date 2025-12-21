@@ -86,7 +86,7 @@ class Metal4Diagnostics:
 
         logger.info("✅ Metal4Diagnostics initialized")
 
-    def record_frame(self):
+    def record_frame(self) -> None:
         """Record a new frame time"""
         now = time.time()
         frame_time_ms = (now - self.last_frame_time) * 1000
@@ -98,7 +98,7 @@ class Metal4Diagnostics:
         self.last_frame_time = now
         self.operation_counts['render_frames'] += 1
 
-    def record_operation(self, operation_type: str, duration_ms: float, queue: str = 'ml'):
+    def record_operation(self, operation_type: str, duration_ms: float, queue: str = 'ml') -> None:
         """
         Record an operation completion
 
