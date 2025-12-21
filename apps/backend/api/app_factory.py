@@ -346,7 +346,7 @@ Global limit: 100 requests/minute. Endpoint-specific limits documented below.
 
     # Middleware to add request ID to all requests
     @app.middleware("http")
-    async def add_request_id(request: Request, call_next):
+    async def add_request_id(request: Request, call_next) -> Response:
         """Add unique request ID for tracing and structured logging"""
         request_id = request.headers.get("X-Request-ID", str(uuid_lib.uuid4()))
         request_id_ctx.set(request_id)

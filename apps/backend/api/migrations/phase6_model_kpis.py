@@ -26,7 +26,7 @@ def check_migration_applied(db_path: str) -> bool:
         except Exception:
             pass
 
-def migrate(db_path: str):
+def migrate(db_path: str) -> None:
     """Run the migration"""
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()

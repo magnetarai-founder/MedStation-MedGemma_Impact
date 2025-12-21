@@ -15,7 +15,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def migrate(db_path: str):
+def migrate(db_path: str) -> None:
     """Apply Phase B migration: Kanban workspace tables"""
     logger.info("Running Phase B migration: Kanban workspace")
 

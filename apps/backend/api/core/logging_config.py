@@ -7,7 +7,7 @@ Suppresses verbose DEBUG and INFO logs from various services to reduce terminal 
 import logging
 
 
-def configure_logging():
+def configure_logging() -> None:
     """
     Configure logging levels for all services.
 

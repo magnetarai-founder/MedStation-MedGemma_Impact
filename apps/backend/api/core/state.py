@@ -44,7 +44,7 @@ def _get_dataframe_size_bytes(df: pd.DataFrame) -> int:
     return df.memory_usage(deep=True).sum()
 
 
-def _evict_oldest_query_result():
+def _evict_oldest_query_result() -> None:
     """Evict the oldest query result from cache to free memory"""
     global _total_cache_size
     if not query_results:
@@ -141,7 +141,7 @@ def get_progress_stream(task_id: str) -> dict[str, Any] | None:
     return _progress_streams.get(task_id)
 
 
-def update_progress_stream(task_id: str, status: str, progress: int, message: str, updated_at: str):
+def update_progress_stream(task_id: str, status: str, progress: int, message: str, updated_at: str) -> None:
     """Update progress tracking for a task"""
     _progress_streams[task_id] = {
         "status": status,
