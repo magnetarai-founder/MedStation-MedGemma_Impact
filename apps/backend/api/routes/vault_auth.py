@@ -304,6 +304,71 @@ def _unwrap_kek(wrapped_kek: bytes, wrap_key: bytes, method: str = "aes_kw") -> 
     return unwrap_key(wrapped_kek, wrap_key[:32], method=method)
 
 
+def _migrate_xor_to_aes_kw(
+    user_id: str,
+    vault_id: str,
+    kek: bytes,
+    wrap_key: bytes,
+    vault_type: str = "real"
+) -> bool:
+    """
+    Migrate vault from XOR legacy wrapping to AES-KW.
+
+    Called automatically after successful unlock when wrap_method is 'xor_legacy'.
+    This provides transparent upgrade to stronger key wrapping without user action.
+
+    Args:
+        user_id: User ID
+        vault_id: Vault ID
+        kek: Unwrapped KEK (from successful unlock)
+        wrap_key: Wrap key derived from passphrase
+        vault_type: 'real' or 'decoy' to indicate which KEK column to update
+
+    Returns:
+        True if migration successful, False otherwise
+    """
+    try:
+        # Re-wrap KEK with AES-KW
+        wrapped_kek_new = _wrap_kek(kek, wrap_key, method="aes_kw")
+        wrapped_kek_hex = wrapped_kek_new.hex()
+
+        with sqlite3.connect(str(VAULT_DB_PATH)) as conn:
+            cursor = conn.cursor()
+
+            # Update the appropriate column based on vault type
+            if vault_type == "real":
+                cursor.execute("""
+                    UPDATE vault_auth_metadata
+                    SET wrapped_kek_real = ?, wrap_method = 'aes_kw'
+                    WHERE user_id = ? AND vault_id = ?
+                """, (wrapped_kek_hex, user_id, vault_id))
+            else:
+                cursor.execute("""
+                    UPDATE vault_auth_metadata
+                    SET wrapped_kek_decoy = ?, wrap_method = 'aes_kw'
+                    WHERE user_id = ? AND vault_id = ?
+                """, (wrapped_kek_hex, user_id, vault_id))
+
+            conn.commit()
+
+        logger.info(
+            "Migrated vault from xor_legacy to aes_kw",
+            extra={
+                "user_id": user_id,
+                "vault_id": sanitize_for_log(vault_id),
+                "vault_type": vault_type
+            }
+        )
+        return True
+
+    except Exception as e:
+        logger.warning(
+            f"XOR to AES-KW migration failed (non-fatal): {e}",
+            extra={"user_id": user_id, "vault_id": sanitize_for_log(vault_id)}
+        )
+        return False
+
+
 # ===== Endpoints =====
 
 @router.post(
@@ -539,7 +604,7 @@ async def unlock_biometric(
         with sqlite3.connect(str(VAULT_DB_PATH)) as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT webauthn_credential_id, webauthn_public_key, wrapped_kek_real, salt_real, wrap_method
+                SELECT webauthn_credential_id, webauthn_public_key, wrapped_kek_real, salt_real, wrap_method, webauthn_counter
                 FROM vault_auth_metadata
                 WHERE user_id = ? AND vault_id = ?
             """, (current_user.user_id, req.vault_id))
@@ -556,8 +621,9 @@ async def unlock_biometric(
                     ).model_dump()
                 )
 
-            credential_id, public_key, wrapped_kek_hex, salt_hex, wrap_method = row
+            credential_id, public_key, wrapped_kek_hex, salt_hex, wrap_method, stored_sign_count = row
             wrap_method = wrap_method or "xor_legacy"  # Default for old entries
+            stored_sign_count = stored_sign_count or 0  # Default for old entries without counter
 
         # Verify WebAuthn assertion with challenge validation
         challenge = _consume_challenge(current_user.user_id, req.vault_id)
@@ -573,6 +639,7 @@ async def unlock_biometric(
 
         try:
             # Verify the WebAuthn assertion cryptographically
+            # Pass stored_sign_count to detect replay attacks (counter must always increase)
             verified = verify_assertion(
                 assert_response=req.webauthn_assertion,
                 rp_id=WEBAUTHN_RP_ID,
@@ -580,13 +647,26 @@ async def unlock_biometric(
                 public_key_pem=public_key,
                 challenge=challenge,
                 credential_id=credential_id,
-                current_sign_count=0  # TODO: Fetch from DB and update after verification
+                current_sign_count=stored_sign_count
             )
+
+            # Update the sign count in DB to prevent replay attacks
+            with sqlite3.connect(str(VAULT_DB_PATH)) as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    UPDATE vault_auth_metadata
+                    SET webauthn_counter = ?, updated_at = ?
+                    WHERE user_id = ? AND vault_id = ?
+                """, (verified.sign_count, datetime.now().isoformat(), current_user.user_id, req.vault_id))
+                conn.commit()
+
             logger.info(
                 "WebAuthn assertion verified",
                 extra={
                     "user_id": current_user.user_id,
-                    "credential_id": credential_id[:16] + "..."
+                    "credential_id": credential_id[:16] + "...",
+                    "old_sign_count": stored_sign_count,
+                    "new_sign_count": verified.sign_count
                 }
             )
         except Exception as e:
@@ -617,6 +697,16 @@ async def unlock_biometric(
         _record_unlock_attempt(current_user.user_id, req.vault_id, True, 'biometric')
 
         logger.info("Biometric unlock successful", extra={"user_id": current_user.user_id})
+
+        # Automatic migration: Upgrade XOR legacy vaults to AES-KW on successful unlock
+        if wrap_method == "xor_legacy":
+            _migrate_xor_to_aes_kw(
+                user_id=current_user.user_id,
+                vault_id=req.vault_id,
+                kek=kek_real,
+                wrap_key=wrap_key,
+                vault_type="real"  # Biometric always unlocks real vault
+            )
 
         # Do NOT disclose vault_type to maintain plausible deniability
         return SuccessResponse(
@@ -923,6 +1013,17 @@ async def unlock_passphrase(
         _record_unlock_attempt(current_user.user_id, vault_id, True, 'passphrase')
 
         logger.info("Passphrase unlock successful", extra={"user_id": current_user.user_id})
+
+        # Automatic migration: Upgrade XOR legacy vaults to AES-KW on successful unlock
+        # This is transparent to the user and provides stronger key protection
+        if wrap_method == "xor_legacy":
+            _migrate_xor_to_aes_kw(
+                user_id=current_user.user_id,
+                vault_id=vault_id,
+                kek=kek,
+                wrap_key=wrap_key,
+                vault_type=vault_type
+            )
 
         # Do NOT disclose vault_type
         return SuccessResponse(

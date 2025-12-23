@@ -18,6 +18,7 @@ from p2p_chat_models import (
     P2PStatusResponse, ChannelType
 )
 from p2p_chat_service import get_p2p_chat_service, init_p2p_chat_service
+from api.routes.schemas import SuccessResponse
 
 logger = logging.getLogger(__name__)
 
@@ -64,13 +65,23 @@ async def initialize_p2p_service(request: Request, display_name: str, device_nam
 
 # ===== Status & Peers =====
 
-@router.get("/status", response_model=P2PStatusResponse)
-async def get_p2p_status() -> P2PStatusResponse:
+@router.get("/status", response_model=SuccessResponse[P2PStatusResponse])
+async def get_p2p_status() -> SuccessResponse[P2PStatusResponse]:
     """Get current P2P network status"""
     service = get_p2p_chat_service()
 
     if not service or not service.is_running:
-        raise HTTPException(status_code=503, detail="P2P service not running")
+        # Return disconnected status instead of 503 error
+        return SuccessResponse(
+            data=P2PStatusResponse(
+                peer_id="",
+                is_connected=False,
+                discovered_peers=0,
+                active_channels=0,
+                multiaddrs=[]
+            ),
+            message="P2P service not running"
+        )
 
     peers = await service.list_peers()
     online_peers = [p for p in peers if p.status == "online" and p.peer_id != service.peer_id]
@@ -82,33 +93,40 @@ async def get_p2p_status() -> P2PStatusResponse:
     if service.host:
         addrs = [str(addr) for addr in service.host.get_addrs()]
 
-    return P2PStatusResponse(
-        peer_id=service.peer_id,
-        is_connected=service.is_running,
-        discovered_peers=len(online_peers),
-        active_channels=len(channels),
-        multiaddrs=addrs
+    return SuccessResponse(
+        data=P2PStatusResponse(
+            peer_id=service.peer_id,
+            is_connected=service.is_running,
+            discovered_peers=len(online_peers),
+            active_channels=len(channels),
+            multiaddrs=addrs
+        ),
+        message="P2P status retrieved successfully"
     )
 
 
-@router.get("/peers", response_model=PeerListResponse)
-async def list_peers() -> PeerListResponse:
+@router.get("/peers", response_model=SuccessResponse[PeerListResponse])
+async def list_peers() -> SuccessResponse[PeerListResponse]:
     """List all discovered peers"""
     service = get_p2p_chat_service()
 
     if not service:
-        raise HTTPException(status_code=503, detail="P2P service not initialized")
+        # Return empty list when P2P service not running
+        return SuccessResponse(
+            data=PeerListResponse(peers=[], total=0),
+            message="P2P service not initialized - no peers available"
+        )
 
     peers = await service.list_peers()
 
-    return PeerListResponse(
-        peers=peers,
-        total=len(peers)
+    return SuccessResponse(
+        data=PeerListResponse(peers=peers, total=len(peers)),
+        message=f"Found {len(peers)} peer(s)"
     )
 
 
-@router.get("/peers/{peer_id}", response_model=Peer)
-async def get_peer(peer_id: str) -> Peer:
+@router.get("/peers/{peer_id}", response_model=SuccessResponse[Peer])
+async def get_peer(peer_id: str) -> SuccessResponse[Peer]:
     """Get details about a specific peer"""
     service = get_p2p_chat_service()
 
@@ -121,7 +139,7 @@ async def get_peer(peer_id: str) -> Peer:
     if not peer:
         raise HTTPException(status_code=404, detail="Peer not found")
 
-    return peer
+    return SuccessResponse(data=peer, message="Peer retrieved successfully")
 
 
 # ===== Channels =====
@@ -197,24 +215,28 @@ async def create_direct_message(request: Request, body: CreateDMRequest) -> Chan
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/channels", response_model=ChannelListResponse)
-async def list_channels() -> ChannelListResponse:
+@router.get("/channels", response_model=SuccessResponse[ChannelListResponse])
+async def list_channels() -> SuccessResponse[ChannelListResponse]:
     """List all channels (public, private, and DMs)"""
     service = get_p2p_chat_service()
 
     if not service:
-        raise HTTPException(status_code=503, detail="P2P service not initialized")
+        # Return empty list when P2P service not running (instead of 503 error)
+        return SuccessResponse(
+            data=ChannelListResponse(channels=[], total=0),
+            message="P2P service not initialized - no channels available"
+        )
 
     channels = await service.list_channels()
 
-    return ChannelListResponse(
-        channels=channels,
-        total=len(channels)
+    return SuccessResponse(
+        data=ChannelListResponse(channels=channels, total=len(channels)),
+        message=f"Found {len(channels)} channel(s)"
     )
 
 
-@router.get("/channels/{channel_id}", response_model=Channel)
-async def get_channel(channel_id: str) -> Channel:
+@router.get("/channels/{channel_id}", response_model=SuccessResponse[Channel])
+async def get_channel(channel_id: str) -> SuccessResponse[Channel]:
     """Get a specific channel"""
     service = get_p2p_chat_service()
 
@@ -226,7 +248,7 @@ async def get_channel(channel_id: str) -> Channel:
     if not channel:
         raise HTTPException(status_code=404, detail="Channel not found")
 
-    return channel
+    return SuccessResponse(data=channel, message="Channel retrieved successfully")
 
 
 @router.post("/channels/{channel_id}/invite")
@@ -427,8 +449,8 @@ async def send_message(request: Request, channel_id: str, body: SendMessageReque
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/channels/{channel_id}/messages", response_model=MessageListResponse)
-async def get_messages(channel_id: str, limit: int = 50) -> MessageListResponse:
+@router.get("/channels/{channel_id}/messages", response_model=SuccessResponse[MessageListResponse])
+async def get_messages(channel_id: str, limit: int = 50) -> SuccessResponse[MessageListResponse]:
     """Get messages for a channel"""
     service = get_p2p_chat_service()
 
@@ -442,11 +464,14 @@ async def get_messages(channel_id: str, limit: int = 50) -> MessageListResponse:
 
     messages = await service.get_messages(channel_id, limit=limit)
 
-    return MessageListResponse(
-        channel_id=channel_id,
-        messages=messages,
-        total=len(messages),
-        has_more=len(messages) >= limit
+    return SuccessResponse(
+        data=MessageListResponse(
+            channel_id=channel_id,
+            messages=messages,
+            total=len(messages),
+            has_more=len(messages) >= limit
+        ),
+        message=f"Found {len(messages)} message(s)"
     )
 
 

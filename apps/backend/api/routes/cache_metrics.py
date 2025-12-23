@@ -13,9 +13,29 @@ import logging
 
 from api.cache_service import get_cache
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.auth_middleware import get_current_user, User
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/cache", tags=["cache"])
+
+# Admin roles allowed to perform destructive cache operations
+ADMIN_ROLES = {"founder_rights", "super_admin", "admin"}
+
+
+def _require_admin(current_user: User) -> None:
+    """Raise 403 if user is not an admin."""
+    role = getattr(current_user, 'role', None) or current_user.get('role') if isinstance(current_user, dict) else None
+    if role not in ADMIN_ROLES:
+        logger.warning(
+            f"Unauthorized cache operation attempt by user {getattr(current_user, 'user_id', 'unknown')} with role {role}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=ErrorResponse(
+                error_code=ErrorCode.FORBIDDEN,
+                message="Admin privileges required for cache operations"
+            ).model_dump()
+        )
 
 
 class CacheStatsResponse(BaseModel):
@@ -97,23 +117,26 @@ class FlushResponse(BaseModel):
     summary="Flush cache",
     description="Clear all cache entries (WARNING: Clears ALL cached data - admin only)"
 )
-async def flush_cache() -> SuccessResponse[FlushResponse]:
+async def flush_cache(
+    current_user: User = Depends(get_current_user)
+) -> SuccessResponse[FlushResponse]:
     """
     Clear all cache entries.
 
     ⚠️ WARNING: This clears ALL cached data!
-    Should be admin-only in production.
+    Requires admin, super_admin, or founder_rights role.
 
     Returns:
         Success message
-
-    TODO: Add admin authentication
     """
+    _require_admin(current_user)
+
     try:
         cache = get_cache()
         cache.flush_all()
 
-        logger.warning("Cache flushed by API request")
+        user_id = getattr(current_user, 'user_id', 'unknown')
+        logger.warning(f"Cache flushed by admin user {user_id}")
 
         return SuccessResponse(
             data=FlushResponse(
@@ -153,9 +176,14 @@ class InvalidateResponse(BaseModel):
     summary="Invalidate cache pattern",
     description="Invalidate cache entries matching a pattern (e.g., 'user:*', 'ollama:*')"
 )
-async def invalidate_cache_pattern(request: InvalidateRequest) -> SuccessResponse[InvalidateResponse]:
+async def invalidate_cache_pattern(
+    request: InvalidateRequest,
+    current_user: User = Depends(get_current_user)
+) -> SuccessResponse[InvalidateResponse]:
     """
     Invalidate cache entries matching a pattern.
+
+    Requires admin, super_admin, or founder_rights role.
 
     Args:
         pattern: Pattern to match (e.g., "user:*", "ollama:*")
@@ -171,9 +199,9 @@ async def invalidate_cache_pattern(request: InvalidateRequest) -> SuccessRespons
         # Invalidate all Ollama model lists
         POST /api/v1/cache/invalidate
         {"pattern": "ollama:models:*"}
-
-    TODO: Add authentication
     """
+    _require_admin(current_user)
+
     try:
         cache = get_cache()
         deleted = cache.delete_pattern(request.pattern)
@@ -218,18 +246,23 @@ class DeleteKeyResponse(BaseModel):
     summary="Delete cache key",
     description="Delete a specific cache key"
 )
-async def delete_cache_key(key: str) -> SuccessResponse[DeleteKeyResponse]:
+async def delete_cache_key(
+    key: str,
+    current_user: User = Depends(get_current_user)
+) -> SuccessResponse[DeleteKeyResponse]:
     """
     Delete a specific cache key.
+
+    Requires admin, super_admin, or founder_rights role.
 
     Args:
         key: Cache key to delete
 
     Returns:
         Success status
-
-    TODO: Add authentication
     """
+    _require_admin(current_user)
+
     try:
         cache = get_cache()
         deleted = cache.delete(key)

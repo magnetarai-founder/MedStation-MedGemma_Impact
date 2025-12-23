@@ -22,6 +22,7 @@ from api.trust_models import (
     TrustLevel
 )
 from api.trust_storage import get_trust_storage
+from api.routes.schemas import SuccessResponse
 from auth_middleware import get_current_user
 
 logger = logging.getLogger(__name__)
@@ -35,8 +36,8 @@ router = APIRouter(
 
 # ===== Node Endpoints =====
 
-@router.post("/nodes", response_model=TrustNode)
-async def register_node(request: RegisterNodeRequest, current_user: dict = Depends(get_current_user)):
+@router.post("/nodes", response_model=SuccessResponse[TrustNode])
+async def register_node(request: RegisterNodeRequest, current_user: dict = Depends(get_current_user)) -> SuccessResponse[TrustNode]:
     """
     Register a new trust node.
 
@@ -63,11 +64,11 @@ async def register_node(request: RegisterNodeRequest, current_user: dict = Depen
     created_node = storage.create_node(node)
     logger.info(f"✓ Node registered: {created_node.id} ({created_node.public_name})")
 
-    return created_node
+    return SuccessResponse(data=created_node, message="Node registered successfully")
 
 
-@router.get("/nodes/{node_id}", response_model=TrustNode)
-async def get_node(node_id: str):
+@router.get("/nodes/{node_id}", response_model=SuccessResponse[TrustNode])
+async def get_node(node_id: str) -> SuccessResponse[TrustNode]:
     """Get a trust node by ID"""
     storage = get_trust_storage()
     node = storage.get_node(node_id)
@@ -75,11 +76,11 @@ async def get_node(node_id: str):
     if not node:
         raise HTTPException(status_code=404, detail="Node not found")
 
-    return node
+    return SuccessResponse(data=node, message="Node retrieved successfully")
 
 
-@router.get("/nodes", response_model=NodeListResponse)
-async def list_nodes(node_type: Optional[NodeType] = None):
+@router.get("/nodes", response_model=SuccessResponse[NodeListResponse])
+async def list_nodes(node_type: Optional[NodeType] = None) -> SuccessResponse[NodeListResponse]:
     """
     List all trust nodes, optionally filtered by type.
 
@@ -88,14 +89,14 @@ async def list_nodes(node_type: Optional[NodeType] = None):
     storage = get_trust_storage()
     nodes = storage.list_nodes(node_type)
 
-    return NodeListResponse(
-        nodes=nodes,
-        total=len(nodes)
+    return SuccessResponse(
+        data=NodeListResponse(nodes=nodes, total=len(nodes)),
+        message=f"Found {len(nodes)} node(s)"
     )
 
 
-@router.patch("/nodes/{node_id}", response_model=TrustNode)
-async def update_node(node_id: str, request: RegisterNodeRequest, current_user: dict = Depends(get_current_user)):
+@router.patch("/nodes/{node_id}", response_model=SuccessResponse[TrustNode])
+async def update_node(node_id: str, request: RegisterNodeRequest, current_user: dict = Depends(get_current_user)) -> SuccessResponse[TrustNode]:
     """Update a trust node's information"""
     storage = get_trust_storage()
     node = storage.get_node(node_id)
@@ -114,13 +115,13 @@ async def update_node(node_id: str, request: RegisterNodeRequest, current_user: 
     updated_node = storage.update_node(node)
     logger.info(f"✓ Node updated: {node_id}")
 
-    return updated_node
+    return SuccessResponse(data=updated_node, message="Node updated successfully")
 
 
 # ===== Trust Relationship Endpoints =====
 
-@router.post("/vouch", response_model=TrustRelationship)
-async def vouch_for_node(request: VouchRequest, current_user: dict = Depends(get_current_user)):
+@router.post("/vouch", response_model=SuccessResponse[TrustRelationship])
+async def vouch_for_node(request: VouchRequest, current_user: dict = Depends(get_current_user)) -> SuccessResponse[TrustRelationship]:
     """
     Vouch for another node (create a trust relationship).
 
@@ -156,11 +157,11 @@ async def vouch_for_node(request: VouchRequest, current_user: dict = Depends(get
     created_rel = storage.create_relationship(relationship)
     logger.info(f"✓ Vouch created: {user_node.public_name} → {target_node.public_name}")
 
-    return created_rel
+    return SuccessResponse(data=created_rel, message="Vouch created successfully")
 
 
-@router.get("/network", response_model=TrustNetworkResponse)
-async def get_trust_network(max_degrees: int = 3, current_user: dict = Depends(get_current_user)):
+@router.get("/network", response_model=SuccessResponse[TrustNetworkResponse])
+async def get_trust_network(max_degrees: int = 3, current_user: dict = Depends(get_current_user)) -> SuccessResponse[TrustNetworkResponse]:
     """
     Get your complete trust network.
 
@@ -183,17 +184,18 @@ async def get_trust_network(max_degrees: int = 3, current_user: dict = Depends(g
 
     total_size = len(trusted["direct"]) + len(trusted["vouched"]) + len(trusted["network"])
 
-    return TrustNetworkResponse(
+    network_response = TrustNetworkResponse(
         node_id=user_node.id,
         direct_trusts=trusted["direct"],
         vouched_trusts=trusted["vouched"],
         network_trusts=trusted["network"],
         total_network_size=total_size
     )
+    return SuccessResponse(data=network_response, message="Trust network retrieved successfully")
 
 
-@router.get("/relationships", response_model=TrustRelationshipResponse)
-async def get_relationships(level: Optional[TrustLevel] = None, current_user: dict = Depends(get_current_user)):
+@router.get("/relationships", response_model=SuccessResponse[TrustRelationshipResponse])
+async def get_relationships(level: Optional[TrustLevel] = None, current_user: dict = Depends(get_current_user)) -> SuccessResponse[TrustRelationshipResponse]:
     """
     Get all trust relationships for the current user.
 
@@ -208,9 +210,9 @@ async def get_relationships(level: Optional[TrustLevel] = None, current_user: di
 
     relationships = storage.get_relationships(user_node.id, level)
 
-    return TrustRelationshipResponse(
-        relationships=relationships,
-        total=len(relationships)
+    return SuccessResponse(
+        data=TrustRelationshipResponse(relationships=relationships, total=len(relationships)),
+        message=f"Found {len(relationships)} relationship(s)"
     )
 
 

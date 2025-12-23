@@ -97,6 +97,15 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
         services_failed.append("Hot Slots API")
         logger.error("Failed to load hot slots router", exc_info=True)
 
+    # Cache Metrics API (Admin-only cache management)
+    try:
+        from api.routes.cache_metrics import router as cache_metrics_router
+        app.include_router(cache_metrics_router)
+        services_loaded.append("Cache Metrics API")
+    except Exception as e:
+        services_failed.append("Cache Metrics API")
+        logger.error("Failed to load cache metrics router", exc_info=True)
+
     # P2P Chat
     try:
         from api.p2p_chat_router import router as p2p_chat_router
