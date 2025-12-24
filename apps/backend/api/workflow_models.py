@@ -5,7 +5,7 @@ Industry-agnostic abstractions for distributed work orchestration
 
 from typing import Optional, List, Dict, Any, Literal
 from pydantic import BaseModel, Field
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import Enum
 import uuid
 
@@ -302,8 +302,8 @@ class Workflow(BaseModel):
     visibility: Literal["personal", "team", "global"] = "personal"  # Visibility level
 
     # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     version: int = 1
 
     # Tags for organization
@@ -318,7 +318,7 @@ class StageTransition(BaseModel):
     """Record of stage change"""
     from_stage_id: Optional[str] = None  # None if first stage
     to_stage_id: Optional[str] = None    # None if workflow completed (terminal transition)
-    transitioned_at: datetime = Field(default_factory=datetime.utcnow)
+    transitioned_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     transitioned_by: Optional[str] = None  # User ID or "system"
     notes: Optional[str] = None
     duration_seconds: Optional[int] = None  # Time spent in previous stage
@@ -332,7 +332,7 @@ class WorkItemAttachment(BaseModel):
     file_size: int
     mime_type: str
     uploaded_by: str
-    uploaded_at: datetime = Field(default_factory=datetime.utcnow)
+    uploaded_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class WorkItem(BaseModel):
@@ -356,8 +356,8 @@ class WorkItem(BaseModel):
 
     # Metadata
     created_by: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     completed_at: Optional[datetime] = None
 
     # History

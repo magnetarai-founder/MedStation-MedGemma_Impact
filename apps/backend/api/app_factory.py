@@ -147,7 +147,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     Handles startup and shutdown logic for the FastAPI application.
     """
     # ===== STARTUP =====
-    print("Starting MagnetarStudio API...")
+    logger.info("Starting MagnetarStudio API...")
 
     # Register signal handlers for graceful shutdown
     signal.signal(signal.SIGTERM, handle_shutdown_signal)
@@ -231,7 +231,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield
 
     # ===== SHUTDOWN =====
-    print("Shutting down...")
+    logger.info("Shutting down...")
     cleanup_task.cancel()
     vacuum_task.cancel()
 

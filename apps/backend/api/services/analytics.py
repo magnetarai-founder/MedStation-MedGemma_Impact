@@ -4,11 +4,14 @@ Analytics Service - Sprint 6 Theme A
 Handles event recording, aggregation, and querying for usage analytics.
 """
 
+import logging
 import sqlite3
 import json
 from datetime import datetime, timedelta, UTC
 from typing import Optional, Dict, Any, List
 from uuid import uuid4
+
+logger = logging.getLogger(__name__)
 
 try:
     from config_paths import PATHS
@@ -80,7 +83,7 @@ class AnalyticsService:
 
         except Exception as e:
             conn.rollback()
-            print(f"Failed to record analytics event: {e}")
+            logger.error(f"Failed to record analytics event: {e}")
             raise
         finally:
             conn.close()
@@ -129,7 +132,7 @@ class AnalyticsService:
 
         except Exception as e:
             conn.rollback()
-            print(f"Failed to record error event: {e}")
+            logger.error(f"Failed to record error event: {e}")
             raise
         finally:
             conn.close()
@@ -235,11 +238,11 @@ class AnalyticsService:
             """, (date, date, date))
 
             conn.commit()
-            print(f"✅ Aggregated analytics for {date} (with model KPIs)")
+            logger.info(f"Aggregated analytics for {date} (with model KPIs)")
 
         except Exception as e:
             conn.rollback()
-            print(f"Failed to aggregate daily analytics: {e}")
+            logger.error(f"Failed to aggregate daily analytics: {e}")
             raise
         finally:
             conn.close()

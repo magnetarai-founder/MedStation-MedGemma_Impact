@@ -4,11 +4,14 @@ Terminal API - WebSocket endpoints for terminal I/O
 Provides real-time terminal access via WebSocket for the Code Tab.
 """
 
+import logging
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, Query, Request
 from typing import Any, Dict, List, Optional
 import json
 import os
 import subprocess
+
+logger = logging.getLogger(__name__)
 
 import sys
 from pathlib import Path
@@ -34,7 +37,7 @@ try:
 except ImportError:
     # Fallback for testing
     async def log_action(user_id: str, action: str, details) -> None:
-        print(f"[AUDIT] {user_id} - {action} - {details}")
+        logger.info(f"[AUDIT] {user_id} - {action} - {details}")
 
 router = APIRouter(prefix="/api/v1/terminal", tags=["terminal"])
 
@@ -620,7 +623,7 @@ async def terminal_websocket(websocket: WebSocket, terminal_id: str, token: Opti
                     'data': coalesced
                 })
         except Exception as e:
-            print(f"Error sending to WebSocket: {e}")
+            logger.warning(f"Error sending to WebSocket: {e}")
 
     terminal_bridge.register_broadcast_callback(terminal_id, send_output)
 
@@ -728,10 +731,10 @@ async def terminal_websocket(websocket: WebSocket, terminal_id: str, token: Opti
                 })
 
     except WebSocketDisconnect:
-        print(f"WebSocket disconnected for terminal {terminal_id}")
+        logger.debug(f"WebSocket disconnected for terminal {terminal_id}")
 
     except Exception as e:
-        print(f"WebSocket error for terminal {terminal_id}: {e}")
+        logger.error(f"WebSocket error for terminal {terminal_id}: {e}")
 
     finally:
         # Cancel timeout task

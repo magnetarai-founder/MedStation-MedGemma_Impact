@@ -33,7 +33,12 @@ enum Logger {
     }
 
     static func error(_ message: String, error: Error? = nil, category: OSLog = Logger.general, file: String = #file, function: String = #function, line: Int = #line) {
-        let fullMessage = error != nil ? "\(message): \(error!.localizedDescription)" : message
+        let fullMessage: String
+        if let error = error {
+            fullMessage = "\(message): \(error.localizedDescription)"
+        } else {
+            fullMessage = message
+        }
         os_log(.error, log: category, "%{public}@", formatMessage(fullMessage, file: file, function: function, line: line))
     }
 

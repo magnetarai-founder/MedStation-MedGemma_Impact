@@ -1,5 +1,7 @@
 """Data routes - NLQ, Pattern Discovery, Semantic Search, etc."""
 
+__all__ = ["router"]
+
 from fastapi import APIRouter
 
 # Import sub-routers

@@ -1,5 +1,7 @@
 """System routes for admin monitoring"""
 
+__all__ = ["router"]
+
 from fastapi import APIRouter
 from . import db_health
 

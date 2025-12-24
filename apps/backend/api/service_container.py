@@ -15,9 +15,12 @@ Usage:
     services.override("data_engine", mock_engine)
 """
 
+import logging
 from typing import Dict, Any, Optional, Callable
 from pathlib import Path
 import threading
+
+logger = logging.getLogger(__name__)
 
 
 class ServiceContainer:
@@ -120,7 +123,7 @@ class ServiceContainer:
                         instance.shutdown()
                 except Exception as e:
                     # Log but don't crash on cleanup errors
-                    print(f"Warning: Error shutting down {name}: {e}")
+                    logger.warning(f"Error shutting down {name}: {e}")
 
             # Clear all cached instances
             self._services.clear()

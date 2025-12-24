@@ -439,13 +439,6 @@ async def list_documents(
             }
             documents.append(doc_dict)
 
-        # Log first document for debugging
-        if documents:
-            print(f"✅ DOCS DEBUG: Returning {len(documents)} documents with fields: {list(documents[0].keys())}", flush=True)
-            print(f"📦 DOCS DEBUG: First document JSON: {json.dumps(documents[0], indent=2)}", flush=True)
-        else:
-            print("⚠️ DOCS DEBUG: No documents found", flush=True)
-
         return SuccessResponse(data=documents, message=f"Found {len(documents)} document(s)")
 
     except Exception as e:

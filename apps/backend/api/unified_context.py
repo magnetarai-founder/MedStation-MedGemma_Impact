@@ -32,7 +32,7 @@ class ContextEntry:
     entry_type: str  # 'message', 'command', 'file_edit', 'patch', 'plan'
     content: str
     metadata: Dict[str, Any] = field(default_factory=dict)
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     tokens_estimate: int = 0
 
 

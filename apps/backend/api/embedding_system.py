@@ -4,6 +4,7 @@ Embedding System for Jarvis
 Handles semantic embeddings for memory and NLP understanding
 """
 
+import logging
 import numpy as np
 from typing import List, Dict, Any, Optional, Tuple
 import json
@@ -11,6 +12,8 @@ import hashlib
 from pathlib import Path
 from dataclasses import dataclass
 import threading
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -51,9 +54,9 @@ class EmbeddingSystem:
         try:
             import sentence_transformers
             self.use_transformer = True
-            print("✓ Sentence transformers available (will load on first use)")
+            logger.debug("Sentence transformers available (will load on first use)")
         except ImportError:
-            print("ℹ Using local embedding fallback (install sentence-transformers for better embeddings)")
+            logger.debug("Using local embedding fallback (install sentence-transformers for better embeddings)")
     
     def _load_model_if_needed(self) -> None:
         """Lazy load the model only when needed"""
@@ -62,9 +65,9 @@ class EmbeddingSystem:
                 from sentence_transformers import SentenceTransformer
                 self.transformer_model = SentenceTransformer('all-MiniLM-L6-v2')
                 self._model_loaded = True
-                print("✓ Loaded sentence transformer model")
+                logger.debug("Loaded sentence transformer model")
             except Exception as e:
-                print(f"⚠️ Failed to load transformer: {e}")
+                logger.warning(f"Failed to load transformer: {e}")
                 self.use_transformer = False
     
     def _local_embedding(self, text: str) -> np.ndarray:

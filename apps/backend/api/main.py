@@ -125,13 +125,10 @@ except ImportError:
 # ============================================================================
 
 # Register individual route modules that aren't in router_registry
-from api.routes.system import router as system_router
+# Note: system_router is registered via router_registry in app_factory.py startup
 from api.routes.websocket import router as websocket_router
 from api.routes.progress import router as progress_router
 from api.routes.data_engine import router as data_engine_router
-
-# Register system routes (includes root /)
-app.include_router(system_router)
 
 # Register websocket routes
 app.include_router(websocket_router)
@@ -142,7 +139,7 @@ app.include_router(progress_router)
 # Register data engine routes
 app.include_router(data_engine_router)
 
-# Note: Other routes are registered via router_registry in app_factory.py startup
+# Note: Other routes (including system) are registered via router_registry in app_factory.py startup
 
 # ============================================================================
 # EXPORT APP SETTINGS FUNCTIONS

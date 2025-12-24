@@ -4,9 +4,12 @@ CORS middleware configuration.
 Configures Cross-Origin Resource Sharing for development and production.
 """
 
+import logging
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+logger = logging.getLogger(__name__)
 
 
 def configure_cors(app: FastAPI) -> None:
@@ -37,8 +40,8 @@ def configure_cors(app: FastAPI) -> None:
             # SECURITY: Production requires explicit origin configuration
             # No defaults - must be set via environment variable
             allowed_origins = []
-            print("⚠️  WARNING: No CORS origins configured for production!")
-            print("⚠️  Set ELOHIM_CORS_ORIGINS environment variable")
+            logger.warning("No CORS origins configured for production!")
+            logger.warning("Set ELOHIM_CORS_ORIGINS environment variable")
         else:
             # Default dev origins - include common Vite fallback ports
             allowed_origins = [
