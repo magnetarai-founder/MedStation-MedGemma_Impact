@@ -323,7 +323,8 @@ struct FilePreviewModal: View {
             isDownloading = false
 
             // Auto-close after success (optional)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            Task {
+                try? await Task.sleep(for: .milliseconds(1500))
                 isPresented = false
             }
         } catch let error as VaultError {

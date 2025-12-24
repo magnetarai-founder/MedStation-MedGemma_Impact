@@ -67,22 +67,22 @@ class ModelDiscoveryDataManager {
 
         ollamaService.pullModel(
             modelName: modelToDownload,
-            onProgress: { progress in
-                DispatchQueue.main.async {
-                    self.downloadProgress = progress.message
+            onProgress: { [weak self] progress in
+                Task { @MainActor in
+                    self?.downloadProgress = progress.message
                 }
             },
-            onComplete: { result in
-                DispatchQueue.main.async {
-                    self.downloadingModel = nil
-                    self.downloadProgress = nil
+            onComplete: { [weak self] result in
+                Task { @MainActor in
+                    self?.downloadingModel = nil
+                    self?.downloadProgress = nil
 
                     switch result {
                     case .success:
                         // Could show success message
                         break
                     case .failure(let error):
-                        self.error = error.localizedDescription
+                        self?.error = error.localizedDescription
                     }
                 }
             }

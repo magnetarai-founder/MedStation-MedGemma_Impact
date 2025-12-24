@@ -5,6 +5,7 @@ Trash Service for ElohimOS
 All deleted items are recoverable for 30 days before permanent deletion
 """
 
+import json
 import sqlite3
 import logging
 from pathlib import Path
@@ -391,12 +392,45 @@ class TrashService:
         logger.info(f"🧹 Auto-cleanup: {count} expired items permanently deleted")
         return count
 
+    def _calculate_item_size(self, item_type: str, original_data: str) -> int:
+        """
+        Calculate size of a trash item from its original data.
+
+        Size extraction by item type:
+        - file: Uses 'size' or 'size_bytes' field from stored metadata
+        - document: Calculates from content length (UTF-8 encoded)
+        - folder: Returns 0 (folders don't have inherent size)
+        """
+        try:
+            data = json.loads(original_data)
+
+            if item_type == 'file':
+                # Files store size in metadata
+                return data.get('size', data.get('size_bytes', 0))
+
+            elif item_type == 'document':
+                # Documents: calculate from content length
+                content = data.get('content', '')
+                if isinstance(content, str):
+                    return len(content.encode('utf-8'))
+                return 0
+
+            elif item_type == 'folder':
+                # Folders don't have inherent size
+                return 0
+
+            return 0
+
+        except (json.JSONDecodeError, TypeError, AttributeError):
+            logger.warning(f"Could not parse original_data for size calculation")
+            return 0
+
     def get_stats(
         self,
         user_id: str,
         vault_type: str
     ) -> TrashStats:
-        """Get trash statistics"""
+        """Get trash statistics including total size calculation"""
         with sqlite3.connect(self.db_path) as conn:
             # Count by type
             counts = conn.execute("""
@@ -417,14 +451,24 @@ class TrashService:
                 LIMIT 1
             """, (user_id, vault_type)).fetchone()
 
-            # TODO: Calculate total size (would need size field in trash table)
+            # Calculate total size from original_data
+            items = conn.execute("""
+                SELECT item_type, original_data
+                FROM vault_trash
+                WHERE user_id = ? AND vault_type = ?
+            """, (user_id, vault_type)).fetchall()
+
+            total_size = sum(
+                self._calculate_item_size(item_type, original_data)
+                for item_type, original_data in items
+            )
 
             return TrashStats(
                 total_items=sum(count_map.values()),
                 document_count=count_map.get('document', 0),
                 file_count=count_map.get('file', 0),
                 folder_count=count_map.get('folder', 0),
-                total_size_bytes=0,  # TODO: implement
+                total_size_bytes=total_size,
                 oldest_item_date=oldest[0] if oldest else None
             )
 

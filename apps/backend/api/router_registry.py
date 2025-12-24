@@ -70,14 +70,14 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
         services_failed.append("Chat API")
         logger.error("Failed to load chat router", exc_info=True)
 
-    # Model Recommendations API (Phase 4B+: Dynamic Model Discovery)
+    # Hardware-Based Model Recommendations API (curated models + compatibility check)
     try:
         from api.routes.model_recommendations import router as model_recommendations_router
         app.include_router(model_recommendations_router)
-        services_loaded.append("Model Recommendations API")
+        services_loaded.append("Hardware Model Recommendations API")
     except Exception as e:
-        services_failed.append("Model Recommendations API")
-        logger.error("Failed to load model recommendations router", exc_info=True)
+        services_failed.append("Hardware Model Recommendations API")
+        logger.error("Failed to load hardware recommendations router", exc_info=True)
 
     # Context API (Phase 5: ANE Context Engine)
     try:
@@ -314,14 +314,14 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
         services_failed.append("Feedback API")
         logger.error("Failed to load feedback router", exc_info=True)
 
-    # Model Recommendations API
+    # Dynamic Model Recommendations API (performance-based scoring)
     try:
         from api.routes import models_recommendations as _recommendations_routes
         app.include_router(_recommendations_routes.router)
-        services_loaded.append("Model Recommendations API")
+        services_loaded.append("Dynamic Model Recommendations API")
     except Exception as e:
-        services_failed.append("Model Recommendations API")
-        logger.error("Failed to load recommendations router", exc_info=True)
+        services_failed.append("Dynamic Model Recommendations API")
+        logger.error("Failed to load dynamic recommendations router", exc_info=True)
 
     # Monitoring
     try:

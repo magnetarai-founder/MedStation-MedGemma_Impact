@@ -113,7 +113,7 @@ from .core import (
 )
 
 # Legacy compatibility: provide get_ollama_client function
-def get_ollama_client():
+def get_ollama_client() -> "OllamaClient":
     """
     Get OllamaClient instance (LEGACY)
 

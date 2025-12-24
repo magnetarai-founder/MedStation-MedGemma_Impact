@@ -199,13 +199,12 @@ struct VaultWorkspace: View {
         authError = nil
 
         // Simulate authentication (real backend integration would verify password)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+        Task {
+            try? await Task.sleep(for: .seconds(1))
             if password == "test" || password.count >= 4 {
                 vaultUnlocked = true
                 authError = nil
-                Task {
-                    await loadFiles()
-                }
+                await loadFiles()
             } else {
                 authError = "Invalid password"
             }
@@ -215,11 +214,10 @@ struct VaultWorkspace: View {
 
     private func authenticateWithBiometrics() {
         // Simulate biometric auth
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        Task {
+            try? await Task.sleep(for: .milliseconds(500))
             vaultUnlocked = true
-            Task {
-                await loadFiles()
-            }
+            await loadFiles()
         }
     }
 

@@ -57,6 +57,16 @@ struct NavigationRail: View {
                 }
                 .help("Database (⌘4)")
 
+                // Code Editor
+                RailButton(
+                    icon: "chevron.left.forwardslash.chevron.right",
+                    workspace: .code,
+                    isActive: navigationStore.activeWorkspace == .code
+                ) {
+                    navigationStore.activeWorkspace = .code
+                }
+                .help("Code (⌘5)")
+
                 // Insights (Voice Notes)
                 RailButton(
                     icon: "waveform",
@@ -91,7 +101,7 @@ struct NavigationRail: View {
                 ) {
                     navigationStore.activeWorkspace = .magnetarHub
                 }
-                .help("Admin (⌘5)")
+                .help("Admin (⌘8)")
             }
             .padding(.bottom, 16)
         }

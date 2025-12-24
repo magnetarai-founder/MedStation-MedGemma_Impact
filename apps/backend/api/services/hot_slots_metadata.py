@@ -49,7 +49,7 @@ class HotSlotsMetadataStorage:
         self.db_path = db_path
         self._ensure_schema()
 
-    def _ensure_schema(self):
+    def _ensure_schema(self) -> None:
         """Create table if it doesn't exist"""
         try:
             conn = sqlite3.connect(str(self.db_path))

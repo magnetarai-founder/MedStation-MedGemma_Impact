@@ -138,15 +138,13 @@ final class BackendManager {
             print("✗ CRITICAL: Failed to start backend server: \(error)")
             print("   Error details: \(error.localizedDescription)")
 
-            // Show alert to user
-            DispatchQueue.main.async {
-                let alert = NSAlert()
-                alert.messageText = "Backend Server Failed to Start"
-                alert.informativeText = "MagnetarStudio requires the backend server to function. Please check the console logs for details."
-                alert.alertStyle = .critical
-                alert.addButton(withTitle: "OK")
-                alert.runModal()
-            }
+            // Show alert to user - Already on @MainActor, no dispatch needed
+            let alert = NSAlert()
+            alert.messageText = "Backend Server Failed to Start"
+            alert.informativeText = "MagnetarStudio requires the backend server to function. Please check the console logs for details."
+            alert.alertStyle = .critical
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
         }
     }
 
