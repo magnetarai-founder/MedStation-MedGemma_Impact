@@ -34,6 +34,18 @@ class JoinDeviceRequest(BaseModel):
     device_id: str
 
 
+class RegisterClientRequest(BaseModel):
+    """Request from a client to register with this hub"""
+    client_id: str
+    client_name: str
+    client_ip: str
+
+
+class UnregisterClientRequest(BaseModel):
+    """Request from a client to unregister from this hub"""
+    client_id: str
+
+
 @router.post("/discovery/start")
 async def start_discovery(request: Request) -> Dict[str, Any]:
     """
@@ -149,36 +161,55 @@ async def stop_hub(request: Request) -> Dict[str, Any]:
 @router.post("/connect")
 async def connect_to_device(request: Request, body: JoinDeviceRequest) -> Dict[str, Any]:
     """
-    Connect to a discovered device
+    Connect to a discovered hub device
 
     Args:
-        request: Device ID to connect to
+        body: Device ID to connect to
 
     Returns:
-        Connection status
+        Connection status with hub info
     """
     try:
-        devices = lan_service.discovered_devices
-
-        if body.device_id not in devices:
-            raise HTTPException(status_code=404, detail="Device not found")
-
-        device = devices[body.device_id]
-
-        # TODO: Implement actual connection logic
-        # For now, just return success
-        logger.info(f"Connecting to device: {device.name} at {device.ip}:{device.port}")
+        result = await lan_service.connect_to_device(body.device_id)
 
         return {
             "status": "success",
-            "message": f"Connected to {device.name}",
-            "device": device.to_dict()
+            "message": f"Connected to {result['hub']['name']}",
+            **result
         }
 
-    except HTTPException:
-        raise
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Failed to connect to device: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/disconnect")
+async def disconnect_from_hub(request: Request) -> Dict[str, Any]:
+    """
+    Disconnect from the currently connected hub
+
+    Returns:
+        Disconnection status
+    """
+    try:
+        result = await lan_service.disconnect_from_hub()
+
+        if result["status"] == "not_connected":
+            return {
+                "status": "success",
+                "message": "Not connected to any hub"
+            }
+
+        return {
+            "status": "success",
+            "message": f"Disconnected from {result['hub']['name']}",
+            **result
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to disconnect: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -201,4 +232,101 @@ async def get_lan_status() -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Failed to get status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ========== Hub-side endpoints (for receiving client connections) ==========
+
+
+@router.post("/register-client")
+async def register_client(request: Request, body: RegisterClientRequest) -> Dict[str, Any]:
+    """
+    Register a client connection (called by connecting clients)
+
+    This endpoint is called by other instances when they want to connect to this hub.
+
+    Args:
+        body: Client registration info
+
+    Returns:
+        Registration confirmation
+    """
+    try:
+        client = lan_service.register_client(
+            client_id=body.client_id,
+            client_name=body.client_name,
+            client_ip=body.client_ip
+        )
+
+        return {
+            "status": "success",
+            "message": f"Client {body.client_name} registered",
+            "client": client.to_dict(),
+            "hub": {
+                "device_id": lan_service.device_id,
+                "device_name": lan_service.device_name
+            }
+        }
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to register client: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/unregister-client")
+async def unregister_client(request: Request, body: UnregisterClientRequest) -> Dict[str, Any]:
+    """
+    Unregister a client (called when client disconnects)
+
+    Args:
+        body: Client ID to unregister
+
+    Returns:
+        Unregistration confirmation
+    """
+    try:
+        removed = lan_service.unregister_client(body.client_id)
+
+        if removed:
+            return {
+                "status": "success",
+                "message": "Client unregistered"
+            }
+        else:
+            return {
+                "status": "success",
+                "message": "Client was not registered"
+            }
+
+    except Exception as e:
+        logger.error(f"Failed to unregister client: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/clients")
+async def get_connected_clients() -> Dict[str, Any]:
+    """
+    Get list of connected clients (when running as hub)
+
+    Returns:
+        List of connected clients
+    """
+    try:
+        if not lan_service.is_hub:
+            raise HTTPException(status_code=400, detail="Not running as hub")
+
+        clients = lan_service.get_connected_clients()
+
+        return {
+            "status": "success",
+            "clients": clients,
+            "count": len(clients)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get clients: {e}")
         raise HTTPException(status_code=500, detail=str(e))

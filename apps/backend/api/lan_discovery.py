@@ -12,12 +12,24 @@ import socket
 import asyncio
 import logging
 from typing import Any, Dict, List, Optional, Set
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from datetime import datetime
 from zeroconf import ServiceInfo, Zeroconf, ServiceBrowser, ServiceListener
 from zeroconf.asyncio import AsyncZeroconf, AsyncServiceBrowser
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class LANClient:
+    """Represents a connected client to this hub"""
+    id: str
+    name: str
+    ip: str
+    connected_at: str
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
 
 # Service type for mDNS discovery
 SERVICE_TYPE = "_omnistudio._tcp.local."
@@ -118,7 +130,13 @@ class LANDiscoveryService:
         self.service_browser: Optional[AsyncServiceBrowser] = None
         self.service_info: Optional[ServiceInfo] = None
         self.discovered_devices: Dict[str, LANDevice] = {}
-        self.connected_clients: Set[str] = set()
+
+        # Connection state (as client)
+        self.connected_hub: Optional[LANDevice] = None
+        self.is_connected: bool = False
+
+        # Connection state (as hub)
+        self.connected_clients: Dict[str, LANClient] = {}
 
         logger.info(f"LAN Discovery Service initialized: {self.device_id}")
 
@@ -221,7 +239,140 @@ class LANDiscoveryService:
             self.service_info = None
 
         self.is_hub = False
+        self.connected_clients.clear()
         logger.info("Hub stopped")
+
+    async def connect_to_device(self, device_id: str) -> Dict[str, Any]:
+        """
+        Connect to a discovered hub device
+
+        Args:
+            device_id: ID of the device to connect to
+
+        Returns:
+            Connection result
+        """
+        if device_id not in self.discovered_devices:
+            raise ValueError(f"Device {device_id} not found in discovered devices")
+
+        device = self.discovered_devices[device_id]
+
+        if not device.is_hub:
+            raise ValueError(f"Device {device.name} is not a hub")
+
+        logger.info(f"Connecting to hub: {device.name} at {device.ip}:{device.port}")
+
+        try:
+            import httpx
+
+            # Make connection request to the hub
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(
+                    f"http://{device.ip}:{device.port}/api/v1/lan/register-client",
+                    json={
+                        "client_id": self.device_id,
+                        "client_name": self.device_name,
+                        "client_ip": self._get_local_ip()
+                    }
+                )
+
+                if response.status_code == 200:
+                    self.connected_hub = device
+                    self.is_connected = True
+                    logger.info(f"Successfully connected to hub: {device.name}")
+                    return {
+                        "status": "connected",
+                        "hub": device.to_dict()
+                    }
+                else:
+                    error_msg = response.json().get("detail", "Connection refused")
+                    logger.error(f"Hub rejected connection: {error_msg}")
+                    raise ValueError(f"Hub rejected connection: {error_msg}")
+
+        except httpx.ConnectError as e:
+            logger.error(f"Failed to connect to hub {device.name}: {e}")
+            raise ValueError(f"Could not reach hub at {device.ip}:{device.port}")
+        except Exception as e:
+            logger.error(f"Connection error: {e}")
+            raise
+
+    async def disconnect_from_hub(self) -> Dict[str, Any]:
+        """
+        Disconnect from the currently connected hub
+
+        Returns:
+            Disconnection result
+        """
+        if not self.is_connected or not self.connected_hub:
+            return {"status": "not_connected"}
+
+        hub = self.connected_hub
+
+        try:
+            import httpx
+
+            # Notify hub we're disconnecting
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                await client.post(
+                    f"http://{hub.ip}:{hub.port}/api/v1/lan/unregister-client",
+                    json={"client_id": self.device_id}
+                )
+        except Exception as e:
+            # Log but don't fail - we're disconnecting anyway
+            logger.warning(f"Failed to notify hub of disconnect: {e}")
+
+        self.connected_hub = None
+        self.is_connected = False
+        logger.info(f"Disconnected from hub: {hub.name}")
+
+        return {"status": "disconnected", "hub": hub.to_dict()}
+
+    def register_client(self, client_id: str, client_name: str, client_ip: str) -> LANClient:
+        """
+        Register a client connection (called when this instance is a hub)
+
+        Args:
+            client_id: Unique ID of the connecting client
+            client_name: Display name of the client
+            client_ip: IP address of the client
+
+        Returns:
+            The registered LANClient
+        """
+        if not self.is_hub:
+            raise ValueError("Cannot register clients - not running as hub")
+
+        client = LANClient(
+            id=client_id,
+            name=client_name,
+            ip=client_ip,
+            connected_at=datetime.now().isoformat()
+        )
+
+        self.connected_clients[client_id] = client
+        logger.info(f"Client registered: {client_name} ({client_ip})")
+
+        return client
+
+    def unregister_client(self, client_id: str) -> bool:
+        """
+        Unregister a client (called when client disconnects)
+
+        Args:
+            client_id: ID of the client to unregister
+
+        Returns:
+            True if client was found and removed
+        """
+        if client_id in self.connected_clients:
+            client = self.connected_clients.pop(client_id)
+            logger.info(f"Client unregistered: {client.name}")
+            return True
+        return False
+
+    def get_connected_clients(self) -> List[Dict]:
+        """Get list of connected clients (when running as hub)"""
+        return [client.to_dict() for client in self.connected_clients.values()]
 
     async def _on_device_discovered(self, device: LANDevice) -> None:
         """Called when a new device is discovered"""
@@ -243,15 +394,26 @@ class LANDiscoveryService:
 
     def get_status(self) -> Dict:
         """Get current status"""
-        return {
+        status = {
             "device_id": self.device_id,
             "device_name": self.device_name,
             "is_hub": self.is_hub,
             "port": self.port if self.is_hub else None,
             "local_ip": self._get_local_ip(),
-            "discovered_devices": len(self.discovered_devices),
-            "connected_clients": len(self.connected_clients)
+            "discovered_devices_count": len(self.discovered_devices),
+            "is_connected": self.is_connected,
         }
+
+        # Hub-specific info
+        if self.is_hub:
+            status["connected_clients_count"] = len(self.connected_clients)
+            status["connected_clients"] = self.get_connected_clients()
+
+        # Client-specific info
+        if self.is_connected and self.connected_hub:
+            status["connected_hub"] = self.connected_hub.to_dict()
+
+        return status
 
 
 # Global instance

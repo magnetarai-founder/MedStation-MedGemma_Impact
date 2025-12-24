@@ -177,7 +177,7 @@ def register_core_services() -> None:
 
     # Vault Service
     def create_vault_service() -> Any:
-        from vault_service import get_vault_service
+        from api.services.vault.core import get_vault_service
         return get_vault_service()
 
     services.register_factory("vault_service", create_vault_service)

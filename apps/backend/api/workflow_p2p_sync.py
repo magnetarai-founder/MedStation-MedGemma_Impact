@@ -13,7 +13,7 @@ from pathlib import Path
 # Phase 4: Team cryptography for P2P sync
 try:
     from team_crypto import sign_payload, verify_payload
-    from team_service import is_team_member
+    from api.services.team import is_team_member
 except ImportError:
     # Fallback for standalone testing
     def sign_payload(payload, team_id): return ""

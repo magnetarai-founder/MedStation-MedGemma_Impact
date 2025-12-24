@@ -30,16 +30,16 @@ struct HubDiscoverToolbar: View {
                     .foregroundColor(.secondary)
             }
 
-            // Browse Models button - Opens ollama.com
+            // Browse Models button - Opens ollama.com/library
             Button {
                 onBrowseModels()
             } label: {
-                Label("Browse Models", systemImage: "safari")
+                Label("Browse Library", systemImage: "safari")
                     .font(.caption)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.borderedProminent)
             .disabled(!isNetworkConnected)
-            .help(isNetworkConnected ? "Open Ollama library in browser" : "No internet connection")
+            .help(isNetworkConnected ? "Browse Ollama model library in browser" : "No internet connection")
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 12)

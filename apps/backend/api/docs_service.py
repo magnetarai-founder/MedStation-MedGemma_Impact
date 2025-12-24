@@ -37,11 +37,11 @@ except ImportError:
 try:
     from permission_engine import require_perm, require_perm_team
     from auth_middleware import get_current_user
-    from team_service import is_team_member
+    from api.services.team import is_team_member
 except ImportError:
     from api.permission_engine import require_perm, require_perm_team
     from api.auth_middleware import get_current_user
-    from api.team_service import is_team_member
+    from api.services.team import is_team_member
 
 logger = logging.getLogger(__name__)
 

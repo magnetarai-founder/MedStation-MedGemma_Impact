@@ -23,6 +23,15 @@ This facade maintains backwards compatibility by re-exporting the router
 and key functions with deprecation warnings.
 
 Migrated as part of R2 Team Service Split refactoring.
+
+STATUS: All internal callers migrated (Dec 23, 2025)
+- services/vault/permissions.py → api.services.team
+- workflows/dependencies.py → api.services.team
+- workflow_p2p_sync.py → api.services.team
+- offline_data_sync.py → api.services.team
+- docs_service.py → api.services.team
+- routes/vault/documents.py → api.services.team
+This facade can be removed once external integrations are verified.
 """
 
 import functools

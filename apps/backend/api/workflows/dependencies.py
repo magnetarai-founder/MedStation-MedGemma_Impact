@@ -13,12 +13,12 @@ logger = logging.getLogger(__name__)
 try:
     from api.permission_engine import require_perm, require_perm_team
     from api.auth_middleware import get_current_user
-    from api.team_service import is_team_member
+    from api.services.team import is_team_member
     from api.rate_limiter import rate_limiter, get_client_ip
 except ImportError:
     from permission_engine import require_perm, require_perm_team
     from auth_middleware import get_current_user
-    from team_service import is_team_member
+    from api.services.team import is_team_member
     from rate_limiter import rate_limiter, get_client_ip
 
 try:

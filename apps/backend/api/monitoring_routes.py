@@ -166,7 +166,7 @@ async def get_system_health(request: Request) -> Dict[str, Any]:
 
     # Check vault
     try:
-        from vault_service import get_vault_service
+        from api.services.vault.core import get_vault_service
         vault = get_vault_service()
 
         if vault:

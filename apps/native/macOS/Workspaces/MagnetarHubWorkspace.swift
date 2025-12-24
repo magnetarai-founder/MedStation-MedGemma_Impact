@@ -12,6 +12,8 @@ struct MagnetarHubWorkspace: View {
     @State private var selectedCategory: HubCategory = .myModels
     @State private var selectedModel: AnyModelItem? = nil
     @State private var showModelDetail: Bool = false
+    // Note: showLibraryBrowser removed - ModelDiscoveryWorkspace not in project
+    // Users can browse via Safari button in HubDiscoverToolbar
 
     // Managers (Phase 6.19)
     @State private var dataManager = HubDataManager()

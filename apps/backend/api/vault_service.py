@@ -23,6 +23,11 @@ This facade maintains backwards compatibility by re-exporting the router
 and key functions with deprecation warnings.
 
 Migrated as part of R1 Vault Service Split refactoring.
+
+STATUS: All internal callers migrated (Dec 23, 2025)
+- service_container.py → api.services.vault.core
+- monitoring_routes.py → api.services.vault.core
+This facade can be removed once external integrations are verified.
 """
 
 import functools

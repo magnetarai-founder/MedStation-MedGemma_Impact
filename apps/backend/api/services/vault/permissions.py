@@ -44,7 +44,7 @@ def check_team_membership(user_id: str, team_id: str) -> bool:
         True if user is team member
     """
     # Import here to avoid circular dependencies
-    from api.team_service import is_team_member
+    from api.services.team import is_team_member
 
     return is_team_member(user_id, team_id)
 
