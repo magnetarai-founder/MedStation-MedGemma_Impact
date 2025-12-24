@@ -15,7 +15,7 @@ from pydantic import BaseModel
 try:
     from api.auth_middleware import get_current_user, User
 except ImportError:
-    from auth_middleware import get_current_user, User
+    from api.auth_middleware import get_current_user, User
 
 from api.services.model_tags import detect_tags_from_name, get_all_tags, get_tag_description, get_tag_icon
 from api.services.model_tag_overrides import get_manual_tags, set_manual_tags, delete_manual_tags, get_merged_tags

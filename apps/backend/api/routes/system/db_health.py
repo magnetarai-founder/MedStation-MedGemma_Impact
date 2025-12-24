@@ -26,7 +26,7 @@ try:
     # Use founder rights dependency from admin_service
     from api.admin_service import require_founder_rights
 except ImportError:
-    from config_paths import PATHS
+    from api.config_paths import PATHS
     from admin_service import require_founder_rights
 
 

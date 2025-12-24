@@ -9,23 +9,16 @@ from typing import List, Dict, Any, Optional
 from pathlib import Path
 import logging
 
-from config_paths import PATHS
+from api.config_paths import PATHS
 
 logger = logging.getLogger(__name__)
 
-# Import auth middleware with try/except pattern
-try:
-    from auth_middleware import get_current_user
-except ImportError:
-    from .auth_middleware import get_current_user
+# Import auth middleware
+from api.auth_middleware import get_current_user
+from api.permission_engine import require_perm
 
 try:
-    from permission_engine import require_perm
-except ImportError:
-    from .permission_engine import require_perm
-
-try:
-    from audit_logger import log_action
+    from api.audit_logger import log_action
 except ImportError:
     # Fallback: no-op audit logging
     async def log_action(**kwargs: Any) -> None:
@@ -38,12 +31,8 @@ except ImportError:
     from services import code_editor as code_service
 
 # Import permission layer and rate limiter
-from permission_layer import PermissionLayer, RiskLevel
-
-try:
-    from api.rate_limiter import rate_limiter
-except ImportError:
-    from rate_limiter import rate_limiter
+from api.permission_layer import PermissionLayer, RiskLevel
+from api.rate_limiter import rate_limiter
 
 # Initialize router
 router = APIRouter(prefix="/api/v1/code", tags=["code"])

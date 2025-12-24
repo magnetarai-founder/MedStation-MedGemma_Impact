@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 try:
     from api.auth_middleware import get_current_user
 except ImportError:
-    from auth_middleware import get_current_user
+    from api.auth_middleware import get_current_user
 
 from . import documents, files, folders, sharing, ws, automation, semantic_search
 

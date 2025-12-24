@@ -10,22 +10,38 @@ The passphrase derives a key that encrypts the master key before storing in Keyc
 "The name of the Lord is a fortified tower; the righteous run to it and are safe." - Proverbs 18:10
 """
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
 from pydantic import BaseModel
-import keyring
 import secrets
 import base64
 import hashlib
 import logging
 from typing import Optional, Tuple, Dict, Any
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+# Graceful degradation for optional dependencies
+try:
+    import keyring
+    KEYRING_AVAILABLE = True
+except ImportError:
+    keyring = None
+    KEYRING_AVAILABLE = False
+    logging.getLogger(__name__).warning("keyring package not available - Secure Enclave features disabled")
+
+try:
+    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    CRYPTOGRAPHY_AVAILABLE = True
+except ImportError:
+    PBKDF2HMAC = None
+    hashes = None
+    AESGCM = None
+    CRYPTOGRAPHY_AVAILABLE = False
+    logging.getLogger(__name__).warning("cryptography package not available - Secure Enclave features disabled")
 
 logger = logging.getLogger(__name__)
 
-from fastapi import Depends
-from auth_middleware import get_current_user
+from api.auth_middleware import get_current_user
 
 router = APIRouter(
     prefix="/api/v1/secure-enclave",

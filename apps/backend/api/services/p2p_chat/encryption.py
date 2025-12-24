@@ -20,8 +20,9 @@ def get_e2e_service() -> Any:
         from api.e2e_encryption_service import get_e2e_service
         return get_e2e_service()
     except ImportError:
-        from e2e_encryption_service import get_e2e_service
-        return get_e2e_service()
+        # E2E encryption service not yet implemented - return None for graceful degradation
+        logger.warning("E2E encryption service not available - P2P chat will work without encryption")
+        return None
 
 
 def init_device_keys(db_path: Path, device_id: str, passphrase: str) -> Dict:
@@ -34,9 +35,14 @@ def init_device_keys(db_path: Path, device_id: str, passphrase: str) -> Dict:
         passphrase: User's passphrase for Secure Enclave
 
     Returns:
-        Dict with public_key and fingerprint
+        Dict with public_key and fingerprint, or empty dict if E2E not available
     """
     e2e_service = get_e2e_service()
+
+    # Graceful degradation when E2E service is not available
+    if e2e_service is None:
+        logger.warning("Skipping E2E key initialization - encryption service not available")
+        return {"device_id": device_id, "encryption_available": False}
 
     try:
         # Try to load existing keys first
@@ -85,9 +91,15 @@ def store_peer_key(db_path: Path, peer_device_id: str, public_key: bytes, verify
         verify_key: Peer's Ed25519 verify key
 
     Returns:
-        Dict with safety_number and fingerprint
+        Dict with safety_number and fingerprint, or empty dict if E2E not available
     """
     e2e_service = get_e2e_service()
+
+    # Graceful degradation when E2E service is not available
+    if e2e_service is None:
+        logger.warning("Skipping peer key storage - encryption service not available")
+        return {"peer_device_id": peer_device_id, "encryption_available": False}
+
     fingerprint = e2e_service.generate_fingerprint(public_key)
 
     # Get our public key to generate safety number

@@ -12,7 +12,6 @@ import SwiftUI
 
 struct NavigationRail: View {
     @Environment(NavigationStore.self) private var navigationStore
-    @State private var showSettings = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -120,9 +119,6 @@ struct NavigationRail: View {
                 .frame(width: 1),
             alignment: .trailing
         )
-        .sheet(isPresented: $showSettings) {
-            SettingsView()
-        }
     }
 }
 

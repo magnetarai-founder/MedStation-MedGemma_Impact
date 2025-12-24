@@ -15,7 +15,7 @@ try:
     from api.auth_middleware import get_current_user
     from api.permission_engine import require_perm
 except ImportError:
-    from auth_middleware import get_current_user
+    from api.auth_middleware import get_current_user
     from permission_engine import require_perm
 
 from api.services.analytics import get_analytics_service

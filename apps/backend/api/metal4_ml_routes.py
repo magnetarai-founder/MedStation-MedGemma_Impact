@@ -16,7 +16,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 
-from auth_middleware import get_current_user
+from api.auth_middleware import get_current_user
 
 logger = logging.getLogger(__name__)
 

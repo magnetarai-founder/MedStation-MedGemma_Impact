@@ -9,13 +9,33 @@ Consolidates 7+ databases into 3:
 Run this ONCE to migrate existing data.
 """
 
+import re
 import sqlite3
 import shutil
 from pathlib import Path
 from datetime import datetime
 
+# Security: Regex pattern for valid SQLite identifiers (table/column names)
+# Only allows alphanumeric characters and underscores, must start with letter or underscore
+_IDENTIFIER_PATTERN = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
+
+
+def _validate_identifier(name: str, kind: str = "identifier") -> None:
+    """
+    Validate SQL identifier to prevent SQL injection.
+
+    Args:
+        name: The identifier to validate (table name, column name, etc.)
+        kind: Type of identifier for error messages
+
+    Raises:
+        ValueError: If identifier contains invalid characters
+    """
+    if not isinstance(name, str) or not _IDENTIFIER_PATTERN.match(name):
+        raise ValueError(f"Invalid {kind}: {name!r} - must match pattern [a-zA-Z_][a-zA-Z0-9_]*")
+
 # Use centralized config paths
-from config_paths import get_config_paths
+from api.config_paths import get_config_paths
 PATHS = get_config_paths()
 
 # Old database paths
@@ -68,7 +88,11 @@ def attach_and_copy(conn: sqlite3.Connection, db_name: str, db_path: Path) -> No
             return
 
         for (table_name,) in tables:
-            # Get table schema
+            # Security: Validate table name before using in SQL
+            # This prevents SQL injection if the source database contains malicious table names
+            _validate_identifier(table_name, "table name")
+
+            # Get table schema (db_name is from hardcoded OLD_DBS dict, table_name is now validated)
             cursor.execute(f"SELECT sql FROM {db_name}.sqlite_master WHERE type='table' AND name='{table_name}'")
             create_sql = cursor.fetchone()[0]
 

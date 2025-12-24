@@ -14,7 +14,7 @@ from pydantic import BaseModel
 try:
     from api.auth_middleware import get_current_user
 except ImportError:
-    from auth_middleware import get_current_user
+    from api.auth_middleware import get_current_user
 from api.permission_engine import require_perm_team, require_perm
 from api.team_service import is_team_member
 from api.services.vault.core import get_vault_service

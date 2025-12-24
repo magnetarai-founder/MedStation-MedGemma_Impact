@@ -12,7 +12,7 @@ from datetime import datetime, UTC
 logger = logging.getLogger(__name__)
 
 # Storage path for hot slots
-from config_paths import get_config_paths
+from api.config_paths import get_config_paths
 PATHS = get_config_paths()
 HOT_SLOTS_FILE = PATHS.data_dir / "model_hot_slots.json"
 

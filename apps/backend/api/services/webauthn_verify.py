@@ -12,25 +12,43 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Dict
 
-from webauthn import (
-    verify_registration_response,
-    verify_authentication_response,
-    options_to_json,
-)
-from webauthn.helpers import (
-    base64url_to_bytes,
-    bytes_to_base64url,
-    parse_registration_credential_json,
-    parse_authentication_credential_json,
-)
-from webauthn.helpers.structs import (
-    PublicKeyCredentialDescriptor,
-    AuthenticatorSelectionCriteria,
-    UserVerificationRequirement,
-    AuthenticatorAttachment,
-)
-
 logger = logging.getLogger(__name__)
+
+# Graceful degradation for webauthn package
+try:
+    from webauthn import (
+        verify_registration_response,
+        verify_authentication_response,
+        options_to_json,
+    )
+    from webauthn.helpers import (
+        base64url_to_bytes,
+        bytes_to_base64url,
+        parse_registration_credential_json,
+        parse_authentication_credential_json,
+    )
+    from webauthn.helpers.structs import (
+        PublicKeyCredentialDescriptor,
+        AuthenticatorSelectionCriteria,
+        UserVerificationRequirement,
+        AuthenticatorAttachment,
+    )
+    WEBAUTHN_AVAILABLE = True
+except ImportError:
+    WEBAUTHN_AVAILABLE = False
+    logger.warning("webauthn package not available - WebAuthn features disabled. Install with: pip install webauthn")
+    # Stub types for type hints
+    verify_registration_response = None
+    verify_authentication_response = None
+    options_to_json = None
+    base64url_to_bytes = None
+    bytes_to_base64url = None
+    parse_registration_credential_json = None
+    parse_authentication_credential_json = None
+    PublicKeyCredentialDescriptor = None
+    AuthenticatorSelectionCriteria = None
+    UserVerificationRequirement = None
+    AuthenticatorAttachment = None
 
 
 @dataclass

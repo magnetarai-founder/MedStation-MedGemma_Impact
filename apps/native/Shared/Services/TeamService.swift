@@ -9,6 +9,14 @@ import Foundation
 
 // MARK: - Models
 
+// MARK: - API Response Wrappers
+
+/// Delete response format from backend: { status: "deleted", id: "..." }
+private struct DocumentDeleteResponse: Decodable {
+    let status: String
+    let id: String
+}
+
 public struct Team: Identifiable, Codable {
     public let id: String
     public let name: String
@@ -77,32 +85,97 @@ public struct TeamDocument: Identifiable, Codable {
     }
 }
 
+/// Matches the backend /api/v1/diagnostics response structure
 public struct DiagnosticsStatus: Codable {
-    public let status: String
-    public let network: NetworkStatus
+    public let system: SystemStatus
+    public let metal: MetalStatus
+    public let ollama: OllamaStatus
+    public let p2p: P2PStatus
     public let database: DatabaseStatus
-    public let services: [ServiceStatus]
+    public let timestamp: Double?
+    public let partial: Bool?
 
-    public struct NetworkStatus: Codable {
-        public let connected: Bool
-        public let latency: Int?
-        public let bandwidth: String?
-    }
-
-    public struct DatabaseStatus: Codable {
-        public let connected: Bool
-        public let queryTime: Int?
+    public struct SystemStatus: Codable {
+        public let os: String?
+        public let cpuPercent: Double?
+        public let ram: RAMStatus?
+        public let disk: DiskStatus?
 
         public enum CodingKeys: String, CodingKey {
-            case connected
-            case queryTime = "query_time"
+            case os
+            case cpuPercent = "cpu_percent"
+            case ram, disk
+        }
+
+        public struct RAMStatus: Codable {
+            public let totalGb: Double?
+            public let usedGb: Double?
+
+            public enum CodingKeys: String, CodingKey {
+                case totalGb = "total_gb"
+                case usedGb = "used_gb"
+            }
+        }
+
+        public struct DiskStatus: Codable {
+            public let totalGb: Double?
+            public let usedGb: Double?
+
+            public enum CodingKeys: String, CodingKey {
+                case totalGb = "total_gb"
+                case usedGb = "used_gb"
+            }
         }
     }
 
-    public struct ServiceStatus: Codable {
-        public let name: String
-        public let status: String
-        public let uptime: String?
+    public struct MetalStatus: Codable {
+        public let available: Bool
+        public let initialized: Bool?
+        public let device: String?
+        public let recommendedWorkingSetGb: Double?
+        public let error: String?
+
+        public enum CodingKeys: String, CodingKey {
+            case available, initialized, device
+            case recommendedWorkingSetGb = "recommended_working_set_gb"
+            case error
+        }
+    }
+
+    public struct OllamaStatus: Codable {
+        public let available: Bool
+        public let modelCount: Int?
+        public let models: [String]?
+        public let status: String?
+        public let error: String?
+
+        public enum CodingKeys: String, CodingKey {
+            case available
+            case modelCount = "model_count"
+            case models, status, error
+        }
+    }
+
+    public struct P2PStatus: Codable {
+        public let status: String?
+        public let peers: Int?
+        public let services: [String]?
+        public let error: String?
+    }
+
+    public struct DatabaseStatus: Codable {
+        public let status: String?
+        public let sizeMb: Double?
+        public let tableCount: Int?
+        public let path: String?
+        public let error: String?
+
+        public enum CodingKeys: String, CodingKey {
+            case status
+            case sizeMb = "size_mb"
+            case tableCount = "table_count"
+            case path, error
+        }
     }
 }
 
@@ -166,6 +239,7 @@ public final class TeamService {
 
     public func listDocuments() async throws -> [TeamDocument] {
         do {
+            // request(path:method:) auto-unwraps SuccessResponse, so expect [TeamDocument] directly
             let documents: [TeamDocument] = try await apiClient.request(
                 path: "/v1/docs/documents",
                 method: .get
@@ -206,10 +280,8 @@ public final class TeamService {
     }
 
     public func deleteDocument(id: String) async throws {
-        struct DeleteResponse: Codable {
-            let success: Bool?
-        }
-        let _: DeleteResponse = try await apiClient.request(
+        // Backend returns: { status: "deleted", id: "..." }
+        let _: DocumentDeleteResponse = try await apiClient.request(
             path: "/v1/docs/documents/\(id)",
             method: .delete
         )
@@ -219,6 +291,7 @@ public final class TeamService {
 
     public func getDiagnostics() async throws -> DiagnosticsStatus {
         do {
+            // request(path:method:) auto-unwraps SuccessResponse, so expect DiagnosticsStatus directly
             let status: DiagnosticsStatus = try await apiClient.request(
                 path: "/v1/diagnostics",
                 method: .get
@@ -277,55 +350,59 @@ public final class TeamService {
     // MARK: - Messages
 
     public func sendMessage(channelId: String, content: String) async throws -> TeamMessage {
-        try await apiClient.request(
-            path: "/v1/team/channels/\(channelId)/messages",
+        // Team endpoints return raw responses (not wrapped in SuccessResponse)
+        let body: [String: Any] = [
+            "channel_id": channelId,
+            "content": content,
+            "type": "text"
+        ]
+        let jsonData = try JSONSerialization.data(withJSONObject: body)
+        return try await apiClient.request(
+            "/v1/team/channels/\(channelId)/messages",
             method: .post,
-            jsonBody: [
-                "channel_id": channelId,
-                "content": content,
-                "type": "text"
-            ]
+            body: jsonData,
+            unwrapEnvelope: false
         )
     }
 
     public func getMessages(channelId: String, limit: Int = 50) async throws -> MessageListResponse {
+        // Team endpoints return raw responses (not wrapped in SuccessResponse)
         try await apiClient.request(
-            path: "/v1/team/channels/\(channelId)/messages?limit=\(limit)",
-            method: .get
+            "/v1/team/channels/\(channelId)/messages?limit=\(limit)",
+            method: .get,
+            unwrapEnvelope: false
         )
     }
 
     // MARK: - Permissions
 
     public func getUserPermissions() async throws -> UserPermissions {
-        struct PermissionsResponse: Codable {
-            let success: Bool
-            let data: UserPermissions
-            let message: String?
-        }
-
-        let response: PermissionsResponse = try await apiClient.request(
+        // request(path:method:) auto-unwraps SuccessResponse, so just expect UserPermissions directly
+        try await apiClient.request(
             path: "/v1/teams/user/permissions",
             method: .get
         )
-        return response.data
     }
 
     // MARK: - P2P Network
 
     public func getP2PNetworkStatus() async throws -> P2PNetworkStatus {
+        // Team endpoints return raw responses (not wrapped in SuccessResponse)
         try await apiClient.request(
-            path: "/v1/team/p2p/status",
-            method: .get
+            "/v1/team/p2p/status",
+            method: .get,
+            unwrapEnvelope: false
         )
     }
 
     // MARK: - Channels
 
     public func listChannels() async throws -> [TeamChannel] {
+        // Team channels endpoint returns raw ChannelListResponse (not wrapped in SuccessResponse)
         let response: ChannelListResponse = try await apiClient.request(
-            path: "/v1/team/channels",
-            method: .get
+            "/v1/team/channels",
+            method: .get,
+            unwrapEnvelope: false
         )
         return response.channels
     }
@@ -386,7 +463,7 @@ public struct MessageListResponse: Codable {
     public let channelId: String
     public let messages: [TeamMessage]
     public let total: Int
-    public let hasMore: Bool
+    public let hasMore: Bool?  // Optional - backend may not return this
 
     public enum CodingKeys: String, CodingKey {
         case channelId = "channel_id"

@@ -10,18 +10,18 @@ from typing import List, Optional, Dict, Any
 from pathlib import Path
 import logging
 
-from offline_mesh_discovery import get_mesh_discovery, LocalPeer
-from offline_file_share import get_file_share, SharedFile, FileTransferProgress
-from mesh_relay import get_mesh_relay, MeshMessage
-from offline_data_sync import get_data_sync, SyncState
-from mlx_distributed import get_mlx_distributed, ComputeNode, DistributedJob
+from api.offline_mesh_discovery import get_mesh_discovery, LocalPeer
+from api.offline_file_share import get_file_share, SharedFile, FileTransferProgress
+from api.mesh_relay import get_mesh_relay, MeshMessage
+from api.offline_data_sync import get_data_sync, SyncState
+from api.mlx_distributed import get_mlx_distributed, ComputeNode, DistributedJob
 
 logger = logging.getLogger(__name__)
 
 from fastapi import Depends
-from auth_middleware import get_current_user
-from utils import sanitize_for_log
-from metrics import get_metrics
+from api.auth_middleware import get_current_user
+from api.utils import sanitize_for_log
+from api.metrics import get_metrics
 
 router = APIRouter(
     prefix="/api/v1/mesh",

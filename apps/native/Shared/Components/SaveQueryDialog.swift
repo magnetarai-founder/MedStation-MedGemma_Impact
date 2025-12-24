@@ -1,8 +1,8 @@
 //
 //  SaveQueryDialog.swift
-//  MagnetarStudio (macOS)
+//  MagnetarStudio
 //
-//  Save query form dialog - Extracted from DatabaseModals.swift (Phase 6.14)
+//  Save query form dialog - shared component for CodeEditor
 //
 
 import SwiftUI

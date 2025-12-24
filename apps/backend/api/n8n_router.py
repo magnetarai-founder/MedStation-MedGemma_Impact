@@ -18,19 +18,19 @@ try:
     from .workflow_models import WorkItem
     from .workflow_orchestrator import WorkflowOrchestrator
 except ImportError:
-    from n8n_integration import (
+    from api.n8n_integration import (
         N8NConfig,
         N8NIntegrationService,
         init_n8n_service,
         get_n8n_service
     )
-    from workflow_models import WorkItem
-    from workflow_orchestrator import WorkflowOrchestrator
+    from api.workflow_models import WorkItem
+    from api.workflow_orchestrator import WorkflowOrchestrator
 
 logger = logging.getLogger(__name__)
 
 from fastapi import Depends
-from auth_middleware import get_current_user
+from api.auth_middleware import get_current_user
 
 # Dependency to check if n8n is enabled
 def require_n8n_enabled() -> N8NIntegrationService:

@@ -22,8 +22,8 @@ from datetime import datetime, UTC
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
-from utils import sanitize_for_log
-from metrics import get_metrics
+from api.utils import sanitize_for_log
+from api.metrics import get_metrics
 from api.security.sql_safety import quote_identifier
 
 logger = logging.getLogger(__name__)
@@ -45,7 +45,7 @@ except ImportError:
     logger.info("⚠️  Metal 4 not available - using CPU for SQL")
 
 # Storage path
-from config_paths import get_config_paths
+from api.config_paths import get_config_paths
 DATA_DIR = get_config_paths().datasets_dir
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 

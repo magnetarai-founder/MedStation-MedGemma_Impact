@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, Request, HTTPException, Query, status
 try:
     from api.auth_middleware import get_current_user
 except ImportError:
-    from auth_middleware import get_current_user
+    from api.auth_middleware import get_current_user
 
 from api.services.search import get_search_service
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode

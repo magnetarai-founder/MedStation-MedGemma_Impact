@@ -14,11 +14,11 @@ import json
 import math
 import os
 
-from jarvis_bigquery_memory import JarvisBigQueryMemory
+from api.jarvis_bigquery_memory import JarvisBigQueryMemory
 
 # Import enhanced functionality
 try:
-    from rag_pipeline_enhanced import EnhancedRAGPipeline
+    from api.rag_pipeline_enhanced import EnhancedRAGPipeline
     _enhanced_pipeline = None
     
     def get_enhanced_pipeline() -> Any:

@@ -18,7 +18,7 @@ from api.p2p_chat_service import get_p2p_chat_service, init_p2p_chat_service
 logger = logging.getLogger(__name__)
 
 from fastapi import Depends
-from auth_middleware import get_current_user
+from api.auth_middleware import get_current_user
 
 router = APIRouter(
     prefix="/api/v1/p2p",
@@ -50,7 +50,7 @@ class P2PMeshPeer(BaseModel):
 
 # Persistent storage for connection codes
 # Store in database to survive restarts (critical for offline deployments)
-from config_paths import get_config_paths
+from api.config_paths import get_config_paths
 import sqlite3
 from datetime import datetime, timedelta
 

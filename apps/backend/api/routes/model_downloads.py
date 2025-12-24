@@ -13,7 +13,7 @@ from typing import List, Dict, Any
 try:
     from api.auth_middleware import get_current_user
 except ImportError:
-    from auth_middleware import get_current_user
+    from api.auth_middleware import get_current_user
 from api.services.model_download_queue import get_download_queue
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 

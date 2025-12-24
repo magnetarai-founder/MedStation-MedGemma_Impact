@@ -440,34 +440,42 @@ public final class TrustService {
     // MARK: - Health
 
     public func getHealth() async throws -> TrustHealthResponse {
+        // Trust endpoints return raw responses (not wrapped in SuccessResponse)
         try await apiClient.request(
-            path: "/v1/trust/health",
-            method: .get
+            "/v1/trust/health",
+            method: .get,
+            unwrapEnvelope: false
         )
     }
 
     // MARK: - Nodes
 
     public func registerNode(_ request: RegisterNodeRequest) async throws -> TrustNode {
-        try await apiClient.request(
-            path: "/v1/trust/nodes",
+        // Trust endpoints return raw responses (not wrapped in SuccessResponse)
+        let body: [String: Any] = [
+            "public_key": request.publicKey,
+            "public_name": request.publicName,
+            "type": request.type.rawValue,
+            "alias": request.alias as Any,
+            "bio": request.bio as Any,
+            "location": request.location as Any,
+            "display_mode": request.displayMode.rawValue
+        ]
+        let jsonData = try JSONSerialization.data(withJSONObject: body)
+        return try await apiClient.request(
+            "/v1/trust/nodes",
             method: .post,
-            jsonBody: [
-                "public_key": request.publicKey,
-                "public_name": request.publicName,
-                "type": request.type.rawValue,
-                "alias": request.alias as Any,
-                "bio": request.bio as Any,
-                "location": request.location as Any,
-                "display_mode": request.displayMode.rawValue
-            ]
+            body: jsonData,
+            unwrapEnvelope: false
         )
     }
 
     public func getNode(id: String) async throws -> TrustNode {
+        // Trust endpoints return raw responses (not wrapped in SuccessResponse)
         try await apiClient.request(
-            path: "/v1/trust/nodes/\(id)",
-            method: .get
+            "/v1/trust/nodes/\(id)",
+            method: .get,
+            unwrapEnvelope: false
         )
     }
 
@@ -477,46 +485,58 @@ public final class TrustService {
             path += "?node_type=\(type.rawValue)"
         }
 
+        // Trust endpoints return raw responses (not wrapped in SuccessResponse)
         return try await apiClient.request(
-            path: path,
-            method: .get
+            path,
+            method: .get,
+            unwrapEnvelope: false
         )
     }
 
     public func updateNode(id: String, _ request: RegisterNodeRequest) async throws -> TrustNode {
-        try await apiClient.request(
-            path: "/v1/trust/nodes/\(id)",
+        // Trust endpoints return raw responses (not wrapped in SuccessResponse)
+        let body: [String: Any] = [
+            "public_key": request.publicKey,
+            "public_name": request.publicName,
+            "type": request.type.rawValue,
+            "alias": request.alias as Any,
+            "bio": request.bio as Any,
+            "location": request.location as Any,
+            "display_mode": request.displayMode.rawValue
+        ]
+        let jsonData = try JSONSerialization.data(withJSONObject: body)
+        return try await apiClient.request(
+            "/v1/trust/nodes/\(id)",
             method: .patch,
-            jsonBody: [
-                "public_key": request.publicKey,
-                "public_name": request.publicName,
-                "type": request.type.rawValue,
-                "alias": request.alias as Any,
-                "bio": request.bio as Any,
-                "location": request.location as Any,
-                "display_mode": request.displayMode.rawValue
-            ]
+            body: jsonData,
+            unwrapEnvelope: false
         )
     }
 
     // MARK: - Trust Relationships
 
     public func vouchForNode(_ request: VouchRequest) async throws -> TrustRelationship {
-        try await apiClient.request(
-            path: "/v1/trust/vouch",
+        // Trust endpoints return raw responses (not wrapped in SuccessResponse)
+        let body: [String: Any] = [
+            "target_node_id": request.targetNodeId,
+            "level": request.level.rawValue,
+            "note": request.note as Any
+        ]
+        let jsonData = try JSONSerialization.data(withJSONObject: body)
+        return try await apiClient.request(
+            "/v1/trust/vouch",
             method: .post,
-            jsonBody: [
-                "target_node_id": request.targetNodeId,
-                "level": request.level.rawValue,
-                "note": request.note as Any
-            ]
+            body: jsonData,
+            unwrapEnvelope: false
         )
     }
 
     public func getTrustNetwork(maxDegrees: Int = 3) async throws -> TrustNetworkResponse {
+        // Trust endpoints return raw responses (not wrapped in SuccessResponse)
         try await apiClient.request(
-            path: "/v1/trust/network?max_degrees=\(maxDegrees)",
-            method: .get
+            "/v1/trust/network?max_degrees=\(maxDegrees)",
+            method: .get,
+            unwrapEnvelope: false
         )
     }
 
@@ -526,9 +546,11 @@ public final class TrustService {
             path += "?level=\(level.rawValue)"
         }
 
+        // Trust endpoints return raw responses (not wrapped in SuccessResponse)
         return try await apiClient.request(
-            path: path,
-            method: .get
+            path,
+            method: .get,
+            unwrapEnvelope: false
         )
     }
 
@@ -571,20 +593,23 @@ public final class TrustService {
             note: note
         )
 
-        // Send vouch request with cryptographic proof
-        return try await apiClient.request(
-            path: "/v1/trust/vouch",
-            method: .post,
-            jsonBody: [
-                "target_node_id": targetNodeId,
-                "level": level.rawValue,
-                "note": note as Any,
-                "attestation": [
-                    "payload": attestation.payload,
-                    "signature": attestation.signature,
-                    "signer_public_key": attestation.signerPublicKey
-                ]
+        // Trust endpoints return raw responses (not wrapped in SuccessResponse)
+        let body: [String: Any] = [
+            "target_node_id": targetNodeId,
+            "level": level.rawValue,
+            "note": note as Any,
+            "attestation": [
+                "payload": attestation.payload,
+                "signature": attestation.signature,
+                "signer_public_key": attestation.signerPublicKey
             ]
+        ]
+        let jsonData = try JSONSerialization.data(withJSONObject: body)
+        return try await apiClient.request(
+            "/v1/trust/vouch",
+            method: .post,
+            body: jsonData,
+            unwrapEnvelope: false
         )
     }
 

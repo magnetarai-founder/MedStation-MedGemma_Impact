@@ -17,7 +17,7 @@ from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 try:
     from api.auth_middleware import get_current_user
 except ImportError:
-    from auth_middleware import get_current_user
+    from api.auth_middleware import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +59,7 @@ async def websocket_endpoint(
     try:
         # Verify JWT token
         import jwt
-        from auth_middleware import JWT_SECRET, JWT_ALGORITHM
+        from api.auth_middleware import JWT_SECRET, JWT_ALGORITHM
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         authenticated_user_id = payload.get("user_id")
 

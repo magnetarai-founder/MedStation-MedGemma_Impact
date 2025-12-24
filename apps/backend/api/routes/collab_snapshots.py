@@ -19,7 +19,7 @@ from pydantic import BaseModel
 try:
     from api.auth_middleware import get_current_user, User
 except ImportError:
-    from auth_middleware import get_current_user, User
+    from api.auth_middleware import get_current_user, User
 from api.config_paths import PATHS
 from api.services.collab_state import apply_snapshot
 from api.services.collab_acl import upsert_acl, list_acl

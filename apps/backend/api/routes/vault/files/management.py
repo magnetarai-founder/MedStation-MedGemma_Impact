@@ -15,7 +15,7 @@ from pydantic import BaseModel
 try:
     from api.auth_middleware import get_current_user
 except ImportError:
-    from auth_middleware import get_current_user
+    from api.auth_middleware import get_current_user
 from api.services.vault.core import get_vault_service
 from api.services.vault.schemas import VaultFile
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode

@@ -48,7 +48,9 @@ final class VaultService {
 
     /// Unlock vault with password (automatically detects sensitive vs unsensitive)
     func unlock(password: String, vaultId: String = "default", requireTouchId: Bool = false) async throws -> Bool {
-        let url = URL(string: "\(baseURL)/unlock/passphrase")!
+        guard let url = URL(string: "\(baseURL)/unlock/passphrase") else {
+            throw VaultError.invalidURL
+        }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -98,7 +100,9 @@ final class VaultService {
         passwordSensitive: String,
         passwordUnsensitive: String
     ) async throws -> Bool {
-        let url = URL(string: "\(baseURL)/setup/dual-password")!
+        guard let url = URL(string: "\(baseURL)/setup/dual-password") else {
+            throw VaultError.invalidURL
+        }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")

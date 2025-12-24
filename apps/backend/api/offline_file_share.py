@@ -18,7 +18,7 @@ from datetime import datetime, UTC
 logger = logging.getLogger(__name__)
 
 # Import security utilities
-from utils import sanitize_filename
+from api.utils import sanitize_filename
 
 
 @dataclass

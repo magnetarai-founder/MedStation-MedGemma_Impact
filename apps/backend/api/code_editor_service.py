@@ -19,9 +19,9 @@ except ImportError:
 
 # Import auth and permissions
 from fastapi import Depends
-from auth_middleware import get_current_user
-from permission_engine import require_perm
-from audit_logger import get_audit_logger, AuditAction
+from api.auth_middleware import get_current_user
+from api.permission_engine import require_perm
+from api.audit_logger import get_audit_logger, AuditAction
 
 # Initialize router
 router = APIRouter(

@@ -16,7 +16,7 @@ from fastapi import APIRouter, HTTPException
 logger = logging.getLogger(__name__)
 
 # Database path
-from config_paths import get_config_paths
+from api.config_paths import get_config_paths
 PATHS = get_config_paths()
 VAULT_DB_PATH = PATHS.data_dir / "vault.db"
 

@@ -21,7 +21,7 @@ struct DiagnosticsPanel: View {
         VStack(spacing: 20) {
             // Header
             HStack {
-                Text("Network Diagnostics")
+                Text("System Diagnostics")
                     .font(.title2.weight(.semibold))
 
                 Spacer()
@@ -29,7 +29,7 @@ struct DiagnosticsPanel: View {
                 Button(action: { Task { await loadDiagnostics() } }) {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.clockwise")
-                        Text("Retry")
+                        Text("Refresh")
                     }
                 }
                 .disabled(isLoading)
@@ -48,27 +48,91 @@ struct DiagnosticsPanel: View {
                     VStack(alignment: .leading, spacing: 16) {
                         // Overall Status
                         HStack {
-                            Image(systemName: diag.status == "ok" ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                                .foregroundColor(diag.status == "ok" ? .green : .orange)
-                            Text("Status: \(diag.status.uppercased())")
+                            let isHealthy = diag.database.status == "healthy" && diag.metal.available
+                            Image(systemName: isHealthy ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                                .foregroundColor(isHealthy ? .green : .orange)
+                            Text(diag.partial == true ? "PARTIAL" : "OK")
                                 .font(.system(size: 14, weight: .medium))
                         }
 
                         Divider()
 
-                        // Network Status
+                        // System Status
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Network")
+                            Text("System")
                                 .font(.system(size: 13, weight: .semibold))
 
-                            statusRow("Connected", value: diag.network.connected ? "Yes" : "No", status: diag.network.connected)
-
-                            if let latency = diag.network.latency {
-                                statusRow("Latency", value: "\(latency)ms", status: latency < 100)
+                            if let os = diag.system.os {
+                                statusRow("OS", value: os, status: true)
                             }
+                            if let cpu = diag.system.cpuPercent {
+                                statusRow("CPU", value: "\(String(format: "%.1f", cpu))%", status: cpu < 80)
+                            }
+                            if let ram = diag.system.ram {
+                                let used = ram.usedGb ?? 0
+                                let total = ram.totalGb ?? 1
+                                statusRow("RAM", value: "\(String(format: "%.1f", used))/\(String(format: "%.1f", total)) GB", status: used / total < 0.9)
+                            }
+                            if let disk = diag.system.disk {
+                                let used = disk.usedGb ?? 0
+                                let total = disk.totalGb ?? 1
+                                statusRow("Disk", value: "\(String(format: "%.1f", used))/\(String(format: "%.1f", total)) GB", status: used / total < 0.9)
+                            }
+                        }
 
-                            if let bandwidth = diag.network.bandwidth {
-                                statusRow("Bandwidth", value: bandwidth, status: true)
+                        Divider()
+
+                        // Metal Status
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Metal GPU")
+                                .font(.system(size: 13, weight: .semibold))
+
+                            statusRow("Available", value: diag.metal.available ? "Yes" : "No", status: diag.metal.available)
+                            if let device = diag.metal.device {
+                                statusRow("Device", value: device, status: true)
+                            }
+                            if let workingSet = diag.metal.recommendedWorkingSetGb {
+                                statusRow("Working Set", value: "\(String(format: "%.1f", workingSet)) GB", status: true)
+                            }
+                            if let error = diag.metal.error {
+                                statusRow("Error", value: error, status: false)
+                            }
+                        }
+
+                        Divider()
+
+                        // Ollama Status
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Ollama")
+                                .font(.system(size: 13, weight: .semibold))
+
+                            statusRow("Available", value: diag.ollama.available ? "Yes" : "No", status: diag.ollama.available)
+                            if let status = diag.ollama.status {
+                                statusRow("Status", value: status, status: status == "running")
+                            }
+                            if let count = diag.ollama.modelCount {
+                                statusRow("Models", value: "\(count)", status: count > 0)
+                            }
+                            if let error = diag.ollama.error {
+                                statusRow("Error", value: error, status: false)
+                            }
+                        }
+
+                        Divider()
+
+                        // P2P Status
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("P2P Network")
+                                .font(.system(size: 13, weight: .semibold))
+
+                            if let status = diag.p2p.status {
+                                statusRow("Status", value: status, status: status != "unavailable" && status != "error")
+                            }
+                            if let peers = diag.p2p.peers {
+                                statusRow("Peers", value: "\(peers)", status: true)
+                            }
+                            if let error = diag.p2p.error {
+                                statusRow("Error", value: error, status: false)
                             }
                         }
 
@@ -79,39 +143,17 @@ struct DiagnosticsPanel: View {
                             Text("Database")
                                 .font(.system(size: 13, weight: .semibold))
 
-                            statusRow("Connected", value: diag.database.connected ? "Yes" : "No", status: diag.database.connected)
-
-                            if let queryTime = diag.database.queryTime {
-                                statusRow("Query Time", value: "\(queryTime)ms", status: queryTime < 100)
+                            if let status = diag.database.status {
+                                statusRow("Status", value: status, status: status == "healthy")
                             }
-                        }
-
-                        Divider()
-
-                        // Services
-                        if !diag.services.isEmpty {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Services")
-                                    .font(.system(size: 13, weight: .semibold))
-
-                                ForEach(diag.services, id: \.name) { service in
-                                    HStack {
-                                        Image(systemName: service.status == "running" ? "checkmark.circle.fill" : "xmark.circle.fill")
-                                            .foregroundColor(service.status == "running" ? .green : .red)
-                                            .font(.system(size: 12))
-
-                                        Text(service.name)
-                                            .font(.system(size: 12))
-
-                                        Spacer()
-
-                                        if let uptime = service.uptime {
-                                            Text(uptime)
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                        }
-                                    }
-                                }
+                            if let size = diag.database.sizeMb {
+                                statusRow("Size", value: "\(String(format: "%.2f", size)) MB", status: true)
+                            }
+                            if let tables = diag.database.tableCount {
+                                statusRow("Tables", value: "\(tables)", status: tables > 0)
+                            }
+                            if let error = diag.database.error {
+                                statusRow("Error", value: error, status: false)
                             }
                         }
                     }
@@ -141,7 +183,7 @@ struct DiagnosticsPanel: View {
             }
             .keyboardShortcut(.escape)
         }
-        .frame(width: 600, height: 400)
+        .frame(width: 600, height: 500)
         .padding(24)
         .onAppear {
             Task { await loadDiagnostics() }
@@ -163,6 +205,8 @@ struct DiagnosticsPanel: View {
             Text(value)
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
+                .lineLimit(1)
+                .truncationMode(.tail)
         }
     }
 

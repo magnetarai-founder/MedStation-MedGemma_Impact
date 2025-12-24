@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 try:
     from api.auth_middleware import get_current_user, User
 except ImportError:
-    from auth_middleware import get_current_user, User
+    from api.auth_middleware import get_current_user, User
 from api.services.data_profiler import get_data_profiler
 from api.utils import sanitize_for_log
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode

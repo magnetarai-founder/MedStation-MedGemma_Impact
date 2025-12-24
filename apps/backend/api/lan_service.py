@@ -14,7 +14,7 @@ from .lan_discovery import lan_service
 logger = logging.getLogger(__name__)
 
 from fastapi import Depends
-from auth_middleware import get_current_user
+from api.auth_middleware import get_current_user
 
 router = APIRouter(
     prefix="/api/v1/lan",

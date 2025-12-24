@@ -18,7 +18,7 @@ from fastapi.responses import StreamingResponse
 try:
     from api.auth_middleware import get_current_user, User
 except ImportError:
-    from auth_middleware import get_current_user, User
+    from api.auth_middleware import get_current_user, User
 from api.permission_engine import require_perm_team
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 from api.schemas.chat_models import SendMessageRequest

@@ -118,7 +118,7 @@ struct CodeEditor: View {
                 )
                 .help("Browse Library")
             } else {
-                ToolbarButton(action: {
+                CodeEditorToolbarButton(action: {
                     showSaveModal = true
                 }) {
                     HStack(spacing: 6) {
@@ -309,7 +309,7 @@ struct ToolbarGroup<Content: View>: View {
     }
 }
 
-struct ToolbarButton<Content: View>: View {
+struct CodeEditorToolbarButton<Content: View>: View {
     let action: () -> Void
     @ViewBuilder let content: Content
 

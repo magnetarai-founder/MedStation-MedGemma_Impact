@@ -13,8 +13,8 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 from fastapi import Depends
-from auth_middleware import get_current_user
-from utils import sanitize_for_log
+from api.auth_middleware import get_current_user
+from api.utils import sanitize_for_log
 
 router = APIRouter(
     prefix="/api/v1/automation",

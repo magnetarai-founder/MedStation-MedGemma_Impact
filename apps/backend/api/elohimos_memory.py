@@ -3,6 +3,20 @@
 ElohimOS Memory System
 Copyright (c) 2025 MagnetarAI, LLC
 Adapter for Jarvis BigQuery Memory to handle SQL/JSON query history
+
+SECURITY NOTE: This module uses f-string interpolation for dynamic SQL WHERE clauses.
+All interpolated values MUST come from controlled sources (hardcoded strings with ?
+placeholders). User-provided data MUST ONLY be passed via parameterized query
+arguments, never via string interpolation. Violating this pattern creates SQL
+injection vulnerabilities.
+
+Safe pattern:
+    where_clause = "query_type = ?"  # Hardcoded structure
+    params = [user_input]             # User data via params only
+    cursor.execute(f"SELECT * FROM t WHERE {where_clause}", params)
+
+Unsafe pattern (DO NOT USE):
+    cursor.execute(f"SELECT * FROM t WHERE query_type = '{user_input}'")  # INJECTION RISK!
 """
 
 from pathlib import Path
@@ -12,7 +26,7 @@ import json
 import time
 import hashlib
 
-from jarvis_bigquery_memory import JarvisBigQueryMemory
+from api.jarvis_bigquery_memory import JarvisBigQueryMemory
 
 
 class ElohimOSMemory:

@@ -16,7 +16,7 @@ from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 try:
     from api.auth_middleware import get_current_user, User
 except ImportError:
-    from auth_middleware import get_current_user, User
+    from api.auth_middleware import get_current_user, User
 
 logger = logging.getLogger(__name__)
 

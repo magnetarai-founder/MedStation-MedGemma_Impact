@@ -8,14 +8,22 @@ final class AuthService {
     private let deviceId: String
 
     private init() {
-        // Generate or load persistent device ID
+        // Generate or load persistent device ID from Keychain (secure storage)
         let key = "magnetar.device_id"
-        if let existing = UserDefaults.standard.string(forKey: key) {
+        if let existing = KeychainService.shared.loadToken(forKey: key) {
             self.deviceId = existing
         } else {
             let newId = UUID().uuidString
-            UserDefaults.standard.set(newId, forKey: key)
-            self.deviceId = newId
+            // Store in Keychain; migrate from UserDefaults if present
+            if let oldId = UserDefaults.standard.string(forKey: key) {
+                // Migrate existing device ID from UserDefaults to Keychain
+                try? KeychainService.shared.saveToken(oldId, forKey: key)
+                UserDefaults.standard.removeObject(forKey: key)
+                self.deviceId = oldId
+            } else {
+                try? KeychainService.shared.saveToken(newId, forKey: key)
+                self.deviceId = newId
+            }
         }
     }
 

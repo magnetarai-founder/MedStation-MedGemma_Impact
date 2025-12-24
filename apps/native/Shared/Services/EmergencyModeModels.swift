@@ -30,6 +30,8 @@ enum EmergencyTriggerMethod: String {
     case panicButton = "panic_button"
     case deadManSwitch = "dead_man_switch"
     case remote = "remote_trigger"
+    case textConfirmation = "text_confirmation"  // "I UNDERSTAND" text entry
+    case keyCombo = "key_combo"                  // Cmd+Shift+Delete (5 sec hold)
 }
 
 // MARK: - Backend Response

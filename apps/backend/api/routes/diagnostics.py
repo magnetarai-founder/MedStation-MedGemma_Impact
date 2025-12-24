@@ -24,7 +24,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 try:
     from api.auth_middleware import get_current_user
 except ImportError:
-    from auth_middleware import get_current_user
+    from api.auth_middleware import get_current_user
 from api.config_paths import get_config_paths
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 

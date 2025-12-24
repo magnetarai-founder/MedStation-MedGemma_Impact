@@ -12,9 +12,9 @@ from fastapi import APIRouter, HTTPException, Request, Body
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any, List
 
-from panic_mode import get_panic_mode
-from rate_limiter import rate_limiter, get_client_ip
-from utils import sanitize_for_log
+from api.panic_mode import get_panic_mode
+from api.rate_limiter import rate_limiter, get_client_ip
+from api.utils import sanitize_for_log
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +75,7 @@ class EmergencyModeResponse(BaseModel):
 # ===== Router =====
 
 from fastapi import Depends
-from auth_middleware import get_current_user
+from api.auth_middleware import get_current_user
 
 router = APIRouter(
     prefix="/api/v1/panic",

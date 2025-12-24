@@ -26,7 +26,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Get database paths
-from config_paths import get_config_paths
+from api.config_paths import get_config_paths
 PATHS = get_config_paths()
 
 # All databases that need migration

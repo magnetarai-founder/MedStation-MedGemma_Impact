@@ -15,9 +15,9 @@ from typing import Optional, Dict, Any, List
 try:
     from api.auth_middleware import get_current_user, User
 except ImportError:
-    from auth_middleware import get_current_user, User
-from audit_logger import get_audit_logger, AuditEntry, AuditAction
-from telemetry import track_metric, TelemetryMetric
+    from api.auth_middleware import get_current_user, User
+from api.audit_logger import get_audit_logger, AuditEntry, AuditAction
+from api.telemetry import track_metric, TelemetryMetric
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 
 logger = logging.getLogger(__name__)

@@ -11,6 +11,6 @@ FILE_PROTOCOL_ID = "/omnistudio/file/1.0.0"
 MDNS_SERVICE_NAME = "_omnistudio._udp.local"
 
 # Storage path configuration
-from config_paths import get_config_paths
+from api.config_paths import get_config_paths
 PATHS = get_config_paths()
 DB_PATH = PATHS.data_dir / "p2p_chat.db"

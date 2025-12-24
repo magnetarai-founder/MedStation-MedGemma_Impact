@@ -5,7 +5,7 @@ All workspace and file CRUD operations
 
 import logging
 from typing import Any, List, Optional
-from elohimos_memory import ElohimOSMemory
+from api.elohimos_memory import ElohimOSMemory
 
 logger = logging.getLogger(__name__)
 

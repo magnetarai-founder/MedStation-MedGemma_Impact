@@ -16,7 +16,7 @@ from collections import defaultdict, Counter
 logger = logging.getLogger(__name__)
 
 # Database path for learning data
-from config_paths import get_config_paths
+from api.config_paths import get_config_paths
 PATHS = get_config_paths()
 LEARNING_DB = PATHS.data_dir / "learning.db"
 

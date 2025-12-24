@@ -489,8 +489,8 @@ async def collab_websocket(
 
 # ===== REST Endpoints =====
 
-@router.get("/docs/{doc_id}/status")
-async def get_doc_status(doc_id: str) -> Union[JSONResponse, Dict[str, Any]]:
+@router.get("/docs/{doc_id}/status", response_model=None)
+async def get_doc_status(doc_id: str):
     """
     Get collaboration status for a document
 
@@ -514,8 +514,8 @@ async def get_doc_status(doc_id: str) -> Union[JSONResponse, Dict[str, Any]]:
     }
 
 
-@router.post("/docs/{doc_id}/snapshot")
-async def trigger_snapshot(doc_id: str) -> Union[JSONResponse, Dict[str, Any]]:
+@router.post("/docs/{doc_id}/snapshot", response_model=None)
+async def trigger_snapshot(doc_id: str):
     """
     Manually trigger snapshot save for a document
     """

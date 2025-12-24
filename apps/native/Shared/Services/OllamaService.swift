@@ -88,88 +88,92 @@ final class OllamaService {
         UserDefaults.standard.string(forKey: "apiBaseURL") ?? "http://localhost:8000"
     }
 
-    /// Pull/download a model with streaming progress
+    /// Pull/download a model with streaming progress (async/await with AsyncThrowingStream)
+    func pullModel(modelName: String) -> AsyncThrowingStream<OllamaProgress, Error> {
+        AsyncThrowingStream { continuation in
+            Task {
+                do {
+                    // URL encode model name
+                    guard let encodedName = modelName.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) else {
+                        continuation.finish(throwing: OllamaError.invalidModelName)
+                        return
+                    }
+
+                    guard let url = URL(string: "\(baseURL)/api/v1/chat/models/pull/\(encodedName)") else {
+                        continuation.finish(throwing: OllamaError.invalidResponse)
+                        return
+                    }
+
+                    var request = URLRequest(url: url)
+                    request.httpMethod = "POST"
+                    request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+
+                    // Add auth token
+                    if let token = KeychainService.shared.loadToken() {
+                        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                    }
+
+                    // Use async bytes for streaming SSE
+                    let (bytes, response) = try await URLSession.shared.bytes(for: request)
+
+                    guard let httpResponse = response as? HTTPURLResponse else {
+                        continuation.finish(throwing: OllamaError.invalidResponse)
+                        return
+                    }
+
+                    guard httpResponse.statusCode == 200 else {
+                        continuation.finish(throwing: OllamaError.httpError(httpResponse.statusCode))
+                        return
+                    }
+
+                    // Parse Server-Sent Events stream line by line
+                    for try await line in bytes.lines {
+                        if line.hasPrefix("data: ") {
+                            let jsonString = String(line.dropFirst(6))
+                            if let jsonData = jsonString.data(using: .utf8) {
+                                let progress = try JSONDecoder().decode(OllamaProgress.self, from: jsonData)
+                                continuation.yield(progress)
+
+                                // Finish on terminal status
+                                if progress.status == "completed" {
+                                    continuation.finish()
+                                    return
+                                } else if progress.status == "error" {
+                                    continuation.finish(throwing: OllamaError.operationFailed(progress.message))
+                                    return
+                                }
+                            }
+                        }
+                    }
+
+                    continuation.finish()
+
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+    }
+
+    /// Pull/download a model with callback-based progress (convenience wrapper for legacy code)
     func pullModel(
         modelName: String,
         onProgress: @escaping (OllamaProgress) -> Void,
         onComplete: @escaping (Result<String, Error>) -> Void
     ) {
-        // URL encode model name
-        guard let encodedName = modelName.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) else {
-            onComplete(.failure(OllamaError.invalidModelName))
-            return
-        }
-
-        let url = URL(string: "\(baseURL)/api/v1/chat/models/pull/\(encodedName)")!
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
-
-        // Add auth token
-        if let token = KeychainService.shared.loadToken() {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-
-        // Create streaming task
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                Task { @MainActor in
-                    onComplete(.failure(error))
-                }
-                return
-            }
-
-            guard let httpResponse = response as? HTTPURLResponse else {
-                Task { @MainActor in
-                    onComplete(.failure(OllamaError.invalidResponse))
-                }
-                return
-            }
-
-            guard httpResponse.statusCode == 200 else {
-                Task { @MainActor in
-                    onComplete(.failure(OllamaError.httpError(httpResponse.statusCode)))
-                }
-                return
-            }
-
-            guard let data = data else {
-                Task { @MainActor in
-                    onComplete(.failure(OllamaError.noData))
-                }
-                return
-            }
-
-            // Parse Server-Sent Events stream
-            let dataString = String(data: data, encoding: .utf8) ?? ""
-            let lines = dataString.components(separatedBy: "\n")
-
-            for line in lines {
-                if line.hasPrefix("data: ") {
-                    let jsonString = String(line.dropFirst(6))
-                    if let jsonData = jsonString.data(using: .utf8) {
-                        do {
-                            let progress = try JSONDecoder().decode(OllamaProgress.self, from: jsonData)
-
-                            Task { @MainActor in
-                                onProgress(progress)
-
-                                // Call completion on final status
-                                if progress.status == "completed" {
-                                    onComplete(.success(progress.message))
-                                } else if progress.status == "error" {
-                                    onComplete(.failure(OllamaError.operationFailed(progress.message)))
-                                }
-                            }
-                        } catch {
-                            print("Failed to decode progress: \(error)")
-                        }
+        Task {
+            do {
+                for try await progress in pullModel(modelName: modelName) {
+                    onProgress(progress)
+                    if progress.status == "completed" {
+                        onComplete(.success(progress.message))
+                        return
                     }
                 }
+            } catch {
+                onComplete(.failure(error))
             }
         }
-
-        task.resume()
     }
 
     /// Remove/delete a local model
@@ -179,7 +183,9 @@ final class OllamaService {
             throw OllamaError.invalidModelName
         }
 
-        let url = URL(string: "\(baseURL)/api/v1/chat/models/\(encodedName)")!
+        guard let url = URL(string: "\(baseURL)/api/v1/chat/models/\(encodedName)") else {
+            throw OllamaError.invalidResponse
+        }
         var request = URLRequest(url: url)
         request.httpMethod = "DELETE"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -206,7 +212,9 @@ final class OllamaService {
 
     /// Check installed Ollama version
     func checkVersion() async throws -> OllamaVersion {
-        let url = URL(string: "\(baseURL)/api/v1/chat/ollama/version")!
+        guard let url = URL(string: "\(baseURL)/api/v1/chat/ollama/version") else {
+            throw OllamaError.invalidResponse
+        }
         var request = URLRequest(url: url)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 

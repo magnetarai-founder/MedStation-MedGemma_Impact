@@ -26,8 +26,8 @@ try:
     from ..services.setup_wizard import get_setup_wizard
     from ..founder_setup_wizard import get_founder_wizard
 except ImportError:
-    from services.setup_wizard import get_setup_wizard
-    from founder_setup_wizard import get_founder_wizard
+    from api.services.setup_wizard import get_setup_wizard
+    from api.founder_setup_wizard import get_founder_wizard
 
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 
@@ -173,7 +173,7 @@ async def get_setup_status() -> SuccessResponse[SetupStatusResponse]:
         Setup status including founder setup completion
     """
     try:
-        from auth_middleware import auth_service
+        from api.auth_middleware import auth_service
 
         # Check if any users exist in the database
         users = auth_service.get_all_users()

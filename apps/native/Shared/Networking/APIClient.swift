@@ -1,11 +1,12 @@
 import Foundation
 
 /// Standard API response envelope matching backend SuccessResponse<T>
+/// Note: timestamp is optional as some endpoints don't include it
 struct SuccessResponse<T: Decodable>: Decodable {
     let success: Bool
     let data: T
     let message: String?
-    let timestamp: String
+    let timestamp: String?
 }
 
 /// Standard API error response

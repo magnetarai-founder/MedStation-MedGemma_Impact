@@ -210,8 +210,3 @@ struct DatabaseWorkspace: View {
         .frame(width: 1200, height: 800)
 }
 
-// MARK: - Notifications
-
-extension Notification.Name {
-    static let clearWorkspace = Notification.Name("DatabaseWorkspaceClearWorkspace")
-}

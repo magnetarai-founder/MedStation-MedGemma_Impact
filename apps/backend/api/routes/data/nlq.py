@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 try:
     from api.auth_middleware import get_current_user, User
 except ImportError:
-    from auth_middleware import get_current_user, User
+    from api.auth_middleware import get_current_user, User
 from api.services.nlq_service import get_nlq_service
 from api.utils import sanitize_for_log
 from api.config_paths import PATHS

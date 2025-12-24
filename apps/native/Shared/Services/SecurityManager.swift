@@ -207,20 +207,61 @@ public final class SecurityManager: ObservableObject {
                host.hasSuffix(".local")
     }
 
+    // Keychain keys for firewall rules (security-sensitive data)
+    private let approvedDomainsKey = "firewall_approved_domains"
+    private let blockedDomainsKey = "firewall_blocked_domains"
+
     private func loadFirewallRules() {
-        // Load from UserDefaults
-        if let approved = UserDefaults.standard.array(forKey: "ApprovedDomains") as? [String] {
-            approvedDomains = Set(approved)
+        // Load from Keychain (secure storage for security-critical firewall rules)
+        // Domain lists are stored as JSON strings
+
+        if let approvedJson = KeychainService.shared.loadToken(forKey: approvedDomainsKey),
+           let data = approvedJson.data(using: .utf8),
+           let domains = try? JSONDecoder().decode([String].self, from: data) {
+            approvedDomains = Set(domains)
         }
 
-        if let blocked = UserDefaults.standard.array(forKey: "BlockedDomains") as? [String] {
-            blockedDomains = Set(blocked)
+        if let blockedJson = KeychainService.shared.loadToken(forKey: blockedDomainsKey),
+           let data = blockedJson.data(using: .utf8),
+           let domains = try? JSONDecoder().decode([String].self, from: data) {
+            blockedDomains = Set(domains)
+        }
+
+        // Migration: If data exists in UserDefaults but not Keychain, migrate it
+        if approvedDomains.isEmpty,
+           let oldApproved = UserDefaults.standard.array(forKey: "ApprovedDomains") as? [String],
+           !oldApproved.isEmpty {
+            approvedDomains = Set(oldApproved)
+            saveFirewallRules()
+            // Clean up old UserDefaults storage after migration
+            UserDefaults.standard.removeObject(forKey: "ApprovedDomains")
+        }
+
+        if blockedDomains.isEmpty,
+           let oldBlocked = UserDefaults.standard.array(forKey: "BlockedDomains") as? [String],
+           !oldBlocked.isEmpty {
+            blockedDomains = Set(oldBlocked)
+            saveFirewallRules()
+            // Clean up old UserDefaults storage after migration
+            UserDefaults.standard.removeObject(forKey: "BlockedDomains")
         }
     }
 
     private func saveFirewallRules() {
-        UserDefaults.standard.set(Array(approvedDomains), forKey: "ApprovedDomains")
-        UserDefaults.standard.set(Array(blockedDomains), forKey: "BlockedDomains")
+        // Save to Keychain as JSON strings (secure storage)
+        do {
+            let approvedJson = try JSONEncoder().encode(Array(approvedDomains))
+            if let jsonString = String(data: approvedJson, encoding: .utf8) {
+                try KeychainService.shared.saveToken(jsonString, forKey: approvedDomainsKey)
+            }
+
+            let blockedJson = try JSONEncoder().encode(Array(blockedDomains))
+            if let jsonString = String(data: blockedJson, encoding: .utf8) {
+                try KeychainService.shared.saveToken(jsonString, forKey: blockedDomainsKey)
+            }
+        } catch {
+            print("⚠️ Failed to save firewall rules to Keychain: \(error)")
+        }
     }
 }
 
