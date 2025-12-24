@@ -53,12 +53,13 @@ Thumbs.db
 logs/
 Neutron-Star-master/
 
-# Test files
-test_*.py
-*_test.py
+# Test cache/coverage files (but not actual test files in tests/ directories)
 .pytest_cache/
 .coverage
 htmlcov/
+# Keep standalone test files excluded (not in tests/ folder)
+!/apps/backend/tests/test_*.py
+!/apps/backend/tests/*_test.py
 
 # Backup files
 *.bak

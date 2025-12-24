@@ -414,6 +414,11 @@ class AuthService:
             # AUTH-P3: No more Founder bypass - all users go through session checks
             # This ensures Founder tokens can be revoked and idle timeout applies
 
+            # Validate required claims are present
+            if 'user_id' not in payload:
+                logger.warning("Token missing required claim: user_id")
+                return None
+
             # Check if session exists and is valid
             with sqlite3.connect(str(self.db_path)) as conn:
                 cursor = conn.cursor()
