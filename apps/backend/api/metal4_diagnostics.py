@@ -8,7 +8,7 @@ Real-time GPU metrics, bottleneck detection, and performance monitoring
 
 import time
 import logging
-from typing import Dict, Any, Optional, List
+from typing import Any
 from dataclasses import dataclass, asdict
 from datetime import datetime
 
@@ -192,7 +192,7 @@ class Metal4Diagnostics:
             overlapped_operations=overlapped_ops
         )
 
-    def get_realtime_stats(self) -> Dict[str, Any]:
+    def get_realtime_stats(self) -> dict[str, Any]:
         """
         Get real-time statistics for API endpoint
 
@@ -277,7 +277,7 @@ class Metal4Diagnostics:
             'operations': self.operation_counts.copy()
         }
 
-    def detect_bottlenecks(self) -> List[str]:
+    def detect_bottlenecks(self) -> list[str]:
         """
         Detect performance bottlenecks
 
@@ -315,10 +315,10 @@ class Metal4Diagnostics:
 
 
 # Global instance
-_diagnostics: Optional[Metal4Diagnostics] = None
+_diagnostics: Metal4Diagnostics | None = None
 
 
-def get_diagnostics() -> Optional[Any]:
+def get_diagnostics() -> Any | None:
     """Get singleton diagnostics instance"""
     global _diagnostics
 

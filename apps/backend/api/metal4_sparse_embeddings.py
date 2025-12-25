@@ -25,7 +25,7 @@ import os
 import logging
 import time
 import mmap
-from typing import List, Optional, Dict, Any, Tuple
+from typing import Any
 import numpy as np
 from pathlib import Path
 
@@ -52,7 +52,7 @@ class Metal4SparseEmbeddings:
         self,
         embed_dim: int = 384,
         max_vectors: int = 100_000_000,  # 100M vectors
-        backing_file: Optional[str] = None,
+        backing_file: str | None = None,
         gpu_cache_size_mb: int = 2048  # 2GB GPU cache
     ):
         """
@@ -268,7 +268,7 @@ class Metal4SparseEmbeddings:
         if vector_id >= self.stats['total_vectors']:
             self.stats['total_vectors'] = vector_id + 1
 
-    def add_embeddings_batch(self, vector_ids: List[int], embeddings: np.ndarray) -> None:
+    def add_embeddings_batch(self, vector_ids: list[int], embeddings: np.ndarray) -> None:
         """
         Add multiple embeddings efficiently
 
@@ -287,7 +287,7 @@ class Metal4SparseEmbeddings:
 
         logger.info(f"Added {len(vector_ids)} embeddings to backing store")
 
-    def get_embedding(self, vector_id: int) -> Optional[np.ndarray]:
+    def get_embedding(self, vector_id: int) -> np.ndarray | None:
         """
         Get an embedding by ID (with GPU caching)
 
@@ -320,7 +320,7 @@ class Metal4SparseEmbeddings:
 
         return embedding
 
-    def get_embeddings_batch(self, vector_ids: List[int]) -> np.ndarray:
+    def get_embeddings_batch(self, vector_ids: list[int]) -> np.ndarray:
         """
         Get multiple embeddings efficiently
 
@@ -429,7 +429,7 @@ class Metal4SparseEmbeddings:
 
         return f"{used_gb:.2f} GB / {total_gb:.2f} GB (GPU cache: {cache_gb:.2f} GB)"
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get storage statistics"""
         stats = self.stats.copy()
 
@@ -471,13 +471,13 @@ class Metal4SparseEmbeddings:
 
 # ===== Singleton Instance =====
 
-_sparse_embeddings: Optional[Metal4SparseEmbeddings] = None
+_sparse_embeddings: Metal4SparseEmbeddings | None = None
 
 
 def get_sparse_embeddings(
     embed_dim: int = 384,
     max_vectors: int = 100_000_000,
-    backing_file: Optional[str] = None
+    backing_file: str | None = None
 ) -> Metal4SparseEmbeddings:
     """
     Get singleton sparse embeddings instance
@@ -500,7 +500,7 @@ def get_sparse_embeddings(
     return _sparse_embeddings
 
 
-def validate_sparse_embeddings() -> Dict[str, Any]:
+def validate_sparse_embeddings() -> dict[str, Any]:
     """Validate sparse embeddings setup"""
     try:
         # Create test instance

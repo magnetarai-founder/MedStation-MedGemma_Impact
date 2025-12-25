@@ -5,7 +5,7 @@ Provides Metal 4 capabilities, statistics, validation, and optimization settings
 """
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
@@ -23,7 +23,7 @@ def set_metal4_engine(engine) -> None:
 
 
 @router.get("/capabilities")
-async def get_metal_capabilities() -> Dict[str, Any]:
+async def get_metal_capabilities() -> dict[str, Any]:
     """
     Get Metal 4 capabilities and system information
 
@@ -40,7 +40,7 @@ async def get_metal_capabilities() -> Dict[str, Any]:
 
 
 @router.get("/stats")
-async def get_metal_stats() -> Dict[str, Any]:
+async def get_metal_stats() -> dict[str, Any]:
     """
     Get real-time Metal 4 statistics and performance metrics
 
@@ -57,7 +57,7 @@ async def get_metal_stats() -> Dict[str, Any]:
 
 
 @router.get("/validate")
-async def validate_metal_setup() -> Dict[str, Any]:
+async def validate_metal_setup() -> dict[str, Any]:
     """
     Validate Metal 4 setup and get recommendations
 
@@ -91,7 +91,7 @@ async def validate_metal_setup() -> Dict[str, Any]:
 
 
 @router.get("/optimize/{operation_type}")
-async def get_optimization_settings(operation_type: str) -> Dict[str, Any]:
+async def get_optimization_settings(operation_type: str) -> dict[str, Any]:
     """
     Get optimization settings for a specific operation type
 

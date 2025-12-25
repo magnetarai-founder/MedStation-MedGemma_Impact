@@ -3,19 +3,221 @@
 Mesh Relay Routing for ElohimOS
 Multi-hop message routing when peers can't connect directly
 Perfect for missionaries spread across buildings/areas
+
+SECURITY (Dec 2025):
+- Handshakes now require Ed25519 signatures proving peer identity
+- Replay protection via timestamp validation (5 minute window)
+- Prevents MITM impersonation attacks on mesh network
 """
 
 import asyncio
 import json
 import logging
+import base64
 from typing import Dict, List, Optional, Set, Tuple, Any
-from dataclasses import dataclass, asdict
-from datetime import datetime, UTC
+from dataclasses import dataclass, asdict, field
+from datetime import datetime, UTC, timedelta
 from collections import defaultdict, deque
 import heapq
 import time
 
+# Cryptography imports for signed handshakes
+try:
+    import nacl.signing
+    import nacl.exceptions
+    NACL_AVAILABLE = True
+except ImportError:
+    NACL_AVAILABLE = False
+
+# Try to import websockets for actual connections
+try:
+    import websockets
+    from websockets.client import WebSocketClientProtocol
+    WEBSOCKETS_AVAILABLE = True
+except ImportError:
+    WEBSOCKETS_AVAILABLE = False
+    WebSocketClientProtocol = None
+
 logger = logging.getLogger(__name__)
+
+# Security constants
+HANDSHAKE_TIMESTAMP_TOLERANCE_SECONDS = 300  # 5 minutes
+HANDSHAKE_NONCE_CACHE_MAX_SIZE = 5000  # Maximum nonces to track
+
+# Nonce tracking for replay protection
+_handshake_nonces: set = set()
+
+
+def _check_handshake_nonce(nonce: str) -> bool:
+    """Check if handshake nonce has been used before."""
+    global _handshake_nonces
+
+    if not nonce:
+        return True  # Empty nonce allowed for backwards compatibility
+
+    if nonce in _handshake_nonces:
+        return False
+
+    _handshake_nonces.add(nonce)
+
+    # Limit cache size
+    if len(_handshake_nonces) > HANDSHAKE_NONCE_CACHE_MAX_SIZE:
+        nonces_list = list(_handshake_nonces)
+        _handshake_nonces = set(nonces_list[HANDSHAKE_NONCE_CACHE_MAX_SIZE // 2:])
+
+    return True
+
+
+@dataclass
+class SignedHandshake:
+    """
+    Cryptographically signed handshake for mesh peer authentication.
+
+    Prevents MITM impersonation attacks by requiring proof of private key ownership.
+
+    Replay Protection:
+    - timestamp: Must be within 5 minutes (prevents old signature reuse)
+    - nonce: Random value (prevents replay within timestamp window)
+    """
+    peer_id: str
+    public_key: str  # Base64-encoded Ed25519 public key
+    display_name: str
+    capabilities: List[str]
+    timestamp: str  # ISO 8601 for replay protection
+    nonce: str = ""  # Random value for replay protection
+    signature: str = ""  # Base64-encoded Ed25519 signature
+
+    def get_canonical_payload(self) -> str:
+        """
+        Get canonical payload for signing/verification.
+        Format: nonce|timestamp|public_key|peer_id|display_name|capabilities
+        """
+        caps_str = ",".join(sorted(self.capabilities))
+        return f"{self.nonce}|{self.timestamp}|{self.public_key}|{self.peer_id}|{self.display_name}|{caps_str}"
+
+    @classmethod
+    def create(cls, signing_key: "nacl.signing.SigningKey", display_name: str,
+               capabilities: List[str]) -> "SignedHandshake":
+        """Create a signed handshake with the given signing key."""
+        if not NACL_AVAILABLE:
+            raise RuntimeError("nacl library required for signed handshakes")
+
+        import secrets
+
+        # Get public key
+        public_key_bytes = bytes(signing_key.verify_key)
+        public_key_b64 = base64.b64encode(public_key_bytes).decode('utf-8')
+
+        # Generate peer_id from public key (cryptographic binding)
+        import hashlib
+        peer_id = hashlib.sha256(public_key_bytes).hexdigest()[:16]
+
+        # Timestamp for replay protection
+        timestamp = datetime.now(UTC).isoformat()
+
+        # Generate random nonce for additional replay protection
+        nonce = secrets.token_hex(16)
+
+        # Create handshake (without signature yet)
+        handshake = cls(
+            peer_id=peer_id,
+            public_key=public_key_b64,
+            display_name=display_name,
+            capabilities=capabilities,
+            timestamp=timestamp,
+            nonce=nonce,
+            signature=""  # Will be set below
+        )
+
+        # Sign the canonical payload
+        payload = handshake.get_canonical_payload()
+        signature = signing_key.sign(payload.encode('utf-8'))
+        handshake.signature = base64.b64encode(signature.signature).decode('utf-8')
+
+        return handshake
+
+
+def verify_handshake_signature(handshake_data: dict) -> Optional[SignedHandshake]:
+    """
+    Verify an incoming handshake signature.
+
+    Returns SignedHandshake if valid, None if invalid or verification fails.
+    Logs warnings for security-relevant failures.
+    """
+    if not NACL_AVAILABLE:
+        logger.warning("⚠ nacl not available - cannot verify handshake signatures")
+        return None
+
+    try:
+        # Parse handshake
+        handshake = SignedHandshake(
+            peer_id=handshake_data.get('peer_id', ''),
+            public_key=handshake_data.get('public_key', ''),
+            display_name=handshake_data.get('display_name', ''),
+            capabilities=handshake_data.get('capabilities', []),
+            timestamp=handshake_data.get('timestamp', ''),
+            nonce=handshake_data.get('nonce', ''),
+            signature=handshake_data.get('signature', '')
+        )
+
+        # Validate required fields
+        if not handshake.public_key or not handshake.signature or not handshake.timestamp:
+            logger.warning(f"⚠ Handshake missing required fields from peer {handshake.peer_id[:8]}...")
+            return None
+
+        # Decode public key
+        public_key_bytes = base64.b64decode(handshake.public_key)
+
+        if len(public_key_bytes) != 32:
+            logger.warning(f"⚠ Invalid public key length from peer {handshake.peer_id[:8]}...")
+            return None
+
+        # Verify peer_id matches public key (cryptographic binding)
+        import hashlib
+        expected_peer_id = hashlib.sha256(public_key_bytes).hexdigest()[:16]
+        if handshake.peer_id != expected_peer_id:
+            logger.warning(f"⚠ Peer ID mismatch: claimed {handshake.peer_id[:8]}, expected {expected_peer_id[:8]}")
+            return None
+
+        # Validate timestamp (replay protection)
+        try:
+            handshake_time = datetime.fromisoformat(handshake.timestamp.replace('Z', '+00:00'))
+        except ValueError:
+            logger.warning(f"⚠ Invalid timestamp format from peer {handshake.peer_id[:8]}...")
+            return None
+
+        now = datetime.now(UTC)
+        time_diff = abs((now - handshake_time).total_seconds())
+
+        if time_diff > HANDSHAKE_TIMESTAMP_TOLERANCE_SECONDS:
+            logger.warning(f"⚠ Handshake timestamp expired from peer {handshake.peer_id[:8]}... ({time_diff:.0f}s old)")
+            return None
+
+        # Check nonce for replay protection (prevents replay within timestamp window)
+        if handshake.nonce and not _check_handshake_nonce(handshake.nonce):
+            logger.warning(f"⚠ Replay attack: nonce already used from peer {handshake.peer_id[:8]}...")
+            return None
+
+        # Verify signature
+        signature_bytes = base64.b64decode(handshake.signature)
+        payload = handshake.get_canonical_payload()
+        payload_bytes = payload.encode('utf-8')
+
+        verify_key = nacl.signing.VerifyKey(public_key_bytes)
+        verify_key.verify(payload_bytes, signature_bytes)
+
+        logger.info(f"✓ Handshake verified from peer {handshake.peer_id[:8]}... ({handshake.display_name})")
+        return handshake
+
+    except (nacl.exceptions.BadSignatureError, nacl.exceptions.ValueError) as e:
+        logger.warning(f"⚠ Invalid handshake signature: {e}")
+        return None
+    except base64.binascii.Error:
+        logger.warning("⚠ Invalid base64 encoding in handshake")
+        return None
+    except Exception as e:
+        logger.error(f"⚠ Handshake verification error: {e}")
+        return None
 
 
 @dataclass
@@ -43,28 +245,77 @@ class MeshMessage:
 class MeshConnection:
     """Represents a connection to a peer"""
     peer_id: str
-    connection: any  # WebSocket, TCP socket, etc.
+    connection: any  # WebSocket connection
     created_at: float
     last_used: float
+    ip_address: str = ""
+    port: int = 0
     message_count: int = 0
     is_healthy: bool = True
+    _closed: bool = False
 
     async def send(self, data: dict) -> None:
-        """Send data through connection"""
-        # TODO: Implement actual send logic based on connection type
-        logger.debug(f"Sending data to {self.peer_id}: {data}")
-        self.last_used = time.time()
-        self.message_count += 1
+        """Send data through WebSocket connection"""
+        if self._closed:
+            raise ConnectionError(f"Connection to {self.peer_id} is closed")
+
+        if self.connection is None:
+            # No actual connection - log only mode
+            logger.debug(f"[Mock] Sending data to {self.peer_id}: {data}")
+            self.last_used = time.time()
+            self.message_count += 1
+            return
+
+        try:
+            # Serialize and send through WebSocket
+            message = json.dumps(data)
+            await self.connection.send(message)
+            self.last_used = time.time()
+            self.message_count += 1
+            logger.debug(f"📤 Sent {len(message)} bytes to {self.peer_id}")
+        except Exception as e:
+            logger.error(f"Failed to send to {self.peer_id}: {e}")
+            self.is_healthy = False
+            raise
 
     async def ping(self) -> bool:
-        """Ping to check connection health"""
-        # TODO: Implement actual ping logic
-        return self.is_healthy
+        """Ping to check connection health using WebSocket ping/pong"""
+        if self._closed:
+            return False
+
+        if self.connection is None:
+            # No actual connection - return current health state
+            return self.is_healthy
+
+        try:
+            # WebSocket ping with timeout
+            pong_waiter = await self.connection.ping()
+            await asyncio.wait_for(pong_waiter, timeout=5.0)
+            self.is_healthy = True
+            return True
+        except asyncio.TimeoutError:
+            logger.warning(f"Ping timeout to {self.peer_id}")
+            self.is_healthy = False
+            return False
+        except Exception as e:
+            logger.warning(f"Ping failed to {self.peer_id}: {e}")
+            self.is_healthy = False
+            return False
 
     async def close(self) -> None:
-        """Close the connection"""
-        # TODO: Implement actual close logic
-        logger.debug(f"Closing connection to {self.peer_id}")
+        """Close the WebSocket connection"""
+        if self._closed:
+            return
+
+        self._closed = True
+        self.is_healthy = False
+
+        if self.connection is not None:
+            try:
+                await self.connection.close()
+                logger.debug(f"🔌 Closed connection to {self.peer_id}")
+            except Exception as e:
+                logger.debug(f"Error closing connection to {self.peer_id}: {e}")
 
 
 class MeshConnectionPool:
@@ -76,11 +327,14 @@ class MeshConnectionPool:
     - Maximum pool size limits
     - Connection health checks
     - Automatic cleanup of stale connections
+    - Signed handshakes for peer authentication (SECURITY Dec 2025)
     """
 
-    def __init__(self, max_size: int = 50, idle_timeout: int = 300):
+    def __init__(self, max_size: int = 50, idle_timeout: int = 300,
+                 signing_key: Optional["nacl.signing.SigningKey"] = None):
         self.max_size = max_size
         self.idle_timeout = idle_timeout
+        self.signing_key = signing_key  # For signed handshakes
         self._pool: Dict[str, deque] = {}  # peer_id -> connection queue
         self._active: Dict[str, int] = {}  # peer_id -> active count
         self._total_connections = 0
@@ -88,7 +342,7 @@ class MeshConnectionPool:
         self._connections_reused = 0
         self._cleanup_task: Optional[asyncio.Task] = None
 
-        logger.info(f"🔌 Connection pool initialized (max_size={max_size}, idle_timeout={idle_timeout}s)")
+        logger.info(f"🔌 Connection pool initialized (max_size={max_size}, idle_timeout={idle_timeout}s, signed={signing_key is not None})")
 
     async def start(self) -> None:
         """Start background cleanup task"""
@@ -181,21 +435,98 @@ class MeshConnectionPool:
             return False
 
     async def _create_connection(self, peer_id: str) -> MeshConnection:
-        """Create new connection to peer"""
-        # TODO: Implement actual connection logic
-        # This should integrate with offline_mesh_discovery to get peer IP/port
-        # and create WebSocket or TCP connection
+        """Create new WebSocket connection to peer using mesh discovery"""
+        # Get peer info from mesh discovery
+        from api.offline_mesh_discovery import get_mesh_discovery
 
-        # For now, create a placeholder connection
-        conn = MeshConnection(
-            peer_id=peer_id,
-            connection=None,  # TODO: actual connection object
-            created_at=time.time(),
-            last_used=time.time()
-        )
+        discovery = get_mesh_discovery()
+        peer = discovery.get_peer(peer_id)
 
-        logger.debug(f"Created connection to {peer_id}")
-        return conn
+        if not peer:
+            # Peer not found in discovery - create placeholder for route discovery
+            logger.warning(f"Peer {peer_id} not found in discovery - creating placeholder")
+            return MeshConnection(
+                peer_id=peer_id,
+                connection=None,
+                created_at=time.time(),
+                last_used=time.time()
+            )
+
+        # Get peer's WebSocket endpoint
+        ip_address = peer.ip_address
+        port = peer.port
+        ws_url = f"ws://{ip_address}:{port}/mesh"
+
+        if not WEBSOCKETS_AVAILABLE:
+            logger.warning("websockets library not available - using placeholder connection")
+            return MeshConnection(
+                peer_id=peer_id,
+                connection=None,
+                ip_address=ip_address,
+                port=port,
+                created_at=time.time(),
+                last_used=time.time()
+            )
+
+        try:
+            # Create WebSocket connection with timeout
+            ws_connection = await asyncio.wait_for(
+                websockets.connect(
+                    ws_url,
+                    ping_interval=30,
+                    ping_timeout=10,
+                    close_timeout=5
+                ),
+                timeout=10.0
+            )
+
+            # Send handshake (signed if we have a signing key)
+            if self.signing_key and NACL_AVAILABLE:
+                # Create cryptographically signed handshake
+                signed_handshake = SignedHandshake.create(
+                    signing_key=self.signing_key,
+                    display_name=discovery.display_name,
+                    capabilities=discovery.capabilities
+                )
+                handshake = {
+                    'type': 'mesh_handshake',
+                    'peer_id': signed_handshake.peer_id,
+                    'public_key': signed_handshake.public_key,
+                    'display_name': signed_handshake.display_name,
+                    'capabilities': signed_handshake.capabilities,
+                    'timestamp': signed_handshake.timestamp,
+                    'nonce': signed_handshake.nonce,
+                    'signature': signed_handshake.signature
+                }
+                logger.debug(f"🔐 Sending signed handshake to {peer_id}")
+            else:
+                # Fallback to unsigned handshake (legacy compatibility)
+                logger.warning(f"⚠ Sending unsigned handshake to {peer_id} - consider adding signing key")
+                handshake = {
+                    'type': 'mesh_handshake',
+                    'peer_id': discovery.peer_id,
+                    'display_name': discovery.display_name,
+                    'capabilities': discovery.capabilities
+                }
+            await ws_connection.send(json.dumps(handshake))
+
+            logger.info(f"🔗 Connected to peer {peer_id} at {ws_url}")
+
+            return MeshConnection(
+                peer_id=peer_id,
+                connection=ws_connection,
+                ip_address=ip_address,
+                port=port,
+                created_at=time.time(),
+                last_used=time.time()
+            )
+
+        except asyncio.TimeoutError:
+            logger.error(f"Connection timeout to peer {peer_id} at {ws_url}")
+            raise ConnectionError(f"Timeout connecting to {peer_id}")
+        except Exception as e:
+            logger.error(f"Failed to connect to peer {peer_id} at {ws_url}: {e}")
+            raise ConnectionError(f"Failed to connect to {peer_id}: {e}")
 
     async def _cleanup_loop(self) -> None:
         """Background task to cleanup stale connections"""
@@ -271,17 +602,24 @@ class MeshRelay:
     - Load balancing across multiple paths
     - Dead route detection and failover
     - Message deduplication
+    - Signed handshakes for peer authentication (SECURITY Dec 2025)
     """
 
     MAX_TTL = 10  # Maximum hops before message expires
     ROUTE_CACHE_SIZE = 1000
     MESSAGE_CACHE_SIZE = 5000  # For deduplication
 
-    def __init__(self, local_peer_id: str, connection_pool_size: int = 50):
+    def __init__(self, local_peer_id: str, connection_pool_size: int = 50,
+                 signing_key: Optional["nacl.signing.SigningKey"] = None):
         self.local_peer_id = local_peer_id
+        self.signing_key = signing_key
 
-        # Connection pool for efficient peer communication
-        self.connection_pool = MeshConnectionPool(max_size=connection_pool_size, idle_timeout=300)
+        # Connection pool for efficient peer communication (with signing key for handshakes)
+        self.connection_pool = MeshConnectionPool(
+            max_size=connection_pool_size,
+            idle_timeout=300,
+            signing_key=signing_key
+        )
 
         # Network topology
         self.direct_peers: Set[str] = set()  # Peers we can reach directly
@@ -297,7 +635,77 @@ class MeshRelay:
         self.routes_discovered = 0
         self.dead_routes_detected = 0
 
+        # Background tasks
+        self._advertisement_task: Optional[asyncio.Task] = None
+        self._is_running = False
+
         logger.info(f"🔀 Mesh relay initialized for peer {local_peer_id}")
+
+    async def start(self) -> None:
+        """Start mesh relay with background tasks"""
+        if self._is_running:
+            return
+
+        self._is_running = True
+
+        # Start connection pool
+        await self.connection_pool.start()
+
+        # Start periodic route advertisement
+        self._advertisement_task = asyncio.create_task(self._advertisement_loop())
+
+        logger.info("🔀 Mesh relay started")
+
+    async def stop(self) -> None:
+        """Stop mesh relay and cleanup"""
+        if not self._is_running:
+            return
+
+        self._is_running = False
+
+        # Stop advertisement task
+        if self._advertisement_task:
+            self._advertisement_task.cancel()
+            try:
+                await self._advertisement_task
+            except asyncio.CancelledError:
+                pass
+            self._advertisement_task = None
+
+        # Stop connection pool
+        await self.connection_pool.stop()
+
+        logger.info("🔀 Mesh relay stopped")
+
+    async def _advertisement_loop(self) -> None:
+        """Periodically broadcast route advertisements"""
+        while self._is_running:
+            try:
+                await asyncio.sleep(30)  # Advertise every 30 seconds
+
+                if not self.direct_peers:
+                    continue
+
+                # Generate and broadcast route advertisement
+                advertisement = self.generate_route_advertisement()
+                await self._broadcast_advertisement(advertisement)
+
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"Error in advertisement loop: {e}")
+
+    async def _broadcast_advertisement(self, advertisement: dict) -> None:
+        """Broadcast route advertisement to all direct peers"""
+        for peer_id in list(self.direct_peers):
+            try:
+                conn = await self.connection_pool.acquire(peer_id)
+                try:
+                    await conn.send(advertisement)
+                finally:
+                    await self.connection_pool.release(peer_id, conn)
+            except Exception as e:
+                logger.debug(f"Failed to send advertisement to {peer_id}: {e}")
 
     def add_direct_peer(self, peer_id: str, latency_ms: float = 10.0) -> None:
         """Register a directly connected peer"""
@@ -496,7 +904,7 @@ class MeshRelay:
         return scored_hops[0][1]
 
     async def _discover_route(self, dest_peer_id: str) -> None:
-        """Discover route to destination peer"""
+        """Discover route to destination peer by querying all direct peers"""
         logger.info(f"🔍 Discovering route to {dest_peer_id}...")
 
         # Send route request to all direct peers
@@ -506,10 +914,17 @@ class MeshRelay:
             'source_peer_id': self.local_peer_id
         }
 
-        # Broadcast to direct peers
-        for peer_id in self.direct_peers:
-            # TODO: Actually send route request
-            logger.debug(f"Sending route request to {peer_id}")
+        # Broadcast to direct peers via connection pool
+        for peer_id in list(self.direct_peers):
+            try:
+                conn = await self.connection_pool.acquire(peer_id)
+                try:
+                    await conn.send(route_request)
+                    logger.debug(f"📤 Sent route request to {peer_id}")
+                finally:
+                    await self.connection_pool.release(peer_id, conn)
+            except Exception as e:
+                logger.warning(f"Failed to send route request to {peer_id}: {e}")
 
     def update_route_from_advertisement(self, route_ad: dict) -> None:
         """

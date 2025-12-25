@@ -18,7 +18,7 @@ Success Criteria (from Phase 1 roadmap):
 
 import time
 import logging
-from typing import Dict, List, Any, Tuple
+from typing import Any
 import numpy as np
 from dataclasses import dataclass
 
@@ -53,9 +53,9 @@ class Metal4Benchmarks:
 
     def __init__(self):
         """Initialize benchmark suite"""
-        self.results: List[BenchmarkResult] = []
+        self.results: list[BenchmarkResult] = []
 
-    def run_all_benchmarks(self) -> Dict[str, Any]:
+    def run_all_benchmarks(self) -> dict[str, Any]:
         """
         Run complete benchmark suite
 
@@ -501,7 +501,7 @@ class Metal4Benchmarks:
             import traceback
             traceback.print_exc()
 
-    def _generate_summary(self) -> Dict[str, Any]:
+    def _generate_summary(self) -> dict[str, Any]:
         """Generate benchmark summary and print results"""
         summary = {
             'total_benchmarks': len(self.results),
@@ -567,7 +567,7 @@ class Metal4Benchmarks:
 
 # ===== Standalone Execution =====
 
-def run_benchmarks() -> Dict[str, Any]:
+def run_benchmarks() -> dict[str, Any]:
     """Run all benchmarks and return results"""
     benchmarks = Metal4Benchmarks()
     return benchmarks.run_all_benchmarks()

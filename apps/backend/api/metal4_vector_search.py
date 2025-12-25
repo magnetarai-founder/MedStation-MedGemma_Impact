@@ -22,7 +22,7 @@ Architecture:
 import os
 import logging
 import time
-from typing import List, Tuple, Optional, Dict, Any
+from typing import Any
 import numpy as np
 from pathlib import Path
 
@@ -176,7 +176,7 @@ class Metal4VectorSearch:
             import traceback
             traceback.print_exc()
 
-    def _create_pipeline(self, library, function_name: str) -> Optional[Any]:
+    def _create_pipeline(self, library, function_name: str) -> Any | None:
         """Create compute pipeline from shader function"""
         try:
             function = library.newFunctionWithName_(function_name)
@@ -256,7 +256,7 @@ class Metal4VectorSearch:
         query: np.ndarray,
         k: int = 10,
         metric: str = "cosine"
-    ) -> Tuple[List[int], List[float]]:
+    ) -> tuple[list[int], list[float]]:
         """
         Search for top-K most similar vectors
 
@@ -316,7 +316,7 @@ class Metal4VectorSearch:
         query: np.ndarray,
         k: int,
         metric: str
-    ) -> Tuple[List[int], List[float]]:
+    ) -> tuple[list[int], list[float]]:
         """Execute search on Metal GPU"""
         import Metal
         import ctypes
@@ -421,7 +421,7 @@ class Metal4VectorSearch:
         query: np.ndarray,
         k: int,
         metric: str
-    ) -> Tuple[List[int], List[float]]:
+    ) -> tuple[list[int], list[float]]:
         """CPU fallback for vector search"""
         if not hasattr(self, 'database_embeddings'):
             logger.error("No CPU database loaded")
@@ -460,7 +460,7 @@ class Metal4VectorSearch:
         queries: np.ndarray,
         k: int = 10,
         metric: str = "cosine"
-    ) -> Tuple[List[List[int]], List[List[float]]]:
+    ) -> tuple[list[list[int]], list[list[float]]]:
         """
         Search multiple queries in parallel
 
@@ -494,7 +494,7 @@ class Metal4VectorSearch:
         """Check if Metal GPU is being used"""
         return self._use_metal
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get performance statistics"""
         stats = self.stats.copy()
 
@@ -520,7 +520,7 @@ class Metal4VectorSearch:
 
 # ===== Singleton Instance =====
 
-_metal4_vector_search: Optional[Metal4VectorSearch] = None
+_metal4_vector_search: Metal4VectorSearch | None = None
 
 
 def get_metal4_vector_search() -> Metal4VectorSearch:
@@ -531,7 +531,7 @@ def get_metal4_vector_search() -> Metal4VectorSearch:
     return _metal4_vector_search
 
 
-def validate_metal4_vector_search() -> Dict[str, Any]:
+def validate_metal4_vector_search() -> dict[str, Any]:
     """Validate Metal 4 vector search setup"""
     try:
         search = get_metal4_vector_search()

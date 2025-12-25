@@ -14,7 +14,7 @@ Target: Demonstrate 3-5× performance improvement
 import time
 import logging
 import numpy as np
-from typing import Dict, Any, List
+from typing import Any
 import statistics
 
 logger = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ class MetalBenchmarks:
     def __init__(self):
         self.results = {}
     
-    def benchmark_embeddings(self, num_texts: int = 100) -> Dict[str, Any]:
+    def benchmark_embeddings(self, num_texts: int = 100) -> dict[str, Any]:
         """
         Benchmark embedding performance: CPU vs Metal GPU
         
@@ -108,7 +108,7 @@ class MetalBenchmarks:
         self.results['embeddings'] = results
         return results
     
-    def benchmark_sql_aggregations(self, num_rows: int = 1000000) -> Dict[str, Any]:
+    def benchmark_sql_aggregations(self, num_rows: int = 1000000) -> dict[str, Any]:
         """
         Benchmark SQL aggregation performance: CPU vs Metal GPU
         
@@ -169,7 +169,7 @@ class MetalBenchmarks:
         self.results['sql_aggregations'] = results
         return results
     
-    def benchmark_metal4_tick_flow(self, num_iterations: int = 10) -> Dict[str, Any]:
+    def benchmark_metal4_tick_flow(self, num_iterations: int = 10) -> dict[str, Any]:
         """
         Benchmark Metal 4 tick flow overhead
         
@@ -220,7 +220,7 @@ class MetalBenchmarks:
         self.results['tick_flow'] = results
         return results
     
-    def run_all_benchmarks(self) -> Dict[str, Any]:
+    def run_all_benchmarks(self) -> dict[str, Any]:
         """
         Run complete benchmark suite
         

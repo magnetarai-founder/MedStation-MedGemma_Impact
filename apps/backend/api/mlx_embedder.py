@@ -9,7 +9,7 @@ import os
 import json
 import logging
 from pathlib import Path
-from typing import List, Optional, Dict, Any
+from typing import Any
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -68,7 +68,7 @@ class MLXEmbedder:
             logger.error(f"Failed to initialize MLX embedder: {e}")
             return False
 
-    def encode(self, texts: List[str], batch_size: int = None) -> np.ndarray:
+    def encode(self, texts: list[str], batch_size: int | None = None) -> np.ndarray:
         """
         Encode texts to embeddings using MLX with Metal 4 optimizations
         Automatically uses Metal and ANE when available
@@ -124,7 +124,7 @@ class MLXEmbedder:
             logger.error(f"Encoding failed: {e}")
             return np.array([])
 
-    def _mlx_encode(self, texts: List[str]) -> np.ndarray:
+    def _mlx_encode(self, texts: list[str]) -> np.ndarray:
         """
         Pure MLX encoding using Metal acceleration
         This implementation leverages Metal Performance Shaders
@@ -177,7 +177,7 @@ class MLXEmbedder:
         input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
         return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
 
-    def embed_single(self, text: str) -> List[float]:
+    def embed_single(self, text: str) -> list[float]:
         """Embed a single text"""
         embeddings = self.encode([text])
         if embeddings.size > 0:
@@ -190,10 +190,10 @@ class MLXEmbedder:
 
 
 # Singleton instance
-_mlx_embedder: Optional[MLXEmbedder] = None
+_mlx_embedder: MLXEmbedder | None = None
 
 
-def get_mlx_embedder(model_name: Optional[str] = None) -> MLXEmbedder:
+def get_mlx_embedder(model_name: str | None = None) -> MLXEmbedder:
     """Get or create the MLX embedder instance"""
     global _mlx_embedder
     if _mlx_embedder is None:
@@ -201,7 +201,7 @@ def get_mlx_embedder(model_name: Optional[str] = None) -> MLXEmbedder:
     return _mlx_embedder
 
 
-def validate_mlx_setup() -> Dict[str, Any]:
+def validate_mlx_setup() -> dict[str, Any]:
     """Validate MLX setup and return status"""
     status = {
         'mlx_available': False,

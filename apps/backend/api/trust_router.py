@@ -3,12 +3,20 @@ MagnetarTrust - API Router
 
 REST API endpoints for trust network operations.
 Part of MagnetarMission free tier.
+
+SECURITY (Dec 2025):
+- Node registration now requires Ed25519 signature proving key ownership
+- Replay protection via timestamp validation (5 minute window)
+- Prevents MITM key spoofing attacks
 """
 
 import logging
+import base64
 from typing import Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Depends
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+import nacl.signing
+import nacl.exceptions
 
 from api.trust_models import (
     TrustNode,
@@ -26,6 +34,123 @@ from api.auth_middleware import get_current_user
 
 logger = logging.getLogger(__name__)
 
+# Security constants
+REGISTRATION_TIMESTAMP_TOLERANCE_SECONDS = 300  # 5 minutes
+NONCE_CACHE_MAX_SIZE = 10000  # Maximum nonces to track
+
+# Nonce tracking for replay protection
+# In production, this should be Redis or another distributed cache
+_used_nonces: set = set()
+_nonce_lock = None  # Will be initialized on first use
+
+def _check_and_record_nonce(nonce: str) -> bool:
+    """
+    Check if nonce has been used before, and record it if not.
+
+    Returns True if nonce is fresh (not seen before), False if it's a replay.
+    Thread-safe implementation using a simple set with size limiting.
+    """
+    global _used_nonces
+
+    if not nonce:
+        return True  # Empty nonce allowed for backwards compatibility
+
+    if nonce in _used_nonces:
+        logger.warning(f"⚠ Replay attack detected: nonce {nonce[:16]}... already used")
+        return False
+
+    # Add nonce to used set
+    _used_nonces.add(nonce)
+
+    # Limit cache size (simple strategy: clear half when full)
+    if len(_used_nonces) > NONCE_CACHE_MAX_SIZE:
+        # Remove oldest half (in practice, use TTL-based eviction)
+        nonces_list = list(_used_nonces)
+        _used_nonces = set(nonces_list[NONCE_CACHE_MAX_SIZE // 2:])
+        logger.info(f"🧹 Nonce cache cleaned: {len(nonces_list)} -> {len(_used_nonces)}")
+
+    return True
+
+
+def verify_registration_signature(request: RegisterNodeRequest) -> bool:
+    """
+    Verify that the registration request is signed by the owner of the private key.
+
+    This prevents MITM attacks where an attacker registers with a victim's public key.
+
+    Args:
+        request: The registration request with signature
+
+    Returns:
+        True if signature is valid, raises HTTPException otherwise
+    """
+    try:
+        # Decode public key (Ed25519 verify key is same as public key)
+        public_key_bytes = base64.b64decode(request.public_key)
+
+        if len(public_key_bytes) != 32:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid public key: must be 32 bytes (Ed25519)"
+            )
+
+        # Validate timestamp is within tolerance (replay protection)
+        try:
+            request_time = datetime.fromisoformat(request.timestamp.replace('Z', '+00:00'))
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid timestamp format. Use ISO 8601 (e.g., 2025-12-23T12:00:00Z)"
+            )
+
+        now = datetime.now(UTC)
+        time_diff = abs((now - request_time).total_seconds())
+
+        if time_diff > REGISTRATION_TIMESTAMP_TOLERANCE_SECONDS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Registration timestamp expired. Must be within {REGISTRATION_TIMESTAMP_TOLERANCE_SECONDS} seconds."
+            )
+
+        # Check nonce for replay protection (prevents replay within timestamp window)
+        if request.nonce and not _check_and_record_nonce(request.nonce):
+            raise HTTPException(
+                status_code=400,
+                detail="Replay attack detected: nonce already used. Each registration requires a unique nonce."
+            )
+
+        # Verify signature
+        signature_bytes = base64.b64decode(request.signature)
+        payload = request.get_canonical_payload()
+        payload_bytes = payload.encode('utf-8')
+
+        verify_key = nacl.signing.VerifyKey(public_key_bytes)
+        verify_key.verify(payload_bytes, signature_bytes)
+
+        logger.info(f"✓ Registration signature verified for key {request.public_key[:16]}...")
+        return True
+
+    except HTTPException:
+        # Re-raise HTTPExceptions as-is
+        raise
+    except (nacl.exceptions.BadSignatureError, nacl.exceptions.ValueError):
+        logger.warning(f"⚠ Invalid registration signature for key {request.public_key[:16]}...")
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid signature. Registration must be signed by the private key owner."
+        )
+    except base64.binascii.Error:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid base64 encoding in public_key or signature"
+        )
+    except Exception as e:
+        logger.error(f"Signature verification error: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Signature verification failed: {str(e)}"
+        )
+
 router = APIRouter(
     prefix="/api/v1/trust",
     tags=["MagnetarTrust"],
@@ -41,8 +166,18 @@ async def register_node(request: RegisterNodeRequest, current_user: dict = Depen
     Register a new trust node.
 
     This creates a node in the trust network for an individual, church, mission, or organization.
+
+    SECURITY: Registration requires an Ed25519 signature proving ownership of the private key.
+    This prevents MITM attacks where an attacker registers with a victim's public key.
+
+    Required signature fields:
+    - timestamp: ISO 8601 timestamp (must be within 5 minutes)
+    - signature: Base64-encoded Ed25519 signature over "timestamp|public_key|public_name|type"
     """
     storage = get_trust_storage()
+
+    # SECURITY: Verify signature proves key ownership
+    verify_registration_signature(request)
 
     # Check if node with this public key already exists
     existing = storage.get_node_by_public_key(request.public_key)

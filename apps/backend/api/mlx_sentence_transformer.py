@@ -7,7 +7,7 @@ Loads and runs sentence-transformers models using MLX
 import json
 import logging
 from pathlib import Path
-from typing import List, Optional, Dict, Any, Tuple
+from typing import Any
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -48,7 +48,7 @@ class MLXSentenceTransformer:
             # Silently fail - MLX is optional
             return False
     
-    def encode(self, texts: List[str], batch_size: int = 32) -> np.ndarray:
+    def encode(self, texts: list[str], batch_size: int = 32) -> np.ndarray:
         """Encode texts to embeddings"""
         if not self._initialized and not self.initialize():
             return np.array([])
@@ -96,7 +96,7 @@ class MLXSentenceTransformer:
             logger.error(f"Encoding failed: {e}")
             return np.array([])
     
-    def _mlx_only_encode(self, texts: List[str]) -> np.ndarray:
+    def _mlx_only_encode(self, texts: list[str]) -> np.ndarray:
         """Pure MLX encoding (simplified)"""
         try:
             import mlx.core as mx

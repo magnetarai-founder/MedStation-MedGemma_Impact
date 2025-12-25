@@ -23,7 +23,8 @@ Performance Target:
 
 import os
 import logging
-from typing import Optional, Dict, Any, List, Callable
+from collections.abc import Callable
+from typing import Any
 from dataclasses import dataclass
 from enum import Enum
 
@@ -228,7 +229,7 @@ class Metal4Engine:
         }
 
         # Initialization error tracking (for user notification)
-        self.initialization_error: Optional[str] = None
+        self.initialization_error: str | None = None
 
         # Try to initialize if Metal 4 available
         if self.capabilities.version == MetalVersion.METAL_4:
@@ -359,7 +360,7 @@ class Metal4Engine:
 
         return "cpu"
 
-    def get_capabilities_dict(self) -> Dict[str, Any]:
+    def get_capabilities_dict(self) -> dict[str, Any]:
         """Get capabilities as dictionary for API response"""
         return {
             'available': self.capabilities.available,
@@ -380,7 +381,7 @@ class Metal4Engine:
             'initialized': self._initialized
         }
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get engine statistics"""
         return {
             **self.stats,
@@ -426,9 +427,9 @@ class Metal4Engine:
     def process_chat_message(
         self,
         user_message: str,
-        embedder: Optional[Callable[[str], Any]] = None,
-        rag_retriever: Optional[Callable[[Any], Any]] = None
-    ) -> Optional[Dict[str, Any]]:
+        embedder: Callable[[str], Any] | None = None,
+        rag_retriever: Callable[[Any], Any] | None = None
+    ) -> dict[str, Any] | None:
         """
         Full chat pipeline on ML queue with event-based synchronization
 
@@ -529,9 +530,9 @@ class Metal4Engine:
     def _process_chat_cpu_fallback(
         self,
         user_message: str,
-        embedder: Optional[Callable[[str], Any]],
-        rag_retriever: Optional[Callable[[Any], Any]]
-    ) -> Dict[str, Any]:
+        embedder: Callable[[str], Any] | None,
+        rag_retriever: Callable[[Any], Any] | None
+    ) -> dict[str, Any]:
         """CPU fallback when Metal not available"""
         import time
         start_time = time.time()
@@ -551,8 +552,8 @@ class Metal4Engine:
     def process_sql_query(
         self,
         sql: str,
-        embedder: Optional[Callable[[str], Any]] = None
-    ) -> Optional[Dict[str, Any]]:
+        embedder: Callable[[str], Any] | None = None
+    ) -> dict[str, Any] | None:
         """
         DuckDB query + embedding on ML queue
         Runs in parallel with UI and chat!
@@ -633,8 +634,8 @@ class Metal4Engine:
     def _process_sql_cpu_fallback(
         self,
         sql: str,
-        embedder: Optional[Callable[[str], Any]]
-    ) -> Dict[str, Any]:
+        embedder: Callable[[str], Any] | None
+    ) -> dict[str, Any]:
         """CPU fallback for SQL processing"""
         import time
         start_time = time.time()
@@ -661,7 +662,7 @@ class Metal4Engine:
             'fallback': True
         }
 
-    def render_ui_frame(self, rag_ready: bool = False) -> Dict[str, Any]:
+    def render_ui_frame(self, rag_ready: bool = False) -> dict[str, Any]:
         """
         Render UI with last-known data
         NEVER waits for ML to complete!
@@ -726,7 +727,7 @@ class Metal4Engine:
             logger.error(f"❌ UI render failed: {e}")
             return {'rendered': False, 'error': str(e)}
 
-    def async_memory_operations(self, source_buffer: Any, dest_buffer: Any) -> Optional[Any]:
+    def async_memory_operations(self, source_buffer: Any, dest_buffer: Any) -> Any | None:
         """
         Background transfers - keep off critical path
         Uses Q_blit for async data movement
@@ -774,7 +775,7 @@ class Metal4Engine:
     # END TICK FLOW
     # ========================================================================
 
-    def optimize_for_operation(self, operation_type: str) -> Dict[str, Any]:
+    def optimize_for_operation(self, operation_type: str) -> dict[str, Any]:
         """
         Get optimization settings for specific operation
 
@@ -827,7 +828,7 @@ class Metal4Engine:
 
 # ===== Global Engine Instance =====
 
-_metal4_engine: Optional[Metal4Engine] = None
+_metal4_engine: Metal4Engine | None = None
 
 
 def get_metal4_engine() -> Metal4Engine:
@@ -838,7 +839,7 @@ def get_metal4_engine() -> Metal4Engine:
     return _metal4_engine
 
 
-def validate_metal4_setup() -> Dict[str, Any]:
+def validate_metal4_setup() -> dict[str, Any]:
     """
     Validate Metal 4 setup and return detailed status
 

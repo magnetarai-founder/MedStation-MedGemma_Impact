@@ -92,14 +92,43 @@ class TrustRelationship(BaseModel):
 # ===== Request/Response Models =====
 
 class RegisterNodeRequest(BaseModel):
-    """Request to register a new trust node"""
-    public_key: str
+    """
+    Request to register a new trust node.
+
+    SECURITY: Registration now requires a signature proving ownership of the private key.
+    The signature must be over the canonical payload (nonce + timestamp + public_key + public_name + type).
+    This prevents MITM attacks where an attacker registers with a victim's public key.
+
+    Replay Protection:
+    - timestamp: Must be within 5 minutes (prevents old signature reuse)
+    - nonce: 16-byte random value (prevents replay within timestamp window)
+    """
+    public_key: str  # Base64-encoded Ed25519 public key
     public_name: str
     type: NodeType
     alias: Optional[str] = None
     bio: Optional[str] = None
     location: Optional[str] = None
     display_mode: DisplayMode = DisplayMode.PEACETIME
+
+    # Security fields (required for authenticated registration)
+    timestamp: str = Field(
+        description="ISO 8601 timestamp of registration request (prevents replay attacks)"
+    )
+    nonce: str = Field(
+        default="",
+        description="Random 16-byte hex string for replay protection within timestamp window"
+    )
+    signature: str = Field(
+        description="Base64-encoded Ed25519 signature over canonical payload"
+    )
+
+    def get_canonical_payload(self) -> str:
+        """
+        Get the canonical payload that was signed.
+        Format: nonce|timestamp|public_key|public_name|type
+        """
+        return f"{self.nonce}|{self.timestamp}|{self.public_key}|{self.public_name}|{self.type.value}"
 
 
 class VouchRequest(BaseModel):

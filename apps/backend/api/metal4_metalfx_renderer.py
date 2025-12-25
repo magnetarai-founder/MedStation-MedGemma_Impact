@@ -24,7 +24,7 @@ Requires: macOS Tahoe 26+ with MetalFX support
 
 import logging
 import time
-from typing import Dict, Any, Optional, Tuple
+from typing import Any
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
@@ -152,7 +152,7 @@ class Metal4MetalFXRenderer:
     # Frame Rendering API
     # ========================================================================
 
-    def render_frame(self, frame_data: Optional[Dict[str, Any]] = None) -> FrameMetrics:
+    def render_frame(self, frame_data: dict[str, Any] | None = None) -> FrameMetrics:
         """
         Render a frame with optional interpolation
 
@@ -207,7 +207,7 @@ class Metal4MetalFXRenderer:
         # Interpolate every other frame for 120fps (60 real + 60 interpolated)
         return (self.frame_count % 2) == 1
 
-    def _render_real_frame(self, frame_data: Optional[Dict[str, Any]]) -> FrameMetrics:
+    def _render_real_frame(self, frame_data: dict[str, Any] | None) -> FrameMetrics:
         """
         Render actual frame (not interpolated)
 
@@ -321,7 +321,7 @@ class Metal4MetalFXRenderer:
 
         return self.interpolated_frames / self.frame_count
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """
         Get renderer statistics
 
@@ -396,7 +396,7 @@ class Metal4MetalFXRenderer:
 
 # ===== Singleton Instance =====
 
-_metalfx_renderer: Optional[Metal4MetalFXRenderer] = None
+_metalfx_renderer: Metal4MetalFXRenderer | None = None
 
 
 def get_metalfx_renderer(target_fps: int = 120) -> Metal4MetalFXRenderer:
@@ -415,7 +415,7 @@ def get_metalfx_renderer(target_fps: int = 120) -> Metal4MetalFXRenderer:
     return _metalfx_renderer
 
 
-def validate_metalfx_renderer() -> Dict[str, Any]:
+def validate_metalfx_renderer() -> dict[str, Any]:
     """Validate MetalFX renderer setup"""
     try:
         renderer = get_metalfx_renderer(120)

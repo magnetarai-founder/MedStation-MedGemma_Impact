@@ -21,7 +21,7 @@ Architecture:
 
 import logging
 import time
-from typing import List, Dict, Any, Optional, Tuple, Union
+from typing import Any
 import numpy as np
 from pathlib import Path
 
@@ -165,7 +165,7 @@ class Metal4SQLEngine:
             import traceback
             traceback.print_exc()
 
-    def _create_pipeline(self, library: Any, function_name: str) -> Optional[Any]:
+    def _create_pipeline(self, library: Any, function_name: str) -> Any | None:
         """Create compute pipeline from function"""
         try:
             function = library.newFunctionWithName_(function_name)
@@ -289,7 +289,7 @@ class Metal4SQLEngine:
         """CPU fallback for SUM"""
         return float(np.sum(column))
 
-    def count(self, column: np.ndarray, null_mask: Optional[np.ndarray] = None) -> int:
+    def count(self, column: np.ndarray, null_mask: np.ndarray | None = None) -> int:
         """
         Count non-NULL values
 
@@ -309,7 +309,7 @@ class Metal4SQLEngine:
         # Metal implementation similar to sum
         return int(np.sum(null_mask))
 
-    def avg(self, column: np.ndarray, null_mask: Optional[np.ndarray] = None) -> float:
+    def avg(self, column: np.ndarray, null_mask: np.ndarray | None = None) -> float:
         """
         Compute AVG (average)
 
@@ -469,7 +469,7 @@ class Metal4SQLEngine:
         """Check if Metal GPU is being used"""
         return self._use_metal
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get performance statistics"""
         stats = self.stats.copy()
 
@@ -496,7 +496,7 @@ class Metal4SQLEngine:
 
 # ===== Singleton Instance =====
 
-_sql_engine: Optional[Metal4SQLEngine] = None
+_sql_engine: Metal4SQLEngine | None = None
 
 
 def get_sql_engine() -> Metal4SQLEngine:
@@ -507,7 +507,7 @@ def get_sql_engine() -> Metal4SQLEngine:
     return _sql_engine
 
 
-def validate_sql_engine() -> Dict[str, Any]:
+def validate_sql_engine() -> dict[str, Any]:
     """Validate SQL engine setup"""
     try:
         engine = get_sql_engine()

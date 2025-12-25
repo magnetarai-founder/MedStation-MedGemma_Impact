@@ -14,6 +14,7 @@ import string
 import json
 
 from api.p2p_chat_service import get_p2p_chat_service, init_p2p_chat_service
+from api.rate_limiter import connection_code_limiter, get_client_ip
 
 logger = logging.getLogger(__name__)
 
@@ -294,12 +295,23 @@ async def connect_to_peer(request: Request, body: AddPeerRequest) -> Dict[str, A
     """
     Connect to a peer using their connection code
 
+    SECURITY (Dec 2025):
+    - Rate limited: 5 attempts per minute per IP
+    - Exponential backoff on consecutive failures
+    - Lockout after 15 failed attempts
+
     Args:
         request: Connection code from other peer
 
     Returns:
         Connection status
     """
+    # Rate limit check (prevents brute force attacks)
+    client_ip = get_client_ip(request)
+    allowed, error_message = connection_code_limiter.check_attempt(client_ip)
+    if not allowed:
+        raise HTTPException(status_code=429, detail=error_message)
+
     try:
         service = get_p2p_chat_service()
 
@@ -308,6 +320,8 @@ async def connect_to_peer(request: Request, body: AddPeerRequest) -> Dict[str, A
 
         # Look up connection code
         if body.code not in connection_codes:
+            # Record failure for rate limiting
+            connection_code_limiter.record_failure(client_ip)
             raise HTTPException(status_code=404, detail="Invalid connection code")
 
         connection_info = connection_codes[body.code]
@@ -332,6 +346,9 @@ async def connect_to_peer(request: Request, body: AddPeerRequest) -> Dict[str, A
 
             logger.info(f"✅ Successfully connected to peer {connection_info.peer_id}")
 
+            # Record success (resets consecutive failure count)
+            connection_code_limiter.record_success(client_ip)
+
             return {
                 "status": "success",
                 "message": f"Connected to peer {connection_info.peer_id}",
@@ -347,6 +364,8 @@ async def connect_to_peer(request: Request, body: AddPeerRequest) -> Dict[str, A
             )
         except Exception as e:
             logger.error(f"Failed to connect to peer {connection_info.peer_id}: {e}")
+            # Connection attempt failed (valid code but connection error)
+            # Don't count as failure for rate limiting (code was valid)
             raise HTTPException(status_code=500, detail=f"Connection failed: {str(e)}")
 
     except HTTPException:

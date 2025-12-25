@@ -6,6 +6,7 @@ Endpoints for managing n8n integration
 from fastapi import APIRouter, HTTPException, Body
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
+from datetime import datetime, UTC
 import logging
 
 try:
@@ -223,17 +224,77 @@ async def handle_n8n_webhook(webhook_data: N8NWebhookRequest) -> Dict[str, Any]:
 
         logger.info(f"📨 Received n8n webhook for work item {work_item_id}")
 
-        # TODO: Update work item with results
-        # For now, just log
+        # Get orchestrator to update work item
+        try:
+            from api.services.workflow_orchestrator import WorkflowOrchestrator
+            from api.services.workflow_storage import get_workflow_storage
+        except ImportError:
+            from services.workflow_orchestrator import WorkflowOrchestrator
+            from services.workflow_storage import get_workflow_storage
+
+        storage = get_workflow_storage()
+        orchestrator = WorkflowOrchestrator(storage=storage)
+
+        # Find the work item - we need to look up by ID
+        # The webhook doesn't include user_id, so we search across all
+        work_item = None
+        if storage:
+            # Try to find work item by ID (admin search)
+            work_item = storage.get_work_item_by_id(work_item_id)
+
+        if not work_item:
+            logger.warning(f"Work item not found: {work_item_id}")
+            return {
+                "status": "error",
+                "message": f"Work item not found: {work_item_id}"
+            }
+
+        user_id = work_item.created_by  # Use creator as owner
+
         if webhook_data.status == "completed":
             logger.info(f"✅ n8n automation completed for {work_item_id}")
-            # orchestrator.complete_stage(work_item_id, stage_data=webhook_data.results)
+
+            # Update work item with results
+            work_item.data['n8n_results'] = webhook_data.results
+            work_item.data['n8n_execution'] = {
+                'status': 'completed',
+                'completed_at': datetime.now(UTC).isoformat()
+            }
+
+            # Complete the current stage and advance
+            try:
+                orchestrator.complete_stage(
+                    work_item_id=work_item_id,
+                    user_id=user_id,
+                    stage_data=webhook_data.results,
+                    notes="Automation completed via n8n"
+                )
+                logger.info(f"✅ Work item {work_item_id} advanced to next stage")
+            except Exception as e:
+                logger.error(f"Failed to advance work item: {e}")
+
         elif webhook_data.status == "failed":
             logger.error(f"❌ n8n automation failed for {work_item_id}: {webhook_data.error}")
 
+            # Update work item with error
+            work_item.data['n8n_execution'] = {
+                'status': 'failed',
+                'error': webhook_data.error,
+                'failed_at': datetime.now(UTC).isoformat()
+            }
+
+            # Mark work item as failed
+            from api.workflow_models import WorkItemStatus
+            work_item.status = WorkItemStatus.FAILED
+            work_item.updated_at = datetime.now(UTC)
+
+            if storage:
+                storage.save_work_item(work_item, user_id=user_id)
+
         return {
             "status": "received",
-            "work_item_id": work_item_id
+            "work_item_id": work_item_id,
+            "processed": True
         }
 
     except Exception as e:

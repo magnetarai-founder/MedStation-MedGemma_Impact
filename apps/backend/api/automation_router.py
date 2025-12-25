@@ -16,6 +16,11 @@ from fastapi import Depends
 from api.auth_middleware import get_current_user
 from api.utils import sanitize_for_log
 
+try:
+    from .automation_storage import get_automation_storage
+except ImportError:
+    from automation_storage import get_automation_storage
+
 router = APIRouter(
     prefix="/api/v1/automation",
     tags=["automation"],
@@ -65,21 +70,23 @@ class WorkflowSaveResponse(BaseModel):
 
 
 @router.post("/run", response_model=WorkflowRunResponse)
-async def run_workflow(request: Request, body: WorkflowRunRequest):
+async def run_workflow(
+    request: Request,
+    body: WorkflowRunRequest,
+    current_user: dict = Depends(get_current_user)
+):
     """
-    Execute a workflow
+    Execute a workflow and record execution history
 
-    This is a simulation endpoint. In production, this would:
-    1. Connect to n8n API to trigger workflow
-    2. Or execute workflow steps internally
-    3. Return execution results
+    This executes workflow steps and records results to SQLite.
     """
     start_time = datetime.now()
+    user_id = current_user.get("user_id", "anonymous")
 
     # Sanitize workflow name for logging
     safe_name = sanitize_for_log(body.name)
     safe_id = sanitize_for_log(body.workflow_id)
-    logger.info(f"🚀 Running workflow: {safe_name} (ID: {safe_id})")
+    logger.info(f"🚀 Running workflow: {safe_name} (ID: {safe_id}) for user {user_id}")
     logger.info(f"   Nodes: {len(body.nodes)}, Edges: {len(body.edges)}")
 
     # Simulate workflow execution
@@ -131,6 +138,20 @@ async def run_workflow(request: Request, body: WorkflowRunRequest):
 
     logger.info(f"✅ Workflow completed: {steps_executed} steps in {execution_time}ms")
 
+    # Record execution in storage
+    try:
+        storage = get_automation_storage()
+        storage.record_execution(
+            workflow_id=body.workflow_id,
+            user_id=user_id,
+            status="completed",
+            steps_executed=steps_executed,
+            execution_time_ms=execution_time,
+            results=results
+        )
+    except Exception as e:
+        logger.warning(f"⚠️ Failed to record execution: {e}")
+
     return WorkflowRunResponse(
         status="success",
         workflow_id=body.workflow_id,
@@ -142,54 +163,152 @@ async def run_workflow(request: Request, body: WorkflowRunRequest):
 
 
 @router.post("/save", response_model=WorkflowSaveResponse)
-async def save_workflow(request: Request, body: WorkflowSaveRequest):
+async def save_workflow(
+    request: Request,
+    body: WorkflowSaveRequest,
+    current_user: dict = Depends(get_current_user)
+):
     """
-    Save workflow configuration
-
-    In production, this would save to database or n8n
+    Save workflow configuration to SQLite database
     """
+    user_id = current_user.get("user_id", "anonymous")
     safe_name = sanitize_for_log(body.name)
     safe_id = sanitize_for_log(body.workflow_id)
-    logger.info(f"💾 Saving workflow: {safe_name} (ID: {safe_id})")
+    logger.info(f"💾 Saving workflow: {safe_name} (ID: {safe_id}) for user {user_id}")
 
-    # TODO: Save to database
-    # For now, just simulate success
+    try:
+        storage = get_automation_storage()
+        # Convert pydantic models to dicts
+        nodes = [n.model_dump() if hasattr(n, 'model_dump') else n for n in body.nodes]
+        edges = [e.model_dump() if hasattr(e, 'model_dump') else e for e in body.edges]
 
-    return WorkflowSaveResponse(
-        status="saved",
-        workflow_id=body.workflow_id,
-        saved_at=datetime.now().isoformat()
-    )
+        result = storage.save_workflow(
+            workflow_id=body.workflow_id,
+            name=body.name,
+            nodes=nodes,
+            edges=edges,
+            user_id=user_id
+        )
+
+        return WorkflowSaveResponse(
+            status="saved",
+            workflow_id=body.workflow_id,
+            saved_at=result["updated_at"]
+        )
+    except Exception as e:
+        logger.error(f"❌ Failed to save workflow: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to save workflow: {str(e)}")
 
 
 @router.get("/workflows")
-async def list_workflows() -> Dict[str, Any]:
+async def list_workflows(
+    current_user: dict = Depends(get_current_user),
+    limit: int = 50,
+    offset: int = 0,
+    active_only: bool = False
+) -> Dict[str, Any]:
     """
-    List all saved workflows
+    List all saved workflows for the current user
     """
-    # TODO: Fetch from database
-    return {
-        "workflows": [],
-        "count": 0
-    }
+    user_id = current_user.get("user_id", "anonymous")
+
+    try:
+        storage = get_automation_storage()
+        workflows = storage.list_workflows(
+            user_id=user_id,
+            limit=limit,
+            offset=offset,
+            active_only=active_only
+        )
+
+        return {
+            "workflows": workflows,
+            "count": len(workflows)
+        }
+    except Exception as e:
+        logger.error(f"❌ Failed to list workflows: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to list workflows: {str(e)}")
 
 
 @router.get("/workflows/{workflow_id}")
-async def get_workflow(workflow_id: str) -> Dict[str, Any]:
+async def get_workflow(
+    workflow_id: str,
+    current_user: dict = Depends(get_current_user)
+) -> Dict[str, Any]:
     """
     Get workflow by ID
     """
-    # TODO: Fetch from database
-    raise HTTPException(status_code=404, detail="Workflow not found")
+    user_id = current_user.get("user_id", "anonymous")
+
+    try:
+        storage = get_automation_storage()
+        workflow = storage.get_workflow(workflow_id=workflow_id, user_id=user_id)
+
+        if not workflow:
+            raise HTTPException(status_code=404, detail="Workflow not found")
+
+        return workflow
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Failed to get workflow: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get workflow: {str(e)}")
 
 
 @router.delete("/workflows/{workflow_id}")
-async def delete_workflow(request: Request, workflow_id: str) -> Dict[str, Any]:
+async def delete_workflow(
+    request: Request,
+    workflow_id: str,
+    current_user: dict = Depends(get_current_user)
+) -> Dict[str, Any]:
     """
-    Delete workflow
+    Delete workflow from database
     """
-    # TODO: Delete from database
-    return {"status": "deleted", "workflow_id": workflow_id}
+    user_id = current_user.get("user_id", "anonymous")
+
+    try:
+        storage = get_automation_storage()
+        deleted = storage.delete_workflow(workflow_id=workflow_id, user_id=user_id)
+
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Workflow not found")
+
+        logger.info(f"🗑️ Deleted workflow {workflow_id} for user {user_id}")
+        return {"status": "deleted", "workflow_id": workflow_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Failed to delete workflow: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete workflow: {str(e)}")
+
+
+@router.get("/workflows/{workflow_id}/executions")
+async def get_workflow_executions(
+    workflow_id: str,
+    current_user: dict = Depends(get_current_user),
+    limit: int = 20
+) -> Dict[str, Any]:
+    """
+    Get execution history for a workflow
+    """
+    user_id = current_user.get("user_id", "anonymous")
+
+    try:
+        storage = get_automation_storage()
+        executions = storage.get_execution_history(
+            workflow_id=workflow_id,
+            user_id=user_id,
+            limit=limit
+        )
+
+        return {
+            "workflow_id": workflow_id,
+            "executions": executions,
+            "count": len(executions)
+        }
+    except Exception as e:
+        logger.error(f"❌ Failed to get executions: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get executions: {str(e)}")
 
 
 # MARK: - Semantic Search
@@ -297,15 +416,11 @@ async def _embed_query_workflow(text: str) -> Optional[List[float]]:
 
 
 async def _get_user_workflows(user_id: str) -> List[Dict[str, Any]]:
-    """Get workflows for user"""
+    """Get workflows for user from automation storage"""
     try:
-        from api.workflow_service import WorkflowService
-        workflow_service = WorkflowService()
-
-        # Get workflows from service
-        workflows = workflow_service.list_workflows(user_id=user_id)
+        storage = get_automation_storage()
+        workflows = storage.list_workflows(user_id=user_id)
         return workflows
-
     except Exception as e:
         logger.warning(f"⚠️ Failed to get workflows: {e}")
         return []

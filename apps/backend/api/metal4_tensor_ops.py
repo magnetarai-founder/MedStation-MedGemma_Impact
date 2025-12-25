@@ -21,7 +21,7 @@ Architecture:
 
 import logging
 import time
-from typing import Dict, Any, Optional, Tuple, List
+from typing import Any
 import numpy as np
 from pathlib import Path
 
@@ -170,7 +170,7 @@ class Metal4TensorOps:
             import traceback
             traceback.print_exc()
 
-    def _create_pipeline(self, library: Any, function_name: str) -> Optional[Any]:
+    def _create_pipeline(self, library: Any, function_name: str) -> Any | None:
         """Create compute pipeline"""
         try:
             function = library.newFunctionWithName_(function_name)
@@ -384,7 +384,7 @@ class Metal4TensorOps:
         """Check if Metal GPU is being used"""
         return self._use_metal
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get performance statistics"""
         stats = self.stats.copy()
 
@@ -402,7 +402,7 @@ class Metal4TensorOps:
 
 # ===== Singleton Instance =====
 
-_tensor_ops: Optional[Metal4TensorOps] = None
+_tensor_ops: Metal4TensorOps | None = None
 
 
 def get_tensor_ops() -> Metal4TensorOps:
@@ -413,7 +413,7 @@ def get_tensor_ops() -> Metal4TensorOps:
     return _tensor_ops
 
 
-def validate_tensor_ops() -> Dict[str, Any]:
+def validate_tensor_ops() -> dict[str, Any]:
     """Validate tensor operations setup"""
     try:
         ops = get_tensor_ops()

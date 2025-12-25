@@ -244,7 +244,9 @@ class TestRegisterNodeRequest:
         req = RegisterNodeRequest(
             public_key="pk_new_user",
             public_name="New User",
-            type=NodeType.INDIVIDUAL
+            type=NodeType.INDIVIDUAL,
+            timestamp="2025-12-23T12:00:00Z",
+            signature="test_signature_base64"
         )
 
         assert req.public_key == "pk_new_user"
@@ -261,7 +263,9 @@ class TestRegisterNodeRequest:
             alias="safe_house_1",
             bio="A community of believers",
             location="Downtown",
-            display_mode=DisplayMode.UNDERGROUND
+            display_mode=DisplayMode.UNDERGROUND,
+            timestamp="2025-12-23T12:00:00Z",
+            signature="test_signature_base64"
         )
 
         assert req.type == NodeType.CHURCH
@@ -271,7 +275,21 @@ class TestRegisterNodeRequest:
     def test_registration_requires_key_and_name(self):
         """Test registration requires public_key and public_name"""
         with pytest.raises(ValidationError):
-            RegisterNodeRequest(type=NodeType.INDIVIDUAL)
+            RegisterNodeRequest(
+                type=NodeType.INDIVIDUAL,
+                timestamp="2025-12-23T12:00:00Z",
+                signature="test_sig"
+            )
+
+    def test_registration_requires_timestamp_and_signature(self):
+        """Test registration requires timestamp and signature (security)"""
+        with pytest.raises(ValidationError):
+            RegisterNodeRequest(
+                public_key="pk_test",
+                public_name="Test",
+                type=NodeType.INDIVIDUAL
+                # Missing timestamp and signature
+            )
 
 
 class TestVouchRequest:

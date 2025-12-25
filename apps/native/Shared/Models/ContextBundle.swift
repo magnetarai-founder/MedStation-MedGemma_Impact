@@ -252,11 +252,18 @@ class ContextBundler {
             query: query
         )
 
-        // Get RAG documents (if ANE Context Engine available)
-        let ragDocuments = await fetchRAGDocuments(
+        // Fetch RAG documents and vector search results in parallel
+        async let ragDocsTask = fetchRAGDocuments(
             query: query,
             aneState: appContext.vectorMemory
         )
+        async let vectorResultsTask = fetchVectorSearchResults(
+            query: query,
+            aneState: appContext.vectorMemory
+        )
+
+        let ragDocuments = await ragDocsTask
+        let vectorSearchResults = await vectorResultsTask
 
         // Get available models
         let availableModels = await fetchAvailableModels(
@@ -276,7 +283,7 @@ class ContextBundler {
             teamContext: teamContext,
             codeContext: codeContext,
             ragDocuments: ragDocuments,
-            vectorSearchResults: nil,  // TODO: ANE Context Engine integration
+            vectorSearchResults: vectorSearchResults,
             userPreferences: appContext.userPreferences,
             activeModelId: activeModelId,
             systemResources: appContext.systemResources,
@@ -539,6 +546,69 @@ class ContextBundler {
             return ragDocs.isEmpty ? nil : ragDocs
         } catch {
             print("⚠️ Failed to fetch RAG documents: \(error)")
+            return nil
+        }
+    }
+
+    /// Fetch vector search results from ANE Context Engine
+    /// Returns structured results with workspace type and resource metadata
+    private func fetchVectorSearchResults(
+        query: String,
+        aneState: ANEContextState
+    ) async -> [VectorSearchResult]? {
+        guard aneState.available else {
+            return nil
+        }
+
+        do {
+            let searchRequest = ContextSearchRequest(
+                query: query,
+                sessionId: nil,
+                workspaceTypes: nil,
+                limit: 10
+            )
+
+            let response: ContextSearchResponse = try await ApiClient.shared.request(
+                "/v1/context/search",
+                method: .post,
+                body: searchRequest
+            )
+
+            let results = response.results.compactMap { result -> VectorSearchResult? in
+                // Extract metadata fields
+                let sessionId = result.metadata["session_id"]?.value as? String ?? UUID().uuidString
+                let resourceType = result.metadata["resource_type"]?.value as? String ?? result.source
+                let author = result.metadata["author"]?.value as? String
+                let timestampStr = result.metadata["timestamp"]?.value as? String
+                let tagsValue = result.metadata["tags"]?.value
+                let tags: [String]? = (tagsValue as? [String]) ?? nil
+
+                // Parse timestamp or use current date
+                let timestamp: Date
+                if let ts = timestampStr, let parsedDate = ISO8601DateFormatter().date(from: ts) {
+                    timestamp = parsedDate
+                } else {
+                    timestamp = Date()
+                }
+
+                return VectorSearchResult(
+                    id: sessionId,
+                    text: result.content,
+                    workspaceType: result.source,
+                    resourceId: sessionId,
+                    similarity: result.relevanceScore,
+                    metadata: VectorMetadata(
+                        resourceType: resourceType,
+                        timestamp: timestamp,
+                        author: author,
+                        tags: tags
+                    )
+                )
+            }
+
+            return results.isEmpty ? nil : results
+        } catch {
+            print("⚠️ Failed to fetch vector search results: \(error)")
             return nil
         }
     }

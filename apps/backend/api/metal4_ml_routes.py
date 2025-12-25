@@ -14,7 +14,7 @@ REST API endpoints for Metal 4 GPU-accelerated ML operations:
 import logging
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
+from typing import Any
 
 from api.auth_middleware import get_current_user
 
@@ -32,8 +32,8 @@ class EmbedRequest(BaseModel):
 
 class EmbedBatchRequest(BaseModel):
     """Request for batch text embedding"""
-    texts: List[str] = Field(..., description="List of texts to embed")
-    batch_size: Optional[int] = Field(None, description="Batch size for processing")
+    texts: list[str] = Field(..., description="List of texts to embed")
+    batch_size: int | None = Field(None, description="Batch size for processing")
 
 
 class SearchRequest(BaseModel):
@@ -45,7 +45,7 @@ class SearchRequest(BaseModel):
 
 class LoadDatabaseRequest(BaseModel):
     """Request to load vector database"""
-    embeddings: List[List[float]] = Field(..., description="Embedding vectors [num_vectors, embed_dim]")
+    embeddings: list[list[float]] = Field(..., description="Embedding vectors [num_vectors, embed_dim]")
 
 
 class StoreEmbeddingRequest(BaseModel):
@@ -56,7 +56,7 @@ class StoreEmbeddingRequest(BaseModel):
 
 class EmbedResponse(BaseModel):
     """Response with embedding vector"""
-    embedding: List[float]
+    embedding: list[float]
     dimension: int
     backend: str
     time_ms: float
@@ -64,7 +64,7 @@ class EmbedResponse(BaseModel):
 
 class EmbedBatchResponse(BaseModel):
     """Response with batch embeddings"""
-    embeddings: List[List[float]]
+    embeddings: list[list[float]]
     count: int
     dimension: int
     backend: str
@@ -74,8 +74,8 @@ class EmbedBatchResponse(BaseModel):
 
 class SearchResponse(BaseModel):
     """Response with search results"""
-    indices: List[int]
-    scores: List[float]
+    indices: list[int]
+    scores: list[float]
     count: int
     backend: str
     time_ms: float
@@ -92,10 +92,10 @@ class CapabilitiesResponse(BaseModel):
 
 class StatsResponse(BaseModel):
     """Response with performance statistics"""
-    capabilities: Dict[str, Any]
-    embedder: Dict[str, Any]
-    vector_search: Dict[str, Any]
-    sparse_storage: Dict[str, Any]
+    capabilities: dict[str, Any]
+    embedder: dict[str, Any]
+    vector_search: dict[str, Any]
+    sparse_storage: dict[str, Any]
 
 
 # ===== API Endpoints =====
@@ -257,7 +257,7 @@ async def vector_search(
 async def load_database(
     request: LoadDatabaseRequest,
     user: dict = Depends(get_current_user)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Load vector database for searching
 
@@ -293,7 +293,7 @@ async def load_database(
 async def store_embedding(
     request: StoreEmbeddingRequest,
     user: dict = Depends(get_current_user)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Store embedding in sparse storage
 
@@ -325,7 +325,7 @@ async def store_embedding(
 async def retrieve_embedding(
     vector_id: int,
     user: dict = Depends(get_current_user)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Retrieve embedding from sparse storage
 
@@ -355,7 +355,7 @@ async def retrieve_embedding(
 
 
 @router.post("/validate")
-async def validate_setup(user: dict = Depends(get_current_user)) -> Dict[str, Any]:
+async def validate_setup(user: dict = Depends(get_current_user)) -> dict[str, Any]:
     """
     Validate Metal 4 ML pipeline setup
 
@@ -386,7 +386,7 @@ async def validate_setup(user: dict = Depends(get_current_user)) -> Dict[str, An
 
 
 @router.post("/benchmark")
-async def run_benchmark(user: dict = Depends(get_current_user)) -> Dict[str, Any]:
+async def run_benchmark(user: dict = Depends(get_current_user)) -> dict[str, Any]:
     """
     Run performance benchmarks
 

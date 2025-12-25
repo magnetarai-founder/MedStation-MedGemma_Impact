@@ -9,7 +9,7 @@ Perfect for missionary teams with multiple M-series Macs
 import asyncio
 import json
 import logging
-from typing import Dict, List, Optional, Any
+from typing import Any
 from dataclasses import dataclass, asdict
 from datetime import datetime, UTC
 from pathlib import Path
@@ -59,12 +59,12 @@ class DistributedJob:
     job_id: str
     job_type: str  # 'embedding', 'inference', 'training'
     data: Any
-    model_name: Optional[str]
+    model_name: str | None
     status: str  # 'pending', 'running', 'completed', 'failed'
-    assigned_node: Optional[str]
-    result: Optional[Any]
+    assigned_node: str | None
+    result: Any | None
     created_at: str
-    completed_at: Optional[str]
+    completed_at: str | None
 
 
 class MLXDistributed:
@@ -92,17 +92,17 @@ class MLXDistributed:
         self.port = port
 
         # Compute nodes
-        self.nodes: Dict[str, ComputeNode] = {}
-        self.local_node: Optional[ComputeNode] = None
+        self.nodes: dict[str, ComputeNode] = {}
+        self.local_node: ComputeNode | None = None
 
         # Job queue
-        self.pending_jobs: List[DistributedJob] = []
-        self.active_jobs: Dict[str, DistributedJob] = {}
-        self.completed_jobs: List[DistributedJob] = []
+        self.pending_jobs: list[DistributedJob] = []
+        self.active_jobs: dict[str, DistributedJob] = {}
+        self.completed_jobs: list[DistributedJob] = []
 
         # WebSocket server
         self.ws_server = None
-        self.ws_connections: Dict[str, Any] = {}  # node_id → websocket
+        self.ws_connections: dict[str, Any] = {}  # node_id → websocket
 
         # Stats
         self.jobs_submitted = 0
@@ -285,7 +285,7 @@ class MLXDistributed:
     async def submit_job(self,
                         job_type: str,
                         data: Any,
-                        model_name: Optional[str] = None) -> DistributedJob:
+                        model_name: str | None = None) -> DistributedJob:
         """
         Submit job for distributed execution
 
@@ -445,11 +445,11 @@ class MLXDistributed:
         self.nodes[node.node_id] = node
         logger.info(f"➕ Node added: {node.device_name} at {node.ip_address}:{node.port}")
 
-    def get_nodes(self) -> List[ComputeNode]:
+    def get_nodes(self) -> list[ComputeNode]:
         """Get list of available compute nodes"""
         return list(self.nodes.values())
 
-    def get_job(self, job_id: str) -> Optional[DistributedJob]:
+    def get_job(self, job_id: str) -> DistributedJob | None:
         """Get job status"""
         # Check active jobs
         if job_id in self.active_jobs:
@@ -467,7 +467,7 @@ class MLXDistributed:
 
         return None
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get distributed computing statistics"""
         total_nodes = len(self.nodes)
         idle_nodes = sum(1 for n in self.nodes.values() if n.status == 'idle')
@@ -495,7 +495,7 @@ class MLXDistributed:
 _mlx_distributed = None
 
 
-def get_mlx_distributed(local_node_id: str = None, device_name: str = None) -> MLXDistributed:
+def get_mlx_distributed(local_node_id: str | None = None, device_name: str | None = None) -> MLXDistributed:
     """Get singleton MLX distributed instance"""
     global _mlx_distributed
 

@@ -21,7 +21,7 @@ Architecture:
 """
 
 import logging
-from typing import List, Tuple, Optional, Dict, Any
+from typing import Any
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -225,7 +225,7 @@ class Metal4MLPipeline:
     # Public API
     # ========================================================================
 
-    def embed(self, text: str) -> List[float]:
+    def embed(self, text: str) -> list[float]:
         """
         Create embedding for text
 
@@ -245,7 +245,7 @@ class Metal4MLPipeline:
             # Fallback to simple hash
             return self._hash_embed(text)
 
-    def embed_batch(self, texts: List[str]) -> List[List[float]]:
+    def embed_batch(self, texts: list[str]) -> list[list[float]]:
         """
         Create embeddings for multiple texts
 
@@ -268,7 +268,7 @@ class Metal4MLPipeline:
         query: str,
         k: int = 10,
         metric: str = "cosine"
-    ) -> Tuple[List[int], List[float]]:
+    ) -> tuple[list[int], list[float]]:
         """
         Search for similar vectors
 
@@ -332,7 +332,7 @@ class Metal4MLPipeline:
         embedding_vec = np.array(embedding, dtype=np.float32)
         self.sparse_storage.add_embedding(vector_id, embedding_vec)
 
-    def retrieve_embedding(self, vector_id: int) -> Optional[np.ndarray]:
+    def retrieve_embedding(self, vector_id: int) -> np.ndarray | None:
         """
         Retrieve embedding from sparse storage
 
@@ -348,11 +348,11 @@ class Metal4MLPipeline:
 
         return self.sparse_storage.get_embedding(vector_id)
 
-    def get_capabilities(self) -> Dict[str, Any]:
+    def get_capabilities(self) -> dict[str, Any]:
         """Get pipeline capabilities"""
         return self.capabilities.copy()
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get performance statistics from all components"""
         stats = {
             'capabilities': self.get_capabilities(),
@@ -372,7 +372,7 @@ class Metal4MLPipeline:
 
         return stats
 
-    def _hash_embed(self, text: str, dim: int = 384) -> List[float]:
+    def _hash_embed(self, text: str, dim: int = 384) -> list[float]:
         """Simple hash-based embedding fallback"""
         import hashlib
 
@@ -397,11 +397,11 @@ class Metal4MLPipeline:
 
 # ===== Singleton Instance =====
 
-_ml_pipeline: Optional[Metal4MLPipeline] = None
+_ml_pipeline: Metal4MLPipeline | None = None
 
 
 def get_ml_pipeline(
-    model_name: str = None,
+    model_name: str | None = None,
     max_vectors: int = 1_000_000
 ) -> Metal4MLPipeline:
     """
@@ -423,7 +423,7 @@ def get_ml_pipeline(
     return _ml_pipeline
 
 
-def validate_ml_pipeline() -> Dict[str, Any]:
+def validate_ml_pipeline() -> dict[str, Any]:
     """Validate entire ML pipeline"""
     logger.info("\n" + "=" * 60)
     logger.info("Metal 4 ML Pipeline Validation")

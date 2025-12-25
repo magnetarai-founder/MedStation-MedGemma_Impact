@@ -467,6 +467,15 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
         services_failed.append("Vault Auth API")
         logger.error("Failed to load vault auth router", exc_info=True)
 
+    # Cloud Auth API (MagnetarCloud sync)
+    try:
+        from api.routes import cloud_auth as _cloud_auth_routes
+        app.include_router(_cloud_auth_routes.router)  # Router already has prefix="/api/v1/cloud"
+        services_loaded.append("Cloud Auth API")
+    except Exception as e:
+        services_failed.append("Cloud Auth API")
+        logger.error("Failed to load cloud auth router", exc_info=True)
+
     # Team API
     try:
         from api.routes import team as _team_routes

@@ -21,7 +21,7 @@ Architecture:
 
 import logging
 import time
-from typing import List, Dict, Any, Optional, Tuple
+from typing import Any
 import numpy as np
 import pandas as pd
 
@@ -99,7 +99,7 @@ class Metal4DuckDBBridge:
     def execute(
         self,
         query: str,
-        params: Optional[Dict[str, Any]] = None
+        params: dict[str, Any] | None = None
     ) -> pd.DataFrame:
         """
         Execute SQL query with automatic GPU acceleration
@@ -191,7 +191,7 @@ class Metal4DuckDBBridge:
     def _execute_gpu(
         self,
         query: str,
-        params: Optional[Dict[str, Any]]
+        params: dict[str, Any] | None
     ) -> pd.DataFrame:
         """
         Execute query on GPU using Metal SQL engine
@@ -216,7 +216,7 @@ class Metal4DuckDBBridge:
     def _execute_hybrid(
         self,
         query: str,
-        params: Optional[Dict[str, Any]]
+        params: dict[str, Any] | None
     ) -> pd.DataFrame:
         """
         Execute query using hybrid CPU+GPU approach
@@ -243,7 +243,7 @@ class Metal4DuckDBBridge:
     def _execute_cpu(
         self,
         query: str,
-        params: Optional[Dict[str, Any]]
+        params: dict[str, Any] | None
     ) -> pd.DataFrame:
         """
         Execute query on CPU using DuckDB
@@ -288,7 +288,7 @@ class Metal4DuckDBBridge:
     def load_parquet(
         self,
         path: str,
-        table_name: Optional[str] = None
+        table_name: str | None = None
     ) -> pd.DataFrame:
         """
         Load Parquet file into DuckDB
@@ -391,7 +391,7 @@ class Metal4DuckDBBridge:
     def accelerated_count(
         self,
         table_name: str,
-        column_name: Optional[str] = None
+        column_name: str | None = None
     ) -> int:
         """
         Compute COUNT using GPU acceleration
@@ -416,7 +416,7 @@ class Metal4DuckDBBridge:
     # Utility Methods
     # ========================================================================
 
-    def get_table_info(self, table_name: str) -> Dict[str, Any]:
+    def get_table_info(self, table_name: str) -> dict[str, Any]:
         """
         Get information about a table
 
@@ -454,7 +454,7 @@ class Metal4DuckDBBridge:
         """Check if Metal GPU is available"""
         return self.sql_engine and self.sql_engine.uses_metal()
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get performance statistics"""
         stats = self.stats.copy()
 
@@ -483,7 +483,7 @@ class Metal4DuckDBBridge:
 
 # ===== Singleton Instance =====
 
-_duckdb_bridge: Optional[Metal4DuckDBBridge] = None
+_duckdb_bridge: Metal4DuckDBBridge | None = None
 
 
 def get_duckdb_bridge() -> Metal4DuckDBBridge:
@@ -494,7 +494,7 @@ def get_duckdb_bridge() -> Metal4DuckDBBridge:
     return _duckdb_bridge
 
 
-def validate_duckdb_bridge() -> Dict[str, Any]:
+def validate_duckdb_bridge() -> dict[str, Any]:
     """Validate DuckDB bridge setup"""
     try:
         bridge = get_duckdb_bridge()

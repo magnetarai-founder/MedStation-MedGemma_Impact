@@ -13,7 +13,7 @@ Performance target: 2-3× faster for large datasets (>1M rows)
 
 import logging
 import numpy as np
-from typing import List, Dict, Any, Optional
+from typing import Any
 import time
 
 logger = logging.getLogger(__name__)
@@ -176,10 +176,10 @@ class MetalSQLKernels:
             logger.warning(f"GPU WHERE failed: {e}")
             return data[condition(data)]
     
-    def group_by_aggregate(self, data: Dict[str, np.ndarray], 
-                          group_col: str, 
-                          agg_col: str, 
-                          agg_func: str = "sum") -> Dict[Any, float]:
+    def group_by_aggregate(self, data: dict[str, np.ndarray],
+                          group_col: str,
+                          agg_col: str,
+                          agg_func: str = "sum") -> dict[Any, float]:
         """
         GPU-accelerated GROUP BY with aggregation
         
@@ -247,7 +247,7 @@ class MetalSQLKernels:
 
 
 # Singleton instance
-_metal_sql_kernels: Optional[MetalSQLKernels] = None
+_metal_sql_kernels: MetalSQLKernels | None = None
 
 
 def get_metal_sql_kernels() -> MetalSQLKernels:

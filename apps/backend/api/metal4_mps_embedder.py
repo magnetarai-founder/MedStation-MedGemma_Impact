@@ -22,7 +22,7 @@ Architecture:
 import os
 import logging
 import time
-from typing import List, Optional, Dict, Any
+from typing import Any
 import numpy as np
 from pathlib import Path
 
@@ -220,7 +220,7 @@ class Metal4MPSEmbedder:
         except Exception as e:
             logger.warning(f"Warmup failed: {e}")
 
-    def embed(self, text: str) -> List[float]:
+    def embed(self, text: str) -> list[float]:
         """
         Create embedding for a single text using Metal 4 GPU
 
@@ -243,7 +243,7 @@ class Metal4MPSEmbedder:
             self.stats['cpu_fallback_count'] += 1
             return self._cpu_fallback(text)
 
-    def embed_batch(self, texts: List[str], batch_size: int = None) -> List[List[float]]:
+    def embed_batch(self, texts: list[str], batch_size: int = None) -> list[list[float]]:
         """
         Create embeddings for multiple texts using Metal 4 GPU batch processing
 
@@ -301,7 +301,7 @@ class Metal4MPSEmbedder:
             self.stats['cpu_fallback_count'] += len(texts)
             return [self._cpu_fallback(t) for t in texts]
 
-    def _encode_batch_internal(self, texts: List[str], show_progress: bool = True) -> List[List[float]]:
+    def _encode_batch_internal(self, texts: list[str], show_progress: bool = True) -> list[list[float]]:
         """
         Internal batch encoding using PyTorch + MPS
 
@@ -366,7 +366,7 @@ class Metal4MPSEmbedder:
 
         return sum_embeddings / sum_mask
 
-    def _cpu_fallback(self, text: str) -> List[float]:
+    def _cpu_fallback(self, text: str) -> list[float]:
         """
         Simple CPU fallback using deterministic hashing
         Used when Metal/model is unavailable
@@ -407,7 +407,7 @@ class Metal4MPSEmbedder:
         """Get embedding dimension"""
         return self.embed_dim
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get performance statistics"""
         stats = self.stats.copy()
 
@@ -433,10 +433,10 @@ class Metal4MPSEmbedder:
 
 # ===== Singleton Instance =====
 
-_metal4_mps_embedder: Optional[Metal4MPSEmbedder] = None
+_metal4_mps_embedder: Metal4MPSEmbedder | None = None
 
 
-def get_metal4_mps_embedder(model_name: str = None) -> Metal4MPSEmbedder:
+def get_metal4_mps_embedder(model_name: str | None = None) -> Metal4MPSEmbedder:
     """
     Get singleton Metal 4 MPS embedder instance
 
@@ -454,7 +454,7 @@ def get_metal4_mps_embedder(model_name: str = None) -> Metal4MPSEmbedder:
     return _metal4_mps_embedder
 
 
-def validate_metal4_mps_setup() -> Dict[str, Any]:
+def validate_metal4_mps_setup() -> dict[str, Any]:
     """
     Validate Metal 4 MPS embedder setup
 

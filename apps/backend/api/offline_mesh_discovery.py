@@ -36,6 +36,7 @@ class LocalPeer:
     capabilities: List[str]  # ['chat', 'file_share', 'data_sync']
     last_seen: str
     status: str = "online"
+    public_key: Optional[str] = None  # Base64-encoded Ed25519 public key for identity verification
 
 
 class OfflineMeshDiscovery:

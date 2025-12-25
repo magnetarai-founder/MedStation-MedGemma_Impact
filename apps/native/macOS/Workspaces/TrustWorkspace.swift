@@ -31,6 +31,7 @@ struct TrustWorkspace: View {
     // Modals
     @State private var showRegisterNode = false
     @State private var showVouchModal = false
+    @State private var showSafetyNumberModal = false
     @State private var selectedNode: TrustNode? = nil
 
     var body: some View {
@@ -64,6 +65,14 @@ struct TrustWorkspace: View {
                     Task {
                         await loadTrustNetwork()
                     }
+                })
+            }
+        }
+        .sheet(isPresented: $showSafetyNumberModal) {
+            if let node = selectedNode {
+                SafetyNumberVerificationModal(node: node, onVerified: {
+                    // Verification successful
+                    print("✅ Verified safety number for \(node.publicName)")
                 })
             }
         }
@@ -448,6 +457,33 @@ struct TrustWorkspace: View {
             RoundedRectangle(cornerRadius: 10)
                 .stroke(accentColor.opacity(0.2), lineWidth: 1)
         )
+        .contextMenu {
+            Button {
+                selectedNode = node
+                showSafetyNumberModal = true
+            } label: {
+                Label("Verify Safety Number", systemImage: "checkmark.shield")
+            }
+
+            Button {
+                selectedNode = node
+                showVouchModal = true
+            } label: {
+                Label("Vouch for Node", systemImage: "hand.thumbsup")
+            }
+
+            Divider()
+
+            Button {
+                // Copy public key to clipboard
+                #if os(macOS)
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(node.publicKey, forType: .string)
+                #endif
+            } label: {
+                Label("Copy Public Key", systemImage: "doc.on.doc")
+            }
+        }
     }
 
     // MARK: - Register View

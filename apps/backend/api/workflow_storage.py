@@ -562,6 +562,57 @@ class WorkflowStorage:
         conn.close()
         return work_item
 
+    def get_work_item_by_id(self, work_item_id: str) -> Optional[WorkItem]:
+        """
+        Get work item by ID without user isolation (admin/webhook use)
+
+        This method bypasses user isolation and should only be used by
+        system processes like webhooks that don't have user context.
+
+        Args:
+            work_item_id: Work item ID
+
+        Returns:
+            Work item or None if not found
+        """
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT * FROM work_items
+            WHERE id = ?
+        """, (work_item_id,))
+        row = cursor.fetchone()
+
+        if not row:
+            conn.close()
+            return None
+
+        work_item = self._row_to_work_item(row)
+        user_id = row['user_id']
+
+        # Load transitions (using owner's user_id)
+        cursor.execute("""
+            SELECT * FROM stage_transitions
+            WHERE work_item_id = ?
+            ORDER BY transitioned_at ASC
+        """, (work_item_id,))
+        transitions = cursor.fetchall()
+        work_item.history = [self._row_to_transition(t) for t in transitions]
+
+        # Load attachments
+        cursor.execute("""
+            SELECT * FROM attachments
+            WHERE work_item_id = ?
+            ORDER BY uploaded_at ASC
+        """, (work_item_id,))
+        attachments = cursor.fetchall()
+        work_item.attachments = [self._row_to_attachment(a) for a in attachments]
+
+        conn.close()
+        return work_item
+
     def list_work_items(
         self,
         user_id: str,
@@ -851,3 +902,21 @@ class WorkflowStorage:
         result = cursor.fetchone()
         conn.close()
         return result is not None
+
+
+# ============================================
+# SINGLETON
+# ============================================
+
+_workflow_storage: Optional[WorkflowStorage] = None
+
+
+def get_workflow_storage() -> WorkflowStorage:
+    """Get singleton workflow storage instance"""
+    global _workflow_storage
+
+    if _workflow_storage is None:
+        _workflow_storage = WorkflowStorage()
+        logger.info("📦 Workflow storage singleton created")
+
+    return _workflow_storage

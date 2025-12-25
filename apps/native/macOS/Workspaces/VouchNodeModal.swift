@@ -17,6 +17,8 @@ struct VouchNodeModal: View {
     @State private var note: String = ""
     @State private var isVouching: Bool = false
     @State private var errorMessage: String? = nil
+    @State private var showSafetyNumberVerification: Bool = false
+    @State private var isVerified: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -69,6 +71,24 @@ struct VouchNodeModal: View {
                                     .foregroundColor(.secondary)
                             }
                         }
+
+                        Spacer()
+
+                        // Verification status
+                        if isVerified {
+                            HStack(spacing: 4) {
+                                Image(systemName: "checkmark.shield.fill")
+                                Text("Verified")
+                            }
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.green)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(
+                                Capsule()
+                                    .fill(Color.green.opacity(0.15))
+                            )
+                        }
                     }
                     .padding(16)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -76,6 +96,48 @@ struct VouchNodeModal: View {
                         RoundedRectangle(cornerRadius: 12)
                             .fill(Color.gray.opacity(0.05))
                     )
+
+                    // Safety Number Verification
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Image(systemName: "checkmark.shield")
+                                .foregroundColor(.secondary)
+                            Text("Identity Verification")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
+
+                        Button {
+                            showSafetyNumberVerification = true
+                        } label: {
+                            HStack {
+                                Image(systemName: isVerified ? "checkmark.shield.fill" : "shield.lefthalf.filled")
+                                    .foregroundColor(isVerified ? .green : .magnetarPrimary)
+                                Text(isVerified ? "View Safety Number" : "Verify Safety Number")
+                                    .font(.system(size: 14))
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(isVerified ? Color.green.opacity(0.5) : Color.magnetarPrimary.opacity(0.3), lineWidth: 1)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .fill(isVerified ? Color.green.opacity(0.05) : Color.magnetarPrimary.opacity(0.05))
+                                    )
+                            )
+                        }
+                        .buttonStyle(.plain)
+
+                        if !isVerified {
+                            Text("Compare safety numbers with \(node.publicName) to verify identity")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+                    }
 
                     // Trust Level
                     FormField(title: "Trust Level *", icon: "hand.thumbsup") {
@@ -149,7 +211,15 @@ struct VouchNodeModal: View {
             }
             .padding(24)
         }
-        .frame(width: 500, height: 550)
+        .frame(width: 500, height: 620)
+        .sheet(isPresented: $showSafetyNumberVerification) {
+            SafetyNumberVerificationModal(
+                node: node,
+                onVerified: {
+                    isVerified = true
+                }
+            )
+        }
     }
 
     private func trustLevelOption(level: TrustLevel, title: String, description: String, color: Color) -> some View {

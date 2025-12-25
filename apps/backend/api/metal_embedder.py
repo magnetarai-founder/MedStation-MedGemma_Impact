@@ -12,7 +12,6 @@ Performance target: 15-25% faster than CPU embeddings
 
 import logging
 import numpy as np
-from typing import List, Optional
 import time
 
 logger = logging.getLogger(__name__)
@@ -97,7 +96,7 @@ class MetalEmbedder:
             except Exception as e:
                 logger.warning(f"Warmup failed: {e}")
     
-    def embed(self, text: str) -> List[float]:
+    def embed(self, text: str) -> list[float]:
         """
         Create embedding for a single text using Metal GPU
         
@@ -133,7 +132,7 @@ class MetalEmbedder:
             logger.error(f"Metal embedding failed: {e}")
             return self._cpu_fallback(text)
     
-    def embed_batch(self, texts: List[str], batch_size: int = 32) -> List[List[float]]:
+    def embed_batch(self, texts: list[str], batch_size: int = 32) -> list[list[float]]:
         """
         Create embeddings for multiple texts in batches
         Uses Metal GPU for parallel processing
@@ -172,7 +171,7 @@ class MetalEmbedder:
             logger.error(f"Metal batch embedding failed: {e}")
             return [self._cpu_fallback(t) for t in texts]
     
-    def _cpu_fallback(self, text: str) -> List[float]:
+    def _cpu_fallback(self, text: str) -> list[float]:
         """Simple CPU fallback using basic hashing"""
         # Very basic fallback - just for safety
         import hashlib
@@ -194,7 +193,7 @@ class MetalEmbedder:
 
 
 # Singleton instance
-_metal_embedder: Optional[MetalEmbedder] = None
+_metal_embedder: MetalEmbedder | None = None
 
 
 def get_metal_embedder() -> MetalEmbedder:
