@@ -17,7 +17,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Dict
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 
 logger = logging.getLogger(__name__)
 
