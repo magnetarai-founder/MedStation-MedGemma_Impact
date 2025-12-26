@@ -84,7 +84,8 @@ async def get_system_health(request: Request) -> Dict[str, Any]:
 
     # Check Ollama
     try:
-        from chat_service import ollama_client
+        from api.services.chat import get_ollama_client
+        ollama_client = get_ollama_client()
 
         ollama_start = time.time()
         models = await ollama_client.list_models()

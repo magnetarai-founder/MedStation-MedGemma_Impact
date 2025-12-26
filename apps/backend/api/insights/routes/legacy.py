@@ -107,7 +107,8 @@ Maintain reverence for the sacred nature of spiritual growth."""
 Provide a thoughtful analysis that helps organize these thoughts and surface the key spiritual insights."""
 
     try:
-        from chat_service import ollama_client
+        from api.services.chat import get_ollama_client
+        ollama_client = get_ollama_client()
 
         messages = [
             {"role": "system", "content": system_prompt},

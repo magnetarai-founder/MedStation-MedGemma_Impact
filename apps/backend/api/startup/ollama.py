@@ -68,7 +68,8 @@ async def initialize_ollama() -> None:
 
     # Phase 1.6: Auto-load favorite models from per-user hot slots
     try:
-        from chat_service import ollama_client
+        from api.services.chat import get_ollama_client
+        ollama_client = get_ollama_client()
         from api.services.hot_slots_storage import get_hot_slots_storage
 
         # Step 1: Find preload user (founder first, then first active user)
