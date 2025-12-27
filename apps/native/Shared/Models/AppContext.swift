@@ -247,24 +247,8 @@ struct KanbanContext {
             // Fetch tasks for the first board
             let tasks = try await KanbanService.shared.listTasks(boardId: firstBoard.boardId)
 
-            // Map to TaskSummary
-            let taskSummaries = tasks.map { task in
-                // Convert dueDate string to Date if present
-                var dueDateObj: Date? = nil
-                if let dueDateStr = task.dueDate {
-                    let formatter = ISO8601DateFormatter()
-                    dueDateObj = formatter.date(from: dueDateStr)
-                }
-
-                return TaskSummary(
-                    id: task.taskId,
-                    title: task.title,
-                    status: task.status ?? "todo",
-                    priority: task.priority,
-                    assignedTo: task.assigneeId,
-                    dueDate: dueDateObj
-                )
-            }
+            // Map to TaskSummary using extension init
+            let taskSummaries = tasks.map { TaskSummary(from: $0) }
 
             return KanbanContext(
                 activeBoard: firstBoard.name,
@@ -834,5 +818,27 @@ extension WorkflowSummary {
     }
 }
 
-// Note: TaskSummary and TeamMessageSummary inits removed - stores don't exist yet
-// TODO: Implement when KanbanStore and TeamStore are created
+extension TaskSummary {
+    init(from task: KanbanTaskAPI) {
+        self.id = task.taskId
+        self.title = task.title
+        self.status = task.status ?? "todo"
+        self.priority = task.priority
+        self.assignedTo = task.assigneeId
+        // Convert dueDate string to Date if present
+        if let dueDateStr = task.dueDate {
+            self.dueDate = ISO8601DateFormatter().date(from: dueDateStr)
+        } else {
+            self.dueDate = nil
+        }
+    }
+}
+
+extension TeamMessageSummary {
+    init(from message: TeamMessage, channelName: String) {
+        self.channelName = channelName
+        self.sender = message.senderName
+        self.preview = String(message.content.prefix(100))
+        self.timestamp = ISO8601DateFormatter().date(from: message.timestamp) ?? Date()
+    }
+}

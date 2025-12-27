@@ -305,7 +305,7 @@ Context and search integrations wired to backend services.
 |------|------|------|--------|
 | `AppContext.swift` | 507 | Query backend ANE Context Engine | ✅ Uses `/api/v1/context/status` |
 | `AppContext.swift` | 832-833 | Determine workflow status from state | ✅ Uses `workflow.enabled` field |
-| `AppContext.swift` | 838 | Implement KanbanStore/TeamStore | ⏳ Future (stores don't exist yet) |
+| `AppContext.swift` | 838 | Implement KanbanStore/TeamStore | ✅ `KanbanStore.swift` + `TeamStore.swift` + extension inits |
 | `ContextBundle.swift` | 342 | Semantic search for similar queries | ✅ Uses `ContextService.searchDataQueries()` |
 | `ContextBundle.swift` | 451 | Integrate with MagnetarCode | ✅ Uses `ContextService.searchCodeFiles()` |
 | `ContextBundle.swift` | 619 | Get models from HotSlotManager + Ollama | ✅ Fetches from Ollama `/api/tags` |
@@ -324,7 +324,7 @@ Context and search integrations wired to backend services.
 
 ---
 
-## 🔲 REMAINING WORK (Ordered: Least → Most Complex)
+## ✅ ADDITIONAL TIERS (Completed)
 
 ---
 
