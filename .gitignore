@@ -26,6 +26,7 @@ yarn-error.log*
 # Build outputs
 
 # Data and cache
+.neutron_data/
 api/.neutron_data/
 api/temp_uploads/
 api/temp_exports/
