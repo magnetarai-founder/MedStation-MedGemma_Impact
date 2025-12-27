@@ -131,111 +131,88 @@ Items from Master Roadmap (Dec 23) that were verified as complete:
 
 ---
 
-## 🔲 REMAINING WORK (Ordered: Least → Most Complex)
+## ✅ TIER 8: EASY FIXES (Completed 2025-12-26)
+
+**Commit:** `8239f142` - feat: Complete Tier 8 Easy Fixes
+
+#### 8.1 Centralize Swift Localhost URLs ✅
+Updated 15 Swift files to use `APIConfiguration.shared`:
+- AuthStore, ChatStore, ModelsStore, SmartModelPicker
+- ModelManagerWindow, SetupWizardView, TeamWorkspace
+- BackendManager, ModelManagementSettingsView, SettingsView
+- VaultService, ModelTagService, OllamaService
+- ModelMemoryTracker, APIClient
+
+#### 8.2 Centralize Python Localhost URLs ✅
+Updated 3 Python files to use `settings.ollama_base_url`:
+- bash_intelligence.py
+- jarvis_rag_pipeline.py
+- services/setup_wizard.py
+
+#### 8.3 Add CORS Development Warning ✅
+- Added prominent startup warning in `middleware/cors.py`
+- Logs when permissive CORS settings are detected (allow_methods: *, allow_headers: *)
+
+#### 8.4 Wire Up Audit Logging to Backend ✅
+- SecurityManager.swift: Implemented `sendAuditLog()` to POST to `/api/v1/audit/log`
+- EmergencyModeService+Backend.swift: Implemented remote logging with 3-second timeout
+
+#### 8.5 Model Recommendations Files ✅ (NOT duplicates)
+- `model_recommendations.py`: Hardware-based at `/recommended` (KEEP)
+- `models_recommendations.py`: Performance-based at `/recommendations` (KEEP)
+- Both serve different purposes, not duplicates
 
 ---
 
-### TIER 8: EASY FIXES (~15-30 min each)
+## ✅ TIER 9: MODERATE FIXES (Completed 2025-12-26)
 
-Simple implementations with clear scope.
+**Commit:** `9d49280d` - feat: Complete Tier 9 Moderate Fixes
 
-#### 8.1 Centralize Swift Localhost URLs
-Replace hardcoded URLs with `APIConfiguration`:
+#### 9.1 Implement Emergency Mode Key Monitoring ✅
+**File:** `EmergencyConfirmationModal.swift`
+- Implemented Cmd+Shift+Delete key combo detection
+- 5-second hold timer with visual progress indicator
+- Uses `NSEvent.addLocalMonitorForEvents` for reliable key tracking
+- Clean up on view dismiss
 
-| File | Line | Current |
-|------|------|---------|
-| `ModelsStore.swift` | 29 | `http://localhost:8000/api/v1/chat/models` |
-| `ModelsStore.swift` | 73 | `http://localhost:11434/api/pull` |
-| `ModelsStore.swift` | 122 | `http://localhost:11434/api/delete` |
-| `ChatStore.swift` | 71 | `http://localhost:8000/api/v1/chat/models` |
-| `ChatStore.swift` | 546 | `http://localhost:8000/.../messages` |
-| `SmartModelPicker.swift` | 150 | `http://localhost:8000/api/v1/chat/models` |
-| `ModelManagerWindow.swift` | 376, 396 | Multiple endpoints |
-| `SetupWizardView.swift` | 175 | `http://localhost:8000/api/v1/setup/complete` |
-| `TeamWorkspace.swift` | 248 | `http://localhost:8000/api/v1/vault/folders` |
-| `ModelManagementSettingsView.swift` | 260 | Model endpoints |
-| `AuthStore.swift` | 206 | Health check |
-
-**Solution:** Use `APIConfiguration.shared.baseURL` everywhere
-
-#### 8.2 Centralize Python Localhost URLs
-Replace hardcoded URLs with config:
-
-| File | Line | Current |
-|------|------|---------|
-| `bash_intelligence.py` | 240 | `http://localhost:11434/api/generate` |
-| `jarvis_rag_pipeline.py` | 227 | `http://127.0.0.1:11434/api/embeddings` |
-| `setup_wizard.py` | 89 | `http://localhost:11434` |
-
-**Solution:** Use `settings.ollama_base_url` from config
-
-#### 8.3 Add CORS Development Warning
-- [ ] `middleware/cors.py` - Log warning if production uses dev CORS
-- [ ] Add startup check for `ELOHIM_ENV=production` with `*` origins
-
-#### 8.4 Wire Up Audit Logging to Backend
-- [ ] `SecurityManager.swift:185` - Send audit events to `/api/v1/audit/log`
-- [ ] `EmergencyModeService+Backend.swift:47` - Implement remote logging
-
-#### 8.5 Delete Duplicate Model Recommendations File (from Master Roadmap)
-**Both files exist - conflict:**
-- `model_recommendations.py` (dynamic, team-policy aware) ✅ KEEP
-- `models_recommendations.py` (static JSON) ❌ DELETE
-
----
-
-### TIER 9: MODERATE FIXES (~30-60 min each)
-
-Requires understanding of existing systems.
-
-#### 9.1 Implement Emergency Mode Key Monitoring
-**File:** `EmergencyConfirmationModal.swift:300-330`
-
-All these are currently stubs that only print:
-- [ ] `startKeyMonitoring()` - Monitor for panic key combo
-- [ ] `startHoldTimer()` - Track hold duration
-- [ ] `cancelHoldTimer()` - Cancel on release
-- [ ] `stopKeyMonitoring()` - Clean up listeners
-
-**Approach:** Use `NSEvent.addLocalMonitorForEvents` for key events
-
-#### 9.2 Add Rate Limiting to Setup Endpoints
+#### 9.2 Add Rate Limiting to Setup Endpoints ✅
 **File:** `routes/setup_wizard_routes.py`
+- setup_status: 30/min (status checks)
+- setup_config: 10/min (configuration ops)
+- setup_download: 5/min (bandwidth heavy)
+- setup_account: 3/min (prevents account creation abuse)
 
-- [ ] Add `@limiter.limit("5/minute")` to model download endpoints
-- [ ] Add `@limiter.limit("10/minute")` to configuration endpoints
-- [ ] Prevent DoS via repeated setup requests
+#### 9.3 Add Exponential Backoff to Connection Codes ✅
+**File:** `rate_limiter.py`
+- Backoff starts on FIRST failure (security improvement)
+- Pattern: 1s → 2s → 4s → 8s → 16s → lockout
+- Updated tests to match new intended behavior
 
-#### 9.3 Add Exponential Backoff to Connection Codes
-**File:** `rate_limiter.py:174-180`
+#### 9.4 Graceful Model Listing Fallback ✅
+**File:** `routes/chat/models.py`
+- Added `ModelListCache` class to cache Ollama model responses
+- Returns cached data with age indicator when Ollama unreachable
+- Prevents UI failures during temporary backend issues
 
-Current: 5 attempts/minute, lockout after 15 failures
+#### 9.5 Fix LAN Discovery IP Detection ✅
+**File:** `lan_discovery.py`
+- Removed 8.8.8.8 connection (no external network calls)
+- 3-method local-only fallback:
+  1. `socket.gethostbyname(hostname)`
+  2. `netifaces` interface enumeration
+  3. Multicast address (224.0.0.1) - no external traffic
+- Falls back to loopback if all methods fail
 
-- [ ] Implement backoff: 1s → 2s → 4s → 8s → 16s → lockout
-- [ ] Start backoff on first failure, not after threshold
+#### 9.6 Decide ModelDiscoveryWorkspace Fate ✅
+**Decision:** KEEP as optional feature, not removed
+- MagnetarHub handles model management (installed models)
+- Safari button in Hub provides online library browsing
+- Kept for potential future use or as reference implementation
+- Added documentation with instructions to enable
 
-#### 9.4 Graceful Model Listing Fallback
-**File:** `routes/chat/models.py:40-52`
+---
 
-- [ ] Cache last successful model list
-- [ ] Return cached list when Ollama unreachable
-- [ ] Add `cached: true` flag to response
-
-#### 9.5 Fix LAN Discovery IP Detection
-**File:** `lan_discovery.py:156`
-
-Current: Connects to `8.8.8.8:80` to find local IP (external dependency!)
-
-- [ ] Use `netifaces` or `socket.gethostbyname(socket.gethostname())`
-- [ ] Add fallback chain: link-local → multicast → loopback
-
-#### 9.6 Decide ModelDiscoveryWorkspace Fate (from Master Roadmap)
-**Current State:** Fully implemented but not accessible (not in NavigationRail)
-
-**Options:**
-1. Add to NavigationRail (new button)
-2. Merge into MagnetarHub (already has model catalog)
-3. Remove (if superseded by Hub)
+## 🔲 REMAINING WORK (Ordered: Least → Most Complex)
 
 ---
 
@@ -472,15 +449,15 @@ Current: Workflows not persisted across restarts
 | Swift | 230 | 44,190 |
 
 ### Technical Debt
-| Issue | Count |
-|-------|-------|
-| TODO/FIXME (Python) | 12 |
-| TODO/FIXME (Swift) | 20 |
-| DEPRECATED markers | 56 |
-| Empty button closures | 6 |
-| Hardcoded localhost URLs | 18 |
-| SQL injection risks | 4 |
-| Debug print() statements | 330 |
+| Issue | Count | Notes |
+|-------|-------|-------|
+| TODO/FIXME (Python) | 12 | |
+| TODO/FIXME (Swift) | 20 | |
+| DEPRECATED markers | 56 | |
+| Empty button closures | 6 | Mostly in #Preview blocks |
+| Hardcoded localhost URLs | 0 | ✅ Fixed in Tier 8 |
+| SQL injection risks | 4 | Tier 10 priority |
+| Debug print() statements | ~10 | ✅ Fixed actual errors in Tier 7 |
 
 ### Files > 1,000 Lines (Future Refactoring)
 1. workflow_orchestrator.py - 1,139 lines
@@ -494,18 +471,18 @@ Current: Workflows not persisted across restarts
 
 ## 📅 EFFORT SUMMARY
 
-| Tier | Items | Est. Time | Priority |
-|------|-------|-----------|----------|
-| 7: Trivial | 10 | 1-2 hours | LOW |
-| 8: Easy | 7 | 2-3 hours | MEDIUM |
-| 9: Moderate | 6 | 3-4 hours | MEDIUM |
-| 10: Complex | 5 | 6-8 hours | HIGH |
-| 11: Medium Tasks | 3 | 3-4 hours | MEDIUM |
-| 12: Swift TODOs | 9 | 4-5 hours | MEDIUM |
-| 13: Offline-First | 2 | 2-3 hours | HIGH |
-| 14: Large Tasks | 2 | 6-8 hours | LOW |
-| 15: Cloud Sync | 5 | 7-8 hours | LOW |
-| **TOTAL** | 49 | ~35-45 hours | |
+| Tier | Items | Est. Time | Status |
+|------|-------|-----------|--------|
+| 7: Trivial | 5 | 1-2 hours | ✅ Complete |
+| 8: Easy | 5 | 2-3 hours | ✅ Complete |
+| 9: Moderate | 6 | 3-4 hours | ✅ Complete |
+| 10: Complex | 5 | 6-8 hours | 🔲 Pending |
+| 11: Medium Tasks | 3 | 3-4 hours | 🔲 Pending |
+| 12: Swift TODOs | 9 | 4-5 hours | 🔲 Pending |
+| 13: Offline-First | 2 | 2-3 hours | 🔲 Pending |
+| 14: Large Tasks | 2 | 6-8 hours | 🔲 Pending |
+| 15: Cloud Sync | 5 | 7-8 hours | 🔲 Pending |
+| **REMAINING** | 26 | ~28-38 hours | |
 
 ---
 
@@ -518,4 +495,4 @@ This roadmap consolidates and supersedes:
 ---
 
 **Last Updated:** 2025-12-26
-**Status:** Tiers 7-14 pending, then MagnetarCloud Full Sync
+**Status:** Tiers 7-9 complete, Tiers 10-14 pending, then MagnetarCloud Full Sync
