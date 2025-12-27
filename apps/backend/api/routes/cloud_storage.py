@@ -730,4 +730,4 @@ async def delete_file(
 
     logger.info(f"Deleted cloud file {file_id}")
 
-    return SuccessResponse(message="File deleted successfully")
+    return SuccessResponse(data={"file_id": file_id, "deleted": True}, message="File deleted successfully")
