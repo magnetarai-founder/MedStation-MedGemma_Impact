@@ -48,6 +48,10 @@ apps/backend/api/temp_exports/
 .DS_Store
 Thumbs.db
 
+# Runtime/PID files
+*.pid
+.backend.pid
+
 # Logs
 *.log
 logs/
@@ -121,8 +125,9 @@ DerivedData/
 *.swiftpm
 .swiftpm/
 
-# Ruby scripts (temporary refactoring helpers)
+# Temporary scripts
 /tmp/*.rb
+*.rb.tmp
 
 # Test coverage
 .coverage.*
