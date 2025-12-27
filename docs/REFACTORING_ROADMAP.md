@@ -79,10 +79,239 @@ All major refactorings have been completed:
 
 ---
 
-## 🔲 REMAINING: PHASE 5 - MAGNETARCLOUD FULL SYNC
+## 🔲 REMAINING WORK (Ordered: Least → Most Complex)
 
-**Prerequisites:** Phase 6 complete ✅, Authentication endpoints complete ✅
-**Estimated Time:** 7-8 hours (reduced from 9h - auth already done)
+---
+
+### TIER 7: TRIVIAL FIXES (~5-15 min each)
+
+Quick wins that can be done in a single edit.
+
+#### 7.1 Empty Button Closures (Swift)
+Wire up buttons that currently have empty `{ }` actions:
+
+| File | Line | Button | Action Needed |
+|------|------|--------|---------------|
+| `ResultsTable.swift` | 70 | "Analyze with AI" | Connect to AI analysis |
+| `ThreePaneLayout.swift` | 173 | Header action | Add callback |
+| `TwoPaneLayout.swift` | 138 | "New Chat" | Create new chat |
+| `TwoPaneLayout.swift` | 139 | "Select" | Toggle selection mode |
+| `TwoPaneLayout.swift` | 141-142 | Icon buttons | Add actions |
+| `HubModels.swift` | 333 | "Sync to Local" | Trigger cloud sync |
+
+#### 7.2 Config Alignment (Python)
+Fix configuration mismatches:
+
+- [ ] `config.py:100` - JWT expiry says 43200 min (30 days)
+- [ ] `auth_middleware.py:99` - Hardcoded 1 hour
+- [ ] **Fix:** Align to use config value consistently
+
+#### 7.3 Remove Hardcoded Default Password
+- [ ] `auth_bootstrap.py:73` - Remove `"ElohimOS_2024_Founder"` string
+- [ ] Require `ELOHIM_FOUNDER_PASSWORD` env var even in dev
+
+---
+
+### TIER 8: EASY FIXES (~15-30 min each)
+
+Simple implementations with clear scope.
+
+#### 8.1 Centralize Swift Localhost URLs
+Replace hardcoded URLs with `APIConfiguration`:
+
+| File | Line | Current |
+|------|------|---------|
+| `ModelsStore.swift` | 29 | `http://localhost:8000/api/v1/chat/models` |
+| `ModelsStore.swift` | 73 | `http://localhost:11434/api/pull` |
+| `ModelsStore.swift` | 122 | `http://localhost:11434/api/delete` |
+| `ChatStore.swift` | 71 | `http://localhost:8000/api/v1/chat/models` |
+| `ChatStore.swift` | 546 | `http://localhost:8000/.../messages` |
+| `SmartModelPicker.swift` | 150 | `http://localhost:8000/api/v1/chat/models` |
+| `ModelManagerWindow.swift` | 376, 396 | Multiple endpoints |
+| `SetupWizardView.swift` | 175 | `http://localhost:8000/api/v1/setup/complete` |
+| `TeamWorkspace.swift` | 248 | `http://localhost:8000/api/v1/vault/folders` |
+| `ModelManagementSettingsView.swift` | 260 | Model endpoints |
+| `AuthStore.swift` | 206 | Health check |
+
+**Solution:** Use `APIConfiguration.shared.baseURL` everywhere
+
+#### 8.2 Centralize Python Localhost URLs
+Replace hardcoded URLs with config:
+
+| File | Line | Current |
+|------|------|---------|
+| `bash_intelligence.py` | 240 | `http://localhost:11434/api/generate` |
+| `jarvis_rag_pipeline.py` | 227 | `http://127.0.0.1:11434/api/embeddings` |
+| `setup_wizard.py` | 89 | `http://localhost:11434` |
+
+**Solution:** Use `settings.ollama_base_url` from config
+
+#### 8.3 Add CORS Development Warning
+- [ ] `middleware/cors.py` - Log warning if production uses dev CORS
+- [ ] Add startup check for `ELOHIM_ENV=production` with `*` origins
+
+#### 8.4 Wire Up Audit Logging to Backend
+- [ ] `SecurityManager.swift:185` - Send audit events to `/api/v1/audit/log`
+- [ ] `EmergencyModeService+Backend.swift:47` - Implement remote logging
+
+---
+
+### TIER 9: MODERATE FIXES (~30-60 min each)
+
+Requires understanding of existing systems.
+
+#### 9.1 Implement Emergency Mode Key Monitoring
+**File:** `EmergencyConfirmationModal.swift:300-330`
+
+All these are currently stubs that only print:
+- [ ] `startKeyMonitoring()` - Monitor for panic key combo
+- [ ] `startHoldTimer()` - Track hold duration
+- [ ] `cancelHoldTimer()` - Cancel on release
+- [ ] `stopKeyMonitoring()` - Clean up listeners
+
+**Approach:** Use `NSEvent.addLocalMonitorForEvents` for key events
+
+#### 9.2 Add Rate Limiting to Setup Endpoints
+**File:** `routes/setup_wizard_routes.py`
+
+- [ ] Add `@limiter.limit("5/minute")` to model download endpoints
+- [ ] Add `@limiter.limit("10/minute")` to configuration endpoints
+- [ ] Prevent DoS via repeated setup requests
+
+#### 9.3 Add Exponential Backoff to Connection Codes
+**File:** `rate_limiter.py:174-180`
+
+Current: 5 attempts/minute, lockout after 15 failures
+
+- [ ] Implement backoff: 1s → 2s → 4s → 8s → 16s → lockout
+- [ ] Start backoff on first failure, not after threshold
+
+#### 9.4 Graceful Model Listing Fallback
+**File:** `routes/chat/models.py:40-52`
+
+- [ ] Cache last successful model list
+- [ ] Return cached list when Ollama unreachable
+- [ ] Add `cached: true` flag to response
+
+#### 9.5 Fix LAN Discovery IP Detection
+**File:** `lan_discovery.py:156`
+
+Current: Connects to `8.8.8.8:80` to find local IP (external dependency!)
+
+- [ ] Use `netifaces` or `socket.gethostbyname(socket.gethostname())`
+- [ ] Add fallback chain: link-local → multicast → loopback
+
+---
+
+### TIER 10: COMPLEX FIXES (~1-2 hours each)
+
+Requires careful implementation and testing.
+
+#### 10.1 Fix SQL Injection Vulnerabilities
+**CRITICAL SECURITY**
+
+| File | Line | Issue |
+|------|------|-------|
+| `elohimos_memory.py` | 19 | Direct f-string interpolation |
+| `offline_data_sync.py` | 463-486 | Table/column names in SQL |
+| `permissions/engine.py` | 255-325 | Dynamic query construction |
+| `insights/routes/templates.py` | 151 | UPDATE with dynamic columns |
+
+**Solution:**
+- [ ] Create `quote_identifier()` utility for table/column names
+- [ ] Validate all identifiers against allowlist before interpolation
+- [ ] Use parameterized queries for all values
+
+#### 10.2 Replace MockOrchestrator with Real Implementation
+**File:** `OrchestratorInitializer.swift:24-25`
+
+```swift
+// CURRENT (broken):
+let mock = MockOrchestrator()
+manager.register(mock)
+```
+
+- [ ] Implement `RealOrchestrator` class
+- [ ] Connect to backend `/api/v1/orchestrator/*` endpoints
+- [ ] Handle offline fallback to local routing
+
+#### 10.3 Offline Password Breach Check
+**File:** `password_breach_checker.py`
+
+Current: Requires HTTPS to HaveIBeenPwned API
+
+- [ ] Add `ELOHIM_OFFLINE_MODE` env var check
+- [ ] If offline, skip breach check with warning
+- [ ] Cache breach results indefinitely (not 24h)
+- [ ] Allow registration when air-gapped
+
+#### 10.4 Persist Sync Operation Queue
+**File:** `offline_data_sync.py:75`
+
+Current: `pending_operations` is in-memory only
+
+- [ ] Create `sync_queue` SQLite table
+- [ ] Persist operations before attempting sync
+- [ ] Mark as completed only after successful exchange
+- [ ] Retry failed operations on restart
+
+#### 10.5 N8N Workflow Offline Fallback
+**File:** `n8n_integration.py:70-82`
+
+Current: Raises exception on network failure
+
+- [ ] Cache last known workflow list
+- [ ] Return cached list with `stale: true` flag
+- [ ] Queue workflow executions when offline
+
+---
+
+### TIER 11: SWIFT TODO ITEMS
+
+Context and search integrations that need backend wiring.
+
+#### 11.1 Context Engine Integration
+| File | Line | TODO |
+|------|------|------|
+| `AppContext.swift` | 507 | Query backend ANE Context Engine |
+| `AppContext.swift` | 778-779 | Determine workflow status from state |
+| `AppContext.swift` | 784 | Implement KanbanStore/TeamStore |
+| `ContextBundle.swift` | 342 | Semantic search for similar queries |
+| `ContextBundle.swift` | 349 | DatabaseService query search |
+| `ContextBundle.swift` | 451 | Integrate with MagnetarCode |
+| `ContextBundle.swift` | 619 | Get models from HotSlotManager |
+| `ChatStore.swift` | 409 | Semantic search for vault files |
+
+#### 11.2 Workflow Queue
+- [ ] `WorkflowQueueView.swift:218` - Add assignee field to WorkItem model
+
+---
+
+### TIER 12: OFFLINE-FIRST COMPLIANCE
+
+Ensure all features work without network.
+
+#### 12.1 Network Failure Graceful Degradation
+| Component | Current Behavior | Required |
+|-----------|------------------|----------|
+| Password registration | Fails completely | Allow with warning |
+| Model listing | HTTP 500 | Return cached |
+| LAN discovery | Fails if no Google DNS | Use local methods |
+| N8N workflows | Exception raised | Return cached |
+| Sync operations | Data lost silently | Persist and retry |
+
+#### 12.2 Air-Gap Mode
+- [ ] Add `MAGNETAR_AIRGAP_MODE=true` env var
+- [ ] Skip all external network calls
+- [ ] Use local-only discovery
+- [ ] Disable cloud features gracefully
+
+---
+
+## 🔲 FINAL: MAGNETARCLOUD FULL SYNC
+
+**Prerequisites:** All above tiers complete
+**Estimated Time:** 7-8 hours
 **Risk Level:** HIGH - Cloud infrastructure and sync logic
 
 ### Already Completed (from Tier 5.2):
@@ -95,7 +324,7 @@ All major refactorings have been completed:
 
 ### Remaining Work:
 
-#### 5.1: OAuth 2.0 Integration (2 hours)
+#### 13.1: OAuth 2.0 Integration (2 hours)
 **Backend:**
 - [ ] OAuth client registration
 - [ ] Authorization endpoint handler
@@ -109,7 +338,7 @@ All major refactorings have been completed:
 - [ ] Keychain token storage
 - [ ] Automatic token refresh
 
-#### 5.2: Sync Service Backend (2 hours)
+#### 13.2: Sync Service Backend (2 hours)
 **Endpoints:**
 - [ ] `/v1/cloud/sync/vault` - Vault sync
 - [ ] `/v1/cloud/sync/workflows` - Workflow sync
@@ -122,19 +351,19 @@ All major refactorings have been completed:
 - [ ] sync_conflicts table
 - [ ] sync_log table
 
-#### 5.3: Sync Service Swift Client (1.5 hours)
+#### 13.3: Sync Service Swift Client (1.5 hours)
 - [ ] SyncService.swift - Main sync coordinator
 - [ ] SyncState.swift - Sync status tracking
 - [ ] ConflictResolver.swift - Conflict resolution UI
 - [ ] Background sync with NSBackgroundActivityScheduler
 
-#### 5.4: Cloud Storage Integration (1 hour)
+#### 13.4: Cloud Storage Integration (1 hour)
 - [ ] Chunked upload for large files
 - [ ] Resume support after interruption
 - [ ] Background upload queue
 - [ ] Progress tracking
 
-#### 5.5: MagnetarHub Cloud UI (0.5 hours)
+#### 13.5: MagnetarHub Cloud UI (0.5 hours)
 - [ ] Cloud connection status indicator
 - [ ] Sync now button
 - [ ] Conflict resolution modal
@@ -159,8 +388,11 @@ All major refactorings have been completed:
 | Issue | Count |
 |-------|-------|
 | TODO/FIXME (Python) | 12 |
-| TODO/FIXME (Swift) | 21 |
+| TODO/FIXME (Swift) | 20 |
 | DEPRECATED markers | 56 |
+| Empty button closures | 6 |
+| Hardcoded localhost URLs | 18 |
+| SQL injection risks | 4 |
 
 ### Files > 1,000 Lines (Future Refactoring)
 1. workflow_orchestrator.py - 1,139 lines
@@ -172,12 +404,20 @@ All major refactorings have been completed:
 
 ---
 
-## 📅 TIMELINE
+## 📅 EFFORT SUMMARY
 
-**Completed:** Phases 1-4, Phase 6, Tier 5 (Security)
-**Remaining:** Phase 5 (Full Cloud Sync) - ~7-8 hours
+| Tier | Items | Est. Time | Priority |
+|------|-------|-----------|----------|
+| 7: Trivial | 8 | 1-2 hours | LOW |
+| 8: Easy | 6 | 2-3 hours | MEDIUM |
+| 9: Moderate | 5 | 3-4 hours | MEDIUM |
+| 10: Complex | 5 | 6-8 hours | HIGH |
+| 11: Swift TODOs | 9 | 4-5 hours | MEDIUM |
+| 12: Offline-First | 2 | 2-3 hours | HIGH |
+| 13: Cloud Sync | 5 | 7-8 hours | LOW |
+| **TOTAL** | 40 | ~28-33 hours | |
 
 ---
 
 **Last Updated:** 2025-12-26
-**Status:** Phase 5 (MagnetarCloud Full Sync) pending
+**Status:** Tiers 7-12 pending, then MagnetarCloud Full Sync
