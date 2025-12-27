@@ -10,8 +10,16 @@ Security Features:
 - k-anonymity: Only sends first 5 chars of SHA-1 hash
 - No plaintext passwords sent over network
 - HTTPS-only API calls
-- Local caching of breach results (24 hour TTL)
+- Local caching of breach results (24 hour TTL, or indefinite in offline mode)
 - Rate limiting to prevent API abuse
+- Offline mode support for air-gapped environments
+
+OFFLINE MODE (Tier 10.3):
+When ELOHIM_OFFLINE_MODE=true or MAGNETAR_AIRGAP_MODE=true:
+- Password breach checks are skipped
+- A warning is logged on each check attempt
+- Registration proceeds without breach validation
+- This is intentional for air-gapped/persecuted church deployments
 
 Based on: https://haveibeenpwned.com/API/v3#PwnedPasswords
 Reference: https://www.troyhunt.com/ive-just-launched-pwned-passwords-version-2/
@@ -19,6 +27,7 @@ Reference: https://www.troyhunt.com/ive-just-launched-pwned-passwords-version-2/
 
 import hashlib
 import logging
+import os
 import threading
 from typing import Optional, Tuple
 from datetime import datetime, timedelta, UTC  # MED-01 FIX: Import UTC for timezone-aware datetimes
@@ -27,6 +36,27 @@ import aiohttp
 from functools import lru_cache
 
 logger = logging.getLogger(__name__)
+
+
+def is_offline_mode() -> bool:
+    """
+    Check if offline/airgap mode is enabled.
+
+    Returns True if any of these env vars are set to a truthy value:
+    - ELOHIM_OFFLINE_MODE
+    - MAGNETAR_AIRGAP_MODE
+
+    This allows password registration without external API calls,
+    intended for air-gapped deployments.
+    """
+    offline_vars = ["ELOHIM_OFFLINE_MODE", "MAGNETAR_AIRGAP_MODE"]
+    truthy_values = {"true", "1", "yes", "on"}
+
+    for var in offline_vars:
+        value = os.getenv(var, "").lower().strip()
+        if value in truthy_values:
+            return True
+    return False
 
 
 class PasswordBreachChecker:
@@ -144,8 +174,13 @@ class PasswordBreachChecker:
             - is_breached: True if password found in breach database
             - breach_count: Number of times password appears in breaches (0 if not found)
 
+        In offline mode (ELOHIM_OFFLINE_MODE=true):
+            - Always returns (False, 0) - assumes password is safe
+            - Logs a warning about skipped breach check
+            - This enables air-gapped deployments
+
         Raises:
-            Exception: If API call fails (should be caught by caller)
+            Exception: If API call fails and not in offline mode
 
         Example:
             >>> checker = PasswordBreachChecker()
@@ -154,6 +189,14 @@ class PasswordBreachChecker:
             ...     print(f"Password found in {count} breaches!")
             >>> await checker.close()
         """
+        # OFFLINE MODE: Skip breach check for air-gapped deployments
+        if is_offline_mode():
+            logger.warning(
+                "⚠️  Password breach check SKIPPED (offline mode enabled). "
+                "Set ELOHIM_OFFLINE_MODE=false to enable breach checking."
+            )
+            return (False, 0)
+
         # Hash the password
         full_hash = self._hash_password(password)
         hash_prefix = full_hash[:self.HASH_PREFIX_LENGTH]

@@ -26,7 +26,40 @@ except ImportError:
     def verify_payload(payload, signature, team_id): return True
     def is_team_member(team_id, user_id): return "member"
 
+# SQL Safety for identifier quoting
+try:
+    from api.security.sql_safety import quote_identifier
+except ImportError:
+    # Fallback: basic identifier quoting (double-quote escaping)
+    def quote_identifier(name: str) -> str:
+        if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', name):
+            raise ValueError(f"Invalid identifier: {name}")
+        return f'"{name.replace(chr(34), chr(34)+chr(34))}"'
+
 logger = logging.getLogger(__name__)
+
+# SECURITY: Allowlist of tables that can be synced via P2P
+# Only these tables can be modified by incoming sync operations
+# This prevents SQL injection via malicious table names from peers
+SYNCABLE_TABLES: frozenset[str] = frozenset({
+    # Chat and messages
+    "chat_sessions",
+    "chat_messages",
+    "chat_context",
+    # Vault and files
+    "vault_files",
+    "vault_folders",
+    "vault_metadata",
+    # Workflows
+    "workflows",
+    "work_items",
+    # Team collaboration
+    "team_notes",
+    "team_documents",
+    "shared_queries",
+    # Query history
+    "query_history",
+})
 
 
 @dataclass
@@ -80,6 +113,9 @@ class OfflineDataSync:
         # Initialize sync metadata database
         self.sync_db_path = db_path.parent / f"{db_path.stem}_sync.db"
         self._init_sync_db()
+
+        # Load any pending operations from previous session (Tier 10.4)
+        self._load_pending_operations()
 
         logger.info(f"🔄 Data sync initialized for peer {local_peer_id}")
 
@@ -135,6 +171,78 @@ class OfflineDataSync:
         conn.close()
 
         logger.info(f"✅ Sync database initialized: {self.sync_db_path}")
+
+    def _load_pending_operations(self) -> None:
+        """
+        Load pending (unsynced) operations from database on startup.
+
+        Tier 10.4: Ensures sync operations survive app restarts.
+        Operations are retried automatically when sync resumes.
+        """
+        conn = sqlite3.connect(str(self.sync_db_path))
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT op_id, table_name, operation, row_id, data, timestamp,
+                   peer_id, version, team_id, signature
+            FROM sync_operations
+            WHERE synced = 0 AND peer_id = ?
+            ORDER BY version ASC
+        """, (self.local_peer_id,))
+
+        rows = cursor.fetchall()
+        conn.close()
+
+        for row in rows:
+            op = SyncOperation(
+                op_id=row['op_id'],
+                table_name=row['table_name'],
+                operation=row['operation'],
+                row_id=row['row_id'],
+                data=json.loads(row['data']) if row['data'] else None,
+                timestamp=row['timestamp'],
+                peer_id=row['peer_id'],
+                version=row['version'],
+                team_id=row['team_id'],
+                signature=row['signature'] or ''
+            )
+            self.pending_operations.append(op)
+
+            # Update local_version to highest seen version
+            if row['version'] > self.local_version:
+                self.local_version = row['version']
+
+        if rows:
+            logger.info(f"📥 Loaded {len(rows)} pending sync operations from previous session")
+
+    def _mark_operations_synced(self, op_ids: list[str]) -> None:
+        """
+        Mark operations as successfully synced.
+
+        Tier 10.4: Called after successful exchange with peer.
+        Prevents duplicate syncing of same operations.
+
+        Args:
+            op_ids: List of operation IDs that were synced
+        """
+        if not op_ids:
+            return
+
+        conn = sqlite3.connect(str(self.sync_db_path))
+        cursor = conn.cursor()
+
+        placeholders = ','.join('?' for _ in op_ids)
+        cursor.execute(f"""
+            UPDATE sync_operations
+            SET synced = 1
+            WHERE op_id IN ({placeholders})
+        """, op_ids)
+
+        conn.commit()
+        conn.close()
+
+        logger.debug(f"✅ Marked {len(op_ids)} operations as synced")
 
     async def track_operation(self,
                              table_name: str,
@@ -245,6 +353,16 @@ class OfflineDataSync:
             logger.info(f"📤 Sending {len(ops_to_send)} operations to {peer_id}")
             ops_received = await self._exchange_operations_with_peer(peer_id, ops_to_send)
             state.operations_sent += len(ops_to_send)
+
+            # Step 2.5: Mark sent operations as synced (Tier 10.4)
+            if ops_to_send:
+                synced_op_ids = [op.op_id for op in ops_to_send]
+                self._mark_operations_synced(synced_op_ids)
+                # Remove from in-memory queue
+                self.pending_operations = [
+                    op for op in self.pending_operations
+                    if op.op_id not in synced_op_ids
+                ]
 
             # Step 3: Operations received from peer during exchange
             logger.info(f"📥 Received {len(ops_received)} operations from {peer_id}")
@@ -438,52 +556,58 @@ class OfflineDataSync:
         return False
 
     async def _execute_operation(self, conn: sqlite3.Connection, op: SyncOperation) -> None:
-        """Execute database operation"""
+        """Execute database operation with SQL injection protection"""
         cursor = conn.cursor()
 
-        # Validate table name to prevent SQL injection (critical for P2P data)
-        if not re.match(r'^[a-zA-Z0-9_]+$', op.table_name):
-            logger.error(f"Invalid table name from P2P: {op.table_name}")
-            raise ValueError(f"Invalid table name: {op.table_name}")
+        # SECURITY: Validate table name against allowlist (critical for P2P data)
+        if op.table_name not in SYNCABLE_TABLES:
+            logger.error(f"⛔ Blocked sync to non-syncable table: {op.table_name}")
+            raise ValueError(f"Table not syncable: {op.table_name}")
+
+        # Defense-in-depth: quote the table name
+        safe_table = quote_identifier(op.table_name)
 
         try:
             if op.operation == 'insert':
                 # Build INSERT statement
                 columns = list(op.data.keys())
 
-                # Validate column names to prevent SQL injection
+                # Validate and quote column names
+                safe_columns = []
                 for col in columns:
                     if not re.match(r'^[a-zA-Z0-9_]+$', col):
                         logger.error(f"Invalid column name from P2P: {col}")
                         raise ValueError(f"Invalid column name: {col}")
+                    safe_columns.append(quote_identifier(col))
 
                 placeholders = ','.join('?' * len(columns))
-                column_names = ','.join(columns)
+                column_names = ','.join(safe_columns)
 
                 cursor.execute(f"""
-                    INSERT OR REPLACE INTO {op.table_name} ({column_names})
+                    INSERT OR REPLACE INTO {safe_table} ({column_names})
                     VALUES ({placeholders})
                 """, list(op.data.values()))
 
             elif op.operation == 'update':
-                # Validate column names to prevent SQL injection
+                # Validate and quote column names
+                set_parts = []
                 for col in op.data.keys():
                     if not re.match(r'^[a-zA-Z0-9_]+$', col):
                         logger.error(f"Invalid column name from P2P: {col}")
                         raise ValueError(f"Invalid column name: {col}")
+                    set_parts.append(f"{quote_identifier(col)} = ?")
 
-                # Build UPDATE statement
-                set_clause = ','.join(f"{k} = ?" for k in op.data.keys())
+                set_clause = ','.join(set_parts)
 
                 cursor.execute(f"""
-                    UPDATE {op.table_name}
+                    UPDATE {safe_table}
                     SET {set_clause}
                     WHERE rowid = ?
                 """, list(op.data.values()) + [op.row_id])
 
             elif op.operation == 'delete':
                 cursor.execute(f"""
-                    DELETE FROM {op.table_name}
+                    DELETE FROM {safe_table}
                     WHERE rowid = ?
                 """, (op.row_id,))
 
