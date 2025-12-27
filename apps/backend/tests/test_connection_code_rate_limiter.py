@@ -82,15 +82,21 @@ class TestConnectionCodeState:
         state = ConnectionCodeState()
         assert state.get_backoff_delay() == 0.0
 
-    def test_get_backoff_delay_zero_for_first_failure(self):
-        """Backoff should be 0 for first failure"""
+    def test_get_backoff_delay_starts_on_first_failure(self):
+        """Backoff should start at 1 second on first failure (security improvement)"""
         state = ConnectionCodeState()
         state.consecutive_failures = 1
-        assert state.get_backoff_delay() == 0.0
+        # SECURITY: Backoff starts on first failure to slow brute-force attempts
+        # Pattern: 1s → 2s → 4s → 8s → 16s → lockout
+        assert state.get_backoff_delay() == 1.0
 
     def test_get_backoff_delay_exponential(self):
-        """Backoff should increase exponentially"""
+        """Backoff should increase exponentially: 2^(n-1) seconds"""
         state = ConnectionCodeState()
+
+        # 1 failure: 2^0 = 1 second (backoff starts immediately)
+        state.consecutive_failures = 1
+        assert state.get_backoff_delay() == 1.0
 
         # 2 failures: 2^1 = 2 seconds
         state.consecutive_failures = 2
@@ -103,6 +109,10 @@ class TestConnectionCodeState:
         # 4 failures: 2^3 = 8 seconds
         state.consecutive_failures = 4
         assert state.get_backoff_delay() == 8.0
+
+        # 5 failures: 2^4 = 16 seconds
+        state.consecutive_failures = 5
+        assert state.get_backoff_delay() == 16.0
 
     def test_get_backoff_delay_capped(self):
         """Backoff should be capped at MAX_BACKOFF"""

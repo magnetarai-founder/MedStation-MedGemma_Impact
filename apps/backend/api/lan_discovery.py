@@ -149,16 +149,59 @@ class LANDiscoveryService:
             return f"omnistudio_{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
     def _get_local_ip(self) -> str:
-        """Get local IP address"""
+        """
+        Get local IP address without requiring external connectivity.
+
+        SECURITY: No longer connects to 8.8.8.8 (Google DNS) to find local IP.
+        Uses local-only methods with fallback chain.
+
+        Returns:
+            Local IPv4 address (non-loopback if possible)
+        """
+        # Method 1: Try socket.gethostbyname with hostname
         try:
-            # Create a socket to find the local IP
+            hostname = socket.gethostname()
+            local_ip = socket.gethostbyname(hostname)
+            # Check if we got a real IP (not loopback)
+            if local_ip and not local_ip.startswith("127."):
+                logger.debug(f"Local IP via gethostbyname: {local_ip}")
+                return local_ip
+        except (socket.gaierror, OSError) as e:
+            logger.debug(f"gethostbyname failed: {e}")
+
+        # Method 2: Try to find IP from network interfaces
+        try:
+            import netifaces
+            for iface in netifaces.interfaces():
+                addrs = netifaces.ifaddresses(iface)
+                if netifaces.AF_INET in addrs:
+                    for addr in addrs[netifaces.AF_INET]:
+                        ip = addr.get('addr', '')
+                        # Skip loopback and link-local
+                        if ip and not ip.startswith("127.") and not ip.startswith("169.254."):
+                            logger.debug(f"Local IP via netifaces ({iface}): {ip}")
+                            return ip
+        except ImportError:
+            logger.debug("netifaces not installed, skipping interface enumeration")
+        except Exception as e:
+            logger.debug(f"netifaces failed: {e}")
+
+        # Method 3: Connect to local multicast address (no external traffic)
+        try:
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            s.connect(("8.8.8.8", 80))
+            # Use multicast address - doesn't require actual internet
+            s.connect(("224.0.0.1", 1))
             local_ip = s.getsockname()[0]
             s.close()
-            return local_ip
-        except OSError:
-            return "127.0.0.1"
+            if local_ip and not local_ip.startswith("127."):
+                logger.debug(f"Local IP via multicast: {local_ip}")
+                return local_ip
+        except OSError as e:
+            logger.debug(f"Multicast method failed: {e}")
+
+        # Fallback: loopback
+        logger.warning("Could not determine local IP, using loopback")
+        return "127.0.0.1"
 
     async def start_discovery(self) -> None:
         """Start discovering other ElohimOS instances on the network"""

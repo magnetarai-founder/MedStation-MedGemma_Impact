@@ -294,28 +294,97 @@ struct EmergencyConfirmationModal: View {
     // MARK: - Key Monitoring Implementation
 
     @State private var keyMonitor: Any?
-    @State private var keyHoldTimer: Timer?
-    @State private var keyHoldStartTime: Date?
+    @State private var holdProgressTimer: Timer?
+    @State private var isHoldingKeyCombo: Bool = false
+
+    /// Required hold duration in seconds
+    private let requiredHoldDuration: Double = 5.0
 
     private func startKeyMonitoring() {
-        // TODO: Implement key monitoring with proper SwiftUI state management
-        // The current approach with NSEvent closures doesn't work well with SwiftUI structs
-        print("⌨️ Key monitoring: Placeholder implementation")
+        // Monitor for key down/up events to detect Cmd+Shift+Delete combo
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp, .flagsChanged]) { [self] event in
+            handleKeyEvent(event)
+            return event
+        }
+        print("⌨️ Key monitoring started for Cmd+Shift+Delete combo")
+    }
+
+    private func handleKeyEvent(_ event: NSEvent) {
+        // Check if Cmd+Shift are held
+        let modifiers = event.modifierFlags
+        let hasCmd = modifiers.contains(.command)
+        let hasShift = modifiers.contains(.shift)
+        let isDeletePressed = isDeleteKeyPressed()
+
+        // Check if all three keys are held
+        if hasCmd && hasShift && isDeletePressed {
+            if !isHoldingKeyCombo {
+                startHoldTimer()
+            }
+        } else {
+            if isHoldingKeyCombo {
+                cancelHoldTimer()
+            }
+        }
     }
 
     private func startHoldTimer() {
-        // TODO: Implement with proper SwiftUI state management
-        print("⏱️ Hold timer: Placeholder implementation")
+        guard !isHoldingKeyCombo else { return }
+
+        isHoldingKeyCombo = true
+        keyHoldProgress = 0.0
+
+        // Timer to update progress every 100ms
+        holdProgressTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [self] timer in
+            // Update on main thread
+            DispatchQueue.main.async {
+                // Verify keys are still held
+                let modifiers = NSEvent.modifierFlags
+                let hasCmd = modifiers.contains(.command)
+                let hasShift = modifiers.contains(.shift)
+                let isDeletePressed = self.isDeleteKeyPressed()
+
+                if hasCmd && hasShift && isDeletePressed {
+                    self.keyHoldProgress += 0.1 / self.requiredHoldDuration
+
+                    if self.keyHoldProgress >= 1.0 {
+                        // Combo held long enough - trigger emergency
+                        timer.invalidate()
+                        self.holdProgressTimer = nil
+                        self.triggerEmergencyViaKeyCombo()
+                    }
+                } else {
+                    // Keys released - cancel
+                    self.cancelHoldTimer()
+                }
+            }
+        }
+
+        print("⏱️ Hold timer started - hold for \(requiredHoldDuration) seconds")
     }
 
     private func cancelHoldTimer() {
-        // TODO: Implement with proper SwiftUI state management
-        print("❌ Cancel hold timer: Placeholder implementation")
+        holdProgressTimer?.invalidate()
+        holdProgressTimer = nil
+        isHoldingKeyCombo = false
+
+        // Animate progress back to zero
+        withAnimation(.easeOut(duration: 0.3)) {
+            keyHoldProgress = 0.0
+        }
+
+        print("❌ Hold timer cancelled")
     }
 
     private func triggerEmergencyViaKeyCombo() {
-        // TODO: Implement key combo trigger
-        executeEmergency(method: .keyCombo)
+        print("🔥 Key combo trigger activated!")
+        // Skip first confirmation, go straight to second (user already held for 5 seconds)
+        showSecondConfirmation = true
+        // Auto-execute after a brief moment for visibility
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            executeEmergency(method: .keyCombo)
+        }
     }
 
     private func isDeleteKeyPressed() -> Bool {
@@ -325,8 +394,18 @@ struct EmergencyConfirmationModal: View {
     }
 
     private func stopKeyMonitoring() {
-        // TODO: Implement with proper SwiftUI state management
-        print("⌨️ Key monitoring stopped: Placeholder")
+        // Clean up key monitor
+        if let monitor = keyMonitor {
+            NSEvent.removeMonitor(monitor)
+            keyMonitor = nil
+        }
+
+        // Clean up timer
+        holdProgressTimer?.invalidate()
+        holdProgressTimer = nil
+        isHoldingKeyCombo = false
+
+        print("⌨️ Key monitoring stopped")
     }
 }
 

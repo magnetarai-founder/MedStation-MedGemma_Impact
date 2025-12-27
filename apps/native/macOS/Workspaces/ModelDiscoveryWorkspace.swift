@@ -5,6 +5,16 @@
 //  Browse and download models from Ollama library
 //  Refactored in Phase 6.22 - extracted panes and data manager
 //
+//  STATUS: Fully implemented but NOT exposed in NavigationRail (Dec 2025)
+//
+//  DECISION (Tier 9.6): Keep as optional feature, not removed.
+//  - MagnetarHub handles model management (installed models)
+//  - Safari button in Hub provides online library browsing
+//  - This workspace duplicates Hub functionality
+//  - Kept for potential future use or as reference implementation
+//
+//  TO ENABLE: Add case to NavigationRail.swift and WorkspaceSelection enum
+//
 
 import SwiftUI
 

@@ -77,4 +77,10 @@ RATE_LIMITS = {
     # Search/compute heavy
     "search": "20/minute",         # 20 search operations per minute
     "ai_chat": "30/minute",        # 30 AI chat messages per minute
+
+    # Setup wizard - prevent DoS on public endpoints
+    "setup_status": "30/minute",   # 30 status checks per minute
+    "setup_config": "10/minute",   # 10 configuration ops per minute
+    "setup_download": "5/minute",  # 5 model downloads per minute (bandwidth heavy)
+    "setup_account": "3/minute",   # 3 account creation attempts per minute
 }

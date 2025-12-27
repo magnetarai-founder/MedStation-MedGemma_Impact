@@ -12,6 +12,8 @@ the existing founder_setup routes with full onboarding:
 - Account creation
 
 Follows MagnetarStudio API standards (see API_STANDARDS.md).
+
+SECURITY: Rate limiting applied to prevent DoS attacks on public endpoints.
 """
 
 import logging
@@ -30,6 +32,7 @@ except ImportError:
     from api.founder_setup_wizard import get_founder_wizard
 
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.middleware.rate_limit import limiter, RATE_LIMITS
 
 logger = logging.getLogger(__name__)
 
@@ -153,7 +156,8 @@ class CompleteSetupResponse(BaseModel):
     summary="Get setup status",
     description="Get overall setup wizard status (public endpoint - no authentication required)"
 )
-async def get_setup_status() -> SuccessResponse[SetupStatusResponse]:
+@limiter.limit(RATE_LIMITS["setup_status"])
+async def get_setup_status(request: Request) -> SuccessResponse[SetupStatusResponse]:
     """
     Get overall setup status
 
@@ -216,7 +220,8 @@ async def get_setup_status() -> SuccessResponse[SetupStatusResponse]:
     summary="Check Ollama status",
     description="Check Ollama installation and service status (public endpoint)"
 )
-async def check_ollama() -> SuccessResponse[OllamaStatusResponse]:
+@limiter.limit(RATE_LIMITS["setup_status"])
+async def check_ollama(request: Request) -> SuccessResponse[OllamaStatusResponse]:
     """
     Check Ollama installation and service status
 
@@ -264,7 +269,8 @@ async def check_ollama() -> SuccessResponse[OllamaStatusResponse]:
     summary="Get system resources",
     description="Detect system resources and recommend tier (public endpoint)"
 )
-async def get_system_resources() -> SuccessResponse[SystemResourcesResponse]:
+@limiter.limit(RATE_LIMITS["setup_status"])
+async def get_system_resources(request: Request) -> SuccessResponse[SystemResourcesResponse]:
     """
     Detect system resources (RAM, disk space)
 
@@ -311,7 +317,8 @@ async def get_system_resources() -> SuccessResponse[SystemResourcesResponse]:
     summary="Get model recommendations",
     description="Get recommended models for a tier based on system resources (public endpoint)"
 )
-async def get_model_recommendations(tier: Optional[str] = None) -> SuccessResponse[ModelRecommendationsResponse]:
+@limiter.limit(RATE_LIMITS["setup_config"])
+async def get_model_recommendations(request: Request, tier: Optional[str] = None) -> SuccessResponse[ModelRecommendationsResponse]:
     """
     Get recommended models for a tier
 
@@ -360,7 +367,8 @@ async def get_model_recommendations(tier: Optional[str] = None) -> SuccessRespon
     summary="Get installed models",
     description="Get list of installed Ollama models (public endpoint)"
 )
-async def get_installed_models() -> SuccessResponse[InstalledModelsResponse]:
+@limiter.limit(RATE_LIMITS["setup_status"])
+async def get_installed_models(request: Request) -> SuccessResponse[InstalledModelsResponse]:
     """
     Get list of installed Ollama models
 
@@ -404,7 +412,8 @@ async def get_installed_models() -> SuccessResponse[InstalledModelsResponse]:
     summary="Download model (blocking)",
     description="Download a model via Ollama (blocking, for progress use SSE endpoint)"
 )
-async def download_model(body: DownloadModelRequest) -> SuccessResponse[DownloadModelResponse]:
+@limiter.limit(RATE_LIMITS["setup_download"])
+async def download_model(request: Request, body: DownloadModelRequest) -> SuccessResponse[DownloadModelResponse]:
     """
     Download a model via Ollama
 
@@ -469,7 +478,8 @@ async def download_model(body: DownloadModelRequest) -> SuccessResponse[Download
     summary="Download model with progress (SSE)",
     description="Download a model with real-time progress updates via Server-Sent Events"
 )
-async def download_model_progress(model_name: str) -> StreamingResponse:
+@limiter.limit(RATE_LIMITS["setup_download"])
+async def download_model_progress(request: Request, model_name: str) -> StreamingResponse:
     """
     Download a model with real-time progress updates via Server-Sent Events (SSE)
 
@@ -593,7 +603,8 @@ async def download_model_progress(model_name: str) -> StreamingResponse:
     summary="Configure hot slots",
     description="Configure hot slots (1-4 favorite models) for quick access (public endpoint)"
 )
-async def configure_hot_slots(body: ConfigureHotSlotsRequest) -> SuccessResponse[ConfigureHotSlotsResponse]:
+@limiter.limit(RATE_LIMITS["setup_config"])
+async def configure_hot_slots(request: Request, body: ConfigureHotSlotsRequest) -> SuccessResponse[ConfigureHotSlotsResponse]:
     """
     Configure hot slots (1-4 favorite models)
 
@@ -674,6 +685,7 @@ async def configure_hot_slots(body: ConfigureHotSlotsRequest) -> SuccessResponse
     summary="Create account",
     description="Create local super_admin account (public endpoint - first-time setup)"
 )
+@limiter.limit(RATE_LIMITS["setup_account"])
 async def create_account(request: Request, body: CreateAccountRequest) -> SuccessResponse[CreateAccountResponse]:
     """
     Create local super_admin account
@@ -745,7 +757,8 @@ async def create_account(request: Request, body: CreateAccountRequest) -> Succes
     summary="Complete setup wizard",
     description="Mark setup wizard as completed (public endpoint)"
 )
-async def complete_setup() -> SuccessResponse[CompleteSetupResponse]:
+@limiter.limit(RATE_LIMITS["setup_config"])
+async def complete_setup(request: Request) -> SuccessResponse[CompleteSetupResponse]:
     """
     Mark setup wizard as completed
 

@@ -204,9 +204,18 @@ class ConnectionCodeState:
         return max(0, int(self.lockout_until - time()))
 
     def get_backoff_delay(self) -> float:
-        """Calculate exponential backoff delay"""
-        if self.consecutive_failures <= 1:
+        """
+        Calculate exponential backoff delay.
+
+        SECURITY: Backoff starts on FIRST failure to slow brute-force attempts.
+        Pattern: 1s → 2s → 4s → 8s → 16s → lockout
+
+        Returns:
+            Delay in seconds before next attempt allowed
+        """
+        if self.consecutive_failures == 0:
             return 0.0
+        # Start backoff at 1 second on first failure, then double
         return min(
             CONNECTION_CODE_BACKOFF_MULTIPLIER ** (self.consecutive_failures - 1),
             CONNECTION_CODE_MAX_BACKOFF
