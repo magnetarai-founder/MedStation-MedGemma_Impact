@@ -39,6 +39,26 @@ final class APIConfiguration {
         return "\(rootURL)/health"
     }
 
+    /// Context Engine status endpoint
+    var contextStatusURL: String {
+        "\(versionedBaseURL)/context/status"
+    }
+
+    /// Context semantic search endpoint
+    var contextSearchURL: String {
+        "\(versionedBaseURL)/context/search"
+    }
+
+    /// Vault semantic search endpoint
+    var vaultSearchURL: String {
+        "\(versionedBaseURL)/vault/search/semantic"
+    }
+
+    /// Data/Query semantic search endpoint
+    var dataSearchURL: String {
+        "\(versionedBaseURL)/data/search/semantic"
+    }
+
     private init() {
         // Read from environment or default to localhost
         // For production/remote: Set API_BASE_URL environment variable to HTTPS endpoint

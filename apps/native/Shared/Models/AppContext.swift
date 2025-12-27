@@ -502,15 +502,69 @@ struct ANEContextState {
     let available: Bool
     let indexedDocuments: Int
     let lastIndexedAt: Date?
+    let queueDepth: Int
+    let features: ANEFeatures
 
-    static func current() async -> ANEContextState {
-        // TODO: Query backend ANE Context Engine
-        return ANEContextState(
-            available: false,
-            indexedDocuments: 0,
-            lastIndexedAt: nil
+    struct ANEFeatures {
+        let semanticSearch: Bool
+        let aneAcceleration: Bool
+        let backgroundVectorization: Bool
+
+        static let unavailable = ANEFeatures(
+            semanticSearch: false,
+            aneAcceleration: false,
+            backgroundVectorization: false
         )
     }
+
+    static func current() async -> ANEContextState {
+        // Query backend ANE Context Engine at /api/v1/context/status
+        guard let url = URL(string: APIConfiguration.shared.contextStatusURL) else {
+            return .unavailable
+        }
+
+        do {
+            let (data, response) = try await URLSession.shared.data(from: url)
+
+            guard let httpResponse = response as? HTTPURLResponse,
+                  httpResponse.statusCode == 200 else {
+                return .unavailable
+            }
+
+            let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+
+            let available = json["available"] as? Bool ?? false
+            let vectorCount = json["vector_count"] as? Int ?? 0
+            let queueDepth = json["queue_depth"] as? Int ?? 0
+
+            // Parse features
+            let featuresDict = json["features"] as? [String: Any] ?? [:]
+            let features = ANEFeatures(
+                semanticSearch: featuresDict["semantic_search"] as? Bool ?? false,
+                aneAcceleration: featuresDict["ane_acceleration"] as? Bool ?? false,
+                backgroundVectorization: featuresDict["background_vectorization"] as? Bool ?? false
+            )
+
+            return ANEContextState(
+                available: available,
+                indexedDocuments: vectorCount,
+                lastIndexedAt: Date(),  // Backend doesn't track this, use current time
+                queueDepth: queueDepth,
+                features: features
+            )
+        } catch {
+            print("⚠️ Failed to fetch ANE context status: \(error)")
+            return .unavailable
+        }
+    }
+
+    static let unavailable = ANEContextState(
+        available: false,
+        indexedDocuments: 0,
+        lastIndexedAt: nil,
+        queueDepth: 0,
+        features: .unavailable
+    )
 }
 
 // MARK: - Model Interaction History
@@ -775,8 +829,8 @@ extension WorkflowSummary {
     init(from workflow: Workflow) {
         self.id = workflow.id
         self.name = workflow.name
-        self.status = "active"  // TODO: Determine from workflow state
-        self.lastRun = nil  // TODO: Track last run time
+        self.status = (workflow.enabled ?? true) ? "active" : "disabled"
+        self.lastRun = workflow.lastRunAt.flatMap { ISO8601DateFormatter().date(from: $0) }
     }
 }
 

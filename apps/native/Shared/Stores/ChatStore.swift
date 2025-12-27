@@ -401,12 +401,24 @@ final class ChatStore {
         // Phase 3: Get vault context (file permissions and access)
         let vaultContext = await VaultContext.current()
 
+        // Phase 5: Get relevant vault files via semantic search
+        let vaultSearchResults = await ContextService.shared.searchVaultFiles(for: query, limit: 5)
+        let relevantVaultFiles: [RelevantVaultFile]? = vaultSearchResults.isEmpty ? nil : vaultSearchResults.map { result in
+            RelevantVaultFile(
+                fileId: result.fileId,
+                fileName: result.fileName,
+                filePath: result.filePath ?? "",
+                snippet: result.snippet,
+                relevanceScore: result.relevanceScore
+            )
+        }
+
         // Convert VaultContext to BundledVaultContext
         let bundledVaultContext = BundledVaultContext(
             unlockedVaultType: vaultContext.unlockedVaultType,
             recentlyAccessedFiles: vaultContext.recentFiles,
             currentlyGrantedPermissions: vaultContext.activePermissions,
-            relevantFiles: nil  // TODO: Add semantic search for relevant vault files
+            relevantFiles: relevantVaultFiles
         )
 
         return ContextBundle(

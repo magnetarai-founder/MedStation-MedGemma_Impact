@@ -207,4 +207,121 @@ class ContextService {
             return []
         }
     }
+
+    /// Search vault for relevant files based on query
+    /// Uses semantic search to find contextually relevant vault content
+    func searchVaultFiles(
+        for query: String,
+        limit: Int = 5
+    ) async -> [VaultSearchResult] {
+        do {
+            let response = try await searchContext(
+                query: query,
+                workspaceTypes: ["vault"],
+                limit: limit
+            )
+
+            return response.results.compactMap { result -> VaultSearchResult? in
+                guard result.source == "vault" else { return nil }
+
+                return VaultSearchResult(
+                    fileId: result.metadata["file_id"]?.value as? String ?? UUID().uuidString,
+                    fileName: result.metadata["file_name"]?.value as? String ?? "Unknown",
+                    filePath: result.metadata["file_path"]?.value as? String,
+                    snippet: result.content,
+                    relevanceScore: result.relevanceScore
+                )
+            }
+        } catch {
+            print("Failed to search vault files: \(error)")
+            return []
+        }
+    }
+
+    /// Search data queries for relevant context
+    func searchDataQueries(
+        for query: String,
+        limit: Int = 5
+    ) async -> [DataQuerySearchResult] {
+        do {
+            let response = try await searchContext(
+                query: query,
+                workspaceTypes: ["data"],
+                limit: limit
+            )
+
+            return response.results.compactMap { result -> DataQuerySearchResult? in
+                guard result.source == "data" else { return nil }
+
+                return DataQuerySearchResult(
+                    queryId: result.metadata["query_id"]?.value as? String ?? UUID().uuidString,
+                    queryText: result.content,
+                    tableName: result.metadata["table_name"]?.value as? String,
+                    relevanceScore: result.relevanceScore
+                )
+            }
+        } catch {
+            print("Failed to search data queries: \(error)")
+            return []
+        }
+    }
+
+    /// Search code context for relevant files and snippets
+    /// Uses semantic search to find contextually relevant code
+    func searchCodeFiles(
+        for query: String,
+        limit: Int = 5
+    ) async -> [CodeSearchResult] {
+        do {
+            let response = try await searchContext(
+                query: query,
+                workspaceTypes: ["code"],
+                limit: limit
+            )
+
+            return response.results.compactMap { result -> CodeSearchResult? in
+                guard result.source == "code" else { return nil }
+
+                return CodeSearchResult(
+                    fileId: result.metadata["file_id"]?.value as? String ?? UUID().uuidString,
+                    fileName: result.metadata["file_name"]?.value as? String ?? "Unknown",
+                    filePath: result.metadata["file_path"]?.value as? String,
+                    language: result.metadata["language"]?.value as? String,
+                    snippet: result.content,
+                    lineNumber: result.metadata["line_number"]?.value as? Int,
+                    relevanceScore: result.relevanceScore
+                )
+            }
+        } catch {
+            print("Failed to search code files: \(error)")
+            return []
+        }
+    }
+}
+
+// MARK: - Search Result Types
+
+struct VaultSearchResult {
+    let fileId: String
+    let fileName: String
+    let filePath: String?
+    let snippet: String
+    let relevanceScore: Float
+}
+
+struct DataQuerySearchResult {
+    let queryId: String
+    let queryText: String
+    let tableName: String?
+    let relevanceScore: Float
+}
+
+struct CodeSearchResult {
+    let fileId: String
+    let fileName: String
+    let filePath: String?
+    let language: String?
+    let snippet: String
+    let lineNumber: Int?
+    let relevanceScore: Float
 }

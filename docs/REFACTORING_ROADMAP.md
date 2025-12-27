@@ -296,28 +296,35 @@ Modernized type hints using PEP 604 (`X | None`) and PEP 585 (`list[X]`, `dict[K
 
 ---
 
-## 🔲 REMAINING WORK (Ordered: Least → Most Complex)
+### TIER 12: SWIFT TODO ITEMS ✅ (Completed 2025-12-26)
+
+Context and search integrations wired to backend services.
+
+#### 12.1 Context Engine Integration ✅
+| File | Line | TODO | Status |
+|------|------|------|--------|
+| `AppContext.swift` | 507 | Query backend ANE Context Engine | ✅ Uses `/api/v1/context/status` |
+| `AppContext.swift` | 832-833 | Determine workflow status from state | ✅ Uses `workflow.enabled` field |
+| `AppContext.swift` | 838 | Implement KanbanStore/TeamStore | ⏳ Future (stores don't exist yet) |
+| `ContextBundle.swift` | 342 | Semantic search for similar queries | ✅ Uses `ContextService.searchDataQueries()` |
+| `ContextBundle.swift` | 451 | Integrate with MagnetarCode | ✅ Uses `ContextService.searchCodeFiles()` |
+| `ContextBundle.swift` | 619 | Get models from HotSlotManager + Ollama | ✅ Fetches from Ollama `/api/tags` |
+| `ChatStore.swift` | 409 | Semantic search for vault files | ✅ Uses `ContextService.searchVaultFiles()` |
+
+**New Swift types added:**
+- `APIConfiguration`: contextStatusURL, contextSearchURL, vaultSearchURL, dataSearchURL
+- `ContextService`: searchCodeFiles(), searchVaultFiles(), searchDataQueries()
+- `RelevantCodeFile`, `RelevantVaultFile`, `RelevantQuery` result types
+- `OllamaTagsResponse`, `OllamaModel` for model discovery
+
+#### 12.2 Workflow Queue ✅
+- [x] `WorkflowModels.swift`: Added `assignedTo` field to WorkItem
+- [x] `WorkflowModels.swift`: Added `enabled`, `lastRunAt` fields to Workflow
+- [x] `WorkflowQueueView.swift`: Wired `workItem.assignedTo` to display
 
 ---
 
-### TIER 12: SWIFT TODO ITEMS
-
-Context and search integrations that need backend wiring.
-
-#### 12.1 Context Engine Integration
-| File | Line | TODO |
-|------|------|------|
-| `AppContext.swift` | 507 | Query backend ANE Context Engine |
-| `AppContext.swift` | 778-779 | Determine workflow status from state |
-| `AppContext.swift` | 784 | Implement KanbanStore/TeamStore |
-| `ContextBundle.swift` | 342 | Semantic search for similar queries |
-| `ContextBundle.swift` | 349 | DatabaseService query search |
-| `ContextBundle.swift` | 451 | Integrate with MagnetarCode |
-| `ContextBundle.swift` | 619 | Get models from HotSlotManager |
-| `ChatStore.swift` | 409 | Semantic search for vault files |
-
-#### 12.2 Workflow Queue
-- [ ] `WorkflowQueueView.swift:218` - Add assignee field to WorkItem model
+## 🔲 REMAINING WORK (Ordered: Least → Most Complex)
 
 ---
 

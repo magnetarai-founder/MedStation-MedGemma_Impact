@@ -10,6 +10,43 @@
 
 import Foundation
 
+// MARK: - Ollama API Types (for model discovery)
+
+struct OllamaTagsResponse: Codable {
+    let models: [OllamaModel]
+}
+
+struct OllamaModel: Codable {
+    let name: String
+    let size: Int64  // Size in bytes
+    let modifiedAt: String
+    let details: OllamaModelDetails?
+
+    enum CodingKeys: String, CodingKey {
+        case name, size
+        case modifiedAt = "modified_at"
+        case details
+    }
+
+    /// Size in GB for display
+    var sizeGB: Double {
+        return Double(size) / 1_073_741_824.0  // 1024^3
+    }
+}
+
+struct OllamaModelDetails: Codable {
+    let parameterSize: String?
+    let quantizationLevel: String?
+    let format: String?
+    let family: String?
+
+    enum CodingKeys: String, CodingKey {
+        case parameterSize = "parameter_size"
+        case quantizationLevel = "quantization_level"
+        case format, family
+    }
+}
+
 // MARK: - Context Bundle (What Gets Passed to Models)
 
 /// Complete context bundle for model routing and inference
@@ -121,7 +158,7 @@ struct BundledTeamContext: Codable {
     let mentionedUsers: [String]?  // Users @mentioned in query
 }
 
-// MARK: - Bundled Code Context (Future)
+// MARK: - Bundled Code Context
 
 /// Code workspace context - open files and git state
 struct BundledCodeContext: Codable {
@@ -129,7 +166,18 @@ struct BundledCodeContext: Codable {
     let recentEdits: [CodeEdit]
     let gitBranch: String?
     let gitStatus: String?  // "clean", "uncommitted changes", etc.
-    let relevantFiles: [String]?  // Files semantically related to query
+    let relevantFiles: [RelevantCodeFile]?  // Files semantically related to query
+}
+
+/// Code file found via semantic search
+struct RelevantCodeFile: Codable {
+    let fileId: String
+    let fileName: String
+    let filePath: String?
+    let language: String?
+    let snippet: String
+    let lineNumber: Int?
+    let relevanceScore: Float
 }
 
 // MARK: - RAG Documents
@@ -246,7 +294,7 @@ class ContextBundler {
         )
 
         // Bundle code context
-        let codeContext = bundleCodeContext(
+        let codeContext = await bundleCodeContext(
             from: appContext.code,
             relevance: relevance,
             query: query
@@ -339,14 +387,21 @@ class ContextBundler {
             return nil
         }
 
-        // TODO: Search for similar queries using semantic search
-        // Would need full RecentQuery objects which require timestamps and success status
-        // For now, rely on recent queries
+        // Search for similar queries using semantic search
+        let queryResults = await ContextService.shared.searchDataQueries(for: query, limit: 3)
+        let relevantQueries: [RelevantQuery]? = queryResults.isEmpty ? nil : queryResults.map { result in
+            RelevantQuery(
+                queryId: result.queryId,
+                queryText: result.queryText,
+                tableName: result.tableName,
+                relevanceScore: result.relevanceScore
+            )
+        }
 
         return BundledDataContext(
             activeTables: data.loadedTables,
             recentQueries: Array(data.recentQueries.prefix(3)),
-            relevantQueries: nil,  // TODO: Implement when DatabaseService provides query search
+            relevantQueries: relevantQueries,
             activeConnections: data.activeConnections
         )
     }
@@ -432,7 +487,7 @@ class ContextBundler {
         from code: CodeContext,
         relevance: QueryRelevance,
         query: String
-    ) -> BundledCodeContext? {
+    ) async -> BundledCodeContext? {
         guard relevance.needsCodeContext || relevance.currentWorkspaceType == "code" else {
             return nil
         }
@@ -440,15 +495,27 @@ class ContextBundler {
         // Get git status if in a git repo
         let gitStatus = getGitStatus()
 
-        // Semantic search for relevant code files (future: integrate with MagnetarCode)
-        // For now, leave as nil since code context is minimal
+        // Semantic search for relevant code files via Context Engine
+        // Returns results when code content is indexed; empty until then
+        let codeSearchResults = await ContextService.shared.searchCodeFiles(for: query, limit: 5)
+        let relevantFiles: [RelevantCodeFile]? = codeSearchResults.isEmpty ? nil : codeSearchResults.map { result in
+            RelevantCodeFile(
+                fileId: result.fileId,
+                fileName: result.fileName,
+                filePath: result.filePath,
+                language: result.language,
+                snippet: result.snippet,
+                lineNumber: result.lineNumber,
+                relevanceScore: result.relevanceScore
+            )
+        }
 
         return BundledCodeContext(
             openFiles: code.openFiles,
             recentEdits: Array(code.recentEdits.prefix(5)),
             gitBranch: code.gitBranch,
             gitStatus: gitStatus,
-            relevantFiles: nil  // TODO: Integrate with MagnetarCode when available
+            relevantFiles: relevantFiles
         )
     }
 
@@ -616,27 +683,75 @@ class ContextBundler {
     private func fetchAvailableModels(
         systemResources: SystemResourceState
     ) async -> [AvailableModel] {
-        // TODO: Get models from HotSlotManager + Ollama
-        // For now, return active models from system resources
-        return systemResources.activeModels.map { loadedModel in
-            AvailableModel(
-                id: loadedModel.id,
-                name: loadedModel.name,
-                displayName: loadedModel.name,
-                slotNumber: loadedModel.slotNumber,
-                isPinned: loadedModel.isPinned,
-                memoryUsageGB: loadedModel.memoryUsageGB,
-                capabilities: ModelCapabilities(
-                    chat: true,
-                    codeGeneration: false,
-                    dataAnalysis: false,
-                    reasoning: false,
-                    maxContextTokens: 8192,
-                    specialized: nil
-                ),
-                isHealthy: true
-            )
+        // Get loaded models from HotSlotManager (already in systemResources)
+        let loadedModelIds = Set(systemResources.activeModels.map { $0.id })
+
+        // Fetch all available models from Ollama
+        var allModels: [AvailableModel] = []
+
+        do {
+            let ollamaURL = APIConfiguration.shared.ollamaURL
+            guard let url = URL(string: "\(ollamaURL)/api/tags") else {
+                return systemResources.activeModels.map { modelFromLoaded($0) }
+            }
+
+            let (data, _) = try await URLSession.shared.data(from: url)
+            let response = try JSONDecoder().decode(OllamaTagsResponse.self, from: data)
+
+            for model in response.models {
+                let isLoaded = loadedModelIds.contains(model.name)
+                let loadedModel = systemResources.activeModels.first { $0.id == model.name }
+
+                allModels.append(AvailableModel(
+                    id: model.name,
+                    name: model.name,
+                    displayName: model.name,
+                    slotNumber: loadedModel?.slotNumber,
+                    isPinned: loadedModel?.isPinned ?? false,
+                    memoryUsageGB: loadedModel?.memoryUsageGB ?? Float(model.sizeGB),
+                    capabilities: inferCapabilities(from: model),
+                    isHealthy: true
+                ))
+            }
+        } catch {
+            print("⚠️ Failed to fetch models from Ollama: \(error)")
+            // Fall back to loaded models only
+            return systemResources.activeModels.map { modelFromLoaded($0) }
         }
+
+        return allModels
+    }
+
+    private func modelFromLoaded(_ loadedModel: LoadedModelInfo) -> AvailableModel {
+        AvailableModel(
+            id: loadedModel.id,
+            name: loadedModel.name,
+            displayName: loadedModel.name,
+            slotNumber: loadedModel.slotNumber,
+            isPinned: loadedModel.isPinned,
+            memoryUsageGB: loadedModel.memoryUsageGB,
+            capabilities: ModelCapabilities(
+                chat: true,
+                codeGeneration: false,
+                dataAnalysis: false,
+                reasoning: false,
+                maxContextTokens: 8192,
+                specialized: nil
+            ),
+            isHealthy: true
+        )
+    }
+
+    private func inferCapabilities(from model: OllamaModel) -> ModelCapabilities {
+        let name = model.name.lowercased()
+        return ModelCapabilities(
+            chat: true,
+            codeGeneration: name.contains("code") || name.contains("qwen") || name.contains("deepseek"),
+            dataAnalysis: name.contains("phi") || name.contains("llama"),
+            reasoning: name.contains("deepseek") || name.contains("r1"),
+            maxContextTokens: 8192,
+            specialized: nil
+        )
     }
 
     private func fetchRelevantVaultFiles(query: String, vaultType: String) async -> [VaultFileMetadata]? {

@@ -215,7 +215,7 @@ struct WorkflowQueueView: View {
             dataPreview: Array(dataPreview),
             createdAt: formattedTimestamp,
             tags: workItem.tags ?? [],
-            assignedTo: nil, // TODO: Add assignee field to WorkItem model
+            assignedTo: workItem.assignedTo,
             isAssignedToMe: workItem.status == "claimed"
         )
     }

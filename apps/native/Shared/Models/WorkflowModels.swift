@@ -14,6 +14,8 @@ struct Workflow: Codable, Identifiable {
     let stages: [Stage]?
     let triggers: [WorkflowTrigger]?
     let ownerUserId: String?
+    let enabled: Bool?             // Whether workflow is enabled
+    let lastRunAt: String?         // ISO8601 timestamp of last execution
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -27,6 +29,8 @@ struct Workflow: Codable, Identifiable {
         case stages
         case triggers
         case ownerUserId = "owner_user_id"
+        case enabled
+        case lastRunAt = "last_run_at"
     }
 }
 
@@ -103,6 +107,7 @@ struct WorkItem: Codable, Identifiable {
     let completedAt: String?
     let createdAt: String?
     let tags: [String]?
+    let assignedTo: String?        // User ID of assigned user
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -118,6 +123,7 @@ struct WorkItem: Codable, Identifiable {
         case completedAt = "completed_at"
         case createdAt = "created_at"
         case tags
+        case assignedTo = "assigned_to"
     }
 }
 
