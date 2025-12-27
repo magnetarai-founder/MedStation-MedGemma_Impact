@@ -113,6 +113,20 @@ class ElohimOSSettings(BaseSettings):
     )
 
     # ============================================
+    # OFFLINE / AIR-GAP SETTINGS
+    # ============================================
+
+    airgap_mode: bool = Field(
+        default=False,
+        description="Enable air-gap mode (disables all external network calls)"
+    )
+
+    offline_mode: bool = Field(
+        default=False,
+        description="Enable offline mode (skips non-essential external calls)"
+    )
+
+    # ============================================
     # WEBAUTHN SETTINGS
     # ============================================
 
@@ -590,3 +604,68 @@ def get_settings() -> ElohimOSSettings:
 # For existing code that imports PATHS from config_paths
 settings = get_settings()
 PATHS = settings  # Acts as a drop-in replacement for PathConfig
+
+
+# ============================================
+# OFFLINE / AIR-GAP MODE HELPERS
+# ============================================
+
+def is_airgap_mode() -> bool:
+    """
+    Check if air-gap mode is enabled (no external network calls allowed).
+
+    Returns True if any of these conditions are met:
+    - ELOHIMOS_AIRGAP_MODE=true
+    - MAGNETAR_AIRGAP_MODE=true
+    - ELOHIM_OFFLINE_MODE=true (deprecated, for compatibility)
+
+    In air-gap mode:
+    - All external HTTP calls are skipped
+    - Cloud sync features are disabled
+    - Password breach checking is skipped
+    - Only local network (LAN) operations are allowed
+    """
+    import os
+
+    settings = get_settings()
+    if settings.airgap_mode:
+        return True
+
+    # Check legacy env vars for backwards compatibility
+    legacy_vars = ["MAGNETAR_AIRGAP_MODE", "ELOHIM_OFFLINE_MODE"]
+    truthy_values = {"true", "1", "yes", "on"}
+
+    for var in legacy_vars:
+        value = os.getenv(var, "").lower().strip()
+        if value in truthy_values:
+            return True
+
+    return False
+
+
+def is_offline_mode() -> bool:
+    """
+    Check if offline mode is enabled (non-essential external calls skipped).
+
+    Returns True if:
+    - Air-gap mode is enabled (which implies offline mode)
+    - ELOHIMOS_OFFLINE_MODE=true
+    - ELOHIM_OFFLINE_MODE=true (deprecated)
+
+    In offline mode:
+    - Password breach checking is skipped with warning
+    - Cloud sync is skipped but data is queued
+    - Model listing uses cache when Ollama is unreachable
+    """
+    import os
+
+    if is_airgap_mode():
+        return True
+
+    settings = get_settings()
+    if settings.offline_mode:
+        return True
+
+    # Check legacy env var
+    value = os.getenv("ELOHIM_OFFLINE_MODE", "").lower().strip()
+    return value in {"true", "1", "yes", "on"}

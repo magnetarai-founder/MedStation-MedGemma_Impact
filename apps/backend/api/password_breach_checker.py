@@ -27,36 +27,17 @@ Reference: https://www.troyhunt.com/ive-just-launched-pwned-passwords-version-2/
 
 import hashlib
 import logging
-import os
 import threading
 from typing import Optional, Tuple
-from datetime import datetime, timedelta, UTC  # MED-01 FIX: Import UTC for timezone-aware datetimes
+from datetime import datetime, timedelta, UTC
 import asyncio
 import aiohttp
 from functools import lru_cache
 
+# Use centralized offline mode check from config
+from api.config import is_offline_mode
+
 logger = logging.getLogger(__name__)
-
-
-def is_offline_mode() -> bool:
-    """
-    Check if offline/airgap mode is enabled.
-
-    Returns True if any of these env vars are set to a truthy value:
-    - ELOHIM_OFFLINE_MODE
-    - MAGNETAR_AIRGAP_MODE
-
-    This allows password registration without external API calls,
-    intended for air-gapped deployments.
-    """
-    offline_vars = ["ELOHIM_OFFLINE_MODE", "MAGNETAR_AIRGAP_MODE"]
-    truthy_values = {"true", "1", "yes", "on"}
-
-    for var in offline_vars:
-        value = os.getenv(var, "").lower().strip()
-        if value in truthy_values:
-            return True
-    return False
 
 
 class PasswordBreachChecker:

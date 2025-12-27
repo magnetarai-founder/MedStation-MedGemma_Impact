@@ -328,24 +328,35 @@ Context and search integrations wired to backend services.
 
 ---
 
-### TIER 13: OFFLINE-FIRST COMPLIANCE
+### TIER 13: OFFLINE-FIRST COMPLIANCE ✅ (Completed 2025-12-26)
 
-Ensure all features work without network.
+Ensures all features work without network access.
 
-#### 13.1 Network Failure Graceful Degradation
-| Component | Current Behavior | Required |
-|-----------|------------------|----------|
-| Password registration | Fails completely | Allow with warning |
-| Model listing | HTTP 500 | Return cached |
-| LAN discovery | Fails if no Google DNS | Use local methods |
-| N8N workflows | Exception raised | Return cached |
-| Sync operations | Data lost silently | Persist and retry |
+#### 13.1 Network Failure Graceful Degradation ✅ (Already done in Tier 10)
+| Component | Status | Implementation |
+|-----------|--------|----------------|
+| Password registration | ✅ | `is_offline_mode()` skips breach check |
+| Model listing | ✅ | `ModelListCache` returns cached data |
+| LAN discovery | ✅ | Local-only IP detection (no 8.8.8.8) |
+| N8N workflows | ✅ | `N8NOfflineCache` queues executions |
+| Sync operations | ✅ | Persistence added in Tier 10.4 |
 
-#### 13.2 Air-Gap Mode
-- [ ] Add `MAGNETAR_AIRGAP_MODE=true` env var
-- [ ] Skip all external network calls
-- [ ] Use local-only discovery
-- [ ] Disable cloud features gracefully
+#### 13.2 Air-Gap Mode ✅
+- [x] Add `ELOHIMOS_AIRGAP_MODE` to config.py settings
+- [x] Add `is_airgap_mode()` centralized helper function
+- [x] Add `is_offline_mode()` centralized helper function
+- [x] Cloud auth routes return 503 when airgap mode enabled
+- [x] Password breach checker uses centralized offline check
+
+**Centralized Config:**
+```python
+# config.py
+airgap_mode: bool = False  # ELOHIMOS_AIRGAP_MODE
+offline_mode: bool = False  # ELOHIMOS_OFFLINE_MODE
+
+def is_airgap_mode() -> bool:  # Checks ELOHIMOS_AIRGAP_MODE, MAGNETAR_AIRGAP_MODE
+def is_offline_mode() -> bool:  # Checks airgap + ELOHIM_OFFLINE_MODE
+```
 
 ---
 

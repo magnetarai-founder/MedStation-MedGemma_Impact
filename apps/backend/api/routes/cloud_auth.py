@@ -33,13 +33,39 @@ import base64
 
 from api.auth_middleware import get_current_user, User
 from api.config_paths import get_config_paths
+from api.config import is_airgap_mode
 from api.utils import sanitize_for_log
 from api.rate_limiter import rate_limiter, get_client_ip
 from api.routes.schemas import SuccessResponse
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/cloud", tags=["cloud-auth"])
+
+# ===== Air-Gap Mode Check =====
+
+async def check_cloud_available():
+    """
+    Dependency that checks if cloud features are available.
+
+    Raises 503 Service Unavailable when in air-gap mode.
+    """
+    if is_airgap_mode():
+        logger.warning("☁️  Cloud feature requested but air-gap mode is enabled")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "error": "cloud_unavailable",
+                "message": "Cloud features are disabled in air-gap mode",
+                "hint": "Set ELOHIMOS_AIRGAP_MODE=false to enable cloud features"
+            }
+        )
+
+
+router = APIRouter(
+    prefix="/api/v1/cloud",
+    tags=["cloud-auth"],
+    dependencies=[Depends(check_cloud_available)]
+)
 
 # Database path (uses vault.db for consistency)
 PATHS = get_config_paths()
