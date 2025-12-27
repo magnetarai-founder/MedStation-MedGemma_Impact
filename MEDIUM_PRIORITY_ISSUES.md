@@ -38,7 +38,7 @@ This document tracks medium-priority improvements for MagnetarStudio.
 ## ⚠️ REMAINING ISSUES (2/7)
 
 ### ⚠️ MED-01: Replace Deprecated `datetime.utcnow()`
-**Status:** TODO  
+**Status:** PARTIALLY COMPLETE (Tier 5 modernized 20+ files, some remain)  
 **Files:** 93 files using deprecated `datetime.utcnow()`  
 **Priority:** Medium  
 

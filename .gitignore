@@ -61,13 +61,14 @@ htmlcov/
 !/apps/backend/tests/test_*.py
 !/apps/backend/tests/*_test.py
 
-# Backup files
+# Backup files and directories
 *.bak
 *.backup
 *.old
 *.orig
 *.tmp
 *~.nib
+.backups/
 
 # Linter cache
 .ruff_cache/
