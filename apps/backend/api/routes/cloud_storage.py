@@ -38,7 +38,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, s
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from api.auth_middleware import get_current_user, User
+from api.auth_middleware import get_current_user
 from api.config_paths import get_config_paths
 from api.config import is_airgap_mode
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
@@ -223,7 +223,7 @@ class InitDownloadResponse(BaseModel):
 @router.post("/upload/init", response_model=InitUploadResponse)
 async def init_upload(
     request: InitUploadRequest,
-    current_user: User = Depends(get_current_user)
+    current_user: Dict = Depends(get_current_user)
 ) -> InitUploadResponse:
     """
     Initialize a chunked upload session.
@@ -240,7 +240,7 @@ async def init_upload(
 
     metadata = {
         "upload_id": upload_id,
-        "user_id": current_user.id,
+        "user_id": current_user["user_id"],
         "filename": request.filename,
         "size_bytes": request.size_bytes,
         "content_type": request.content_type,
@@ -274,7 +274,7 @@ async def upload_chunk(
     chunk_index: int = Form(..., ge=0),
     chunk_hash: str = Form(..., min_length=64, max_length=64),
     chunk_data: UploadFile = File(...),
-    current_user: User = Depends(get_current_user)
+    current_user: Dict = Depends(get_current_user)
 ) -> ChunkUploadResponse:
     """
     Upload a single chunk of a file.
@@ -290,7 +290,7 @@ async def upload_chunk(
         )
 
     # Verify ownership
-    if metadata["user_id"] != current_user.id:
+    if metadata["user_id"] != current_user["user_id"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": "forbidden", "message": "Not authorized for this upload"}
@@ -360,7 +360,7 @@ async def upload_chunk(
 async def commit_upload(
     upload_id: str = Form(...),
     final_hash: str = Form(..., min_length=64, max_length=64),
-    current_user: User = Depends(get_current_user)
+    current_user: Dict = Depends(get_current_user)
 ) -> CommitUploadResponse:
     """
     Finalize upload after all chunks are uploaded.
@@ -376,7 +376,7 @@ async def commit_upload(
         )
 
     # Verify ownership
-    if metadata["user_id"] != current_user.id:
+    if metadata["user_id"] != current_user["user_id"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": "forbidden", "message": "Not authorized for this upload"}
@@ -490,7 +490,7 @@ async def commit_upload(
 @router.get("/upload/status/{upload_id}", response_model=UploadStatusResponse)
 async def get_upload_status(
     upload_id: str,
-    current_user: User = Depends(get_current_user)
+    current_user: Dict = Depends(get_current_user)
 ) -> UploadStatusResponse:
     """Get current status of an upload session."""
     metadata = _load_metadata(upload_id)
@@ -501,7 +501,7 @@ async def get_upload_status(
         )
 
     # Verify ownership
-    if metadata["user_id"] != current_user.id:
+    if metadata["user_id"] != current_user["user_id"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": "forbidden", "message": "Not authorized for this upload"}
@@ -530,7 +530,7 @@ async def get_upload_status(
 @router.post("/download/init", response_model=InitDownloadResponse)
 async def init_download(
     request: InitDownloadRequest,
-    current_user: User = Depends(get_current_user)
+    current_user: Dict = Depends(get_current_user)
 ) -> InitDownloadResponse:
     """
     Initialize download for a cloud file.
@@ -550,7 +550,7 @@ async def init_download(
         file_metadata = json.load(f)
 
     # Verify ownership (or implement sharing logic)
-    if file_metadata["user_id"] != current_user.id:
+    if file_metadata["user_id"] != current_user["user_id"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": "forbidden", "message": "Not authorized to access this file"}
@@ -565,7 +565,7 @@ async def init_download(
     # Store download token with expiry
     download_meta = {
         "file_id": request.file_id,
-        "user_id": current_user.id,
+        "user_id": current_user["user_id"],
         "expires_at": expires_at.isoformat()
     }
     download_token_path = cloud_files_dir / f"download_{download_token}.json"
@@ -588,7 +588,7 @@ async def init_download(
 async def download_file(
     file_id: str,
     token: str,
-    current_user: User = Depends(get_current_user)
+    current_user: Dict = Depends(get_current_user)
 ):
     """
     Download a cloud file.
@@ -666,7 +666,7 @@ class FileListResponse(BaseModel):
 async def list_files(
     limit: int = 50,
     offset: int = 0,
-    current_user: User = Depends(get_current_user)
+    current_user: Dict = Depends(get_current_user)
 ) -> FileListResponse:
     """List user's cloud files."""
     cloud_files_dir = PATHS.cache_dir / "cloud_files"
@@ -677,7 +677,7 @@ async def list_files(
             if not meta_file.name.startswith("download_"):
                 with open(meta_file, 'r') as f:
                     metadata = json.load(f)
-                    if metadata.get("user_id") == current_user.id:
+                    if metadata.get("user_id") == current_user["user_id"]:
                         files.append({
                             "file_id": metadata["file_id"],
                             "filename": metadata["filename"],
@@ -700,7 +700,7 @@ async def list_files(
 @router.delete("/files/{file_id}")
 async def delete_file(
     file_id: str,
-    current_user: User = Depends(get_current_user)
+    current_user: Dict = Depends(get_current_user)
 ):
     """Delete a cloud file."""
     cloud_files_dir = PATHS.cache_dir / "cloud_files"
@@ -716,7 +716,7 @@ async def delete_file(
         file_metadata = json.load(f)
 
     # Verify ownership
-    if file_metadata["user_id"] != current_user.id:
+    if file_metadata["user_id"] != current_user["user_id"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": "forbidden", "message": "Not authorized to delete this file"}
