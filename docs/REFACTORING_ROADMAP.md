@@ -360,30 +360,32 @@ def is_offline_mode() -> bool:  # Checks airgap + ELOHIM_OFFLINE_MODE
 
 ---
 
-### TIER 14: LARGE TASKS (from Master Roadmap)
+### TIER 14: LARGE TASKS ✅ (Verified 2025-12-26)
 
-#### 14.1 Complete Mesh Relay Implementation
-**File:** `mesh_relay.py`
+Both items were already implemented - roadmap was outdated.
 
-Current: All connection methods are stubs:
-```python
-async def send(self, message): pass  # TODO
-async def ping(self): pass  # TODO
-async def close(self): pass  # TODO
-```
+#### 14.1 Mesh Relay Implementation ✅
+**File:** `mesh_relay.py` (1078 lines)
 
-- [ ] Full libp2p relay implementation
-- [ ] Message routing
-- [ ] Peer discovery
+Fully implemented:
+- [x] `send()` - WebSocket JSON message sending
+- [x] `ping()` - WebSocket ping/pong health checks
+- [x] `close()` - Proper connection cleanup
+- [x] `MeshConnectionPool` with signed handshakes
+- [x] Ed25519 signatures for peer authentication
+- [x] Replay protection (timestamp + nonce)
+- [x] Route table and message routing
 
-#### 14.2 Implement Workflow Persistence (from Master Roadmap)
-**File:** `automation_router.py`
+#### 14.2 Workflow Persistence ✅
+**Files:** `workflow_storage.py`, `automation_router.py`
 
-Current: Workflows not persisted across restarts
-
-- [ ] SQLite storage for automation definitions
-- [ ] Workflow state recovery
-- [ ] Execution history
+Fully implemented:
+- [x] `WorkflowStorage` class (900+ lines)
+- [x] SQLite database for workflow definitions
+- [x] `save_workflow()` / `list_workflows()` endpoints
+- [x] Work item persistence
+- [x] Execution history tracking
+- [x] User isolation
 
 ---
 
