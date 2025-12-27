@@ -244,7 +244,7 @@ class TerminalBridge:
                 session.active = False
                 break
             except Exception as e:
-                print(f"Error capturing terminal output: {e}")
+                logger.error(f"Error capturing terminal output: {e}")
                 session.active = False
                 break
 
@@ -375,7 +375,7 @@ class TerminalBridge:
             try:
                 await callback(data)
             except Exception as e:
-                print(f"Error in broadcast callback: {e}")
+                logger.error(f"Error in broadcast callback: {e}")
 
     def get_session(self, terminal_id: str) -> Optional[TerminalSession]:
         """Get terminal session by ID"""
@@ -529,7 +529,7 @@ class TerminalBridge:
                     await self._broadcast(terminal_id, decoded)
 
                 except Exception as e:
-                    print(f"Error capturing socket output: {e}")
+                    logger.error(f"Error capturing socket output: {e}")
                     break
 
         asyncio.create_task(capture_socket_output())

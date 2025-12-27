@@ -70,7 +70,13 @@ def ensure_dev_founder_user(conn: sqlite3.Connection) -> None:
 
     # Get Founder credentials from env
     founder_username = os.getenv("ELOHIM_FOUNDER_USERNAME", "elohim_founder")
-    founder_password = os.getenv("ELOHIM_FOUNDER_PASSWORD", "ElohimOS_2024_Founder")
+    founder_password = os.getenv("ELOHIM_FOUNDER_PASSWORD")
+
+    # Generate random password if not provided (dev convenience, logged for user)
+    password_was_generated = False
+    if not founder_password:
+        founder_password = secrets.token_urlsafe(16)
+        password_was_generated = True
 
     cursor = conn.cursor()
 
@@ -115,6 +121,10 @@ def ensure_dev_founder_user(conn: sqlite3.Connection) -> None:
         logger.info("=" * 80)
         logger.info("✅ Founder user created successfully")
         logger.info(f"   Username: {founder_username}")
+        if password_was_generated:
+            logger.info(f"   Password: {founder_password}  (auto-generated, set ELOHIM_FOUNDER_PASSWORD to customize)")
+        else:
+            logger.info("   Password: (from ELOHIM_FOUNDER_PASSWORD env var)")
         logger.info(f"   User ID: {user_id}")
         logger.info(f"   Role: founder_rights")
         logger.info("=" * 80)

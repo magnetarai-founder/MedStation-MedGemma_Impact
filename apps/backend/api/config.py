@@ -98,7 +98,7 @@ class ElohimOSSettings(BaseSettings):
     )
 
     jwt_access_token_expire_minutes: int = Field(
-        default=43200,  # 30 days
+        default=60,  # 1 hour (OWASP recommended: 15min-1hr for access tokens)
         description="Access token expiration in minutes"
     )
 

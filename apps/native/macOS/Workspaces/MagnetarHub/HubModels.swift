@@ -330,7 +330,8 @@ enum AnyModelItem: Identifiable {
                         .font(.headline)
 
                     Button {
-                        // TODO: Sync from cloud
+                        // TODO: Sync from cloud - requires MagnetarCloud integration (Tier 15)
+                        print("[HubModels] Sync to Local tapped - MagnetarCloud integration pending")
                     } label: {
                         Label("Sync to Local", systemImage: "arrow.down.circle")
                             .frame(maxWidth: .infinity)

@@ -96,10 +96,16 @@ JWT_SECRET = _get_or_create_jwt_secret()
 
 JWT_ALGORITHM = "HS256"
 
-# MED-05: Access token lifetime reduced from 7 days to 1 hour for security
+# MED-05: Access token lifetime configurable via ELOHIMOS_JWT_ACCESS_TOKEN_EXPIRE_MINUTES
 # Short-lived access tokens reduce window of compromise if token is leaked
 # Use refresh token endpoint (/api/v1/auth/refresh) to get new access token
-JWT_EXPIRATION_HOURS = 1  # 1 hour (OWASP recommended: 15min-1hr)
+# Default: 60 minutes (1 hour, OWASP recommended: 15min-1hr)
+try:
+    from .config import get_settings
+    _settings = get_settings()
+    JWT_EXPIRATION_MINUTES = _settings.jwt_access_token_expire_minutes
+except ImportError:
+    JWT_EXPIRATION_MINUTES = 60  # Fallback if config not available
 
 # Refresh token lifetime: 30 days absolute expiry (used for token refresh without re-login)
 REFRESH_TOKEN_EXPIRATION_DAYS = 30  # 30 days (longer-lived)
@@ -337,7 +343,7 @@ class AuthService:
             """, (last_login, user_id))
 
             # Create JWT token
-            expiration = datetime.now(UTC) + timedelta(hours=JWT_EXPIRATION_HOURS)
+            expiration = datetime.now(UTC) + timedelta(minutes=JWT_EXPIRATION_MINUTES)
             token_payload = {
                 "user_id": user_id,
                 "username": username,
@@ -527,7 +533,7 @@ class AuthService:
                 username, device_id, role = user_row
 
                 # Generate new access token
-                expiration = datetime.now(UTC) + timedelta(hours=JWT_EXPIRATION_HOURS)
+                expiration = datetime.now(UTC) + timedelta(minutes=JWT_EXPIRATION_MINUTES)
                 token_payload = {
                     "user_id": user_id,
                     "username": username,

@@ -9,6 +9,7 @@ import subprocess
 import json
 import os
 import sys
+import logging
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 from datetime import datetime
@@ -16,6 +17,8 @@ import threading
 import queue
 from dataclasses import dataclass
 from enum import Enum
+
+logger = logging.getLogger(__name__)
 
 # LlamaIndex for RAG capabilities
 from llama_index.core import SimpleDirectoryReader, VectorStoreIndex, ServiceContext
@@ -296,7 +299,7 @@ class DevAssistant:
         except Exception as e:
             result["status"] = "error"
             result["output"] = str(e)
-            print(f"Error processing task: {e}")
+            logger.error(f"Error processing task: {e}")
         
         return result
     

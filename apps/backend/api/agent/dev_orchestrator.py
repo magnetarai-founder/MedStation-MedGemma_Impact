@@ -8,9 +8,12 @@ import subprocess
 import json
 import os
 import asyncio
+import logging
 from pathlib import Path
 from typing import List, Optional, Tuple
 import sys
+
+logger = logging.getLogger(__name__)
 
 # Import our dev assistant
 sys.path.append(str(Path(__file__).parent))
@@ -135,7 +138,7 @@ class DevOrchestrator:
             return task_split.get("main_task", requirement), support_tasks
             
         except Exception as e:
-            print(f"Error parsing task split: {e}")
+            logger.warning(f"Error parsing task split: {e}")
             # Fallback to simple split
             return requirement, [
                 DevelopmentTask(TaskType.DOCUMENTATION, f"Document changes for: {requirement}"),

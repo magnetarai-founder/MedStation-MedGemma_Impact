@@ -345,7 +345,8 @@ struct SafetyNumberVerificationModal: View {
         // 2. Optionally notify the backend
         // For now, we just call the callback
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        Task {
+            try? await Task.sleep(for: .milliseconds(500))
             isVerifying = false
             onVerified()
             dismiss()

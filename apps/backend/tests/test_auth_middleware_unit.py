@@ -38,7 +38,7 @@ from api.auth_middleware import (
     AuthService,
     JWT_SECRET,
     JWT_ALGORITHM,
-    JWT_EXPIRATION_HOURS,
+    JWT_EXPIRATION_MINUTES,
     REFRESH_TOKEN_EXPIRATION_DAYS,
     IDLE_TIMEOUT_HOURS,
     get_current_user,
@@ -76,7 +76,7 @@ class TestJWTTokenGeneration:
         assert payload["role"] == "member"
 
     def test_token_expiration_is_one_hour(self, auth_service, test_user):
-        """Test that access token expires in 1 hour (JWT_EXPIRATION_HOURS)"""
+        """Test that access token expires in 1 hour (JWT_EXPIRATION_MINUTES)"""
         auth_result = auth_service.authenticate(
             username=test_user["username"],
             password=test_user["password"]
@@ -91,8 +91,8 @@ class TestJWTTokenGeneration:
         exp_time = datetime.fromtimestamp(payload["exp"], tz=UTC)
         iat_time = datetime.fromtimestamp(payload["iat"], tz=UTC)
 
-        # Token should expire approximately JWT_EXPIRATION_HOURS after issuance
-        expected_lifetime = timedelta(hours=JWT_EXPIRATION_HOURS)
+        # Token should expire approximately JWT_EXPIRATION_MINUTES after issuance
+        expected_lifetime = timedelta(minutes=JWT_EXPIRATION_MINUTES)
         actual_lifetime = exp_time - iat_time
 
         # Allow 5 second tolerance for test execution time
@@ -549,8 +549,8 @@ class TestSecurityConstants:
     """Test security-related constants are correctly set"""
 
     def test_access_token_lifetime(self):
-        """Test access token lifetime is 1 hour (OWASP recommended)"""
-        assert JWT_EXPIRATION_HOURS == 1
+        """Test access token lifetime is 1 hour / 60 minutes (OWASP recommended)"""
+        assert JWT_EXPIRATION_MINUTES == 60
 
     def test_refresh_token_lifetime(self):
         """Test refresh token lifetime is 30 days"""
