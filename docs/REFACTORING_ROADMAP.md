@@ -79,6 +79,25 @@ All major refactorings have been completed:
 
 ---
 
+### TIER 6: VALIDATED FROM MASTER ROADMAP ✅ (Completed)
+
+Items from Master Roadmap (Dec 23) that were verified as complete:
+
+| Item | Status | Notes |
+|------|--------|-------|
+| WebAuthn Sign Count | ✅ DONE | Counter fetched, validated, updated in DB |
+| Cache Metrics Auth | ✅ DONE | Admin auth required, router registered |
+| Logger force unwrap | ✅ DONE | No `error!` found in Logger.swift |
+| Duplicate router registration | ✅ DONE | system_router via router_registry only |
+| __all__ exports | ✅ DONE | 30+ init files have __all__ |
+| Deprecation warnings | ✅ DONE | Fixed chat_service imports |
+| Code workspace in NavigationRail | ✅ DONE | Lines 60-68 |
+| Trash service size calculation | ✅ DONE | Lines 454-464 in trash_service.py |
+| Test coverage 75%+ | ✅ DONE | 599 tests passing |
+| @MainActor anti-pattern | ✅ MOSTLY | Only 1 instance remains |
+
+---
+
 ## 🔲 REMAINING WORK (Ordered: Least → Most Complex)
 
 ---
@@ -109,6 +128,27 @@ Fix configuration mismatches:
 #### 7.3 Remove Hardcoded Default Password
 - [ ] `auth_bootstrap.py:73` - Remove `"ElohimOS_2024_Founder"` string
 - [ ] Require `ELOHIM_FOUNDER_PASSWORD` env var even in dev
+
+#### 7.4 Remove Debug Print Statements (from Master Roadmap)
+**330 occurrences in 25 files** - Replace with `logger.debug()` or remove:
+
+| File | Count | Priority |
+|------|-------|----------|
+| `permission_layer.py` | 70 | HIGH |
+| `migrate_workflow_user_isolation.py` | 66 | LOW (migration) |
+| `agent/dev_assistant.py` | 29 | MEDIUM |
+| `agent/dev_orchestrator.py` | 29 | MEDIUM |
+| `learning_system.py` | 21 | MEDIUM |
+| `db_consolidation_migration.py` | 21 | LOW (migration) |
+| Others | 94 | LOW |
+
+#### 7.5 Fix Last @MainActor Anti-Pattern (from Master Roadmap)
+**File:** `SafetyNumberVerificationModal.swift:348`
+```swift
+// Current:
+DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { ... }
+// Fix: Use Task { try await Task.sleep(...) }
+```
 
 ---
 
@@ -153,6 +193,11 @@ Replace hardcoded URLs with config:
 #### 8.4 Wire Up Audit Logging to Backend
 - [ ] `SecurityManager.swift:185` - Send audit events to `/api/v1/audit/log`
 - [ ] `EmergencyModeService+Backend.swift:47` - Implement remote logging
+
+#### 8.5 Delete Duplicate Model Recommendations File (from Master Roadmap)
+**Both files exist - conflict:**
+- `model_recommendations.py` (dynamic, team-policy aware) ✅ KEEP
+- `models_recommendations.py` (static JSON) ❌ DELETE
 
 ---
 
@@ -200,6 +245,14 @@ Current: Connects to `8.8.8.8:80` to find local IP (external dependency!)
 
 - [ ] Use `netifaces` or `socket.gethostbyname(socket.gethostname())`
 - [ ] Add fallback chain: link-local → multicast → loopback
+
+#### 9.6 Decide ModelDiscoveryWorkspace Fate (from Master Roadmap)
+**Current State:** Fully implemented but not accessible (not in NavigationRail)
+
+**Options:**
+1. Add to NavigationRail (new button)
+2. Merge into MagnetarHub (already has model catalog)
+3. Remove (if superseded by Hub)
 
 ---
 
@@ -266,11 +319,35 @@ Current: Raises exception on network failure
 
 ---
 
-### TIER 11: SWIFT TODO ITEMS
+### TIER 11: MEDIUM TASKS (from Master Roadmap)
+
+#### 11.1 Refactor Deprecated Facades
+Both log deprecation warnings on load:
+
+| File | Status | Action |
+|------|--------|--------|
+| `vault_service.py` | DEPRECATED | Migrate callers to `api.services.vault` |
+| `team_service.py` | DEPRECATED | Migrate callers to `api.services.team` |
+
+#### 11.2 Complete LAN Discovery Connection Logic (from Master Roadmap)
+**File:** `lan_service.py`
+- [ ] Actual mDNS discovery implementation
+- [ ] Peer connection establishment
+- [ ] Connection retry logic
+
+#### 11.3 Add Type Hints to Legacy Services (from Master Roadmap)
+**Files needing type hints:**
+- [ ] Legacy route handlers
+- [ ] Older service files
+- [ ] Migration scripts
+
+---
+
+### TIER 12: SWIFT TODO ITEMS
 
 Context and search integrations that need backend wiring.
 
-#### 11.1 Context Engine Integration
+#### 12.1 Context Engine Integration
 | File | Line | TODO |
 |------|------|------|
 | `AppContext.swift` | 507 | Query backend ANE Context Engine |
@@ -282,16 +359,16 @@ Context and search integrations that need backend wiring.
 | `ContextBundle.swift` | 619 | Get models from HotSlotManager |
 | `ChatStore.swift` | 409 | Semantic search for vault files |
 
-#### 11.2 Workflow Queue
+#### 12.2 Workflow Queue
 - [ ] `WorkflowQueueView.swift:218` - Add assignee field to WorkItem model
 
 ---
 
-### TIER 12: OFFLINE-FIRST COMPLIANCE
+### TIER 13: OFFLINE-FIRST COMPLIANCE
 
 Ensure all features work without network.
 
-#### 12.1 Network Failure Graceful Degradation
+#### 13.1 Network Failure Graceful Degradation
 | Component | Current Behavior | Required |
 |-----------|------------------|----------|
 | Password registration | Fails completely | Allow with warning |
@@ -300,11 +377,38 @@ Ensure all features work without network.
 | N8N workflows | Exception raised | Return cached |
 | Sync operations | Data lost silently | Persist and retry |
 
-#### 12.2 Air-Gap Mode
+#### 13.2 Air-Gap Mode
 - [ ] Add `MAGNETAR_AIRGAP_MODE=true` env var
 - [ ] Skip all external network calls
 - [ ] Use local-only discovery
 - [ ] Disable cloud features gracefully
+
+---
+
+### TIER 14: LARGE TASKS (from Master Roadmap)
+
+#### 14.1 Complete Mesh Relay Implementation
+**File:** `mesh_relay.py`
+
+Current: All connection methods are stubs:
+```python
+async def send(self, message): pass  # TODO
+async def ping(self): pass  # TODO
+async def close(self): pass  # TODO
+```
+
+- [ ] Full libp2p relay implementation
+- [ ] Message routing
+- [ ] Peer discovery
+
+#### 14.2 Implement Workflow Persistence (from Master Roadmap)
+**File:** `automation_router.py`
+
+Current: Workflows not persisted across restarts
+
+- [ ] SQLite storage for automation definitions
+- [ ] Workflow state recovery
+- [ ] Execution history
 
 ---
 
@@ -324,7 +428,7 @@ Ensure all features work without network.
 
 ### Remaining Work:
 
-#### 13.1: OAuth 2.0 Integration (2 hours)
+#### 15.1: OAuth 2.0 Integration (2 hours)
 **Backend:**
 - [ ] OAuth client registration
 - [ ] Authorization endpoint handler
@@ -338,7 +442,7 @@ Ensure all features work without network.
 - [ ] Keychain token storage
 - [ ] Automatic token refresh
 
-#### 13.2: Sync Service Backend (2 hours)
+#### 15.2: Sync Service Backend (2 hours)
 **Endpoints:**
 - [ ] `/v1/cloud/sync/vault` - Vault sync
 - [ ] `/v1/cloud/sync/workflows` - Workflow sync
@@ -351,19 +455,19 @@ Ensure all features work without network.
 - [ ] sync_conflicts table
 - [ ] sync_log table
 
-#### 13.3: Sync Service Swift Client (1.5 hours)
+#### 15.3: Sync Service Swift Client (1.5 hours)
 - [ ] SyncService.swift - Main sync coordinator
 - [ ] SyncState.swift - Sync status tracking
 - [ ] ConflictResolver.swift - Conflict resolution UI
 - [ ] Background sync with NSBackgroundActivityScheduler
 
-#### 13.4: Cloud Storage Integration (1 hour)
+#### 15.4: Cloud Storage Integration (1 hour)
 - [ ] Chunked upload for large files
 - [ ] Resume support after interruption
 - [ ] Background upload queue
 - [ ] Progress tracking
 
-#### 13.5: MagnetarHub Cloud UI (0.5 hours)
+#### 15.5: MagnetarHub Cloud UI (0.5 hours)
 - [ ] Cloud connection status indicator
 - [ ] Sync now button
 - [ ] Conflict resolution modal
@@ -393,6 +497,7 @@ Ensure all features work without network.
 | Empty button closures | 6 |
 | Hardcoded localhost URLs | 18 |
 | SQL injection risks | 4 |
+| Debug print() statements | 330 |
 
 ### Files > 1,000 Lines (Future Refactoring)
 1. workflow_orchestrator.py - 1,139 lines
@@ -408,16 +513,26 @@ Ensure all features work without network.
 
 | Tier | Items | Est. Time | Priority |
 |------|-------|-----------|----------|
-| 7: Trivial | 8 | 1-2 hours | LOW |
-| 8: Easy | 6 | 2-3 hours | MEDIUM |
-| 9: Moderate | 5 | 3-4 hours | MEDIUM |
+| 7: Trivial | 10 | 1-2 hours | LOW |
+| 8: Easy | 7 | 2-3 hours | MEDIUM |
+| 9: Moderate | 6 | 3-4 hours | MEDIUM |
 | 10: Complex | 5 | 6-8 hours | HIGH |
-| 11: Swift TODOs | 9 | 4-5 hours | MEDIUM |
-| 12: Offline-First | 2 | 2-3 hours | HIGH |
-| 13: Cloud Sync | 5 | 7-8 hours | LOW |
-| **TOTAL** | 40 | ~28-33 hours | |
+| 11: Medium Tasks | 3 | 3-4 hours | MEDIUM |
+| 12: Swift TODOs | 9 | 4-5 hours | MEDIUM |
+| 13: Offline-First | 2 | 2-3 hours | HIGH |
+| 14: Large Tasks | 2 | 6-8 hours | LOW |
+| 15: Cloud Sync | 5 | 7-8 hours | LOW |
+| **TOTAL** | 49 | ~35-45 hours | |
+
+---
+
+## 📋 SUPERSEDES
+
+This roadmap consolidates and supersedes:
+- `MagnetarStudio_Master_Roadmap.md` (Dec 23, 2025)
+- All previous roadmap documents in `/Documents/Roadmaps/`
 
 ---
 
 **Last Updated:** 2025-12-26
-**Status:** Tiers 7-12 pending, then MagnetarCloud Full Sync
+**Status:** Tiers 7-14 pending, then MagnetarCloud Full Sync
