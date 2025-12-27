@@ -30,6 +30,12 @@ class HubCloudManager {
     var pairedDevices: [CloudDeviceInfo] = []
     var errorMessage: String? = nil
 
+    // Sync status (Tier 15)
+    var syncStatus: SyncStatusInfo? = nil
+    var isSyncing: Bool = false
+    var pendingSyncChanges: Int = 0
+    var activeConflicts: Int = 0
+
     // MARK: - Private Properties
 
     private let apiClient = ApiClient.shared
@@ -234,6 +240,65 @@ class HubCloudManager {
             errorMessage = "Failed to revoke sessions: \(error.localizedDescription)"
             print("Cloud session revoke failed: \(error)")
         }
+    }
+
+    // MARK: - Sync Methods (Tier 15)
+
+    /// Refresh sync status from SyncService
+    func refreshSyncStatus() async {
+        guard isCloudAuthenticated else { return }
+
+        do {
+            let status = try await SyncService.shared.fetchStatus()
+
+            syncStatus = SyncStatusInfo(
+                isConnected: status.isConnected,
+                lastSyncAt: status.lastSyncAt,
+                pendingChanges: status.pendingChanges,
+                activeConflicts: status.activeConflicts
+            )
+            pendingSyncChanges = status.pendingChanges
+            activeConflicts = status.activeConflicts
+
+            if let syncTime = status.lastSyncAt {
+                lastSyncAt = ISO8601DateFormatter().date(from: syncTime)
+            }
+        } catch {
+            print("Failed to refresh sync status: \(error)")
+        }
+    }
+
+    /// Trigger a manual sync
+    func triggerSync() async {
+        guard isCloudAuthenticated else {
+            errorMessage = "Not connected to MagnetarCloud"
+            return
+        }
+
+        isSyncing = true
+        errorMessage = nil
+
+        do {
+            try await SyncService.shared.triggerSync()
+            await refreshSyncStatus()
+            print("Manual sync completed")
+        } catch {
+            errorMessage = "Sync failed: \(error.localizedDescription)"
+            print("Manual sync failed: \(error)")
+        }
+
+        isSyncing = false
+    }
+
+    /// Start automatic background sync
+    func startAutoSync(intervalSeconds: TimeInterval = 300) {
+        guard isCloudAuthenticated else { return }
+        SyncService.shared.startAutoSync(intervalSeconds: intervalSeconds)
+    }
+
+    /// Stop automatic background sync
+    func stopAutoSync() {
+        SyncService.shared.stopAutoSync()
     }
 
     // MARK: - Private Methods
@@ -447,6 +512,50 @@ private struct CloudRevokeResponseWrapper: Codable {
     let success: Bool
     let data: CloudRevokeResponse
     let message: String
+}
+
+// MARK: - Sync Status Model (Tier 15)
+
+struct SyncStatusInfo {
+    let isConnected: Bool
+    let lastSyncAt: String?
+    let pendingChanges: Int
+    let activeConflicts: Int
+
+    var formattedLastSync: String {
+        guard let syncStr = lastSyncAt,
+              let date = ISO8601DateFormatter().date(from: syncStr) else {
+            return "Never"
+        }
+
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter.localizedString(for: date, relativeTo: Date())
+    }
+
+    var statusColor: NSColor {
+        if activeConflicts > 0 {
+            return .systemOrange
+        } else if pendingChanges > 0 {
+            return .systemYellow
+        } else if isConnected {
+            return .systemGreen
+        } else {
+            return .systemGray
+        }
+    }
+
+    var statusText: String {
+        if activeConflicts > 0 {
+            return "\(activeConflicts) conflict\(activeConflicts == 1 ? "" : "s")"
+        } else if pendingChanges > 0 {
+            return "\(pendingChanges) pending"
+        } else if isConnected {
+            return "Synced"
+        } else {
+            return "Disconnected"
+        }
+    }
 }
 
 // MARK: - Extension for AuthService access

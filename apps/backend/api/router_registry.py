@@ -476,6 +476,33 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
         services_failed.append("Cloud Auth API")
         logger.error("Failed to load cloud auth router", exc_info=True)
 
+    # Cloud OAuth API (OAuth 2.0 for third-party integrations)
+    try:
+        from api.routes import cloud_oauth as _cloud_oauth_routes
+        app.include_router(_cloud_oauth_routes.router)  # Router already has prefix="/api/v1/cloud/oauth"
+        services_loaded.append("Cloud OAuth API")
+    except Exception as e:
+        services_failed.append("Cloud OAuth API")
+        logger.error("Failed to load cloud oauth router", exc_info=True)
+
+    # Cloud Sync API (MagnetarCloud data synchronization)
+    try:
+        from api.routes import cloud_sync as _cloud_sync_routes
+        app.include_router(_cloud_sync_routes.router)  # Router already has prefix="/api/v1/cloud/sync"
+        services_loaded.append("Cloud Sync API")
+    except Exception as e:
+        services_failed.append("Cloud Sync API")
+        logger.error("Failed to load cloud sync router", exc_info=True)
+
+    # Cloud Storage API (Chunked uploads to MagnetarCloud)
+    try:
+        from api.routes import cloud_storage as _cloud_storage_routes
+        app.include_router(_cloud_storage_routes.router)  # Router already has prefix="/api/v1/cloud/storage"
+        services_loaded.append("Cloud Storage API")
+    except Exception as e:
+        services_failed.append("Cloud Storage API")
+        logger.error("Failed to load cloud storage router", exc_info=True)
+
     # Team API
     try:
         from api.routes import team as _team_routes

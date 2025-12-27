@@ -59,6 +59,28 @@ final class APIConfiguration {
         "\(versionedBaseURL)/data/search/semantic"
     }
 
+    // MARK: - Cloud Sync (MagnetarCloud)
+
+    /// Cloud OAuth base URL
+    var cloudOAuthURL: String {
+        "\(versionedBaseURL)/cloud/oauth"
+    }
+
+    /// Cloud sync base URL
+    var cloudSyncURL: String {
+        "\(versionedBaseURL)/cloud/sync"
+    }
+
+    /// Cloud sync status endpoint
+    var cloudSyncStatusURL: String {
+        "\(cloudSyncURL)/status"
+    }
+
+    /// Cloud storage base URL
+    var cloudStorageURL: String {
+        "\(versionedBaseURL)/cloud/storage"
+    }
+
     private init() {
         // Read from environment or default to localhost
         // For production/remote: Set API_BASE_URL environment variable to HTTPS endpoint

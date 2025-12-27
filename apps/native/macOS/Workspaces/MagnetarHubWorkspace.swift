@@ -129,6 +129,12 @@ struct MagnetarHubWorkspace: View {
                     },
                     onReconnect: {
                         Task { await cloudManager.reconnectCloud() }
+                    },
+                    isSyncing: cloudManager.isSyncing,
+                    pendingChanges: cloudManager.pendingSyncChanges,
+                    activeConflicts: cloudManager.activeConflicts,
+                    onSync: {
+                        Task { await cloudManager.triggerSync() }
                     }
                 )
             }
@@ -196,6 +202,13 @@ struct MagnetarHubWorkspace: View {
             ollamaService: OllamaService.shared
         )
         ollamaManager.ollamaServerRunning = ollamaRunning
+
+        // Refresh cloud sync status if authenticated
+        if cloudManager.isCloudAuthenticated {
+            await cloudManager.refreshSyncStatus()
+            // Start auto-sync (5 minute interval)
+            cloudManager.startAutoSync(intervalSeconds: 300)
+        }
     }
 
     // MARK: - Computed Properties
