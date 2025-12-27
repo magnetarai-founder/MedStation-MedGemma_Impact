@@ -558,11 +558,4 @@ struct SyncStatusInfo {
     }
 }
 
-// MARK: - Extension for AuthService access
-
-extension AuthService {
-    var deviceId: String {
-        // Access the private deviceId via Keychain
-        KeychainService.shared.loadToken(forKey: "magnetar.device_id") ?? UUID().uuidString
-    }
-}
+// Note: AuthService.deviceId is now public, no extension needed

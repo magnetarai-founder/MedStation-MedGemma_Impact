@@ -697,7 +697,7 @@ public final class TrustService {
             let startIndex = hexString.index(hexString.startIndex, offsetBy: i)
             let endIndex = hexString.index(startIndex, offsetBy: 2)
             if let byte = UInt8(String(hexString[startIndex..<endIndex]), radix: 16) {
-                digits += String(format: "%03d", byte % 1000)
+                digits += String(format: "%03d", Int(byte) % 1000)
             }
         }
 

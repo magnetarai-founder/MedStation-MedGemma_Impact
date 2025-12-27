@@ -13,14 +13,15 @@ import Foundation
 // MARK: - Ollama API Types (for model discovery)
 
 struct OllamaTagsResponse: Codable {
-    let models: [OllamaModel]
+    let models: [OllamaModelInfo]
 }
 
-struct OllamaModel: Codable {
+/// Model info from Ollama API (distinct from ModelsStore.OllamaModel for UI state)
+struct OllamaModelInfo: Codable {
     let name: String
     let size: Int64  // Size in bytes
     let modifiedAt: String
-    let details: OllamaModelDetails?
+    let details: OllamaModelInfoDetails?
 
     enum CodingKeys: String, CodingKey {
         case name, size
@@ -34,7 +35,7 @@ struct OllamaModel: Codable {
     }
 }
 
-struct OllamaModelDetails: Codable {
+struct OllamaModelInfoDetails: Codable {
     let parameterSize: String?
     let quantizationLevel: String?
     let format: String?
@@ -100,13 +101,22 @@ struct ConversationMessage: Codable, Identifiable {
 
 // MARK: - Bundled Vault Context (Metadata Only)
 
+/// Vault file result from semantic search (includes relevance score and snippet)
+struct RelevantVaultFile: Codable {
+    let fileId: String
+    let fileName: String
+    let filePath: String
+    let snippet: String
+    let relevanceScore: Float
+}
+
 /// Vault context included in bundle - METADATA ONLY, NO FILE CONTENTS
 /// File contents require explicit permission via VaultPermissionManager
 struct BundledVaultContext: Codable {
     let unlockedVaultType: String?  // "real" or "decoy" (if unlocked)
     let recentlyAccessedFiles: [VaultFileMetadata]  // Last 5 files user opened
     let currentlyGrantedPermissions: [FilePermission]  // Active file permissions
-    let relevantFiles: [VaultFileMetadata]?  // Files relevant to query (semantic search)
+    let relevantFiles: [RelevantVaultFile]?  // Files relevant to query (semantic search)
 
     // IMPORTANT: File contents are NEVER included in bundle
     // Models must request access via VaultPermissionManager
@@ -114,11 +124,19 @@ struct BundledVaultContext: Codable {
 
 // MARK: - Bundled Data Context
 
+/// Query result from semantic search (includes relevance score)
+struct RelevantQuery: Codable {
+    let queryId: String
+    let queryText: String
+    let tableName: String?
+    let relevanceScore: Float
+}
+
 /// Data workspace context - recent queries and loaded tables
 struct BundledDataContext: Codable {
     let activeTables: [TableMetadata]  // Currently loaded tables
     let recentQueries: [RecentQuery]  // Last 3 queries
-    let relevantQueries: [RecentQuery]?  // Queries similar to current request
+    let relevantQueries: [RelevantQuery]?  // Queries similar to current request (semantic search)
     let activeConnections: [DatabaseConnection]
 }
 
@@ -722,7 +740,7 @@ class ContextBundler {
         return allModels
     }
 
-    private func modelFromLoaded(_ loadedModel: LoadedModelInfo) -> AvailableModel {
+    private func modelFromLoaded(_ loadedModel: LoadedModel) -> AvailableModel {
         AvailableModel(
             id: loadedModel.id,
             name: loadedModel.name,
@@ -742,7 +760,7 @@ class ContextBundler {
         )
     }
 
-    private func inferCapabilities(from model: OllamaModel) -> ModelCapabilities {
+    private func inferCapabilities(from model: OllamaModelInfo) -> ModelCapabilities {
         let name = model.name.lowercased()
         return ModelCapabilities(
             chat: true,
@@ -754,7 +772,7 @@ class ContextBundler {
         )
     }
 
-    private func fetchRelevantVaultFiles(query: String, vaultType: String) async -> [VaultFileMetadata]? {
+    private func fetchRelevantVaultFiles(query: String, vaultType: String) async -> [RelevantVaultFile]? {
         do {
             struct SemanticSearchRequest: Codable {
                 let query: String
@@ -771,6 +789,7 @@ class ContextBundler {
                 let fileSize: Int?
                 let createdAt: String?
                 let modifiedAt: String?
+                let snippet: String?
             }
 
             struct SemanticSearchResponse: Codable {
@@ -793,14 +812,12 @@ class ContextBundler {
             )
 
             let files = response.results.map { result in
-                VaultFileMetadata(
-                    id: result.fileId,
-                    name: result.filename,
-                    path: result.filePath ?? "/",
-                    size: result.fileSize.map { Int64($0) },
-                    modifiedAt: ISO8601DateFormatter().date(from: result.modifiedAt ?? ""),
-                    vaultType: vaultType,
-                    isDirectory: false
+                RelevantVaultFile(
+                    fileId: result.fileId,
+                    fileName: result.filename,
+                    filePath: result.filePath ?? "/",
+                    snippet: result.snippet ?? "",
+                    relevanceScore: result.similarityScore
                 )
             }
 

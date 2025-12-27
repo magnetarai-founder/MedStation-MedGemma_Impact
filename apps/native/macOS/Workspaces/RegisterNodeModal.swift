@@ -192,8 +192,11 @@ struct RegisterNodeModal: View {
         defer { isRegistering = false }
 
         do {
-            let request = RegisterNodeRequest(
-                publicKey: generatedPublicKey,
+            // Get the private key for signing the registration request
+            let privateKey = try TrustKeyManager.shared.getPrivateKey()
+
+            let request = try RegisterNodeRequest(
+                privateKey: privateKey,
                 publicName: publicName,
                 type: nodeType,
                 alias: alias.isEmpty ? nil : alias,

@@ -5,26 +5,27 @@ final class AuthService {
     static let shared = AuthService()
 
     private let apiClient = ApiClient.shared
-    private let deviceId: String
+    let deviceId: String  // Public for external access (e.g., HubCloudManager)
 
     private init() {
         // Generate or load persistent device ID from Keychain (secure storage)
         let key = "magnetar.device_id"
+        let resolvedDeviceId: String
+
         if let existing = KeychainService.shared.loadToken(forKey: key) {
-            self.deviceId = existing
+            resolvedDeviceId = existing
+        } else if let oldId = UserDefaults.standard.string(forKey: key) {
+            // Migrate existing device ID from UserDefaults to Keychain
+            try? KeychainService.shared.saveToken(oldId, forKey: key)
+            UserDefaults.standard.removeObject(forKey: key)
+            resolvedDeviceId = oldId
         } else {
             let newId = UUID().uuidString
-            // Store in Keychain; migrate from UserDefaults if present
-            if let oldId = UserDefaults.standard.string(forKey: key) {
-                // Migrate existing device ID from UserDefaults to Keychain
-                try? KeychainService.shared.saveToken(oldId, forKey: key)
-                UserDefaults.standard.removeObject(forKey: key)
-                self.deviceId = oldId
-            } else {
-                try? KeychainService.shared.saveToken(newId, forKey: key)
-                self.deviceId = newId
-            }
+            try? KeychainService.shared.saveToken(newId, forKey: key)
+            resolvedDeviceId = newId
         }
+
+        self.deviceId = resolvedDeviceId
     }
 
     // MARK: - Auth Operations

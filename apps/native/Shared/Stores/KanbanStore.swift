@@ -89,8 +89,9 @@ final class KanbanStore: ObservableObject {
         columnId: String,
         title: String,
         description: String? = nil,
-        priority: String? = nil,
+        status: String? = nil,
         assigneeId: String? = nil,
+        priority: String? = nil,
         dueDate: String? = nil,
         tags: [String]? = nil
     ) async {
@@ -103,8 +104,9 @@ final class KanbanStore: ObservableObject {
                 columnId: columnId,
                 title: title,
                 description: description,
-                priority: priority,
+                status: status,
                 assigneeId: assigneeId,
+                priority: priority,
                 dueDate: dueDate,
                 tags: tags
             )
