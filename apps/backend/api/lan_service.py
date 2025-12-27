@@ -330,3 +330,137 @@ async def get_connected_clients() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to get clients: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ========== Connection Health & Resilience Endpoints ==========
+
+
+class HeartbeatConfigRequest(BaseModel):
+    """Request to configure heartbeat settings"""
+    interval_seconds: Optional[float] = None
+    auto_reconnect: Optional[bool] = None
+
+
+@router.get("/health")
+async def get_connection_health() -> Dict[str, Any]:
+    """
+    Get detailed connection health information.
+
+    Returns connection state, last heartbeat time, failure counts,
+    and auto-reconnect status.
+    """
+    try:
+        return {
+            "status": "success",
+            "health": lan_service.connection_health.to_dict(),
+            "auto_reconnect_enabled": lan_service._auto_reconnect,
+            "heartbeat_interval": lan_service._heartbeat_interval,
+            "heartbeat_active": (
+                lan_service._heartbeat_task is not None
+                and not lan_service._heartbeat_task.done()
+            ),
+        }
+    except Exception as e:
+        logger.error(f"Failed to get health: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/heartbeat")
+async def send_heartbeat() -> Dict[str, Any]:
+    """
+    Manually trigger a heartbeat ping to the connected hub.
+
+    Useful for testing connection health without waiting for
+    the automatic heartbeat interval.
+    """
+    try:
+        if not lan_service.is_connected:
+            return {
+                "status": "success",
+                "heartbeat": "skipped",
+                "reason": "not connected to any hub"
+            }
+
+        success = await lan_service.send_heartbeat()
+
+        return {
+            "status": "success",
+            "heartbeat": "ok" if success else "failed",
+            "health": lan_service.connection_health.to_dict()
+        }
+    except Exception as e:
+        logger.error(f"Heartbeat error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/heartbeat/configure")
+async def configure_heartbeat(
+    request: Request,
+    body: HeartbeatConfigRequest
+) -> Dict[str, Any]:
+    """
+    Configure heartbeat and auto-reconnect settings.
+
+    Args:
+        body: Configuration options (interval, auto_reconnect)
+
+    Returns:
+        Updated configuration
+    """
+    try:
+        if body.interval_seconds is not None:
+            lan_service.set_heartbeat_interval(body.interval_seconds)
+
+        if body.auto_reconnect is not None:
+            lan_service.set_auto_reconnect(body.auto_reconnect)
+
+        return {
+            "status": "success",
+            "message": "Heartbeat configuration updated",
+            "config": {
+                "interval_seconds": lan_service._heartbeat_interval,
+                "auto_reconnect": lan_service._auto_reconnect
+            }
+        }
+    except Exception as e:
+        logger.error(f"Failed to configure heartbeat: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/reconnect")
+async def manual_reconnect(request: Request) -> Dict[str, Any]:
+    """
+    Manually trigger reconnection to the last known hub.
+
+    Use this if auto-reconnect is disabled or you want to force
+    an immediate reconnection attempt.
+    """
+    try:
+        if not lan_service.connected_hub:
+            raise HTTPException(
+                status_code=400,
+                detail="No hub to reconnect to - discover and connect first"
+            )
+
+        hub_id = lan_service.connected_hub.id
+
+        # Reset connection state for fresh reconnect
+        lan_service.is_connected = False
+
+        result = await lan_service.connect_to_device(
+            hub_id,
+            with_retry=True,
+            start_heartbeat=True
+        )
+
+        return {
+            "status": "success",
+            "message": "Reconnected successfully",
+            **result
+        }
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Reconnect failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

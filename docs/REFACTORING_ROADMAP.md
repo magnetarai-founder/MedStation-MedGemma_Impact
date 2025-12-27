@@ -247,31 +247,56 @@ Updated 3 Python files to use `settings.ollama_base_url`:
 
 ---
 
-## 🔲 REMAINING WORK (Ordered: Least → Most Complex)
+## ✅ TIER 11: MEDIUM TASKS (Completed 2025-12-26)
+
+#### 11.1 Refactor Deprecated Facades ✅
+**Status:** Already migrated - facades are working correctly
+
+| File | Status | Notes |
+|------|--------|-------|
+| `vault_service.py` | ✅ DONE | All callers migrated to `api.services.vault` |
+| `team_service.py` | ✅ DONE | All callers migrated to `api.services.team` |
+
+Both files now serve as deprecation facades that re-export from modular services.
+Internal callers have been migrated; facades remain for backward compatibility.
+
+#### 11.2 Complete LAN Discovery Connection Logic ✅
+**Files:** `lan_discovery.py`, `lan_service.py`
+
+Implemented full connection resilience:
+- [x] mDNS discovery via zeroconf (AsyncZeroconf, AsyncServiceBrowser)
+- [x] Peer connection establishment via httpx
+- [x] **Connection retry with exponential backoff**
+  - `ConnectionRetryHandler` class with async iterator pattern
+  - Configurable via `RetryConfig` (max_retries, initial_delay, max_delay, backoff_multiplier, jitter)
+  - Pattern: 0s → 1s → 2s → 4s → 8s → ... → max_delay
+- [x] **Heartbeat monitoring**
+  - Background task pings hub every 30s (configurable)
+  - Detects connection loss after 3 consecutive failures
+- [x] **Auto-reconnect on connection loss**
+  - Enabled by default, configurable via `set_auto_reconnect()`
+  - Uses same retry logic for reconnection attempts
+- [x] **Connection health tracking**
+  - `ConnectionHealth` tracks state, failures, reconnects, last heartbeat
+  - `ConnectionState` enum: DISCONNECTED, CONNECTING, CONNECTED, RECONNECTING, FAILED
+- [x] New API endpoints: `/health`, `/heartbeat`, `/heartbeat/configure`, `/reconnect`
+
+**Tests:** 26 new tests for connection retry and heartbeat logic
+
+#### 11.3 Add Type Hints to Legacy Services ✅
+Modernized type hints using PEP 604 (`X | None`) and PEP 585 (`list[X]`, `dict[K, V]`):
+
+| File | Changes |
+|------|---------|
+| `hot_slots_router.py` | Updated all Pydantic models to modern syntax |
+| `insights/routes/legacy.py` | Updated `Optional[X]` → `X \| None` |
+| `p2p_chat_models.py` | Updated 15+ models with modern type hints |
+
+**Tests:** 625 passing (no regressions)
 
 ---
 
-### TIER 11: MEDIUM TASKS (from Master Roadmap)
-
-#### 11.1 Refactor Deprecated Facades
-Both log deprecation warnings on load:
-
-| File | Status | Action |
-|------|--------|--------|
-| `vault_service.py` | DEPRECATED | Migrate callers to `api.services.vault` |
-| `team_service.py` | DEPRECATED | Migrate callers to `api.services.team` |
-
-#### 11.2 Complete LAN Discovery Connection Logic (from Master Roadmap)
-**File:** `lan_service.py`
-- [ ] Actual mDNS discovery implementation
-- [ ] Peer connection establishment
-- [ ] Connection retry logic
-
-#### 11.3 Add Type Hints to Legacy Services (from Master Roadmap)
-**Files needing type hints:**
-- [ ] Legacy route handlers
-- [ ] Older service files
-- [ ] Migration scripts
+## 🔲 REMAINING WORK (Ordered: Least → Most Complex)
 
 ---
 

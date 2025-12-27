@@ -4,7 +4,7 @@ Secure, offline-first peer-to-peer messaging for missionary teams
 """
 
 from datetime import datetime, UTC
-from typing import Optional, List, Dict, Any
+from typing import Any
 from enum import Enum
 from pydantic import BaseModel, Field
 import uuid
@@ -44,11 +44,11 @@ class Peer(BaseModel):
     public_key: str  # For message encryption
     status: PeerStatus = PeerStatus.OFFLINE
     last_seen: str  # ISO timestamp
-    multiaddrs: List[str] = Field(default_factory=list)  # libp2p multiaddresses
+    multiaddrs: list[str] = Field(default_factory=list)  # libp2p multiaddresses
 
     # Optional metadata
-    avatar_hash: Optional[str] = None  # IPFS hash of avatar image
-    bio: Optional[str] = None
+    avatar_hash: str | None = None  # IPFS hash of avatar image
+    bio: str | None = None
 
 
 class Channel(BaseModel):
@@ -60,16 +60,16 @@ class Channel(BaseModel):
     created_by: str  # peer_id of creator
 
     # Members
-    members: List[str] = Field(default_factory=list)  # peer_ids
-    admins: List[str] = Field(default_factory=list)  # peer_ids with admin rights
+    members: list[str] = Field(default_factory=list)  # peer_ids
+    admins: list[str] = Field(default_factory=list)  # peer_ids with admin rights
 
     # Channel metadata
-    description: Optional[str] = None
-    topic: Optional[str] = None
-    pinned_messages: List[str] = Field(default_factory=list)  # message IDs
+    description: str | None = None
+    topic: str | None = None
+    pinned_messages: list[str] = Field(default_factory=list)  # message IDs
 
     # For DMs (type=DIRECT)
-    dm_participants: Optional[List[str]] = None  # Exactly 2 peer_ids
+    dm_participants: list[str] | None = None  # Exactly 2 peer_ids
 
 
 class Message(BaseModel):
@@ -86,21 +86,21 @@ class Message(BaseModel):
 
     # Timestamps
     timestamp: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
-    edited_at: Optional[str] = None
+    edited_at: str | None = None
 
     # File attachments (if type=FILE)
-    file_metadata: Optional[Dict[str, Any]] = None  # {name, size, hash, mime_type}
+    file_metadata: dict[str, Any] | None = None  # {name, size, hash, mime_type}
 
     # Message threading
-    thread_id: Optional[str] = None  # For threaded replies
-    reply_to: Optional[str] = None  # ID of message being replied to
+    thread_id: str | None = None  # For threaded replies
+    reply_to: str | None = None  # ID of message being replied to
 
     # Reactions
-    reactions: Dict[str, List[str]] = Field(default_factory=dict)  # {emoji: [peer_ids]}
+    reactions: dict[str, list[str]] = Field(default_factory=dict)  # {emoji: [peer_ids]}
 
     # Delivery tracking
-    delivered_to: List[str] = Field(default_factory=list)  # peer_ids that received it
-    read_by: List[str] = Field(default_factory=list)  # peer_ids that read it
+    delivered_to: list[str] = Field(default_factory=list)  # peer_ids that received it
+    read_by: list[str] = Field(default_factory=list)  # peer_ids that read it
 
 
 class FileTransfer(BaseModel):
@@ -113,8 +113,8 @@ class FileTransfer(BaseModel):
 
     # Transfer info
     sender_id: str
-    recipient_ids: List[str]
-    channel_id: Optional[str] = None
+    recipient_ids: list[str]
+    channel_id: str | None = None
 
     # Progress tracking
     chunks_total: int
@@ -124,10 +124,10 @@ class FileTransfer(BaseModel):
     # Status
     status: str = "pending"  # pending, transferring, completed, failed
     started_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
-    completed_at: Optional[str] = None
+    completed_at: str | None = None
 
     # Storage
-    local_path: Optional[str] = None  # Where file is saved locally
+    local_path: str | None = None  # Where file is saved locally
 
 
 class TypingIndicator(BaseModel):
@@ -144,9 +144,9 @@ class CreateChannelRequest(BaseModel):
     """Request to create a new channel"""
     name: str
     type: ChannelType
-    description: Optional[str] = None
-    topic: Optional[str] = None
-    members: List[str] = Field(default_factory=list)  # peer_ids to invite
+    description: str | None = None
+    topic: str | None = None
+    members: list[str] = Field(default_factory=list)  # peer_ids to invite
 
 
 class SendMessageRequest(BaseModel):
@@ -154,8 +154,8 @@ class SendMessageRequest(BaseModel):
     channel_id: str
     content: str
     type: MessageType = MessageType.TEXT
-    reply_to: Optional[str] = None
-    file_metadata: Optional[Dict[str, Any]] = None
+    reply_to: str | None = None
+    file_metadata: dict[str, Any] | None = None
 
 
 class CreateDMRequest(BaseModel):
@@ -166,33 +166,33 @@ class CreateDMRequest(BaseModel):
 class InviteToChannelRequest(BaseModel):
     """Invite peers to a channel"""
     channel_id: str
-    peer_ids: List[str]
+    peer_ids: list[str]
 
 
 class UpdatePresenceRequest(BaseModel):
     """Update user's presence status"""
     status: PeerStatus
-    custom_status: Optional[str] = None
+    custom_status: str | None = None
 
 
 # ===== Response Models =====
 
 class PeerListResponse(BaseModel):
     """List of discovered peers"""
-    peers: List[Peer]
+    peers: list[Peer]
     total: int
 
 
 class ChannelListResponse(BaseModel):
     """List of channels"""
-    channels: List[Channel]
+    channels: list[Channel]
     total: int
 
 
 class MessageListResponse(BaseModel):
     """List of messages in a channel"""
     channel_id: str
-    messages: List[Message]
+    messages: list[Message]
     total: int
     has_more: bool = False
 
@@ -203,4 +203,4 @@ class P2PStatusResponse(BaseModel):
     is_connected: bool
     discovered_peers: int
     active_channels: int
-    multiaddrs: List[str]
+    multiaddrs: list[str]

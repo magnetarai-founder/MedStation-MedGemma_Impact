@@ -8,7 +8,7 @@ Provides REST endpoints for managing model hot slots (4 slots with LRU eviction 
 
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
-from typing import Dict, Optional, Any
+from typing import Any
 import logging
 
 from api.auth_middleware import get_current_user
@@ -23,11 +23,11 @@ router = APIRouter(prefix="/api/v1/chat", tags=["hot_slots"])
 class HotSlot(BaseModel):
     """Hot slot state"""
     slotNumber: int = Field(..., alias="slot_number")
-    modelId: Optional[str] = Field(None, alias="model_id")
-    modelName: Optional[str] = Field(None, alias="model_name")
+    modelId: str | None = Field(None, alias="model_id")
+    modelName: str | None = Field(None, alias="model_name")
     isPinned: bool = Field(False, alias="is_pinned")
-    loadedAt: Optional[str] = Field(None, alias="loaded_at")  # ISO timestamp
-    lastUsed: Optional[str] = Field(None, alias="last_used")  # ISO timestamp
+    loadedAt: str | None = Field(None, alias="loaded_at")  # ISO timestamp
+    lastUsed: str | None = Field(None, alias="last_used")  # ISO timestamp
 
     class Config:
         populate_by_name = True
@@ -57,9 +57,9 @@ class SlotOperationResponse(BaseModel):
     """Generic response for slot operations"""
     success: bool
     slotNumber: int = Field(..., alias="slot_number")
-    modelId: Optional[str] = Field(None, alias="model_id")
+    modelId: str | None = Field(None, alias="model_id")
     message: str
-    hotSlots: Dict[int, Optional[str]] = Field(..., alias="hot_slots")
+    hotSlots: dict[int, str | None] = Field(..., alias="hot_slots")
 
     class Config:
         populate_by_name = True

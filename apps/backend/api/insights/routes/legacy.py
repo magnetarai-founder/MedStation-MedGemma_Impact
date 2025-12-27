@@ -7,7 +7,6 @@ Legacy endpoints kept for backward compatibility.
 import asyncio
 import logging
 from pathlib import Path
-from typing import Optional
 from uuid import uuid4
 
 import aiofiles
@@ -28,13 +27,13 @@ router = APIRouter(tags=["Legacy"])
 
 class TranscribeResponse(BaseModel):
     transcript: str
-    duration_seconds: Optional[float] = None
-    language: Optional[str] = None
+    duration_seconds: float | None = None
+    language: str | None = None
 
 
 class AnalyzeRequest(BaseModel):
     transcript: str
-    document_title: Optional[str] = None
+    document_title: str | None = None
 
 
 class AnalyzeResponse(BaseModel):

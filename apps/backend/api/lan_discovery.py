@@ -11,13 +11,148 @@ Built for the persecuted Church - no cloud, no central servers.
 import socket
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Callable, Dict, List, Optional, Set
 from dataclasses import dataclass, asdict, field
-from datetime import datetime
+from datetime import datetime, UTC
+from enum import Enum
 from zeroconf import ServiceInfo, Zeroconf, ServiceBrowser, ServiceListener
 from zeroconf.asyncio import AsyncZeroconf, AsyncServiceBrowser
 
 logger = logging.getLogger(__name__)
+
+
+# ============== Connection Retry Configuration ==============
+
+class ConnectionState(Enum):
+    """Connection state for hub connections"""
+    DISCONNECTED = "disconnected"
+    CONNECTING = "connecting"
+    CONNECTED = "connected"
+    RECONNECTING = "reconnecting"
+    FAILED = "failed"
+
+
+@dataclass
+class RetryConfig:
+    """Configuration for connection retry logic"""
+    max_retries: int = 5
+    initial_delay: float = 1.0  # seconds
+    max_delay: float = 30.0  # seconds
+    backoff_multiplier: float = 2.0
+    jitter: float = 0.1  # ±10% randomization
+
+
+@dataclass
+class ConnectionHealth:
+    """Tracks connection health status"""
+    last_heartbeat: Optional[datetime] = None
+    consecutive_failures: int = 0
+    total_reconnects: int = 0
+    state: ConnectionState = ConnectionState.DISCONNECTED
+    last_error: Optional[str] = None
+
+    def record_success(self) -> None:
+        """Record successful heartbeat/connection"""
+        self.last_heartbeat = datetime.now(UTC)
+        self.consecutive_failures = 0
+        self.state = ConnectionState.CONNECTED
+        self.last_error = None
+
+    def record_failure(self, error: str) -> None:
+        """Record failed heartbeat/connection"""
+        self.consecutive_failures += 1
+        self.last_error = error
+
+    def record_reconnect(self) -> None:
+        """Record reconnection attempt"""
+        self.total_reconnects += 1
+        self.state = ConnectionState.RECONNECTING
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "last_heartbeat": self.last_heartbeat.isoformat() if self.last_heartbeat else None,
+            "consecutive_failures": self.consecutive_failures,
+            "total_reconnects": self.total_reconnects,
+            "state": self.state.value,
+            "last_error": self.last_error,
+        }
+
+
+class ConnectionRetryHandler:
+    """
+    Handles connection retry logic with exponential backoff.
+
+    Usage:
+        handler = ConnectionRetryHandler(config)
+        async for delay in handler:
+            try:
+                await connect()
+                handler.mark_success()
+                break
+            except ConnectionError as e:
+                handler.mark_failure(str(e))
+                # Loop continues with next delay
+    """
+
+    def __init__(self, config: Optional[RetryConfig] = None):
+        self.config = config or RetryConfig()
+        self._attempt = 0
+        self._exhausted = False
+
+    def __aiter__(self):
+        self._attempt = 0
+        self._exhausted = False
+        return self
+
+    async def __anext__(self) -> float:
+        """Return next delay, or raise StopAsyncIteration if exhausted"""
+        if self._exhausted or self._attempt >= self.config.max_retries:
+            self._exhausted = True
+            raise StopAsyncIteration
+
+        delay = self._calculate_delay()
+        self._attempt += 1
+
+        if delay > 0:
+            await asyncio.sleep(delay)
+
+        return delay
+
+    def _calculate_delay(self) -> float:
+        """Calculate delay with exponential backoff and jitter"""
+        import random
+
+        if self._attempt == 0:
+            return 0  # No delay for first attempt
+
+        delay = self.config.initial_delay * (
+            self.config.backoff_multiplier ** (self._attempt - 1)
+        )
+        delay = min(delay, self.config.max_delay)
+
+        # Add jitter
+        jitter_range = delay * self.config.jitter
+        delay += random.uniform(-jitter_range, jitter_range)
+
+        return max(0, delay)
+
+    def mark_success(self) -> None:
+        """Mark connection as successful, stops iteration"""
+        self._exhausted = True
+
+    def mark_failure(self, error: str) -> None:
+        """Mark connection as failed, continues iteration"""
+        logger.warning(
+            f"Connection attempt {self._attempt}/{self.config.max_retries} failed: {error}"
+        )
+
+    @property
+    def attempt(self) -> int:
+        return self._attempt
+
+    @property
+    def is_exhausted(self) -> bool:
+        return self._exhausted
 
 
 @dataclass
@@ -137,6 +272,19 @@ class LANDiscoveryService:
 
         # Connection state (as hub)
         self.connected_clients: Dict[str, LANClient] = {}
+
+        # Connection health and retry configuration
+        self.connection_health = ConnectionHealth()
+        self.retry_config = RetryConfig()
+
+        # Heartbeat task
+        self._heartbeat_task: Optional[asyncio.Task] = None
+        self._heartbeat_interval: float = 30.0  # seconds
+        self._auto_reconnect: bool = True
+
+        # Event callbacks for connection state changes
+        self._on_connection_state_change: Optional[Callable[[ConnectionState], None]] = None
+        self._on_connection_lost: Optional[Callable[[], None]] = None
 
         logger.info(f"LAN Discovery Service initialized: {self.device_id}")
 
@@ -285,15 +433,25 @@ class LANDiscoveryService:
         self.connected_clients.clear()
         logger.info("Hub stopped")
 
-    async def connect_to_device(self, device_id: str) -> Dict[str, Any]:
+    async def connect_to_device(
+        self,
+        device_id: str,
+        with_retry: bool = True,
+        start_heartbeat: bool = True,
+    ) -> Dict[str, Any]:
         """
-        Connect to a discovered hub device
+        Connect to a discovered hub device with optional retry logic.
 
         Args:
             device_id: ID of the device to connect to
+            with_retry: If True, use exponential backoff retry on failure
+            start_heartbeat: If True, start heartbeat monitoring after connection
 
         Returns:
-            Connection result
+            Connection result with status and hub info
+
+        Raises:
+            ValueError: If device not found, not a hub, or connection failed
         """
         if device_id not in self.discovered_devices:
             raise ValueError(f"Device {device_id} not found in discovered devices")
@@ -303,12 +461,64 @@ class LANDiscoveryService:
         if not device.is_hub:
             raise ValueError(f"Device {device.name} is not a hub")
 
+        self.connection_health.state = ConnectionState.CONNECTING
         logger.info(f"Connecting to hub: {device.name} at {device.ip}:{device.port}")
 
-        try:
-            import httpx
+        last_error: Optional[str] = None
 
-            # Make connection request to the hub
+        if with_retry:
+            retry_handler = ConnectionRetryHandler(self.retry_config)
+            async for delay in retry_handler:
+                try:
+                    result = await self._attempt_connection(device)
+                    retry_handler.mark_success()
+                    self.connection_health.record_success()
+
+                    if start_heartbeat:
+                        await self._start_heartbeat()
+
+                    return result
+                except Exception as e:
+                    last_error = str(e)
+                    retry_handler.mark_failure(last_error)
+                    self.connection_health.record_failure(last_error)
+
+            # All retries exhausted
+            self.connection_health.state = ConnectionState.FAILED
+            raise ValueError(
+                f"Failed to connect after {self.retry_config.max_retries} attempts: {last_error}"
+            )
+        else:
+            # Single attempt without retry
+            try:
+                result = await self._attempt_connection(device)
+                self.connection_health.record_success()
+
+                if start_heartbeat:
+                    await self._start_heartbeat()
+
+                return result
+            except Exception as e:
+                self.connection_health.record_failure(str(e))
+                self.connection_health.state = ConnectionState.FAILED
+                raise
+
+    async def _attempt_connection(self, device: LANDevice) -> Dict[str, Any]:
+        """
+        Make a single connection attempt to a hub device.
+
+        Args:
+            device: The hub device to connect to
+
+        Returns:
+            Connection result
+
+        Raises:
+            ValueError: If connection failed
+        """
+        import httpx
+
+        try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.post(
                     f"http://{device.ip}:{device.port}/api/v1/lan/register-client",
@@ -335,9 +545,14 @@ class LANDiscoveryService:
         except httpx.ConnectError as e:
             logger.error(f"Failed to connect to hub {device.name}: {e}")
             raise ValueError(f"Could not reach hub at {device.ip}:{device.port}")
+        except httpx.TimeoutException as e:
+            logger.error(f"Connection timeout to hub {device.name}: {e}")
+            raise ValueError(f"Connection timeout to hub at {device.ip}:{device.port}")
         except Exception as e:
+            if isinstance(e, ValueError):
+                raise
             logger.error(f"Connection error: {e}")
-            raise
+            raise ValueError(f"Connection error: {e}")
 
     async def disconnect_from_hub(self) -> Dict[str, Any]:
         """
@@ -346,7 +561,11 @@ class LANDiscoveryService:
         Returns:
             Disconnection result
         """
+        # Stop heartbeat first
+        await self._stop_heartbeat()
+
         if not self.is_connected or not self.connected_hub:
+            self.connection_health.state = ConnectionState.DISCONNECTED
             return {"status": "not_connected"}
 
         hub = self.connected_hub
@@ -366,9 +585,174 @@ class LANDiscoveryService:
 
         self.connected_hub = None
         self.is_connected = False
+        self.connection_health.state = ConnectionState.DISCONNECTED
         logger.info(f"Disconnected from hub: {hub.name}")
 
         return {"status": "disconnected", "hub": hub.to_dict()}
+
+    # ========== Heartbeat and Auto-Reconnect ==========
+
+    async def _start_heartbeat(self) -> None:
+        """
+        Start the heartbeat monitoring task.
+
+        Heartbeat checks connection health periodically and triggers
+        auto-reconnect if connection is lost.
+        """
+        if self._heartbeat_task and not self._heartbeat_task.done():
+            logger.debug("Heartbeat already running")
+            return
+
+        self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
+        logger.info(f"Heartbeat started (interval: {self._heartbeat_interval}s)")
+
+    async def _stop_heartbeat(self) -> None:
+        """Stop the heartbeat monitoring task"""
+        if self._heartbeat_task:
+            self._heartbeat_task.cancel()
+            try:
+                await self._heartbeat_task
+            except asyncio.CancelledError:
+                pass
+            self._heartbeat_task = None
+            logger.info("Heartbeat stopped")
+
+    async def _heartbeat_loop(self) -> None:
+        """
+        Background task that monitors connection health.
+
+        Sends periodic pings to hub and triggers reconnect on failure.
+        """
+        import httpx
+
+        consecutive_failures = 0
+        max_failures_before_reconnect = 3
+
+        while True:
+            try:
+                await asyncio.sleep(self._heartbeat_interval)
+
+                if not self.is_connected or not self.connected_hub:
+                    logger.debug("Not connected, skipping heartbeat")
+                    continue
+
+                hub = self.connected_hub
+
+                # Send heartbeat ping
+                try:
+                    async with httpx.AsyncClient(timeout=5.0) as client:
+                        response = await client.get(
+                            f"http://{hub.ip}:{hub.port}/api/v1/lan/status"
+                        )
+
+                        if response.status_code == 200:
+                            self.connection_health.record_success()
+                            consecutive_failures = 0
+                            logger.debug(f"Heartbeat OK to {hub.name}")
+                        else:
+                            raise Exception(f"Status {response.status_code}")
+
+                except Exception as e:
+                    consecutive_failures += 1
+                    self.connection_health.record_failure(str(e))
+                    logger.warning(
+                        f"Heartbeat failed ({consecutive_failures}/{max_failures_before_reconnect}): {e}"
+                    )
+
+                    # Trigger reconnect after threshold
+                    if consecutive_failures >= max_failures_before_reconnect:
+                        logger.warning("Connection lost, initiating reconnect...")
+                        await self._handle_connection_lost()
+                        consecutive_failures = 0
+
+            except asyncio.CancelledError:
+                logger.debug("Heartbeat loop cancelled")
+                break
+            except Exception as e:
+                logger.error(f"Heartbeat loop error: {e}")
+
+    async def _handle_connection_lost(self) -> None:
+        """
+        Handle lost connection with optional auto-reconnect.
+
+        Called when heartbeat detects connection failure.
+        """
+        if not self.connected_hub:
+            return
+
+        hub_device = self.connected_hub
+        hub_id = hub_device.id
+
+        # Mark as disconnected
+        self.is_connected = False
+        self.connection_health.state = ConnectionState.DISCONNECTED
+
+        # Notify callback if set
+        if self._on_connection_lost:
+            try:
+                self._on_connection_lost()
+            except Exception as e:
+                logger.error(f"Connection lost callback error: {e}")
+
+        # Attempt auto-reconnect if enabled
+        if self._auto_reconnect and hub_id in self.discovered_devices:
+            logger.info(f"Attempting auto-reconnect to {hub_device.name}...")
+            self.connection_health.record_reconnect()
+
+            try:
+                await self.connect_to_device(
+                    hub_id,
+                    with_retry=True,
+                    start_heartbeat=False  # We're already in heartbeat loop
+                )
+                logger.info(f"Auto-reconnect successful to {hub_device.name}")
+            except Exception as e:
+                logger.error(f"Auto-reconnect failed: {e}")
+                self.connection_health.state = ConnectionState.FAILED
+
+    async def send_heartbeat(self) -> bool:
+        """
+        Manually send a heartbeat ping to the connected hub.
+
+        Returns:
+            True if heartbeat successful, False otherwise
+        """
+        if not self.is_connected or not self.connected_hub:
+            return False
+
+        import httpx
+        hub = self.connected_hub
+
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.get(
+                    f"http://{hub.ip}:{hub.port}/api/v1/lan/status"
+                )
+                if response.status_code == 200:
+                    self.connection_health.record_success()
+                    return True
+        except Exception as e:
+            self.connection_health.record_failure(str(e))
+
+        return False
+
+    def set_auto_reconnect(self, enabled: bool) -> None:
+        """Enable or disable auto-reconnect on connection loss"""
+        self._auto_reconnect = enabled
+        logger.info(f"Auto-reconnect {'enabled' if enabled else 'disabled'}")
+
+    def set_heartbeat_interval(self, seconds: float) -> None:
+        """Set heartbeat interval in seconds (minimum 5 seconds)"""
+        self._heartbeat_interval = max(5.0, seconds)
+        logger.info(f"Heartbeat interval set to {self._heartbeat_interval}s")
+
+    def on_connection_lost(self, callback: Callable[[], None]) -> None:
+        """Register callback for connection lost events"""
+        self._on_connection_lost = callback
+
+    def on_connection_state_change(self, callback: Callable[[ConnectionState], None]) -> None:
+        """Register callback for connection state changes"""
+        self._on_connection_state_change = callback
 
     def register_client(self, client_id: str, client_name: str, client_ip: str) -> LANClient:
         """
@@ -436,7 +820,7 @@ class LANDiscoveryService:
         return [device.to_dict() for device in self.discovered_devices.values()]
 
     def get_status(self) -> Dict:
-        """Get current status"""
+        """Get current status including connection health"""
         status = {
             "device_id": self.device_id,
             "device_name": self.device_name,
@@ -445,6 +829,11 @@ class LANDiscoveryService:
             "local_ip": self._get_local_ip(),
             "discovered_devices_count": len(self.discovered_devices),
             "is_connected": self.is_connected,
+            # Connection resilience info
+            "connection_health": self.connection_health.to_dict(),
+            "auto_reconnect_enabled": self._auto_reconnect,
+            "heartbeat_interval": self._heartbeat_interval,
+            "heartbeat_active": self._heartbeat_task is not None and not self._heartbeat_task.done(),
         }
 
         # Hub-specific info
@@ -461,3 +850,17 @@ class LANDiscoveryService:
 
 # Global instance
 lan_service = LANDiscoveryService()
+
+# Export connection types for external use
+__all__ = [
+    "LANDiscoveryService",
+    "LANDevice",
+    "LANClient",
+    "LANDiscoveryListener",
+    "ConnectionState",
+    "ConnectionHealth",
+    "ConnectionRetryHandler",
+    "RetryConfig",
+    "lan_service",
+    "SERVICE_TYPE",
+]
