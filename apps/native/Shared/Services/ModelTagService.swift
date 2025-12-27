@@ -14,7 +14,9 @@ class ModelTagService {
     private let session = URLSession.shared
 
     init() {
-        self.baseURL = UserDefaults.standard.string(forKey: "apiBaseURL") ?? "http://localhost:8000"
+        // Use centralized API configuration (remove /api suffix for this service's URL construction)
+        let apiBase = APIConfiguration.shared.baseURL
+        self.baseURL = apiBase.replacingOccurrences(of: "/api", with: "")
     }
 
     // MARK: - Get Available Tags

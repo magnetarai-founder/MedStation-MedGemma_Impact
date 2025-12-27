@@ -172,7 +172,7 @@ struct SetupWizardView: View {
     private func completeSetup() async {
         do {
             // Build request to mark setup as complete
-            let url = URL(string: "http://localhost:8000/api/v1/setup/complete")!
+            let url = URL(string: "\(APIConfiguration.shared.versionedBaseURL)/setup/complete")!
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")

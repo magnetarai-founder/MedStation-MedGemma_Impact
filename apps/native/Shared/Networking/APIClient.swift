@@ -47,24 +47,8 @@ final class ApiClient {
         self.session = URLSession(configuration: config)
 
         // Read from environment or default to localhost
-        // For production/remote: Set API_BASE_URL environment variable to HTTPS endpoint
-        var baseURLString: String
-        if let envBaseURL = ProcessInfo.processInfo.environment["API_BASE_URL"] {
-            baseURLString = envBaseURL
-        } else {
-            // Local development only - use HTTP for localhost
-            baseURLString = "http://localhost:8000/api"
-        }
-
-        // Enforce HTTPS for non-localhost URLs (security requirement)
-        if !baseURLString.contains("localhost") && !baseURLString.contains("127.0.0.1") {
-            if baseURLString.hasPrefix("http://") {
-                print("⚠️ SECURITY WARNING: Upgrading non-localhost HTTP to HTTPS")
-                baseURLString = baseURLString.replacingOccurrences(of: "http://", with: "https://")
-            }
-        }
-
-        self.baseURL = baseURLString
+        // Use centralized API configuration (handles environment, HTTPS enforcement, etc.)
+        self.baseURL = APIConfiguration.shared.baseURL
 
         self.decoder = JSONDecoder()
         // Don't use automatic snake_case conversion - models use explicit CodingKeys

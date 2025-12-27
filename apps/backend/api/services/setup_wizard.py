@@ -37,6 +37,11 @@ from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime
 import httpx
 
+try:
+    from api.config import get_settings
+except ImportError:
+    from config import get_settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -86,7 +91,7 @@ class SetupWizardService:
                 config_path = Path(__file__).parent.parent / "config" / "recommended_models.json"
 
         self.config_path = config_path
-        self.ollama_base_url = "http://localhost:11434"
+        self.ollama_base_url = get_settings().ollama_base_url
 
         # Platform detection
         self.platform = platform.system()  # Darwin, Linux, Windows

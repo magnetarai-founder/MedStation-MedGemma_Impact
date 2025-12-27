@@ -245,7 +245,7 @@ struct TeamWorkspace: View {
 
         do {
             // Try to access vault by checking folders endpoint
-            let url = URL(string: "http://localhost:8000/api/v1/vault/folders?vault_type=real")!
+            let url = URL(string: "\(APIConfiguration.shared.vaultURL)/folders?vault_type=real")!
             var request = URLRequest(url: url)
             request.httpMethod = "GET"
 

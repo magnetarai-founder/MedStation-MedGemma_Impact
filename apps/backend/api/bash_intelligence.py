@@ -16,6 +16,11 @@ import subprocess
 from typing import Dict, List, Optional, Tuple
 from pathlib import Path
 
+try:
+    from .config import get_settings
+except ImportError:
+    from config import get_settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -236,8 +241,9 @@ Bash command:"""
             else:
                 # Direct ollama call
                 import httpx
+                settings = get_settings()
                 response = httpx.post(
-                    'http://localhost:11434/api/generate',
+                    f'{settings.ollama_base_url}/api/generate',
                     json={'model': model, 'prompt': prompt, 'stream': False},
                     timeout=30.0
                 )

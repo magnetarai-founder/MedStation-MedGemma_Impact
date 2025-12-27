@@ -37,16 +37,58 @@ extension EmergencyModeService {
 extension EmergencyModeService {
 
     func logEmergencyTrigger(reason: String?, method: EmergencyTriggerMethod) async {
-        // TODO: Integrate with SecurityManager when available
-        print("🔒 Security Event: Emergency mode triggered via \(method.rawValue)")
-        print("   Reason: \(reason ?? "User-initiated")")
-        print("   Simulation: \(isSimulationMode ? "true" : "false")")
+        // Log via SecurityManager (which sends to backend)
+        SecurityManager.shared.logSecurityEvent(SecurityEvent(
+            type: .panicTriggered,
+            level: .emergency,
+            message: "Emergency mode triggered via \(method.rawValue)",
+            details: [
+                "reason": reason ?? "User-initiated",
+                "simulation": isSimulationMode ? "true" : "false",
+                "trigger_method": method.rawValue
+            ]
+        ))
     }
 
     func sendEmergencyLogToRemote(reason: String?) async throws {
-        // TODO: Implement remote emergency log
-        // Send to backend if network available
-        // Don't block if network fails
-        print("⚠️ TODO: Remote emergency log not implemented yet")
+        // Send emergency log directly to backend audit API
+        // Non-blocking - don't fail if network unavailable
+        do {
+            let url = URL(string: "\(APIConfiguration.shared.versionedBaseURL)/audit/log")!
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+            // Add auth token if available
+            if let token = KeychainService.shared.loadToken() {
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            }
+
+            let auditPayload: [String: Any] = [
+                "action": "security.emergency_mode_activated",
+                "details": [
+                    "reason": reason ?? "User-initiated",
+                    "simulation": isSimulationMode,
+                    "timestamp": ISO8601DateFormatter().string(from: Date())
+                ]
+            ]
+            request.httpBody = try JSONSerialization.data(withJSONObject: auditPayload)
+
+            // Short timeout - don't block emergency operations
+            request.timeoutInterval = 3.0
+
+            let (_, response) = try await URLSession.shared.data(for: request)
+
+            if let httpResponse = response as? HTTPURLResponse {
+                if httpResponse.statusCode == 201 {
+                    print("✅ Emergency log sent to backend")
+                } else {
+                    print("⚠️ Emergency log response: \(httpResponse.statusCode)")
+                }
+            }
+        } catch {
+            // Don't fail emergency operations due to logging
+            print("⚠️ Failed to send emergency log to backend (continuing): \(error.localizedDescription)")
+        }
     }
 }

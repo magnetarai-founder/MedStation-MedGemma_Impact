@@ -147,7 +147,7 @@ struct SmartModelPicker: View {
 
         // Fetch available models
         do {
-            let url = URL(string: "http://localhost:8000/api/v1/chat/models")!
+            let url = URL(string: APIConfiguration.shared.chatModelsURL)!
             let (data, _) = try await URLSession.shared.data(from: url)
 
             struct ModelResponse: Codable {

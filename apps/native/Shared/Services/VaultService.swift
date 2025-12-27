@@ -23,8 +23,8 @@ final class VaultService {
                 self.baseURL = envBaseURL
             }
         } else {
-            // Local development only - use HTTP for localhost
-            self.baseURL = "http://localhost:8000/api/v1/vault"
+            // Use centralized API configuration
+            self.baseURL = APIConfiguration.shared.vaultURL
         }
 
         // Enforce HTTPS for non-localhost URLs (security requirement)

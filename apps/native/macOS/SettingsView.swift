@@ -11,7 +11,8 @@ import ServiceManagement
 import UserNotifications
 
 struct SettingsView: View {
-    @AppStorage("apiBaseURL") private var apiBaseURL = "http://localhost:8000"
+    // Default from centralized config - user can override in settings
+    @AppStorage("apiBaseURL") private var apiBaseURL = APIConfiguration.shared.baseURL
     @AppStorage("defaultModel") private var defaultModel = "mistral"
     @AppStorage("enableBiometrics") private var enableBiometrics = true
     @AppStorage("theme") private var theme = "system"

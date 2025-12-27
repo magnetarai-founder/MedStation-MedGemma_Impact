@@ -14,6 +14,9 @@ final class APIConfiguration {
     /// Base API URL with HTTPS enforcement for non-localhost
     let baseURL: String
 
+    /// Ollama server URL (local LLM inference)
+    let ollamaURL: String
+
     /// Base API URL with version prefix
     var versionedBaseURL: String {
         "\(baseURL)/v1"
@@ -24,6 +27,18 @@ final class APIConfiguration {
         "\(versionedBaseURL)/vault"
     }
 
+    /// Chat models endpoint
+    var chatModelsURL: String {
+        "\(versionedBaseURL)/chat/models"
+    }
+
+    /// Health check endpoint (at root, not versioned)
+    var healthURL: String {
+        // Health is at /health, not /api/v1/health
+        let rootURL = baseURL.replacingOccurrences(of: "/api", with: "")
+        return "\(rootURL)/health"
+    }
+
     private init() {
         // Read from environment or default to localhost
         // For production/remote: Set API_BASE_URL environment variable to HTTPS endpoint
@@ -32,6 +47,13 @@ final class APIConfiguration {
         } else {
             // Local development only - use HTTP for localhost
             self.baseURL = "http://localhost:8000/api"
+        }
+
+        // Ollama URL (always local, no remote option)
+        if let envOllamaURL = ProcessInfo.processInfo.environment["OLLAMA_URL"] {
+            self.ollamaURL = envOllamaURL
+        } else {
+            self.ollamaURL = "http://localhost:11434"
         }
 
         // CRITICAL SECURITY: Enforce HTTPS for non-localhost URLs

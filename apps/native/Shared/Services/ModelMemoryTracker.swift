@@ -55,7 +55,7 @@ class ModelMemoryTracker: ObservableObject {
     @Published private(set) var totalMemoryUsed: Double = 0.0  // Total GB of loaded models
     @Published private(set) var lastUpdated: Date?
 
-    private let ollamaBaseURL = "http://localhost:11434"
+    private var ollamaBaseURL: String { APIConfiguration.shared.ollamaURL }
     private var updateTask: Task<Void, Never>?
 
     private init() {

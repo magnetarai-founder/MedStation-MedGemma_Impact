@@ -182,9 +182,48 @@ public final class SecurityManager: ObservableObject {
         // Print to console for debugging
         print("🔒 [\(event.type.rawValue)] \(event.message)")
 
-        // TODO: Send to backend audit API
+        // Send to backend audit API (non-blocking)
         Task {
-            // await sendAuditLog(event)
+            await sendAuditLog(event)
+        }
+    }
+
+    /// Send security event to backend audit API
+    private func sendAuditLog(_ event: SecurityEvent) async {
+        do {
+            // Build audit log request
+            let url = URL(string: "\(APIConfiguration.shared.versionedBaseURL)/audit/log")!
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+            // Add auth token if available
+            if let token = KeychainService.shared.loadToken() {
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            }
+
+            // Convert SecurityEvent to backend format
+            let auditPayload: [String: Any] = [
+                "action": "security.\(event.type.rawValue)",
+                "resource_id": event.id.uuidString,
+                "details": [
+                    "level": event.level.rawValue,
+                    "message": event.message,
+                    "timestamp": ISO8601DateFormatter().string(from: event.timestamp),
+                    "event_details": event.details
+                ]
+            ]
+            request.httpBody = try JSONSerialization.data(withJSONObject: auditPayload)
+
+            // Fire and forget - don't block on response
+            let (_, response) = try await URLSession.shared.data(for: request)
+
+            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 201 {
+                print("⚠️ Audit log response: \(httpResponse.statusCode)")
+            }
+        } catch {
+            // Non-blocking - log locally but don't fail
+            print("⚠️ Failed to send audit log to backend: \(error.localizedDescription)")
         }
     }
 

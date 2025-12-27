@@ -257,7 +257,7 @@ struct ModelManagementSettingsView: View {
 
         do {
             // Load models with tags
-            let url = URL(string: "http://localhost:8000/api/v1/chat/models/with-tags")!
+            let url = URL(string: "\(APIConfiguration.shared.chatModelsURL)/with-tags")!
             let (data, _) = try await URLSession.shared.data(from: url)
 
             let decoder = JSONDecoder()

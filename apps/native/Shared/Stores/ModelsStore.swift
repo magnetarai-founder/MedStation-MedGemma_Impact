@@ -26,7 +26,7 @@ final class ModelsStore {
         do {
             // Fetch basic models list (no tags to avoid complexity)
             // SECURITY (CRIT-05): Use guard let instead of force unwrap
-            guard let url = URL(string: "http://localhost:8000/api/v1/chat/models") else {
+            guard let url = URL(string: APIConfiguration.shared.chatModelsURL) else {
                 throw ApiError.invalidResponse
             }
             var request = URLRequest(url: url)
@@ -70,7 +70,7 @@ final class ModelsStore {
 
         do {
             // Build URL to Ollama API (direct to Ollama, not through backend)
-            let url = URL(string: "http://localhost:11434/api/pull")!
+            let url = URL(string: "\(APIConfiguration.shared.ollamaURL)/api/pull")!
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -119,7 +119,7 @@ final class ModelsStore {
 
         do {
             // Build URL to Ollama API (direct to Ollama, not through backend)
-            let url = URL(string: "http://localhost:11434/api/delete")!
+            let url = URL(string: "\(APIConfiguration.shared.ollamaURL)/api/delete")!
             var request = URLRequest(url: url)
             request.httpMethod = "DELETE"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")

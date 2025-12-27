@@ -203,7 +203,7 @@ final class AuthStore: ObservableObject {
     }
 
     private func checkBackendHealth() async -> Bool {
-        guard let url = URL(string: "http://localhost:8000/health") else { return false }
+        guard let url = URL(string: APIConfiguration.shared.healthURL) else { return false }
 
         do {
             let (_, response) = try await URLSession.shared.data(from: url)

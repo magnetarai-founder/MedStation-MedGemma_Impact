@@ -14,6 +14,11 @@ import json
 import math
 import os
 
+try:
+    from .config import get_settings
+except ImportError:
+    from config import get_settings
+
 from api.jarvis_bigquery_memory import JarvisBigQueryMemory
 
 # Import enhanced functionality
@@ -223,8 +228,9 @@ def _ollama_embed(text: str) -> List[float]:
     model = _read_embed_model()
     try:
         import json, urllib.request
+        settings = get_settings()
         req = urllib.request.Request(
-            url='http://127.0.0.1:11434/api/embeddings',
+            url=f'{settings.ollama_base_url}/api/embeddings',
             data=json.dumps({"model": model, "prompt": text}).encode('utf-8'),
             headers={'Content-Type': 'application/json'}
         )

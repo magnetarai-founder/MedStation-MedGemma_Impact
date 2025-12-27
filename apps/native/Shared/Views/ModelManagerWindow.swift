@@ -373,7 +373,7 @@ struct ModelManagerWindow: View {
 
         // Fetch models with tags
         do {
-            let url = URL(string: "http://localhost:8000/api/v1/chat/models/with-tags")!
+            let url = URL(string: "\(APIConfiguration.shared.chatModelsURL)/with-tags")!
             let (data, _) = try await URLSession.shared.data(from: url)
 
             struct ModelResponseWithTags: Codable {
@@ -393,7 +393,7 @@ struct ModelManagerWindow: View {
             print("Failed to fetch models with tags: \(error)")
             // Fallback to basic models endpoint
             do {
-                let url = URL(string: "http://localhost:8000/api/v1/chat/models")!
+                let url = URL(string: APIConfiguration.shared.chatModelsURL)!
                 let (data, _) = try await URLSession.shared.data(from: url)
 
                 struct ModelResponse: Codable {

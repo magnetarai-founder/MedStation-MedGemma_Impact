@@ -74,6 +74,16 @@ def configure_cors(app: FastAPI) -> None:
         allowed_methods = ["*"]
         allowed_headers = ["*"]
 
+        # SECURITY WARNING: Prominent alert about permissive CORS in development
+        logger.warning("=" * 60)
+        logger.warning("⚠️  DEVELOPMENT CORS MODE - NOT FOR PRODUCTION ⚠️")
+        logger.warning("CORS is configured with permissive settings:")
+        logger.warning("  - allow_methods: ['*']")
+        logger.warning("  - allow_headers: ['*']")
+        logger.warning("  - Origins: %s", ", ".join(allowed_origins[:3]) + "...")
+        logger.warning("Set ELOHIM_ENV=production for secure CORS settings")
+        logger.warning("=" * 60)
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=allowed_origins,

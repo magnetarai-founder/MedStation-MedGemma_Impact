@@ -85,7 +85,9 @@ final class OllamaService {
     // MARK: - Model Management (via Backend API)
 
     private var baseURL: String {
-        UserDefaults.standard.string(forKey: "apiBaseURL") ?? "http://localhost:8000"
+        // Use centralized API configuration (remove /api suffix for this service's URL construction)
+        let apiBase = APIConfiguration.shared.baseURL
+        return apiBase.replacingOccurrences(of: "/api", with: "")
     }
 
     /// Pull/download a model with streaming progress (async/await with AsyncThrowingStream)

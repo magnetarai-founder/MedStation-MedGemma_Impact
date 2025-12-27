@@ -68,7 +68,7 @@ final class ChatStore {
     func fetchModels() async {
         do {
             // SECURITY (CRIT-05): Use guard let instead of force unwrap
-            guard let url = URL(string: "http://localhost:8000/api/v1/chat/models") else {
+            guard let url = URL(string: APIConfiguration.shared.chatModelsURL) else {
                 print("❌ Invalid URL for models endpoint")
                 return
             }
@@ -543,7 +543,7 @@ final class ChatStore {
         content: String,
         model: String
     ) throws -> URLRequest {
-        guard let url = URL(string: "http://localhost:8000/api/v1/chat/sessions/\(sessionId)/messages") else {
+        guard let url = URL(string: "\(APIConfiguration.shared.versionedBaseURL)/chat/sessions/\(sessionId)/messages") else {
             throw ChatError.sendFailed("Invalid URL for session messages")
         }
 
