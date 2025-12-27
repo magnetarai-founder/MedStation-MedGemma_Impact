@@ -292,7 +292,7 @@ Modernized type hints using PEP 604 (`X | None`) and PEP 585 (`list[X]`, `dict[K
 | `insights/routes/legacy.py` | Updated `Optional[X]` → `X \| None` |
 | `p2p_chat_models.py` | Updated 15+ models with modern type hints |
 
-**Tests:** 625 passing (no regressions)
+**Tests:** 693 passing (no regressions)
 
 ---
 
@@ -446,9 +446,18 @@ Fully implemented:
 ## 📊 CODEBASE HEALTH (2025-12-27)
 
 ### Test Suite
-- **Tests:** 625 passing
-- **Duration:** ~76 seconds
-- **Coverage:** Estimated 75%+
+- **Tests:** 693 passing ✅
+- **Duration:** ~77 seconds
+- **Coverage:** Estimated 80%+
+
+#### Recent Test Additions (68 new tests)
+| Test File | Tests | Coverage |
+|-----------|-------|----------|
+| `test_cloud_sync.py` | 21 | Sync status, vault/workflow/team sync, conflicts, air-gap |
+| `test_cloud_storage.py` | 26 | Chunked upload, SHA-256 verification, download, files |
+| `test_cloud_oauth.py` | 21 | Client registration, PKCE, tokens, introspection |
+
+**Commit:** `77230327` - test: Add comprehensive tests for cloud endpoints
 
 ### Code Metrics
 | Language | Files | Lines |
