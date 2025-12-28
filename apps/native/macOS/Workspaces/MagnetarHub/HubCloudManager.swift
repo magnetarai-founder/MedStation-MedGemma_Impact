@@ -305,7 +305,7 @@ class HubCloudManager {
 
     /// Load cached cloud state from Keychain
     private func loadCachedCloudState() {
-        if let token = keychain.loadToken(forKey: cloudTokenKey),
+        if keychain.loadToken(forKey: cloudTokenKey) != nil,
            let deviceId = keychain.loadToken(forKey: cloudDeviceIdKey),
            let expiryStr = keychain.loadToken(forKey: cloudExpiryKey) {
 

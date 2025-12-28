@@ -190,17 +190,18 @@ public final class SecurityManager: ObservableObject {
 
     /// Send security event to backend audit API
     private func sendAuditLog(_ event: SecurityEvent) async {
+        // Only send audit logs when authenticated (avoids 401 spam during startup)
+        guard let token = KeychainService.shared.loadToken() else {
+            return  // Skip remote logging when not authenticated
+        }
+
         do {
             // Build audit log request
             let url = URL(string: "\(APIConfiguration.shared.versionedBaseURL)/audit/log")!
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-            // Add auth token if available
-            if let token = KeychainService.shared.loadToken() {
-                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            }
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
             // Convert SecurityEvent to backend format
             let auditPayload: [String: Any] = [

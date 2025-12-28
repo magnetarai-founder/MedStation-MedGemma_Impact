@@ -741,7 +741,7 @@ public final class TrustService {
         var currentRow: [String] = []
         var currentGroup = ""
 
-        for (index, char) in safetyNumber.enumerated() {
+        for char in safetyNumber {
             currentGroup.append(char)
 
             if currentGroup.count == 5 {

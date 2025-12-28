@@ -22,6 +22,7 @@ from .models import (
     FileCreate,
     FileUpdate,
     FileResponse,
+    FilesListResponse,
     # Diff models
     FileDiffRequest,
     FileDiffResponse,
@@ -143,6 +144,7 @@ __all__ = [
     'FileCreate',
     'FileUpdate',
     'FileResponse',
+    'FilesListResponse',
     'FileDiffRequest',
     'FileDiffResponse',
     'FileTreeNode',

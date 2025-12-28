@@ -9,6 +9,8 @@ from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Request, Depends
 
+from api.routes.schemas.responses import SuccessResponse
+
 logger = logging.getLogger(__name__)
 
 # Import service layer with fallback
@@ -180,14 +182,16 @@ async def list_workspaces(current_user: dict = Depends(get_current_user)) -> Dic
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/workspaces/{workspace_id}/files")
+@router.get("/workspaces/{workspace_id}/files", response_model=SuccessResponse[code_service.FilesListResponse])
 @require_perm("code.use")
-async def get_workspace_files(workspace_id: str, current_user: dict = Depends(get_current_user)) -> Dict[str, Any]:
+async def get_workspace_files(workspace_id: str, current_user: dict = Depends(get_current_user)):
     """Get file tree for workspace"""
     try:
         # Delegate to service
         tree = code_service.build_file_tree(workspace_id)
-        return {"files": [node.dict() for node in tree]}
+        return SuccessResponse(
+            data=code_service.FilesListResponse(files=tree)
+        )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -91,6 +91,11 @@ class FileTreeNode(BaseModel):
     children: Optional[List['FileTreeNode']] = None
 
 
+class FilesListResponse(BaseModel):
+    """Response model for workspace files list"""
+    files: List[FileTreeNode]
+
+
 # ============================================================================
 # OPERATIONS MODELS (from code_operations.py)
 # ============================================================================

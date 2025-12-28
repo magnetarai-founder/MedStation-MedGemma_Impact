@@ -218,7 +218,7 @@ final class CloudStorageService: ObservableObject {
         )
 
         // Update state
-        await MainActor.run {
+        _ = await MainActor.run {
             self.activeUploads.removeValue(forKey: session.uploadId)
         }
 

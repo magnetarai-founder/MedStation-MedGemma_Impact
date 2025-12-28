@@ -701,9 +701,6 @@ class ContextBundler {
     private func fetchAvailableModels(
         systemResources: SystemResourceState
     ) async -> [AvailableModel] {
-        // Get loaded models from HotSlotManager (already in systemResources)
-        let loadedModelIds = Set(systemResources.activeModels.map { $0.id })
-
         // Fetch all available models from Ollama
         var allModels: [AvailableModel] = []
 
@@ -717,7 +714,6 @@ class ContextBundler {
             let response = try JSONDecoder().decode(OllamaTagsResponse.self, from: data)
 
             for model in response.models {
-                let isLoaded = loadedModelIds.contains(model.name)
                 let loadedModel = systemResources.activeModels.first { $0.id == model.name }
 
                 allModels.append(AvailableModel(
