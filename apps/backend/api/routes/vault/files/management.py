@@ -197,17 +197,23 @@ async def get_vault_files_paginated(
             """, (user_id, vault_type, folder_path))
             total_count = cursor.fetchone()[0]
 
-            # Get paginated files
-            order_clause = {
-                'name': 'filename ASC',
-                'date': 'created_at DESC',
-                'size': 'file_size DESC'
-            }.get(sort_by, 'filename ASC')
+            # SECURITY: Use strict allowlist for ORDER BY to prevent SQL injection
+            ALLOWED_SORT_FIELDS = {
+                'name': ('filename', 'ASC'),
+                'date': ('created_at', 'DESC'),
+                'size': ('file_size', 'DESC'),
+            }
 
+            if sort_by not in ALLOWED_SORT_FIELDS:
+                sort_by = 'name'  # Safe default
+
+            sort_column, sort_direction = ALLOWED_SORT_FIELDS[sort_by]
+
+            # Use parameterized query with safe, validated column names
             cursor.execute(f"""
                 SELECT * FROM vault_files
                 WHERE user_id = ? AND vault_type = ? AND folder_path = ? AND is_deleted = 0
-                ORDER BY {order_clause}
+                ORDER BY {sort_column} {sort_direction}
                 LIMIT ? OFFSET ?
             """, (user_id, vault_type, folder_path, page_size, offset))
 

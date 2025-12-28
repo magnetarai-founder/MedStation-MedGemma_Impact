@@ -267,7 +267,10 @@ class NLQService:
 
         # Get sample rows (first 3)
         try:
-            sample_query = f"SELECT * FROM {table_name} LIMIT 3"
+            # SECURITY: Use quote_identifier to prevent SQL injection via table name
+            from api.security.sql_safety import quote_identifier
+            safe_table = quote_identifier(table_name)
+            sample_query = f"SELECT * FROM {safe_table} LIMIT 3"
             sample_results = engine.execute_sql(sample_query)
             sample_rows = sample_results["rows"]
         except Exception as e:
@@ -428,10 +431,12 @@ SQL Query:"""
 
         # Additional NLQ-specific checks
 
-        # 1. Check for dangerous operations
+        # 1. Check for dangerous operations (includes SQLite-specific keywords)
         dangerous_keywords = [
             'DROP', 'DELETE', 'UPDATE', 'INSERT', 'ALTER',
-            'EXEC', 'EXECUTE', 'CREATE', 'TRUNCATE', 'GRANT', 'REVOKE'
+            'EXEC', 'EXECUTE', 'CREATE', 'TRUNCATE', 'GRANT', 'REVOKE',
+            # SECURITY: SQLite-specific dangerous operations
+            'ATTACH', 'DETACH', 'PRAGMA', 'VACUUM', 'REINDEX',
         ]
 
         sql_upper = sql.upper()

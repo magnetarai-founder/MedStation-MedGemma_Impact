@@ -269,7 +269,9 @@ class AuthService:
             # Recreate hash with same salt
             pwd_hash = hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 600_000)
 
-            return pwd_hash.hex() == hash_hex
+            # SECURITY: Use constant-time comparison to prevent timing attacks
+            import hmac
+            return hmac.compare_digest(pwd_hash.hex(), hash_hex)
         except Exception as e:
             logger.error(f"Password verification failed: {e}")
             return False
@@ -408,13 +410,13 @@ class AuthService:
         5. Updates last_activity on successful verification
         """
         try:
-            # Disable iat validation for development to avoid clock skew issues
+            # SECURITY: Enable iat verification with adequate leeway for clock skew
             payload = jwt.decode(
                 token,
                 JWT_SECRET,
                 algorithms=[JWT_ALGORITHM],
-                options={'verify_iat': False},
-                leeway=60
+                options={'verify_iat': True},
+                leeway=120  # 2 minutes handles clock skew between client/server
             )
 
             # AUTH-P3: No more Founder bypass - all users go through session checks

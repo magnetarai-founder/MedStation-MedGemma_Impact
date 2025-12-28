@@ -458,11 +458,21 @@ async def logout(request: Request) -> Dict[str, str]:
 
         token = auth_header.replace("Bearer ", "")
 
-        # Decode token WITHOUT verification (allows expired tokens to logout)
+        # SECURITY: Verify signature but allow expired tokens for logout
         import jwt
         try:
-            # Decode without verification to get session_id
-            payload = jwt.decode(token, options={"verify_signature": False})
+            from api.auth_middleware import JWT_SECRET, JWT_ALGORITHM
+        except ImportError:
+            from auth_middleware import JWT_SECRET, JWT_ALGORITHM
+
+        try:
+            # SECURITY: Verify signature, but allow expired tokens
+            payload = jwt.decode(
+                token,
+                JWT_SECRET,
+                algorithms=[JWT_ALGORITHM],
+                options={"verify_exp": False}  # Allow expired, but verify signature
+            )
             session_id = payload.get('session_id')
             username = payload.get('username', 'unknown')
 
@@ -490,9 +500,10 @@ async def logout(request: Request) -> Dict[str, str]:
 
             return {"message": "Logged out successfully"}
 
-        except jwt.DecodeError:
-            # Token is completely malformed
-            raise HTTPException(status_code=401, detail="Invalid token format")
+        except jwt.InvalidTokenError:
+            # Token is malformed or has invalid signature - treat as already logged out
+            logger.info("Logout with invalid token - treating as logged out")
+            return {"message": "Logged out successfully"}
 
     except HTTPException:
         raise

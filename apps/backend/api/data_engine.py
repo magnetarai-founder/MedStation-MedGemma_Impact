@@ -341,6 +341,24 @@ class DataEngine:
             }
         """
         import time
+        import re
+
+        # SECURITY: Validate SQL before execution
+        dangerous_keywords = [
+            'DROP', 'DELETE', 'UPDATE', 'INSERT', 'ALTER',
+            'ATTACH', 'DETACH', 'PRAGMA', 'CREATE', 'TRUNCATE',
+            'GRANT', 'REVOKE', 'EXEC', 'EXECUTE'
+        ]
+
+        query_upper = query.upper()
+        for keyword in dangerous_keywords:
+            if re.search(r'\b' + keyword + r'\b', query_upper):
+                raise ValueError(f"Forbidden SQL operation: {keyword}")
+
+        # SECURITY: Ensure query has LIMIT if it's a SELECT
+        if query_upper.strip().startswith('SELECT') and 'LIMIT' not in query_upper:
+            query = f"{query.rstrip(';')} LIMIT 10000"
+            logger.warning("Added default LIMIT 10000 to query without LIMIT")
 
         # METRICS: Track SQL query execution
         with metrics.track("sql_query_execution"):

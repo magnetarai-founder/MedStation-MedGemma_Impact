@@ -103,7 +103,35 @@ class TerminalBridge:
             TerminalSession object
         """
         # Determine shell with STRICT validation (SECURITY: Prevent command injection)
+        import stat
+
         ALLOWED_SHELLS = ['/bin/bash', '/bin/zsh', '/bin/sh', '/usr/bin/bash', '/usr/bin/zsh']
+
+        def validate_shell(shell_path: str) -> str:
+            """SECURITY: Validate shell path thoroughly"""
+            # Check allowlist
+            if shell_path not in ALLOWED_SHELLS:
+                logger.error(f"SECURITY: Rejected invalid shell: {shell_path}")
+                raise ValueError(f"Invalid shell. Allowed shells: {', '.join(ALLOWED_SHELLS)}")
+
+            # Check for null bytes (injection attempt)
+            if '\x00' in shell_path:
+                raise ValueError("Invalid shell path: null byte detected")
+
+            # Verify shell exists
+            if not os.path.exists(shell_path):
+                raise ValueError(f"Shell does not exist: {shell_path}")
+
+            # Verify it's a regular file (not symlink to something else, not directory)
+            shell_stat = os.stat(shell_path)
+            if not stat.S_ISREG(shell_stat.st_mode):
+                raise ValueError(f"Shell is not a regular file: {shell_path}")
+
+            # Verify it's executable
+            if not os.access(shell_path, os.X_OK):
+                raise ValueError(f"Shell is not executable: {shell_path}")
+
+            return shell_path
 
         if shell is None:
             # Try zsh first, fall back to bash
@@ -111,15 +139,9 @@ class TerminalBridge:
                 shell = '/bin/zsh'
             else:
                 shell = '/bin/bash'
-        else:
-            # SECURITY: Validate shell is in whitelist
-            if shell not in ALLOWED_SHELLS:
-                logger.error(f"SECURITY: Rejected invalid shell: {shell}")
-                raise ValueError(f"Invalid shell. Allowed shells: {', '.join(ALLOWED_SHELLS)}")
 
-            # SECURITY: Verify shell actually exists
-            if not os.path.exists(shell):
-                raise ValueError(f"Shell does not exist: {shell}")
+        # Validate the chosen shell
+        shell = validate_shell(shell)
 
         # Determine working directory with validation (SECURITY: Prevent directory traversal)
         if cwd is None:

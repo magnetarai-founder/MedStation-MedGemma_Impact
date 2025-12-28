@@ -25,7 +25,15 @@ def _ollama_available() -> bool:
     return shutil.which("ollama") is not None
 
 
+def _validate_model_name(model: str) -> bool:
+    """SECURITY: Validate model name to prevent command injection."""
+    return bool(re.match(r'^[a-zA-Z0-9._-]+(?::[a-zA-Z0-9._-]+)?$', model))
+
+
 def _run_ollama(model: str, prompt: str, timeout: int = 20) -> Optional[str]:
+    # SECURITY: Validate model name before passing to subprocess
+    if not _validate_model_name(model):
+        return None
     try:
         p = subprocess.run(["ollama", "run", model, prompt], capture_output=True, text=True, timeout=timeout)
         if p.returncode == 0 and p.stdout:

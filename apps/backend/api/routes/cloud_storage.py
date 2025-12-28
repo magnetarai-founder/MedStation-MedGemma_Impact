@@ -271,7 +271,7 @@ async def init_upload(
 @router.post("/upload/chunk", response_model=ChunkUploadResponse)
 async def upload_chunk(
     upload_id: str = Form(...),
-    chunk_index: int = Form(..., ge=0),
+    chunk_index: int = Form(..., ge=0, le=10000),  # SECURITY: Upper bound prevents DoS
     chunk_hash: str = Form(..., min_length=64, max_length=64),
     chunk_data: UploadFile = File(...),
     current_user: Dict = Depends(get_current_user)

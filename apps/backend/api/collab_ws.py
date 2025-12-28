@@ -51,9 +51,11 @@ collab_docs: Dict[str, Dict] = {}
 try:
     from api.auth_middleware import JWT_SECRET, JWT_ALGORITHM
 except ImportError:
-    # Fallback for testing
+    # SECURITY: No hardcoded fallback - require proper secret
     import os
-    JWT_SECRET = os.getenv("ELOHIMOS_JWT_SECRET_KEY", "dev-secret-key")
+    JWT_SECRET = os.getenv("ELOHIMOS_JWT_SECRET_KEY")
+    if not JWT_SECRET:
+        raise RuntimeError("ELOHIMOS_JWT_SECRET_KEY must be set - no fallback allowed")
     JWT_ALGORITHM = "HS256"
 
 

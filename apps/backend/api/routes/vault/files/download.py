@@ -255,8 +255,19 @@ async def download_vault_file(
                 ).model_dump()
             )
 
-        # Read encrypted file from disk
-        encrypted_file_path = Path(file_row['encrypted_path'])
+        # SECURITY: Path containment check - ensure file is within vault directory
+        vault_files_dir = service.files_path.resolve()
+        encrypted_file_path = Path(file_row['encrypted_path']).resolve()
+
+        if not str(encrypted_file_path).startswith(str(vault_files_dir)):
+            logger.error(f"SECURITY: Path traversal attempt: {file_row['encrypted_path']}")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.FORBIDDEN,
+                    message="Invalid file path"
+                ).model_dump()
+            )
 
         if not encrypted_file_path.exists():
             raise HTTPException(
@@ -290,11 +301,15 @@ async def download_vault_file(
             details={"file_id": file_id, "vault_type": vault_type}
         )
 
+        # SECURITY: Sanitize filename for HTTP header injection prevention
+        import re
+        safe_filename = re.sub(r'[\r\n\x00-\x1f\x7f"]', '_', file_row['filename'])
+
         return FileResponse(
             path=temp_file.name,
-            filename=file_row['filename'],
+            filename=safe_filename,
             media_type=file_row['mime_type'] or 'application/octet-stream',
-            headers={"Content-Disposition": f"attachment; filename=\"{file_row['filename']}\""}
+            headers={"Content-Disposition": f"attachment; filename=\"{safe_filename}\""}
         )
 
     except HTTPException:

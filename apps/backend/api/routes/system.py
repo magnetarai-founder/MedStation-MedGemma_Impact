@@ -149,7 +149,10 @@ async def health_check() -> dict:
 
 
 @router.get("/diagnostics")
-async def system_diagnostics(force_refresh: bool = False) -> dict:
+async def system_diagnostics(
+    force_refresh: bool = False,
+    current_user: Dict = Depends(get_current_user)
+) -> dict:
     """
     Comprehensive system diagnostics endpoint (Phase 5.4)
 

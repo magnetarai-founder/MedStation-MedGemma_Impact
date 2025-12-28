@@ -89,40 +89,41 @@ class CodexEngine:
             patch_level = self._detect_patch_level(diff_text)
 
             try:
-                # Try system patch if available
-                if shutil.which('patch'):
-                    # Try with detected patch level
-                    dry = subprocess.run(
-                        f"patch -p{patch_level} --dry-run < '{tmp.name}'",
-                        shell=True,
-                        cwd=self.repo_root,
-                        capture_output=True,
-                        text=True,
-                        timeout=10,
-                    )
-                    if dry.returncode != 0:
-                        # If detected level fails, try the opposite
-                        alternate_level = 1 if patch_level == 0 else 0
-                        dry = subprocess.run(
-                            f"patch -p{alternate_level} --dry-run < '{tmp.name}'",
-                            shell=True,
+                # SECURITY: Use subprocess without shell=True to prevent command injection
+                def run_patch_secure(patch_file_path: str, patch_level: int, dry_run: bool = False, timeout: int = 30):
+                    """Run patch command securely without shell=True"""
+                    cmd = ['patch', f'-p{patch_level}']
+                    if dry_run:
+                        cmd.append('--dry-run')
+
+                    with open(patch_file_path, 'r') as f:
+                        result = subprocess.run(
+                            cmd,
+                            stdin=f,
                             cwd=self.repo_root,
                             capture_output=True,
                             text=True,
-                            timeout=10,
+                            timeout=timeout,
                         )
+                    return result
+
+                # Try system patch if available
+                if shutil.which('patch'):
+                    # Try with detected patch level (dry run)
+                    dry = run_patch_secure(tmp.name, patch_level, dry_run=True, timeout=10)
+
+                    if dry.returncode != 0:
+                        # If detected level fails, try the opposite
+                        alternate_level = 1 if patch_level == 0 else 0
+                        dry = run_patch_secure(tmp.name, alternate_level, dry_run=True, timeout=10)
+
                         if dry.returncode != 0:
                             raise RuntimeError(dry.stderr.strip() or dry.stdout.strip())
                         patch_level = alternate_level
 
-                    applied = subprocess.run(
-                        f"patch -p{patch_level} < '{tmp.name}'",
-                        shell=True,
-                        cwd=self.repo_root,
-                        capture_output=True,
-                        text=True,
-                        timeout=30,
-                    )
+                    # Apply for real
+                    applied = run_patch_secure(tmp.name, patch_level, dry_run=False, timeout=30)
+
                     if applied.returncode != 0:
                         raise RuntimeError(applied.stderr.strip() or applied.stdout.strip())
                 else:
@@ -192,14 +193,18 @@ class CodexEngine:
         tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".diff")
         tmp.write(reversed_diff.encode())
         tmp.close()
-        applied = subprocess.run(
-            f"patch -p0 < '{tmp.name}'",
-            shell=True,
-            cwd=self.repo_root,
-            capture_output=True,
-            text=True,
-            timeout=60,
-        )
+
+        # SECURITY: Use subprocess without shell=True to prevent command injection
+        with open(tmp.name, 'r') as f:
+            applied = subprocess.run(
+                ['patch', '-p0'],
+                stdin=f,
+                cwd=self.repo_root,
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+
         os.unlink(tmp.name)
         if applied.returncode != 0:
             return False, f"Rollback failed: {applied.stderr.strip() or applied.stdout.strip()}"
@@ -441,15 +446,24 @@ class CodexEngine:
             tmp.write(shard.encode())
             tmp.close()
             try:
+                # SECURITY: Helper to run patch without shell=True
+                def run_patch_shard(patch_path: str, dry_run: bool = False, timeout: int = 20):
+                    cmd = ['patch', '-p0']
+                    if dry_run:
+                        cmd.append('--dry-run')
+                    with open(patch_path, 'r') as f:
+                        return subprocess.run(
+                            cmd,
+                            stdin=f,
+                            cwd=self.repo_root,
+                            capture_output=True,
+                            text=True,
+                            timeout=timeout,
+                        )
+
                 if shutil.which('patch'):
-                    dry = subprocess.run(
-                        f"patch -p0 --dry-run < '{tmp.name}'",
-                        shell=True,
-                        cwd=self.repo_root,
-                        capture_output=True,
-                        text=True,
-                        timeout=10,
-                    )
+                    dry = run_patch_shard(tmp.name, dry_run=True, timeout=10)
+
                     if dry.returncode != 0:
                         # Try simple applier on this shard
                         ok, msg = self._apply_simple_diff(shard)
@@ -457,14 +471,8 @@ class CodexEngine:
                             os.unlink(tmp.name)
                             return False, f"shard {i} dry-run failed: {dry.stderr or dry.stdout}; simple: {msg}"
                     else:
-                        applied = subprocess.run(
-                            f"patch -p0 < '{tmp.name}'",
-                            shell=True,
-                            cwd=self.repo_root,
-                            capture_output=True,
-                            text=True,
-                            timeout=20,
-                        )
+                        applied = run_patch_shard(tmp.name, dry_run=False, timeout=20)
+
                         if applied.returncode != 0:
                             # Try simple applier on this shard
                             ok, msg = self._apply_simple_diff(shard)
