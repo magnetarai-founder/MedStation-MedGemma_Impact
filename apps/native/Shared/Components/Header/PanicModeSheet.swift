@@ -6,6 +6,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "PanicModeSheet")
 
 struct PanicModeSheet: View {
     @Environment(\.dismiss) private var dismiss
@@ -119,12 +122,10 @@ struct PanicModeSheet: View {
                     reason: "User-initiated panic from macOS app"
                 )
 
-                print("✅ Panic mode triggered successfully")
-                print("   Actions taken: \(response.actionsTaken.joined(separator: ", "))")
+                logger.warning("Panic mode triggered successfully, actions: \(response.actionsTaken.joined(separator: ", "))")
 
                 if !response.errors.isEmpty {
-                    print("⚠️ Panic mode completed with errors:")
-                    response.errors.forEach { print("   - \($0)") }
+                    logger.warning("Panic mode completed with errors: \(response.errors.joined(separator: ", "))")
                 }
 
                 // 2. Lock all vaults locally
@@ -145,7 +146,7 @@ struct PanicModeSheet: View {
                 dismiss()
 
             } catch PanicModeError.rateLimitExceeded {
-                print("❌ Panic mode rate limit exceeded")
+                logger.error("Panic mode rate limit exceeded")
                 // Still perform local cleanup
                 vaultStore.lock()
                 await authStore.logout()
@@ -155,7 +156,7 @@ struct PanicModeSheet: View {
                 dismiss()
 
             } catch {
-                print("❌ Panic mode backend error: \(error.localizedDescription)")
+                logger.error("Panic mode backend error: \(error.localizedDescription)")
                 // Still perform local cleanup even if backend fails
                 vaultStore.lock()
                 await authStore.logout()

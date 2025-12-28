@@ -9,6 +9,9 @@
 //
 
 import Foundation
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "OrchestratorInitializer")
 
 /// Initializes orchestrators and registers them with OrchestratorManager
 @MainActor
@@ -26,16 +29,13 @@ class OrchestratorInitializer {
 
         // Check health
         let health = await manager.healthCheck()
-        print("📊 Orchestrator Health:")
-        print("  Available: \(health.available.joined(separator: ", "))")
-        print("  Unavailable: \(health.unavailable.joined(separator: ", "))")
-        print("  Active: \(health.activeOrchestrator ?? "None")")
+        logger.info("Orchestrator Health - Available: \(health.available.joined(separator: ", ")), Unavailable: \(health.unavailable.joined(separator: ", ")), Active: \(health.activeOrchestrator ?? "None")")
 
         // Get active orchestrator
         if let active = await manager.getActiveOrchestrator() {
-            print("✓ Active orchestrator: \(active.displayName)")
+            logger.info("Active orchestrator: \(active.displayName)")
         } else {
-            print("✗ No orchestrator available!")
+            logger.error("No orchestrator available!")
         }
     }
 }

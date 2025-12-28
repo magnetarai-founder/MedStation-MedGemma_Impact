@@ -7,6 +7,9 @@
 
 import Foundation
 import Observation
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "ModelsStore")
 
 @MainActor
 @Observable
@@ -57,7 +60,7 @@ final class ModelsStore {
             }
         } catch {
             self.error = error
-            print("Failed to fetch models: \(error)")
+            logger.error("Failed to fetch models: \(error)")
         }
 
         isLoading = false
@@ -95,7 +98,7 @@ final class ModelsStore {
                 if let jsonData = line.data(using: .utf8),
                    let dict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
                     if let status = dict["status"] as? String {
-                        print("Pull \(name): \(status)")
+                        logger.debug("Pull \(name): \(status)")
                     }
                 }
             }
@@ -105,7 +108,7 @@ final class ModelsStore {
 
         } catch {
             self.error = error
-            print("Failed to pull model \(name): \(error)")
+            logger.error("Failed to pull model \(name): \(error)")
             throw error
         }
 
@@ -140,11 +143,11 @@ final class ModelsStore {
             // Remove from local models array
             models.removeAll { $0.name == name }
 
-            print("Deleted model: \(name)")
+            logger.info("Deleted model: \(name)")
 
         } catch {
             self.error = error
-            print("Failed to delete model \(name): \(error)")
+            logger.error("Failed to delete model \(name): \(error)")
             throw error
         }
 
