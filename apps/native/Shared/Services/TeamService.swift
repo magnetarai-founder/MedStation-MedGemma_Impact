@@ -6,6 +6,9 @@
 //
 
 import Foundation
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "TeamService")
 
 // MARK: - Models
 
@@ -244,12 +247,12 @@ public final class TeamService {
                 path: "/v1/docs/documents",
                 method: .get
             )
-            print("✅ Successfully loaded \(documents.count) documents")
+            logger.info("Successfully loaded \(documents.count) documents")
             return documents
         } catch {
-            print("❌ Failed to load documents: \(error)")
+            logger.error("Failed to load documents: \(error)")
             if let decodingError = error as? DecodingError {
-                print("Decoding error details: \(decodingError)")
+                logger.debug("Decoding error details: \(decodingError)")
             }
             throw error
         }
@@ -296,12 +299,12 @@ public final class TeamService {
                 path: "/v1/diagnostics",
                 method: .get
             )
-            print("✅ Successfully loaded diagnostics")
+            logger.info("Successfully loaded diagnostics")
             return status
         } catch {
-            print("❌ Failed to load diagnostics: \(error)")
+            logger.error("Failed to load diagnostics: \(error)")
             if let decodingError = error as? DecodingError {
-                print("Decoding error details: \(decodingError)")
+                logger.debug("Decoding error details: \(decodingError)")
             }
             throw error
         }

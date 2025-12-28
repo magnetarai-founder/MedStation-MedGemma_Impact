@@ -8,6 +8,9 @@
 
 import SwiftUI
 import AppKit
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "AppLifecycleManager")
 
 class AppLifecycleManager: NSObject, NSApplicationDelegate, ObservableObject {
     @AppStorage("showMenuBar") private var showMenuBar: Bool = false
@@ -45,7 +48,7 @@ class AppLifecycleManager: NSObject, NSApplicationDelegate, ObservableObject {
 
             await ModelMemoryTracker.shared.refresh()
             ModelMemoryTracker.shared.startAutoRefresh(intervalMinutes: 5)
-            print("✅ Model memory tracker initialized")
+            logger.info("Model memory tracker initialized")
         }
     }
 
@@ -80,7 +83,7 @@ class AppLifecycleManager: NSObject, NSApplicationDelegate, ObservableObject {
         let settings = SettingsStore.shared.appSettings
 
         guard settings.ollamaAutoStart else {
-            print("Ollama auto-start disabled in settings")
+            logger.debug("Ollama auto-start disabled in settings")
             return
         }
 
@@ -89,14 +92,14 @@ class AppLifecycleManager: NSObject, NSApplicationDelegate, ObservableObject {
 
         if !isRunning {
             do {
-                print("Starting Ollama server (auto-start enabled)...")
+                logger.info("Starting Ollama server (auto-start enabled)...")
                 try await ollamaService.start()
-                print("✓ Ollama server started successfully")
+                logger.info("Ollama server started successfully")
             } catch {
-                print("Failed to auto-start Ollama: \(error)")
+                logger.error("Failed to auto-start Ollama: \(error)")
             }
         } else {
-            print("Ollama server already running")
+            logger.debug("Ollama server already running")
         }
     }
 }

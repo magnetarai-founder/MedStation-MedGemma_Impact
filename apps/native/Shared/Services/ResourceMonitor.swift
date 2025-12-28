@@ -10,6 +10,9 @@
 
 import Foundation
 import Combine
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "ResourceMonitor")
 
 // MARK: - Resource Monitor
 
@@ -60,10 +63,10 @@ class ResourceMonitor: ObservableObject {
 
         // Log warnings
         if memoryWarning {
-            print("⚠️ High memory pressure: \(Int(state.memoryPressure * 100))%")
+            logger.warning("High memory pressure: \(Int(state.memoryPressure * 100))%")
         }
         if thermalWarning {
-            print("⚠️ Thermal state: \(state.thermalState.rawValue)")
+            logger.warning("Thermal state: \(state.thermalState.rawValue)")
         }
     }
 
@@ -75,19 +78,19 @@ class ResourceMonitor: ObservableObject {
 
         // Check available memory
         if estimatedMemoryGB > state.availableMemoryGB {
-            print("✗ Insufficient memory: Need \(estimatedMemoryGB)GB, have \(state.availableMemoryGB)GB")
+            logger.warning("Insufficient memory: Need \(estimatedMemoryGB)GB, have \(state.availableMemoryGB)GB")
             return false
         }
 
         // Check thermal state
         if state.thermalState == .critical {
-            print("✗ Critical thermal state - blocking model load")
+            logger.warning("Critical thermal state - blocking model load")
             return false
         }
 
         // Check memory pressure
         if state.memoryPressure > 0.9 {
-            print("✗ Critical memory pressure - blocking model load")
+            logger.warning("Critical memory pressure - blocking model load")
             return false
         }
 
