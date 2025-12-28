@@ -271,7 +271,7 @@ async def toggle_slot_pin(
 async def load_all_hot_slot_models(
     keep_alive: str = "1h",
     current_user = Depends(get_current_user)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Load all assigned hot slot models into memory
 

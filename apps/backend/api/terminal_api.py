@@ -7,9 +7,12 @@ Provides real-time terminal access via WebSocket for the Code Tab.
 import logging
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, Query, Request
 from typing import Any, Dict, List, Optional
+from pydantic import BaseModel, Field
 import json
 import os
 import subprocess
+
+from api.routes.schemas.responses import SuccessResponse
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +80,21 @@ def redact_secrets(text: str) -> str:
     return redacted
 
 
-@router.post("/spawn")
+# ===== Response Models =====
+
+class SpawnTerminalResponseData(BaseModel):
+    """Response data for terminal spawn"""
+    terminal_id: str = Field(..., alias="terminalId")
+    terminal_app: str = Field(..., alias="terminalApp")
+    workspace_root: str = Field(..., alias="workspaceRoot")
+    active_count: int = Field(..., alias="activeCount")
+    message: str
+
+    class Config:
+        populate_by_name = True
+
+
+@router.post("/spawn", response_model=SuccessResponse[SpawnTerminalResponseData])
 @require_perm("code.terminal")
 async def spawn_terminal(
     shell: Optional[str] = None,
@@ -130,9 +147,9 @@ async def spawn_terminal(
         raise HTTPException(status_code=500, detail=f"Failed to spawn terminal: {str(e)}")
 
 
-@router.post("/spawn-system")
+@router.post("/spawn-system", response_model=SuccessResponse[SpawnTerminalResponseData])
 @require_perm("code.terminal")
-async def spawn_system_terminal(current_user: dict = Depends(get_current_user)) -> Dict[str, Any]:
+async def spawn_system_terminal(current_user: dict = Depends(get_current_user)):
     """
     Spawn a system terminal (Warp, iTerm2, Terminal.app) with bridge script
 
@@ -307,14 +324,15 @@ exec $SHELL
             }
         )
 
-        return {
-            'success': True,
-            'terminal_id': terminal_id,
-            'terminal_app': terminal_app,
-            'active_terminals': active_count,
-            'max_terminals': 3,
-            'bridge_script': bridge_script_path
-        }
+        return SuccessResponse(
+            data=SpawnTerminalResponseData(
+                terminal_id=terminal_id,
+                terminal_app=terminal_app,
+                workspace_root=workspace_root,
+                active_count=active_count,
+                message=f"Opened {terminal_app} in {workspace_root}"
+            )
+        )
 
     except HTTPException:
         raise
