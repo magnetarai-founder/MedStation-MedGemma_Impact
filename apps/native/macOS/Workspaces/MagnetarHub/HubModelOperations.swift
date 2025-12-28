@@ -6,6 +6,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "HubModelOperations")
 
 @MainActor
 @Observable
@@ -36,12 +39,12 @@ class HubModelOperations {
 
     func downloadModel(modelName: String, ollamaRunning: Bool, networkConnected: Bool, onRefreshModels: @escaping () async -> Void) {
         guard ollamaRunning else {
-            print("❌ Cannot download - Ollama server not running")
+            logger.warning("Cannot download - Ollama server not running")
             return
         }
 
         guard networkConnected else {
-            print("❌ Cannot download - No internet connection")
+            logger.warning("Cannot download - No internet connection")
             return
         }
 
@@ -52,7 +55,7 @@ class HubModelOperations {
             progress: 0.0
         )
 
-        print("📥 Starting download: \(modelName)")
+        logger.info("Starting download: \(modelName)")
 
         ollamaService.pullModel(
             modelName: modelName,
@@ -69,12 +72,12 @@ class HubModelOperations {
                 Task { @MainActor in
                     switch result {
                     case .success:
-                        print("✅ Download complete: \(modelName)")
+                        logger.info("Download complete: \(modelName)")
                         self.activeDownloads.removeValue(forKey: modelName)
                         // Refresh local models list
                         await onRefreshModels()
                     case .failure(let error):
-                        print("❌ Download failed: \(error.localizedDescription)")
+                        logger.error("Download failed: \(error.localizedDescription)")
                         self.activeDownloads[modelName] = DownloadProgress(
                             modelName: modelName,
                             status: "Error: \(error.localizedDescription)",
@@ -90,9 +93,9 @@ class HubModelOperations {
     func deleteModel(_ modelName: String, onRefreshModels: @escaping () async -> Void, onCloseModal: @escaping () -> Void) {
         Task {
             do {
-                print("🗑️ Deleting model: \(modelName)")
+                logger.info("Deleting model: \(modelName)")
                 let result = try await ollamaService.removeModel(modelName: modelName)
-                print("✅ \(result.message)")
+                logger.info("\(result.message)")
 
                 // Refresh local models list
                 await onRefreshModels()
@@ -104,24 +107,24 @@ class HubModelOperations {
                 // Close modal
                 onCloseModal()
             } catch {
-                print("❌ Failed to delete model: \(error.localizedDescription)")
+                logger.error("Failed to delete model: \(error.localizedDescription)")
             }
         }
     }
 
     func updateModel(_ modelName: String, ollamaRunning: Bool, networkConnected: Bool, modelsStore: ModelsStore) {
         guard ollamaRunning else {
-            print("❌ Cannot update - Ollama server not running")
+            logger.warning("Cannot update - Ollama server not running")
             return
         }
 
         guard networkConnected else {
-            print("❌ Cannot update - No internet connection")
+            logger.warning("Cannot update - No internet connection")
             return
         }
 
         // Re-pull the model to update it
-        print("🔄 Updating model: \(modelName)")
+        logger.info("Updating model: \(modelName)")
 
         // Initialize progress tracking
         activeDownloads[modelName] = DownloadProgress(
@@ -145,7 +148,7 @@ class HubModelOperations {
                 Task { @MainActor in
                     switch result {
                     case .success:
-                        print("✅ Update complete: \(modelName)")
+                        logger.info("Update complete: \(modelName)")
                         self.activeDownloads.removeValue(forKey: modelName)
 
                         // Refresh local models list
@@ -161,7 +164,7 @@ class HubModelOperations {
                             self.enrichedModels[modelName] = enriched
                         }
                     case .failure(let error):
-                        print("❌ Update failed: \(error.localizedDescription)")
+                        logger.error("Update failed: \(error.localizedDescription)")
                         self.activeDownloads[modelName] = DownloadProgress(
                             modelName: modelName,
                             status: "Error: \(error.localizedDescription)",

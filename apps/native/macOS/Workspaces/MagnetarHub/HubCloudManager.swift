@@ -13,6 +13,9 @@
 
 import SwiftUI
 import CryptoKit
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "HubCloudManager")
 
 @MainActor
 @Observable
@@ -93,14 +96,14 @@ class HubCloudManager {
             cloudDeviceId = response.data.cloudDeviceId
             tokenExpiresAt = ISO8601DateFormatter().date(from: response.data.expiresAt)
 
-            print("MagnetarCloud connected: \(response.data.cloudDeviceId)")
+            logger.info("MagnetarCloud connected: \(response.data.cloudDeviceId)")
 
             // Fetch paired devices
             await refreshCloudStatus()
 
         } catch {
             errorMessage = "Failed to connect: \(error.localizedDescription)"
-            print("MagnetarCloud connection failed: \(error)")
+            logger.error("MagnetarCloud connection failed: \(error)")
         }
     }
 
@@ -123,12 +126,12 @@ class HubCloudManager {
             )
 
             clearCloudState()
-            print("MagnetarCloud disconnected")
+            logger.info("MagnetarCloud disconnected")
 
         } catch {
             // Even if API fails, clear local state
             clearCloudState()
-            print("MagnetarCloud disconnect (forced): \(error)")
+            logger.warning("MagnetarCloud disconnect (forced): \(error)")
         }
     }
 
@@ -167,14 +170,14 @@ class HubCloudManager {
             tokenExpiresAt = ISO8601DateFormatter().date(from: response.data.expiresAt)
             isCloudAuthenticated = true
 
-            print("MagnetarCloud token refreshed")
+            logger.info("MagnetarCloud token refreshed")
 
             // Refresh status
             await refreshCloudStatus()
 
         } catch {
             errorMessage = "Failed to reconnect: \(error.localizedDescription)"
-            print("MagnetarCloud reconnect failed: \(error)")
+            logger.error("MagnetarCloud reconnect failed: \(error)")
 
             // If refresh fails, need full re-auth
             clearCloudState()
@@ -204,7 +207,7 @@ class HubCloudManager {
             pairedDevices = response.data.pairedDevices
 
         } catch {
-            print("Failed to refresh cloud status: \(error)")
+            logger.error("Failed to refresh cloud status: \(error)")
         }
     }
 
@@ -216,7 +219,7 @@ class HubCloudManager {
         let oneDayFromNow = Date().addingTimeInterval(86400)
 
         if expiry < oneDayFromNow {
-            print("Cloud token expiring soon, refreshing...")
+            logger.info("Cloud token expiring soon, refreshing...")
             await reconnectCloud()
         }
     }
@@ -234,11 +237,11 @@ class HubCloudManager {
             )
 
             clearCloudState()
-            print("All cloud sessions revoked")
+            logger.warning("All cloud sessions revoked")
 
         } catch {
             errorMessage = "Failed to revoke sessions: \(error.localizedDescription)"
-            print("Cloud session revoke failed: \(error)")
+            logger.error("Cloud session revoke failed: \(error)")
         }
     }
 
@@ -264,7 +267,7 @@ class HubCloudManager {
                 lastSyncAt = ISO8601DateFormatter().date(from: syncTime)
             }
         } catch {
-            print("Failed to refresh sync status: \(error)")
+            logger.error("Failed to refresh sync status: \(error)")
         }
     }
 
@@ -281,10 +284,10 @@ class HubCloudManager {
         do {
             try await SyncService.shared.triggerSync()
             await refreshSyncStatus()
-            print("Manual sync completed")
+            logger.info("Manual sync completed")
         } catch {
             errorMessage = "Sync failed: \(error.localizedDescription)"
-            print("Manual sync failed: \(error)")
+            logger.error("Manual sync failed: \(error)")
         }
 
         isSyncing = false

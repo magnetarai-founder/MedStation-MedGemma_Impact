@@ -8,27 +8,30 @@
 
 import Foundation
 import AppKit
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "EmergencyModeService.SelfUninstall")
 
 // MARK: - Self-Uninstall
 
 extension EmergencyModeService {
 
     func performSelfUninstall(_ report: inout EmergencyWipeReport) async throws {
-        print("🗑️  Self-uninstall starting...")
+        logger.critical("Self-uninstall starting...")
 
         // CRITICAL SAFETY CHECK: Only proceed in production builds
         #if DEBUG
-        print("   ⚠️  SKIPPED: Self-uninstall disabled in debug builds")
+        logger.warning("SKIPPED: Self-uninstall disabled in debug builds")
         report.errors.append("Self-uninstall skipped (debug build)")
         #else
         let bundlePath = Bundle.main.bundlePath
-        print("   App bundle: \(bundlePath)")
+        logger.info("App bundle: \(bundlePath)")
 
         // 1. Delete user data directories
         do {
             let deletedCount = try await deleteUserDataDirectories()
             report.filesWiped += deletedCount
-            print("   ✅ Deleted \(deletedCount) user data directories")
+            logger.info("Deleted \(deletedCount) user data directories")
         } catch {
             report.errors.append("User data deletion failed: \(error.localizedDescription)")
         }
@@ -36,15 +39,14 @@ extension EmergencyModeService {
         // 2. Schedule app bundle deletion
         do {
             try scheduleAppDeletion(bundlePath: bundlePath)
-            print("   ✅ App deletion scheduled")
+            logger.info("App deletion scheduled")
             report.filesWiped += 1
         } catch {
             report.errors.append("App deletion scheduling failed: \(error.localizedDescription)")
         }
 
         // 3. Terminate app (must be last action)
-        print("🚨 App will now terminate for self-uninstall")
-        print("⚠️  MagnetarStudio has been completely removed from this system")
+        logger.critical("App will now terminate for self-uninstall - MagnetarStudio has been completely removed from this system")
 
         // Give system time to finish cleanup
         try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
@@ -56,7 +58,7 @@ extension EmergencyModeService {
 
     /// Delete all user data directories
     func deleteUserDataDirectories() async throws -> Int {
-        print("      Deleting user data directories...")
+        logger.debug("Deleting user data directories...")
 
         var deletedCount = 0
         let fm = FileManager.default
@@ -76,9 +78,9 @@ extension EmergencyModeService {
                 do {
                     try fm.removeItem(at: dir)
                     deletedCount += 1
-                    print("         Deleted: \(dir.path)")
+                    logger.debug("Deleted: \(dir.path)")
                 } catch {
-                    print("         ⚠️  Failed to delete: \(dir.path) - \(error.localizedDescription)")
+                    logger.warning("Failed to delete: \(dir.path) - \(error.localizedDescription)")
                 }
             }
         }
@@ -91,9 +93,9 @@ extension EmergencyModeService {
                 do {
                     try fm.removeItem(at: agentPath)
                     deletedCount += 1
-                    print("         Deleted LaunchAgent: \(agent)")
+                    logger.debug("Deleted LaunchAgent: \(agent)")
                 } catch {
-                    print("         ⚠️  Failed to delete LaunchAgent: \(agent)")
+                    logger.warning("Failed to delete LaunchAgent: \(agent)")
                 }
             }
         }
@@ -103,7 +105,7 @@ extension EmergencyModeService {
 
     /// Schedule app bundle deletion after app terminates
     func scheduleAppDeletion(bundlePath: String) throws {
-        print("      Scheduling app bundle deletion...")
+        logger.debug("Scheduling app bundle deletion...")
 
         let scriptContent = """
         #!/bin/bash
@@ -143,6 +145,6 @@ extension EmergencyModeService {
         script.arguments = [scriptPath]
         script.launch()
 
-        print("         Self-uninstall script launched: \(scriptPath)")
+        logger.debug("Self-uninstall script launched: \(scriptPath)")
     }
 }

@@ -18,6 +18,9 @@
 
 import Foundation
 import AppKit
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "EmergencyModeService")
 
 // MARK: - Emergency Mode Safety Configuration
 
@@ -52,7 +55,7 @@ final class EmergencyModeService: ObservableObject {
 
         #if DEBUG
         self.isSimulationMode = true  // Always simulate in debug
-        print("⚠️ EmergencyModeService: DEBUG MODE - Simulation only")
+        logger.warning("EmergencyModeService: DEBUG MODE - Simulation only")
         #else
         self.isSimulationMode = false  // Real deletion in production
         #endif
@@ -100,8 +103,8 @@ final class EmergencyModeService: ObservableObject {
     /// Simulate emergency wipe without actually deleting files
     /// Week 1: This logs what WOULD be deleted
     private func simulateEmergencyWipe(reason: String?) async throws -> EmergencyWipeReport {
-        print("🧪 SIMULATION MODE: Emergency wipe started")
-        print("   Reason: \(reason ?? "User-initiated")")
+        logger.warning("SIMULATION MODE: Emergency wipe started")
+        logger.warning("Reason: \(reason ?? "User-initiated")")
 
         var report = EmergencyWipeReport(
             simulated: true,
@@ -115,77 +118,54 @@ final class EmergencyModeService: ObservableObject {
 
         // Identify all files that would be deleted
         let vaultFiles = await identifyVaultFiles()
-        print("   📁 Would delete \(vaultFiles.count) vault files:")
-        vaultFiles.forEach { print("      - \($0)") }
+        logger.info("Would delete \(vaultFiles.count) vault files: \(vaultFiles.joined(separator: ", "))")
         report.filesIdentified.append(contentsOf: vaultFiles)
 
         let backupFiles = await identifyBackupFiles()
-        print("   📁 Would delete \(backupFiles.count) backup files:")
-        backupFiles.forEach { print("      - \($0)") }
+        logger.info("Would delete \(backupFiles.count) backup files: \(backupFiles.joined(separator: ", "))")
         report.filesIdentified.append(contentsOf: backupFiles)
 
         let modelFiles = await identifyModelFiles()
-        print("   📁 Would delete \(modelFiles.count) model files:")
-        modelFiles.forEach { print("      - \($0)") }
+        logger.info("Would delete \(modelFiles.count) model files: \(modelFiles.joined(separator: ", "))")
         report.filesIdentified.append(contentsOf: modelFiles)
 
         let cacheFiles = await identifyCacheFiles()
-        print("   📁 Would delete \(cacheFiles.count) cache files:")
-        cacheFiles.forEach { print("      - \($0)") }
+        logger.info("Would delete \(cacheFiles.count) cache files: \(cacheFiles.joined(separator: ", "))")
         report.filesIdentified.append(contentsOf: cacheFiles)
 
         let auditFiles = await identifyAuditFiles()
-        print("   📁 Would delete \(auditFiles.count) audit log files:")
-        auditFiles.forEach { print("      - \($0)") }
+        logger.info("Would delete \(auditFiles.count) audit log files: \(auditFiles.joined(separator: ", "))")
         report.filesIdentified.append(contentsOf: auditFiles)
 
         let appBundle = await identifyAppBundle()
-        print("   📁 Would delete app bundle: \(appBundle)")
+        logger.info("Would delete app bundle: \(appBundle)")
         report.filesIdentified.append(appBundle)
 
         let launchAgents = await identifyLaunchAgents()
-        print("   📁 Would delete \(launchAgents.count) LaunchAgent files:")
-        launchAgents.forEach { print("      - \($0)") }
+        logger.info("Would delete \(launchAgents.count) LaunchAgent files: \(launchAgents.joined(separator: ", "))")
         report.filesIdentified.append(contentsOf: launchAgents)
 
         let preferences = await identifyPreferences()
-        print("   📁 Would delete \(preferences.count) preference files:")
-        preferences.forEach { print("      - \($0)") }
+        logger.info("Would delete \(preferences.count) preference files: \(preferences.joined(separator: ", "))")
         report.filesIdentified.append(contentsOf: preferences)
 
         let appSupport = await identifyApplicationSupport()
-        print("   📁 Would delete \(appSupport.count) Application Support directories:")
-        appSupport.forEach { print("      - \($0)") }
+        logger.info("Would delete \(appSupport.count) Application Support directories: \(appSupport.joined(separator: ", "))")
         report.filesIdentified.append(contentsOf: appSupport)
 
         let logs = await identifyLogs()
-        print("   📁 Would delete \(logs.count) log directories:")
-        logs.forEach { print("      - \($0)") }
+        logger.info("Would delete \(logs.count) log directories: \(logs.joined(separator: ", "))")
         report.filesIdentified.append(contentsOf: logs)
 
         let tempFiles = await identifyTemporaryFiles()
-        print("   📁 Would delete \(tempFiles.count) temporary files:")
-        tempFiles.forEach { print("      - \($0)") }
+        logger.info("Would delete \(tempFiles.count) temporary files: \(tempFiles.joined(separator: ", "))")
         report.filesIdentified.append(contentsOf: tempFiles)
 
         report.filesWiped = report.filesIdentified.count
         report.durationSeconds = Date().timeIntervalSince(startTime)
 
-        print("✅ SIMULATION COMPLETE: \(report.filesWiped) files identified")
-        print("   Duration: \(String(format: "%.2f", report.durationSeconds))s")
-        print("")
-        print("   📊 Summary by category:")
-        print("      Vaults: \(vaultFiles.count)")
-        print("      Backups: \(backupFiles.count)")
-        print("      Models: \(modelFiles.count)")
-        print("      Cache: \(cacheFiles.count)")
-        print("      Audit: \(auditFiles.count)")
-        print("      LaunchAgents: \(launchAgents.count)")
-        print("      Preferences: \(preferences.count)")
-        print("      App Support: \(appSupport.count)")
-        print("      Logs: \(logs.count)")
-        print("      Temporary: \(tempFiles.count)")
-        print("      App Bundle: 1")
+        logger.warning("SIMULATION COMPLETE: \(report.filesWiped) files identified in \(String(format: "%.2f", report.durationSeconds))s")
+        logger.info("Summary - Vaults: \(vaultFiles.count), Backups: \(backupFiles.count), Models: \(modelFiles.count), Cache: \(cacheFiles.count), Audit: \(auditFiles.count), LaunchAgents: \(launchAgents.count), Preferences: \(preferences.count), App Support: \(appSupport.count), Logs: \(logs.count), Temporary: \(tempFiles.count), App Bundle: 1")
 
         return report
     }
@@ -199,8 +179,7 @@ final class EmergencyModeService: ObservableObject {
         // SAFETY: This should only run in production or VM testing
         fatalError("❌ SAFETY ERROR: Real emergency wipe attempted in debug build")
         #else
-        print("🚨 EMERGENCY MODE: Real DoD 7-pass wipe starting")
-        print("   ⚠️ THIS IS IRREVERSIBLE")
+        logger.critical("EMERGENCY MODE: Real DoD 7-pass wipe starting - THIS IS IRREVERSIBLE")
 
         var report = EmergencyWipeReport(
             simulated: false,

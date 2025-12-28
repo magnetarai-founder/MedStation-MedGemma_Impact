@@ -9,6 +9,9 @@
 //
 
 import Foundation
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "AppContext")
 
 // MARK: - App Context (Unified Cross-Workspace State)
 
@@ -257,7 +260,7 @@ struct KanbanContext {
             )
         } catch {
             // If backend unavailable, return empty context
-            print("⚠️ Failed to fetch Kanban context: \(error)")
+            logger.debug("Failed to fetch Kanban context: \(error)")
             return KanbanContext(
                 activeBoard: nil,
                 activeTasks: [],
@@ -351,7 +354,7 @@ class WorkflowExecutionHistory {
                 .sorted { $0.startedAt > $1.startedAt }
                 .prefix(limit))
         } catch {
-            print("❌ Failed to load workflow execution history: \(error)")
+            logger.error("Failed to load workflow execution history: \(error)")
             return []
         }
     }
@@ -376,7 +379,7 @@ class WorkflowExecutionHistory {
                 let data = try encoder.encode(executions)
                 UserDefaults.standard.set(data, forKey: storageKey)
             } catch {
-                print("❌ Failed to save workflow execution history: \(error)")
+                logger.error("Failed to save workflow execution history: \(error)")
             }
         }
     }
@@ -438,7 +441,7 @@ struct TeamContext {
             )
         } catch {
             // If backend unavailable, return empty context
-            print("⚠️ Failed to fetch Team context: \(error)")
+            logger.debug("Failed to fetch Team context: \(error)")
             return TeamContext(
                 activeChannel: nil,
                 recentMessages: [],
@@ -537,7 +540,7 @@ struct ANEContextState {
                 features: features
             )
         } catch {
-            print("⚠️ Failed to fetch ANE context status: \(error)")
+            logger.debug("Failed to fetch ANE context status: \(error)")
             return .unavailable
         }
     }
@@ -594,7 +597,7 @@ class ModelInteractionHistory {
                 .sorted { $0.timestamp > $1.timestamp }
                 .prefix(limit))
         } catch {
-            print("❌ Failed to load interaction history: \(error)")
+            logger.error("Failed to load interaction history: \(error)")
             return []
         }
     }
@@ -619,7 +622,7 @@ class ModelInteractionHistory {
                 let data = try encoder.encode(interactions)
                 UserDefaults.standard.set(data, forKey: storageKey)
             } catch {
-                print("❌ Failed to save interaction history: \(error)")
+                logger.error("Failed to save interaction history: \(error)")
             }
         }
     }
@@ -652,7 +655,7 @@ struct UserPreferences: Codable {
             let decoder = JSONDecoder()
             return try decoder.decode(UserPreferences.self, from: data)
         } catch {
-            print("❌ Failed to load user preferences: \(error)")
+            logger.error("Failed to load user preferences: \(error)")
             return defaultPreferences()
         }
     }
@@ -663,9 +666,9 @@ struct UserPreferences: Codable {
             encoder.outputFormatting = .prettyPrinted
             let data = try encoder.encode(preferences)
             UserDefaults.standard.set(data, forKey: storageKey)
-            print("✓ Saved user preferences")
+            logger.debug("Saved user preferences")
         } catch {
-            print("❌ Failed to save user preferences: \(error)")
+            logger.error("Failed to save user preferences: \(error)")
         }
     }
 

@@ -9,13 +9,16 @@
 import Foundation
 import AppKit
 import Security
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "EmergencyModeService.LocalCleanup")
 
 // MARK: - Local Emergency Actions
 
 extension EmergencyModeService {
 
     func performLocalEmergencyWipe(_ report: inout EmergencyWipeReport) async throws {
-        print("🧹 Local emergency wipe starting...")
+        logger.warning("Local emergency wipe starting...")
 
         var localWipeCount = 0
 
@@ -23,7 +26,7 @@ extension EmergencyModeService {
         do {
             try await zeroSensitiveMemory()
             localWipeCount += 1
-            print("   ✅ Sensitive memory zeroed")
+            logger.info("Sensitive memory zeroed")
         } catch {
             report.errors.append("Memory zeroing failed: \(error.localizedDescription)")
         }
@@ -31,24 +34,24 @@ extension EmergencyModeService {
         // 2. Clear NSPasteboard (clipboard)
         clearPasteboard()
         localWipeCount += 1
-        print("   ✅ Clipboard cleared")
+        logger.info("Clipboard cleared")
 
         // 3. Clear URLSession cache
         await clearURLSessionCache()
         localWipeCount += 1
-        print("   ✅ URLSession cache cleared")
+        logger.info("URLSession cache cleared")
 
         // 4. Flush model inference cache
         await flushModelCache()
         localWipeCount += 1
-        print("   ✅ Model cache flushed")
+        logger.info("Model cache flushed")
 
         report.filesWiped += localWipeCount
-        print("✅ Local emergency wipe complete: \(localWipeCount) actions")
+        logger.warning("Local emergency wipe complete: \(localWipeCount) actions")
     }
 
     func purgeKeychain(_ report: inout EmergencyWipeReport) async throws {
-        print("🔐 Keychain purge starting...")
+        logger.warning("Keychain purge starting...")
 
         var keychainWipeCount = 0
 
@@ -56,7 +59,7 @@ extension EmergencyModeService {
         do {
             try KeychainService.shared.deleteToken()
             keychainWipeCount += 1
-            print("   ✅ Auth token deleted")
+            logger.info("Auth token deleted")
         } catch {
             report.errors.append("Token deletion failed: \(error.localizedDescription)")
         }
@@ -65,13 +68,13 @@ extension EmergencyModeService {
         do {
             let deletedCount = try await deleteAllAppKeychainItems()
             keychainWipeCount += deletedCount
-            print("   ✅ \(deletedCount) keychain items deleted")
+            logger.info("\(deletedCount) keychain items deleted")
         } catch {
             report.errors.append("Keychain purge failed: \(error.localizedDescription)")
         }
 
         report.filesWiped += keychainWipeCount
-        print("✅ Keychain purge complete: \(keychainWipeCount) items deleted")
+        logger.warning("Keychain purge complete: \(keychainWipeCount) items deleted")
     }
 }
 
@@ -81,7 +84,7 @@ extension EmergencyModeService {
 
     /// Zero sensitive data in memory
     func zeroSensitiveMemory() async throws {
-        print("      Zeroing sensitive memory...")
+        logger.debug("Zeroing sensitive memory...")
 
         // Force memory release
         autoreleasepool {
@@ -91,27 +94,27 @@ extension EmergencyModeService {
         // Give system time to release memory
         try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
 
-        print("      Memory zeroing complete")
+        logger.debug("Memory zeroing complete")
     }
 
     /// Clear NSPasteboard (clipboard)
     func clearPasteboard() {
-        print("      Clearing clipboard...")
+        logger.debug("Clearing clipboard...")
 
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
 
         let contents = pasteboard.string(forType: .string)
         if contents == nil || contents!.isEmpty {
-            print("      Clipboard cleared successfully")
+            logger.debug("Clipboard cleared successfully")
         } else {
-            print("      ⚠️  Clipboard may still contain data")
+            logger.warning("Clipboard may still contain data")
         }
     }
 
     /// Clear URLSession cache
     func clearURLSessionCache() async {
-        print("      Clearing URLSession cache...")
+        logger.debug("Clearing URLSession cache...")
 
         URLCache.shared.removeAllCachedResponses()
 
@@ -123,21 +126,21 @@ extension EmergencyModeService {
 
         try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
 
-        print("      URLSession cache cleared")
+        logger.debug("URLSession cache cleared")
     }
 
     /// Flush model inference cache
     func flushModelCache() async {
-        print("      Flushing model cache...")
+        logger.debug("Flushing model cache...")
 
         let modelCacheDir = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".magnetar/model_cache")
 
         if FileManager.default.fileExists(atPath: modelCacheDir.path) {
             try? FileManager.default.removeItem(at: modelCacheDir)
-            print("      Model cache flushed (\(modelCacheDir.path))")
+            logger.debug("Model cache flushed (\(modelCacheDir.path))")
         } else {
-            print("      No model cache found (skipped)")
+            logger.debug("No model cache found (skipped)")
         }
     }
 }
@@ -148,7 +151,7 @@ extension EmergencyModeService {
 
     /// Delete all app-specific keychain items
     func deleteAllAppKeychainItems() async throws -> Int {
-        print("      Deleting all app keychain items...")
+        logger.debug("Deleting all app keychain items...")
 
         var deletedCount = 0
 
@@ -182,7 +185,7 @@ extension EmergencyModeService {
                         let deleteStatus = SecItemDelete(deleteQuery as CFDictionary)
                         if deleteStatus == errSecSuccess {
                             deletedCount += 1
-                            print("         Deleted: \(serviceID)/\(account)")
+                            logger.debug("Deleted keychain item: \(serviceID)/\(account)")
                         }
                     }
                 }
@@ -198,7 +201,7 @@ extension EmergencyModeService {
         let internetDeleteStatus = SecItemDelete(internetQuery as CFDictionary)
         if internetDeleteStatus == errSecSuccess {
             deletedCount += 1
-            print("         Deleted: Internet passwords")
+            logger.debug("Deleted internet passwords")
         }
 
         return deletedCount

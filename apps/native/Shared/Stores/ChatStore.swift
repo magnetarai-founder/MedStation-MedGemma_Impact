@@ -7,6 +7,9 @@
 
 import Foundation
 import Observation
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "ChatStore")
 
 @MainActor
 @Observable
@@ -69,7 +72,7 @@ final class ChatStore {
         do {
             // SECURITY (CRIT-05): Use guard let instead of force unwrap
             guard let url = URL(string: APIConfiguration.shared.chatModelsURL) else {
-                print("❌ Invalid URL for models endpoint")
+                logger.error("Invalid URL for models endpoint")
                 return
             }
             let (data, _) = try await URLSession.shared.data(from: url)
@@ -96,7 +99,7 @@ final class ChatStore {
         } catch {
             // Show error to user instead of silent print
             self.error = .loadFailed("Could not load AI models. Backend may be offline.")
-            print("Failed to fetch models: \(error)")
+            logger.error("Failed to fetch models: \(error)")
         }
     }
 
@@ -133,7 +136,7 @@ final class ChatStore {
             // Silently handle by setting empty sessions - they'll load on next refresh
             sessions = []
         } catch {
-            print("Failed to load sessions: \(error)")
+            logger.error("Failed to load sessions: \(error)")
             self.error = .loadFailed("Could not load chat sessions")
         }
     }
@@ -163,7 +166,7 @@ final class ChatStore {
             currentSession = session
             messages = []
         } catch {
-            print("Failed to create session: \(error)")
+            logger.error("Failed to create session: \(error)")
             self.error = .sendFailed("Could not create new session")
         }
 
@@ -178,7 +181,7 @@ final class ChatStore {
         do {
             // Get backend session ID from mapping
             guard let backendSessionId = sessionIdMapping[session.id] else {
-                print("Failed to load session: session not found in backend mapping")
+                logger.warning("Failed to load session: session not found in backend mapping")
                 messages = []
                 isLoading = false
                 return
@@ -199,7 +202,7 @@ final class ChatStore {
             // Load model preferences for this session
             await loadModelPreferences(sessionId: backendSessionId)
         } catch {
-            print("Failed to load messages: \(error)")
+            logger.error("Failed to load messages: \(error)")
             messages = []
         }
         isLoading = false
@@ -228,7 +231,7 @@ final class ChatStore {
             selectedMode = prefs.selectedMode
             selectedModelId = prefs.selectedModelId
         } catch {
-            print("Failed to load model preferences: \(error)")
+            logger.debug("Failed to load model preferences: \(error)")
             // Default to intelligent mode
             selectedMode = "intelligent"
             selectedModelId = nil
@@ -239,7 +242,7 @@ final class ChatStore {
     func saveModelPreferences() async {
         guard let session = currentSession else { return }
         guard let backendSessionId = sessionIdMapping[session.id] else {
-            print("Failed to save model preferences: session not found in backend mapping")
+            logger.warning("Failed to save model preferences: session not found in backend mapping")
             return
         }
 
@@ -263,7 +266,7 @@ final class ChatStore {
                 )
             )
         } catch {
-            print("Failed to save model preferences: \(error)")
+            logger.error("Failed to save model preferences: \(error)")
         }
     }
 
@@ -287,7 +290,7 @@ final class ChatStore {
             do {
                 // Get backend ID from mapping
                 guard let backendId = self.sessionIdMapping[session.id] else {
-                    print("⚠️ No backend ID mapping found for session \(session.id)")
+                    logger.warning("No backend ID mapping found for session \(session.id)")
                     return
                 }
 
@@ -296,7 +299,7 @@ final class ChatStore {
                 // Remove from mapping after successful delete
                 self.sessionIdMapping.removeValue(forKey: session.id)
             } catch {
-                print("Failed to delete session from backend: \(error)")
+                logger.error("Failed to delete session from backend: \(error)")
                 // Session already removed from UI, just log the error
             }
         }
@@ -311,17 +314,17 @@ final class ChatStore {
         if selectedMode == "manual" {
             // Manual mode: use specifically selected model
             if let modelId = selectedModelId {
-                print("✓ Manual mode: Using selected model \(modelId)")
+                logger.debug("Manual mode: Using selected model \(modelId)")
                 return modelId
             } else {
                 // Fallback to default
-                print("⚠️ Manual mode but no model selected, using default")
+                logger.debug("Manual mode but no model selected, using default")
                 return selectedModel.isEmpty ? "llama3.2:3b" : selectedModel
             }
         }
 
         // Intelligent mode: use orchestrator
-        print("🧠 Intelligent mode: Using orchestrator to determine best model")
+        logger.debug("Intelligent mode: Using orchestrator to determine best model")
 
         do {
             // Build context bundle
@@ -330,22 +333,19 @@ final class ChatStore {
             // Get orchestrator
             let manager = OrchestratorManager.shared
             guard let orchestrator = await manager.getActiveOrchestrator() else {
-                print("✗ No orchestrator available, using default model")
+                logger.warning("No orchestrator available, using default model")
                 return selectedModel.isEmpty ? "llama3.2:3b" : selectedModel
             }
 
             // Route with orchestrator
             let decision = try await orchestrator.route(bundle: bundle)
 
-            print("✓ Orchestrator decision:")
-            print("  Model: \(decision.selectedModelName)")
-            print("  Confidence: \(Int(decision.confidence * 100))%")
-            print("  Reasoning: \(decision.reasoning)")
+            logger.info("Orchestrator decision - Model: \(decision.selectedModelName), Confidence: \(Int(decision.confidence * 100))%, Reasoning: \(decision.reasoning)")
 
             return decision.selectedModelId
 
         } catch {
-            print("✗ Orchestrator routing failed: \(error)")
+            logger.error("Orchestrator routing failed: \(error)")
             // Fallback to default
             return selectedModel.isEmpty ? "llama3.2:3b" : selectedModel
         }
@@ -507,7 +507,7 @@ final class ChatStore {
 
         } catch {
             self.error = .sendFailed(error.localizedDescription)
-            print("Chat error: \(error)")
+            logger.error("Chat error: \(error)")
         }
 
         isLoading = false
@@ -658,7 +658,7 @@ final class ChatStore {
                 // Context storage is optional - silently ignore 404s
                 #if DEBUG
                 if !"\(error)".contains("404") {
-                    print("⚠️ Context storage error: \(error)")
+                    logger.debug("Context storage error: \(error)")
                 }
                 #endif
             }

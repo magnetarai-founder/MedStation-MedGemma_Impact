@@ -11,6 +11,9 @@
 
 import Foundation
 import LocalAuthentication
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "VaultPermissionManager")
 
 // MARK: - File Permission
 
@@ -116,7 +119,7 @@ class VaultPermissionManager: ObservableObject {
             $0.sessionId == sessionId &&
             !$0.isExpired
         }) {
-            print("✓ Using existing permission for \(fileName) (scope: \(existing.scope))")
+            logger.debug("Using existing permission for \(fileName) (scope: \(existing.scope))")
             return existing.expiresAt == nil ? .justThisTime : .forThisSession
         }
 
@@ -181,7 +184,7 @@ class VaultPermissionManager: ObservableObject {
         permissionCallback?(scope)
         recordAudit(request: request, granted: true, reason: scope == .justThisTime ? "Just this time" : "For this session")
 
-        print("✓ Permission granted: \(request.fileName) (\(scope == .justThisTime ? "just this time" : "for this session"))")
+        logger.info("Permission granted: \(request.fileName) (\(scope == .justThisTime ? "just this time" : "for this session"))")
     }
 
     /// Deny permission (called from modal)
@@ -191,7 +194,7 @@ class VaultPermissionManager: ObservableObject {
         permissionCallback?(.denied)
         recordAudit(request: request, granted: false, reason: "User denied")
 
-        print("✗ Permission denied: \(request.fileName)")
+        logger.info("Permission denied: \(request.fileName)")
     }
 
     /// Cancel permission request (called from modal)
@@ -215,7 +218,7 @@ class VaultPermissionManager: ObservableObject {
             reason: "Manual revocation"
         )
 
-        print("✓ Permission revoked: \(permission.fileName) for model \(permission.modelName)")
+        logger.info("Permission revoked: \(permission.fileName) for model \(permission.modelName)")
     }
 
     /// Revoke ALL permissions (emergency button)
@@ -233,7 +236,7 @@ class VaultPermissionManager: ObservableObject {
             reason: "User revoked all permissions"
         )
 
-        print("🚨 EMERGENCY: All \(count) permissions revoked")
+        logger.critical("EMERGENCY: All \(count) permissions revoked")
     }
 
     /// Cleanup expired permissions
@@ -244,7 +247,7 @@ class VaultPermissionManager: ObservableObject {
 
         if before != after {
             saveActivePermissions()
-            print("✓ Cleaned up \(before - after) expired permissions")
+            logger.debug("Cleaned up \(before - after) expired permissions")
         }
     }
 
@@ -255,7 +258,7 @@ class VaultPermissionManager: ObservableObject {
         // Check if biometric auth is available
         var error: NSError?
         guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
-            print("✗ Biometric auth not available: \(error?.localizedDescription ?? "Unknown error")")
+            logger.warning("Biometric auth not available: \(error?.localizedDescription ?? "Unknown error")")
             return false
         }
 
@@ -264,7 +267,7 @@ class VaultPermissionManager: ObservableObject {
             let success = try await context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason)
             return success
         } catch {
-            print("✗ Authentication failed: \(error.localizedDescription)")
+            logger.warning("Authentication failed: \(error.localizedDescription)")
             return false
         }
     }
@@ -339,7 +342,7 @@ class VaultPermissionManager: ObservableObject {
             // Remove expired on load
             activePermissions.removeAll { $0.isExpired }
         } catch {
-            print("Failed to load permissions: \(error)")
+            logger.error("Failed to load permissions: \(error)")
         }
     }
 
@@ -351,7 +354,7 @@ class VaultPermissionManager: ObservableObject {
             let data = try JSONEncoder().encode(activePermissions)
             try data.write(to: permissionsURL)
         } catch {
-            print("Failed to save permissions: \(error)")
+            logger.error("Failed to save permissions: \(error)")
         }
     }
 
@@ -362,7 +365,7 @@ class VaultPermissionManager: ObservableObject {
             let data = try Data(contentsOf: auditLogURL)
             auditLog = try JSONDecoder().decode([FileAccessAudit].self, from: data)
         } catch {
-            print("Failed to load audit log: \(error)")
+            logger.error("Failed to load audit log: \(error)")
         }
     }
 
@@ -374,7 +377,7 @@ class VaultPermissionManager: ObservableObject {
             let data = try JSONEncoder().encode(auditLog)
             try data.write(to: auditLogURL)
         } catch {
-            print("Failed to save audit log: \(error)")
+            logger.error("Failed to save audit log: \(error)")
         }
     }
 }
