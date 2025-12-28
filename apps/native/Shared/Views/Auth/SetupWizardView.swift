@@ -6,6 +6,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "SetupWizardView")
 
 struct SetupWizardView: View {
     @EnvironmentObject private var authStore: AuthStore
@@ -194,24 +197,24 @@ struct SetupWizardView: View {
             let (data, response) = try await URLSession.shared.data(for: request)
 
             guard let httpResponse = response as? HTTPURLResponse else {
-                print("Setup wizard: Invalid response")
+                logger.warning("Setup wizard: Invalid response")
                 authStore.completeSetup()  // Complete locally even if backend fails
                 return
             }
 
             if httpResponse.statusCode == 200 {
                 if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                    print("Setup wizard complete: \(json["message"] ?? "Success")")
+                    logger.info("Setup wizard complete: \(json["message"] ?? "Success")")
                 }
             } else {
-                print("Setup wizard: Server returned status \(httpResponse.statusCode)")
+                logger.warning("Setup wizard: Server returned status \(httpResponse.statusCode)")
             }
 
             // Complete setup locally
             authStore.completeSetup()
 
         } catch {
-            print("Setup wizard error: \(error)")
+            logger.error("Setup wizard error: \(error)")
             // Complete locally even if backend call fails
             authStore.completeSetup()
         }

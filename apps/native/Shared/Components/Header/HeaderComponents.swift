@@ -6,6 +6,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "HeaderComponents")
 
 // MARK: - Brand Cluster
 
@@ -67,17 +70,17 @@ struct ControlCluster: View {
 
         lastClickTime = now
 
-        print("🔴 Panic button clicked (\(clickCount) clicks)")
+        logger.debug("Panic button clicked (\(clickCount) clicks)")
 
         // Double-click: Standard panic mode
         if clickCount == 2 {
-            print("   → Opening standard panic mode")
+            logger.info("Opening standard panic mode")
             showPanicMode = true
             clickCount = 0  // Reset
         }
         // Triple-click: Emergency mode
         else if clickCount >= 3 {
-            print("   → Opening EMERGENCY MODE")
+            logger.warning("Opening EMERGENCY MODE")
             showEmergencyMode = true
             clickCount = 0  // Reset
         }

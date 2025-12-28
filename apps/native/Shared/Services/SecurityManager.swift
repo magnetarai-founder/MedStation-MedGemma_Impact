@@ -8,6 +8,9 @@
 
 import Foundation
 import AppKit
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "SecurityManager")
 
 /// Centralized security manager (singleton)
 public final class SecurityManager: ObservableObject {
@@ -179,8 +182,8 @@ public final class SecurityManager: ObservableObject {
     func logSecurityEvent(_ event: SecurityEvent) {
         securityEvents.append(event)
 
-        // Print to console for debugging
-        print("🔒 [\(event.type.rawValue)] \(event.message)")
+        // Log to unified logger
+        logger.info("[\(event.type.rawValue)] \(event.message)")
 
         // Send to backend audit API (non-blocking)
         Task {
@@ -220,11 +223,11 @@ public final class SecurityManager: ObservableObject {
             let (_, response) = try await URLSession.shared.data(for: request)
 
             if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 201 {
-                print("⚠️ Audit log response: \(httpResponse.statusCode)")
+                logger.warning("Audit log response: \(httpResponse.statusCode)")
             }
         } catch {
             // Non-blocking - log locally but don't fail
-            print("⚠️ Failed to send audit log to backend: \(error.localizedDescription)")
+            logger.warning("Failed to send audit log to backend: \(error.localizedDescription)")
         }
     }
 
@@ -300,7 +303,7 @@ public final class SecurityManager: ObservableObject {
                 try KeychainService.shared.saveToken(jsonString, forKey: blockedDomainsKey)
             }
         } catch {
-            print("⚠️ Failed to save firewall rules to Keychain: \(error)")
+            logger.warning("Failed to save firewall rules to Keychain: \(error)")
         }
     }
 }

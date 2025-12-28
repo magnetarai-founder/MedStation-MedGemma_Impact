@@ -6,6 +6,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "QueryLibraryModal")
 
 struct QueryLibraryModal: View {
     @Binding var isPresented: Bool
@@ -97,9 +100,9 @@ struct QueryLibraryModal: View {
             savedQueries = response.queries
             isLoading = false
         } catch {
-            print("DEBUG: Failed to load queries - \(error)")
+            logger.debug("Failed to load queries: \(error)")
             if let decodingError = error as? DecodingError {
-                print("DEBUG: Decoding error details - \(decodingError)")
+                logger.debug("Decoding error details: \(decodingError)")
             }
             errorMessage = error.localizedDescription
             isLoading = false

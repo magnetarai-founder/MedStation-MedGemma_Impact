@@ -1,4 +1,7 @@
 import Foundation
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "APIClient")
 
 /// Standard API response envelope matching backend SuccessResponse<T>
 /// Note: timestamp is optional as some endpoints don't include it
@@ -108,7 +111,7 @@ final class ApiClient {
         } catch {
             // Log raw response for debugging
             if let rawResponse = String(data: data, encoding: .utf8) {
-                print("⚠️ APIClient decode error - Raw response: \(rawResponse.prefix(200))")
+                logger.error("APIClient decode error - Raw response: \(rawResponse.prefix(200))")
             }
             throw ApiError.decodingError(error)
         }

@@ -7,6 +7,9 @@
 //
 
 import Foundation
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "EmergencyModeService+Backend")
 
 // MARK: - Backend Integration
 
@@ -81,14 +84,14 @@ extension EmergencyModeService {
 
             if let httpResponse = response as? HTTPURLResponse {
                 if httpResponse.statusCode == 201 {
-                    print("✅ Emergency log sent to backend")
+                    logger.info("Emergency log sent to backend")
                 } else {
-                    print("⚠️ Emergency log response: \(httpResponse.statusCode)")
+                    logger.warning("Emergency log response: \(httpResponse.statusCode)")
                 }
             }
         } catch {
             // Don't fail emergency operations due to logging
-            print("⚠️ Failed to send emergency log to backend (continuing): \(error.localizedDescription)")
+            logger.warning("Failed to send emergency log to backend (continuing): \(error.localizedDescription)")
         }
     }
 }

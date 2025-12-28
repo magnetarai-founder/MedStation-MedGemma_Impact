@@ -8,6 +8,9 @@
 
 import Foundation
 import AppKit
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "BackendManager")
 
 @MainActor
 final class BackendManager {
@@ -23,23 +26,23 @@ final class BackendManager {
     func autoStartBackend() async {
         // Prevent concurrent start attempts
         if isStarting {
-            print("⏳ Backend startup already in progress, skipping duplicate request")
+            logger.info("Backend startup already in progress, skipping duplicate request")
             return
         }
 
-        print("🚀 Checking backend server status...")
+        logger.info("Checking backend server status...")
 
         // Check if backend is already running
         let isRunning = await checkBackendHealth()
 
         if isRunning {
-            print("✓ Backend server already running")
+            logger.info("Backend server already running")
             return
         }
 
         // Check if we have a process reference and it's still running
         if let process = backendProcess, process.isRunning {
-            print("✓ Backend process already running (PID: \(process.processIdentifier))")
+            logger.info("Backend process already running (PID: \(process.processIdentifier))")
             return
         }
 
@@ -47,35 +50,35 @@ final class BackendManager {
         isStarting = true
         defer { isStarting = false }
 
-        print("⚙️ Starting MagnetarStudio backend server...")
+        logger.info("Starting MagnetarStudio backend server...")
 
         // Get project root directory
-        print("   Looking for project root...")
+        logger.debug("Looking for project root...")
         guard let projectRoot = findProjectRoot() else {
-            print("✗ Could not find project root directory")
-            print("   Bundle path: \(Bundle.main.bundleURL.path)")
-            print("   CRITICAL: Backend will NOT start automatically!")
-            print("   Please start backend manually: cd apps/backend && python -m uvicorn api.main:app")
+            logger.error("Could not find project root directory")
+            logger.error("Bundle path: \(Bundle.main.bundleURL.path)")
+            logger.critical("Backend will NOT start automatically!")
+            logger.info("Please start backend manually: cd apps/backend && python -m uvicorn api.main:app")
             return
         }
 
-        print("   ✓ Found project root: \(projectRoot.path)")
+        logger.info("Found project root: \(projectRoot.path)")
 
         // Start backend server in background
         let venvPython = projectRoot.appendingPathComponent("venv/bin/python")
         let backendPath = projectRoot.appendingPathComponent("apps/backend")
 
-        print("   Checking python: \(venvPython.path)")
+        logger.debug("Checking python: \(venvPython.path)")
         guard FileManager.default.fileExists(atPath: venvPython.path) else {
-            print("✗ Python venv not found: \(venvPython.path)")
-            print("   CRITICAL: Backend will NOT start automatically!")
+            logger.error("Python venv not found: \(venvPython.path)")
+            logger.critical("Backend will NOT start automatically!")
             return
         }
 
-        print("   Checking backend: \(backendPath.path)")
+        logger.debug("Checking backend: \(backendPath.path)")
         guard FileManager.default.fileExists(atPath: backendPath.path) else {
-            print("✗ Backend directory not found: \(backendPath.path)")
-            print("   CRITICAL: Backend will NOT start automatically!")
+            logger.error("Backend directory not found: \(backendPath.path)")
+            logger.critical("Backend will NOT start automatically!")
             return
         }
 
@@ -90,10 +93,10 @@ final class BackendManager {
         environment["ELOHIM_ENV"] = "development"
         task.environment = environment
 
-        print("   ✓ All paths verified")
-        print("   Python: \(venvPython.path)")
-        print("   Working dir: \(backendPath.path)")
-        print("   Starting uvicorn...")
+        logger.info("All paths verified")
+        logger.debug("Python: \(venvPython.path)")
+        logger.debug("Working dir: \(backendPath.path)")
+        logger.info("Starting uvicorn...")
 
         // Redirect output to a log file for debugging
         let logFile = FileManager.default.temporaryDirectory
@@ -103,7 +106,7 @@ final class BackendManager {
         if let logHandle = FileHandle(forWritingAtPath: logFile.path) {
             task.standardOutput = logHandle
             task.standardError = logHandle
-            print("   Backend logs: \(logFile.path)")
+            logger.debug("Backend logs: \(logFile.path)")
         }
 
         do {
@@ -112,7 +115,7 @@ final class BackendManager {
             // Keep process reference alive
             self.backendProcess = task
 
-            print("✓ Backend server started successfully (PID: \(task.processIdentifier))")
+            logger.info("Backend server started successfully (PID: \(task.processIdentifier))")
 
             // Wait for server to initialize with retries
             var attempts = 0
@@ -124,19 +127,19 @@ final class BackendManager {
                 attempts += 1
 
                 if !healthy {
-                    print("   Waiting for backend... (attempt \(attempts)/10)")
+                    logger.debug("Waiting for backend... (attempt \(attempts)/10)")
                 }
             }
 
             if healthy {
-                print("✓ Backend server is healthy and responding")
+                logger.info("Backend server is healthy and responding")
             } else {
-                print("⚠️ Backend server started but not responding after 10 seconds")
-                print("   Check logs at: \(logFile.path)")
+                logger.warning("Backend server started but not responding after 10 seconds")
+                logger.warning("Check logs at: \(logFile.path)")
             }
         } catch {
-            print("✗ CRITICAL: Failed to start backend server: \(error)")
-            print("   Error details: \(error.localizedDescription)")
+            logger.critical("Failed to start backend server: \(error)")
+            logger.error("Error details: \(error.localizedDescription)")
 
             // Show alert to user - Already on @MainActor, no dispatch needed
             let alert = NSAlert()
@@ -165,11 +168,11 @@ final class BackendManager {
                 // Only restart after 3 consecutive failures (90 seconds)
                 // This prevents aggressive restarts during temporary issues
                 if consecutiveFailures >= 3 {
-                    print("⚠️ Backend health check failed 3 times - attempting restart...")
+                    logger.warning("Backend health check failed 3 times - attempting restart...")
                     await autoStartBackend()
                     consecutiveFailures = 0 // Reset counter after restart attempt
                 } else {
-                    print("⚠️ Backend health check failed (\(consecutiveFailures)/3)")
+                    logger.warning("Backend health check failed (\(consecutiveFailures)/3)")
                 }
             } else {
                 // Reset failure counter on successful health check
@@ -197,7 +200,7 @@ final class BackendManager {
 
     func terminateBackend() {
         if let process = backendProcess, process.isRunning {
-            print("Stopping backend server...")
+            logger.info("Stopping backend server...")
             process.terminate()
             backendProcess = nil
         }

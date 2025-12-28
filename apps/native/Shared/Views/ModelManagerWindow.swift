@@ -8,6 +8,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "ModelManagerWindow")
 
 struct ModelManagerWindow: View {
     @StateObject private var hotSlotManager = HotSlotManager.shared
@@ -390,7 +393,7 @@ struct ModelManagerWindow: View {
             let response = try JSONDecoder().decode(SuccessResponseWithTags.self, from: data)
             availableModels = response.data.map { ModelWithTags(name: $0.name, tags: $0.tags) }
         } catch {
-            print("Failed to fetch models with tags: \(error)")
+            logger.error("Failed to fetch models with tags: \(error)")
             // Fallback to basic models endpoint
             do {
                 let url = URL(string: APIConfiguration.shared.chatModelsURL)!
@@ -408,7 +411,7 @@ struct ModelManagerWindow: View {
                 let response = try JSONDecoder().decode(SuccessResponseBasic.self, from: data)
                 availableModels = response.data.map { ModelWithTags(name: $0.name, tags: []) }
             } catch {
-                print("Failed to fetch basic models: \(error)")
+                logger.error("Failed to fetch basic models: \(error)")
             }
         }
 
@@ -422,7 +425,7 @@ struct ModelManagerWindow: View {
             try await hotSlotManager.assignToSlot(slotNumber: slotNumber, modelId: modelName)
             await loadData()
         } catch {
-            print("Failed to load model to slot \(slotNumber): \(error)")
+            logger.error("Failed to load model to slot \(slotNumber): \(error)")
         }
     }
 
@@ -431,7 +434,7 @@ struct ModelManagerWindow: View {
             try await hotSlotManager.removeFromSlot(slotNumber: slotNumber)
             await loadData()
         } catch {
-            print("Failed to unload model: \(error)")
+            logger.error("Failed to unload model: \(error)")
         }
     }
 

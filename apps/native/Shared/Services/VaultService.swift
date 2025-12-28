@@ -7,6 +7,9 @@
 
 import Foundation
 import AppKit
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "VaultService")
 
 final class VaultService {
     static let shared = VaultService()
@@ -30,7 +33,7 @@ final class VaultService {
         // Enforce HTTPS for non-localhost URLs (security requirement)
         if !baseURL.contains("localhost") && !baseURL.contains("127.0.0.1") {
             if baseURL.hasPrefix("http://") {
-                print("⚠️ SECURITY WARNING: VaultService upgrading non-localhost HTTP to HTTPS")
+                logger.critical("SECURITY WARNING: VaultService upgrading non-localhost HTTP to HTTPS")
                 // This should never happen in production - fail loudly
                 assertionFailure("VaultService configured with HTTP for non-localhost URL")
             }

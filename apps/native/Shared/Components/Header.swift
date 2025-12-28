@@ -9,6 +9,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "Header")
 
 struct Header: View {
     @State private var showActivity = false
@@ -84,7 +87,7 @@ struct Header: View {
     // MARK: - Emergency Mode Handler
 
     private func handleEmergencyMode(method: EmergencyTriggerMethod) async {
-        print("🚨 Emergency mode triggered via: \(method.rawValue)")
+        logger.critical("Emergency mode triggered via: \(method.rawValue)")
 
         do {
             let report = try await EmergencyModeService.shared.triggerEmergency(
@@ -93,23 +96,18 @@ struct Header: View {
             )
 
             if report.simulated {
-                print("🧪 SIMULATION COMPLETE:")
-                print("   Files identified: \(report.filesWiped)")
-                print("   Duration: \(String(format: "%.2f", report.durationSeconds))s")
+                logger.info("SIMULATION COMPLETE: Files identified: \(report.filesWiped), Duration: \(String(format: "%.2f", report.durationSeconds))s")
             } else {
-                print("✅ EMERGENCY MODE COMPLETE:")
-                print("   Files wiped: \(report.filesWiped)")
-                print("   Duration: \(String(format: "%.2f", report.durationSeconds))s")
+                logger.warning("EMERGENCY MODE COMPLETE: Files wiped: \(report.filesWiped), Duration: \(String(format: "%.2f", report.durationSeconds))s")
 
                 if !report.errors.isEmpty {
-                    print("⚠️ Errors:")
-                    report.errors.forEach { print("   - \($0)") }
+                    logger.warning("Errors: \(report.errors.joined(separator: ", "))")
                 }
 
                 // App will terminate after self-uninstall
             }
         } catch {
-            print("❌ Emergency mode error: \(error.localizedDescription)")
+            logger.error("Emergency mode error: \(error.localizedDescription)")
         }
     }
 }

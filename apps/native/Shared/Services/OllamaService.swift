@@ -1,4 +1,7 @@
 import Foundation
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "OllamaService")
 
 /// Service for managing Ollama server lifecycle
 @MainActor
@@ -24,7 +27,7 @@ final class OllamaService {
 
             return process.terminationStatus == 0
         } catch {
-            print("Failed to check Ollama status: \(error)")
+            logger.error("Failed to check Ollama status: \(error)")
             return false
         }
     }

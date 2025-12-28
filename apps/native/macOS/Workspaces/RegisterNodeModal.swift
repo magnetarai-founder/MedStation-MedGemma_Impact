@@ -7,6 +7,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "RegisterNodeModal")
 
 struct RegisterNodeModal: View {
     @Environment(\.dismiss) private var dismiss
@@ -206,12 +209,12 @@ struct RegisterNodeModal: View {
             )
 
             let node = try await TrustService.shared.registerNode(request)
-            print("✅ Node registered: \(node.id)")
+            logger.info("Node registered: \(node.id)")
             onRegister(node)
             dismiss()
         } catch {
             errorMessage = "Failed to register: \(error.localizedDescription)"
-            print("❌ Registration failed: \(error)")
+            logger.error("Registration failed: \(error)")
         }
     }
 }

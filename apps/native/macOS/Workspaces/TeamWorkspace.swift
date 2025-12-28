@@ -9,6 +9,9 @@
 
 import SwiftUI
 import Foundation
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "TeamWorkspace")
 
 // MARK: - Team Service Models & Service
 // All models (Team, TeamDocument, TeamMessage, DiagnosticsStatus, P2PNetworkStatus, UserPermissions, etc.)
@@ -78,7 +81,7 @@ struct TeamWorkspace: View {
             permissions = try await TeamService.shared.getUserPermissions()
         } catch {
             // Keep default permissions on error
-            print("Failed to load permissions: \(error.localizedDescription)")
+            logger.warning("Failed to load permissions: \(error.localizedDescription)")
         }
     }
 
@@ -274,7 +277,7 @@ struct TeamWorkspace: View {
 
         } catch {
             vaultError = "Failed to check vault status: \(error.localizedDescription)"
-            print("Vault status check error: \(error)")
+            logger.error("Vault status check error: \(error)")
         }
 
         checkingVaultStatus = false

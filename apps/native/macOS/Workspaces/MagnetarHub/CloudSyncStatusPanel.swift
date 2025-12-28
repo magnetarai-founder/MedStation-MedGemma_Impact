@@ -7,6 +7,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "CloudSyncStatusPanel")
 
 struct CloudSyncStatusPanel: View {
     @Bindable var cloudManager: HubCloudManager
@@ -361,7 +364,7 @@ struct ConflictResolutionSheet: View {
         do {
             conflicts = try await SyncService.shared.getConflicts()
         } catch {
-            print("Failed to load conflicts: \(error)")
+            logger.error("Failed to load conflicts: \(error)")
         }
         isLoading = false
     }
@@ -376,7 +379,7 @@ struct ConflictResolutionSheet: View {
             conflicts.removeAll { $0.conflictId == conflict.conflictId }
             await cloudManager.refreshSyncStatus()
         } catch {
-            print("Failed to resolve conflict: \(error)")
+            logger.error("Failed to resolve conflict: \(error)")
         }
     }
 }

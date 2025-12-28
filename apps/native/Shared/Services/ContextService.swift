@@ -7,6 +7,9 @@
 //
 
 import Foundation
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "ContextService")
 
 // MARK: - Request/Response Models
 
@@ -203,7 +206,7 @@ class ContextService {
                 )
             }
         } catch {
-            print("Failed to get RAG documents: \(error)")
+            logger.error("Failed to get RAG documents: \(error)")
             return []
         }
     }
@@ -233,7 +236,7 @@ class ContextService {
                 )
             }
         } catch {
-            print("Failed to search vault files: \(error)")
+            logger.error("Failed to search vault files: \(error)")
             return []
         }
     }
@@ -261,7 +264,7 @@ class ContextService {
                 )
             }
         } catch {
-            print("Failed to search data queries: \(error)")
+            logger.error("Failed to search data queries: \(error)")
             return []
         }
     }
@@ -293,7 +296,7 @@ class ContextService {
                 )
             }
         } catch {
-            print("Failed to search code files: \(error)")
+            logger.error("Failed to search code files: \(error)")
             return []
         }
     }

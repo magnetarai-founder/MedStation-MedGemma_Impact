@@ -6,6 +6,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "TeamWorkspaceDataManager")
 
 @MainActor
 @Observable
@@ -17,7 +20,7 @@ class TeamWorkspaceDataManager {
         do {
             // Get current user's teams
             guard let userId = AuthStore.shared.user?.id else {
-                print("⚠️ No current user, cannot load teams")
+                logger.warning("No current user, cannot load teams")
                 return
             }
 
@@ -46,7 +49,7 @@ class TeamWorkspaceDataManager {
                 teamMembers = []
             }
         } catch {
-            print("⚠️ Failed to load team members: \(error)")
+            logger.warning("Failed to load team members: \(error)")
             // Fallback to empty array instead of mock data
             teamMembers = []
         }

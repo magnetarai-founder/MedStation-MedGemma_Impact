@@ -9,6 +9,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "ModelSelectorMenu")
 
 struct ModelSelectorMenu: View {
     @Binding var selectedMode: String  // "intelligent" or "manual"
@@ -233,7 +236,7 @@ struct ModelSelectorMenu: View {
                 try? await hotSlotManager.assignToSlot(slotNumber: candidateSlot, modelId: modelId)
             } else {
                 // All slots pinned - show error
-                print("Cannot load model: All slots are full and pinned")
+                logger.warning("Cannot load model: All slots are full and pinned")
             }
         } else {
             // Find first empty slot
@@ -254,7 +257,7 @@ struct ModelSelectorMenu: View {
         selectedMode: $selectedMode,
         selectedModelId: $selectedModelId,
         availableModels: ["llama3.2:3b", "phi-3.5:3.8b", "qwen2.5-coder:3b", "deepseek-r1:8b"],
-        onRefresh: { print("Refresh") }
+        onRefresh: { logger.debug("Refresh requested") }
     )
     .padding()
     .frame(width: 400)

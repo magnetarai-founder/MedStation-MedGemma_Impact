@@ -9,6 +9,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "SmartModelPicker")
 
 struct SmartModelPicker: View {
     @Binding var selectedMode: String  // "intelligent" or specific model
@@ -157,7 +160,7 @@ struct SmartModelPicker: View {
             let models = try JSONDecoder().decode([ModelResponse].self, from: data)
             availableModels = models.map { $0.name }
         } catch {
-            print("Failed to fetch available models: \(error)")
+            logger.error("Failed to fetch available models: \(error)")
         }
     }
 
@@ -177,7 +180,7 @@ struct SmartModelPicker: View {
 
                     await loadData()
                 } catch {
-                    print("Failed to load model: \(error)")
+                    logger.error("Failed to load model: \(error)")
                 }
             }
         } else {
@@ -192,7 +195,7 @@ struct SmartModelPicker: View {
 
                     await loadData()
                 } catch {
-                    print("Failed to load model: \(error)")
+                    logger.error("Failed to load model: \(error)")
                 }
             }
         }

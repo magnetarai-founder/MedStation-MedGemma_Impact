@@ -8,6 +8,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "CodeEditor")
 
 struct CodeEditor: View {
     @EnvironmentObject private var databaseStore: DatabaseStore
@@ -245,7 +248,7 @@ struct CodeEditor: View {
                 do {
                     try sqlContent.write(to: url, atomically: true, encoding: .utf8)
                 } catch {
-                    print("Failed to save SQL file: \(error)")
+                    logger.error("Failed to save SQL file: \(error)")
                 }
             }
         }

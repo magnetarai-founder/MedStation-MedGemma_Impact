@@ -7,6 +7,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "VouchNodeModal")
 
 struct VouchNodeModal: View {
     @Environment(\.dismiss) private var dismiss
@@ -268,12 +271,12 @@ struct VouchNodeModal: View {
             )
 
             let relationship = try await TrustService.shared.vouchForNode(request)
-            print("✅ Vouched for \(node.publicName): \(relationship.id)")
+            logger.info("Vouched for \(node.publicName): \(relationship.id)")
             onVouched()
             dismiss()
         } catch {
             errorMessage = "Failed to vouch: \(error.localizedDescription)"
-            print("❌ Vouching failed: \(error)")
+            logger.error("Vouching failed: \(error)")
         }
     }
 

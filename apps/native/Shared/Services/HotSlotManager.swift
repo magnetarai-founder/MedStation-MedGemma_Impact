@@ -9,6 +9,9 @@
 //
 
 import Foundation
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "HotSlotManager")
 
 // MARK: - Models
 
@@ -162,7 +165,7 @@ class HotSlotManager: ObservableObject {
                 isLoading = false
             }
         } catch {
-            print("Failed to load hot slots: \(error)")
+            logger.error("Failed to load hot slots: \(error)")
             await MainActor.run {
                 errorMessage = "Failed to load hot slots: \(error.localizedDescription)"
                 isLoading = false
@@ -237,7 +240,7 @@ class HotSlotManager: ObservableObject {
             jsonBody: ["keep_alive": keepAlive]
         )
 
-        print("✓ Loaded \(response.total) hot slot models")
+        logger.info("Loaded \(response.total) hot slot models")
 
         // Reload hot slots to get updated state
         await loadHotSlots()

@@ -1,5 +1,8 @@
 import Foundation
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "AuthStore")
 
 /// Auth state machine and bootstrap logic
 @MainActor
@@ -24,7 +27,7 @@ final class AuthStore: ObservableObject {
     /// Call on app launch to validate existing token
     func bootstrap() async {
         // Wait for backend to be ready before attempting auth
-        print("⏳ Waiting for backend to be ready...")
+        logger.debug("Waiting for backend to be ready...")
         var backendReady = false
         var attempts = 0
 
@@ -37,13 +40,13 @@ final class AuthStore: ObservableObject {
         }
 
         if !backendReady {
-            print("⚠️ Backend not ready after 7.5 seconds, will retry auth later")
+            logger.warning("Backend not ready after 7.5 seconds, will retry auth later")
             authState = .welcome
             loading = false
             return
         }
 
-        print("✓ Backend is ready, proceeding with auth")
+        logger.info("Backend is ready, proceeding with auth")
 
         // DEVELOPMENT BYPASS: Auto-login for fast iteration
         // Set DEV_USERNAME and DEV_PASSWORD environment variables in Xcode scheme
@@ -58,7 +61,7 @@ final class AuthStore: ObservableObject {
                 loading = false
                 return
             } catch {
-                print("DEBUG: Existing token invalid, will attempt auto-login if env vars set")
+                logger.debug("Existing token invalid, will attempt auto-login if env vars set")
             }
         }
 
@@ -67,7 +70,7 @@ final class AuthStore: ObservableObject {
            let devPassword = ProcessInfo.processInfo.environment["DEV_PASSWORD"],
            !devUsername.isEmpty, !devPassword.isEmpty {
 
-            print("⚠️ DEBUG MODE: Auto-login using environment credentials")
+            logger.warning("DEBUG MODE: Auto-login using environment credentials")
 
             do {
                 struct LoginRequest: Codable {
@@ -112,12 +115,11 @@ final class AuthStore: ObservableObject {
                 userSetupComplete = true
                 authState = .authenticated
                 loading = false
-                print("✅ DEBUG: Auto-login successful")
+                logger.info("DEBUG: Auto-login successful")
                 return
 
             } catch {
-                print("⚠️ DEBUG: Auto-login failed: \(error.localizedDescription)")
-                print("   Falling through to normal auth flow...")
+                logger.warning("DEBUG: Auto-login failed: \(error.localizedDescription) - Falling through to normal auth flow")
             }
         }
         #endif

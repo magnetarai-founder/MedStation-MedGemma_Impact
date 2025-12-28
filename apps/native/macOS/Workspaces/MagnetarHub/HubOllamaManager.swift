@@ -6,6 +6,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "HubOllamaManager")
 
 @MainActor
 @Observable
@@ -33,7 +36,7 @@ class HubOllamaManager {
                 ollamaServerRunning = true
             }
         } catch {
-            print("Failed to toggle Ollama: \(error)")
+            logger.error("Failed to toggle Ollama: \(error)")
         }
 
         isOllamaActionInProgress = false
@@ -46,7 +49,7 @@ class HubOllamaManager {
             try await ollamaService.restart()
             ollamaServerRunning = true
         } catch {
-            print("Failed to restart Ollama: \(error)")
+            logger.error("Failed to restart Ollama: \(error)")
             ollamaServerRunning = false
         }
 

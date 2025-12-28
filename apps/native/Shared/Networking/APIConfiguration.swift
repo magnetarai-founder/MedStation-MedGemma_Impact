@@ -6,6 +6,9 @@
 //
 
 import Foundation
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "APIConfiguration")
 
 /// Centralized API configuration with security enforcement
 final class APIConfiguration {
@@ -100,12 +103,12 @@ final class APIConfiguration {
 
         // CRITICAL SECURITY: Enforce HTTPS for non-localhost URLs
         if !isLocalhost(baseURL) && baseURL.hasPrefix("http://") {
-            print("⚠️ SECURITY ERROR: Non-localhost URL configured with HTTP instead of HTTPS")
-            print("⚠️ URL: \(baseURL)")
+            logger.critical("SECURITY ERROR: Non-localhost URL configured with HTTP instead of HTTPS")
+            logger.critical("URL: \(baseURL)")
             assertionFailure("SECURITY: Non-localhost API must use HTTPS")
         }
 
-        print("✅ API Configuration initialized: \(baseURL)")
+        logger.info("API Configuration initialized: \(baseURL)")
     }
 
     /// Check if URL is localhost or loopback

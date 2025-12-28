@@ -7,6 +7,9 @@
 //
 
 import Foundation
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "ModelMemoryTracker")
 
 // MARK: - Ollama API Models
 
@@ -98,10 +101,10 @@ class ModelMemoryTracker: ObservableObject {
             // Calculate total memory of loaded models (hot slots)
             await calculateTotalMemoryUsed()
 
-            print("✅ Updated model sizes: \(modelSizes.count) models")
+            logger.info("Updated model sizes: \(modelSizes.count) models")
 
         } catch {
-            print("⚠️ Failed to refresh model sizes from Ollama: \(error)")
+            logger.warning("Failed to refresh model sizes from Ollama: \(error)")
         }
     }
 

@@ -6,6 +6,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "HubDataManager")
 
 @MainActor
 @Observable
@@ -39,9 +42,9 @@ class HubDataManager {
             )
 
             recommendedModels = response.recommendations
-            print("✅ Loaded \(response.totalCount) recommended models from backend")
+            logger.info("Loaded \(response.totalCount) recommended models from backend")
         } catch {
-            print("❌ Failed to load recommendations: \(error)")
+            logger.error("Failed to load recommendations: \(error)")
             // Keep empty list on error
         }
 

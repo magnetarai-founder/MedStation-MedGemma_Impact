@@ -7,6 +7,9 @@
 
 import SwiftUI
 import LocalAuthentication
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "ContentView")
 
 struct ContentView: View {
     @StateObject private var authStore = AuthStore.shared
@@ -99,7 +102,7 @@ struct ContentView: View {
             return
         } catch {
             // Other errors - silently ignore (user can manually login)
-            print("Biometric auto-login failed: \(error.localizedDescription)")
+            logger.info("Biometric auto-login failed: \(error.localizedDescription)")
             return
         }
     }

@@ -6,6 +6,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "KanbanDataManager")
 
 @MainActor
 @Observable
@@ -44,7 +47,7 @@ class KanbanDataManager {
             return nil
         } catch {
             // Show empty state if API fails
-            print("Kanban API error: \(error.localizedDescription)")
+            logger.error("Kanban API error: \(error.localizedDescription)")
             boards = []
             tasks = []
             isLoading = false
@@ -71,7 +74,7 @@ class KanbanDataManager {
                 )
             }
         } catch {
-            print("Failed to load tasks: \(error.localizedDescription)")
+            logger.error("Failed to load tasks: \(error.localizedDescription)")
         }
     }
 

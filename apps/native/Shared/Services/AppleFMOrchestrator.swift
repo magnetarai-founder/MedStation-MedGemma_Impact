@@ -10,6 +10,9 @@
 //
 
 import Foundation
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "AppleFMOrchestrator")
 
 // MARK: - Apple FM Orchestrator
 
@@ -36,7 +39,7 @@ class AppleFMOrchestrator: ModelOrchestrator {
                 )
                 return response.status == "healthy" || response.status == "ok"
             } catch {
-                print("✗ Backend orchestrator unavailable: \(error)")
+                logger.warning("Backend orchestrator unavailable: \(error)")
                 return false
             }
         }
@@ -134,7 +137,7 @@ class AppleFMOrchestrator: ModelOrchestrator {
             return mapBackendRouteToAnalysis(response, originalQuery: query, context: context)
 
         } catch {
-            print("⚠️ Backend routing failed, falling back to rule-based analysis: \(error)")
+            logger.warning("Backend routing failed, falling back to rule-based analysis: \(error)")
             // Fallback to rule-based analysis if backend unavailable
             return fallbackAnalyzeQuery(query, context: context)
         }

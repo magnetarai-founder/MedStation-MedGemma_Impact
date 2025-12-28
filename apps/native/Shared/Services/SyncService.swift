@@ -8,6 +8,9 @@
 
 import Foundation
 import Combine
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "SyncService")
 
 // MARK: - Sync Models
 
@@ -380,7 +383,7 @@ final class SyncService: ObservableObject {
                 remainingQueue.append(operation)
             } catch {
                 // Other error - log and discard
-                print("⚠️ Sync operation failed, discarding: \(error)")
+                logger.warning("Sync operation failed, discarding: \(error)")
             }
         }
 
@@ -472,7 +475,7 @@ final class SyncService: ObservableObject {
             offlineQueue = try JSONDecoder().decode([PendingSyncOperation].self, from: data)
             pendingChanges = offlineQueue.count
         } catch {
-            print("⚠️ Failed to load offline sync queue: \(error)")
+            logger.warning("Failed to load offline sync queue: \(error)")
         }
     }
 
@@ -483,7 +486,7 @@ final class SyncService: ObservableObject {
                 let data = try JSONEncoder().encode(self.offlineQueue)
                 try data.write(to: self.offlineQueueFile, options: .atomic)
             } catch {
-                print("⚠️ Failed to save offline sync queue: \(error)")
+                logger.warning("Failed to save offline sync queue: \(error)")
             }
         }
     }
