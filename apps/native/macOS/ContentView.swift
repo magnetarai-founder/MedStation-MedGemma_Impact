@@ -12,8 +12,8 @@ import os
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "ContentView")
 
 struct ContentView: View {
-    @StateObject private var authStore = AuthStore.shared
-    @EnvironmentObject private var databaseStore: DatabaseStore
+    @State private var authStore = AuthStore.shared
+    @Environment(DatabaseStore.self) private var databaseStore
     @State private var attemptedBiometricLogin = false
 
     var body: some View {

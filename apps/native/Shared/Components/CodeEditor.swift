@@ -13,7 +13,7 @@ import os
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "CodeEditor")
 
 struct CodeEditor: View {
-    @EnvironmentObject private var databaseStore: DatabaseStore
+    @Environment(DatabaseStore.self) private var databaseStore
     @State private var code: String = ""
     @State private var isExecuting: Bool = false
     @State private var hasFile: Bool = false

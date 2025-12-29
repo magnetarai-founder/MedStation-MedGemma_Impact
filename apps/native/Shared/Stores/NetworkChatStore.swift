@@ -1,23 +1,24 @@
 import Foundation
-import Combine
+import Observation
 
 /// Network-backed chat store with streaming support
 @MainActor
-final class NetworkChatStore: ObservableObject {
+@Observable
+final class NetworkChatStore {
     static let shared = NetworkChatStore()
 
-    // MARK: - Published State
+    // MARK: - Observable State
 
-    @Published var sessions: [ApiChatSession] = []
-    @Published var activeSession: ApiChatSession?
-    @Published var messages: [ApiChatMessage] = []
-    @Published var streamingContent: String = ""
-    @Published var isSending = false
-    @Published var isLoading = false
-    @Published var error: String?
-    @Published var selectedModel: String = "mistral"
-    @Published var tokensUsed: Int = 0
-    @Published var tokensLimit: Int?
+    var sessions: [ApiChatSession] = []
+    var activeSession: ApiChatSession?
+    var messages: [ApiChatMessage] = []
+    var streamingContent: String = ""
+    var isSending = false
+    var isLoading = false
+    var error: String?
+    var selectedModel: String = "mistral"
+    var tokensUsed: Int = 0
+    var tokensLimit: Int?
 
     private let service = ChatService.shared
     private var streamingTask: ApiClient.StreamingTask?

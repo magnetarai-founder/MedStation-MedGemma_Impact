@@ -9,7 +9,7 @@ import SwiftUI
 import LocalAuthentication
 
 struct WelcomeView: View {
-    @EnvironmentObject private var authStore: AuthStore
+    @Environment(AuthStore.self) private var authStore
 
     @State private var username: String = ""
     @State private var password: String = ""

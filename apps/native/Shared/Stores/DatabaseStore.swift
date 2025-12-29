@@ -1,24 +1,25 @@
 import Foundation
-import Combine
+import Observation
 
 /// Database workspace state and operations
 @MainActor
-final class DatabaseStore: ObservableObject {
+@Observable
+final class DatabaseStore {
     static let shared = DatabaseStore()
 
-    // MARK: - Published State
+    // MARK: - Observable State
 
-    @Published private(set) var sessionId: String?
-    @Published private(set) var currentFile: FileUploadResponse?
-    @Published private(set) var currentQuery: QueryResponse?
-    @Published var contentType: ContentType = .sql
-    @Published private(set) var isExecuting: Bool = false
-    @Published private(set) var isUploading: Bool = false
-    @Published var error: String?
+    private(set) var sessionId: String?
+    private(set) var currentFile: FileUploadResponse?
+    private(set) var currentQuery: QueryResponse?
+    var contentType: ContentType = .sql
+    private(set) var isExecuting: Bool = false
+    private(set) var isUploading: Bool = false
+    var error: String?
 
     // Editor state
-    @Published var editorText: String = ""
-    @Published var hasExecuted: Bool = false
+    var editorText: String = ""
+    var hasExecuted: Bool = false
 
     enum ContentType {
         case sql

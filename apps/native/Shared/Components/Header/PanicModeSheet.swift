@@ -12,8 +12,8 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "PanicMo
 
 struct PanicModeSheet: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var authStore: AuthStore
-    @StateObject private var vaultStore = VaultStore.shared
+    @Environment(AuthStore.self) private var authStore
+    @State private var vaultStore = VaultStore.shared
 
     @State private var isExecuting = false
     @State private var shouldQuitApp = false

@@ -17,7 +17,7 @@ import AppKit
 struct MagnetarStudioApp: App {
     @State private var navigationStore = NavigationStore()
     @State private var chatStore = ChatStore()
-    @StateObject private var databaseStore = DatabaseStore.shared
+    @State private var databaseStore = DatabaseStore.shared
     @NSApplicationDelegateAdaptor(AppLifecycleManager.self) var appDelegate
     @State private var commandPaletteManager = CommandPaletteManager()
 
@@ -48,7 +48,7 @@ struct MagnetarStudioApp: App {
         .defaultSize(width: 1400, height: 850)
         .environment(navigationStore)
         .environment(chatStore)
-        .environmentObject(databaseStore)
+        .environment(databaseStore)
         .environment(commandPaletteManager)
         .commands {
             MagnetarMenuCommands(

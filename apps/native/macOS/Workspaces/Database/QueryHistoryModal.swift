@@ -9,7 +9,7 @@ import SwiftUI
 
 struct QueryHistoryModal: View {
     @Binding var isPresented: Bool
-    @ObservedObject var databaseStore: DatabaseStore
+    var databaseStore: DatabaseStore
 
     @State private var historyItems: [QueryHistoryItem] = []
     @State private var isLoading: Bool = false

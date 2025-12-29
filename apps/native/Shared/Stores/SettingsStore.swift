@@ -1,18 +1,19 @@
 import Foundation
-import Combine
+import Observation
 
 /// Settings store for saved queries and app preferences
 @MainActor
-final class SettingsStore: ObservableObject {
+@Observable
+final class SettingsStore {
     static let shared = SettingsStore()
 
-    // MARK: - Published State
+    // MARK: - Observable State
 
-    @Published var savedQueries: [SavedQuery] = []
-    @Published var chatSettings: ChatSettings
-    @Published var appSettings: AppSettings
-    @Published var isLoading = false
-    @Published var error: String?
+    var savedQueries: [SavedQuery] = []
+    var chatSettings: ChatSettings
+    var appSettings: AppSettings
+    var isLoading = false
+    var error: String?
 
     private let service = SettingsService.shared
     private let userDefaults = UserDefaults.standard

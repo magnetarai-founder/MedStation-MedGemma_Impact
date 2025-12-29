@@ -11,7 +11,7 @@ import os
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "SetupWizardView")
 
 struct SetupWizardView: View {
-    @EnvironmentObject private var authStore: AuthStore
+    @Environment(AuthStore.self) private var authStore
 
     @State private var currentStep = 0
     @State private var displayName: String = ""

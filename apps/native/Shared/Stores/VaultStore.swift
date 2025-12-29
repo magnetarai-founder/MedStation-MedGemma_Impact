@@ -1,23 +1,24 @@
 import Foundation
-import Combine
+import Observation
 
 /// Vault workspace state and operations
 @MainActor
-final class VaultStore: ObservableObject {
+@Observable
+final class VaultStore {
     static let shared = VaultStore()
 
-    // MARK: - Published State
+    // MARK: - Observable State
 
-    @Published var unlocked: Bool = false
-    @Published var vaultType: String = "real"  // "real" | "decoy"
-    @Published var currentFolder: String = "/"
-    @Published var folders: [VaultFolder] = []
-    @Published var files: [VaultFile] = []
-    @Published var previewFile: VaultFile?
-    @Published var previewData: Data?
-    @Published var isLoading = false
-    @Published var isUploading = false
-    @Published var error: String?
+    var unlocked: Bool = false
+    var vaultType: String = "real"  // "real" | "decoy"
+    var currentFolder: String = "/"
+    var folders: [VaultFolder] = []
+    var files: [VaultFile] = []
+    var previewFile: VaultFile?
+    var previewData: Data?
+    var isLoading = false
+    var isUploading = false
+    var error: String?
 
     // In-memory only (never persisted)
     private var passphrase: String?

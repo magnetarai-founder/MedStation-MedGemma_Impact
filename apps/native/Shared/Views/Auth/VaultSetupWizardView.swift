@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct VaultSetupWizardView: View {
-    @EnvironmentObject private var vaultStore: VaultStore
+    @Environment(VaultStore.self) private var vaultStore
     @Environment(\.dismiss) private var dismiss
 
     @State private var currentStep = 0

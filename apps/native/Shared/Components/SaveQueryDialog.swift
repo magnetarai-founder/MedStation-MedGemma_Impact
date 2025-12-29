@@ -10,7 +10,7 @@ import SwiftUI
 struct SaveQueryDialog: View {
     @Binding var isPresented: Bool
     let queryText: String
-    @ObservedObject var databaseStore: DatabaseStore
+    var databaseStore: DatabaseStore
 
     @State private var queryName: String = ""
     @State private var queryDescription: String = ""

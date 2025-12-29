@@ -1,21 +1,22 @@
 import Foundation
-import SwiftUI
+import Observation
 import os
 
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "AuthStore")
 
 /// Auth state machine and bootstrap logic
 @MainActor
-final class AuthStore: ObservableObject {
+@Observable
+final class AuthStore {
     static let shared = AuthStore()
 
-    // MARK: - Published State
+    // MARK: - Observable State
 
-    @Published private(set) var authState: AuthState = .welcome
-    @Published private(set) var user: ApiUser?
-    @Published private(set) var userSetupComplete: Bool?
-    @Published private(set) var loading = false
-    @Published private(set) var error: String?
+    private(set) var authState: AuthState = .welcome
+    private(set) var user: ApiUser?
+    private(set) var userSetupComplete: Bool?
+    private(set) var loading = false
+    private(set) var error: String?
 
     private let keychain = KeychainService.shared
     private let apiClient = ApiClient.shared

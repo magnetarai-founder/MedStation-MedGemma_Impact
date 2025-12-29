@@ -23,7 +23,7 @@ enum DatabaseViewTab: String, CaseIterable {
 }
 
 struct DatabaseWorkspace: View {
-    @EnvironmentObject private var databaseStore: DatabaseStore
+    @Environment(DatabaseStore.self) private var databaseStore
     @State private var sidebarWidth: CGFloat = 320
     @State private var topPaneHeight: CGFloat = 0.33 // 33% default
     @State private var showLibrary = false

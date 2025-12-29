@@ -9,7 +9,7 @@ import SwiftUI
 
 struct JsonConverterModal: View {
     @Binding var isPresented: Bool
-    @ObservedObject var databaseStore: DatabaseStore
+    var databaseStore: DatabaseStore
 
     @State private var jsonInput: String = ""
     @State private var isConverting: Bool = false

@@ -1,22 +1,23 @@
 import Foundation
-import Combine
+import Observation
 
 /// Workflow workspace state and operations
 @MainActor
-final class WorkflowStore: ObservableObject {
+@Observable
+final class WorkflowStore {
     static let shared = WorkflowStore()
 
-    // MARK: - Published State
+    // MARK: - Observable State
 
-    @Published var workflows: [Workflow] = []
-    @Published var templates: [Workflow] = []
-    @Published var starredIds: Set<String> = []
-    @Published var queueItems: [WorkItem] = []
-    @Published var myWorkItems: [WorkItem] = []
-    @Published var analytics: WorkflowAnalytics?
-    @Published var selectedWorkflow: Workflow?
-    @Published var isLoading = false
-    @Published var error: String?
+    var workflows: [Workflow] = []
+    var templates: [Workflow] = []
+    var starredIds: Set<String> = []
+    var queueItems: [WorkItem] = []
+    var myWorkItems: [WorkItem] = []
+    var analytics: WorkflowAnalytics?
+    var selectedWorkflow: Workflow?
+    var isLoading = false
+    var error: String?
 
     private let service = WorkflowService.shared
 

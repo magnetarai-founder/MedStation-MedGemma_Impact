@@ -12,7 +12,7 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "QueryLi
 
 struct QueryLibraryModal: View {
     @Binding var isPresented: Bool
-    @ObservedObject var databaseStore: DatabaseStore
+    var databaseStore: DatabaseStore
 
     @State private var savedQueries: [SavedQuery] = []
     @State private var isLoading: Bool = false

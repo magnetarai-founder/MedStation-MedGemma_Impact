@@ -6,22 +6,23 @@
 //
 
 import Foundation
-import Combine
+import Observation
 
 /// Team workspace state and operations
 @MainActor
-final class TeamStore: ObservableObject {
+@Observable
+final class TeamStore {
     static let shared = TeamStore()
 
-    // MARK: - Published State
+    // MARK: - Observable State
 
-    @Published var teams: [Team] = []
-    @Published var channels: [TeamChannel] = []
-    @Published var messages: [TeamMessage] = []
-    @Published var selectedTeamId: String?
-    @Published var selectedChannelId: String?
-    @Published var isLoading = false
-    @Published var error: String?
+    var teams: [Team] = []
+    var channels: [TeamChannel] = []
+    var messages: [TeamMessage] = []
+    var selectedTeamId: String?
+    var selectedChannelId: String?
+    var isLoading = false
+    var error: String?
 
     private let service = TeamService.shared
 

@@ -6,20 +6,21 @@
 //
 
 import Foundation
-import Combine
+import Observation
 
 /// Kanban workspace state and operations
 @MainActor
-final class KanbanStore: ObservableObject {
+@Observable
+final class KanbanStore {
     static let shared = KanbanStore()
 
-    // MARK: - Published State
+    // MARK: - Observable State
 
-    @Published var boards: [KanbanBoardAPI] = []
-    @Published var tasks: [KanbanTaskAPI] = []
-    @Published var selectedBoardId: String?
-    @Published var isLoading = false
-    @Published var error: String?
+    var boards: [KanbanBoardAPI] = []
+    var tasks: [KanbanTaskAPI] = []
+    var selectedBoardId: String?
+    var isLoading = false
+    var error: String?
 
     private let service = KanbanService.shared
 

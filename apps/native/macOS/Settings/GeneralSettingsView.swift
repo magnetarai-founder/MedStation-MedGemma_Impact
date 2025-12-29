@@ -10,8 +10,8 @@ import SwiftUI
 // MARK: - General Settings
 
 struct GeneralSettingsView: View {
-    @StateObject private var settingsManager = SettingsManager.shared
-    @StateObject private var settingsStore = SettingsStore.shared
+    @State private var settingsManager = SettingsManager.shared
+    @State private var settingsStore = SettingsStore.shared
     @AppStorage("autoSaveChatSessions") private var autoSaveChatSessions = true
     @AppStorage("showLineNumbers") private var showLineNumbers = true
     @AppStorage("wordWrap") private var wordWrap = false

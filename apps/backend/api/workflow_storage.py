@@ -57,9 +57,9 @@ class WorkflowStorage:
         # Prefer centralized data directory to keep consistency with the rest of the app
         if db_path is None:
             try:
-                from .config_paths import get_config_paths  # type: ignore
-            except Exception:
-                from config_paths import get_config_paths  # type: ignore
+                from api.config_paths import get_config_paths
+            except ImportError:
+                from config_paths import get_config_paths
             paths = get_config_paths()
             # Use a dedicated workflows.db under the shared data dir to align with admin metrics
             self.db_path = Path(paths.data_dir) / "workflows.db"
