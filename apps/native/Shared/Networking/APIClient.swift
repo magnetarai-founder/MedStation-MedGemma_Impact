@@ -404,11 +404,23 @@ final class ApiClient {
     private func mimeType(for url: URL) -> String {
         let ext = url.pathExtension.lowercased()
         switch ext {
+        // Data formats
         case "json": return "application/json"
         case "csv": return "text/csv"
         case "xlsx": return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         case "xls": return "application/vnd.ms-excel"
         case "parquet": return "application/octet-stream"
+        // Audio formats
+        case "m4a": return "audio/mp4"
+        case "mp3": return "audio/mpeg"
+        case "wav": return "audio/wav"
+        case "webm": return "audio/webm"
+        case "ogg": return "audio/ogg"
+        case "aiff", "aif": return "audio/aiff"
+        case "flac": return "audio/flac"
+        // Video formats
+        case "mp4": return "video/mp4"
+        case "mov": return "video/quicktime"
         default: return "application/octet-stream"
         }
     }

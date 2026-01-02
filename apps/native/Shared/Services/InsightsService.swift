@@ -293,7 +293,7 @@ class InsightsService {
 
         return try await apiClient.multipart(
             path: "/v1/insights/recordings",
-            fileField: "file",
+            fileField: "audio_file",  // Backend expects "audio_file" not "file"
             fileURL: fileURL,
             parameters: fields
         )

@@ -161,23 +161,11 @@ async def open_database_workspace(
 async def list_workspaces(current_user: dict = Depends(get_current_user)):
     """Get all workspaces"""
     try:
-        # Delegate to service
+        # Delegate to service (already returns List[WorkspaceResponse])
         workspaces = code_service.list_workspaces()
 
         return SuccessResponse(
-            data=code_service.WorkspacesListResponse(
-                workspaces=[
-                    code_service.WorkspaceResponse(
-                        id=w.id,
-                        name=w.name,
-                        source_type=w.source_type,
-                        disk_path=w.disk_path,
-                        created_at=w.created_at,
-                        updated_at=w.updated_at
-                    )
-                    for w in workspaces
-                ]
-            )
+            data=code_service.WorkspacesListResponse(workspaces=workspaces)
         )
 
     except Exception as e:

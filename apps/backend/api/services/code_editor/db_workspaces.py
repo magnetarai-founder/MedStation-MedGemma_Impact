@@ -4,8 +4,11 @@ All workspace and file CRUD operations
 """
 
 import logging
+import uuid
+from datetime import datetime
 from typing import Any, List, Optional
 from api.elohimos_memory import ElohimOSMemory
+from .models import WorkspaceResponse
 
 logger = logging.getLogger(__name__)
 
@@ -56,9 +59,11 @@ def init_code_editor_db() -> None:
 # WORKSPACE CRUD OPERATIONS
 # ============================================================================
 
-def create_workspace(workspace_id: str, name: str, source_type: str, disk_path: str = None) -> None:
-    """Create new workspace in database"""
+def create_workspace(name: str, source_type: str, disk_path: str = None, files: list = None) -> WorkspaceResponse:
+    """Create new workspace in database and return WorkspaceResponse"""
     conn = memory.memory.conn
+    workspace_id = str(uuid.uuid4())
+    now = datetime.utcnow()
 
     if disk_path:
         conn.execute("""
@@ -73,29 +78,71 @@ def create_workspace(workspace_id: str, name: str, source_type: str, disk_path: 
 
     conn.commit()
 
+    # If files provided (for disk workspaces), create them
+    if files:
+        for file_data in files:
+            create_file(
+                workspace_id=workspace_id,
+                name=file_data.get('name', 'unnamed'),
+                path=file_data.get('path', ''),
+                content=file_data.get('content', ''),
+                language=file_data.get('language', 'plaintext')
+            )
 
-def get_workspace(workspace_id: str) -> Optional[Any]:
-    """Get workspace by ID"""
+    # Return workspace response
+    return WorkspaceResponse(
+        id=workspace_id,
+        name=name,
+        source_type=source_type,
+        disk_path=disk_path,
+        created_at=now,
+        updated_at=now
+    )
+
+
+def get_workspace(workspace_id: str) -> Optional[WorkspaceResponse]:
+    """Get workspace by ID, returns WorkspaceResponse or None"""
     conn = memory.memory.conn
 
-    workspace = conn.execute("""
+    row = conn.execute("""
         SELECT id, name, source_type, disk_path, created_at, updated_at
         FROM code_editor_workspaces
         WHERE id = ?
     """, (workspace_id,)).fetchone()
 
-    return workspace
+    if not row:
+        return None
+
+    return WorkspaceResponse(
+        id=row[0],
+        name=row[1],
+        source_type=row[2],
+        disk_path=row[3],
+        created_at=datetime.fromisoformat(row[4]) if row[4] else datetime.utcnow(),
+        updated_at=datetime.fromisoformat(row[5]) if row[5] else datetime.utcnow()
+    )
 
 
-def list_workspaces() -> List[Any]:
+def list_workspaces() -> List[WorkspaceResponse]:
     """List all workspaces"""
     conn = memory.memory.conn
 
-    workspaces = conn.execute("""
+    rows = conn.execute("""
         SELECT id, name, source_type, disk_path, created_at, updated_at
         FROM code_editor_workspaces
         ORDER BY updated_at DESC
     """).fetchall()
+
+    workspaces = []
+    for row in rows:
+        workspaces.append(WorkspaceResponse(
+            id=row[0],
+            name=row[1],
+            source_type=row[2],
+            disk_path=row[3],
+            created_at=datetime.fromisoformat(row[4]) if row[4] else datetime.utcnow(),
+            updated_at=datetime.fromisoformat(row[5]) if row[5] else datetime.utcnow()
+        ))
 
     return workspaces
 
@@ -125,9 +172,13 @@ def delete_workspace(workspace_id: str) -> None:
 # FILE CRUD OPERATIONS
 # ============================================================================
 
-def create_file(file_id: str, workspace_id: str, name: str, path: str, content: str, language: str) -> None:
-    """Create new file in database"""
+def create_file(workspace_id: str, name: str, path: str, content: str, language: str, file_id: str = None) -> str:
+    """Create new file in database. Auto-generates file_id if not provided."""
     conn = memory.memory.conn
+
+    # Auto-generate file_id if not provided
+    if file_id is None:
+        file_id = str(uuid.uuid4())
 
     conn.execute("""
         INSERT INTO code_editor_files (id, workspace_id, name, path, content, language)
@@ -135,6 +186,7 @@ def create_file(file_id: str, workspace_id: str, name: str, path: str, content: 
     """, (file_id, workspace_id, name, path, content, language))
 
     conn.commit()
+    return file_id
 
 
 def get_file(file_id: str) -> Optional[Any]:
