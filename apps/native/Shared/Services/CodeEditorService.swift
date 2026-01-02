@@ -10,10 +10,16 @@ final class CodeEditorService {
     // MARK: - Workspaces
 
     func listWorkspaces() async throws -> [CodeEditorWorkspace] {
-        try await apiClient.request(
+        struct WorkspacesResponse: Codable {
+            let workspaces: [CodeEditorWorkspace]
+        }
+
+        let response: WorkspacesResponse = try await apiClient.request(
             path: "/v1/code-editor/workspaces",
             method: .get
         )
+
+        return response.workspaces
     }
 
     func createWorkspace(name: String, sourceType: String = "database") async throws -> CodeEditorWorkspace {

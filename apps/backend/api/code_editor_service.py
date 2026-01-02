@@ -40,7 +40,7 @@ code_service.init_code_editor_db()
 # WORKSPACE ENDPOINTS
 # ============================================================================
 
-@router.post("/workspaces", response_model=code_service.WorkspaceResponse)
+@router.post("/workspaces", response_model=SuccessResponse[code_service.WorkspaceResponse])
 @require_perm("code.edit")
 async def create_workspace(
     request: Request,
@@ -68,7 +68,7 @@ async def create_workspace(
         except Exception as audit_error:
             logger.warning(f"Audit logging failed: {audit_error}")
 
-        return result
+        return SuccessResponse(data=result)
 
     except HTTPException:
         raise
@@ -77,7 +77,7 @@ async def create_workspace(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/workspaces/open-disk", response_model=code_service.WorkspaceResponse)
+@router.post("/workspaces/open-disk", response_model=SuccessResponse[code_service.WorkspaceResponse])
 @require_perm("code.edit")
 async def open_disk_workspace(
     request: Request,
@@ -124,7 +124,7 @@ async def open_disk_workspace(
         except Exception as audit_error:
             logger.warning(f"Audit logging failed: {audit_error}")
 
-        return result
+        return SuccessResponse(data=result)
 
     except HTTPException:
         raise
@@ -133,7 +133,7 @@ async def open_disk_workspace(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/workspaces/open-database", response_model=code_service.WorkspaceResponse)
+@router.post("/workspaces/open-database", response_model=SuccessResponse[code_service.WorkspaceResponse])
 @require_perm("code.use")
 async def open_database_workspace(
     request: Request,
@@ -148,7 +148,7 @@ async def open_database_workspace(
         if not workspace:
             raise HTTPException(status_code=404, detail="Workspace not found")
 
-        return workspace
+        return SuccessResponse(data=workspace)
 
     except HTTPException:
         raise
@@ -156,27 +156,29 @@ async def open_database_workspace(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/workspaces")
+@router.get("/workspaces", response_model=SuccessResponse[code_service.WorkspacesListResponse])
 @require_perm("code.use")
-async def list_workspaces(current_user: dict = Depends(get_current_user)) -> Dict[str, Any]:
+async def list_workspaces(current_user: dict = Depends(get_current_user)):
     """Get all workspaces"""
     try:
         # Delegate to service
         workspaces = code_service.list_workspaces()
 
-        return {
-            "workspaces": [
-                {
-                    "id": w.id,
-                    "name": w.name,
-                    "source_type": w.source_type,
-                    "disk_path": w.disk_path,
-                    "created_at": w.created_at,
-                    "updated_at": w.updated_at
-                }
-                for w in workspaces
-            ]
-        }
+        return SuccessResponse(
+            data=code_service.WorkspacesListResponse(
+                workspaces=[
+                    code_service.WorkspaceResponse(
+                        id=w.id,
+                        name=w.name,
+                        source_type=w.source_type,
+                        disk_path=w.disk_path,
+                        created_at=w.created_at,
+                        updated_at=w.updated_at
+                    )
+                    for w in workspaces
+                ]
+            )
+        )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -261,7 +263,7 @@ async def sync_workspace(
 # FILE ENDPOINTS
 # ============================================================================
 
-@router.get("/files/{file_id}", response_model=code_service.FileResponse)
+@router.get("/files/{file_id}", response_model=SuccessResponse[code_service.FileResponse])
 @require_perm("code.use")
 async def get_file(file_id: str, current_user: dict = Depends(get_current_user)):
     """Get file content"""
@@ -272,7 +274,7 @@ async def get_file(file_id: str, current_user: dict = Depends(get_current_user))
         if not file:
             raise HTTPException(status_code=404, detail="File not found")
 
-        return file
+        return SuccessResponse(data=file)
 
     except HTTPException:
         raise
@@ -280,7 +282,7 @@ async def get_file(file_id: str, current_user: dict = Depends(get_current_user))
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/files/{file_id}/diff", response_model=code_service.FileDiffResponse)
+@router.post("/files/{file_id}/diff", response_model=SuccessResponse[code_service.FileDiffResponse])
 @require_perm("code.use")
 async def get_file_diff(
     file_id: str,
@@ -300,7 +302,7 @@ async def get_file_diff(
             base_updated_at=diff_request.base_updated_at
         )
 
-        return result
+        return SuccessResponse(data=result)
 
     except HTTPException:
         raise
@@ -309,7 +311,7 @@ async def get_file_diff(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/files", response_model=code_service.FileResponse)
+@router.post("/files", response_model=SuccessResponse[code_service.FileResponse])
 @require_perm("code.edit")
 async def create_file(
     request: Request,
@@ -357,14 +359,14 @@ async def create_file(
         except Exception as audit_error:
             logger.warning(f"Audit logging failed: {audit_error}")
 
-        return result
+        return SuccessResponse(data=result)
 
     except Exception as e:
         logger.error(f"Failed to create file: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.put("/files/{file_id}", response_model=code_service.FileResponse)
+@router.put("/files/{file_id}", response_model=SuccessResponse[code_service.FileResponse])
 @require_perm("code.edit")
 async def update_file(
     request: Request,
@@ -440,7 +442,7 @@ async def update_file(
         except Exception as audit_error:
             logger.warning(f"Audit logging failed: {audit_error}")
 
-        return result
+        return SuccessResponse(data=result)
 
     except HTTPException:
         raise

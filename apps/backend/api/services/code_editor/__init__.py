@@ -18,6 +18,7 @@ from .models import (
     # Workspace models
     WorkspaceCreate,
     WorkspaceResponse,
+    WorkspacesListResponse,
     # File models
     FileCreate,
     FileUpdate,
@@ -141,6 +142,7 @@ __all__ = [
     # Models
     'WorkspaceCreate',
     'WorkspaceResponse',
+    'WorkspacesListResponse',
     'FileCreate',
     'FileUpdate',
     'FileResponse',

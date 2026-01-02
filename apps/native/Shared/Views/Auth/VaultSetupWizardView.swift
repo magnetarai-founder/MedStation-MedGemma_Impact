@@ -314,6 +314,6 @@ struct VaultSetupWizardView: View {
 
 #Preview {
     VaultSetupWizardView()
-        .environmentObject(VaultStore.shared)
+        .environment(VaultStore.shared)
         .frame(width: 1200, height: 800)
 }

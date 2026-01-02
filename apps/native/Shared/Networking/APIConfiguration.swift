@@ -104,11 +104,11 @@ final class APIConfiguration {
         // CRITICAL SECURITY: Enforce HTTPS for non-localhost URLs
         if !isLocalhost(baseURL) && baseURL.hasPrefix("http://") {
             logger.critical("SECURITY ERROR: Non-localhost URL configured with HTTP instead of HTTPS")
-            logger.critical("URL: \(baseURL)")
+            logger.critical("URL: \(self.baseURL)")
             assertionFailure("SECURITY: Non-localhost API must use HTTPS")
         }
 
-        logger.info("API Configuration initialized: \(baseURL)")
+        logger.info("API Configuration initialized: \(self.baseURL)")
     }
 
     /// Check if URL is localhost or loopback

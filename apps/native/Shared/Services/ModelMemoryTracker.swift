@@ -101,7 +101,7 @@ class ModelMemoryTracker: ObservableObject {
             // Calculate total memory of loaded models (hot slots)
             await calculateTotalMemoryUsed()
 
-            logger.info("Updated model sizes: \(modelSizes.count) models")
+            logger.info("Updated model sizes: \(self.modelSizes.count) models")
 
         } catch {
             logger.warning("Failed to refresh model sizes from Ollama: \(error)")

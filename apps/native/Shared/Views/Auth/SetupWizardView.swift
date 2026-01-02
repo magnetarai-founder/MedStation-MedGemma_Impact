@@ -204,7 +204,7 @@ struct SetupWizardView: View {
 
             if httpResponse.statusCode == 200 {
                 if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                    logger.info("Setup wizard complete: \(json["message"] ?? "Success")")
+                    logger.info("Setup wizard complete: \(json["message"] as? String ?? "Success")")
                 }
             } else {
                 logger.warning("Setup wizard: Server returned status \(httpResponse.statusCode)")
@@ -225,6 +225,6 @@ struct SetupWizardView: View {
 
 #Preview {
     SetupWizardView()
-        .environmentObject(AuthStore.shared)
+        .environment(AuthStore.shared)
         .frame(width: 1200, height: 800)
 }

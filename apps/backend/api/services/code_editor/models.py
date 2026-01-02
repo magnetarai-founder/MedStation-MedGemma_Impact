@@ -27,6 +27,11 @@ class WorkspaceResponse(BaseModel):
     updated_at: datetime
 
 
+class WorkspacesListResponse(BaseModel):
+    """Response model for workspaces list"""
+    workspaces: List[WorkspaceResponse]
+
+
 # ============================================================================
 # FILE MODELS (from code_editor_service.py)
 # ============================================================================

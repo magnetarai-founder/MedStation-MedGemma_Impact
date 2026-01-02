@@ -252,6 +252,6 @@ struct WelcomeView: View {
 
 #Preview {
     WelcomeView()
-        .environmentObject(AuthStore.shared)
+        .environment(AuthStore.shared)
         .frame(width: 1200, height: 800)
 }

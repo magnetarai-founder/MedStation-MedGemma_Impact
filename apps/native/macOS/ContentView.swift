@@ -59,7 +59,7 @@ struct ContentView: View {
                 }
             }
         }
-        .environmentObject(authStore)
+        .environment(authStore)
     }
 
     // MARK: - Biometric Auto-Login
@@ -191,7 +191,7 @@ struct MainAppView: View {
         .frame(width: 1200, height: 800)
         .environment(NavigationStore())
         .environment(ChatStore())
-        .environmentObject(DatabaseStore.shared)
+        .environment(DatabaseStore.shared)
 }
 
 #Preview("Authenticated") {
@@ -199,5 +199,5 @@ struct MainAppView: View {
         .frame(width: 1200, height: 800)
         .environment(NavigationStore())
         .environment(ChatStore())
-        .environmentObject(DatabaseStore.shared)
+        .environment(DatabaseStore.shared)
 }
