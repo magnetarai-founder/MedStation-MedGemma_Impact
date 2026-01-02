@@ -95,14 +95,14 @@ struct CodeWorkspace: View {
             // Load files for this workspace
             let codeFiles = try await codeEditorService.getWorkspaceFiles(workspaceId: workspace.id)
 
-            // Convert to FileItem
+            // Convert to FileItem (tree nodes don't have size/modifiedAt - those come from full file fetch)
             let fileItems = codeFiles.map { file in
                 FileItem(
                     name: file.name,
                     path: file.path,
                     isDirectory: file.isDirectory,
-                    size: file.size,
-                    modifiedAt: file.modifiedAt != nil ? ISO8601DateFormatter().date(from: file.modifiedAt!) : nil,
+                    size: nil,  // Not available in tree listing
+                    modifiedAt: nil,  // Not available in tree listing
                     fileId: file.id
                 )
             }
@@ -140,7 +140,7 @@ struct CodeWorkspace: View {
             do {
                 let codeFile = try await codeEditorService.getFile(fileId: fileId)
                 await MainActor.run {
-                    fileContent = codeFile.content ?? "// Empty file"
+                    fileContent = codeFile.content
                 }
             } catch {
                 print("Failed to load file content: \(error)")

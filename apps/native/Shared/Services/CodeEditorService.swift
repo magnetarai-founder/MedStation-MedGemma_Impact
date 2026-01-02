@@ -59,14 +59,14 @@ final class CodeEditorService {
         return response.files
     }
 
-    func getFile(fileId: String) async throws -> CodeFile {
+    func getFile(fileId: String) async throws -> CodeFileContent {
         try await apiClient.request(
             path: "/v1/code-editor/files/\(fileId)",
             method: .get
         )
     }
 
-    func createFile(workspaceId: String, name: String, path: String, content: String) async throws -> CodeFile {
+    func createFile(workspaceId: String, name: String, path: String, content: String) async throws -> CodeFileContent {
         try await apiClient.request(
             path: "/v1/code-editor/files",
             method: .post,
@@ -79,7 +79,7 @@ final class CodeEditorService {
         )
     }
 
-    func updateFile(fileId: String, content: String) async throws -> CodeFile {
+    func updateFile(fileId: String, content: String) async throws -> CodeFileContent {
         try await apiClient.request(
             path: "/v1/code-editor/files/\(fileId)",
             method: .put,
@@ -124,14 +124,33 @@ struct CodeEditorWorkspace: Codable, Identifiable {
     }
 }
 
+/// File tree node returned by backend for listing (matches FileTreeNode model)
 struct CodeFile: Codable, Identifiable {
+    let id: String
+    let name: String
+    let path: String
+    let isDirectory: Bool
+    let children: [CodeFile]?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case path
+        case isDirectory = "is_directory"
+        case children
+    }
+}
+
+/// Full file content returned when fetching a single file (matches FileResponse model)
+struct CodeFileContent: Codable, Identifiable {
     let id: String
     let workspaceId: String
     let name: String
     let path: String
-    let content: String?
-    let size: Int64?
-    let modifiedAt: String?
+    let content: String
+    let language: String
+    let createdAt: String
+    let updatedAt: String
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -139,12 +158,8 @@ struct CodeFile: Codable, Identifiable {
         case name
         case path
         case content
-        case size
-        case modifiedAt = "modified_at"
-    }
-
-    var isDirectory: Bool {
-        // If no content and path doesn't have an extension, it's likely a directory
-        content == nil && !path.contains(".")
+        case language
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
     }
 }
