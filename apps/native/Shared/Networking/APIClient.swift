@@ -238,6 +238,8 @@ final class ApiClient {
         let url = try buildURL(path)
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
+        // Long timeout for large uploads with server-side processing (e.g., transcription)
+        request.timeoutInterval = 600  // 10 minutes
 
         let boundary = UUID().uuidString
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
