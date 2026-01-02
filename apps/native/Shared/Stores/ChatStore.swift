@@ -45,7 +45,7 @@ final class ChatStore {
         // Load models and sessions on init with retry logic
         Task {
             await fetchModelsWithRetry()
-            await loadSessions()
+            await loadSessionsWithRetry()
         }
     }
 
@@ -104,6 +104,27 @@ final class ChatStore {
     }
 
     // MARK: - Session Management
+
+    /// Load sessions with retry logic for auth timing issues
+    private func loadSessionsWithRetry(maxRetries: Int = 5) async {
+        for attempt in 1...maxRetries {
+            await loadSessions()
+
+            // If we successfully loaded sessions (or there genuinely are none), we're done
+            // Check if sessions is non-empty OR if we didn't get an auth error
+            if !sessions.isEmpty || error == nil {
+                return
+            }
+
+            // Wait before retrying (exponential backoff: 1s, 2s, 4s, 8s, 16s)
+            if attempt < maxRetries {
+                let delay = Double(1 << (attempt - 1))  // 2^(attempt-1)
+                logger.info("Retrying session load in \(delay)s (attempt \(attempt)/\(maxRetries))")
+                try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            }
+        }
+        logger.warning("Failed to load sessions after \(maxRetries) retries")
+    }
 
     func loadSessions() async {
         do {

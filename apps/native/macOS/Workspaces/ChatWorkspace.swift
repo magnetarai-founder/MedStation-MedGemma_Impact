@@ -29,6 +29,15 @@ struct ChatWorkspace: View {
                 showTimeline: $showTimeline
             )
         }
+        .onAppear {
+            // Refresh sessions when navigating to chat workspace
+            // This handles cases where auth completes after initial load
+            if chatStore.sessions.isEmpty {
+                Task {
+                    await chatStore.loadSessions()
+                }
+            }
+        }
     }
 }
 
