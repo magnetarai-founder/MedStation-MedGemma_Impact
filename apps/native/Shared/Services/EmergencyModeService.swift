@@ -18,6 +18,7 @@
 
 import Foundation
 import AppKit
+import Observation
 import os
 
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "EmergencyModeService")
@@ -37,14 +38,15 @@ private let EMERGENCY_MODE_ENABLED = true   // Production: Always enabled
 /// Service for handling emergency panic mode (DoD wipe + self-uninstall)
 /// This is the nuclear option for persecution scenarios
 @MainActor
-final class EmergencyModeService: ObservableObject {
+@Observable
+final class EmergencyModeService {
     static let shared = EmergencyModeService()
 
-    // MARK: - Published State
+    // MARK: - Observable State
 
-    @Published private(set) var isSimulationMode: Bool = true
-    @Published private(set) var emergencyInProgress: Bool = false
-    @Published private(set) var lastEmergencyReport: EmergencyWipeReport?
+    private(set) var isSimulationMode: Bool = true
+    private(set) var emergencyInProgress: Bool = false
+    private(set) var lastEmergencyReport: EmergencyWipeReport?
 
     // MARK: - Internal State (accessible to extensions)
 

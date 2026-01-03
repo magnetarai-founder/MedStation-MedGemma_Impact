@@ -11,6 +11,9 @@
 //
 
 import Foundation
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "ModelEnrichmentService")
 
 // MARK: - Enriched Model Metadata
 
@@ -47,31 +50,31 @@ class ModelEnrichmentService {
     func enrichModel(_ model: OllamaModel) async -> EnrichedModelMetadata {
         // Check cache first
         if let cached = enrichmentCache[model.name] {
-            print("✓ Using cached enrichment for \(model.name)")
+            logger.debug("Using cached enrichment for \(model.name)")
             return cached
         }
 
         // Avoid duplicate requests
         if loadingStates[model.name] == true {
-            print("⏳ Enrichment already in progress for \(model.name)")
+            logger.debug("Enrichment already in progress for \(model.name)")
             // Wait a bit and check cache again
             try? await Task.sleep(nanoseconds: 500_000_000) // 0.5s
             return enrichmentCache[model.name] ?? fallbackEnrichment(model)
         }
 
         loadingStates[model.name] = true
-        print("🔍 Enriching model: \(model.name)")
+        logger.info("Enriching model: \(model.name)")
 
         // Try backend-powered enrichment
         if let enriched = await callBackendEnrichment(model) {
             enrichmentCache[model.name] = enriched
             loadingStates[model.name] = false
-            print("✓ Backend enrichment successful for \(model.name)")
+            logger.info("Backend enrichment successful for \(model.name)")
             return enriched
         }
 
         // Fallback to rule-based enrichment
-        print("⚠️ Using fallback enrichment for \(model.name)")
+        logger.warning("Using fallback enrichment for \(model.name)")
         let fallback = fallbackEnrichment(model)
         enrichmentCache[model.name] = fallback
         loadingStates[model.name] = false
@@ -81,13 +84,13 @@ class ModelEnrichmentService {
     /// Clear enrichment cache (useful when models are updated)
     func clearCache() {
         enrichmentCache.removeAll()
-        print("🗑️ Enrichment cache cleared")
+        logger.debug("Enrichment cache cleared")
     }
 
     /// Clear cache for specific model
     func clearCache(for modelName: String) {
         enrichmentCache.removeValue(forKey: modelName)
-        print("🗑️ Cleared cache for \(modelName)")
+        logger.debug("Cleared cache for \(modelName)")
     }
 
     // MARK: - Backend Enrichment
@@ -126,7 +129,7 @@ class ModelEnrichmentService {
             )
 
         } catch {
-            print("⚠️ Backend enrichment failed: \(error)")
+            logger.warning("Backend enrichment failed: \(error)")
             return nil
         }
     }

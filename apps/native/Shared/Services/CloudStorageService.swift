@@ -7,7 +7,7 @@
 //
 
 import Foundation
-import Combine
+import Observation
 import CryptoKit
 
 // MARK: - Models
@@ -111,15 +111,16 @@ enum CloudStorageError: Error, LocalizedError {
 
 // MARK: - CloudStorageService
 
-final class CloudStorageService: ObservableObject {
+@Observable
+final class CloudStorageService {
     static let shared = CloudStorageService()
 
     private let baseURL: String
     private let chunkSize = 4 * 1024 * 1024 // 4 MB chunks
 
     // Active uploads tracking
-    @Published private(set) var activeUploads: [String: UploadProgress] = [:]
-    @Published private(set) var files: [CloudFile] = []
+    private(set) var activeUploads: [String: UploadProgress] = [:]
+    private(set) var files: [CloudFile] = []
 
     private init() {
         self.baseURL = APIConfiguration.shared.cloudStorageURL

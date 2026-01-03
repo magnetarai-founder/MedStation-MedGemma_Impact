@@ -9,6 +9,7 @@ import SwiftUI
 import AppKit
 import ServiceManagement
 import UserNotifications
+import Observation
 
 struct SettingsView: View {
     // Default from centralized config - user can override in settings
@@ -58,10 +59,13 @@ struct SettingsView: View {
 // MARK: - Settings Manager
 
 @MainActor
-final class SettingsManager: ObservableObject {
+@Observable
+final class SettingsManager {
     static let shared = SettingsManager()
 
     // MARK: - Launch at Login
+    // Note: @AppStorage requires @ObservationIgnored with @Observable
+    @ObservationIgnored
     @AppStorage("launchAtLogin") var launchAtLogin: Bool = false {
         didSet {
             if launchAtLogin != oldValue {
@@ -71,9 +75,10 @@ final class SettingsManager: ObservableObject {
             }
         }
     }
-    @Published var launchAtLoginStatus: SimpleStatus = .idle
+    var launchAtLoginStatus: SimpleStatus = .idle
 
     // MARK: - Menu Bar
+    @ObservationIgnored
     @AppStorage("showMenuBar") var showMenuBar: Bool = false {
         didSet {
             if showMenuBar != oldValue {
@@ -81,9 +86,10 @@ final class SettingsManager: ObservableObject {
             }
         }
     }
-    @Published var menuBarStatus: SimpleStatus = .idle
+    var menuBarStatus: SimpleStatus = .idle
 
     // MARK: - Notifications
+    @ObservationIgnored
     @AppStorage("notificationsEnabled") var notificationsEnabled: Bool = false {
         didSet {
             if notificationsEnabled != oldValue {
@@ -93,7 +99,7 @@ final class SettingsManager: ObservableObject {
             }
         }
     }
-    @Published var notificationsStatus: SimpleStatus = .idle
+    var notificationsStatus: SimpleStatus = .idle
 
     private init() {}
 

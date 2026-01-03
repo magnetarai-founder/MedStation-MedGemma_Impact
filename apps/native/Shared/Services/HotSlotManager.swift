@@ -108,19 +108,20 @@ struct RemoveSlotResponse: Codable {
 
 /// Service for managing hot slot assignments
 @MainActor
-class HotSlotManager: ObservableObject {
+@Observable
+class HotSlotManager {
     static let shared = HotSlotManager()
 
-    @Published var hotSlots: [HotSlot] = []
-    @Published var pinnedSlots: Set<Int> = []  // Which slots are pinned
-    @Published var isLoading: Bool = false
-    @Published var errorMessage: String?
+    var hotSlots: [HotSlot] = []
+    var pinnedSlots: Set<Int> = []  // Which slots are pinned
+    var isLoading: Bool = false
+    var errorMessage: String?
 
     private let apiClient = ApiClient.shared
 
     // User preferences (synced with UserDefaults)
-    @Published var immutableModels: Bool = false  // Require confirmation to unpin
-    @Published var askBeforeUnpinning: Bool = true
+    var immutableModels: Bool = false  // Require confirmation to unpin
+    var askBeforeUnpinning: Bool = true
 
     private init() {
         loadPreferences()

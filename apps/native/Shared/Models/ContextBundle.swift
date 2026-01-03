@@ -9,6 +9,9 @@
 //
 
 import Foundation
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "ContextBundle")
 
 // MARK: - Ollama API Types (for model discovery)
 
@@ -630,7 +633,7 @@ class ContextBundler {
 
             return ragDocs.isEmpty ? nil : ragDocs
         } catch {
-            print("⚠️ Failed to fetch RAG documents: \(error)")
+            logger.warning("Failed to fetch RAG documents: \(error)")
             return nil
         }
     }
@@ -693,7 +696,7 @@ class ContextBundler {
 
             return results.isEmpty ? nil : results
         } catch {
-            print("⚠️ Failed to fetch vector search results: \(error)")
+            logger.warning("Failed to fetch vector search results: \(error)")
             return nil
         }
     }
@@ -728,7 +731,7 @@ class ContextBundler {
                 ))
             }
         } catch {
-            print("⚠️ Failed to fetch models from Ollama: \(error)")
+            logger.warning("Failed to fetch models from Ollama: \(error)")
             // Fall back to loaded models only
             return systemResources.activeModels.map { modelFromLoaded($0) }
         }
@@ -819,7 +822,7 @@ class ContextBundler {
 
             return files.isEmpty ? nil : files
         } catch {
-            print("⚠️ Failed to fetch relevant vault files: \(error)")
+            logger.warning("Failed to fetch relevant vault files: \(error)")
             return nil
         }
     }
@@ -869,7 +872,7 @@ class ContextBundler {
 
             return workflows.isEmpty ? nil : workflows
         } catch {
-            print("⚠️ Failed to fetch relevant workflows: \(error)")
+            logger.warning("Failed to fetch relevant workflows: \(error)")
             return nil
         }
     }

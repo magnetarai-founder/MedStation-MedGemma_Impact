@@ -6,6 +6,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "GlassButton")
 
 struct GlassButton: View {
     let title: String
@@ -117,19 +120,19 @@ struct GlassButton: View {
 
         VStack(spacing: 20) {
             GlassButton("Sign In", icon: "person.fill", style: .primary) {
-                print("Sign in tapped")
+                logger.debug("Sign in tapped")
             }
 
             GlassButton("Cancel", style: .secondary) {
-                print("Cancel tapped")
+                logger.debug("Cancel tapped")
             }
 
             GlassButton("Delete", icon: "trash", style: .destructive) {
-                print("Delete tapped")
+                logger.debug("Delete tapped")
             }
 
             GlassButton("Learn More", style: .ghost) {
-                print("Learn more tapped")
+                logger.debug("Learn more tapped")
             }
         }
         .padding()

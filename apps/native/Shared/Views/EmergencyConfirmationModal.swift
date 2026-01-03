@@ -7,6 +7,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "EmergencyConfirmationModal")
 
 struct EmergencyConfirmationModal: View {
     @Environment(\.dismiss) private var dismiss
@@ -281,7 +284,7 @@ struct EmergencyConfirmationModal: View {
         // Show "last chance" countdown (3 seconds)
         Task { @MainActor in
             for i in (1...3).reversed() {
-                print("⚠️ Emergency wipe starting in \(i)...")
+                logger.warning("Emergency wipe starting in \(i)...")
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
             }
 
@@ -306,7 +309,7 @@ struct EmergencyConfirmationModal: View {
             handleKeyEvent(event)
             return event
         }
-        print("⌨️ Key monitoring started for Cmd+Shift+Delete combo")
+        logger.info("Key monitoring started for Cmd+Shift+Delete combo")
     }
 
     private func handleKeyEvent(_ event: NSEvent) {
@@ -360,7 +363,7 @@ struct EmergencyConfirmationModal: View {
             }
         }
 
-        print("⏱️ Hold timer started - hold for \(requiredHoldDuration) seconds")
+        logger.info("Hold timer started - hold for \(requiredHoldDuration) seconds")
     }
 
     private func cancelHoldTimer() {
@@ -373,11 +376,11 @@ struct EmergencyConfirmationModal: View {
             keyHoldProgress = 0.0
         }
 
-        print("❌ Hold timer cancelled")
+        logger.debug("Hold timer cancelled")
     }
 
     private func triggerEmergencyViaKeyCombo() {
-        print("🔥 Key combo trigger activated!")
+        logger.warning("Key combo trigger activated!")
         // Skip first confirmation, go straight to second (user already held for 5 seconds)
         showSecondConfirmation = true
         // Auto-execute after a brief moment for visibility
@@ -405,7 +408,7 @@ struct EmergencyConfirmationModal: View {
         holdProgressTimer = nil
         isHoldingKeyCombo = false
 
-        print("⌨️ Key monitoring stopped")
+        logger.info("Key monitoring stopped")
     }
 }
 
@@ -413,6 +416,6 @@ struct EmergencyConfirmationModal: View {
 
 #Preview {
     EmergencyConfirmationModal(onConfirm: { method in
-        print("Emergency mode confirmed via: \(method.rawValue)")
+        logger.warning("Emergency mode confirmed via: \(method.rawValue)")
     })
 }

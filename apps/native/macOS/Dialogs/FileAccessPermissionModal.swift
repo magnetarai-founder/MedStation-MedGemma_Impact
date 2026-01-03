@@ -10,6 +10,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "FileAccessPermissionModal")
 
 struct FileAccessPermissionModal: View {
     let request: FileAccessRequest
@@ -273,13 +276,13 @@ private struct InfoRow: View {
     return FileAccessPermissionModal(
         request: mockRequest,
         onGrant: { scope in
-            print("Granted: \(scope)")
+            logger.debug("Granted: \(scope)")
         },
         onDeny: {
-            print("Denied")
+            logger.debug("Denied")
         },
         onCancel: {
-            print("Cancelled")
+            logger.debug("Cancelled")
         }
     )
     .frame(width: 550, height: 700)

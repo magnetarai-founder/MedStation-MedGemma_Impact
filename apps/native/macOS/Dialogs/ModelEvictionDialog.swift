@@ -9,6 +9,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "ModelEvictionDialog")
 
 struct ModelEvictionDialog: View {
     let modelToLoad: String
@@ -248,9 +251,9 @@ struct EvictionSlotCard: View {
     return ModelEvictionDialog(
         modelToLoad: "llama3.3:70b",
         hotSlots: mockSlots,
-        onAutoReplace: { print("Auto replace") },
-        onManualSelect: { slot in print("Replace slot \(slot)") },
-        onCancel: { print("Cancel") }
+        onAutoReplace: { logger.debug("Auto replace") },
+        onManualSelect: { slot in logger.debug("Replace slot \(slot)") },
+        onCancel: { logger.debug("Cancel") }
     )
     .frame(width: 500, height: 600)
 }

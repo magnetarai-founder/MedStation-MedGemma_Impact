@@ -11,6 +11,7 @@
 
 import Foundation
 import LocalAuthentication
+import Observation
 import os
 
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "VaultPermissionManager")
@@ -72,13 +73,14 @@ enum PermissionResponse {
 /// CRITICAL: Manages file permissions for vault files
 /// SECURITY: Models see metadata ONLY. File contents require explicit permission.
 @MainActor
-class VaultPermissionManager: ObservableObject {
+@Observable
+class VaultPermissionManager {
     static let shared = VaultPermissionManager()
 
-    @Published var activePermissions: [VaultFilePermission] = []
-    @Published var auditLog: [FileAccessAudit] = []
-    @Published var showPermissionModal: Bool = false
-    @Published var pendingRequest: FileAccessRequest? = nil
+    var activePermissions: [VaultFilePermission] = []
+    var auditLog: [FileAccessAudit] = []
+    var showPermissionModal: Bool = false
+    var pendingRequest: FileAccessRequest? = nil
 
     // Authentication
     private let context = LAContext()

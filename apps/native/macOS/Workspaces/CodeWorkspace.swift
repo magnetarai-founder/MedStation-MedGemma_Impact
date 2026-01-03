@@ -7,6 +7,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "CodeWorkspace")
 
 struct CodeWorkspace: View {
     @State private var selectedFile: FileItem? = nil
@@ -112,7 +115,7 @@ struct CodeWorkspace: View {
                 isLoadingFiles = false
             }
         } catch {
-            print("Failed to load files: \(error)")
+            logger.error("Failed to load files: \(error)")
             await MainActor.run {
                 // Show empty state if backend unavailable
                 files = []
@@ -143,7 +146,7 @@ struct CodeWorkspace: View {
                     fileContent = codeFile.content
                 }
             } catch {
-                print("Failed to load file content: \(error)")
+                logger.error("Failed to load file content: \(error)")
                 await MainActor.run {
                     fileContent = "// Failed to load file content\n// Error: \(error.localizedDescription)"
                 }
@@ -169,10 +172,10 @@ struct CodeWorkspace: View {
 
             await MainActor.run {
                 errorMessage = nil
-                print("✓ Terminal spawned: \(response.terminalApp) - \(response.message)")
+                logger.info("Terminal spawned: \(response.terminalApp) - \(response.message)")
             }
         } catch {
-            print("Failed to spawn terminal: \(error)")
+            logger.error("Failed to spawn terminal: \(error)")
             await MainActor.run {
                 errorMessage = "Failed to spawn terminal: \(error.localizedDescription)"
             }

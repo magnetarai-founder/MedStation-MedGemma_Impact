@@ -8,19 +8,21 @@
 
 import Foundation
 import AppKit
+import Observation
 import os
 
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "SecurityManager")
 
 /// Centralized security manager (singleton)
-public final class SecurityManager: ObservableObject {
+@Observable
+public final class SecurityManager {
     public static let shared = SecurityManager()
 
-    // MARK: - Published State
+    // MARK: - Observable State
 
-    @Published public private(set) var networkFirewallEnabled: Bool = false
-    @Published public private(set) var panicModeActive: Bool = false
-    @Published public private(set) var securityEvents: [SecurityEvent] = []
+    public private(set) var networkFirewallEnabled: Bool = false
+    public private(set) var panicModeActive: Bool = false
+    public private(set) var securityEvents: [SecurityEvent] = []
 
     // MARK: - Private State
 

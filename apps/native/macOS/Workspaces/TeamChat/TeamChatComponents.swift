@@ -7,6 +7,9 @@
 
 import SwiftUI
 import Foundation
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "TeamChatComponents")
 
 // MARK: - TeamChat Main View
 
@@ -71,7 +74,7 @@ struct TeamChatView: View {
             p2pStatus = p2pNetworkStatus?.isConnected == true ? .connected : .disconnected
         } catch {
             p2pStatus = .disconnected
-            print("Failed to load P2P status: \(error.localizedDescription)")
+            logger.error("Failed to load P2P status: \(error.localizedDescription)")
         }
     }
 
@@ -160,7 +163,7 @@ struct TeamChatSidebar: View {
             directMessages = allChannels.filter { $0.type == "direct" }
         } catch {
             // P2P should be initialized on startup, so log real errors
-            print("❌ Error loading channels: \(error.localizedDescription)")
+            logger.error("Error loading channels: \(error.localizedDescription)")
             // Keep default channels on error
         }
     }
@@ -313,7 +316,7 @@ struct TeamChatWindow: View {
                 }
             } catch {
                 // P2P should be initialized on startup, so log real errors
-                print("❌ Error loading messages: \(error.localizedDescription)")
+                logger.error("Error loading messages: \(error.localizedDescription)")
                 await MainActor.run {
                     messages = []
                     isLoadingMessages = false
@@ -343,7 +346,7 @@ struct TeamChatWindow: View {
                     errorMessage = nil
                 }
             } catch {
-                print("Failed to send message: \(error.localizedDescription)")
+                logger.error("Failed to send message: \(error.localizedDescription)")
                 await MainActor.run {
                     errorMessage = "Failed to send message: \(error.localizedDescription)"
                 }

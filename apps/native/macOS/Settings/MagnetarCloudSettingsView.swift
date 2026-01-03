@@ -7,11 +7,12 @@
 
 import SwiftUI
 import AppKit
+import Observation
 
 // MARK: - MagnetarCloud Settings
 
 struct MagnetarCloudSettingsView: View {
-    @StateObject private var authManager = CloudAuthManager.shared
+    @State private var authManager = CloudAuthManager.shared
     @State private var syncEnabled: Bool = true
     private let subscriptionURL = URL(string: "https://billing.magnetar.studio")
 
@@ -135,13 +136,14 @@ struct MagnetarCloudSettingsView: View {
 
 /// Manages MagnetarCloud authentication, token storage, and profile
 @MainActor
-final class CloudAuthManager: ObservableObject {
+@Observable
+final class CloudAuthManager {
     static let shared = CloudAuthManager()
 
-    @Published var isAuthenticated: Bool = false
-    @Published var cloudEmail: String = ""
-    @Published var cloudPlan: String = "Free"
-    @Published var authStatus: SimpleStatus = .idle
+    var isAuthenticated: Bool = false
+    var cloudEmail: String = ""
+    var cloudPlan: String = "Free"
+    var authStatus: SimpleStatus = .idle
 
     private let authBaseURL = "https://auth.magnetar.studio"
     private let redirectURI = "magnetarstudio://auth/callback"

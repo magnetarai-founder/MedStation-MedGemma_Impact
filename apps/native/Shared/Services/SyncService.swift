@@ -7,7 +7,7 @@
 //
 
 import Foundation
-import Combine
+import Observation
 import os
 
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "SyncService")
@@ -111,20 +111,21 @@ enum SyncError: Error, LocalizedError {
 
 // MARK: - SyncService
 
-final class SyncService: ObservableObject {
+@Observable
+final class SyncService {
     static let shared = SyncService()
 
     private let baseURL: String
     private var syncTimer: Timer?
     private let syncQueue = DispatchQueue(label: "com.magnetar.sync", qos: .utility)
 
-    // Published state for UI binding
-    @Published private(set) var isConnected = false
-    @Published private(set) var lastSyncAt: Date?
-    @Published private(set) var pendingChanges = 0
-    @Published private(set) var activeConflicts = 0
-    @Published private(set) var isSyncing = false
-    @Published private(set) var lastError: SyncError?
+    // Observable state for UI binding
+    private(set) var isConnected = false
+    private(set) var lastSyncAt: Date?
+    private(set) var pendingChanges = 0
+    private(set) var activeConflicts = 0
+    private(set) var isSyncing = false
+    private(set) var lastError: SyncError?
 
     // Offline queue persisted to disk
     private var offlineQueue: [PendingSyncOperation] = []

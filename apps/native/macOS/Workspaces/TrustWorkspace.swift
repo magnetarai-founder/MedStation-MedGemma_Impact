@@ -9,6 +9,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "TrustWorkspace")
 
 // MARK: - Trust View Enum
 
@@ -72,7 +75,7 @@ struct TrustWorkspace: View {
             if let node = selectedNode {
                 SafetyNumberVerificationModal(node: node, onVerified: {
                     // Verification successful
-                    print("✅ Verified safety number for \(node.publicName)")
+                    logger.info("Verified safety number for \(node.publicName)")
                 })
             }
         }
@@ -104,10 +107,10 @@ struct TrustWorkspace: View {
                 // User needs to register - this is expected for new users
                 needsRegistration = true
                 errorMessage = nil
-                print("ℹ️ User not registered in trust network yet")
+                logger.info("User not registered in trust network yet")
             } else {
                 errorMessage = "Failed to load trust network: \(error.localizedDescription)"
-                print("❌ \(errorMessage ?? "")")
+                logger.error("\(errorMessage ?? "")")
             }
         } catch {
             errorMessage = "Failed to load trust network: \(error.localizedDescription)"
@@ -120,7 +123,7 @@ struct TrustWorkspace: View {
             let response = try await TrustService.shared.listNodes()
             nodes = response.nodes
         } catch {
-            print("❌ Failed to load nodes: \(error.localizedDescription)")
+            logger.error("Failed to load nodes: \(error.localizedDescription)")
         }
     }
 

@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import Observation
 import os
 
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "ModelMemoryTracker")
@@ -51,12 +52,13 @@ struct OllamaModelDetailsMemory: Codable {
 // MARK: - Memory Tracker
 
 @MainActor
-class ModelMemoryTracker: ObservableObject {
+@Observable
+class ModelMemoryTracker {
     static let shared = ModelMemoryTracker()
 
-    @Published private(set) var modelSizes: [String: Double] = [:]  // modelId -> GB
-    @Published private(set) var totalMemoryUsed: Double = 0.0  // Total GB of loaded models
-    @Published private(set) var lastUpdated: Date?
+    private(set) var modelSizes: [String: Double] = [:]  // modelId -> GB
+    private(set) var totalMemoryUsed: Double = 0.0  // Total GB of loaded models
+    private(set) var lastUpdated: Date?
 
     private var ollamaBaseURL: String { APIConfiguration.shared.ollamaURL }
     private var updateTask: Task<Void, Never>?

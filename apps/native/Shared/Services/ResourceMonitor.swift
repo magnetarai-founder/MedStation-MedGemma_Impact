@@ -9,7 +9,7 @@
 //
 
 import Foundation
-import Combine
+import Observation
 import os
 
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "ResourceMonitor")
@@ -18,12 +18,13 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "Resourc
 
 /// Monitors system resources in real-time
 @MainActor
-class ResourceMonitor: ObservableObject {
+@Observable
+class ResourceMonitor {
     static let shared = ResourceMonitor()
 
-    @Published var currentState: SystemResourceState?
-    @Published var memoryWarning: Bool = false
-    @Published var thermalWarning: Bool = false
+    var currentState: SystemResourceState?
+    var memoryWarning: Bool = false
+    var thermalWarning: Bool = false
 
     private var timer: Timer?
     private let updateInterval: TimeInterval = 5.0  // Update every 5 seconds
