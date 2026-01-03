@@ -16,7 +16,7 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "SmartMo
 struct SmartModelPicker: View {
     @Binding var selectedMode: String  // "intelligent" or specific model
     @Binding var selectedModelId: String?
-    @StateObject private var hotSlotManager = HotSlotManager.shared
+    @State private var hotSlotManager = HotSlotManager.shared
     @State private var availableModels: [String] = []
     @State private var isExpanded = false
 

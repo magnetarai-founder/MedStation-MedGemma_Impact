@@ -9,7 +9,7 @@
 import SwiftUI
 
 struct VaultAdminHeader: View {
-    @ObservedObject var permissionManager: VaultPermissionManager
+    var permissionManager: VaultPermissionManager
     @Binding var showRevokeAllConfirmation: Bool
 
     var body: some View {

@@ -13,8 +13,8 @@ import os
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "ModelManagerWindow")
 
 struct ModelManagerWindow: View {
-    @StateObject private var hotSlotManager = HotSlotManager.shared
-    @StateObject private var memoryTracker = ModelMemoryTracker.shared
+    @State private var hotSlotManager = HotSlotManager.shared
+    @State private var memoryTracker = ModelMemoryTracker.shared
     @State private var availableModels: [ModelWithTags] = []
     @State private var isLoading = false
     @State private var searchText = ""

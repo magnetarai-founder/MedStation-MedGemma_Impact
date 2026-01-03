@@ -9,7 +9,7 @@
 import SwiftUI
 
 struct VaultResourcesTab: View {
-    @ObservedObject var hotSlotManager: HotSlotManager
+    var hotSlotManager: HotSlotManager
     private let capabilityService = SystemCapabilityService.shared
 
     var body: some View {

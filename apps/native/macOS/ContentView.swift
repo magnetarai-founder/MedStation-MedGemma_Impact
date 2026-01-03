@@ -113,7 +113,7 @@ struct ContentView: View {
 struct MainAppView: View {
     @Environment(NavigationStore.self) private var navigationStore
     @Environment(ChatStore.self) private var chatStore
-    @StateObject private var permissionManager = VaultPermissionManager.shared
+    @State private var permissionManager = VaultPermissionManager.shared
 
     var body: some View {
         ZStack {

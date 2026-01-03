@@ -9,7 +9,7 @@
 import SwiftUI
 
 struct VaultAuditLogTab: View {
-    @ObservedObject var permissionManager: VaultPermissionManager
+    var permissionManager: VaultPermissionManager
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {

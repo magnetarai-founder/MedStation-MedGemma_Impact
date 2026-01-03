@@ -19,7 +19,7 @@ struct ModelSelectorMenu: View {
     let availableModels: [String]
     let onRefresh: () async -> Void
 
-    @StateObject private var hotSlotManager = HotSlotManager.shared
+    @State private var hotSlotManager = HotSlotManager.shared
     @State private var showPinConfirmation: Bool = false
     @State private var modelToPinToggle: String? = nil
 

@@ -13,8 +13,8 @@
 import SwiftUI
 
 struct VaultAdminPanel: View {
-    @StateObject private var permissionManager = VaultPermissionManager.shared
-    @StateObject private var hotSlotManager = HotSlotManager.shared
+    @State private var permissionManager = VaultPermissionManager.shared
+    @State private var hotSlotManager = HotSlotManager.shared
 
     @State private var selectedTab: AdminTab = .permissions
     @State private var showRevokeAllConfirmation: Bool = false

@@ -19,7 +19,7 @@ struct SecuritySettingsView: View {
 
     private let biometricService = BiometricAuthService.shared
     private let keychainService = KeychainService.shared
-    @ObservedObject private var securityManager = SecurityManager.shared
+    @State private var securityManager = SecurityManager.shared
 
     var body: some View {
         Form {
