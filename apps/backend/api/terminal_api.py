@@ -13,6 +13,7 @@ import os
 import subprocess
 
 from api.routes.schemas.responses import SuccessResponse
+from api.auth_middleware import extract_websocket_token
 
 logger = logging.getLogger(__name__)
 
@@ -529,7 +530,11 @@ async def terminal_websocket(websocket: WebSocket, terminal_id: str, token: Opti
     Args:
         websocket: WebSocket connection
         terminal_id: Terminal session ID
-        token: JWT token for authentication (query param)
+        token: JWT token for authentication (query param or Sec-WebSocket-Protocol header)
+
+    Authentication:
+        - Preferred: Sec-WebSocket-Protocol header with "jwt-<token>" or "bearer.<token>"
+        - Fallback: Query param ?token=xxx (deprecated)
 
     Protocol:
         Client -> Server: {"type": "input", "data": "command\n"}
@@ -562,8 +567,11 @@ async def terminal_websocket(websocket: WebSocket, terminal_id: str, token: Opti
         _ws_connections_by_ip[client_ip] += 1
         _total_ws_connections += 1
 
+    # SECURITY: Extract token from header (preferred) or query param (deprecated fallback)
+    auth_token = extract_websocket_token(websocket, token)
+
     # Authenticate before accepting connection
-    if not token:
+    if not auth_token:
         # Decrement counters on early exit
         async with _ws_connection_lock:
             _ws_connections_by_ip[client_ip] -= 1
@@ -576,7 +584,7 @@ async def terminal_websocket(websocket: WebSocket, terminal_id: str, token: Opti
     except ImportError:
         from .auth_middleware import auth_service
 
-    user_payload = auth_service.verify_token(token)
+    user_payload = auth_service.verify_token(auth_token)
     if not user_payload:
         # Decrement counters on auth failure
         async with _ws_connection_lock:

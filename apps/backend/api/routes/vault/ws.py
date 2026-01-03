@@ -13,11 +13,7 @@ from typing import Optional, Dict, Any
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Depends, status
 
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
-
-try:
-    from api.auth_middleware import get_current_user
-except ImportError:
-    from api.auth_middleware import get_current_user
+from api.auth_middleware import get_current_user, extract_websocket_token
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +35,7 @@ async def websocket_endpoint(
     websocket: WebSocket,
     user_id: str,
     vault_type: str = "real",
-    token: str = None  # Auth token from query param
+    token: str = None  # Auth token from query param (deprecated)
 ):
     """
     WebSocket endpoint for real-time vault updates
@@ -49,10 +45,17 @@ async def websocket_endpoint(
     - User presence tracking
     - Activity broadcasting
 
+    Authentication:
+        - Preferred: Sec-WebSocket-Protocol header with "jwt-<token>" or "bearer.<token>"
+        - Fallback: Query param ?token=xxx (deprecated)
+
     Security: Requires valid JWT token for authentication
     """
+    # SECURITY: Extract token from header (preferred) or query param (deprecated fallback)
+    auth_token = extract_websocket_token(websocket, token)
+
     # Verify authentication before accepting connection
-    if not token:
+    if not auth_token:
         await websocket.close(code=1008, reason="Missing authentication token")
         return
 
@@ -60,7 +63,7 @@ async def websocket_endpoint(
         # Verify JWT token
         import jwt
         from api.auth_middleware import JWT_SECRET, JWT_ALGORITHM
-        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        payload = jwt.decode(auth_token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         authenticated_user_id = payload.get("user_id")
 
         # Verify user_id matches token

@@ -442,11 +442,11 @@ def apply_patch_secure(patch_file: Path, patch_level: int, dry_run: bool = True)
 - [x] 2.5 Add path containment check (HIGH) - Path.resolve() + startswith check in download.py
 - [x] 2.6 🆕 Use constant-time password comparison - hmac.compare_digest() in auth_middleware.py
 
-#### Tier 3: Moderate Fixes (30-60 min each) ✅ COMPLETE (except 3.4)
+#### Tier 3: Moderate Fixes (30-60 min each) ✅ COMPLETE
 - [x] 3.1 Add SQLite keywords to NLQ validation - Added ATTACH, DETACH, PRAGMA, VACUUM, REINDEX
 - [x] 3.2 Add SQL validation to execute_sql (HIGH) - Added keyword blocklist + auto LIMIT
 - [x] 3.3 Complete shell validation - Added stat.S_ISREG, os.access(X_OK), null byte check
-- [ ] 3.4 🆕 Move WebSocket JWT to headers - **Deferred: requires Swift client changes**
+- [x] 3.4 🆕 Move WebSocket JWT to headers - Added `extract_websocket_token()` helper, updated all 4 WS endpoints
 
 #### Tier 4: Complex Fixes (1-2 hours each) ✅ COMPLETE (except 4.1)
 - [ ] 4.1 Add file locking for chunked uploads (HIGH) - **Deferred: only matters with concurrent uploads**
@@ -517,5 +517,5 @@ apps/backend/external/aider/aider/commands.py:389,405 - shell=True
 ---
 
 **Created:** 2025-12-27
-**Last Updated:** 2025-12-28 (Code Quality Review Added)
-**Status:** 17/19 items FIXED, 2 deferred (require client changes or low priority)
+**Last Updated:** 2026-01-03 (WebSocket JWT Header Fix)
+**Status:** 18/19 items FIXED, 1 deferred (file locking - low priority for pre-release)

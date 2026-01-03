@@ -29,6 +29,7 @@ from api.rate_limiter import rate_limiter
 from api.utils import sanitize_for_log
 from api.services.collab_acl import user_can_access_doc
 from api.services.collab_state import set_snapshot_applier
+from api.auth_middleware import extract_websocket_token
 
 logger = logging.getLogger(__name__)
 
@@ -355,22 +356,16 @@ async def collab_websocket(
 
     Rate limiting: 10 connections per IP per minute
     """
-    # Extract token from Sec-WebSocket-Protocol if not in query
-    if not token:
-        protocols = websocket.headers.get("sec-websocket-protocol", "")
-        for protocol in protocols.split(","):
-            protocol = protocol.strip()
-            if protocol.startswith("jwt-"):
-                token = protocol[4:]  # Remove "jwt-" prefix
-                break
+    # SECURITY: Extract token from header (preferred) or query param (deprecated fallback)
+    auth_token = extract_websocket_token(websocket, token)
 
     # Verify authentication
-    if not token:
+    if not auth_token:
         await websocket.close(code=1008, reason="Missing authentication token")
         logger.warning("WebSocket rejected: no token")
         return
 
-    payload = verify_jwt_token(token)
+    payload = verify_jwt_token(auth_token)
     if not payload:
         await websocket.close(code=1008, reason="Invalid or expired token")
         logger.warning("WebSocket rejected: invalid token")

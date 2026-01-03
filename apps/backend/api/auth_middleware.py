@@ -643,3 +643,57 @@ async def get_current_user_optional(request: Request) -> Optional[Dict]:
     payload = auth_service.verify_token(token)
 
     return payload if payload else {"user_id": "anonymous", "username": "anonymous"}
+
+
+# ===== WebSocket Authentication Helpers =====
+
+def extract_websocket_token(websocket, query_token: Optional[str] = None) -> Optional[str]:
+    """
+    Extract JWT token from WebSocket request.
+
+    SECURITY: Prefers Sec-WebSocket-Protocol header over query param to avoid
+    token leakage in server logs and browser history.
+
+    Protocol format: "jwt-<token>" or "bearer.<token>"
+
+    Args:
+        websocket: FastAPI WebSocket instance
+        query_token: Token from query parameter (fallback, deprecated)
+
+    Returns:
+        JWT token string or None
+    """
+    # 1. Prefer Sec-WebSocket-Protocol header (secure)
+    protocols = websocket.headers.get("sec-websocket-protocol", "")
+    for protocol in protocols.split(","):
+        protocol = protocol.strip()
+        # Support both "jwt-<token>" and "bearer.<token>" formats
+        if protocol.startswith("jwt-"):
+            return protocol[4:]  # Remove "jwt-" prefix
+        if protocol.startswith("bearer."):
+            return protocol[7:]  # Remove "bearer." prefix
+
+    # 2. Fallback to query param (deprecated but supported for backwards compat)
+    if query_token:
+        logger.debug("WebSocket auth via query param (deprecated - use Sec-WebSocket-Protocol header)")
+        return query_token
+
+    return None
+
+
+async def verify_websocket_auth(websocket, query_token: Optional[str] = None) -> Optional[Dict]:
+    """
+    Verify WebSocket authentication and return user payload.
+
+    Args:
+        websocket: FastAPI WebSocket instance
+        query_token: Token from query parameter (fallback)
+
+    Returns:
+        User payload dict if authenticated, None otherwise
+    """
+    token = extract_websocket_token(websocket, query_token)
+    if not token:
+        return None
+
+    return auth_service.verify_token(token)

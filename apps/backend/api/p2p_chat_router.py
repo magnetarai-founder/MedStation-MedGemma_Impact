@@ -21,8 +21,8 @@ from api.p2p_chat_service import get_p2p_chat_service, init_p2p_chat_service
 
 logger = logging.getLogger(__name__)
 
-from fastapi import Depends
-from api.auth_middleware import get_current_user
+from fastapi import Depends, Query
+from api.auth_middleware import get_current_user, extract_websocket_token, auth_service
 
 # Storage for invitations and read receipts (in-memory, replace with DB in production)
 _channel_invitations: Dict[str, List[Dict]] = {}  # {channel_id: [{peer_id, invited_by, invited_at, status}]}
@@ -553,15 +553,40 @@ async def get_channel_receipts(
 # ===== WebSocket for Real-time Updates =====
 
 @router.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket) -> None:
+async def websocket_endpoint(
+    websocket: WebSocket,
+    token: Optional[str] = Query(None)
+) -> None:
     """
     WebSocket connection for real-time chat updates
     Sends events for new messages, peer status changes, etc.
+
+    Authentication:
+        - Preferred: Sec-WebSocket-Protocol header with "jwt-<token>" or "bearer.<token>"
+        - Fallback: Query param ?token=xxx (deprecated)
+
+    Security: Requires valid JWT token for authentication
     """
+    # SECURITY: Extract token from header (preferred) or query param (deprecated fallback)
+    auth_token = extract_websocket_token(websocket, token)
+
+    if not auth_token:
+        await websocket.close(code=1008, reason="Missing authentication token")
+        logger.warning("P2P WebSocket rejected: no token")
+        return
+
+    user_payload = auth_service.verify_token(auth_token)
+    if not user_payload:
+        await websocket.close(code=1008, reason="Invalid or expired token")
+        logger.warning("P2P WebSocket rejected: invalid token")
+        return
+
+    user_id = user_payload.get("user_id")
+
     await websocket.accept()
     active_connections.append(websocket)
 
-    logger.info(f"WebSocket connected. Total connections: {len(active_connections)}")
+    logger.info(f"WebSocket connected for user {user_id}. Total connections: {len(active_connections)}")
 
     try:
         # Keep connection alive and listen for pings
