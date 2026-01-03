@@ -9,6 +9,9 @@ import SwiftUI
 import Darwin
 import Foundation
 import SystemConfiguration
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "ControlCenterSheet")
 
 struct ControlCenterSheet: View {
     @Environment(\.dismiss) private var dismiss
@@ -108,7 +111,7 @@ struct ControlCenterSheet: View {
                     terminalCount = response.count
                 }
             } catch {
-                print("Failed to load terminal count: \(error.localizedDescription)")
+                logger.debug("Failed to load terminal count: \(error.localizedDescription)")
                 // Keep the current count (defaults to 0)
             }
         }

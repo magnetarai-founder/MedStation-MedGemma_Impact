@@ -1,4 +1,7 @@
 import Foundation
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "SettingsModels")
 
 // MARK: - Saved Query
 
@@ -50,7 +53,7 @@ struct SavedQuery: Codable, Identifiable {
             tags = nil
         }
 
-        print("DEBUG: Decoded SavedQuery - id: \(id), name: \(name), queryType: \(queryType ?? "nil")")
+        logger.debug("Decoded SavedQuery - id: \(id), name: \(name), queryType: \(queryType ?? "nil")")
     }
 }
 

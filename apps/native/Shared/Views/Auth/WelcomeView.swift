@@ -7,6 +7,9 @@
 
 import SwiftUI
 import LocalAuthentication
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "WelcomeView")
 
 struct WelcomeView: View {
     @Environment(AuthStore.self) private var authStore
@@ -187,7 +190,7 @@ struct WelcomeView: View {
                             password: password
                         )
                     } catch {
-                        print("Failed to save biometric credentials: \(error.localizedDescription)")
+                        logger.warning("Failed to save biometric credentials: \(error.localizedDescription)")
                     }
                 }
             }

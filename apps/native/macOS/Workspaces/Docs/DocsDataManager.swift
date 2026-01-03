@@ -6,6 +6,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "DocsDataManager")
 
 @MainActor
 @Observable
@@ -26,7 +29,7 @@ class DocsDataManager {
             // Return first document for auto-selection
             return documents.first
         } catch ApiError.unauthorized {
-            print("⚠️ Unauthorized when loading documents - session may not be initialized yet")
+            logger.warning("Unauthorized when loading documents - session may not be initialized yet")
             // Don't show error to user for auth issues - they just logged in
             documents = []
             isLoading = false

@@ -6,6 +6,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "NewDocumentModal")
 
 struct NewDocumentModal: View {
     @Environment(\.dismiss) private var dismiss
@@ -222,6 +225,6 @@ enum NewDocumentType: String, CaseIterable, Identifiable {
 #Preview {
     @Previewable @State var isPresented = true
     NewDocumentModal(isPresented: $isPresented) { title, type in
-        print("Create: \(title) - \(type.displayName)")
+        logger.debug("Create: \(title) - \(type.displayName)")
     }
 }

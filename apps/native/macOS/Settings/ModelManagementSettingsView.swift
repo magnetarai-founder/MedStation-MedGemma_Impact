@@ -6,6 +6,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "ModelManagementSettingsView")
 
 // MARK: - Model Management Settings
 
@@ -275,7 +278,7 @@ struct ModelManagementSettingsView: View {
                 self.isLoadingModels = false
             }
         } catch {
-            print("Failed to load models: \(error)")
+            logger.error("Failed to load models: \(error)")
             await MainActor.run {
                 self.isLoadingModels = false
             }

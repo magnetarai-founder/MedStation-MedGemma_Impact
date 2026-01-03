@@ -114,7 +114,7 @@ struct TrustWorkspace: View {
             }
         } catch {
             errorMessage = "Failed to load trust network: \(error.localizedDescription)"
-            print("❌ \(errorMessage ?? "")")
+            logger.error("\(errorMessage ?? "")")
         }
     }
 

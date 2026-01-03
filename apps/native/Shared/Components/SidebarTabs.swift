@@ -8,6 +8,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "SidebarTabs")
 
 struct SidebarTabs: View {
     @State private var selectedTab: SidebarTab = .columns
@@ -172,7 +175,7 @@ struct ColumnRow: View {
         .onTapGesture {
             if column.isClickable {
                 // Insert column into query
-                print("Insert column: \(column.name)")
+                logger.debug("Insert column: \(column.name)")
             }
         }
     }

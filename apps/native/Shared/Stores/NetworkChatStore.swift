@@ -1,5 +1,8 @@
 import Foundation
 import Observation
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "NetworkChatStore")
 
 /// Network-backed chat store with streaming support
 @MainActor
@@ -262,7 +265,7 @@ final class NetworkChatStore {
             error = nil
         } catch {
             // Silent fail for token tracking
-            print("Failed to fetch tokens: \(error)")
+            logger.debug("Failed to fetch tokens: \(error)")
         }
     }
 

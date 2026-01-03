@@ -6,6 +6,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "WorkflowDashboardView")
 
 struct WorkflowDashboardView: View {
     @State private var scopeFilter: DashboardScope = .all
@@ -167,7 +170,7 @@ struct WorkflowDashboardView: View {
             // For now, starred is empty - would need backend support for favoriting
             starredWorkflows = []
         } catch {
-            print("Failed to load workflows: \(error)")
+            logger.error("Failed to load workflows: \(error)")
             self.error = "Failed to load workflows"
             // Keep empty arrays on error
         }

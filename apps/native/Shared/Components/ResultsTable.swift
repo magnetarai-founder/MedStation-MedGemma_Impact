@@ -8,6 +8,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "ResultsTable")
 
 struct ResultsTable: View {
     @State private var results: QueryResults?
@@ -54,7 +57,7 @@ struct ResultsTable: View {
                 action: {
                     // TODO: Wire to ChatStore or dedicated AnalysisService
                     // Should send results summary to AI for insights
-                    print("[ResultsTable] Analyze with AI tapped - needs implementation")
+                    logger.info("Analyze with AI tapped - needs implementation")
                 }
             ) {
                 HStack(spacing: 6) {

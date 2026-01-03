@@ -6,6 +6,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "WorkflowQueueView")
 
 struct WorkflowQueueView: View {
     @State private var viewMode: QueueViewMode = .available
@@ -178,7 +181,7 @@ struct WorkflowQueueView: View {
                     isLoading = false
                 }
             } catch {
-                print("❌ Failed to load queue: \(error)")
+                logger.error("Failed to load queue: \(error)")
                 await MainActor.run {
                     errorMessage = "Failed to load queue: \(error.localizedDescription)"
                     queueItems = []
