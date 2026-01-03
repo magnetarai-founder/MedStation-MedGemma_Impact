@@ -33,16 +33,18 @@ from api.rate_limiter import rate_limiter, get_client_ip
 from api.services.crypto_wrap import wrap_key, unwrap_key
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 from api.services.webauthn_verify import verify_assertion, verify_registration
+from api.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-# WebAuthn configuration - should be from environment/settings in production
-WEBAUTHN_RP_ID = "localhost"  # Relying Party ID (domain)
-WEBAUTHN_ORIGIN = "http://localhost:3000"  # Expected origin
+# WebAuthn configuration - loaded from settings (supports env vars)
+_settings = get_settings()
+WEBAUTHN_RP_ID = _settings.webauthn_rp_id  # Relying Party ID (domain)
+WEBAUTHN_ORIGIN = _settings.webauthn_origin  # Expected origin
 
 # In-memory challenge storage with TTL (5 minutes)
 # Format: {(user_id, vault_id): {'challenge': bytes, 'created_at': timestamp}}
-# In production, use Redis with TTL for distributed systems
+# NOTE: For distributed deployments, replace with Redis-backed storage (see SECURITY_ROADMAP.md)
 webauthn_challenges: Dict[tuple, Dict[str, Any]] = {}
 CHALLENGE_TTL_SECONDS = 300  # 5 minutes
 

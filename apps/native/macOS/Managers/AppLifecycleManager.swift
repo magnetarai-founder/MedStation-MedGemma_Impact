@@ -18,6 +18,12 @@ class AppLifecycleManager: NSObject, NSApplicationDelegate, ObservableObject {
     // MARK: - Lifecycle
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // SECURITY: Register network firewall protocol globally
+        // This intercepts ALL URLSession requests (including URLSession.shared)
+        // and validates them against SecurityManager rules
+        URLProtocol.registerClass(NetworkFirewallProtocol.self)
+        logger.info("NetworkFirewallProtocol registered globally")
+
         // Initialize menu bar if enabled
         if showMenuBar {
             MenuBarManager.shared.show()
@@ -53,6 +59,9 @@ class AppLifecycleManager: NSObject, NSApplicationDelegate, ObservableObject {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        // Unregister network firewall protocol
+        URLProtocol.unregisterClass(NetworkFirewallProtocol.self)
+
         // Clean shutdown of backend server
         BackendManager.shared.terminateBackend()
     }
