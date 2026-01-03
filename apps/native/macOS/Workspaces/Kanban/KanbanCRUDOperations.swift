@@ -6,6 +6,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "KanbanCRUD")
 
 @MainActor
 @Observable
@@ -31,7 +34,7 @@ class KanbanCRUDOperations {
                 boardId: apiBoard.boardId
             )
         } catch {
-            print("Failed to create board: \(error.localizedDescription)")
+            logger.error("Failed to create board: \(error.localizedDescription)")
             // Fall back to local-only creation
             return KanbanBoard(
                 name: name,
@@ -50,7 +53,7 @@ class KanbanCRUDOperations {
             }
             return true
         } catch {
-            print("Failed to delete board from API: \(error.localizedDescription)")
+            logger.warning("Failed to delete board from API: \(error.localizedDescription)")
             // Still return true to remove locally even if API fails
             return true
         }
@@ -61,7 +64,7 @@ class KanbanCRUDOperations {
     func createTask(title: String, board: KanbanBoard) async -> KanbanTask? {
         guard !title.isEmpty else { return nil }
         guard let boardId = board.boardId else {
-            print("Cannot create task: board has no backend ID")
+            logger.warning("Cannot create task: board has no backend ID")
             return nil
         }
 
@@ -92,7 +95,7 @@ class KanbanCRUDOperations {
                 columnId: apiTask.columnId
             )
         } catch {
-            print("Failed to create task: \(error.localizedDescription)")
+            logger.error("Failed to create task: \(error.localizedDescription)")
             // Fall back to local-only creation
             return KanbanTask(
                 title: title,
@@ -117,7 +120,7 @@ class KanbanCRUDOperations {
             }
             return true
         } catch {
-            print("Failed to delete task from API: \(error.localizedDescription)")
+            logger.warning("Failed to delete task from API: \(error.localizedDescription)")
             // Still return true to remove locally even if API fails
             return true
         }

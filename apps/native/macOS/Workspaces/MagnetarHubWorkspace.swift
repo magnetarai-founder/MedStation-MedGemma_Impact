@@ -42,6 +42,11 @@ struct MagnetarHubWorkspace: View {
             await loadInitialData()
             networkManager.startNetworkMonitoring()
         }
+        .onDisappear {
+            // Stop auto-sync and network monitoring when leaving workspace
+            cloudManager.stopAutoSync()
+            networkManager.stopNetworkMonitoring()
+        }
         .sheet(isPresented: $showModelDetail) {
             if let model = selectedModel {
                 ModelDetailModal(

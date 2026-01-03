@@ -73,7 +73,9 @@ final class ModelsStore {
 
         do {
             // Build URL to Ollama API (direct to Ollama, not through backend)
-            let url = URL(string: "\(APIConfiguration.shared.ollamaURL)/api/pull")!
+            guard let url = URL(string: "\(APIConfiguration.shared.ollamaURL)/api/pull") else {
+                throw ApiError.invalidURL("\(APIConfiguration.shared.ollamaURL)/api/pull")
+            }
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -122,7 +124,9 @@ final class ModelsStore {
 
         do {
             // Build URL to Ollama API (direct to Ollama, not through backend)
-            let url = URL(string: "\(APIConfiguration.shared.ollamaURL)/api/delete")!
+            guard let url = URL(string: "\(APIConfiguration.shared.ollamaURL)/api/delete") else {
+                throw ApiError.invalidURL("\(APIConfiguration.shared.ollamaURL)/api/delete")
+            }
             var request = URLRequest(url: url)
             request.httpMethod = "DELETE"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")

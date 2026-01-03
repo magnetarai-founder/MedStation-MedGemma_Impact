@@ -8,6 +8,12 @@
 import Foundation
 import Observation
 
+// Static formatter for date parsing (expensive to create)
+private let iso8601Formatter: ISO8601DateFormatter = {
+    let formatter = ISO8601DateFormatter()
+    return formatter
+}()
+
 /// Kanban workspace state and operations
 @MainActor
 @Observable
@@ -187,11 +193,10 @@ final class KanbanStore {
     /// Get overdue tasks
     func overdueTasks() -> [KanbanTaskAPI] {
         let now = Date()
-        let formatter = ISO8601DateFormatter()
 
         return tasks.filter { task in
             guard let dueDateStr = task.dueDate,
-                  let dueDate = formatter.date(from: dueDateStr) else {
+                  let dueDate = iso8601Formatter.date(from: dueDateStr) else {
                 return false
             }
             return dueDate < now

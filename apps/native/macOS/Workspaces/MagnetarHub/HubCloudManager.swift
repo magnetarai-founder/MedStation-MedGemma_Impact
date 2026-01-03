@@ -17,6 +17,12 @@ import os
 
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "HubCloudManager")
 
+// Static formatter for ISO8601 date parsing (expensive to create)
+private let iso8601Formatter: ISO8601DateFormatter = {
+    let formatter = ISO8601DateFormatter()
+    return formatter
+}()
+
 @MainActor
 @Observable
 class HubCloudManager {
@@ -94,7 +100,7 @@ class HubCloudManager {
             isCloudAuthenticated = true
             cloudUsername = response.data.username
             cloudDeviceId = response.data.cloudDeviceId
-            tokenExpiresAt = ISO8601DateFormatter().date(from: response.data.expiresAt)
+            tokenExpiresAt = iso8601Formatter.date(from: response.data.expiresAt)
 
             logger.info("MagnetarCloud connected: \(response.data.cloudDeviceId)")
 
@@ -167,7 +173,7 @@ class HubCloudManager {
             try keychain.saveToken(response.data.cloudToken, forKey: cloudTokenKey)
             try keychain.saveToken(response.data.expiresAt, forKey: cloudExpiryKey)
 
-            tokenExpiresAt = ISO8601DateFormatter().date(from: response.data.expiresAt)
+            tokenExpiresAt = iso8601Formatter.date(from: response.data.expiresAt)
             isCloudAuthenticated = true
 
             logger.info("MagnetarCloud token refreshed")
@@ -197,11 +203,11 @@ class HubCloudManager {
             cloudUsername = response.data.username
 
             if let expiresStr = response.data.tokenExpiresAt {
-                tokenExpiresAt = ISO8601DateFormatter().date(from: expiresStr)
+                tokenExpiresAt = iso8601Formatter.date(from: expiresStr)
             }
 
             if let syncStr = response.data.lastSyncAt {
-                lastSyncAt = ISO8601DateFormatter().date(from: syncStr)
+                lastSyncAt = iso8601Formatter.date(from: syncStr)
             }
 
             pairedDevices = response.data.pairedDevices
@@ -264,7 +270,7 @@ class HubCloudManager {
             activeConflicts = status.activeConflicts
 
             if let syncTime = status.lastSyncAt {
-                lastSyncAt = ISO8601DateFormatter().date(from: syncTime)
+                lastSyncAt = iso8601Formatter.date(from: syncTime)
             }
         } catch {
             logger.error("Failed to refresh sync status: \(error)")
@@ -312,7 +318,7 @@ class HubCloudManager {
            let deviceId = keychain.loadToken(forKey: cloudDeviceIdKey),
            let expiryStr = keychain.loadToken(forKey: cloudExpiryKey) {
 
-            let expiry = ISO8601DateFormatter().date(from: expiryStr)
+            let expiry = iso8601Formatter.date(from: expiryStr)
 
             // Check if token is still valid
             if let exp = expiry, exp > Date() {
@@ -527,7 +533,7 @@ struct SyncStatusInfo {
 
     var formattedLastSync: String {
         guard let syncStr = lastSyncAt,
-              let date = ISO8601DateFormatter().date(from: syncStr) else {
+              let date = iso8601Formatter.date(from: syncStr) else {
             return "Never"
         }
 

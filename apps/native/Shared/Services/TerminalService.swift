@@ -47,10 +47,20 @@ class TerminalService {
 
     /// Spawn a new system terminal (Warp, iTerm2, or Terminal.app)
     func spawnTerminal(shell: String? = nil, cwd: String? = nil) async throws -> SpawnTerminalResponse {
+        // Build request body with optional parameters
+        var body: [String: String] = [:]
+        if let shell = shell {
+            body["shell"] = shell
+        }
+        if let cwd = cwd {
+            body["cwd"] = cwd
+        }
+
         // Use spawn-system endpoint which opens system Terminal/Warp/iTerm2
         return try await apiClient.request(
             path: "/v1/terminal/spawn-system",
-            method: .post
+            method: .post,
+            jsonBody: body.isEmpty ? nil : body
         )
     }
 }

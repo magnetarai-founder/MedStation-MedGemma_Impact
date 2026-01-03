@@ -86,12 +86,22 @@ class VaultPermissionManager: ObservableObject {
     // Callbacks
     private var permissionCallback: ((PermissionResponse) -> Void)?
 
+    // Timer for periodic cleanup (stored to prevent leak)
+    private var cleanupTimer: Timer?
+
     private init() {
         loadActivePermissions()
         loadAuditLog()
+        startCleanupTimer()
+    }
 
-        // Cleanup expired permissions every minute
-        Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+    deinit {
+        cleanupTimer?.invalidate()
+    }
+
+    /// Start periodic cleanup of expired permissions
+    private func startCleanupTimer() {
+        cleanupTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.cleanupExpiredPermissions()
             }
