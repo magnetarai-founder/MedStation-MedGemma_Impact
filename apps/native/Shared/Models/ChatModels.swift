@@ -1,6 +1,6 @@
 import Foundation
 
-// MARK: - API Chat Session (renamed to avoid SwiftData conflict)
+// MARK: - API Chat Session (DTO for network responses)
 
 struct ApiChatSession: Codable, Identifiable {
     let id: String

@@ -6,11 +6,10 @@
 //
 
 import Foundation
-import SwiftData
 
-@Model
-final class ChatMessage {
-    @Attribute(.unique) var id: UUID
+/// Chat message model - in-memory only (no SwiftData persistence)
+final class ChatMessage: Identifiable {
+    let id: UUID
     var role: MessageRole
     var content: String
     var createdAt: Date
@@ -52,15 +51,17 @@ enum MessageRole: String, Codable {
 
 // MARK: - Chat Session
 
-@Model
-final class ChatSession {
-    @Attribute(.unique) var id: UUID
+/// Chat session model - in-memory only (no SwiftData persistence)
+/// Messages are managed separately in ChatStore.messages, not via this relationship
+final class ChatSession: Identifiable {
+    let id: UUID
     var title: String
     var model: String?  // Sessions are model-agnostic; orchestrator chooses model per query
     var createdAt: Date
     var updatedAt: Date
 
-    @Relationship(deleteRule: .cascade)
+    // Note: Messages are loaded separately into ChatStore.messages
+    // This property exists for potential future use but is not actively populated
     var messages: [ChatMessage] = []
 
     init(
