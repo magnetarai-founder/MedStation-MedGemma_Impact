@@ -150,15 +150,11 @@ class AuthService:
 
     def _init_db(self) -> None:
         """
-        Initialize authentication database with optimized settings for concurrency
+        Initialize authentication database with optimized settings for concurrency.
 
-        TODO (AUTH-P1): Table creation is transitioning to migrations system.
-        The CREATE TABLE IF NOT EXISTS calls below are kept for backward compatibility
-        during the migration transition. Once AUTH-P1 is complete and all deployments
-        have run auth migrations, these can be removed.
-
-        For now, migrations run first at startup (see startup_migrations.py),
-        and these serve as a safety net.
+        AUTH-P1 COMPLETE: Schema creation is now handled by migrations/auth/ module.
+        Migrations run at startup via startup_migrations.py before this method is called.
+        This method now only sets SQLite pragmas for performance optimization.
         """
         with sqlite3.connect(str(self.db_path)) as conn:
             cursor = conn.cursor()
@@ -172,77 +168,19 @@ class AuthService:
             # Set busy timeout to 30 seconds (handles write contention)
             cursor.execute("PRAGMA busy_timeout=30000")
 
+            # Verify migrations have run (tables should exist)
             cursor.execute("""
-                CREATE TABLE IF NOT EXISTS users (
-                    user_id TEXT PRIMARY KEY,
-                    username TEXT NOT NULL UNIQUE,
-                    password_hash TEXT NOT NULL,
-                    device_id TEXT NOT NULL,
-                    created_at TEXT NOT NULL,
-                    last_login TEXT,
-                    is_active INTEGER DEFAULT 1,
-                    role TEXT DEFAULT 'member'
+                SELECT name FROM sqlite_master
+                WHERE type='table' AND name IN ('users', 'sessions')
+            """)
+            tables = {row[0] for row in cursor.fetchall()}
+
+            if 'users' not in tables or 'sessions' not in tables:
+                # This should only happen if startup_migrations.py wasn't called
+                raise RuntimeError(
+                    "Auth tables missing - run startup_migrations.py first. "
+                    "Schema is managed by migrations/auth/ module."
                 )
-            """)
-
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS sessions (
-                    session_id TEXT PRIMARY KEY,
-                    user_id TEXT NOT NULL,
-                    token_hash TEXT NOT NULL,
-                    refresh_token_hash TEXT,
-                    created_at TEXT NOT NULL,
-                    expires_at TEXT NOT NULL,
-                    refresh_expires_at TEXT,
-                    device_fingerprint TEXT,
-                    last_activity TEXT,
-                    FOREIGN KEY (user_id) REFERENCES users(user_id)
-                )
-            """)
-
-            # Add last_activity column if it doesn't exist (migration for existing DBs)
-            try:
-                cursor.execute("ALTER TABLE sessions ADD COLUMN last_activity TEXT")
-                logger.info("Added last_activity column to sessions table")
-            except sqlite3.OperationalError:
-                # Column already exists
-                pass
-
-            # LOW-02: Add refresh token columns if they don't exist
-            try:
-                cursor.execute("ALTER TABLE sessions ADD COLUMN refresh_token_hash TEXT")
-                logger.info("Added refresh_token_hash column to sessions table")
-            except sqlite3.OperationalError:
-                pass
-
-            try:
-                cursor.execute("ALTER TABLE sessions ADD COLUMN refresh_expires_at TEXT")
-                logger.info("Added refresh_expires_at column to sessions table")
-            except sqlite3.OperationalError:
-                pass
-
-            cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_sessions_user
-                ON sessions(user_id)
-            """)
-
-            cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_sessions_expires
-                ON sessions(expires_at)
-            """)
-
-            cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_sessions_last_activity
-                ON sessions(last_activity)
-            """)
-
-            # MED-04: Composite index for session cleanup queries
-            # Cleanup query: DELETE FROM sessions WHERE expires_at < NOW() AND user_id = ?
-            # This index allows efficient filtering by both expires_at and user_id
-            cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_sessions_expires_user
-                ON sessions(expires_at, user_id)
-            """)
 
             conn.commit()
 

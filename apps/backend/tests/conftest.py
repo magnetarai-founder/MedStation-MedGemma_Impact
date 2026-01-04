@@ -41,7 +41,15 @@ def temp_db_path() -> Generator[Path, None, None]:
 @pytest.fixture
 def auth_service(temp_db_path: Path):
     """Create an AuthService instance with temporary database"""
+    import sqlite3
     from api.auth_middleware import AuthService
+    from api.migrations.auth import auth_0001_initial
+
+    # Apply auth migrations to temp database first (AUTH-P1 requirement)
+    conn = sqlite3.connect(str(temp_db_path))
+    auth_0001_initial.apply_migration(conn)
+    conn.close()
+
     return AuthService(db_path=str(temp_db_path))
 
 
