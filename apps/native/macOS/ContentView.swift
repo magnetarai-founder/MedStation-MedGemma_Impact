@@ -12,7 +12,7 @@ import os
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "ContentView")
 
 struct ContentView: View {
-    @State private var authStore = AuthStore.shared
+    @Environment(AuthStore.self) private var authStore
     @Environment(DatabaseStore.self) private var databaseStore
     @State private var attemptedBiometricLogin = false
 
@@ -113,7 +113,7 @@ struct ContentView: View {
 struct MainAppView: View {
     @Environment(NavigationStore.self) private var navigationStore
     @Environment(ChatStore.self) private var chatStore
-    @State private var permissionManager = VaultPermissionManager.shared
+    @Environment(VaultPermissionManager.self) private var permissionManager
 
     var body: some View {
         ZStack {

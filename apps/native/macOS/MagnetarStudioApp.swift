@@ -18,6 +18,8 @@ struct MagnetarStudioApp: App {
     @State private var navigationStore = NavigationStore()
     @State private var chatStore = ChatStore()
     @State private var databaseStore = DatabaseStore.shared
+    @State private var authStore = AuthStore.shared
+    @State private var permissionManager = VaultPermissionManager.shared
     @NSApplicationDelegateAdaptor(AppLifecycleManager.self) var appDelegate
     @State private var commandPaletteManager = CommandPaletteManager()
 
@@ -49,6 +51,8 @@ struct MagnetarStudioApp: App {
         .environment(navigationStore)
         .environment(chatStore)
         .environment(databaseStore)
+        .environment(authStore)
+        .environment(permissionManager)
         .environment(commandPaletteManager)
         .commands {
             MagnetarMenuCommands(
