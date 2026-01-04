@@ -132,8 +132,78 @@ def build_context_bundle(
             except Exception as e:
                 logger.warning(f"Failed to get git diffs: {e}")
 
-    # TODO: Get embeddings hits (future: integrate with UnifiedEmbedder)
+    # Get embeddings hits via semantic search against unified context
     embeddings_hits = []
+    if body.open_files or body.repo_root:
+        try:
+            # Build search query from context
+            search_terms = []
+
+            # Add open file names as search context
+            for filepath in body.open_files[:5]:  # Limit to 5 files
+                filename = Path(filepath).name
+                search_terms.append(filename)
+
+            # Add repo name if available
+            if body.repo_root:
+                repo_name = Path(body.repo_root).name
+                search_terms.append(repo_name)
+
+            if search_terms:
+                search_query = " ".join(search_terms)
+
+                # Get recent context entries and rank by semantic similarity
+                try:
+                    from api.unified_context import get_unified_context
+                except ImportError:
+                    from unified_context import get_unified_context
+
+                try:
+                    from api.unified_embedder import get_unified_embedder
+                except ImportError:
+                    from unified_embedder import get_unified_embedder
+
+                context_mgr = get_unified_context()
+                embedder = get_unified_embedder()
+
+                # Get recent context entries
+                recent_entries = context_mgr.get_recent_context(
+                    user_id=current_user['user_id'],
+                    max_entries=50,
+                    sources=['code', 'file', 'chat']
+                )
+
+                if recent_entries and embedder and embedder.is_available():
+                    # Compute query embedding
+                    query_embedding = embedder.embed(search_query)
+
+                    # Score each entry by similarity
+                    scored_entries = []
+                    for entry in recent_entries:
+                        if hasattr(entry, 'content') and entry.content and len(entry.content) > 20:
+                            entry_embedding = embedder.embed(entry.content[:500])
+
+                            # Cosine similarity
+                            dot_product = sum(a * b for a, b in zip(query_embedding, entry_embedding))
+                            norm_q = sum(x * x for x in query_embedding) ** 0.5
+                            norm_e = sum(x * x for x in entry_embedding) ** 0.5
+
+                            if norm_q > 0 and norm_e > 0:
+                                similarity = dot_product / (norm_q * norm_e)
+                                if similarity > 0.3:  # Threshold
+                                    scored_entries.append((similarity, entry))
+
+                    # Sort by similarity and take top 5
+                    scored_entries.sort(key=lambda x: x[0], reverse=True)
+                    for _, entry in scored_entries[:5]:
+                        summary = entry.content[:150].replace('\n', ' ').strip()
+                        if len(entry.content) > 150:
+                            summary += "..."
+                        embeddings_hits.append(summary)
+
+        except Exception as e:
+            # Non-fatal: log but continue without embeddings
+            logger.debug(f"Embeddings search unavailable: {e}")
 
     # Get recent chat snippets from unified context
     chat_snippets = []
