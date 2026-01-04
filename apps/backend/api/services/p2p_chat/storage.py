@@ -427,3 +427,70 @@ def get_file_transfer(db_path: Path, transfer_id: str) -> Optional[Dict[str, Any
         transfer['recipient_ids'] = json.loads(transfer['recipient_ids']) if transfer['recipient_ids'] else []
         return transfer
     return None
+
+
+def list_active_transfers(db_path: Path) -> List[Dict[str, Any]]:
+    """List all active (non-completed) file transfers."""
+    conn = sqlite3.connect(str(db_path))
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT * FROM file_transfers
+        WHERE status IN ('pending', 'active', 'paused')
+        ORDER BY started_at DESC
+    """)
+    rows = cursor.fetchall()
+    conn.close()
+
+    transfers = []
+    for row in rows:
+        transfer = dict(row)
+        transfer['recipient_ids'] = json.loads(transfer['recipient_ids']) if transfer['recipient_ids'] else []
+        transfers.append(transfer)
+    return transfers
+
+
+def set_transfer_local_path(db_path: Path, transfer_id: str, local_path: str) -> None:
+    """Set the local file path for a transfer (used when receiving)."""
+    conn = sqlite3.connect(str(db_path))
+    cursor = conn.cursor()
+    cursor.execute("UPDATE file_transfers SET local_path = ? WHERE id = ?", (local_path, transfer_id))
+    conn.commit()
+    conn.close()
+
+
+def set_transfer_hash(db_path: Path, transfer_id: str, file_hash: str) -> None:
+    """Set the SHA-256 hash for a file transfer."""
+    conn = sqlite3.connect(str(db_path))
+    cursor = conn.cursor()
+    cursor.execute("UPDATE file_transfers SET file_hash = ? WHERE id = ?", (file_hash, transfer_id))
+    conn.commit()
+    conn.close()
+
+
+def cancel_transfer(db_path: Path, transfer_id: str) -> None:
+    """Cancel a file transfer."""
+    conn = sqlite3.connect(str(db_path))
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE file_transfers
+        SET status = 'cancelled', completed_at = ?
+        WHERE id = ?
+    """, (datetime.now(UTC).isoformat(), transfer_id))
+    conn.commit()
+    conn.close()
+
+
+def get_pending_chunks(db_path: Path, transfer_id: str) -> List[int]:
+    """Get list of chunk indices that haven't been received yet."""
+    transfer = get_file_transfer(db_path, transfer_id)
+    if not transfer:
+        return []
+
+    chunks_total = transfer.get('chunks_total', 0)
+    chunks_received = transfer.get('chunks_received', 0)
+
+    # For simplicity, assume sequential receiving (chunk 0, 1, 2...)
+    # In production, you'd track individual chunk indices
+    return list(range(chunks_received, chunks_total))

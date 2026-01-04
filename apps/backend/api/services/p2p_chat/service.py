@@ -289,6 +289,46 @@ class P2PChatService:
         """
         return await file_ops.get_transfer_status(self, transfer_id)
 
+    async def send_file(self, file_path: str, channel_id: str,
+                        recipient_ids: list, mime_type: Optional[str] = None) -> Dict:
+        """
+        Send a file to peers via chunked transfer.
+
+        Args:
+            file_path: Path to the file to send
+            channel_id: Target channel
+            recipient_ids: List of recipient peer IDs
+            mime_type: MIME type (auto-detected if not provided)
+
+        Returns:
+            Dict with transfer_id, status, and metadata
+        """
+        from pathlib import Path
+        return await file_ops.send_file(
+            self, Path(file_path), channel_id, recipient_ids, mime_type
+        )
+
+    async def cancel_file_transfer(self, transfer_id: str) -> Dict:
+        """
+        Cancel an active file transfer.
+
+        Args:
+            transfer_id: Transfer to cancel
+
+        Returns:
+            Status dict
+        """
+        return await file_ops.cancel_file_transfer(self, transfer_id)
+
+    async def list_active_transfers(self) -> list:
+        """
+        List all active file transfers.
+
+        Returns:
+            List of active transfer metadata dicts
+        """
+        return await file_ops.list_active_transfers(self)
+
     # ===== Message Handler Registration =====
 
     def register_message_handler(self, handler: Callable) -> None:

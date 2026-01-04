@@ -503,7 +503,73 @@ async def _handle_chat_stream(service: 'P2PChatService', stream: 'INetStream') -
 
 
 async def _handle_file_stream(service: 'P2PChatService', stream: 'INetStream') -> None:
-    """Handle incoming file transfers."""
-    # TODO: Implement chunked file transfer
-    logger.info("File stream handler (TODO: implement)")
-    pass
+    """
+    Handle incoming file transfers.
+
+    Supports two message types:
+    - transfer_announce: New file transfer announcement
+    - chunk: Individual file chunk with data
+    """
+    from . import files as file_ops
+
+    try:
+        # Read the message header (JSON terminated by newline for chunks)
+        header_data = await stream.read()
+
+        # Check if this is a chunk message (header + newline + data)
+        if b"\n" in header_data:
+            # Split header from data
+            header_bytes, chunk_data = header_data.split(b"\n", 1)
+            header = json.loads(header_bytes.decode())
+        else:
+            # Regular JSON message (announcement)
+            header = json.loads(header_data.decode())
+            chunk_data = None
+
+        message_type = header.get("type")
+
+        if message_type == "transfer_announce":
+            # Handle new transfer announcement
+            await file_ops.handle_transfer_announcement(service, header, stream)
+            return
+
+        elif message_type == "chunk":
+            # Handle incoming chunk
+            if chunk_data is None:
+                # Chunk data comes in separate read
+                chunk_size = header.get("chunk_size", 0)
+                chunk_data = await stream.read()
+
+            # Process chunk and send ACK
+            ack = await file_ops.handle_chunk(service, header, chunk_data)
+            await stream.write(json.dumps(ack).encode())
+
+        else:
+            logger.warning(f"Unknown file message type: {message_type}")
+            await stream.write(json.dumps({
+                "status": "error",
+                "error": f"Unknown message type: {message_type}"
+            }).encode())
+
+    except json.JSONDecodeError as e:
+        logger.error(f"Invalid JSON in file stream: {e}")
+        try:
+            await stream.write(json.dumps({
+                "status": "error",
+                "error": "Invalid JSON"
+            }).encode())
+        except Exception:
+            pass
+
+    except Exception as e:
+        logger.error(f"Error handling file stream: {e}")
+        try:
+            await stream.write(json.dumps({
+                "status": "error",
+                "error": str(e)
+            }).encode())
+        except Exception:
+            pass
+
+    finally:
+        await stream.close()
