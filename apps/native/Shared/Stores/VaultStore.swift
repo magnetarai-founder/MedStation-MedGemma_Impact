@@ -391,7 +391,7 @@ final class VaultStore {
                     "size": AnyCodable(file.size ?? 0),
                     "vault_type": AnyCodable(vaultType)
                 ],
-                modifiedAt: ISO8601DateFormatter().string(from: file.modifiedAt ?? Date()),
+                modifiedAt: file.uploadedAt,  // VaultFile.uploadedAt is already ISO8601 string
                 vectorClock: nil
             )
             changes.append(change)

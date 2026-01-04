@@ -89,7 +89,8 @@ class VaultPermissionManager {
     private var permissionCallback: ((PermissionResponse) -> Void)?
 
     // Timer for periodic cleanup (stored to prevent leak)
-    private var cleanupTimer: Timer?
+    // nonisolated(unsafe) allows access from deinit which runs non-isolated
+    private nonisolated(unsafe) var cleanupTimer: Timer?
 
     private init() {
         loadActivePermissions()

@@ -53,7 +53,11 @@ struct SavedQuery: Codable, Identifiable {
             tags = nil
         }
 
-        logger.debug("Decoded SavedQuery - id: \(id), name: \(name), queryType: \(queryType ?? "nil")")
+        // Capture values locally to avoid escaping autoclosure issue with self
+        let logId = id
+        let logName = name
+        let logQueryType = queryType ?? "nil"
+        logger.debug("Decoded SavedQuery - id: \(logId), name: \(logName), queryType: \(logQueryType)")
     }
 }
 

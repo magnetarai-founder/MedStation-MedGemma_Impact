@@ -261,29 +261,21 @@ private struct InfoRow: View {
 // MARK: - Preview
 
 #Preview {
-    let mockRequest = FileAccessRequest(
-        fileId: "file-123",
-        fileName: "sensitive-document.pdf",
-        filePath: "/vault/real/documents/sensitive-document.pdf",
-        vaultType: "real",
-        modelId: "llama3.2:3b",
-        modelName: "Llama 3.2 3B",
-        sessionId: "session-456",
-        requestedAt: Date(),
-        reason: "Analyzing document for keyword extraction"
-    )
-
-    return FileAccessPermissionModal(
-        request: mockRequest,
-        onGrant: { scope in
-            logger.debug("Granted: \(scope)")
-        },
-        onDeny: {
-            logger.debug("Denied")
-        },
-        onCancel: {
-            logger.debug("Cancelled")
-        }
+    FileAccessPermissionModal(
+        request: FileAccessRequest(
+            fileId: "file-123",
+            fileName: "sensitive-document.pdf",
+            filePath: "/vault/real/documents/sensitive-document.pdf",
+            vaultType: "real",
+            modelId: "llama3.2:3b",
+            modelName: "Llama 3.2 3B",
+            sessionId: "session-456",
+            requestedAt: Date(),
+            reason: "Analyzing document for keyword extraction"
+        ),
+        onGrant: { _ in },
+        onDeny: { },
+        onCancel: { }
     )
     .frame(width: 550, height: 700)
 }
