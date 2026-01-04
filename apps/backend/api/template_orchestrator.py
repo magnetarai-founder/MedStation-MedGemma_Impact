@@ -10,11 +10,55 @@ import asyncio
 from datetime import datetime
 import json
 import logging
+import re
 
 from templates import get_full_template_library, TemplateCategory, SQLTemplate
 from bigquery_engine import BigQueryAIEngine
 
 logger = logging.getLogger(__name__)
+
+# SQL condition validation to prevent injection
+# Only allow safe predicates in workflow step conditions
+_DANGEROUS_SQL_KEYWORDS = re.compile(
+    r'\b(DROP|DELETE|INSERT|UPDATE|TRUNCATE|ALTER|CREATE|EXEC|EXECUTE|'
+    r'GRANT|REVOKE|UNION|INTO|LOAD|ATTACH|DETACH|PRAGMA|VACUUM)\b',
+    re.IGNORECASE
+)
+
+# Allow only safe SQL condition patterns
+# Allows: column names, operators, string literals (with hyphens for dates), numbers, common functions
+_SAFE_CONDITION_PATTERN = re.compile(
+    r'^[\w\s\.\(\)\'\"=<>!\-]+(?:AND|OR|IS|NOT|NULL|LIKE|IN|BETWEEN|LENGTH|COALESCE|TRIM|UPPER|LOWER|\d+|[\w\s\.\(\)\'\"=<>!\-,])*$',
+    re.IGNORECASE
+)
+
+
+def validate_sql_condition(condition: str) -> bool:
+    """
+    Validate that a SQL condition is safe to use in a WHERE clause.
+    Returns True if safe, False if potentially dangerous.
+    """
+    if not condition:
+        return True
+
+    # Check for dangerous keywords
+    if _DANGEROUS_SQL_KEYWORDS.search(condition):
+        return False
+
+    # Check for comment injection
+    if '--' in condition or '/*' in condition or '*/' in condition:
+        return False
+
+    # Check for semicolons (statement termination)
+    if ';' in condition:
+        return False
+
+    # Verify matches safe pattern (basic predicate structure)
+    if not _SAFE_CONDITION_PATTERN.match(condition.strip()):
+        logger.warning(f"SQL condition failed pattern validation: {condition}")
+        return False
+
+    return True
 
 
 @dataclass
@@ -280,8 +324,10 @@ class TemplateOrchestrator:
         # Render the SQL
         sql = self.template_library.render_template(step.template_id, parameters)
         
-        # Add condition if specified
+        # Add condition if specified (with validation to prevent SQL injection)
         if step.condition:
+            if not validate_sql_condition(step.condition):
+                raise ValueError(f"Invalid or potentially unsafe SQL condition: {step.condition}")
             sql = f"SELECT * FROM ({sql}) WHERE {step.condition}"
         
         # Execute asynchronously
