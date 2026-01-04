@@ -519,7 +519,24 @@ final class ChatStore {
 
     // MARK: - Messaging
 
+    /// Maximum allowed message length (characters)
+    /// Prevents extremely long messages that could cause memory/API issues
+    private static let maxMessageLength = 100_000  // 100KB text is generous
+
     func sendMessage(_ text: String) async {
+        // Input validation
+        let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !trimmedText.isEmpty else {
+            // Silently ignore empty messages (UI should prevent this)
+            return
+        }
+
+        guard trimmedText.count <= Self.maxMessageLength else {
+            error = .sendFailed("Message too long (max \(Self.maxMessageLength / 1000)K characters)")
+            return
+        }
+
         // Auto-create session if none exists (UX improvement)
         if currentSession == nil {
             await createSession(title: "New Chat")
@@ -536,10 +553,10 @@ final class ChatStore {
             return
         }
 
-        // Add user message
+        // Add user message (use trimmed text)
         let userMessage = ChatMessage(
             role: .user,
-            content: text,
+            content: trimmedText,
             sessionId: session.id
         )
         messages.append(userMessage)
@@ -551,7 +568,7 @@ final class ChatStore {
 
         do {
             // Determine which model to use (intelligent routing or manual)
-            let modelToUse = await determineModelForQuery(text, sessionId: backendSessionId)
+            let modelToUse = await determineModelForQuery(trimmedText, sessionId: backendSessionId)
 
             // Create assistant message placeholder with model tracking
             let assistantMessage = ChatMessage(
@@ -566,14 +583,14 @@ final class ChatStore {
             let fullContent = try await streamMessageResponse(
                 sessionId: backendSessionId,
                 localSessionId: session.id,
-                content: text,
+                content: trimmedText,
                 model: modelToUse
             )
 
             // Store context for semantic search (fire and forget)
             storeMessageContext(
                 sessionId: session.id,
-                userQuery: text,
+                userQuery: trimmedText,
                 response: fullContent,
                 model: modelToUse
             )

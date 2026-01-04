@@ -12,6 +12,9 @@ struct ChatWindow: View {
     @Binding var messageInput: String
     @Binding var showTimeline: Bool
 
+    /// Pending save task for debouncing model preference changes
+    @State private var pendingSaveTask: Task<Void, Never>?
+
     var body: some View {
         @Bindable var store = chatStore
 
@@ -52,15 +55,11 @@ struct ChatWindow: View {
                             await chatStore.fetchModels()
                         }
                     )
-                    .onChange(of: chatStore.selectedMode) { oldValue, newValue in
-                        Task {
-                            await chatStore.saveModelPreferences()
-                        }
+                    .onChange(of: chatStore.selectedMode) { _, _ in
+                        debounceSavePreferences()
                     }
-                    .onChange(of: chatStore.selectedModelId) { oldValue, newValue in
-                        Task {
-                            await chatStore.saveModelPreferences()
-                        }
+                    .onChange(of: chatStore.selectedModelId) { _, _ in
+                        debounceSavePreferences()
                     }
                 }
             }
@@ -137,6 +136,27 @@ struct ChatWindow: View {
         Task {
             messageInput = ""
             await chatStore.sendMessage(text)
+        }
+    }
+
+    // MARK: - Debounced Save
+
+    /// Debounce model preference saves to avoid race conditions
+    /// Cancels any pending save and starts a new 300ms delayed save
+    private func debounceSavePreferences() {
+        // Cancel any pending save task
+        pendingSaveTask?.cancel()
+
+        // Start new delayed save
+        pendingSaveTask = Task {
+            // Wait 300ms for rapid changes to settle
+            try? await Task.sleep(nanoseconds: 300_000_000)
+
+            // Check if cancelled during sleep
+            guard !Task.isCancelled else { return }
+
+            // Perform the actual save
+            await chatStore.saveModelPreferences()
         }
     }
 }
