@@ -752,12 +752,17 @@ final class ChatStore {
                     ]
                 )
             } catch {
-                // Context storage is optional - silently ignore 404s
-                #if DEBUG
-                if !"\(error)".contains("404") {
-                    logger.debug("Context storage error: \(error)")
+                // Context storage is optional enhancement
+                // 404: Endpoint not configured - expected in some deployments
+                // Other errors: Log as warning for debugging data loss issues
+                let errorString = String(describing: error)
+                if errorString.contains("404") || errorString.contains("notFound") {
+                    // Silently ignore - context endpoint not available
+                    return
                 }
-                #endif
+
+                // Log actual errors (network, server, auth) as warnings
+                logger.warning("Context storage failed: \(error.localizedDescription)")
             }
         }
     }
