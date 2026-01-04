@@ -296,9 +296,14 @@ final class ChatStore {
     }
 
     func deleteSession(_ session: ChatSession) {
+        // Store session state before deletion for potential rollback
+        let deletedSessionIndex = sessions.firstIndex { $0.id == session.id }
+        let backendId = sessionIdMapping[session.id]
+        let wasCurrentSession = currentSession?.id == session.id
+
         // Optimistically remove from UI
         sessions.removeAll { $0.id == session.id }
-        if currentSession?.id == session.id {
+        if wasCurrentSession {
             currentSession = sessions.first
             if let newCurrent = currentSession {
                 Task { [weak self] in
@@ -314,7 +319,7 @@ final class ChatStore {
             guard let self else { return }
             do {
                 // Get backend ID from mapping
-                guard let backendId = self.sessionIdMapping[session.id] else {
+                guard let backendId else {
                     logger.warning("No backend ID mapping found for session \(session.id)")
                     return
                 }
@@ -325,7 +330,26 @@ final class ChatStore {
                 self.sessionIdMapping.removeValue(forKey: session.id)
             } catch {
                 logger.error("Failed to delete session from backend: \(error)")
-                // Session already removed from UI, just log the error
+
+                // Rollback: restore session to UI
+                if let index = deletedSessionIndex {
+                    self.sessions.insert(session, at: min(index, self.sessions.count))
+                } else {
+                    self.sessions.insert(session, at: 0)
+                }
+
+                // Restore mapping if we had one
+                if let backendId {
+                    self.sessionIdMapping[session.id] = backendId
+                }
+
+                // Restore as current session if it was selected
+                if wasCurrentSession {
+                    self.currentSession = session
+                }
+
+                // Show error to user
+                self.error = .deleteFailed(session.title)
             }
         }
     }
@@ -713,6 +737,7 @@ enum ChatError: LocalizedError {
     case noActiveSession
     case sendFailed(String)
     case loadFailed(String)
+    case deleteFailed(String)
 
     var errorDescription: String? {
         switch self {
@@ -722,6 +747,8 @@ enum ChatError: LocalizedError {
             return "Failed to send message: \(message)"
         case .loadFailed(let message):
             return "Failed to load chat history: \(message)"
+        case .deleteFailed(let sessionTitle):
+            return "Failed to delete '\(sessionTitle)'. Session has been restored."
         }
     }
 }
