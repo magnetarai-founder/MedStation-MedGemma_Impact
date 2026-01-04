@@ -96,15 +96,52 @@ final class ChatService {
 
     // MARK: - Message Loading
 
-    func loadMessages(sessionId: String, limit: Int? = nil) async throws -> [ApiChatMessage] {
-        var path = "/v1/chat/sessions/\(sessionId)/messages"
+    /// Result of paginated message loading
+    struct PaginatedMessages {
+        let messages: [ApiChatMessage]
+        let totalCount: Int
+        let offset: Int
+        let hasMore: Bool
+    }
+
+    /// Load messages with pagination support
+    /// - Parameters:
+    ///   - sessionId: Chat session ID
+    ///   - limit: Maximum messages to return (nil for all)
+    ///   - offset: Number of messages to skip (for loading older messages)
+    /// - Returns: Paginated messages with metadata
+    func loadMessages(
+        sessionId: String,
+        limit: Int? = nil,
+        offset: Int = 0
+    ) async throws -> PaginatedMessages {
+        var queryParams: [String] = []
         if let limit = limit {
-            path += "?limit=\(limit)"
+            queryParams.append("limit=\(limit)")
+        }
+        if offset > 0 {
+            queryParams.append("offset=\(offset)")
+        }
+
+        var path = "/v1/chat/sessions/\(sessionId)/messages"
+        if !queryParams.isEmpty {
+            path += "?" + queryParams.joined(separator: "&")
         }
 
         struct MessagesResponse: Codable {
             let messages: [ApiChatMessage]
             let total: Int?
+            let totalCount: Int?
+            let offset: Int?
+            let hasMore: Bool?
+
+            enum CodingKeys: String, CodingKey {
+                case messages
+                case total
+                case totalCount = "total_count"
+                case offset
+                case hasMore = "has_more"
+            }
         }
 
         let response: MessagesResponse = try await apiClient.request(
@@ -112,7 +149,18 @@ final class ChatService {
             method: .get
         )
 
-        return response.messages
+        return PaginatedMessages(
+            messages: response.messages,
+            totalCount: response.totalCount ?? response.total ?? response.messages.count,
+            offset: response.offset ?? offset,
+            hasMore: response.hasMore ?? false
+        )
+    }
+
+    /// Load messages (convenience method returning just messages array)
+    func loadMessages(sessionId: String, limit: Int? = nil) async throws -> [ApiChatMessage] {
+        let result = try await loadMessages(sessionId: sessionId, limit: limit, offset: 0)
+        return result.messages
     }
 
     // MARK: - Health Check

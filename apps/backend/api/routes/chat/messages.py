@@ -36,17 +36,19 @@ router = APIRouter(
     status_code=status.HTTP_200_OK,
     name="chat_get_messages",
     summary="Get messages",
-    description="Get all messages for a chat session"
+    description="Get messages for a chat session with pagination"
 )
 @require_perm_team("chat.use")
 async def get_messages(
     chat_id: str,
     limit: Optional[int] = Query(None, description="Maximum number of messages to return"),
+    offset: int = Query(0, ge=0, description="Number of messages to skip (for pagination)"),
     team_id: Optional[str] = None,
     current_user: User = Depends(get_current_user)
 ) -> SuccessResponse[Dict]:
-    """Get messages for a session"""
+    """Get messages for a session with pagination support"""
     from api.services import chat as chat_service
+    from api.services.chat.core.messages import count_messages
 
     try:
         user_id = current_user.get("user_id") if isinstance(current_user, dict) else current_user.user_id
@@ -69,13 +71,20 @@ async def get_messages(
                 ).model_dump()
             )
 
-        # Load messages
-        messages = await chat_service.get_messages(chat_id, limit=limit)
+        # Load messages with pagination
+        messages = await chat_service.get_messages(chat_id, limit=limit, offset=offset)
+
+        # Get total count for pagination info
+        total_count = await count_messages(chat_id)
+        has_more = (offset + len(messages)) < total_count if limit else False
 
         return SuccessResponse(
             data={
                 "messages": messages,
                 "total": len(messages),
+                "total_count": total_count,
+                "offset": offset,
+                "has_more": has_more,
                 "session_id": chat_id
             },
             message=f"Retrieved {len(messages)} message(s)"

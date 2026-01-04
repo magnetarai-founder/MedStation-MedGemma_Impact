@@ -69,12 +69,27 @@ async def append_message(chat_id: str, role: str, content: str, timestamp: str, 
         logger.warning(f"Failed to index message for search: {index_error}")
 
 
-async def get_messages(chat_id: str, limit: Optional[int] = None) -> List[Dict[str, Any]]:
-    """Get chat messages"""
+async def get_messages(
+    chat_id: str,
+    limit: Optional[int] = None,
+    offset: int = 0
+) -> List[Dict[str, Any]]:
+    """Get chat messages with pagination
+
+    Args:
+        chat_id: Chat session ID
+        limit: Maximum number of messages (None for all)
+        offset: Number of messages to skip
+
+    Returns:
+        List of message dictionaries in chronological order
+    """
     memory = _get_memory()
 
     if limit:
-        events = await asyncio.to_thread(memory.get_recent_messages, chat_id, limit)
+        events = await asyncio.to_thread(
+            memory.get_recent_messages, chat_id, limit, offset
+        )
     else:
         events = await asyncio.to_thread(memory.get_messages, chat_id)
 
@@ -90,6 +105,12 @@ async def get_messages(chat_id: str, limit: Optional[int] = None) -> List[Dict[s
         })
 
     return messages
+
+
+async def count_messages(chat_id: str) -> int:
+    """Count total messages in a session"""
+    memory = _get_memory()
+    return await asyncio.to_thread(memory.count_messages, chat_id)
 
 
 async def send_message_stream(

@@ -111,16 +111,30 @@ class MessageMixin:
 
         return messages
 
-    def get_recent_messages(self, session_id: str, limit: int = 50) -> List[ConversationEvent]:
-        """Get recent messages for context window"""
+    def get_recent_messages(
+        self,
+        session_id: str,
+        limit: int = 50,
+        offset: int = 0
+    ) -> List[ConversationEvent]:
+        """Get recent messages for context window with pagination
+
+        Args:
+            session_id: Chat session ID
+            limit: Maximum number of messages to return
+            offset: Number of messages to skip (for pagination)
+
+        Returns:
+            Messages in chronological order (oldest first within the page)
+        """
         conn = self._get_connection()
         cur = conn.execute("""
             SELECT timestamp, role, content, model, tokens, files_json
             FROM chat_messages
             WHERE session_id = ?
             ORDER BY timestamp DESC
-            LIMIT ?
-        """, (session_id, limit))
+            LIMIT ? OFFSET ?
+        """, (session_id, limit, offset))
 
         messages = []
         for row in cur.fetchall():
@@ -136,6 +150,15 @@ class MessageMixin:
 
         # Reverse to chronological order
         return list(reversed(messages))
+
+    def count_messages(self, session_id: str) -> int:
+        """Count total messages in a session (for pagination)"""
+        conn = self._get_connection()
+        cur = conn.execute(
+            "SELECT COUNT(*) FROM chat_messages WHERE session_id = ?",
+            (session_id,)
+        )
+        return cur.fetchone()[0]
 
 
 __all__ = ["MessageMixin"]

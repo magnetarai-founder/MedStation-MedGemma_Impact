@@ -150,6 +150,7 @@ final class ChatStore {
             let apiSessions = try await chatService.listSessions()
 
             // Convert API sessions to local ChatSession models and build ID mapping
+            var newMapping: [UUID: String] = [:]
             sessions = apiSessions.map { apiSession in
                 let localId = UUID()
                 let session = ChatSession(
@@ -161,10 +162,14 @@ final class ChatStore {
                 )
 
                 // Store mapping between local UUID and backend string ID
-                sessionIdMapping[localId] = apiSession.id
+                newMapping[localId] = apiSession.id
 
                 return session
             }
+
+            // Replace old mapping entirely to prevent memory growth
+            // This cleans up stale entries from previous loads
+            sessionIdMapping = newMapping
 
             // Don't auto-select sessions - let user explicitly choose
             // Sessions are only selected when:
@@ -175,6 +180,7 @@ final class ChatStore {
             // Auth token not fully propagated yet during auto-login - this is expected
             // Silently handle by setting empty sessions - they'll load on next refresh
             sessions = []
+            sessionIdMapping = [:]  // Clear mapping when no sessions
         } catch {
             logger.error("Failed to load sessions: \(error)")
             self.error = .loadFailed("Could not load chat sessions")
