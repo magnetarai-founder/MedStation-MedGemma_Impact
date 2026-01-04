@@ -93,7 +93,7 @@ final class HotSlotSettingsTests: XCTestCase {
         let initialPinState = initialSlot.isPinned
 
         // Toggle pin
-        manager.togglePin(1)
+        await manager.togglePin(1)
 
         // Verify toggle
         if let updatedSlot = manager.hotSlots.first(where: { $0.slotNumber == 1 }) {
@@ -101,7 +101,7 @@ final class HotSlotSettingsTests: XCTestCase {
         }
 
         // Toggle back
-        manager.togglePin(1)
+        await manager.togglePin(1)
 
         if let restoredSlot = manager.hotSlots.first(where: { $0.slotNumber == 1 }) {
             XCTAssertEqual(restoredSlot.isPinned, initialPinState, "Pin state should restore")
@@ -395,14 +395,14 @@ final class HotSlotSettingsTests: XCTestCase {
         if let slot = manager.hotSlots.first {
             let initialPinState = slot.isPinned
 
-            manager.togglePin(slot.slotNumber)
+            await manager.togglePin(slot.slotNumber)
 
             if let updatedSlot = manager.hotSlots.first(where: { $0.slotNumber == slot.slotNumber }) {
                 XCTAssertNotEqual(updatedSlot.isPinned, initialPinState, "Pin state should change")
             }
 
             // Restore
-            manager.togglePin(slot.slotNumber)
+            await manager.togglePin(slot.slotNumber)
         }
     }
 
@@ -558,22 +558,22 @@ final class HotSlotSettingsTests: XCTestCase {
 
     // MARK: - Edge Cases
 
-    func testInvalidSlotNumber() {
+    func testInvalidSlotNumber() async {
         let manager = HotSlotManager.shared
 
         // Try to toggle pin on invalid slot
-        manager.togglePin(99)
+        await manager.togglePin(99)
 
         // Should handle gracefully without crashing
         XCTAssertNotNil(manager.hotSlots, "Manager should remain stable")
     }
 
-    func testMultiplePinToggles() {
+    func testMultiplePinToggles() async {
         let manager = HotSlotManager.shared
 
         // Rapidly toggle pin multiple times
         for _ in 0..<10 {
-            manager.togglePin(1)
+            await manager.togglePin(1)
         }
 
         // Should handle multiple toggles without issues

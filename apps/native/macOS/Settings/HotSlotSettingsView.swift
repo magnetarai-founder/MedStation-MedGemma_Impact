@@ -64,7 +64,7 @@ struct HotSlotSettingsView: View {
                         HotSlotCard(
                             slot: slot,
                             onPin: {
-                                hotSlotManager.togglePin(slot.slotNumber)
+                                Task { await hotSlotManager.togglePin(slot.slotNumber) }
                             },
                             onRemove: {
                                 Task {

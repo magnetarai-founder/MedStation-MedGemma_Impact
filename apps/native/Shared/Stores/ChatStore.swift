@@ -557,6 +557,13 @@ final class ChatStore {
         } catch {
             self.error = .sendFailed(error.localizedDescription)
             logger.error("Chat error: \(error)")
+
+            // Mark the last assistant message as incomplete if it exists and has content
+            if let lastIndex = messages.indices.last,
+               messages[lastIndex].role == .assistant,
+               !messages[lastIndex].content.isEmpty {
+                messages[lastIndex].isIncomplete = true
+            }
         }
 
         isLoading = false

@@ -15,6 +15,7 @@ final class ChatMessage: Identifiable {
     var createdAt: Date
     var sessionId: UUID
     var modelId: String?  // Track which model generated this response
+    var isIncomplete: Bool  // True if streaming was interrupted before completion
 
     init(
         id: UUID = UUID(),
@@ -22,7 +23,8 @@ final class ChatMessage: Identifiable {
         content: String,
         sessionId: UUID,
         createdAt: Date = Date(),
-        modelId: String? = nil
+        modelId: String? = nil,
+        isIncomplete: Bool = false
     ) {
         self.id = id
         self.role = role
@@ -30,6 +32,7 @@ final class ChatMessage: Identifiable {
         self.sessionId = sessionId
         self.createdAt = createdAt
         self.modelId = modelId
+        self.isIncomplete = isIncomplete
     }
 }
 

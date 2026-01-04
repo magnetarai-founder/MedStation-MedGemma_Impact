@@ -237,7 +237,9 @@ struct ModelManagerWindow: View {
                     Spacer()
 
                     // Pin button
-                    Button(action: { hotSlotManager.togglePin(slotNumber) }) {
+                    Button(action: {
+                        Task { await hotSlotManager.togglePin(slotNumber) }
+                    }) {
                         Image(systemName: isPinned ? "pin.fill" : "pin")
                             .font(.caption)
                             .foregroundColor(isPinned ? .yellow : .textSecondary)

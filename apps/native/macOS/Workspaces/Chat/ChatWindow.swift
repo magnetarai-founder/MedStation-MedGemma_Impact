@@ -105,7 +105,12 @@ struct ChatWindow: View {
             } else if chatStore.messages.isEmpty {
                 ChatEmptyMessagesView()
             } else {
-                ChatMessageList(messages: chatStore.messages)
+                ChatMessageList(
+                    messages: chatStore.messages,
+                    onRetryIncomplete: {
+                        await chatStore.regenerateLastResponse()
+                    }
+                )
             }
 
             Divider()
@@ -187,14 +192,22 @@ struct ChatEmptyMessagesView: View {
 
 struct ChatMessageList: View {
     let messages: [ChatMessage]
+    var onRetryIncomplete: (() async -> Void)?  // Callback to retry incomplete messages
 
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 16) {
                     ForEach(messages) { message in
-                        ChatMessageRow(message: message)
-                            .id(message.id)
+                        ChatMessageRow(
+                            message: message,
+                            onRetry: message.isIncomplete ? {
+                                Task {
+                                    await onRetryIncomplete?()
+                                }
+                            } : nil
+                        )
+                        .id(message.id)
                     }
                 }
                 .padding(16)

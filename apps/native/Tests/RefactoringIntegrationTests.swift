@@ -293,7 +293,7 @@ final class RefactoringIntegrationTests: XCTestCase {
         }
     }
 
-    func testHotSlotManagerStateConsistency() {
+    func testHotSlotManagerStateConsistency() async {
         let manager = HotSlotManager.shared
 
         // Get initial state
@@ -301,7 +301,7 @@ final class RefactoringIntegrationTests: XCTestCase {
         let slot1Initial = initialSlots.first { $0.slotNumber == 1 }
 
         // Toggle pin
-        manager.togglePin(1)
+        await manager.togglePin(1)
 
         // Verify state changed
         let updatedSlots = manager.hotSlots
@@ -310,7 +310,7 @@ final class RefactoringIntegrationTests: XCTestCase {
         XCTAssertNotEqual(slot1Initial?.isPinned, slot1Updated?.isPinned, "State should change")
 
         // Toggle back
-        manager.togglePin(1)
+        await manager.togglePin(1)
         let slot1Restored = manager.hotSlots.first { $0.slotNumber == 1 }
 
         XCTAssertEqual(slot1Initial?.isPinned, slot1Restored?.isPinned, "State should restore")
@@ -534,13 +534,13 @@ final class RefactoringIntegrationTests: XCTestCase {
 
         // 2. Toggle pin on slot 1
         let slot1Initial = manager.hotSlots.first { $0.slotNumber == 1 }
-        manager.togglePin(1)
+        await manager.togglePin(1)
         let slot1Updated = manager.hotSlots.first { $0.slotNumber == 1 }
 
         XCTAssertNotEqual(slot1Initial?.isPinned, slot1Updated?.isPinned, "Pin should toggle")
 
         // 3. Restore state
-        manager.togglePin(1)
+        await manager.togglePin(1)
         let slot1Restored = manager.hotSlots.first { $0.slotNumber == 1 }
 
         XCTAssertEqual(slot1Initial?.isPinned, slot1Restored?.isPinned, "Should restore to initial state")

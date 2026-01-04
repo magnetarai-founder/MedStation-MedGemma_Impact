@@ -189,7 +189,7 @@ struct ModelSelectorMenu: View {
             Button("Unpin", role: .destructive) {
                 if let model = modelToPinToggle,
                    let slot = hotSlotManager.hotSlots.first(where: { $0.modelId == model }) {
-                    hotSlotManager.unpinSlot(slot.slotNumber)
+                    Task { await hotSlotManager.unpinSlot(slot.slotNumber) }
                 }
                 modelToPinToggle = nil
             }
@@ -223,7 +223,7 @@ struct ModelSelectorMenu: View {
             showPinConfirmation = true
         } else {
             // Toggle directly
-            hotSlotManager.togglePin(slotNumber)
+            Task { await hotSlotManager.togglePin(slotNumber) }
         }
     }
 

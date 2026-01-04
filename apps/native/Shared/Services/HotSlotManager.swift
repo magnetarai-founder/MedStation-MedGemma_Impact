@@ -249,49 +249,81 @@ class HotSlotManager {
 
     // MARK: - Pinning
 
-    /// Pin a slot (prevent eviction)
-    func pinSlot(_ slotNumber: Int) {
+    /// Pin a slot (prevent eviction) - syncs with backend
+    func pinSlot(_ slotNumber: Int) async {
+        // Optimistically update local state
         pinnedSlots.insert(slotNumber)
         savePreferences()
+        updateLocalPinState(slotNumber: slotNumber, isPinned: true)
 
-        // Update hot slots array
-        if let index = hotSlots.firstIndex(where: { $0.slotNumber == slotNumber }) {
-            hotSlots[index] = HotSlot(
-                slotNumber: slotNumber,
-                modelId: hotSlots[index].modelId,
-                modelName: hotSlots[index].modelName,
-                isPinned: true,
-                loadedAt: hotSlots[index].loadedAt,
-                memoryUsageGB: hotSlots[index].memoryUsageGB
-            )
+        // Sync with backend
+        do {
+            try await syncPinStateToBackend(slotNumber: slotNumber)
+        } catch {
+            logger.error("Failed to sync pin state to backend: \(error)")
+            // Keep local state as source of truth - backend will sync on next load
         }
     }
 
-    /// Unpin a slot (allow eviction)
-    func unpinSlot(_ slotNumber: Int) {
+    /// Unpin a slot (allow eviction) - syncs with backend
+    func unpinSlot(_ slotNumber: Int) async {
+        // Optimistically update local state
         pinnedSlots.remove(slotNumber)
         savePreferences()
+        updateLocalPinState(slotNumber: slotNumber, isPinned: false)
 
-        // Update hot slots array
+        // Sync with backend
+        do {
+            try await syncPinStateToBackend(slotNumber: slotNumber)
+        } catch {
+            logger.error("Failed to sync unpin state to backend: \(error)")
+            // Keep local state as source of truth - backend will sync on next load
+        }
+    }
+
+    /// Toggle pin state for a slot - syncs with backend
+    func togglePin(_ slotNumber: Int) async {
+        if pinnedSlots.contains(slotNumber) {
+            await unpinSlot(slotNumber)
+        } else {
+            await pinSlot(slotNumber)
+        }
+    }
+
+    /// Update local hot slots array with new pin state
+    private func updateLocalPinState(slotNumber: Int, isPinned: Bool) {
         if let index = hotSlots.firstIndex(where: { $0.slotNumber == slotNumber }) {
             hotSlots[index] = HotSlot(
                 slotNumber: slotNumber,
                 modelId: hotSlots[index].modelId,
                 modelName: hotSlots[index].modelName,
-                isPinned: false,
+                isPinned: isPinned,
                 loadedAt: hotSlots[index].loadedAt,
                 memoryUsageGB: hotSlots[index].memoryUsageGB
             )
         }
     }
 
-    /// Toggle pin state for a slot
-    func togglePin(_ slotNumber: Int) {
-        if pinnedSlots.contains(slotNumber) {
-            unpinSlot(slotNumber)
-        } else {
-            pinSlot(slotNumber)
+    /// Sync pin state to backend via PATCH /hot-slots/{slot}/pin
+    private func syncPinStateToBackend(slotNumber: Int) async throws {
+        struct PinResponse: Codable {
+            let success: Bool
+            let slotNumber: Int
+            let modelId: String?
+            let message: String
+
+            enum CodingKeys: String, CodingKey {
+                case success
+                case slotNumber = "slot_number"
+                case modelId = "model_id"
+                case message
+            }
         }
+
+        let _: PinResponse = try await apiClient.request(
+            path: "/v1/chat/hot-slots/\(slotNumber)/pin",
+            method: .patch
+        )
     }
 
     // MARK: - Eviction Logic
