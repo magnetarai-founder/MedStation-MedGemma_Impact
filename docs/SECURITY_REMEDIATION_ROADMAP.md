@@ -448,8 +448,8 @@ def apply_patch_secure(patch_file: Path, patch_level: int, dry_run: bool = True)
 - [x] 3.3 Complete shell validation - Added stat.S_ISREG, os.access(X_OK), null byte check
 - [x] 3.4 🆕 Move WebSocket JWT to headers - Added `extract_websocket_token()` helper, updated all 4 WS endpoints
 
-#### Tier 4: Complex Fixes (1-2 hours each) ✅ COMPLETE (except 4.1)
-- [ ] 4.1 Add file locking for chunked uploads (HIGH) - **Deferred: only matters with concurrent uploads**
+#### Tier 4: Complex Fixes (1-2 hours each) ✅ COMPLETE
+- [x] 4.1 Add file locking for chunked uploads (HIGH) - Added `file_lock()` utility, applied to cloud_storage.py and vault/upload.py
 - [x] 4.2 Remove shell=True from codex_engine (CRITICAL) - All 6 locations fixed with stdin pipes
 
 ---
@@ -517,5 +517,5 @@ apps/backend/external/aider/aider/commands.py:389,405 - shell=True
 ---
 
 **Created:** 2025-12-27
-**Last Updated:** 2026-01-03 (WebSocket JWT Header Fix)
-**Status:** 18/19 items FIXED, 1 deferred (file locking - low priority for pre-release)
+**Last Updated:** 2026-01-03 (File Locking Fix)
+**Status:** 19/19 items FIXED ✅ - All security remediation items complete!

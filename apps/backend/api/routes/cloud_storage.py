@@ -42,6 +42,7 @@ from api.auth_middleware import get_current_user
 from api.config_paths import get_config_paths
 from api.config import is_airgap_mode
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.utils import file_lock
 
 logger = logging.getLogger(__name__)
 PATHS = get_config_paths()
@@ -328,17 +329,29 @@ async def upload_chunk(
             }
         )
 
-    # Save chunk
-    chunk_path = _get_upload_dir(upload_id) / f"chunk_{chunk_index:06d}"
-    with open(chunk_path, 'wb') as f:
-        f.write(chunk_bytes)
+    # SECURITY: Use file lock to prevent TOCTOU race conditions
+    # This ensures concurrent chunk uploads don't corrupt the upload state
+    upload_dir = _get_upload_dir(upload_id)
+    with file_lock(upload_dir, ".upload.lock"):
+        # Re-load metadata inside lock to get latest state
+        metadata = _load_metadata(upload_id)
+        if not metadata:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"error": "upload_not_found", "message": "Upload session not found"}
+            )
 
-    # Update metadata
-    if chunk_index not in metadata["uploaded_chunks"]:
-        metadata["uploaded_chunks"].append(chunk_index)
-    metadata["chunk_hashes"][str(chunk_index)] = computed_hash
-    metadata["status"] = UploadStatus.UPLOADING.value
-    _save_metadata(upload_id, metadata)
+        # Save chunk
+        chunk_path = upload_dir / f"chunk_{chunk_index:06d}"
+        with open(chunk_path, 'wb') as f:
+            f.write(chunk_bytes)
+
+        # Update metadata
+        if chunk_index not in metadata["uploaded_chunks"]:
+            metadata["uploaded_chunks"].append(chunk_index)
+        metadata["chunk_hashes"][str(chunk_index)] = computed_hash
+        metadata["status"] = UploadStatus.UPLOADING.value
+        _save_metadata(upload_id, metadata)
 
     chunks_uploaded = len(metadata["uploaded_chunks"])
     total_chunks = metadata["total_chunks"]
@@ -396,95 +409,113 @@ async def commit_upload(
             }
         )
 
-    metadata["status"] = UploadStatus.PROCESSING.value
-    _save_metadata(upload_id, metadata)
-
-    # Assemble chunks
+    # SECURITY: Use file lock to prevent concurrent commit attempts
     upload_dir = _get_upload_dir(upload_id)
-    assembled_path = upload_dir / "assembled"
 
-    try:
-        with open(assembled_path, 'wb') as outfile:
-            for i in range(metadata["total_chunks"]):
-                chunk_path = upload_dir / f"chunk_{i:06d}"
-                with open(chunk_path, 'rb') as chunk_file:
-                    outfile.write(chunk_file.read())
-
-        # Verify final hash
-        computed_hash = _compute_file_hash(assembled_path)
-        if computed_hash != final_hash.lower():
+    with file_lock(upload_dir, ".upload.lock"):
+        # Re-load metadata inside lock
+        metadata = _load_metadata(upload_id)
+        if not metadata:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "error": "final_hash_mismatch",
-                    "message": "Final file hash verification failed",
-                    "expected": final_hash.lower(),
-                    "computed": computed_hash
-                }
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"error": "upload_not_found", "message": "Upload session not found"}
             )
 
-        # TODO: Encrypt file if metadata["encrypt"] is True
-        # TODO: Upload to actual cloud storage (S3, GCS, etc.)
-        # For now, store locally in cloud_files directory
+        # Check if already committed
+        if metadata["status"] == UploadStatus.COMPLETED.value:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"error": "already_committed", "message": "Upload already committed"}
+            )
 
-        file_id = _generate_file_id()
-        cloud_files_dir = PATHS.cache_dir / "cloud_files"
-        cloud_files_dir.mkdir(parents=True, exist_ok=True)
-
-        final_path = cloud_files_dir / file_id
-        assembled_path.rename(final_path)
-
-        # Store file metadata
-        file_metadata = {
-            "file_id": file_id,
-            "filename": metadata["filename"],
-            "size_bytes": metadata["size_bytes"],
-            "content_type": metadata["content_type"],
-            "storage_class": metadata["storage_class"],
-            "sha256": computed_hash,
-            "user_id": metadata["user_id"],
-            "custom_metadata": metadata["custom_metadata"],
-            "encrypted": metadata["encrypt"],
-            "uploaded_at": datetime.now(UTC).isoformat()
-        }
-
-        file_meta_path = cloud_files_dir / f"{file_id}.json"
-        with open(file_meta_path, 'w') as f:
-            json.dump(file_metadata, f, indent=2)
-
-        # Update upload metadata
-        metadata["status"] = UploadStatus.COMPLETED.value
-        metadata["file_id"] = file_id
+        metadata["status"] = UploadStatus.PROCESSING.value
         _save_metadata(upload_id, metadata)
 
-        # Cleanup chunk files
-        for i in range(metadata["total_chunks"]):
-            chunk_path = upload_dir / f"chunk_{i:06d}"
-            if chunk_path.exists():
-                chunk_path.unlink()
+        # Assemble chunks
+        assembled_path = upload_dir / "assembled"
 
-        logger.info(f"Cloud upload {upload_id} completed: {file_id}")
+        try:
+            with open(assembled_path, 'wb') as outfile:
+                for i in range(metadata["total_chunks"]):
+                    chunk_path = upload_dir / f"chunk_{i:06d}"
+                    with open(chunk_path, 'rb') as chunk_file:
+                        outfile.write(chunk_file.read())
 
-        return CommitUploadResponse(
-            file_id=file_id,
-            filename=metadata["filename"],
-            size_bytes=metadata["size_bytes"],
-            content_type=metadata["content_type"],
-            storage_class=StorageClass(metadata["storage_class"]),
-            sha256=computed_hash,
-            uploaded_at=datetime.now(UTC).isoformat()
-        )
+            # Verify final hash
+            computed_hash = _compute_file_hash(assembled_path)
+            if computed_hash != final_hash.lower():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "error": "final_hash_mismatch",
+                        "message": "Final file hash verification failed",
+                        "expected": final_hash.lower(),
+                        "computed": computed_hash
+                    }
+                )
 
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to commit upload {upload_id}: {e}")
-        metadata["status"] = UploadStatus.FAILED.value
-        _save_metadata(upload_id, metadata)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={"error": "commit_failed", "message": str(e)}
-        )
+            # TODO: Encrypt file if metadata["encrypt"] is True
+            # TODO: Upload to actual cloud storage (S3, GCS, etc.)
+            # For now, store locally in cloud_files directory
+
+            file_id = _generate_file_id()
+            cloud_files_dir = PATHS.cache_dir / "cloud_files"
+            cloud_files_dir.mkdir(parents=True, exist_ok=True)
+
+            final_path = cloud_files_dir / file_id
+            assembled_path.rename(final_path)
+
+            # Store file metadata
+            file_metadata = {
+                "file_id": file_id,
+                "filename": metadata["filename"],
+                "size_bytes": metadata["size_bytes"],
+                "content_type": metadata["content_type"],
+                "storage_class": metadata["storage_class"],
+                "sha256": computed_hash,
+                "user_id": metadata["user_id"],
+                "custom_metadata": metadata["custom_metadata"],
+                "encrypted": metadata["encrypt"],
+                "uploaded_at": datetime.now(UTC).isoformat()
+            }
+
+            file_meta_path = cloud_files_dir / f"{file_id}.json"
+            with open(file_meta_path, 'w') as f:
+                json.dump(file_metadata, f, indent=2)
+
+            # Update upload metadata
+            metadata["status"] = UploadStatus.COMPLETED.value
+            metadata["file_id"] = file_id
+            _save_metadata(upload_id, metadata)
+
+            # Cleanup chunk files
+            for i in range(metadata["total_chunks"]):
+                chunk_path = upload_dir / f"chunk_{i:06d}"
+                if chunk_path.exists():
+                    chunk_path.unlink()
+
+            logger.info(f"Cloud upload {upload_id} completed: {file_id}")
+
+            return CommitUploadResponse(
+                file_id=file_id,
+                filename=metadata["filename"],
+                size_bytes=metadata["size_bytes"],
+                content_type=metadata["content_type"],
+                storage_class=StorageClass(metadata["storage_class"]),
+                sha256=computed_hash,
+                uploaded_at=datetime.now(UTC).isoformat()
+            )
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to commit upload {upload_id}: {e}")
+            metadata["status"] = UploadStatus.FAILED.value
+            _save_metadata(upload_id, metadata)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={"error": "commit_failed", "message": str(e)}
+            )
 
 
 @router.get("/upload/status/{upload_id}", response_model=UploadStatusResponse)

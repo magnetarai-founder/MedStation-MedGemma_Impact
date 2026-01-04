@@ -15,7 +15,7 @@ try:
     from api.auth_middleware import get_current_user
 except ImportError:
     from api.auth_middleware import get_current_user
-from api.utils import sanitize_filename
+from api.utils import sanitize_filename, file_lock
 from api.services.vault.core import get_vault_service
 from api.services.vault.schemas import VaultFile
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
@@ -172,61 +172,84 @@ async def upload_chunk(
         temp_dir = service.files_path / "temp_chunks" / file_id
         temp_dir.mkdir(parents=True, exist_ok=True)
 
-        # Save chunk
-        chunk_path = temp_dir / f"chunk_{chunk_index}"
+        # Read chunk data before acquiring lock
         chunk_data = await chunk.read()
-        with open(chunk_path, 'wb') as f:
-            f.write(chunk_data)
 
-        # Check if all chunks received
-        received_chunks = list(temp_dir.glob("chunk_*"))
+        # SECURITY: Use file lock to prevent TOCTOU race conditions
+        # This ensures concurrent chunk uploads don't corrupt the upload state
+        with file_lock(temp_dir, ".upload.lock"):
+            # Save chunk
+            chunk_path = temp_dir / f"chunk_{chunk_index}"
+            with open(chunk_path, 'wb') as f:
+                f.write(chunk_data)
+
+            # Check if all chunks received
+            received_chunks = list(temp_dir.glob("chunk_*"))
+            # Exclude lock file from count
+            received_chunks = [c for c in received_chunks if not c.name.startswith(".")]
 
         if len(received_chunks) == total_chunks:
-            # Assemble complete file
-            complete_file = b""
-            for i in range(total_chunks):
-                chunk_file = temp_dir / f"chunk_{i}"
-                if not chunk_file.exists():
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=ErrorResponse(
-                            error_code=ErrorCode.VALIDATION_ERROR,
-                            message=f"Missing chunk {i}"
-                        ).model_dump()
+            # SECURITY: Lock during assembly to prevent concurrent assembly attempts
+            with file_lock(temp_dir, ".assembly.lock"):
+                # Re-check chunk count inside lock (may have changed)
+                received_chunks = [c for c in temp_dir.glob("chunk_*") if not c.name.startswith(".")]
+                if len(received_chunks) != total_chunks:
+                    # Another request already assembled, return uploading status
+                    return SuccessResponse(
+                        data=ChunkUploadResponse(
+                            status="uploading",
+                            chunks_received=len(received_chunks),
+                            total_chunks=total_chunks,
+                            file=None
+                        ),
+                        message=f"Chunk {chunk_index + 1}/{total_chunks} received"
                     )
-                with open(chunk_file, 'rb') as f:
-                    complete_file += f.read()
 
-            # Detect MIME type from filename
-            mime_type, _ = mimetypes.guess_type(filename)
-            if not mime_type:
-                mime_type = "application/octet-stream"
+                # Assemble complete file
+                complete_file = b""
+                for i in range(total_chunks):
+                    chunk_file = temp_dir / f"chunk_{i}"
+                    if not chunk_file.exists():
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=ErrorResponse(
+                                error_code=ErrorCode.VALIDATION_ERROR,
+                                message=f"Missing chunk {i}"
+                            ).model_dump()
+                        )
+                    with open(chunk_file, 'rb') as f:
+                        complete_file += f.read()
 
-            # Upload assembled file
-            # Sanitize filename to prevent path traversal (HIGH-01)
-            safe_filename = sanitize_filename(filename)
-            vault_file = service.upload_file(
-                user_id=user_id,
-                file_data=complete_file,
-                filename=safe_filename,
-                mime_type=mime_type,
-                vault_type=vault_type,
-                passphrase=vault_passphrase,
-                folder_path=folder_path
-            )
+                # Detect MIME type from filename
+                mime_type, _ = mimetypes.guess_type(filename)
+                if not mime_type:
+                    mime_type = "application/octet-stream"
 
-            # Cleanup temp chunks
-            shutil.rmtree(temp_dir)
+                # Upload assembled file
+                # Sanitize filename to prevent path traversal (HIGH-01)
+                safe_filename = sanitize_filename(filename)
+                vault_file = service.upload_file(
+                    user_id=user_id,
+                    file_data=complete_file,
+                    filename=safe_filename,
+                    mime_type=mime_type,
+                    vault_type=vault_type,
+                    passphrase=vault_passphrase,
+                    folder_path=folder_path
+                )
 
-            return SuccessResponse(
-                data=ChunkUploadResponse(
-                    status="complete",
-                    file=vault_file,
-                    chunks_received=len(received_chunks),
-                    total_chunks=total_chunks
-                ),
-                message=f"File '{safe_filename}' uploaded successfully ({total_chunks} chunks)"
-            )
+                # Cleanup temp chunks
+                shutil.rmtree(temp_dir)
+
+                return SuccessResponse(
+                    data=ChunkUploadResponse(
+                        status="complete",
+                        file=vault_file,
+                        chunks_received=total_chunks,
+                        total_chunks=total_chunks
+                    ),
+                    message=f"File '{safe_filename}' uploaded successfully ({total_chunks} chunks)"
+                )
 
         # Still uploading
         return SuccessResponse(
