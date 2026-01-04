@@ -333,8 +333,11 @@ enum AnyModelItem: Identifiable {
                         .font(.headline)
 
                     Button {
-                        // TODO: Sync from cloud - requires MagnetarCloud integration (Tier 15)
-                        logger.info("Sync to Local tapped - MagnetarCloud integration pending")
+                        // Trigger cloud sync via VaultStore (Tier 15 implementation)
+                        Task {
+                            logger.info("Sync to Local triggered")
+                            await VaultStore.shared.syncFromCloud()
+                        }
                     } label: {
                         Label("Sync to Local", systemImage: "arrow.down.circle")
                             .frame(maxWidth: .infinity)
