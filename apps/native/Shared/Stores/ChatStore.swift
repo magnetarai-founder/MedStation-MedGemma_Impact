@@ -29,6 +29,21 @@ final class ChatStore {
     var selectedMode: String = "intelligent"  // "intelligent" or "manual"
     var selectedModelId: String? = nil  // Specific model when in manual mode
 
+    /// Default model to use when no specific model is selected
+    /// Uses first available model from Ollama, or a reasonable fallback
+    private var defaultModel: String {
+        // Prefer first available model (actually installed on system)
+        if let firstModel = availableModels.first {
+            return firstModel
+        }
+        // Fall back to selectedModel if set
+        if !selectedModel.isEmpty {
+            return selectedModel
+        }
+        // Last resort fallback - common small model
+        return "llama3.2:3b"
+    }
+
     // Dependencies
     @ObservationIgnored
     private let apiClient: ApiClient
@@ -367,8 +382,9 @@ final class ChatStore {
                 return modelId
             } else {
                 // Fallback to default
-                logger.debug("Manual mode but no model selected, using default")
-                return selectedModel.isEmpty ? "llama3.2:3b" : selectedModel
+                let fallback = defaultModel
+                logger.debug("Manual mode but no model selected, using default: \(fallback)")
+                return fallback
             }
         }
 
@@ -382,8 +398,9 @@ final class ChatStore {
             // Get orchestrator
             let manager = OrchestratorManager.shared
             guard let orchestrator = await manager.getActiveOrchestrator() else {
-                logger.warning("No orchestrator available, using default model")
-                return selectedModel.isEmpty ? "llama3.2:3b" : selectedModel
+                let fallback = defaultModel
+                logger.warning("No orchestrator available, using default model: \(fallback)")
+                return fallback
             }
 
             // Route with orchestrator
@@ -394,9 +411,10 @@ final class ChatStore {
             return decision.selectedModelId
 
         } catch {
-            logger.error("Orchestrator routing failed: \(error)")
+            let fallback = self.defaultModel
+            logger.error("Orchestrator routing failed: \(error), using default: \(fallback)")
             // Fallback to default
-            return selectedModel.isEmpty ? "llama3.2:3b" : selectedModel
+            return fallback
         }
     }
 
