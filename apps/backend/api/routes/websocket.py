@@ -4,19 +4,234 @@ WebSocket API endpoints.
 Real-time WebSocket connections for query progress, streaming updates, and mesh networking.
 """
 
+import asyncio
 import json
 import logging
-from typing import Dict
+import time
+import uuid
+from datetime import datetime, UTC
+from typing import Dict, Callable, Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from api.main import sessions
+from api.core.state import update_progress_stream, delete_progress_stream
 
 router = APIRouter(tags=["WebSocket"])
 logger = logging.getLogger(__name__)
 
+
+# ===== Progress Streaming Helper =====
+
+class QueryProgressStreamer:
+    """
+    Streams query execution progress over WebSocket.
+
+    Phases:
+    1. Parsing (0-10%)
+    2. Validation (10-20%)
+    3. Planning (20-30%)
+    4. Execution (30-90%)
+    5. Formatting (90-100%)
+    """
+
+    def __init__(self, websocket: WebSocket, task_id: str):
+        self.websocket = websocket
+        self.task_id = task_id
+        self.start_time = time.time()
+        self.current_phase = "initializing"
+        self.current_progress = 0
+
+    async def send_progress(self, phase: str, progress: int, message: str, details: Dict[str, Any] = None):
+        """Send a progress update to the WebSocket client."""
+        self.current_phase = phase
+        self.current_progress = progress
+
+        payload = {
+            "type": "progress",
+            "task_id": self.task_id,
+            "phase": phase,
+            "progress": progress,
+            "message": message,
+            "elapsed_ms": int((time.time() - self.start_time) * 1000)
+        }
+
+        if details:
+            payload["details"] = details
+
+        # Update central progress tracking
+        update_progress_stream(
+            self.task_id,
+            status=phase,
+            progress=progress,
+            message=message,
+            updated_at=datetime.now(UTC).isoformat()
+        )
+
+        await self.websocket.send_json(payload)
+
+    async def parsing(self, sql: str):
+        """Phase 1: SQL parsing"""
+        await self.send_progress(
+            "parsing", 5,
+            "Parsing SQL query...",
+            {"query_length": len(sql)}
+        )
+
+    async def validating(self, tables: list):
+        """Phase 2: Security validation"""
+        await self.send_progress(
+            "validating", 15,
+            f"Validating access to {len(tables)} table(s)...",
+            {"tables": tables}
+        )
+
+    async def planning(self):
+        """Phase 3: Query planning"""
+        await self.send_progress(
+            "planning", 25,
+            "Planning query execution..."
+        )
+
+    async def executing(self, rows_processed: int = 0, total_rows: int = None):
+        """Phase 4: Query execution with row count updates"""
+        if total_rows and total_rows > 0:
+            exec_progress = min(85, 30 + int((rows_processed / total_rows) * 55))
+            message = f"Processing rows: {rows_processed:,} / {total_rows:,}"
+        else:
+            exec_progress = 60
+            message = f"Executing query... ({rows_processed:,} rows processed)"
+
+        await self.send_progress(
+            "executing", exec_progress,
+            message,
+            {"rows_processed": rows_processed, "total_rows": total_rows}
+        )
+
+    async def formatting(self, row_count: int):
+        """Phase 5: Formatting results"""
+        await self.send_progress(
+            "formatting", 95,
+            f"Formatting {row_count:,} result rows...",
+            {"row_count": row_count}
+        )
+
+    async def complete(self, row_count: int, execution_time_ms: float):
+        """Send completion message"""
+        await self.websocket.send_json({
+            "type": "complete",
+            "task_id": self.task_id,
+            "row_count": row_count,
+            "execution_time_ms": execution_time_ms,
+            "total_elapsed_ms": int((time.time() - self.start_time) * 1000)
+        })
+
+        # Update and cleanup progress tracking
+        update_progress_stream(
+            self.task_id,
+            status="complete",
+            progress=100,
+            message=f"Query complete: {row_count:,} rows",
+            updated_at=datetime.now(UTC).isoformat()
+        )
+
+    async def error(self, message: str, phase: str = None):
+        """Send error message"""
+        await self.websocket.send_json({
+            "type": "error",
+            "task_id": self.task_id,
+            "phase": phase or self.current_phase,
+            "message": message,
+            "elapsed_ms": int((time.time() - self.start_time) * 1000)
+        })
+
+        # Update progress tracking with error
+        update_progress_stream(
+            self.task_id,
+            status="error",
+            progress=self.current_progress,
+            message=message,
+            updated_at=datetime.now(UTC).isoformat()
+        )
+
+    def cleanup(self):
+        """Clean up progress tracking"""
+        delete_progress_stream(self.task_id)
+
 # Track active mesh connections
 _active_mesh_connections: Dict[str, WebSocket] = {}
+
+# Local mesh message handlers (callback functions for different message types)
+_mesh_message_handlers: Dict[str, list[Callable]] = {}
+
+
+def register_mesh_handler(message_type: str, handler: Callable) -> None:
+    """
+    Register a handler for a specific mesh message type.
+
+    Args:
+        message_type: The type of message to handle (e.g., "chat", "file_transfer", "sync")
+        handler: Async callable that receives (source_peer_id, payload) and returns response or None
+    """
+    if message_type not in _mesh_message_handlers:
+        _mesh_message_handlers[message_type] = []
+    _mesh_message_handlers[message_type].append(handler)
+    logger.debug(f"Registered mesh handler for message type: {message_type}")
+
+
+def unregister_mesh_handler(message_type: str, handler: Callable) -> bool:
+    """
+    Unregister a mesh message handler.
+
+    Returns True if handler was found and removed.
+    """
+    if message_type in _mesh_message_handlers:
+        try:
+            _mesh_message_handlers[message_type].remove(handler)
+            return True
+        except ValueError:
+            pass
+    return False
+
+
+async def dispatch_mesh_message(source_peer_id: str, message_type: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Dispatch a mesh message to all registered handlers.
+
+    Args:
+        source_peer_id: The peer that sent the message
+        message_type: Type of message (from message payload)
+        payload: The message payload
+
+    Returns:
+        Combined response from handlers, or acknowledgment
+    """
+    handlers = _mesh_message_handlers.get(message_type, [])
+
+    if not handlers:
+        logger.debug(f"No handlers registered for mesh message type: {message_type}")
+        return {"status": "unhandled", "message_type": message_type}
+
+    responses = []
+    for handler in handlers:
+        try:
+            if asyncio.iscoroutinefunction(handler):
+                result = await handler(source_peer_id, payload)
+            else:
+                result = handler(source_peer_id, payload)
+
+            if result:
+                responses.append(result)
+        except Exception as e:
+            logger.error(f"Mesh handler error for {message_type}: {e}")
+            responses.append({"error": str(e)})
+
+    return {
+        "status": "handled",
+        "message_type": message_type,
+        "handler_count": len(handlers),
+        "responses": responses
+    }
 
 
 @router.websocket("/api/sessions/{session_id}/ws")
@@ -27,6 +242,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
         return
 
     await websocket.accept()
+    logger.info(f"WebSocket connected for session {session_id}")
 
     try:
         while True:
@@ -34,50 +250,97 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             data = await websocket.receive_json()
 
             if data.get("type") == "query":
-                # Execute query and stream progress
-                await websocket.send_json({
-                    "type": "progress",
-                    "message": "Starting query execution..."
-                })
-
-                # Security: Validate table access (same as REST endpoint)
+                # Generate task ID for tracking
+                task_id = data.get("task_id") or str(uuid.uuid4())
                 sql_query = data.get("sql", "")
-                from neutron_utils.sql_utils import SQLProcessor as SQLUtil
-                referenced_tables = SQLUtil.extract_table_names(sql_query)
-                allowed_tables = {'excel_file'}
 
-                unauthorized_tables = set(referenced_tables) - allowed_tables
-                if unauthorized_tables:
-                    await websocket.send_json({
-                        "type": "error",
-                        "message": f"Query references unauthorized tables: {', '.join(unauthorized_tables)}"
-                    })
-                    continue
+                # Create progress streamer
+                progress = QueryProgressStreamer(websocket, task_id)
 
-                # TODO: Implement actual progress streaming
-                # For now, just execute and return result
-                engine = sessions[session_id]['engine']
-                result = engine.execute_sql(sql_query)
+                try:
+                    # Phase 1: Parsing
+                    await progress.parsing(sql_query)
+                    await asyncio.sleep(0.05)  # Small delay for UI responsiveness
 
-                if result.error:
+                    # Phase 2: Security validation
+                    from neutron_utils.sql_utils import SQLProcessor as SQLUtil
+                    referenced_tables = SQLUtil.extract_table_names(sql_query)
+                    allowed_tables = {'excel_file'}
+
+                    await progress.validating(list(referenced_tables))
+                    await asyncio.sleep(0.05)
+
+                    unauthorized_tables = set(referenced_tables) - allowed_tables
+                    if unauthorized_tables:
+                        await progress.error(
+                            f"Query references unauthorized tables: {', '.join(unauthorized_tables)}",
+                            phase="validating"
+                        )
+                        continue
+
+                    # Phase 3: Planning
+                    await progress.planning()
+                    await asyncio.sleep(0.05)
+
+                    # Phase 4: Execution with progress updates
+                    await progress.executing(rows_processed=0)
+
+                    engine = sessions[session_id]['engine']
+                    exec_start = time.time()
+
+                    # Execute the query
+                    result = engine.execute_sql(sql_query)
+
+                    exec_time_ms = (time.time() - exec_start) * 1000
+
+                    if result.error:
+                        await progress.error(result.error, phase="executing")
+                        continue
+
+                    # Phase 5: Formatting
+                    await progress.formatting(result.row_count)
+                    await asyncio.sleep(0.05)
+
+                    # Complete
+                    await progress.complete(
+                        row_count=result.row_count,
+                        execution_time_ms=exec_time_ms
+                    )
+
+                except Exception as e:
+                    logger.error(f"Query execution error: {e}")
+                    await progress.error(str(e))
+
+                finally:
+                    # Schedule cleanup after a delay (allow clients to read final state)
+                    asyncio.get_event_loop().call_later(60, progress.cleanup)
+
+            elif data.get("type") == "cancel":
+                # Handle query cancellation
+                task_id = data.get("task_id")
+                if task_id:
+                    delete_progress_stream(task_id)
                     await websocket.send_json({
-                        "type": "error",
-                        "message": result.error
+                        "type": "cancelled",
+                        "task_id": task_id,
+                        "message": "Query cancelled"
                     })
-                else:
-                    await websocket.send_json({
-                        "type": "complete",
-                        "row_count": result.row_count,
-                        "execution_time_ms": result.execution_time_ms
-                    })
+
+            elif data.get("type") == "ping":
+                # Health check
+                await websocket.send_json({"type": "pong"})
 
     except WebSocketDisconnect:
-        pass
+        logger.info(f"WebSocket disconnected for session {session_id}")
     except Exception as e:
-        await websocket.send_json({
-            "type": "error",
-            "message": str(e)
-        })
+        logger.error(f"WebSocket error for session {session_id}: {e}")
+        try:
+            await websocket.send_json({
+                "type": "error",
+                "message": str(e)
+            })
+        except Exception:
+            pass  # Connection already closed
 
 
 @router.websocket("/mesh")
@@ -142,9 +405,28 @@ async def mesh_websocket_endpoint(websocket: WebSocket):
                 is_for_us = await relay.receive_message(mesh_msg)
 
                 if is_for_us:
-                    # Message was for us - emit to local handlers
+                    # Message was for us - dispatch to local handlers
                     logger.info(f"📨 Received mesh message from {mesh_msg.source_peer_id}")
-                    # TODO: Dispatch to local message handlers
+
+                    # Extract message type and payload from the mesh message
+                    inner_type = mesh_msg.payload.get("type", "unknown")
+                    inner_payload = mesh_msg.payload
+
+                    # Dispatch to registered handlers
+                    dispatch_result = await dispatch_mesh_message(
+                        source_peer_id=mesh_msg.source_peer_id,
+                        message_type=inner_type,
+                        payload=inner_payload
+                    )
+
+                    # Send acknowledgment back to sender if they requested it
+                    if mesh_msg.payload.get("request_ack"):
+                        await websocket.send_text(json.dumps({
+                            "type": "mesh_ack",
+                            "message_id": mesh_msg.message_id,
+                            "source_peer_id": mesh_msg.source_peer_id,
+                            "result": dispatch_result
+                        }))
 
             elif msg_type == "route_request":
                 # Peer is asking for route to a destination
