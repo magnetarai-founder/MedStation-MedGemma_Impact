@@ -6,13 +6,15 @@ RAG pipeline for Jarvis.
 - Enhanced with auto-ingestion, tagging, and biased retrieval
 """
 
+import logging
 import os
 import re
 from pathlib import Path
 from typing import Any, List, Tuple
 import json
 import math
-import os
+
+logger = logging.getLogger(__name__)
 
 try:
     from .config import get_settings
@@ -39,7 +41,8 @@ def _read_file_snippet(path: Path, max_chars: int = 400) -> str:
     try:
         text = path.read_text(errors="ignore")
         return text[:max_chars]
-    except Exception:
+    except Exception as e:
+        logger.debug(f"Failed to read file snippet from {path}: {e}")
         return ""
 
 
@@ -65,8 +68,8 @@ def retrieve_context_for_command(command: str, memory=None, max_snippets: int = 
                 header = f"File: {ch['path']} [{ch['start_line']}-{ch['end_line']}] (sim {ch.get('similarity', 0):.2f}){bias_info}\n"
                 snippets.append(header + ch['chunk'])
             return snippets
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Enhanced RAG pipeline retrieval failed, falling back to legacy: {e}")
     # Fallback to legacy behavior if enhanced pipeline import failed
     # (Keep minimal legacy retrieval path)
     budget_chars = 8000
@@ -83,8 +86,8 @@ def retrieve_context_for_command(command: str, memory=None, max_snippets: int = 
             used += len(text)
             if len(snippets) >= max_snippets:
                 break
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Legacy embedding retrieval failed: {e}")
     return snippets[:max_snippets]
 
 
@@ -96,8 +99,8 @@ def ingest_paths(paths: List[str], tags: List[str] = None, chunk_lines: int = 80
             for p in paths:
                 pipeline.ingest_file(p, tags=tags)
             return
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Enhanced pipeline ingestion failed, falling back to legacy: {e}")
     # Fallback: legacy ingestion
     mem = JarvisBigQueryMemory()
     tags_str = ",".join(tags or [])
@@ -107,7 +110,8 @@ def ingest_paths(paths: List[str], tags: List[str] = None, chunk_lines: int = 80
             continue
         try:
             text = path.read_text(errors='ignore')
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Failed to read file {path} for ingestion: {e}")
             continue
         lines = text.splitlines()
         start = 1
@@ -134,8 +138,8 @@ def _retrieve_by_embedding(query: str, k: int = 4) -> List[Tuple[str,int,int,str
             for ch in chunks:
                 out.append((ch['path'], ch['start_line'], ch['end_line'], ch['chunk'], float(ch.get('similarity', 0.0)), ch.get('tags') or ''))
             return out
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Enhanced pipeline scoring failed, falling back to legacy: {e}")
     # Fallback to legacy computation
     mem = JarvisBigQueryMemory()
     q = _embed_text(query)
@@ -144,7 +148,8 @@ def _retrieve_by_embedding(query: str, k: int = 4) -> List[Tuple[str,int,int,str
     for r in rows:
         try:
             emb = json.loads(r['embedding_json'])
-        except Exception:
+        except (json.JSONDecodeError, TypeError, KeyError) as e:
+            logger.debug(f"Failed to parse embedding for {r.get('path', 'unknown')}: {e}")
             continue
         score = _cosine(q, emb)
         scored.append((score, r['path'], r['start_line'], r['end_line'], r['chunk'], r['tags']))
@@ -239,7 +244,8 @@ def _ollama_embed(text: str) -> List[float]:
             emb = data.get('embedding') or data.get('data',{}).get('embedding')
             if emb:
                 return emb
-    except Exception:
+    except Exception as e:
+        logger.debug(f"Ollama embedding failed: {e}")
         return []
     return []
 
@@ -269,8 +275,8 @@ def _read_embed_model() -> str:
         if cfg_path.exists():
             data = json.loads(cfg_path.read_text())
             return data.get('embedding_model', 'nomic-embed-text')
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Failed to read embedding model config: {e}")
     return 'nomic-embed-text'
 
 
@@ -281,6 +287,6 @@ def _read_embed_backend() -> str:
         if cfg_path.exists():
             data = json.loads(cfg_path.read_text())
             return data.get('embedding_backend', os.getenv('JARVIS_EMBED_BACKEND', 'mlx'))
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Failed to read embedding backend config: {e}")
     return os.getenv('JARVIS_EMBED_BACKEND', 'mlx')
