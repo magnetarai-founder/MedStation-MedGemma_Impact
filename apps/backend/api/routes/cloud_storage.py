@@ -40,11 +40,33 @@ from pydantic import BaseModel, Field
 
 from api.auth_middleware import get_current_user
 from api.config_paths import get_config_paths
-from api.config import is_airgap_mode
+from api.config import is_airgap_mode, get_settings
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 from api.utils import file_lock
 
 logger = logging.getLogger(__name__)
+
+
+def _get_s3_service():
+    """
+    Get S3 service if enabled, otherwise None.
+
+    Lazily imports to avoid boto3 import errors if not installed.
+    """
+    settings = get_settings()
+    if settings.cloud_storage_enabled and settings.cloud_storage_provider == "s3":
+        try:
+            from api.services.cloud_storage_s3 import get_s3_service
+            service = get_s3_service()
+            if service.is_enabled:
+                return service
+        except ImportError:
+            logger.warning("S3 storage enabled but boto3 not installed")
+        except Exception as e:
+            logger.error(f"Failed to initialize S3 service: {e}")
+    return None
+
+
 PATHS = get_config_paths()
 
 
@@ -454,16 +476,45 @@ async def commit_upload(
                     }
                 )
 
-            # TODO: Encrypt file if metadata["encrypt"] is True
-            # TODO: Upload to actual cloud storage (S3, GCS, etc.)
-            # For now, store locally in cloud_files directory
-
             file_id = _generate_file_id()
             cloud_files_dir = PATHS.cache_dir / "cloud_files"
             cloud_files_dir.mkdir(parents=True, exist_ok=True)
 
-            final_path = cloud_files_dir / file_id
-            assembled_path.rename(final_path)
+            # Check if S3 storage is enabled
+            s3_service = _get_s3_service()
+            s3_key = None
+            s3_result = None
+
+            if s3_service:
+                # Upload to S3
+                s3_key = f"uploads/{metadata['user_id']}/{file_id}/{metadata['filename']}"
+
+                try:
+                    s3_result = s3_service.upload_file(
+                        file_path=assembled_path,
+                        s3_key=s3_key,
+                        content_type=metadata["content_type"],
+                        storage_class=metadata["storage_class"],
+                        metadata={
+                            "original_filename": metadata["filename"],
+                            "user_id": metadata["user_id"],
+                            "file_id": file_id,
+                        },
+                        encrypt=metadata["encrypt"]
+                    )
+                    logger.info(f"Uploaded to S3: {s3_key}")
+
+                    # Remove local assembled file after S3 upload
+                    assembled_path.unlink()
+
+                except Exception as e:
+                    logger.error(f"S3 upload failed, falling back to local: {e}")
+                    s3_service = None  # Fall back to local storage
+
+            if not s3_service:
+                # Store locally (fallback or when S3 disabled)
+                final_path = cloud_files_dir / file_id
+                assembled_path.rename(final_path)
 
             # Store file metadata
             file_metadata = {
@@ -476,7 +527,13 @@ async def commit_upload(
                 "user_id": metadata["user_id"],
                 "custom_metadata": metadata["custom_metadata"],
                 "encrypted": metadata["encrypt"],
-                "uploaded_at": datetime.now(UTC).isoformat()
+                "uploaded_at": datetime.now(UTC).isoformat(),
+                # S3-specific fields
+                "storage_backend": "s3" if s3_result else "local",
+                "s3_key": s3_key,
+                "s3_bucket": s3_result.get("bucket") if s3_result else None,
+                "s3_etag": s3_result.get("etag") if s3_result else None,
+                "s3_version_id": s3_result.get("version_id") if s3_result else None,
             }
 
             file_meta_path = cloud_files_dir / f"{file_id}.json"
@@ -588,9 +645,37 @@ async def init_download(
         )
 
     expires_at = datetime.now(UTC) + timedelta(minutes=request.expires_minutes)
+    expires_seconds = request.expires_minutes * 60
 
-    # TODO: Generate actual presigned URL for cloud storage
-    # For now, return local download endpoint
+    # Check if file is stored in S3
+    if file_metadata.get("storage_backend") == "s3" and file_metadata.get("s3_key"):
+        s3_service = _get_s3_service()
+        if s3_service:
+            try:
+                # Generate S3 presigned URL
+                download_url = s3_service.generate_presigned_url(
+                    s3_key=file_metadata["s3_key"],
+                    expires_in=expires_seconds,
+                    response_content_type=file_metadata.get("content_type"),
+                    response_content_disposition=f'attachment; filename="{file_metadata["filename"]}"'
+                )
+
+                logger.info(f"Generated S3 presigned URL for {file_metadata['s3_key']}")
+
+                return InitDownloadResponse(
+                    file_id=request.file_id,
+                    filename=file_metadata["filename"],
+                    size_bytes=file_metadata["size_bytes"],
+                    content_type=file_metadata["content_type"],
+                    download_url=download_url,
+                    expires_at=expires_at.isoformat()
+                )
+
+            except Exception as e:
+                logger.error(f"Failed to generate S3 presigned URL: {e}")
+                # Fall through to local download
+
+    # Local storage: create download token
     download_token = secrets.token_urlsafe(32)
 
     # Store download token with expiry
@@ -715,6 +800,7 @@ async def list_files(
                             "size_bytes": metadata["size_bytes"],
                             "content_type": metadata["content_type"],
                             "storage_class": metadata["storage_class"],
+                            "storage_backend": metadata.get("storage_backend", "local"),
                             "uploaded_at": metadata["uploaded_at"]
                         })
 
@@ -753,7 +839,17 @@ async def delete_file(
             detail={"error": "forbidden", "message": "Not authorized to delete this file"}
         )
 
-    # Delete file and metadata
+    # Delete from S3 if applicable
+    if file_metadata.get("storage_backend") == "s3" and file_metadata.get("s3_key"):
+        s3_service = _get_s3_service()
+        if s3_service:
+            try:
+                s3_service.delete_file(file_metadata["s3_key"])
+                logger.info(f"Deleted from S3: {file_metadata['s3_key']}")
+            except Exception as e:
+                logger.error(f"Failed to delete from S3 (continuing with local cleanup): {e}")
+
+    # Delete local file and metadata
     file_path = cloud_files_dir / file_id
     if file_path.exists():
         file_path.unlink()

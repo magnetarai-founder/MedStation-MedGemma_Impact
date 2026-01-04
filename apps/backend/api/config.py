@@ -436,6 +436,50 @@ class ElohimOSSettings(BaseSettings):
     )
 
     # ============================================
+    # CLOUD STORAGE (S3) SETTINGS
+    # ============================================
+
+    cloud_storage_enabled: bool = Field(
+        default=False,
+        description="Enable cloud storage integration (S3/compatible)"
+    )
+
+    cloud_storage_provider: Literal["s3", "local"] = Field(
+        default="local",
+        description="Cloud storage provider (s3 for AWS S3/compatible, local for filesystem)"
+    )
+
+    s3_bucket_name: str = Field(
+        default="",
+        description="S3 bucket name for cloud storage"
+    )
+
+    s3_region: str = Field(
+        default="us-east-1",
+        description="AWS region for S3 bucket"
+    )
+
+    s3_access_key_id: str = Field(
+        default="",
+        description="AWS access key ID (leave empty to use IAM roles/instance profile)"
+    )
+
+    s3_secret_access_key: str = Field(
+        default="",
+        description="AWS secret access key (leave empty to use IAM roles/instance profile)"
+    )
+
+    s3_endpoint_url: str = Field(
+        default="",
+        description="Custom S3 endpoint URL (for MinIO, LocalStack, or S3-compatible services)"
+    )
+
+    s3_presigned_url_expiry_seconds: int = Field(
+        default=3600,
+        description="Presigned URL expiration time in seconds (default: 1 hour)"
+    )
+
+    # ============================================
     # COMPUTED PROPERTIES
     # ============================================
 
