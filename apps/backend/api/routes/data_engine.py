@@ -29,7 +29,11 @@ _settings = None
 # MED-02: Compile frequently-used regex patterns once at module load
 _TABLE_NAME_VALIDATOR = re.compile(r'^[a-zA-Z0-9_]+$')
 
-router = APIRouter(prefix="/api/data", tags=["Data Engine"])
+router = APIRouter(
+    prefix="/api/data",
+    tags=["Data Engine"],
+    dependencies=[Depends(get_current_user)]  # All data endpoints require auth
+)
 logger = logging.getLogger(__name__)
 
 

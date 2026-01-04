@@ -10,9 +10,10 @@ import logging
 from datetime import UTC, datetime
 
 from typing import Any, Dict
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
+from api.auth_middleware import get_current_user
 from api.main import (
     delete_progress_stream,
     get_progress_stream,
@@ -20,7 +21,11 @@ from api.main import (
     update_progress_stream,
 )
 
-router = APIRouter(prefix="/api/v1/progress", tags=["Progress Streaming"])
+router = APIRouter(
+    prefix="/api/v1/progress",
+    tags=["Progress Streaming"],
+    dependencies=[Depends(get_current_user)]  # Progress tracking requires auth
+)
 logger = logging.getLogger(__name__)
 
 
