@@ -8,12 +8,18 @@
 import SwiftUI
 import AppKit
 import Observation
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "MagnetarCloudSettings")
 
 // MARK: - MagnetarCloud Settings
 
 struct MagnetarCloudSettingsView: View {
     @State private var authManager = CloudAuthManager.shared
-    @State private var syncEnabled: Bool = true
+    @State private var syncService = SyncService.shared
+    @State private var syncEnabled: Bool = UserDefaults.standard.bool(forKey: "cloudSyncEnabled")
+    @State private var isSyncingNow: Bool = false
+    @State private var syncError: String?
     private let subscriptionURL = URL(string: "https://billing.magnetar.studio")
 
     var body: some View {
@@ -85,18 +91,72 @@ struct MagnetarCloudSettingsView: View {
 
                 Section("Sync") {
                     Toggle("Enable Cloud Sync", isOn: $syncEnabled)
+                        .onChange(of: syncEnabled) { _, newValue in
+                            handleSyncToggle(newValue)
+                        }
 
-                    Text("Sync chat sessions, settings, and models across all your devices")
+                    Text("Sync vault, workflows, and team data across all your devices")
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
                     if syncEnabled {
+                        // Sync status row
                         HStack {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.green)
-                            Text("Last sync: Just now")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                            if syncService.isSyncing || isSyncingNow {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                                    .padding(.trailing, 4)
+                                Text("Syncing...")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            } else if let error = syncError {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundColor(.orange)
+                                Text(error)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            } else {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundColor(.green)
+                                Text(lastSyncText)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Spacer()
+
+                            // Manual sync button
+                            Button {
+                                Task { await triggerManualSync() }
+                            } label: {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                            }
+                            .buttonStyle(.borderless)
+                            .disabled(syncService.isSyncing || isSyncingNow)
+                            .help("Sync now")
+                        }
+
+                        // Pending changes indicator
+                        if syncService.pendingChanges > 0 {
+                            HStack {
+                                Image(systemName: "arrow.up.circle")
+                                    .foregroundColor(.blue)
+                                Text("\(syncService.pendingChanges) pending change\(syncService.pendingChanges == 1 ? "" : "s")")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        // Conflicts indicator
+                        if syncService.activeConflicts > 0 {
+                            HStack {
+                                Image(systemName: "exclamationmark.triangle")
+                                    .foregroundColor(.orange)
+                                Text("\(syncService.activeConflicts) conflict\(syncService.activeConflicts == 1 ? "" : "s") to resolve")
+                                    .font(.caption)
+                                    .foregroundStyle(.orange)
+                            }
                         }
                     }
                 }
@@ -122,7 +182,68 @@ struct MagnetarCloudSettingsView: View {
         .onAppear {
             Task {
                 await authManager.checkAuthStatus()
+                // Start auto-sync if enabled and authenticated
+                if syncEnabled && authManager.isAuthenticated {
+                    syncService.startAutoSync()
+                    await refreshSyncStatus()
+                }
             }
+        }
+    }
+
+    // MARK: - Computed Properties
+
+    private var lastSyncText: String {
+        guard let lastSync = syncService.lastSyncAt else {
+            return "Not synced yet"
+        }
+
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return "Synced \(formatter.localizedString(for: lastSync, relativeTo: Date()))"
+    }
+
+    // MARK: - Actions
+
+    private func handleSyncToggle(_ enabled: Bool) {
+        UserDefaults.standard.set(enabled, forKey: "cloudSyncEnabled")
+
+        if enabled {
+            syncService.startAutoSync()
+            Task { await refreshSyncStatus() }
+        } else {
+            syncService.stopAutoSync()
+        }
+
+        logger.info("Cloud sync \(enabled ? "enabled" : "disabled")")
+    }
+
+    private func triggerManualSync() async {
+        isSyncingNow = true
+        syncError = nil
+
+        do {
+            try await syncService.triggerSync()
+            await refreshSyncStatus()
+            logger.info("Manual sync completed")
+        } catch let error as SyncError {
+            syncError = error.localizedDescription
+            logger.error("Manual sync failed: \(error.localizedDescription)")
+        } catch {
+            syncError = error.localizedDescription
+            logger.error("Manual sync failed: \(error.localizedDescription)")
+        }
+
+        isSyncingNow = false
+    }
+
+    private func refreshSyncStatus() async {
+        do {
+            _ = try await syncService.fetchStatus()
+            syncError = nil
+        } catch {
+            // Don't show error for status fetch - just log it
+            logger.warning("Failed to fetch sync status: \(error)")
         }
     }
 
@@ -150,8 +271,8 @@ final class CloudAuthManager {
     private let apiClient = ApiClient.shared
     private let keychain = KeychainService.shared
 
-    // Keychain keys
-    private let cloudTokenKey = "magnetar_cloud_token"
+    // Keychain keys - must match SyncService expectation
+    private let cloudTokenKey = "cloud_access_token"
 
     private init() {}
 

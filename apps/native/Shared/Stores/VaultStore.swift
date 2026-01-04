@@ -1,5 +1,8 @@
 import Foundation
 import Observation
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "VaultStore")
 
 /// Vault workspace state and operations
 @MainActor
@@ -19,11 +22,16 @@ final class VaultStore {
     var isLoading = false
     var isUploading = false
     var error: String?
+    var isSyncing = false
 
     // In-memory only (never persisted)
     private var passphrase: String?
 
     private let service = VaultService.shared
+    private var syncService: SyncService { SyncService.shared }
+    private var cloudSyncEnabled: Bool {
+        UserDefaults.standard.bool(forKey: "cloudSyncEnabled")
+    }
 
     private init() {}
 
@@ -154,7 +162,7 @@ final class VaultStore {
         defer { isUploading = false }
 
         do {
-            _ = try await service.upload(
+            let uploadedFile = try await service.upload(
                 fileURL: fileURL,
                 folderPath: currentFolder,
                 vaultType: vaultType,
@@ -162,6 +170,9 @@ final class VaultStore {
             )
 
             error = nil
+
+            // Queue sync for the new file
+            queueFileChangeForSync(fileId: uploadedFile.id, action: "upload")
 
             // Reload current folder to show new file
             await load(folderPath: currentFolder)
@@ -187,6 +198,9 @@ final class VaultStore {
             )
 
             error = nil
+
+            // Queue sync for the deleted file
+            queueFileChangeForSync(fileId: file.id, action: "delete")
 
             // Remove from local list
             files.removeAll { $0.id == file.id }
@@ -294,5 +308,123 @@ final class VaultStore {
         previewFile = nil
         previewData = nil
         error = nil
+    }
+
+    // MARK: - Cloud Sync
+
+    /// Sync vault to cloud
+    func syncToCloud() async {
+        guard cloudSyncEnabled else {
+            logger.debug("Cloud sync disabled, skipping")
+            return
+        }
+
+        isSyncing = true
+        defer { isSyncing = false }
+
+        do {
+            // Prepare vault changes for sync
+            let changes = buildVaultChanges()
+
+            if !changes.isEmpty {
+                _ = try await syncService.syncVault(
+                    changes: changes,
+                    direction: .upload
+                )
+                logger.info("Vault synced to cloud: \(changes.count) items")
+            }
+        } catch SyncError.offlineMode {
+            logger.info("Offline - vault changes queued for later sync")
+        } catch {
+            logger.error("Vault sync failed: \(error)")
+        }
+    }
+
+    /// Sync vault from cloud (download)
+    func syncFromCloud() async {
+        guard cloudSyncEnabled else {
+            logger.debug("Cloud sync disabled, skipping")
+            return
+        }
+
+        isSyncing = true
+        defer { isSyncing = false }
+
+        do {
+            let response = try await syncService.syncVault(
+                changes: [],
+                direction: .download
+            )
+
+            // Apply server changes to local vault
+            for change in response.serverChanges {
+                await applyRemoteChange(change)
+            }
+
+            if !response.conflicts.isEmpty {
+                logger.warning("Vault sync has \(response.conflicts.count) conflicts")
+            }
+
+            // Refresh current folder to show changes
+            await load(folderPath: currentFolder)
+            logger.info("Vault synced from cloud: \(response.serverChanges.count) items")
+        } catch SyncError.offlineMode {
+            logger.info("Offline - cannot sync from cloud")
+        } catch {
+            logger.error("Vault download sync failed: \(error)")
+            self.error = "Cloud sync failed: \(error.localizedDescription)"
+        }
+    }
+
+    /// Build vault changes for sync
+    private func buildVaultChanges() -> [SyncChange] {
+        var changes: [SyncChange] = []
+
+        // Create change entries for current folder contents
+        for file in files {
+            let change = SyncChange(
+                resourceId: file.id,
+                data: [
+                    "name": AnyCodable(file.name),
+                    "folder_path": AnyCodable(currentFolder),
+                    "mime_type": AnyCodable(file.mimeType ?? "application/octet-stream"),
+                    "size": AnyCodable(file.size ?? 0),
+                    "vault_type": AnyCodable(vaultType)
+                ],
+                modifiedAt: ISO8601DateFormatter().string(from: file.modifiedAt ?? Date()),
+                vectorClock: nil
+            )
+            changes.append(change)
+        }
+
+        return changes
+    }
+
+    /// Apply a remote change to local vault
+    private func applyRemoteChange(_ change: SyncChange) async {
+        // For now, just refresh - in production, would merge changes
+        logger.debug("Applying remote change: \(change.resourceId)")
+    }
+
+    /// Queue a file change for sync
+    private func queueFileChangeForSync(fileId: String, action: String) {
+        guard cloudSyncEnabled else { return }
+
+        let change = SyncChange(
+            resourceId: fileId,
+            data: [
+                "action": AnyCodable(action),
+                "folder_path": AnyCodable(currentFolder),
+                "vault_type": AnyCodable(vaultType)
+            ],
+            modifiedAt: ISO8601DateFormatter().string(from: Date()),
+            vectorClock: nil
+        )
+
+        syncService.queueOfflineOperation(
+            resource: "vault",
+            changes: [change],
+            direction: .upload
+        )
     }
 }
