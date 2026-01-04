@@ -12,7 +12,7 @@ import os
 
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "AppLifecycleManager")
 
-class AppLifecycleManager: NSObject, NSApplicationDelegate, ObservableObject {
+class AppLifecycleManager: NSObject, NSApplicationDelegate {
     @AppStorage("showMenuBar") private var showMenuBar: Bool = false
 
     // MARK: - Lifecycle
