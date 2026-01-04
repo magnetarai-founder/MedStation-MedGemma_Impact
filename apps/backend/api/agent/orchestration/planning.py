@@ -49,10 +49,30 @@ def generate_plan_logic(
         # Use enhanced planner
         planner = EnhancedPlanner()
 
+        # Extract files from context_bundle
+        files = []
+        if context_bundle:
+            # Primary source: file_tree_slice from ContextResponse
+            if "file_tree_slice" in context_bundle:
+                files.extend(context_bundle["file_tree_slice"])
+
+            # Secondary source: extract changed files from recent_diffs
+            if "recent_diffs" in context_bundle:
+                for diff in context_bundle["recent_diffs"]:
+                    # diff_stat contains "file | +N -M" lines
+                    diff_stat = diff.get("diff_stat", "")
+                    for line in diff_stat.split("\n"):
+                        line = line.strip()
+                        if "|" in line:
+                            # Extract filename before the pipe
+                            filename = line.split("|")[0].strip()
+                            if filename and filename not in files:
+                                files.append(filename)
+
         # Generate plan (EnhancedPlanner.plan returns a Plan dataclass)
         plan_result = planner.plan(
             description=input_text,
-            files=[]  # TODO: extract files from context_bundle
+            files=files
         )
 
         # Map Plan dataclass to our response format
