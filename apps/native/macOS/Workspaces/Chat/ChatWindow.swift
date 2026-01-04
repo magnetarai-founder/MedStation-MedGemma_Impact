@@ -121,7 +121,7 @@ struct ChatWindow: View {
             .padding(16)
         }
         .sheet(isPresented: $showTimeline) {
-            ChatTimelineSheet(session: chatStore.currentSession)
+            ChatTimelineSheet(session: chatStore.currentSession, messages: chatStore.messages)
         }
     }
 

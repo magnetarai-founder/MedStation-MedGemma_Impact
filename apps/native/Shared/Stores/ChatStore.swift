@@ -20,6 +20,7 @@ final class ChatStore {
     var messages: [ChatMessage] = []
     var isStreaming: Bool = false
     var isLoading: Bool = false
+    var isLoadingSessions: Bool = false  // True while initial sessions are loading
     var error: ChatError?
     var selectedModel: String = ""
     var availableModels: [String] = []
@@ -127,6 +128,9 @@ final class ChatStore {
     }
 
     func loadSessions() async {
+        isLoadingSessions = true
+        defer { isLoadingSessions = false }
+
         do {
             let apiSessions = try await chatService.listSessions()
 

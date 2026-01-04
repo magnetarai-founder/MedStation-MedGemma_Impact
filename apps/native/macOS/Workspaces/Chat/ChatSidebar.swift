@@ -44,7 +44,18 @@ struct ChatSidebar: View {
             Divider()
 
             // Sessions list
-            if chatStore.sessions.isEmpty {
+            if chatStore.isLoadingSessions {
+                // Show loading indicator while sessions are being fetched
+                VStack(spacing: 16) {
+                    ProgressView()
+                        .scaleEffect(1.2)
+
+                    Text("Loading sessions...")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if chatStore.sessions.isEmpty {
                 VStack(spacing: 16) {
                     Image(systemName: "bubble.left.and.bubble.right")
                         .font(.system(size: 42))

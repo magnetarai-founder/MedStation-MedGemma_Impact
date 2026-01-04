@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ChatTimelineSheet: View {
     let session: ChatSession?
+    let messages: [ChatMessage]  // Messages from ChatStore (session.messages may be empty)
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -36,7 +37,7 @@ struct ChatTimelineSheet: View {
     @ViewBuilder
     private var timelineContent: some View {
         if let session = session {
-            SessionTimelineDetails(session: session)
+            SessionTimelineDetails(session: session, messages: messages)
         } else {
             emptyTimelineView
         }
@@ -57,12 +58,13 @@ struct ChatTimelineSheet: View {
 
 private struct SessionTimelineDetails: View {
     let session: ChatSession
+    let messages: [ChatMessage]  // Use messages from ChatStore, not session.messages
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 sessionInfoCard
-                if !session.messages.isEmpty {
+                if !messages.isEmpty {
                     messageHistoryList
                 }
             }
@@ -86,7 +88,7 @@ private struct SessionTimelineDetails: View {
             }
             .font(.system(size: 13))
 
-            InfoRow(label: "Messages:", value: "\(session.messages.count)")
+            InfoRow(label: "Messages:", value: "\(messages.count)")
         }
         .padding(16)
         .background(Color.surfaceSecondary.opacity(0.3))
@@ -98,7 +100,7 @@ private struct SessionTimelineDetails: View {
             Label("Message History", systemImage: "clock.arrow.circlepath")
                 .font(.system(size: 14, weight: .semibold))
 
-            ForEach(Array(session.messages.enumerated()), id: \.element.id) { index, message in
+            ForEach(Array(messages.enumerated()), id: \.element.id) { index, message in
                 TimelineMessageRow(index: index, message: message)
             }
         }
