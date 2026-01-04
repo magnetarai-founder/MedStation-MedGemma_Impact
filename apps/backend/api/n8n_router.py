@@ -18,6 +18,7 @@ try:
     )
     from .workflow_models import WorkItem
     from .workflow_orchestrator import WorkflowOrchestrator
+    from .workflow_storage import get_workflow_storage
 except ImportError:
     from api.n8n_integration import (
         N8NConfig,
@@ -27,6 +28,7 @@ except ImportError:
     )
     from api.workflow_models import WorkItem
     from api.workflow_orchestrator import WorkflowOrchestrator
+    from api.workflow_storage import get_workflow_storage
 
 logger = logging.getLogger(__name__)
 
@@ -155,32 +157,47 @@ async def list_n8n_workflows(service: N8NIntegrationService = Depends(require_n8
 
 
 @router.post("/export-stage")
-async def export_stage_to_n8n(request: ExportStageRequest, service: N8NIntegrationService = Depends(require_n8n_enabled)) -> Dict[str, Any]:
+async def export_stage_to_n8n(
+    request: ExportStageRequest,
+    current_user: dict = Depends(get_current_user),
+    service: N8NIntegrationService = Depends(require_n8n_enabled)
+) -> Dict[str, Any]:
     """
     Export ElohimOS workflow stage to n8n
 
     Args:
         request: Export request with workflow and stage IDs
+        current_user: Authenticated user from JWT
 
     Returns:
         n8n workflow ID and webhook URL
     """
-
-    # Get workflow (TODO: inject orchestrator properly)
-    # For now, we'll accept workflow data in request
     try:
-        # Mock workflow data for now
-        workflow_data = {
-            "id": request.workflow_id,
-            "name": "Mock Workflow",
-            "stages": [
-                {
-                    "id": request.stage_id,
-                    "name": "Automation Stage",
-                    "stage_type": "automation"
-                }
-            ]
-        }
+        # Fetch workflow from storage using authenticated user
+        storage = get_workflow_storage()
+        user_id = current_user['user_id']
+
+        workflow = storage.get_workflow(
+            workflow_id=request.workflow_id,
+            user_id=user_id
+        )
+
+        if not workflow:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Workflow not found: {request.workflow_id}"
+            )
+
+        # Verify the requested stage exists in this workflow
+        stage_ids = [stage.id for stage in workflow.stages]
+        if request.stage_id not in stage_ids:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Stage '{request.stage_id}' not found in workflow '{workflow.name}'"
+            )
+
+        # Convert Pydantic model to dict for n8n export
+        workflow_data = workflow.model_dump()
 
         n8n_workflow_id = await service.export_stage_to_n8n(
             workflow_data,
@@ -194,9 +211,16 @@ async def export_stage_to_n8n(request: ExportStageRequest, service: N8NIntegrati
         return {
             "status": "exported",
             "n8n_workflow_id": n8n_workflow_id,
-            "webhook_url": mapping.n8n_webhook_url if mapping else None
+            "webhook_url": mapping.n8n_webhook_url if mapping else None,
+            "workflow_name": workflow.name,
+            "stage_name": next(
+                (s.name for s in workflow.stages if s.id == request.stage_id),
+                None
+            )
         }
 
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions as-is
     except Exception as e:
         logger.error(f"Failed to export stage to n8n: {e}")
         raise HTTPException(status_code=500, detail=str(e))
