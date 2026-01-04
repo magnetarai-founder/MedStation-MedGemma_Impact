@@ -93,6 +93,7 @@ final class PanicModeService {
 
 enum PanicModeError: LocalizedError {
     case emergencyModeNotImplemented
+    case emergencyModeFailed(errors: [String])
     case invalidResponse
     case rateLimitExceeded
     case backendError(Int)
@@ -101,6 +102,8 @@ enum PanicModeError: LocalizedError {
         switch self {
         case .emergencyModeNotImplemented:
             return "Emergency mode (triple-click) not yet implemented"
+        case .emergencyModeFailed(let errors):
+            return "Emergency mode completed with errors: \(errors.joined(separator: ", "))"
         case .invalidResponse:
             return "Invalid response from panic mode API"
         case .rateLimitExceeded:

@@ -73,15 +73,29 @@ public final class SecurityManager {
     }
 
     private func triggerEmergencyPanic(reason: String?) async throws {
-        // TODO: Implement emergency mode (triple-click, DoD wipe, self-uninstall)
+        // Delegate to EmergencyModeService for DoD 7-pass wipe + self-uninstall
+        // Triple-click detection is handled in HeaderComponents.swift → EmergencyConfirmationModal
+        let report = try await EmergencyModeService.shared.triggerEmergency(
+            reason: reason,
+            confirmationMethod: .panicButton  // Called via SecurityManager
+        )
+
         logSecurityEvent(SecurityEvent(
             type: .panicExecuted,
             level: .emergency,
-            message: "Emergency mode not yet implemented",
-            details: ["status": "pending_implementation"]
+            message: report.simulated ? "Emergency simulation complete" : "Emergency wipe executed",
+            details: [
+                "files_wiped": String(report.filesWiped),
+                "passes": String(report.passes),
+                "duration_seconds": String(format: "%.2f", report.durationSeconds),
+                "errors": report.errors.joined(separator: ", "),
+                "simulated": String(report.simulated)
+            ]
         ))
 
-        throw PanicModeError.emergencyModeNotImplemented
+        if !report.success {
+            throw PanicModeError.emergencyModeFailed(errors: report.errors)
+        }
     }
 
     // MARK: - Network Firewall

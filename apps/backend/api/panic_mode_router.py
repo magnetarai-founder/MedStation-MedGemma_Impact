@@ -261,7 +261,7 @@ async def trigger_emergency_mode(
 
     # Perform DoD 7-pass wipe
     try:
-        from emergency_wipe import perform_dod_wipe
+        from api.emergency_wipe import perform_dod_wipe
 
         result = await perform_dod_wipe(wipe_targets)
         duration = time.time() - start_time
