@@ -13,10 +13,12 @@ import os
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "ResultsTable")
 
 struct ResultsTable: View {
+    @Environment(ChatStore.self) private var chatStore
     @State private var results: QueryResults?
     @State private var isLoading: Bool = false
     @State private var isExporting: Bool = false
     @State private var exportFormat: ExportFormat = .excel
+    @State private var isAnalyzing: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -53,21 +55,27 @@ struct ResultsTable: View {
             // Analyze with AI - first button
             ToolbarIconButton(
                 icon: "message",
-                isDisabled: results == nil,
+                isDisabled: results == nil || isAnalyzing,
                 action: {
-                    // TODO: Wire to ChatStore or dedicated AnalysisService
-                    // Should send results summary to AI for insights
-                    logger.info("Analyze with AI tapped - needs implementation")
+                    guard let results = results else { return }
+                    Task {
+                        await analyzeWithAI(results)
+                    }
                 }
             ) {
                 HStack(spacing: 6) {
-                    Image(systemName: "message")
-                        .font(.system(size: 16))
-                    Text("Analyze with AI")
+                    if isAnalyzing {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                    } else {
+                        Image(systemName: "message")
+                            .font(.system(size: 16))
+                    }
+                    Text(isAnalyzing ? "Analyzing..." : "Analyze with AI")
                         .font(.system(size: 11, weight: .medium))
                 }
             }
-            .help("Analyze with AI")
+            .help("Analyze query results with AI")
 
             // Export dropdown + Download + Trash
             ToolbarGroup {
@@ -122,6 +130,37 @@ struct ResultsTable: View {
 
             Spacer()
         }
+    }
+
+    // MARK: - AI Analysis
+
+    private func analyzeWithAI(_ results: QueryResults) async {
+        isAnalyzing = true
+        defer { isAnalyzing = false }
+
+        // Build a summary of the results for AI analysis
+        let rowCount = results.rows.count
+        let columnList = results.columns.joined(separator: ", ")
+
+        // Sample first few rows for context (limit to prevent token overload)
+        let sampleRows = results.rows.prefix(5).map { row in
+            row.map { $0 ?? "null" }.joined(separator: " | ")
+        }.joined(separator: "\n")
+
+        let prompt = """
+        Please analyze these query results and provide insights:
+
+        **Columns**: \(columnList)
+        **Row count**: \(rowCount)\(results.isLimited ? " (limited preview)" : "")
+
+        **Sample data**:
+        \(sampleRows)
+
+        What patterns, anomalies, or insights do you see? Are there any data quality issues?
+        """
+
+        logger.info("Sending results to AI for analysis: \(rowCount) rows, \(results.columns.count) columns")
+        await chatStore.sendMessage(prompt)
     }
 
     // MARK: - Results Table View
@@ -283,5 +322,6 @@ struct TableCell: View {
 
 #Preview {
     ResultsTable()
+        .environment(ChatStore())
         .frame(height: 400)
 }
