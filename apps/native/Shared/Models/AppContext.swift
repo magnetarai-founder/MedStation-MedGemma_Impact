@@ -37,31 +37,128 @@ struct AppContext {
     let capturedAt: Date
 
     /// Get current app context snapshot
+    /// Uses batched MainActor reads to avoid serialization bottleneck
     static func current() async -> AppContext {
-        async let vault = VaultContext.current()
-        async let data = DataContext.current()
+        // BATCH 1: Collect ALL MainActor-dependent data in ONE hop
+        // This prevents serialization from multiple async let -> MainActor.run calls
+        let mainActorData = await MainActor.run { MainActorSnapshot.capture() }
+
+        // BATCH 2: Run non-MainActor async calls in parallel
         async let kanban = KanbanContext.current()
-        async let workflows = WorkflowContext.current()
         async let team = TeamContext.current()
         async let code = CodeContext.current()
         async let vectorMemory = ANEContextState.current()
-        async let modelHistory = ModelInteractionHistory.recent(limit: 100)
         async let preferences = UserPreferences.load()
-        async let resources = SystemResourceState.current()
 
+        // BATCH 3: Construct contexts from batched data + parallel results
         return await AppContext(
-            vault: vault,
-            data: data,
+            vault: VaultContext(from: mainActorData),
+            data: DataContext(from: mainActorData),
             kanban: kanban,
-            workflows: workflows,
+            workflows: WorkflowContext(from: mainActorData),
             team: team,
             code: code,
             vectorMemory: vectorMemory,
-            modelInteractionHistory: modelHistory,
+            modelInteractionHistory: mainActorData.modelInteractions,
             userPreferences: preferences,
-            systemResources: resources,
+            systemResources: SystemResourceState(from: mainActorData),
             capturedAt: Date()
         )
+    }
+}
+
+// MARK: - MainActor Batched Snapshot
+
+/// Captures all MainActor-dependent data in a single atomic operation
+/// This eliminates the serialization bottleneck from multiple MainActor.run calls
+/// Note: The struct itself is not @MainActor - only capture() runs on MainActor
+struct MainActorSnapshot: Sendable {
+    // Vault data
+    let vaultUnlocked: Bool
+    let vaultType: String
+    let vaultFiles: [VaultFile]
+    let vaultFolders: [VaultFolder]
+    let activePermissions: [VaultFilePermission]
+
+    // Database data
+    let currentFile: FileUploadResponse?
+    let hasExecuted: Bool
+    let editorText: String
+    let currentQuery: QueryResponse?
+
+    // Workflow data
+    let workflows: [Workflow]
+
+    // System resource data
+    let cpuUsage: Float
+    let loadedModels: [LoadedModel]
+
+    // History data (from @MainActor classes)
+    let modelInteractions: [ModelInteraction]
+    let workflowExecutions: [WorkflowExecution]
+
+    /// Capture all MainActor-dependent state in one atomic read
+    @MainActor
+    static func capture() -> MainActorSnapshot {
+        let vaultStore = VaultStore.shared
+        let permissionManager = VaultPermissionManager.shared
+        let databaseStore = DatabaseStore.shared
+        let workflowStore = WorkflowStore.shared
+        let resourceMonitor = ResourceMonitor.shared
+        let hotSlotManager = HotSlotManager.shared
+
+        // Read model interaction history synchronously (we're already on MainActor)
+        let modelInteractions = loadModelInteractions()
+        let workflowExecutions = loadWorkflowExecutions()
+
+        return MainActorSnapshot(
+            vaultUnlocked: vaultStore.unlocked,
+            vaultType: vaultStore.vaultType,
+            vaultFiles: Array(vaultStore.files.prefix(20)),
+            vaultFolders: vaultStore.folders,
+            activePermissions: permissionManager.activePermissions,
+            currentFile: databaseStore.currentFile,
+            hasExecuted: databaseStore.hasExecuted,
+            editorText: databaseStore.editorText,
+            currentQuery: databaseStore.currentQuery,
+            workflows: Array(workflowStore.workflows.prefix(10)),
+            cpuUsage: resourceMonitor.getCPUUsage(),
+            loadedModels: hotSlotManager.loadedModels(),
+            modelInteractions: modelInteractions,
+            workflowExecutions: workflowExecutions
+        )
+    }
+
+    /// Load model interaction history (must be called on MainActor)
+    @MainActor
+    private static func loadModelInteractions() -> [ModelInteraction] {
+        guard let data = UserDefaults.standard.data(forKey: "modelInteractionHistory") else {
+            return []
+        }
+        do {
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let interactions = try decoder.decode([ModelInteraction].self, from: data)
+            return Array(interactions.sorted { $0.timestamp > $1.timestamp }.prefix(100))
+        } catch {
+            return []
+        }
+    }
+
+    /// Load workflow execution history (must be called on MainActor)
+    @MainActor
+    private static func loadWorkflowExecutions() -> [WorkflowExecution] {
+        guard let data = UserDefaults.standard.data(forKey: "workflowExecutionHistory") else {
+            return []
+        }
+        do {
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let executions = try decoder.decode([WorkflowExecution].self, from: data)
+            return Array(executions.sorted { $0.startedAt > $1.startedAt }.prefix(10))
+        } catch {
+            return []
+        }
     }
 }
 
@@ -76,14 +173,34 @@ struct VaultContext {
     let totalFiles: Int
     let totalFolders: Int
 
+    /// Memberwise initializer
+    init(unlockedVaultType: String?, recentFiles: [VaultFileMetadata], activePermissions: [FilePermission], totalFiles: Int, totalFolders: Int) {
+        self.unlockedVaultType = unlockedVaultType
+        self.recentFiles = recentFiles
+        self.activePermissions = activePermissions
+        self.totalFiles = totalFiles
+        self.totalFolders = totalFolders
+    }
+
+    /// Initialize from batched MainActor snapshot (avoids separate MainActor hop)
+    init(from snapshot: MainActorSnapshot) {
+        self.unlockedVaultType = snapshot.vaultUnlocked ? snapshot.vaultType : nil
+        self.recentFiles = snapshot.vaultFiles.map { VaultFileMetadata(from: $0, vaultType: snapshot.vaultType) }
+        self.activePermissions = snapshot.activePermissions.map { FilePermission(from: $0) }
+        self.totalFiles = snapshot.vaultFiles.count
+        self.totalFolders = snapshot.vaultFolders.count
+    }
+
+    /// Standalone current() for isolated use (not via AppContext)
     static func current() async -> VaultContext {
         await MainActor.run {
             let store = VaultStore.shared
             let permissionManager = VaultPermissionManager.shared
+            let currentVaultType = store.vaultType
 
             return VaultContext(
                 unlockedVaultType: store.unlocked ? store.vaultType : nil,
-                recentFiles: store.files.prefix(20).map { VaultFileMetadata(from: $0) },
+                recentFiles: store.files.prefix(20).map { VaultFileMetadata(from: $0, vaultType: currentVaultType) },
                 activePermissions: permissionManager.activePermissions.map { FilePermission(from: $0) },
                 totalFiles: store.files.count,
                 totalFolders: store.folders.count
@@ -102,14 +219,13 @@ struct VaultFileMetadata: Codable {
     let vaultType: String  // "real" or "decoy"
     let isDirectory: Bool
 
-    init(from file: VaultFile) {
+    init(from file: VaultFile, vaultType: String) {
         self.id = file.id
         self.name = file.name
         self.path = file.folderPath ?? "/"
         self.size = Int64(file.size)
         self.modifiedAt = ISO8601DateFormatter().date(from: file.uploadedAt)
-        // Note: vaultType must be set by caller via MainActor
-        self.vaultType = "real"  // Default, will be overridden
+        self.vaultType = vaultType
         self.isDirectory = file.isFolder
     }
 
@@ -155,11 +271,47 @@ struct DataContext {
     let recentQueries: [RecentQuery]
     let activeConnections: [DatabaseConnection]
 
+    /// Memberwise initializer
+    init(loadedTables: [TableMetadata], recentQueries: [RecentQuery], activeConnections: [DatabaseConnection]) {
+        self.loadedTables = loadedTables
+        self.recentQueries = recentQueries
+        self.activeConnections = activeConnections
+    }
+
+    /// Initialize from batched MainActor snapshot
+    init(from snapshot: MainActorSnapshot) {
+        var tables: [TableMetadata] = []
+        if let currentFile = snapshot.currentFile {
+            tables.append(TableMetadata(
+                name: currentFile.filename,
+                rowCount: currentFile.rowCount,
+                columns: currentFile.columns.map { col in
+                    DataColumnInfo(name: col.originalName, type: col.dtype)
+                },
+                source: "uploaded"
+            ))
+        }
+
+        var queries: [RecentQuery] = []
+        if snapshot.hasExecuted, let currentQuery = snapshot.currentQuery {
+            queries.append(RecentQuery(
+                sql: snapshot.editorText,
+                executedAt: Date(),
+                success: true,
+                rowsReturned: currentQuery.rowCount
+            ))
+        }
+
+        self.loadedTables = tables
+        self.recentQueries = queries
+        self.activeConnections = []
+    }
+
+    /// Standalone current() for isolated use
     static func current() async -> DataContext {
         await MainActor.run {
             let store = DatabaseStore.shared
 
-            // Get table metadata from current file if available
             var tables: [TableMetadata] = []
             if let currentFile = store.currentFile {
                 tables.append(TableMetadata(
@@ -172,10 +324,7 @@ struct DataContext {
                 ))
             }
 
-            // Get recent queries from history (we'll fetch asynchronously)
             var queries: [RecentQuery] = []
-            // Note: fetchHistory is async, so we'd need to call it separately
-            // For now, if a query has been executed, include it
             if store.hasExecuted, let currentQuery = store.currentQuery {
                 queries.append(RecentQuery(
                     sql: store.editorText,
@@ -185,13 +334,10 @@ struct DataContext {
                 ))
             }
 
-            // No external connections tracked yet
-            let connections: [DatabaseConnection] = []
-
             return DataContext(
                 loadedTables: tables,
                 recentQueries: queries,
-                activeConnections: connections
+                activeConnections: []
             )
         }
     }
@@ -292,6 +438,19 @@ struct WorkflowContext {
     let activeWorkflows: [WorkflowSummary]
     let recentExecutions: [WorkflowExecution]
 
+    /// Memberwise initializer
+    init(activeWorkflows: [WorkflowSummary], recentExecutions: [WorkflowExecution]) {
+        self.activeWorkflows = activeWorkflows
+        self.recentExecutions = recentExecutions
+    }
+
+    /// Initialize from batched MainActor snapshot
+    init(from snapshot: MainActorSnapshot) {
+        self.activeWorkflows = snapshot.workflows.map { WorkflowSummary(from: $0) }
+        self.recentExecutions = snapshot.workflowExecutions
+    }
+
+    /// Standalone current() for isolated use
     static func current() async -> WorkflowContext {
         let store = await MainActor.run { WorkflowStore.shared }
         let executions = await WorkflowExecutionHistory.recent(limit: 10)
@@ -742,13 +901,48 @@ struct SystemResourceState: Codable {
     let availableMemoryGB: Float
     let cpuUsage: Float  // 0.0-1.0
 
+    /// Memberwise initializer
+    init(memoryPressure: Float, thermalState: ThermalState, activeModels: [LoadedModel], availableMemoryGB: Float, cpuUsage: Float) {
+        self.memoryPressure = memoryPressure
+        self.thermalState = thermalState
+        self.activeModels = activeModels
+        self.availableMemoryGB = availableMemoryGB
+        self.cpuUsage = cpuUsage
+    }
+
+    /// Initialize from batched MainActor snapshot (memory/thermal computed inline)
+    init(from snapshot: MainActorSnapshot) {
+        let processInfo = ProcessInfo.processInfo
+
+        // Thermal state
+        self.thermalState = ThermalState(from: processInfo.thermalState)
+
+        // Memory info (doesn't require MainActor)
+        var info = mach_task_basic_info()
+        var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size) / 4
+        let result = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
+                task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
+            }
+        }
+
+        let usedMemoryGB = result == KERN_SUCCESS ? Float(info.resident_size) / (1024 * 1024 * 1024) : 0
+        let totalMemoryGB = Float(processInfo.physicalMemory) / (1024 * 1024 * 1024)
+
+        self.availableMemoryGB = totalMemoryGB - usedMemoryGB
+        self.memoryPressure = min(1.0, usedMemoryGB / totalMemoryGB)
+
+        // From batched MainActor data
+        self.cpuUsage = snapshot.cpuUsage
+        self.activeModels = snapshot.loadedModels
+    }
+
+    /// Standalone current() for isolated use
     static func current() async -> SystemResourceState {
         let processInfo = ProcessInfo.processInfo
 
-        // Get thermal state
         let thermal = ThermalState(from: processInfo.thermalState)
 
-        // Get memory info
         var info = mach_task_basic_info()
         var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size) / 4
         let result = withUnsafeMutablePointer(to: &info) {
@@ -760,16 +954,12 @@ struct SystemResourceState: Codable {
         let usedMemoryGB = result == KERN_SUCCESS ? Float(info.resident_size) / (1024 * 1024 * 1024) : 0
         let totalMemoryGB = Float(processInfo.physicalMemory) / (1024 * 1024 * 1024)
         let availableMemoryGB = totalMemoryGB - usedMemoryGB
-
-        // Calculate memory pressure (simple heuristic)
         let memoryPressure = min(1.0, usedMemoryGB / totalMemoryGB)
 
-        // Get CPU usage from ResourceMonitor
         let cpuUsage: Float = await MainActor.run {
             ResourceMonitor.shared.getCPUUsage()
         }
 
-        // Get active models from hot slots
         let activeModels = await MainActor.run {
             HotSlotManager.shared.loadedModels()
         }

@@ -26,7 +26,23 @@ final class TeamStore {
 
     private let service = TeamService.shared
 
+    // Client-side unread tracking (until backend support added)
+    private static let lastReadPrefix = "team.lastRead."
+
     private init() {}
+
+    // MARK: - Unread Tracking
+
+    /// Get the last read message ID for a channel
+    private func lastReadMessageId(forChannelId channelId: String) -> String? {
+        UserDefaults.standard.string(forKey: Self.lastReadPrefix + channelId)
+    }
+
+    /// Mark a channel as read up to the latest message
+    func markChannelAsRead(_ channelId: String) {
+        guard let latestMessage = messages.last else { return }
+        UserDefaults.standard.set(latestMessage.id, forKey: Self.lastReadPrefix + channelId)
+    }
 
     // MARK: - Team Management
 
@@ -140,10 +156,24 @@ final class TeamStore {
         Array(messages.suffix(limit))
     }
 
-    /// Get unread message count (placeholder - needs backend support)
+    /// Get unread message count for a channel
+    /// Uses client-side tracking - counts messages after last read message ID
     func unreadCount(forChannelId channelId: String) -> Int {
-        // TODO: Implement when backend provides unread tracking
-        0
+        guard let lastReadId = lastReadMessageId(forChannelId: channelId) else {
+            // Never read this channel - all messages are unread
+            return messages.filter { $0.channelId == channelId }.count
+        }
+
+        // Find index of last read message
+        guard let lastReadIndex = messages.firstIndex(where: { $0.id == lastReadId }) else {
+            // Last read message no longer in memory - count all as unread
+            return messages.filter { $0.channelId == channelId }.count
+        }
+
+        // Count messages after the last read one
+        return messages.suffix(from: lastReadIndex + 1)
+            .filter { $0.channelId == channelId }
+            .count
     }
 
     /// Get channel by ID

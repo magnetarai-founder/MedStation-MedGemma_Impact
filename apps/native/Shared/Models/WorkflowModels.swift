@@ -182,7 +182,8 @@ struct NodePosition: Codable, Equatable {
 }
 
 /// A node in the workflow graph (matches backend WorkflowNode)
-struct WorkflowNode: Codable, Identifiable, Equatable {
+/// Note: Equatable removed - AnyCodable data property cannot be compared
+struct WorkflowNode: Codable, Identifiable {
     let id: String
     let type: String           // "trigger" | "condition" | "action" | "transform" | etc.
     let position: NodePosition
