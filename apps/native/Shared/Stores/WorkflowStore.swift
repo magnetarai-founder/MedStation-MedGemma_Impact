@@ -1,7 +1,68 @@
 import Foundation
 import Observation
 
-/// Workflow workspace state and operations
+// MARK: - WorkflowStore
+
+/// Central state management for the Workflow automation workspace.
+///
+/// ## Overview
+/// WorkflowStore manages workflow definitions, templates, work items, and analytics.
+/// Provides a complete workflow builder and execution environment for business process
+/// automation.
+///
+/// ## Architecture
+/// - **Thread Safety**: `@MainActor` isolated - all UI updates happen on main thread
+/// - **Observation**: Uses `@Observable` macro for SwiftUI reactivity
+/// - **Singleton**: Access via `WorkflowStore.shared`
+///
+/// ## State Persistence (UserDefaults)
+/// - `selectedWorkflowId` - Last selected workflow, restored after workflows load
+///
+/// ## Key Patterns
+/// - **Deferred Restoration**: Workflow ID stored in `pendingRestoreWorkflowId` and
+///   restored only after `loadWorkflows()` completes
+/// - **Work Item Queue**: Claims and processes work items through workflow stages
+///
+/// ## Workflow Components
+/// - `Workflow` - Workflow definition with nodes and edges
+/// - `WorkflowNode` - Individual step in workflow (task, decision, etc.)
+/// - `WorkflowEdge` - Connection between nodes
+/// - `WorkItem` - Instance of work moving through workflow
+/// - `WorkflowAnalytics` - Performance metrics for workflow
+///
+/// ## Builder Operations
+/// - `saveWorkflow()` - Save workflow definition
+/// - `runWorkflow()` - Execute workflow with provided nodes/edges
+///
+/// ## Work Queue Operations
+/// - `loadQueue()` - Get available work items
+/// - `claimWorkItem()` - Claim item for processing
+/// - `startWorkItem()` - Begin work on claimed item
+/// - `claimAndStart()` - Combined claim + start operation
+///
+/// ## Dependencies
+/// - `WorkflowService` - Backend workflow API
+///
+/// ## Usage
+/// ```swift
+/// let store = WorkflowStore.shared
+///
+/// // Load workflows
+/// await store.loadWorkflows()
+///
+/// // Load templates for quick start
+/// await store.loadTemplates()
+///
+/// // Instantiate template
+/// await store.instantiateTemplate(
+///     templateId: "approval-flow",
+///     name: "Q1 Budget Approval"
+/// )
+///
+/// // Work on items
+/// await store.loadQueue(workflowId: workflow.id)
+/// await store.claimAndStart(workItemId: item.id, userId: currentUser.id)
+/// ```
 @MainActor
 @Observable
 final class WorkflowStore {

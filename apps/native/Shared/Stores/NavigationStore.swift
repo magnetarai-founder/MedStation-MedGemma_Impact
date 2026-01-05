@@ -2,12 +2,52 @@
 //  NavigationStore.swift
 //  MagnetarStudio
 //
-//  Manages active workspace/tab navigation with state persistence.
+//  SPDX-License-Identifier: Proprietary
 //
 
 import Foundation
 import Observation
 
+// MARK: - NavigationStore
+
+/// Central state management for workspace navigation.
+///
+/// ## Overview
+/// NavigationStore manages which workspace is active and sidebar visibility.
+/// Works with the `Workspace` enum to provide a single source of truth for
+/// navigation state across the app.
+///
+/// ## Architecture
+/// - **Thread Safety**: `@MainActor` isolated - all UI updates happen on main thread
+/// - **Observation**: Uses `@Observable` macro for SwiftUI reactivity
+/// - **Non-Singleton**: Created per-window, but typically one instance
+///
+/// ## State Persistence (UserDefaults)
+/// - `activeWorkspace` - Last active workspace tab (defaults to `.chat`)
+/// - `isSidebarVisible` - Sidebar collapsed/expanded state (defaults to `true`)
+///
+/// ## Integration with Workspace Enum
+/// The `Workspace` enum defines all available workspaces with properties for:
+/// - `displayName` - Human-readable name
+/// - `icon` - SF Symbol for general use
+/// - `railIcon` - SF Symbol for NavigationRail (may differ)
+/// - `keyboardShortcut` - ⌘1-8 shortcuts
+/// - `railPosition` - Top or bottom cluster in NavigationRail
+///
+/// ## Usage
+/// ```swift
+/// // In app root
+/// @State private var navigationStore = NavigationStore()
+///
+/// // Navigate to workspace
+/// navigationStore.navigate(to: .vault)
+///
+/// // Toggle sidebar
+/// navigationStore.toggleSidebar()
+///
+/// // Read current workspace
+/// if navigationStore.activeWorkspace == .chat { ... }
+/// ```
 @MainActor
 @Observable
 final class NavigationStore {

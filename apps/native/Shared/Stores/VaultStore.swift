@@ -4,8 +4,53 @@ import os
 
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "VaultStore")
 
-/// Vault workspace state and operations
-/// SECURITY: Passphrase is stored in Keychain (OS-protected) not plain memory
+// MARK: - VaultStore
+
+/// Central state management for the encrypted Vault workspace.
+///
+/// ## Overview
+/// VaultStore manages the encrypted file vault - unlock/lock operations, file browsing,
+/// upload/download, and folder navigation. Supports both "real" and "decoy" vault modes
+/// for plausible deniability.
+///
+/// ## Architecture
+/// - **Thread Safety**: `@MainActor` isolated - all UI updates happen on main thread
+/// - **Observation**: Uses `@Observable` macro for SwiftUI reactivity
+/// - **Singleton**: Access via `VaultStore.shared`
+///
+/// ## Security Features
+/// - **Keychain Storage**: Passphrase stored in OS Keychain, never in plain memory
+/// - **Auto-Lock**: 15-minute inactivity timeout automatically locks vault
+/// - **Activity Tracking**: Each operation resets the auto-lock timer
+/// - **Decoy Vault**: Dual-vault system for plausible deniability under duress
+///
+/// ## State Persistence (UserDefaults)
+/// - `currentFolder` - Last browsed folder path, restored on unlock
+///
+/// ## Cloud Sync Integration
+/// When `cloudSyncEnabled` is true:
+/// - File uploads/deletes are queued for sync via `SyncService`
+/// - `syncToCloud()` / `syncFromCloud()` for manual sync operations
+/// - Handles offline mode gracefully (queues for later)
+///
+/// ## Dependencies
+/// - `VaultService` - Backend encryption/decryption API
+/// - `KeychainService` - Secure passphrase storage
+/// - `SyncService` - Cloud sync coordination
+///
+/// ## Usage
+/// ```swift
+/// // Unlock vault
+/// await VaultStore.shared.unlock(password: "secret")
+///
+/// // Navigate folders
+/// await VaultStore.shared.load(folderPath: "/Documents")
+///
+/// // Upload file
+/// await VaultStore.shared.upload(fileURL: localURL)
+///
+/// // Auto-locks after 15 minutes of inactivity
+/// ```
 @MainActor
 @Observable
 final class VaultStore {

@@ -4,7 +4,55 @@ import os
 
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "DatabaseStore")
 
-/// Database workspace state and operations
+// MARK: - DatabaseStore
+
+/// Central state management for the Database/Analytics workspace.
+///
+/// ## Overview
+/// DatabaseStore manages data analysis sessions - file uploads (CSV, Excel, JSON),
+/// SQL query execution, results preview, and data export. Uses ephemeral backend
+/// sessions for data processing.
+///
+/// ## Architecture
+/// - **Thread Safety**: `@MainActor` isolated - all UI updates happen on main thread
+/// - **Observation**: Uses `@Observable` macro for SwiftUI reactivity
+/// - **Singleton**: Access via `DatabaseStore.shared`
+/// - **Session-Based**: Intentionally ephemeral - no state persistence
+///
+/// ## Session Lifecycle
+/// Sessions are temporary analytical workspaces:
+/// 1. `createSession()` - Creates fresh backend session
+/// 2. `uploadFile()` - Loads data into session
+/// 3. `runQuery()` - Execute SQL against loaded data
+/// 4. `exportResults()` - Export query results
+/// 5. `deleteSession()` - Clean up (or session expires)
+///
+/// ## Auto-Retry Mechanism
+/// - `ensureSession()` - Automatically retries session creation (max 3 attempts)
+/// - `sessionCreationFailed` - Indicates retry limit reached
+/// - `resetSessionRetry()` - Reset counter after network recovery
+///
+/// ## Content Types
+/// - `.sql` - SQL mode for CSV/Excel data (DuckDB backend)
+/// - `.json` - JSON exploration mode
+///
+/// ## Dependencies
+/// - `DatabaseService` - Backend session and query API
+///
+/// ## Usage
+/// ```swift
+/// let store = DatabaseStore.shared
+///
+/// // Create session and upload file
+/// await store.createSession()
+/// await store.uploadFile(url: csvURL)
+///
+/// // Run SQL query
+/// await store.runQuery(sql: "SELECT * FROM data WHERE sales > 1000")
+///
+/// // Export results
+/// let csv = await store.exportResults(format: "csv")
+/// ```
 @MainActor
 @Observable
 final class DatabaseStore {

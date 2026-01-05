@@ -2,7 +2,7 @@
 //  ChatStore.swift
 //  MagnetarStudio
 //
-//  Chat state management - sessions, messages, AI responses.
+//  SPDX-License-Identifier: Proprietary
 //
 
 import Foundation
@@ -11,6 +11,47 @@ import os
 
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "ChatStore")
 
+// MARK: - ChatStore
+
+/// Central state management for the Chat workspace.
+///
+/// ## Overview
+/// ChatStore manages AI chat sessions, messages, streaming responses, and model selection.
+/// It coordinates between the local UI state and the backend ChatService for persistence.
+///
+/// ## Architecture
+/// - **Thread Safety**: `@MainActor` isolated - all UI updates happen on main thread
+/// - **Observation**: Uses `@Observable` macro for SwiftUI reactivity
+/// - **Singleton**: Access via `ChatStore()` injection or direct instantiation
+///
+/// ## State Persistence (UserDefaults)
+/// The following state is automatically persisted and restored on app launch:
+/// - `currentSessionId` - Restored after sessions load (deferred pattern)
+/// - `selectedMode` - "intelligent" or "manual" model selection
+/// - `selectedModelId` - Specific model ID when in manual mode
+///
+/// ## Key Patterns
+/// - **Deferred Restoration**: Session ID is stored in `pendingRestoreSessionId` and
+///   restored only after `loadSessions()` completes, ensuring the session object exists.
+/// - **Streaming**: Uses async sequences for real-time AI response streaming
+/// - **ID Mapping**: Maintains `sessionIdMapping` to translate between local UUIDs
+///   and backend string IDs
+///
+/// ## Dependencies
+/// - `ChatService` - Backend API communication
+/// - `ApiClient` - HTTP requests and authentication
+///
+/// ## Usage
+/// ```swift
+/// // In SwiftUI view
+/// @State private var chatStore = ChatStore()
+///
+/// // Create new session
+/// await chatStore.createSession()
+///
+/// // Send message with streaming
+/// await chatStore.sendMessage("Hello", sessionId: session.id)
+/// ```
 @MainActor
 @Observable
 final class ChatStore {

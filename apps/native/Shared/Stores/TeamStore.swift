@@ -2,13 +2,60 @@
 //  TeamStore.swift
 //  MagnetarStudio
 //
-//  Store for Team workspace state and operations
+//  SPDX-License-Identifier: Proprietary
 //
 
 import Foundation
 import Observation
 
-/// Team workspace state and operations
+// MARK: - TeamStore
+
+/// Central state management for the Team collaboration workspace.
+///
+/// ## Overview
+/// TeamStore manages team membership, channels, and messaging. Supports public channels,
+/// private channels, and direct messages. Includes client-side unread tracking.
+///
+/// ## Architecture
+/// - **Thread Safety**: `@MainActor` isolated - all UI updates happen on main thread
+/// - **Observation**: Uses `@Observable` macro for SwiftUI reactivity
+/// - **Singleton**: Access via `TeamStore.shared`
+///
+/// ## State Persistence (UserDefaults)
+/// - `selectedTeamId` - Last selected team
+/// - `selectedChannelId` - Last viewed channel
+/// - `lastRead.<channelId>` - Last read message ID per channel (for unread counts)
+///
+/// ## Channel Types
+/// - `public` - Open to all team members
+/// - `private` - Invite-only channels
+/// - `direct` - 1:1 direct messages
+///
+/// ## Unread Tracking
+/// Client-side tracking via UserDefaults:
+/// - `markChannelAsRead()` - Mark channel as read up to latest message
+/// - `unreadCount(forChannelId:)` - Count messages after last read position
+///
+/// ## Dependencies
+/// - `TeamService` - Backend team/channel/message API
+///
+/// ## Usage
+/// ```swift
+/// let store = TeamStore.shared
+///
+/// // Load teams and channels
+/// await store.loadTeams()
+/// await store.loadChannels()
+///
+/// // Load messages for a channel
+/// await store.loadMessages(channelId: "general")
+///
+/// // Send message
+/// await store.sendMessage(channelId: "general", content: "Hello team!")
+///
+/// // Check unread count
+/// let unread = store.unreadCount(forChannelId: "general")
+/// ```
 @MainActor
 @Observable
 final class TeamStore {

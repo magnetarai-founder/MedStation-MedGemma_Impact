@@ -1,7 +1,54 @@
 import Foundation
 import Observation
 
-/// Settings store for saved queries and app preferences
+// MARK: - SettingsStore
+
+/// Central state management for app settings and saved queries.
+///
+/// ## Overview
+/// SettingsStore manages user preferences, chat settings, and saved SQL queries.
+/// Settings are persisted locally in UserDefaults while saved queries sync with
+/// the backend.
+///
+/// ## Architecture
+/// - **Thread Safety**: `@MainActor` isolated - all UI updates happen on main thread
+/// - **Observation**: Uses `@Observable` macro for SwiftUI reactivity
+/// - **Singleton**: Access via `SettingsStore.shared`
+///
+/// ## State Persistence
+/// **UserDefaults (Local):**
+/// - `chatSettings` - Chat workspace preferences (streaming, context window, etc.)
+/// - `appSettings` - App-wide preferences (theme, notifications, etc.)
+///
+/// **Backend (Synced):**
+/// - `savedQueries` - User's saved SQL queries (Database workspace)
+///
+/// ## Settings Types
+/// - `ChatSettings` - AI chat configuration (model defaults, context length, etc.)
+/// - `AppSettings` - Application preferences (appearance, behavior)
+/// - `SavedQuery` - Reusable SQL queries with tags
+///
+/// ## Dependencies
+/// - `SettingsService` - Backend saved queries API
+///
+/// ## Usage
+/// ```swift
+/// let settings = SettingsStore.shared
+///
+/// // Update chat settings
+/// settings.chatSettings.enableStreaming = true
+/// settings.saveChatSettings()
+///
+/// // Load saved queries
+/// await settings.loadSavedQueries()
+///
+/// // Save a new query
+/// await settings.createSavedQuery(
+///     name: "Monthly Sales",
+///     query: "SELECT * FROM sales WHERE month = ?",
+///     tags: ["sales", "reports"]
+/// )
+/// ```
 @MainActor
 @Observable
 final class SettingsStore {

@@ -2,7 +2,7 @@
 //  KanbanStore.swift
 //  MagnetarStudio
 //
-//  Store for Kanban workspace state and operations
+//  SPDX-License-Identifier: Proprietary
 //
 
 import Foundation
@@ -14,7 +14,58 @@ private let iso8601Formatter: ISO8601DateFormatter = {
     return formatter
 }()
 
-/// Kanban workspace state and operations
+// MARK: - KanbanStore
+
+/// Central state management for the Kanban project board workspace.
+///
+/// ## Overview
+/// KanbanStore manages project boards, columns, and task cards. Provides CRUD
+/// operations for boards and tasks, plus helper methods for filtering and grouping.
+///
+/// ## Architecture
+/// - **Thread Safety**: `@MainActor` isolated - all UI updates happen on main thread
+/// - **Observation**: Uses `@Observable` macro for SwiftUI reactivity
+/// - **Singleton**: Access via `KanbanStore.shared`
+///
+/// ## State Persistence (UserDefaults)
+/// - `selectedBoardId` - Last viewed board, restored on app launch
+///
+/// ## Data Hierarchy
+/// ```
+/// Project
+///   └── Board (KanbanBoardAPI)
+///         └── Column
+///               └── Task (KanbanTaskAPI)
+/// ```
+///
+/// ## Helper Methods
+/// - `tasksByColumn()` - Group tasks for board column display
+/// - `tasks(withStatus:)` - Filter by status
+/// - `tasks(assignedTo:)` - Filter by assignee
+/// - `overdueTasks()` - Tasks past due date
+/// - `highPriorityTasks()` - Urgent/high priority tasks
+///
+/// ## Dependencies
+/// - `KanbanService` - Backend Kanban API
+///
+/// ## Usage
+/// ```swift
+/// let store = KanbanStore.shared
+///
+/// // Load boards for a project
+/// await store.loadBoards(projectId: "proj-123")
+///
+/// // Create task
+/// await store.createTask(
+///     boardId: "board-1",
+///     columnId: "todo",
+///     title: "Implement feature",
+///     priority: "high"
+/// )
+///
+/// // Move task between columns (drag & drop)
+/// await store.moveTask(taskId: "task-1", toColumnId: "in-progress")
+/// ```
 @MainActor
 @Observable
 final class KanbanStore {

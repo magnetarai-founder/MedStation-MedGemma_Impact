@@ -2,7 +2,7 @@
 //  ModelsStore.swift
 //  MagnetarStudio
 //
-//  Manages Ollama models - fetching, pulling, deleting.
+//  SPDX-License-Identifier: Proprietary
 //
 
 import Foundation
@@ -11,6 +11,47 @@ import os
 
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "ModelsStore")
 
+// MARK: - ModelsStore
+
+/// Central state management for Ollama model lifecycle.
+///
+/// ## Overview
+/// ModelsStore manages the local Ollama model registry - fetching available models,
+/// pulling new models from Ollama Hub, and deleting models. Used by MagnetarHub
+/// and model selection UI across the app.
+///
+/// ## Architecture
+/// - **Thread Safety**: `@MainActor` isolated - all UI updates happen on main thread
+/// - **Observation**: Uses `@Observable` macro for SwiftUI reactivity
+/// - **Non-Singleton**: Created per-view that needs model management
+///
+/// ## No State Persistence
+/// Model list is fetched fresh from Ollama on each view appearance.
+/// No need to persist - source of truth is Ollama server.
+///
+/// ## Model Operations
+/// - `fetchModels()` - Get list of locally installed models
+/// - `pullModel()` - Download model from Ollama Hub (streaming progress)
+/// - `deleteModel()` - Remove model from local storage
+///
+/// ## API Integration
+/// - `/api/chat/models` - Backend wrapper for Ollama models list
+/// - `/api/pull` - Direct to Ollama for model download (streaming)
+/// - `/api/delete` - Direct to Ollama for model removal
+///
+/// ## Usage
+/// ```swift
+/// @State private var modelsStore = ModelsStore()
+///
+/// // Fetch available models
+/// await modelsStore.fetchModels()
+///
+/// // Pull a new model
+/// try await modelsStore.pullModel(name: "llama3.2:3b")
+///
+/// // Delete a model
+/// try await modelsStore.deleteModel(name: "old-model:latest")
+/// ```
 @MainActor
 @Observable
 final class ModelsStore {

@@ -4,7 +4,67 @@ import os
 
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "AuthStore")
 
-/// Auth state machine and bootstrap logic
+// MARK: - AuthStore
+
+/// Central authentication state machine and bootstrap logic.
+///
+/// ## Overview
+/// AuthStore manages the complete authentication lifecycle - from initial app launch
+/// through login, registration, and session management. Uses a state machine pattern
+/// to ensure predictable auth flow.
+///
+/// ## Architecture
+/// - **Thread Safety**: `@MainActor` isolated - all UI updates happen on main thread
+/// - **Observation**: Uses `@Observable` macro for SwiftUI reactivity
+/// - **Singleton**: Access via `AuthStore.shared`
+///
+/// ## Auth State Machine
+/// ```
+/// .welcome ─────┬──► .register ──► .setupWizard ──► .authenticated
+///               │                        │                ▲
+///               └──► .login ─────────────┴────────────────┘
+///                        │
+///                        ▼
+///                   (Invalid token)
+///                        │
+///                        ▼
+///                    .welcome
+/// ```
+///
+/// ## Token Storage
+/// - JWT tokens stored in Keychain via `KeychainService`
+/// - Automatic token refresh handled by `ApiClient`
+/// - `bootstrap()` validates existing token on app launch
+///
+/// ## Debug Mode (DEBUG builds only)
+/// - Supports auto-login via environment variables:
+///   - `DEV_USERNAME` - Username for auto-login
+///   - `DEV_PASSWORD` - Password for auto-login
+/// - Never hardcoded - only from Xcode scheme environment
+///
+/// ## Dependencies
+/// - `KeychainService` - Secure token storage
+/// - `ApiClient` - HTTP requests and token management
+///
+/// ## Usage
+/// ```swift
+/// // Bootstrap on app launch
+/// await AuthStore.shared.bootstrap()
+///
+/// // Check auth state
+/// switch AuthStore.shared.authState {
+/// case .authenticated:
+///     // Show main app
+/// case .welcome:
+///     // Show login/register
+/// }
+///
+/// // Login
+/// await AuthStore.shared.login(username: "user", password: "pass")
+///
+/// // Logout
+/// AuthStore.shared.logout()
+/// ```
 @MainActor
 @Observable
 final class AuthStore {
