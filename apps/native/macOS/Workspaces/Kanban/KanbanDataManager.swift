@@ -2,7 +2,9 @@
 //  KanbanDataManager.swift
 //  MagnetarStudio (macOS)
 //
-//  Data loading manager - Extracted from KanbanWorkspace.swift (Phase 6.20)
+//  View-layer adapter for KanbanStore - converts API models to UI models.
+//  Extracted from KanbanWorkspace.swift (Phase 6.20)
+//  Consolidated to use KanbanStore.shared as single source of truth.
 //
 
 import SwiftUI
@@ -13,84 +15,93 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "KanbanD
 @MainActor
 @Observable
 class KanbanDataManager {
+    /// UI-friendly board models (converted from KanbanStore's API models)
     var boards: [KanbanBoard] = []
+    /// UI-friendly task models (converted from KanbanStore's API models)
     var tasks: [KanbanTask] = []
-    var isLoading: Bool = false
 
-    private let defaultProjectId = "default"
+    /// Loading state - delegates to KanbanStore
+    var isLoading: Bool { store.isLoading }
+
+    /// Error state - delegates to KanbanStore
+    var error: String? { store.error }
+
+    /// Current project ID - delegates to KanbanStore's configurable setting
+    var currentProjectId: String { store.currentProjectId }
+
+    private let store = KanbanStore.shared
+
+    // MARK: - Loading (delegates to KanbanStore)
 
     func loadBoardsAndTasks() async -> KanbanBoard? {
-        isLoading = true
+        // Load boards through the shared store
+        await store.loadBoards(projectId: currentProjectId)
 
-        do {
-            // Try to load boards from API
-            let apiBoards = try await KanbanService.shared.listBoards(projectId: defaultProjectId)
-
-            // Convert API boards to UI models
-            boards = apiBoards.map { apiBoard in
-                KanbanBoard(
-                    name: apiBoard.name,
-                    icon: "folder",
-                    taskCount: 0,  // Would need separate API call to get count
-                    boardId: apiBoard.boardId
-                )
-            }
-
-            // If we have boards, load tasks for the first one
-            if let firstBoard = apiBoards.first {
-                await loadTasks(boardId: firstBoard.boardId)
-                isLoading = false
-                return boards.first
-            }
-
-            isLoading = false
-            return nil
-        } catch {
-            // Show empty state if API fails
-            logger.error("Kanban API error: \(error.localizedDescription)")
-            boards = []
-            tasks = []
-            isLoading = false
-            return nil
+        // Convert API models to UI models
+        boards = store.boards.map { apiBoard in
+            KanbanBoard(
+                name: apiBoard.name,
+                icon: "folder",
+                taskCount: 0,  // Would need separate API call to get count
+                boardId: apiBoard.boardId
+            )
         }
+
+        // If we have boards, load tasks for the first one
+        if let firstBoard = store.boards.first {
+            await loadTasks(boardId: firstBoard.boardId)
+            return boards.first
+        }
+
+        return nil
     }
 
     func loadTasks(boardId: String) async {
-        do {
-            let apiTasks = try await KanbanService.shared.listTasks(boardId: boardId)
+        // Load tasks through the shared store
+        await store.loadTasks(boardId: boardId)
 
-            tasks = apiTasks.map { apiTask in
-                KanbanTask(
-                    title: apiTask.title,
-                    description: apiTask.description ?? "",
-                    status: taskStatusFromString(apiTask.status ?? "todo"),
-                    priority: taskPriorityFromString(apiTask.priority ?? "medium"),
-                    assignee: apiTask.assigneeId ?? "Unassigned",
-                    dueDate: apiTask.dueDate ?? "",
-                    labels: apiTask.tags,
-                    taskId: apiTask.taskId,
-                    boardId: apiTask.boardId,
-                    columnId: apiTask.columnId
-                )
-            }
-        } catch {
-            logger.error("Failed to load tasks: \(error.localizedDescription)")
+        // Convert API models to UI models
+        tasks = store.tasks.map { apiTask in
+            KanbanTask(
+                title: apiTask.title,
+                description: apiTask.description ?? "",
+                status: TaskStatus(apiString: apiTask.status ?? "todo"),
+                priority: TaskPriority(apiString: apiTask.priority ?? "medium"),
+                assignee: apiTask.assigneeId ?? "Unassigned",
+                dueDate: apiTask.dueDate ?? "",
+                labels: apiTask.tags,
+                taskId: apiTask.taskId,
+                boardId: apiTask.boardId,
+                columnId: apiTask.columnId
+            )
         }
     }
 
-    private func taskStatusFromString(_ str: String) -> TaskStatus {
-        switch str.lowercased() {
-        case "done": return .done
-        case "in_progress", "inprogress": return .inProgress
-        default: return .todo
-        }
-    }
+    // MARK: - Refresh (sync UI models from store)
 
-    private func taskPriorityFromString(_ str: String) -> TaskPriority {
-        switch str.lowercased() {
-        case "high": return .high
-        case "low": return .low
-        default: return .medium
+    /// Refresh UI models from the shared store without making API calls
+    func refreshFromStore() {
+        boards = store.boards.map { apiBoard in
+            KanbanBoard(
+                name: apiBoard.name,
+                icon: "folder",
+                taskCount: 0,
+                boardId: apiBoard.boardId
+            )
+        }
+        tasks = store.tasks.map { apiTask in
+            KanbanTask(
+                title: apiTask.title,
+                description: apiTask.description ?? "",
+                status: TaskStatus(apiString: apiTask.status ?? "todo"),
+                priority: TaskPriority(apiString: apiTask.priority ?? "medium"),
+                assignee: apiTask.assigneeId ?? "Unassigned",
+                dueDate: apiTask.dueDate ?? "",
+                labels: apiTask.tags,
+                taskId: apiTask.taskId,
+                boardId: apiTask.boardId,
+                columnId: apiTask.columnId
+            )
         }
     }
 }

@@ -29,6 +29,7 @@ private let iso8601Formatter: ISO8601DateFormatter = {
 ///
 /// ## State Persistence (UserDefaults)
 /// - `selectedBoardId` - Last viewed board, restored on app launch
+/// - `currentProjectId` - Active project ID (default: "default")
 ///
 /// ## Data Hierarchy
 /// ```
@@ -73,6 +74,7 @@ final class KanbanStore {
 
     // MARK: - State Persistence Keys
     private static let selectedBoardIdKey = "kanban.selectedBoardId"
+    private static let currentProjectIdKey = "kanban.currentProjectId"
 
     // MARK: - Observable State
 
@@ -80,6 +82,10 @@ final class KanbanStore {
     var tasks: [KanbanTaskAPI] = []
     var selectedBoardId: String? {
         didSet { UserDefaults.standard.set(selectedBoardId, forKey: Self.selectedBoardIdKey) }
+    }
+    /// Current project ID - persisted and configurable (default: "default")
+    var currentProjectId: String {
+        didSet { UserDefaults.standard.set(currentProjectId, forKey: Self.currentProjectIdKey) }
     }
     var isLoading = false
     var error: String?
@@ -89,6 +95,7 @@ final class KanbanStore {
     private init() {
         // Restore persisted state
         self.selectedBoardId = UserDefaults.standard.string(forKey: Self.selectedBoardIdKey)
+        self.currentProjectId = UserDefaults.standard.string(forKey: Self.currentProjectIdKey) ?? "default"
     }
 
     // MARK: - Board Management

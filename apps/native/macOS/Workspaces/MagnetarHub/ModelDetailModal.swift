@@ -17,6 +17,8 @@ struct ModelDetailModal: View {
     @Environment(\.dismiss) private var dismiss
     private let capabilityService = SystemCapabilityService.shared
 
+    @State private var showDeleteConfirmation = false
+
     var body: some View {
         VStack(spacing: 0) {
             // Header
@@ -77,11 +79,11 @@ struct ModelDetailModal: View {
                         }
                     }
 
-                    // Actions
+                    // Actions (delete shows confirmation first)
                     model.detailActions(
                         activeDownloads: $activeDownloads,
                         onDownload: onDownload,
-                        onDelete: onDelete,
+                        onDelete: { _ in showDeleteConfirmation = true },
                         onUpdate: onUpdate
                     )
 
@@ -93,6 +95,18 @@ struct ModelDetailModal: View {
         }
         .frame(width: 600, height: 500)
         .background(Color(nsColor: .windowBackgroundColor))
+        .confirmationDialog(
+            "Delete \(model.name)?",
+            isPresented: $showDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) {
+                onDelete(model.name)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This will remove the model from your local Ollama storage. This action cannot be undone.")
+        }
     }
 
     @ViewBuilder

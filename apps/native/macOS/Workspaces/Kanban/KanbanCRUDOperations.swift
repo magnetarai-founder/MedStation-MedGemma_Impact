@@ -2,7 +2,9 @@
 //  KanbanCRUDOperations.swift
 //  MagnetarStudio (macOS)
 //
-//  CRUD operations manager - Extracted from KanbanWorkspace.swift (Phase 6.20)
+//  View-layer CRUD adapter - delegates to KanbanStore and converts to UI models.
+//  Extracted from KanbanWorkspace.swift (Phase 6.20)
+//  Consolidated to use KanbanStore.shared as single source of truth.
 //
 
 import SwiftUI
@@ -13,50 +15,54 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "KanbanC
 @MainActor
 @Observable
 class KanbanCRUDOperations {
-    private let defaultProjectId = "default"
+    /// Current project ID - delegates to KanbanStore's configurable setting
+    var currentProjectId: String { store.currentProjectId }
+
+    /// Error message from last operation
+    var errorMessage: String? { store.error }
+
+    private let store = KanbanStore.shared
 
     // MARK: - Board Operations
 
     func createBoard(name: String) async -> KanbanBoard? {
         guard !name.isEmpty else { return nil }
 
-        do {
-            // Create board via API
-            let apiBoard = try await KanbanService.shared.createBoard(
-                projectId: defaultProjectId,
-                name: name
-            )
+        // Create through the shared store
+        await store.createBoard(projectId: currentProjectId, name: name)
 
-            return KanbanBoard(
-                name: apiBoard.name,
-                icon: "folder",
-                taskCount: 0,
-                boardId: apiBoard.boardId
-            )
-        } catch {
-            logger.error("Failed to create board: \(error.localizedDescription)")
-            // Fall back to local-only creation
-            return KanbanBoard(
-                name: name,
-                icon: "folder",
-                taskCount: 0,
-                boardId: nil
-            )
+        // Check if creation succeeded
+        guard store.error == nil,
+              let apiBoard = store.boards.first(where: { $0.name == name }) else {
+            logger.error("Failed to create board: \(store.error ?? "Unknown error")")
+            return nil
         }
+
+        // Convert to UI model
+        return KanbanBoard(
+            name: apiBoard.name,
+            icon: "folder",
+            taskCount: 0,
+            boardId: apiBoard.boardId
+        )
     }
 
     func deleteBoard(_ board: KanbanBoard) async -> Bool {
-        do {
-            // Delete from API if we have a backend ID
-            if let boardId = board.boardId {
-                try await KanbanService.shared.deleteBoard(boardId: boardId)
-            }
-            return true
-        } catch {
-            logger.warning("Failed to delete board from API: \(error.localizedDescription)")
-            // Still return true to remove locally even if API fails
-            return true
+        guard let boardId = board.boardId else {
+            logger.warning("Cannot delete board: no backend ID")
+            return false
         }
+
+        // Delete through the shared store
+        await store.deleteBoard(boardId: boardId)
+
+        // Return false if there was an error (SIMPLE-C3 fix)
+        if store.error != nil {
+            logger.error("Failed to delete board: \(store.error ?? "Unknown error")")
+            return false
+        }
+
+        return true
     }
 
     // MARK: - Task Operations
@@ -68,79 +74,56 @@ class KanbanCRUDOperations {
             return nil
         }
 
-        do {
-            // For now, use "todo" as the default column_id
-            // In a full implementation, we'd fetch columns and use the first one
-            let defaultColumnId = "todo"
+        // For now, use "todo" as the default column_id
+        let defaultColumnId = "todo"
 
-            let apiTask = try await KanbanService.shared.createTask(
-                boardId: boardId,
-                columnId: defaultColumnId,
-                title: title,
-                description: "New task description",
-                status: "todo",
-                priority: "medium"
-            )
+        // Create through the shared store
+        await store.createTask(
+            boardId: boardId,
+            columnId: defaultColumnId,
+            title: title,
+            description: "New task description",
+            status: "todo",
+            priority: "medium"
+        )
 
-            return KanbanTask(
-                title: apiTask.title,
-                description: apiTask.description ?? "",
-                status: taskStatusFromString(apiTask.status ?? "todo"),
-                priority: taskPriorityFromString(apiTask.priority ?? "medium"),
-                assignee: apiTask.assigneeId ?? "Unassigned",
-                dueDate: apiTask.dueDate ?? "TBD",
-                labels: apiTask.tags,
-                taskId: apiTask.taskId,
-                boardId: apiTask.boardId,
-                columnId: apiTask.columnId
-            )
-        } catch {
-            logger.error("Failed to create task: \(error.localizedDescription)")
-            // Fall back to local-only creation
-            return KanbanTask(
-                title: title,
-                description: "New task description",
-                status: .todo,
-                priority: .medium,
-                assignee: "Unassigned",
-                dueDate: "TBD",
-                labels: [],
-                taskId: nil,
-                boardId: nil,
-                columnId: nil
-            )
+        // Check if creation succeeded
+        guard store.error == nil,
+              let apiTask = store.tasks.first(where: { $0.title == title }) else {
+            logger.error("Failed to create task: \(store.error ?? "Unknown error")")
+            return nil
         }
+
+        // Convert to UI model
+        return KanbanTask(
+            title: apiTask.title,
+            description: apiTask.description ?? "",
+            status: TaskStatus(apiString: apiTask.status ?? "todo"),
+            priority: TaskPriority(apiString: apiTask.priority ?? "medium"),
+            assignee: apiTask.assigneeId ?? "Unassigned",
+            dueDate: apiTask.dueDate ?? "TBD",
+            labels: apiTask.tags,
+            taskId: apiTask.taskId,
+            boardId: apiTask.boardId,
+            columnId: apiTask.columnId
+        )
     }
 
     func deleteTask(_ task: KanbanTask) async -> Bool {
-        do {
-            // Delete from API if we have a backend ID
-            if let taskId = task.taskId {
-                try await KanbanService.shared.deleteTask(taskId: taskId)
-            }
-            return true
-        } catch {
-            logger.warning("Failed to delete task from API: \(error.localizedDescription)")
-            // Still return true to remove locally even if API fails
-            return true
+        guard let taskId = task.taskId else {
+            logger.warning("Cannot delete task: no backend ID")
+            return false
         }
-    }
 
-    // MARK: - Helper Methods
+        // Delete through the shared store
+        await store.deleteTask(taskId: taskId)
 
-    private func taskStatusFromString(_ str: String) -> TaskStatus {
-        switch str.lowercased() {
-        case "done": return .done
-        case "in_progress", "inprogress": return .inProgress
-        default: return .todo
+        // Return false if there was an error (SIMPLE-C3 fix)
+        if store.error != nil {
+            logger.error("Failed to delete task: \(store.error ?? "Unknown error")")
+            return false
         }
-    }
 
-    private func taskPriorityFromString(_ str: String) -> TaskPriority {
-        switch str.lowercased() {
-        case "high": return .high
-        case "low": return .low
-        default: return .medium
-        }
+        return true
     }
 }

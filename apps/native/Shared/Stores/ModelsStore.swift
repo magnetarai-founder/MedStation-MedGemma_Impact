@@ -23,11 +23,12 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "ModelsS
 /// ## Architecture
 /// - **Thread Safety**: `@MainActor` isolated - all UI updates happen on main thread
 /// - **Observation**: Uses `@Observable` macro for SwiftUI reactivity
-/// - **Non-Singleton**: Created per-view that needs model management
+/// - **Singleton**: Access via `ModelsStore.shared`
 ///
 /// ## No State Persistence
-/// Model list is fetched fresh from Ollama on each view appearance.
+/// Model list is fetched fresh from Ollama on demand.
 /// No need to persist - source of truth is Ollama server.
+/// Using singleton ensures consistent model list across all views.
 ///
 /// ## Model Operations
 /// - `fetchModels()` - Get list of locally installed models
@@ -41,7 +42,8 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "ModelsS
 ///
 /// ## Usage
 /// ```swift
-/// @State private var modelsStore = ModelsStore()
+/// // Access the shared instance
+/// let modelsStore = ModelsStore.shared
 ///
 /// // Fetch available models
 /// await modelsStore.fetchModels()
@@ -55,13 +57,15 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "ModelsS
 @MainActor
 @Observable
 final class ModelsStore {
+    static let shared = ModelsStore()
+
     var models: [OllamaModel] = []
     var isLoading: Bool = false
     var error: Error? = nil
 
     private let apiClient = ApiClient.shared
 
-    init() {}
+    private init() {}
 
     func fetchModels() async {
         isLoading = true

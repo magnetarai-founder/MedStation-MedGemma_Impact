@@ -15,6 +15,7 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "HubOlla
 class HubOllamaManager {
     var ollamaServerRunning: Bool = false
     var isOllamaActionInProgress: Bool = false
+    var errorMessage: String?
 
     private let ollamaService = OllamaService.shared
 
@@ -24,6 +25,7 @@ class HubOllamaManager {
 
     func toggleOllama() async {
         isOllamaActionInProgress = true
+        errorMessage = nil
 
         do {
             if ollamaServerRunning {
@@ -36,6 +38,7 @@ class HubOllamaManager {
                 ollamaServerRunning = true
             }
         } catch {
+            errorMessage = "Failed to \(ollamaServerRunning ? "stop" : "start") Ollama: \(error.localizedDescription)"
             logger.error("Failed to toggle Ollama: \(error)")
         }
 
@@ -44,11 +47,13 @@ class HubOllamaManager {
 
     func restartOllama() async {
         isOllamaActionInProgress = true
+        errorMessage = nil
 
         do {
             try await ollamaService.restart()
             ollamaServerRunning = true
         } catch {
+            errorMessage = "Failed to restart Ollama: \(error.localizedDescription)"
             logger.error("Failed to restart Ollama: \(error)")
             ollamaServerRunning = false
         }

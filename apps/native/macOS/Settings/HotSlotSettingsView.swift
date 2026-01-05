@@ -13,7 +13,7 @@ import SwiftUI
 
 struct HotSlotSettingsView: View {
     @State private var hotSlotManager = HotSlotManager.shared
-    @State private var modelsStore = ModelsStore()
+    private let modelsStore = ModelsStore.shared
     @State private var showModelPicker: Bool = false
     @State private var selectedSlotForAssignment: Int? = nil
 

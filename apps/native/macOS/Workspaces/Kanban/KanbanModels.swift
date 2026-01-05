@@ -62,6 +62,15 @@ enum TaskStatus: String {
         case .done: return .green
         }
     }
+
+    /// Parse status from backend API string
+    init(apiString: String) {
+        switch apiString.lowercased() {
+        case "done": self = .done
+        case "in_progress", "inprogress": self = .inProgress
+        default: self = .todo
+        }
+    }
 }
 
 // MARK: - Task Priority
@@ -76,6 +85,15 @@ enum TaskPriority: String {
         case .low: return .gray
         case .medium: return .orange
         case .high: return .red
+        }
+    }
+
+    /// Parse priority from backend API string
+    init(apiString: String) {
+        switch apiString.lowercased() {
+        case "high": self = .high
+        case "low": self = .low
+        default: self = .medium
         }
     }
 }

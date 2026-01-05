@@ -16,6 +16,7 @@ class HubModelOperations {
     var activeDownloads: [String: DownloadProgress] = [:]
     var enrichedModels: [String: EnrichedModelMetadata] = [:]
     var isEnrichingModels: Bool = false
+    var errorMessage: String?
 
     private let ollamaService = OllamaService.shared
     private let enrichmentService = ModelEnrichmentService.shared
@@ -39,14 +40,19 @@ class HubModelOperations {
 
     func downloadModel(modelName: String, ollamaRunning: Bool, networkConnected: Bool, onRefreshModels: @escaping () async -> Void) {
         guard ollamaRunning else {
+            errorMessage = "Cannot download - Ollama server not running"
             logger.warning("Cannot download - Ollama server not running")
             return
         }
 
         guard networkConnected else {
+            errorMessage = "Cannot download - No internet connection"
             logger.warning("Cannot download - No internet connection")
             return
         }
+
+        // Clear any previous error
+        errorMessage = nil
 
         // Initialize progress tracking
         activeDownloads[modelName] = DownloadProgress(
@@ -91,6 +97,9 @@ class HubModelOperations {
     }
 
     func deleteModel(_ modelName: String, onRefreshModels: @escaping () async -> Void, onCloseModal: @escaping () -> Void) {
+        // Clear any previous error
+        errorMessage = nil
+
         Task {
             do {
                 logger.info("Deleting model: \(modelName)")
@@ -107,6 +116,7 @@ class HubModelOperations {
                 // Close modal
                 onCloseModal()
             } catch {
+                errorMessage = "Failed to delete model: \(error.localizedDescription)"
                 logger.error("Failed to delete model: \(error.localizedDescription)")
             }
         }
@@ -114,14 +124,19 @@ class HubModelOperations {
 
     func updateModel(_ modelName: String, ollamaRunning: Bool, networkConnected: Bool, modelsStore: ModelsStore) {
         guard ollamaRunning else {
+            errorMessage = "Cannot update - Ollama server not running"
             logger.warning("Cannot update - Ollama server not running")
             return
         }
 
         guard networkConnected else {
+            errorMessage = "Cannot update - No internet connection"
             logger.warning("Cannot update - No internet connection")
             return
         }
+
+        // Clear any previous error
+        errorMessage = nil
 
         // Re-pull the model to update it
         logger.info("Updating model: \(modelName)")

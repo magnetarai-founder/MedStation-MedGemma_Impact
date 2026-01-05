@@ -22,8 +22,8 @@ struct MagnetarHubWorkspace: View {
     @State private var cloudManager = HubCloudManager()
     @State private var modelOperations = HubModelOperations()
 
-    // Local models store
-    @State private var modelsStore = ModelsStore()
+    // Shared models store (singleton for consistent state)
+    private let modelsStore = ModelsStore.shared
 
     private let capabilityService = SystemCapabilityService.shared
 
@@ -46,6 +46,15 @@ struct MagnetarHubWorkspace: View {
             // Stop auto-sync and network monitoring when leaving workspace
             cloudManager.stopAutoSync()
             networkManager.stopNetworkMonitoring()
+        }
+        .alert("Error", isPresented: showingError, presenting: currentError) { _ in
+            Button("OK") {
+                // Clear all error messages
+                modelOperations.errorMessage = nil
+                ollamaManager.errorMessage = nil
+            }
+        } message: { error in
+            Text(error)
         }
         .sheet(isPresented: $showModelDetail) {
             if let model = selectedModel {
@@ -217,6 +226,22 @@ struct MagnetarHubWorkspace: View {
     }
 
     // MARK: - Computed Properties
+
+    /// Binding for showing error alert when any manager has an error
+    private var showingError: Binding<Bool> {
+        Binding(
+            get: { currentError != nil },
+            set: { if !$0 {
+                modelOperations.errorMessage = nil
+                ollamaManager.errorMessage = nil
+            }}
+        )
+    }
+
+    /// Get the first available error message from managers
+    private var currentError: String? {
+        modelOperations.errorMessage ?? ollamaManager.errorMessage
+    }
 
     private var gridColumns: [GridItem] {
         [
