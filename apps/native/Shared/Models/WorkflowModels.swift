@@ -173,6 +173,72 @@ struct StageAnalytics: Codable, Identifiable {
     }
 }
 
+// MARK: - Workflow Builder Types
+
+/// Node position in the workflow canvas
+struct NodePosition: Codable, Equatable {
+    let x: Double
+    let y: Double
+}
+
+/// A node in the workflow graph (matches backend WorkflowNode)
+struct WorkflowNode: Codable, Identifiable, Equatable {
+    let id: String
+    let type: String           // "trigger" | "condition" | "action" | "transform" | etc.
+    let position: NodePosition
+    let label: String
+    let data: [String: AnyCodable]?  // Node-specific configuration
+
+    init(id: String, type: String, position: NodePosition, label: String, data: [String: AnyCodable]? = nil) {
+        self.id = id
+        self.type = type
+        self.position = position
+        self.label = label
+        self.data = data
+    }
+
+    /// Convert to dictionary for API calls that need [String: Any]
+    func toDictionary() -> [String: Any] {
+        var dict: [String: Any] = [
+            "id": id,
+            "type": type,
+            "position": ["x": position.x, "y": position.y],
+            "label": label
+        ]
+        if let data = data {
+            dict["data"] = data.mapValues { $0.value }
+        }
+        return dict
+    }
+}
+
+/// An edge connecting two nodes in the workflow graph (matches backend WorkflowEdge)
+struct WorkflowEdge: Codable, Identifiable, Equatable {
+    let source: String  // Source node ID
+    let target: String  // Target node ID
+    let label: String?  // Optional edge label for conditional branches
+
+    var id: String { "\(source)->\(target)" }
+
+    init(source: String, target: String, label: String? = nil) {
+        self.source = source
+        self.target = target
+        self.label = label
+    }
+
+    /// Convert to dictionary for API calls that need [String: Any]
+    func toDictionary() -> [String: Any] {
+        var dict: [String: Any] = [
+            "source": source,
+            "target": target
+        ]
+        if let label = label {
+            dict["label"] = label
+        }
+        return dict
+    }
+}
+
 // MARK: - Request Models
 
 struct InstantiateTemplateRequest: Codable {
@@ -183,8 +249,8 @@ struct InstantiateTemplateRequest: Codable {
 struct SaveWorkflowRequest: Codable {
     let workflowId: String
     let name: String
-    let nodes: [[String: AnyCodable]]
-    let edges: [[String: AnyCodable]]
+    let nodes: [WorkflowNode]
+    let edges: [WorkflowEdge]
 
     enum CodingKeys: String, CodingKey {
         case workflowId = "workflow_id"
@@ -197,8 +263,8 @@ struct SaveWorkflowRequest: Codable {
 struct RunWorkflowRequest: Codable {
     let workflowId: String
     let name: String
-    let nodes: [[String: AnyCodable]]
-    let edges: [[String: AnyCodable]]
+    let nodes: [WorkflowNode]
+    let edges: [WorkflowEdge]
 
     enum CodingKeys: String, CodingKey {
         case workflowId = "workflow_id"

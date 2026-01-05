@@ -186,8 +186,8 @@ final class WorkflowStore {
     func saveWorkflow(
         workflowId: String,
         name: String,
-        nodes: [[String: Any]],
-        edges: [[String: Any]]
+        nodes: [WorkflowNode],
+        edges: [WorkflowEdge]
     ) async {
         isLoading = true
         defer { isLoading = false }
@@ -208,8 +208,8 @@ final class WorkflowStore {
     func runWorkflow(
         workflowId: String,
         name: String,
-        nodes: [[String: Any]],
-        edges: [[String: Any]]
+        nodes: [WorkflowNode],
+        edges: [WorkflowEdge]
     ) async {
         isLoading = true
         defer { isLoading = false }

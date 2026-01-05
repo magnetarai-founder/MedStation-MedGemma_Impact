@@ -1,5 +1,8 @@
 import Foundation
 import Observation
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "DatabaseStore")
 
 /// Database workspace state and operations
 @MainActor
@@ -15,11 +18,26 @@ final class DatabaseStore {
     var contentType: ContentType = .sql
     private(set) var isExecuting: Bool = false
     private(set) var isUploading: Bool = false
+    private(set) var isCreatingSession: Bool = false
     var error: String?
+
+    // Session retry tracking
+    private var sessionRetryCount: Int = 0
+    private static let maxSessionRetries = 3
 
     // Editor state
     var editorText: String = ""
     var hasExecuted: Bool = false
+
+    /// Whether session is active and ready for operations
+    var hasActiveSession: Bool {
+        sessionId != nil
+    }
+
+    /// Whether session creation failed and user should be notified
+    var sessionCreationFailed: Bool {
+        sessionId == nil && sessionRetryCount >= Self.maxSessionRetries
+    }
 
     enum ContentType {
         case sql
@@ -34,19 +52,52 @@ final class DatabaseStore {
 
     /// Create a fresh session (call after auth)
     func createSession() async {
+        guard !isCreatingSession else { return }
+
+        isCreatingSession = true
+        defer { isCreatingSession = false }
+
         do {
             let session = try await service.createSession()
             sessionId = session.sessionId
+            sessionRetryCount = 0
             error = nil
+            logger.info("Database session created: \(session.sessionId)")
         } catch {
+            sessionRetryCount += 1
             self.error = "Failed to create session: \(error.localizedDescription)"
+            logger.error("Session creation failed (attempt \(self.sessionRetryCount)/\(Self.maxSessionRetries)): \(error)")
         }
+    }
+
+    /// Ensure we have an active session, retrying if needed
+    /// Call this before any operation that requires a session
+    func ensureSession() async -> Bool {
+        if sessionId != nil {
+            return true
+        }
+
+        // Don't retry if we've exhausted attempts
+        if sessionRetryCount >= Self.maxSessionRetries {
+            logger.warning("Session creation failed after \(Self.maxSessionRetries) attempts")
+            return false
+        }
+
+        await createSession()
+        return sessionId != nil
+    }
+
+    /// Reset retry counter (e.g., after network comes back online)
+    func resetSessionRetry() {
+        sessionRetryCount = 0
+        error = nil
     }
 
     func deleteSession() async {
         guard let id = sessionId else { return }
         await service.deleteSession(id: id)
         sessionId = nil
+        sessionRetryCount = 0
         currentFile = nil
         currentQuery = nil
     }
@@ -54,8 +105,11 @@ final class DatabaseStore {
     // MARK: - File Upload
 
     func uploadFile(url: URL) async {
-        guard let id = sessionId else {
-            error = "No active session"
+        // Auto-retry session if needed
+        guard await ensureSession(), let id = sessionId else {
+            error = sessionCreationFailed
+                ? "Session creation failed. Please try again or restart the app."
+                : "No active session"
             return
         }
 
@@ -116,8 +170,11 @@ final class DatabaseStore {
     }
 
     func runQuery(sql: String, limit: Int? = nil, isPreview: Bool = false) async {
-        guard let id = sessionId else {
-            error = "No active session"
+        // Auto-retry session if needed
+        guard await ensureSession(), let id = sessionId else {
+            error = sessionCreationFailed
+                ? "Session creation failed. Please try again or restart the app."
+                : "No active session"
             return
         }
 
@@ -148,8 +205,11 @@ final class DatabaseStore {
     // MARK: - JSON Conversion
 
     func convertJson(jsonText: String) async {
-        guard let id = sessionId else {
-            error = "No active session"
+        // Auto-retry session if needed
+        guard await ensureSession(), let id = sessionId else {
+            error = sessionCreationFailed
+                ? "Session creation failed. Please try again or restart the app."
+                : "No active session"
             return
         }
 
@@ -225,8 +285,11 @@ final class DatabaseStore {
     }
 
     func downloadJsonResult(format: String) async -> Data? {
-        guard let id = sessionId else {
-            error = "No active session"
+        // Auto-retry session if needed
+        guard await ensureSession(), let id = sessionId else {
+            error = sessionCreationFailed
+                ? "Session creation failed. Please try again or restart the app."
+                : "No active session"
             return nil
         }
 

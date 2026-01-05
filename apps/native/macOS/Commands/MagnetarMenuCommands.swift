@@ -42,7 +42,7 @@ struct MagnetarMenuCommands: Commands {
 
         // Edit menu (keep defaults)
 
-        // View menu
+        // View menu - All workspaces with ⌘1-8 shortcuts matching NavigationStore.keyboardShortcut
         CommandMenu("View") {
             Button("Team Workspace") {
                 navigationStore.navigate(to: .team)
@@ -54,20 +54,35 @@ struct MagnetarMenuCommands: Commands {
             }
             .keyboardShortcut("2", modifiers: .command)
 
+            Button("Code Workspace") {
+                navigationStore.navigate(to: .code)
+            }
+            .keyboardShortcut("3", modifiers: .command)
+
             Button("Database Workspace") {
                 navigationStore.navigate(to: .database)
             }
-            .keyboardShortcut("3", modifiers: .command)
+            .keyboardShortcut("4", modifiers: .command)
 
             Button("Kanban Workspace") {
                 navigationStore.navigate(to: .kanban)
             }
-            .keyboardShortcut("4", modifiers: .command)
+            .keyboardShortcut("5", modifiers: .command)
+
+            Button("Insights Workspace") {
+                navigationStore.navigate(to: .insights)
+            }
+            .keyboardShortcut("6", modifiers: .command)
+
+            Button("Trust Network") {
+                navigationStore.navigate(to: .trust)
+            }
+            .keyboardShortcut("7", modifiers: .command)
 
             Button("MagnetarHub") {
                 navigationStore.navigate(to: .magnetarHub)
             }
-            .keyboardShortcut("5", modifiers: .command)
+            .keyboardShortcut("8", modifiers: .command)
 
             Divider()
 

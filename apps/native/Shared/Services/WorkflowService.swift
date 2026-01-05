@@ -101,8 +101,8 @@ final class WorkflowService {
     func saveWorkflow(
         workflowId: String,
         name: String,
-        nodes: [[String: Any]],
-        edges: [[String: Any]]
+        nodes: [WorkflowNode],
+        edges: [WorkflowEdge]
     ) async throws {
         _ = try await apiClient.request(
             path: "/v1/automation/save",
@@ -110,8 +110,8 @@ final class WorkflowService {
             jsonBody: [
                 "workflow_id": workflowId,
                 "name": name,
-                "nodes": nodes,
-                "edges": edges
+                "nodes": nodes.map { $0.toDictionary() },
+                "edges": edges.map { $0.toDictionary() }
             ]
         ) as EmptyResponse
     }
@@ -119,8 +119,8 @@ final class WorkflowService {
     func runWorkflow(
         workflowId: String,
         name: String,
-        nodes: [[String: Any]],
-        edges: [[String: Any]]
+        nodes: [WorkflowNode],
+        edges: [WorkflowEdge]
     ) async throws {
         _ = try await apiClient.request(
             path: "/v1/automation/run",
@@ -128,8 +128,8 @@ final class WorkflowService {
             jsonBody: [
                 "workflow_id": workflowId,
                 "name": name,
-                "nodes": nodes,
-                "edges": edges
+                "nodes": nodes.map { $0.toDictionary() },
+                "edges": edges.map { $0.toDictionary() }
             ]
         ) as EmptyResponse
     }

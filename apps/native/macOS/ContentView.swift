@@ -7,6 +7,7 @@
 
 import SwiftUI
 import LocalAuthentication
+import AppKit
 import os
 
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "ContentView")
@@ -114,6 +115,7 @@ struct MainAppView: View {
     @Environment(NavigationStore.self) private var navigationStore
     @Environment(ChatStore.self) private var chatStore
     @Environment(VaultPermissionManager.self) private var permissionManager
+    @State private var workspaceError: WorkspaceError?
 
     var body: some View {
         ZStack {
@@ -129,30 +131,25 @@ struct MainAppView: View {
 
                     Divider()
 
-                    // Right: Tab content (lazy loading for performance)
+                    // Right: Tab content with error boundary
                     Group {
-                        switch navigationStore.activeWorkspace {
-                        case .chat:
-                            ChatWorkspace()
-                        case .team:
-                            TeamWorkspace()
-                        case .code:
-                            CodeWorkspace()
-                        case .kanban:
-                            KanbanWorkspace()
-                        case .database:
-                            DatabaseWorkspace()
-                        case .insights:
-                            InsightsWorkspace()
-                        case .trust:
-                            TrustWorkspace()
-                        case .magnetarHub:
-                            MagnetarHubWorkspace()
+                        if let error = workspaceError {
+                            WorkspaceErrorView(
+                                error: error,
+                                workspace: navigationStore.activeWorkspace,
+                                onRetry: { workspaceError = nil }
+                            )
+                        } else {
+                            activeWorkspaceView
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .transition(.magnetarFade)
                 }
+            }
+            .onChange(of: navigationStore.activeWorkspace) { _, _ in
+                // Clear error when switching workspaces
+                workspaceError = nil
             }
 
             // CRITICAL: File permission modal overlay (Phase 3)
@@ -181,6 +178,110 @@ struct MainAppView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .animation(.easeInOut(duration: 0.2), value: permissionManager.showPermissionModal)
         .withNetworkFirewall() // Enable network firewall with approval modals
+    }
+
+    // MARK: - Active Workspace View
+
+    @ViewBuilder
+    private var activeWorkspaceView: some View {
+        switch navigationStore.activeWorkspace {
+        case .chat:
+            ChatWorkspace()
+        case .team:
+            TeamWorkspace()
+        case .code:
+            CodeWorkspace()
+        case .kanban:
+            KanbanWorkspace()
+        case .database:
+            DatabaseWorkspace()
+        case .insights:
+            InsightsWorkspace()
+        case .trust:
+            TrustWorkspace()
+        case .magnetarHub:
+            MagnetarHubWorkspace()
+        }
+    }
+}
+
+// MARK: - Workspace Error Types
+
+enum WorkspaceError: Error, LocalizedError {
+    case loadFailed(String)
+    case networkError(String)
+    case authenticationRequired
+    case unknown(Error)
+
+    var errorDescription: String? {
+        switch self {
+        case .loadFailed(let message):
+            return "Failed to load workspace: \(message)"
+        case .networkError(let message):
+            return "Network error: \(message)"
+        case .authenticationRequired:
+            return "Authentication required"
+        case .unknown(let error):
+            return "An error occurred: \(error.localizedDescription)"
+        }
+    }
+
+    var recoverySuggestion: String {
+        switch self {
+        case .loadFailed:
+            return "Try refreshing or check your connection."
+        case .networkError:
+            return "Check your network connection and try again."
+        case .authenticationRequired:
+            return "Please log in to continue."
+        case .unknown:
+            return "Try again or restart the app if the problem persists."
+        }
+    }
+}
+
+// MARK: - Workspace Error View
+
+struct WorkspaceErrorView: View {
+    let error: WorkspaceError
+    let workspace: Workspace
+    let onRetry: () -> Void
+
+    var body: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 48))
+                .foregroundColor(.orange)
+
+            Text("Something went wrong")
+                .font(.title2.bold())
+
+            Text(error.localizedDescription)
+                .font(.body)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+
+            Text(error.recoverySuggestion)
+                .font(.caption)
+                .foregroundColor(.secondary)
+
+            HStack(spacing: 16) {
+                Button("Try Again") {
+                    onRetry()
+                }
+                .buttonStyle(.borderedProminent)
+
+                Button("Report Issue") {
+                    if let url = URL(string: "https://github.com/MagnetarStudio/MagnetarStudio/issues") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 }
 

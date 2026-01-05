@@ -6,10 +6,12 @@ Provides unified session IDs across Chat, Terminal, Code, and Agent tabs
 
 import logging
 import sqlite3
+import threading
 import uuid
+from contextlib import contextmanager
 from datetime import datetime, UTC
 from pathlib import Path
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, Generator
 import json
 
 try:
@@ -32,6 +34,8 @@ class WorkspaceSessionManager:
     - Has a consistent session_id for unified context
     - Tracks active workspace root and files
     - Persists across tab switches
+
+    Uses thread-local connection pooling for efficient SQLite access.
     """
 
     def __init__(self, db_path: Optional[Path] = None):
@@ -39,39 +43,78 @@ class WorkspaceSessionManager:
             db_path = PATHS.data_dir / "workspace_sessions.db"
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Thread-local storage for connections (one connection per thread)
+        self._local = threading.local()
+        self._lock = threading.Lock()
+
         self._init_db()
+
+    def _get_connection(self) -> sqlite3.Connection:
+        """
+        Get thread-local SQLite connection (creates if needed).
+        Connections are reused within the same thread for efficiency.
+        """
+        if not hasattr(self._local, 'connection') or self._local.connection is None:
+            conn = sqlite3.connect(
+                str(self.db_path),
+                check_same_thread=True,  # One connection per thread
+                timeout=30.0
+            )
+            # Enable WAL mode for better concurrent read performance
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA synchronous=NORMAL")
+            self._local.connection = conn
+        return self._local.connection
+
+    @contextmanager
+    def _connection(self) -> Generator[sqlite3.Connection, None, None]:
+        """
+        Context manager for getting a connection with automatic commit/rollback.
+        Connection is reused within the thread.
+        """
+        conn = self._get_connection()
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+
+    def close(self) -> None:
+        """Close the thread-local connection if open."""
+        if hasattr(self._local, 'connection') and self._local.connection is not None:
+            self._local.connection.close()
+            self._local.connection = None
 
     def _init_db(self) -> None:
         """Initialize workspace sessions database"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
+        with self._connection() as conn:
+            cursor = conn.cursor()
 
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS workspace_sessions (
-                session_id TEXT PRIMARY KEY,
-                user_id TEXT NOT NULL,
-                workspace_root TEXT,
-                chat_id TEXT,
-                terminal_id TEXT,
-                active_files TEXT,
-                created_at TEXT NOT NULL,
-                last_activity TEXT NOT NULL,
-                is_active INTEGER DEFAULT 1
-            )
-        """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS workspace_sessions (
+                    session_id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    workspace_root TEXT,
+                    chat_id TEXT,
+                    terminal_id TEXT,
+                    active_files TEXT,
+                    created_at TEXT NOT NULL,
+                    last_activity TEXT NOT NULL,
+                    is_active INTEGER DEFAULT 1
+                )
+            """)
 
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_workspace_user
-            ON workspace_sessions(user_id, last_activity DESC)
-        """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_workspace_user
+                ON workspace_sessions(user_id, last_activity DESC)
+            """)
 
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_workspace_root
-            ON workspace_sessions(workspace_root)
-        """)
-
-        conn.commit()
-        conn.close()
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_workspace_root
+                ON workspace_sessions(workspace_root)
+            """)
 
     def create_session(
         self,
@@ -91,20 +134,15 @@ class WorkspaceSessionManager:
             session_id
         """
         session_id = f"ws_{uuid.uuid4().hex[:12]}"
-
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
         now = datetime.now(UTC).isoformat()
 
-        cursor.execute("""
-            INSERT INTO workspace_sessions
-            (session_id, user_id, workspace_root, chat_id, created_at, last_activity)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (session_id, user_id, workspace_root, chat_id, now, now))
-
-        conn.commit()
-        conn.close()
+        with self._connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO workspace_sessions
+                (session_id, user_id, workspace_root, chat_id, created_at, last_activity)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (session_id, user_id, workspace_root, chat_id, now, now))
 
         logger.info(f"Created workspace session {session_id} for user {user_id}")
         return session_id
@@ -124,19 +162,18 @@ class WorkspaceSessionManager:
         Returns:
             session_id
         """
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
+        with self._connection() as conn:
+            cursor = conn.cursor()
 
-        # Check for existing active session for this workspace
-        cursor.execute("""
-            SELECT session_id FROM workspace_sessions
-            WHERE user_id = ? AND workspace_root = ? AND is_active = 1
-            ORDER BY last_activity DESC
-            LIMIT 1
-        """, (user_id, workspace_root))
+            # Check for existing active session for this workspace
+            cursor.execute("""
+                SELECT session_id FROM workspace_sessions
+                WHERE user_id = ? AND workspace_root = ? AND is_active = 1
+                ORDER BY last_activity DESC
+                LIMIT 1
+            """, (user_id, workspace_root))
 
-        row = cursor.fetchone()
-        conn.close()
+            row = cursor.fetchone()
 
         if row:
             # Update last activity
@@ -163,18 +200,17 @@ class WorkspaceSessionManager:
         Returns:
             session_id
         """
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
+        with self._connection() as conn:
+            cursor = conn.cursor()
 
-        # Check for existing active session for this chat
-        cursor.execute("""
-            SELECT session_id FROM workspace_sessions
-            WHERE user_id = ? AND chat_id = ? AND is_active = 1
-            LIMIT 1
-        """, (user_id, chat_id))
+            # Check for existing active session for this chat
+            cursor.execute("""
+                SELECT session_id FROM workspace_sessions
+                WHERE user_id = ? AND chat_id = ? AND is_active = 1
+                LIMIT 1
+            """, (user_id, chat_id))
 
-        row = cursor.fetchone()
-        conn.close()
+            row = cursor.fetchone()
 
         if row:
             # Update last activity
@@ -186,88 +222,66 @@ class WorkspaceSessionManager:
 
     def link_chat(self, session_id: str, chat_id: str) -> None:
         """Link a chat session to workspace session"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            UPDATE workspace_sessions
-            SET chat_id = ?, last_activity = ?
-            WHERE session_id = ?
-        """, (chat_id, datetime.now(UTC).isoformat(), session_id))
-
-        conn.commit()
-        conn.close()
+        with self._connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE workspace_sessions
+                SET chat_id = ?, last_activity = ?
+                WHERE session_id = ?
+            """, (chat_id, datetime.now(UTC).isoformat(), session_id))
 
     def link_terminal(self, session_id: str, terminal_id: str) -> None:
         """Link a terminal session to workspace session"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            UPDATE workspace_sessions
-            SET terminal_id = ?, last_activity = ?
-            WHERE session_id = ?
-        """, (terminal_id, datetime.now(UTC).isoformat(), session_id))
-
-        conn.commit()
-        conn.close()
+        with self._connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE workspace_sessions
+                SET terminal_id = ?, last_activity = ?
+                WHERE session_id = ?
+            """, (terminal_id, datetime.now(UTC).isoformat(), session_id))
 
     def update_workspace_root(self, session_id: str, workspace_root: str) -> None:
         """Update workspace root for session"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            UPDATE workspace_sessions
-            SET workspace_root = ?, last_activity = ?
-            WHERE session_id = ?
-        """, (workspace_root, datetime.now(UTC).isoformat(), session_id))
-
-        conn.commit()
-        conn.close()
+        with self._connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE workspace_sessions
+                SET workspace_root = ?, last_activity = ?
+                WHERE session_id = ?
+            """, (workspace_root, datetime.now(UTC).isoformat(), session_id))
 
     def update_active_files(self, session_id: str, file_paths: list[str]) -> None:
         """Update active files for session"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            UPDATE workspace_sessions
-            SET active_files = ?, last_activity = ?
-            WHERE session_id = ?
-        """, (json.dumps(file_paths), datetime.now(UTC).isoformat(), session_id))
-
-        conn.commit()
-        conn.close()
+        with self._connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE workspace_sessions
+                SET active_files = ?, last_activity = ?
+                WHERE session_id = ?
+            """, (json.dumps(file_paths), datetime.now(UTC).isoformat(), session_id))
 
     def update_activity(self, session_id: str) -> None:
         """Update last activity timestamp"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            UPDATE workspace_sessions
-            SET last_activity = ?
-            WHERE session_id = ?
-        """, (datetime.now(UTC).isoformat(), session_id))
-
-        conn.commit()
-        conn.close()
+        with self._connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE workspace_sessions
+                SET last_activity = ?
+                WHERE session_id = ?
+            """, (datetime.now(UTC).isoformat(), session_id))
 
     def get_session(self, session_id: str) -> Optional[Dict[str, Any]]:
         """Get session info"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
+        with self._connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT session_id, user_id, workspace_root, chat_id, terminal_id,
+                       active_files, created_at, last_activity, is_active
+                FROM workspace_sessions
+                WHERE session_id = ?
+            """, (session_id,))
 
-        cursor.execute("""
-            SELECT session_id, user_id, workspace_root, chat_id, terminal_id,
-                   active_files, created_at, last_activity, is_active
-            FROM workspace_sessions
-            WHERE session_id = ?
-        """, (session_id,))
-
-        row = cursor.fetchone()
-        conn.close()
+            row = cursor.fetchone()
 
         if not row:
             return None
@@ -286,25 +300,23 @@ class WorkspaceSessionManager:
 
     def list_user_sessions(self, user_id: str, active_only: bool = True) -> list[Dict[str, Any]]:
         """List all sessions for a user"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
         query = """
             SELECT session_id, user_id, workspace_root, chat_id, terminal_id,
                    active_files, created_at, last_activity, is_active
             FROM workspace_sessions
             WHERE user_id = ?
         """
-        params = [user_id]
+        params: list[Any] = [user_id]
 
         if active_only:
             query += " AND is_active = 1"
 
         query += " ORDER BY last_activity DESC"
 
-        cursor.execute(query, params)
-        rows = cursor.fetchall()
-        conn.close()
+        with self._connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(query, params)
+            rows = cursor.fetchall()
 
         sessions = []
         for row in rows:
@@ -324,17 +336,13 @@ class WorkspaceSessionManager:
 
     def close_session(self, session_id: str) -> None:
         """Mark session as inactive"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            UPDATE workspace_sessions
-            SET is_active = 0, last_activity = ?
-            WHERE session_id = ?
-        """, (datetime.now(UTC).isoformat(), session_id))
-
-        conn.commit()
-        conn.close()
+        with self._connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE workspace_sessions
+                SET is_active = 0, last_activity = ?
+                WHERE session_id = ?
+            """, (datetime.now(UTC).isoformat(), session_id))
 
         logger.info(f"Closed workspace session {session_id}")
 
