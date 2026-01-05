@@ -14,9 +14,20 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "ChatSto
 @MainActor
 @Observable
 final class ChatStore {
+    // MARK: - State Persistence Keys
+    private static let currentSessionIdKey = "chat.currentSessionId"
+    private static let selectedModeKey = "chat.selectedMode"
+    private static let selectedModelIdKey = "chat.selectedModelId"
+
     // Published state
     var sessions: [ChatSession] = []
-    var currentSession: ChatSession?
+    var currentSession: ChatSession? {
+        didSet {
+            if let sessionId = currentSession?.id.uuidString {
+                UserDefaults.standard.set(sessionId, forKey: Self.currentSessionIdKey)
+            }
+        }
+    }
     var messages: [ChatMessage] = []
     var isStreaming: Bool = false
     var isLoading: Bool = false
@@ -26,8 +37,12 @@ final class ChatStore {
     var availableModels: [String] = []
 
     // Model orchestration (Phase 2)
-    var selectedMode: String = "intelligent"  // "intelligent" or "manual"
-    var selectedModelId: String? = nil  // Specific model when in manual mode
+    var selectedMode: String = "intelligent" {  // "intelligent" or "manual"
+        didSet { UserDefaults.standard.set(selectedMode, forKey: Self.selectedModeKey) }
+    }
+    var selectedModelId: String? = nil {  // Specific model when in manual mode
+        didSet { UserDefaults.standard.set(selectedModelId, forKey: Self.selectedModelIdKey) }
+    }
 
     /// Default model to use when no specific model is selected
     /// Uses first available model from Ollama, or a reasonable fallback
@@ -55,14 +70,42 @@ final class ChatStore {
     @ObservationIgnored
     private var sessionIdMapping: [UUID: String] = [:]
 
+    // Persisted session ID to restore after sessions load
+    @ObservationIgnored
+    private var pendingRestoreSessionId: UUID?
+
     init(apiClient: ApiClient = .shared) {
         self.apiClient = apiClient
+
+        // Restore persisted state
+        if let savedMode = UserDefaults.standard.string(forKey: Self.selectedModeKey) {
+            self.selectedMode = savedMode
+        }
+        self.selectedModelId = UserDefaults.standard.string(forKey: Self.selectedModelIdKey)
+
+        // Store session ID to restore after sessions load
+        if let savedSessionId = UserDefaults.standard.string(forKey: Self.currentSessionIdKey),
+           let uuid = UUID(uuidString: savedSessionId) {
+            self.pendingRestoreSessionId = uuid
+        }
 
         // Load models and sessions on init with retry logic
         Task {
             await fetchModelsWithRetry()
             await loadSessionsWithRetry()
+            // Restore session after sessions are loaded
+            await restorePersistedSession()
         }
+    }
+
+    /// Restore the previously selected session after sessions load
+    private func restorePersistedSession() async {
+        guard let sessionId = pendingRestoreSessionId else { return }
+        if let session = sessions.first(where: { $0.id == sessionId }) {
+            currentSession = session
+            await loadMessages(for: session)
+        }
+        pendingRestoreSessionId = nil
     }
 
     // MARK: - Model Management

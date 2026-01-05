@@ -11,11 +11,16 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "VaultSt
 final class VaultStore {
     static let shared = VaultStore()
 
+    // MARK: - State Persistence Keys
+    private static let currentFolderKey = "vault.currentFolder"
+
     // MARK: - Observable State
 
     var unlocked: Bool = false
     var vaultType: String = "real"  // "real" | "decoy"
-    var currentFolder: String = "/"
+    var currentFolder: String = "/" {
+        didSet { UserDefaults.standard.set(currentFolder, forKey: Self.currentFolderKey) }
+    }
     var folders: [VaultFolder] = []
     var files: [VaultFile] = []
     var previewFile: VaultFile?
@@ -42,7 +47,12 @@ final class VaultStore {
         UserDefaults.standard.bool(forKey: "cloudSyncEnabled")
     }
 
-    private init() {}
+    private init() {
+        // Restore persisted state
+        if let savedFolder = UserDefaults.standard.string(forKey: Self.currentFolderKey) {
+            self.currentFolder = savedFolder
+        }
+    }
 
     deinit {
         autoLockTimer?.invalidate()

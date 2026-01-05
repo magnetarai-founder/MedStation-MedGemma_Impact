@@ -7,6 +7,13 @@ import Observation
 final class WorkflowStore {
     static let shared = WorkflowStore()
 
+    // MARK: - State Persistence Keys
+    private static let selectedWorkflowIdKey = "workflow.selectedWorkflowId"
+
+    // Persisted workflow ID to restore after workflows load
+    @ObservationIgnored
+    private var pendingRestoreWorkflowId: String?
+
     // MARK: - Observable State
 
     var workflows: [Workflow] = []
@@ -15,13 +22,27 @@ final class WorkflowStore {
     var queueItems: [WorkItem] = []
     var myWorkItems: [WorkItem] = []
     var analytics: WorkflowAnalytics?
-    var selectedWorkflow: Workflow?
+    var selectedWorkflow: Workflow? {
+        didSet { UserDefaults.standard.set(selectedWorkflow?.id, forKey: Self.selectedWorkflowIdKey) }
+    }
     var isLoading = false
     var error: String?
 
     private let service = WorkflowService.shared
 
-    private init() {}
+    private init() {
+        // Store workflow ID to restore after workflows load
+        self.pendingRestoreWorkflowId = UserDefaults.standard.string(forKey: Self.selectedWorkflowIdKey)
+    }
+
+    /// Restore the previously selected workflow after workflows load
+    func restorePersistedWorkflow() {
+        guard let workflowId = pendingRestoreWorkflowId else { return }
+        if let workflow = workflows.first(where: { $0.id == workflowId }) {
+            selectedWorkflow = workflow
+        }
+        pendingRestoreWorkflowId = nil
+    }
 
     // MARK: - Workflow Management
 
@@ -31,6 +52,7 @@ final class WorkflowStore {
 
         do {
             workflows = try await service.listWorkflows(type: type)
+            restorePersistedWorkflow()  // Restore after loading
             error = nil
         } catch {
             self.error = "Failed to load workflows: \(error.localizedDescription)"

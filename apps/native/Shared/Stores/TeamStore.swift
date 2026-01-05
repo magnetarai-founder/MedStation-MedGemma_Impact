@@ -14,13 +14,21 @@ import Observation
 final class TeamStore {
     static let shared = TeamStore()
 
+    // MARK: - State Persistence Keys
+    private static let selectedTeamIdKey = "team.selectedTeamId"
+    private static let selectedChannelIdKey = "team.selectedChannelId"
+
     // MARK: - Observable State
 
     var teams: [Team] = []
     var channels: [TeamChannel] = []
     var messages: [TeamMessage] = []
-    var selectedTeamId: String?
-    var selectedChannelId: String?
+    var selectedTeamId: String? {
+        didSet { UserDefaults.standard.set(selectedTeamId, forKey: Self.selectedTeamIdKey) }
+    }
+    var selectedChannelId: String? {
+        didSet { UserDefaults.standard.set(selectedChannelId, forKey: Self.selectedChannelIdKey) }
+    }
     var isLoading = false
     var error: String?
 
@@ -29,7 +37,11 @@ final class TeamStore {
     // Client-side unread tracking (until backend support added)
     private static let lastReadPrefix = "team.lastRead."
 
-    private init() {}
+    private init() {
+        // Restore persisted state
+        self.selectedTeamId = UserDefaults.standard.string(forKey: Self.selectedTeamIdKey)
+        self.selectedChannelId = UserDefaults.standard.string(forKey: Self.selectedChannelIdKey)
+    }
 
     // MARK: - Unread Tracking
 

@@ -20,17 +20,25 @@ private let iso8601Formatter: ISO8601DateFormatter = {
 final class KanbanStore {
     static let shared = KanbanStore()
 
+    // MARK: - State Persistence Keys
+    private static let selectedBoardIdKey = "kanban.selectedBoardId"
+
     // MARK: - Observable State
 
     var boards: [KanbanBoardAPI] = []
     var tasks: [KanbanTaskAPI] = []
-    var selectedBoardId: String?
+    var selectedBoardId: String? {
+        didSet { UserDefaults.standard.set(selectedBoardId, forKey: Self.selectedBoardIdKey) }
+    }
     var isLoading = false
     var error: String?
 
     private let service = KanbanService.shared
 
-    private init() {}
+    private init() {
+        // Restore persisted state
+        self.selectedBoardId = UserDefaults.standard.string(forKey: Self.selectedBoardIdKey)
+    }
 
     // MARK: - Board Management
 
