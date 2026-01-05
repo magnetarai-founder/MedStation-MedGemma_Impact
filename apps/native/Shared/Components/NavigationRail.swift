@@ -4,8 +4,13 @@
 //
 //  Navigation rail matching React NavigationRail.tsx specs exactly
 //  - 56pt width, gradient background, rounded pill buttons
-//  - Top cluster: Chat, Team, Kanban, Database
-//  - Bottom cluster: Admin, Settings
+//  - Top cluster: Main workspaces (generated from Workspace.topRailWorkspaces)
+//  - Bottom cluster: Admin/Hub (generated from Workspace.bottomRailWorkspaces)
+//
+//  MAINTENANCE: To add a new workspace:
+//  1. Add case to Workspace enum in NavigationStore.swift
+//  2. Set railIcon and railPosition properties
+//  3. Add keyboard shortcut to MagnetarMenuCommands.swift
 //
 
 import SwiftUI
@@ -15,94 +20,35 @@ struct NavigationRail: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Top cluster: workspace buttons
-            // Help text uses Workspace.keyboardShortcut for consistency with menu commands
+            // Top cluster: workspace buttons (generated from Workspace.topRailWorkspaces)
             VStack(spacing: 12) {
-                // Team (⌘1)
-                RailButton(
-                    icon: "briefcase",
-                    workspace: .team,
-                    isActive: navigationStore.activeWorkspace == .team
-                ) {
-                    navigationStore.activeWorkspace = .team
+                ForEach(Workspace.topRailWorkspaces) { workspace in
+                    RailButton(
+                        icon: workspace.railIcon,
+                        workspace: workspace,
+                        isActive: navigationStore.activeWorkspace == workspace
+                    ) {
+                        navigationStore.activeWorkspace = workspace
+                    }
+                    .help("\(workspace.displayName) (⌘\(workspace.keyboardShortcut))")
                 }
-                .help("Team (⌘\(Workspace.team.keyboardShortcut))")
-
-                // Chat (⌘2)
-                RailButton(
-                    icon: "message",
-                    workspace: .chat,
-                    isActive: navigationStore.activeWorkspace == .chat
-                ) {
-                    navigationStore.activeWorkspace = .chat
-                }
-                .help("Chat (⌘\(Workspace.chat.keyboardShortcut))")
-
-                // Code (⌘3)
-                RailButton(
-                    icon: "chevron.left.forwardslash.chevron.right",
-                    workspace: .code,
-                    isActive: navigationStore.activeWorkspace == .code
-                ) {
-                    navigationStore.activeWorkspace = .code
-                }
-                .help("Code (⌘\(Workspace.code.keyboardShortcut))")
-
-                // Database (⌘4)
-                RailButton(
-                    icon: "cylinder",
-                    workspace: .database,
-                    isActive: navigationStore.activeWorkspace == .database
-                ) {
-                    navigationStore.activeWorkspace = .database
-                }
-                .help("Database (⌘\(Workspace.database.keyboardShortcut))")
-
-                // Kanban (⌘5)
-                RailButton(
-                    icon: "square.grid.3x2",
-                    workspace: .kanban,
-                    isActive: navigationStore.activeWorkspace == .kanban
-                ) {
-                    navigationStore.activeWorkspace = .kanban
-                }
-                .help("Kanban (⌘\(Workspace.kanban.keyboardShortcut))")
-
-                // Insights (⌘6)
-                RailButton(
-                    icon: "waveform",
-                    workspace: .insights,
-                    isActive: navigationStore.activeWorkspace == .insights
-                ) {
-                    navigationStore.activeWorkspace = .insights
-                }
-                .help("Insights (⌘\(Workspace.insights.keyboardShortcut))")
-
-                // Trust Network (⌘7)
-                RailButton(
-                    icon: "checkmark.shield",
-                    workspace: .trust,
-                    isActive: navigationStore.activeWorkspace == .trust
-                ) {
-                    navigationStore.activeWorkspace = .trust
-                }
-                .help("Trust Network (⌘\(Workspace.trust.keyboardShortcut))")
             }
             .padding(.top, 20)
 
             Spacer()
 
-            // Bottom cluster: Admin + Settings
+            // Bottom cluster: admin/hub workspaces (generated from Workspace.bottomRailWorkspaces)
             VStack(spacing: 12) {
-                // MagnetarHub (⌘8)
-                RailButton(
-                    icon: "crown",
-                    workspace: .magnetarHub,
-                    isActive: navigationStore.activeWorkspace == .magnetarHub
-                ) {
-                    navigationStore.activeWorkspace = .magnetarHub
+                ForEach(Workspace.bottomRailWorkspaces) { workspace in
+                    RailButton(
+                        icon: workspace.railIcon,
+                        workspace: workspace,
+                        isActive: navigationStore.activeWorkspace == workspace
+                    ) {
+                        navigationStore.activeWorkspace = workspace
+                    }
+                    .help("\(workspace.displayName) (⌘\(workspace.keyboardShortcut))")
                 }
-                .help("MagnetarHub (⌘\(Workspace.magnetarHub.keyboardShortcut))")
             }
             .padding(.bottom, 16)
         }

@@ -123,4 +123,41 @@ enum Workspace: String, CaseIterable, Identifiable, Hashable {
         case .magnetarHub: return "Hub"
         }
     }
+
+    /// Icon used in NavigationRail (may differ from generic icon for visual design)
+    var railIcon: String {
+        switch self {
+        case .team: return "briefcase"
+        case .chat: return "message"
+        case .code: return "chevron.left.forwardslash.chevron.right"
+        case .database: return "cylinder"
+        case .kanban: return "square.grid.3x2"
+        case .insights: return "waveform"
+        case .trust: return "checkmark.shield"
+        case .magnetarHub: return "crown"
+        }
+    }
+
+    /// Position in NavigationRail - top cluster or bottom cluster
+    enum RailPosition {
+        case top
+        case bottom
+    }
+
+    var railPosition: RailPosition {
+        switch self {
+        case .magnetarHub: return .bottom
+        default: return .top
+        }
+    }
+
+    /// Workspaces in top rail cluster (ordered)
+    static var topRailWorkspaces: [Workspace] {
+        allCases.filter { $0.railPosition == .top }
+    }
+
+    /// Workspaces in bottom rail cluster (ordered)
+    static var bottomRailWorkspaces: [Workspace] {
+        allCases.filter { $0.railPosition == .bottom }
+    }
 }
