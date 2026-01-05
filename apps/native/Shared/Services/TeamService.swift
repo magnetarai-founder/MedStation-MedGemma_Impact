@@ -182,25 +182,7 @@ public struct DiagnosticsStatus: Codable {
     }
 }
 
-public struct NLQueryResponse: Codable {
-    public let answer: String
-    public let query: String
-    public let confidence: Double?
-    public let sources: [String]?
-}
-
-public struct PatternDiscoveryResult: Codable {
-    public let patterns: [Pattern]
-    public let summary: String?
-
-    public struct Pattern: Codable, Identifiable {
-        public let id: String
-        public let type: String
-        public let description: String
-        public let confidence: Double
-        public let examples: [String]?
-    }
-}
+// NLQueryResponse and PatternDiscoveryResult moved to DataLabService.swift (MEDIUM-H2)
 
 // MARK: - Team Service
 
@@ -310,28 +292,7 @@ public final class TeamService {
         }
     }
 
-    // MARK: - NL Query
-
-    public func askNaturalLanguage(query: String) async throws -> NLQueryResponse {
-        try await apiClient.request(
-            path: "/v1/data/ask",
-            method: .post,
-            jsonBody: ["query": query]
-        )
-    }
-
-    // MARK: - Pattern Discovery
-
-    public func discoverPatterns(query: String, context: String?) async throws -> PatternDiscoveryResult {
-        var body: [String: Any] = ["query": query]
-        if let context = context { body["context"] = context }
-
-        return try await apiClient.request(
-            path: "/v1/data/patterns",
-            method: .post,
-            jsonBody: body
-        )
-    }
+    // NL Query and Pattern Discovery methods moved to DataLabService.swift (MEDIUM-H2)
 
     // MARK: - Vault Setup
 

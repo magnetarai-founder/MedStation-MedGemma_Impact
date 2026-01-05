@@ -14,6 +14,7 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "Results
 
 struct ResultsTable: View {
     @Environment(ChatStore.self) private var chatStore
+    @Environment(DatabaseStore.self) private var databaseStore
     @State private var results: QueryResults?
     @State private var isLoading: Bool = false
     @State private var isExporting: Bool = false
@@ -43,8 +44,8 @@ struct ResultsTable: View {
                 emptyStateView
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .clearWorkspace)) { _ in
-            results = nil
+        .onChange(of: databaseStore.currentQuery == nil) { _, isNil in
+            if isNil { results = nil }
         }
     }
 
@@ -323,5 +324,6 @@ struct TableCell: View {
 #Preview {
     ResultsTable()
         .environment(ChatStore())
+        .environment(DatabaseStore.shared)
         .frame(height: 400)
 }

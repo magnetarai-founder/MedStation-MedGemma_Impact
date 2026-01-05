@@ -45,6 +45,36 @@ struct DatabaseWorkspace: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
+        .overlay(alignment: .bottom) {
+            // Error banner (MEDIUM-L2: Display DatabaseStore errors)
+            if let error = databaseStore.error {
+                HStack(spacing: 12) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(.orange)
+                    Text(error)
+                        .font(.system(size: 13))
+                        .foregroundColor(.primary)
+                    Spacer()
+                    Button {
+                        databaseStore.error = nil
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(12)
+                .background(Color.orange.opacity(0.1))
+                .overlay(
+                    Rectangle()
+                        .fill(Color.orange)
+                        .frame(height: 2),
+                    alignment: .top
+                )
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .animation(.easeInOut(duration: 0.2), value: databaseStore.error)
+            }
+        }
         .sheet(isPresented: $showLibrary) {
             QueryLibraryModal(isPresented: $showLibrary, databaseStore: databaseStore)
         }
@@ -103,7 +133,7 @@ struct DatabaseWorkspace: View {
 
             // Clear workspace
             IconToolbarButton(icon: "trash", action: {
-                NotificationCenter.default.post(name: .clearWorkspace, object: nil)
+                databaseStore.clearWorkspace()
             })
             .help("Clear Workspace")
 

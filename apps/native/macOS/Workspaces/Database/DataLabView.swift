@@ -34,7 +34,7 @@ struct CombinedDataLabView: View {
     @State private var nlResponse: NLQueryResponse? = nil
     @State private var patternResults: PatternDiscoveryResult? = nil
 
-    private let teamService = TeamService.shared
+    private let dataLabService = DataLabService.shared
 
     var body: some View {
         ScrollView {
@@ -345,7 +345,7 @@ struct CombinedDataLabView: View {
         nlResponse = nil
 
         do {
-            nlResponse = try await teamService.askNaturalLanguage(query: query)
+            nlResponse = try await dataLabService.askNaturalLanguage(query: query)
         } catch {
             errorMessage = "Failed to get answer: \(error.localizedDescription)"
         }
@@ -360,7 +360,7 @@ struct CombinedDataLabView: View {
         patternResults = nil
 
         do {
-            patternResults = try await teamService.discoverPatterns(
+            patternResults = try await dataLabService.discoverPatterns(
                 query: query,
                 context: context.isEmpty ? nil : context
             )

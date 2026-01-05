@@ -96,6 +96,20 @@ final class DatabaseStore {
 
     private init() {}
 
+    // MARK: - Workspace Clear
+
+    /// Clear all workspace state without deleting the backend session.
+    /// Used by the "Clear Workspace" button to reset the UI.
+    func clearWorkspace() {
+        currentFile = nil
+        currentQuery = nil
+        editorText = ""
+        hasExecuted = false
+        contentType = .sql
+        error = nil
+        logger.debug("Workspace cleared")
+    }
+
     // MARK: - Session Management
 
     /// Create a fresh session (call after auth)

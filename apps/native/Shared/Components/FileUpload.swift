@@ -11,6 +11,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct FileUpload: View {
+    @Environment(DatabaseStore.self) private var databaseStore
     @State private var isHovered = false
     @State private var isDragging = false
     @State private var loadedFile: LoadedFile?
@@ -99,8 +100,8 @@ struct FileUpload: View {
         .onTapGesture {
             openFilePicker()
         }
-        .onReceive(NotificationCenter.default.publisher(for: .clearWorkspace)) { _ in
-            loadedFile = nil
+        .onChange(of: databaseStore.currentFile == nil) { _, isNil in
+            if isNil { loadedFile = nil }
         }
     }
 
@@ -268,6 +269,7 @@ struct LoadedFile {
 
 #Preview {
     FileUpload()
+        .environment(DatabaseStore.shared)
         .frame(width: 320)
         .padding()
 }

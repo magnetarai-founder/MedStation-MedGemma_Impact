@@ -59,10 +59,13 @@ struct CodeEditor: View {
                     }
                 }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .clearWorkspace)) { _ in
-            code = ""
-            hasFile = false
-            isExecuting = false
+        .onChange(of: databaseStore.editorText) { _, newValue in
+            // Sync from store when cleared externally (e.g., clearWorkspace)
+            if newValue.isEmpty && !code.isEmpty {
+                code = ""
+                hasFile = false
+                isExecuting = false
+            }
         }
         .onAppear {
             code = databaseStore.editorText
@@ -458,5 +461,6 @@ struct RecentQueriesSheet: View {
 
 #Preview {
     CodeEditor()
+        .environment(DatabaseStore.shared)
         .frame(height: 400)
 }
