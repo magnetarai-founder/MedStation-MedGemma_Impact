@@ -5,6 +5,7 @@ import os
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "VaultStore")
 
 /// Vault workspace state and operations
+/// SECURITY: Passphrase is stored in Keychain (OS-protected) not plain memory
 @MainActor
 @Observable
 final class VaultStore {
@@ -24,8 +25,16 @@ final class VaultStore {
     var error: String?
     var isSyncing = false
 
-    // In-memory only (never persisted)
-    private var passphrase: String?
+    // SECURITY: Auto-lock timeout (15 minutes of inactivity)
+    private static let autoLockTimeoutSeconds: TimeInterval = 15 * 60
+
+    // Auto-lock timer - nonisolated(unsafe) for deinit access
+    @ObservationIgnored
+    private nonisolated(unsafe) var autoLockTimer: Timer?
+
+    // Keychain service for secure passphrase storage
+    @ObservationIgnored
+    private let keychain = KeychainService.shared
 
     private let service = VaultService.shared
     private var syncService: SyncService { SyncService.shared }
@@ -34,6 +43,57 @@ final class VaultStore {
     }
 
     private init() {}
+
+    deinit {
+        autoLockTimer?.invalidate()
+        // Clear passphrase from Keychain on dealloc
+        try? keychain.deleteToken(forKey: KeychainService.vaultSessionKey)
+    }
+
+    // MARK: - Passphrase Management (Keychain-backed)
+
+    /// Store passphrase securely in Keychain
+    private func storePassphrase(_ password: String) {
+        do {
+            try keychain.saveToken(password, forKey: KeychainService.vaultSessionKey)
+        } catch {
+            logger.error("Failed to store vault passphrase in Keychain: \(error.localizedDescription)")
+        }
+    }
+
+    /// Retrieve passphrase from Keychain
+    private var passphrase: String? {
+        keychain.loadToken(forKey: KeychainService.vaultSessionKey)
+    }
+
+    /// Clear passphrase from Keychain
+    private func clearPassphrase() {
+        do {
+            try keychain.deleteToken(forKey: KeychainService.vaultSessionKey)
+        } catch {
+            logger.error("Failed to clear vault passphrase from Keychain: \(error.localizedDescription)")
+        }
+    }
+
+    /// Reset auto-lock timer (called on vault activity)
+    private func resetAutoLockTimer() {
+        autoLockTimer?.invalidate()
+        autoLockTimer = Timer.scheduledTimer(
+            withTimeInterval: Self.autoLockTimeoutSeconds,
+            repeats: false
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.autoLock()
+            }
+        }
+    }
+
+    /// Auto-lock triggered by inactivity timeout
+    private func autoLock() {
+        guard unlocked else { return }
+        logger.info("Vault auto-locked due to inactivity")
+        lock()
+    }
 
     // MARK: - Unlock
 
@@ -49,8 +109,12 @@ final class VaultStore {
 
             if success {
                 unlocked = true
-                passphrase = password
+                // SECURITY: Store passphrase in Keychain, not plain memory
+                storePassphrase(password)
                 error = nil
+
+                // Start auto-lock timer
+                resetAutoLockTimer()
 
                 // Load root folder
                 await load(folderPath: "/")
@@ -64,7 +128,12 @@ final class VaultStore {
 
     func lock() {
         unlocked = false
-        passphrase = nil
+        // SECURITY: Clear passphrase from Keychain
+        clearPassphrase()
+        // Stop auto-lock timer
+        autoLockTimer?.invalidate()
+        autoLockTimer = nil
+
         currentFolder = "/"
         folders = []
         files = []
@@ -80,6 +149,9 @@ final class VaultStore {
             error = "Vault is locked"
             return
         }
+
+        // Reset auto-lock timer on activity
+        resetAutoLockTimer()
 
         isLoading = true
         defer { isLoading = false }
@@ -124,6 +196,9 @@ final class VaultStore {
             return nil
         }
 
+        // Reset auto-lock timer on activity
+        resetAutoLockTimer()
+
         isLoading = true
         defer { isLoading = false }
 
@@ -158,6 +233,9 @@ final class VaultStore {
             return
         }
 
+        // Reset auto-lock timer on activity
+        resetAutoLockTimer()
+
         isUploading = true
         defer { isUploading = false }
 
@@ -186,6 +264,9 @@ final class VaultStore {
             error = "Vault is locked"
             return
         }
+
+        // Reset auto-lock timer on activity
+        resetAutoLockTimer()
 
         isLoading = true
         defer { isLoading = false }
@@ -217,6 +298,9 @@ final class VaultStore {
             return
         }
 
+        // Reset auto-lock timer on activity
+        resetAutoLockTimer()
+
         isLoading = true
         defer { isLoading = false }
 
@@ -244,6 +328,9 @@ final class VaultStore {
             error = "Vault is locked"
             return
         }
+
+        // Reset auto-lock timer on activity
+        resetAutoLockTimer()
 
         isLoading = true
         defer { isLoading = false }
@@ -300,7 +387,12 @@ final class VaultStore {
     /// Clear all state (call on logout)
     func clear() {
         unlocked = false
-        passphrase = nil
+        // SECURITY: Clear passphrase from Keychain
+        clearPassphrase()
+        // Stop auto-lock timer
+        autoLockTimer?.invalidate()
+        autoLockTimer = nil
+
         vaultType = "real"
         currentFolder = "/"
         folders = []

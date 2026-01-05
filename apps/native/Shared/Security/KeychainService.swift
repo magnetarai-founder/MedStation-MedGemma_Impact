@@ -11,6 +11,9 @@ final class KeychainService {
     private let tokenKey = "auth_token"
     private let credentialsKey = "biometric_credentials"
 
+    // Vault session key - cleared on lock, never persisted long-term
+    static let vaultSessionKey = "vault_session_passphrase"
+
     private init() {}
 
     // MARK: - Token Management
