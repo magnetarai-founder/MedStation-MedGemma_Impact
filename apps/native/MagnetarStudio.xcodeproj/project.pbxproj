@@ -163,6 +163,7 @@
 		BFD8871A31B827EB8BE07D8D /* StagePerformanceTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6031A3F0EC42EA6C42386DBF /* StagePerformanceTable.swift */; };
 		C0A0605A44C8BB6C1D4F40DB /* EmergencyModeService+SelfUninstall.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C2B125A76E2AFED6585F1A3 /* EmergencyModeService+SelfUninstall.swift */; };
 		C0BBF6544683748DF15A980B /* TeamService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E03654A7DB82435A07B213DD /* TeamService.swift */; };
+		53F177913C2C5FBCD14E1C47 /* DataLabService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73B928BF4FB8E16637CAEA0A /* DataLabService.swift */; };
 		C275F79B51284D3B82881368 /* VaultService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 399E593F40D14E5AAD83D8EA /* VaultService.swift */; };
 		C39387A4041537956C59BAFC /* LiquidGlassPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 842DAEC1F81C99999F03FF53 /* LiquidGlassPanel.swift */; };
 		C3E44FEBE2074BE4B381E33E /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18F8E78737774D21B8C95D37 /* AuthService.swift */; };
@@ -443,6 +444,7 @@
 		DFBEE8B09F6628515730CC35 /* CodeWorkspaceComponents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CodeWorkspaceComponents.swift; path = Code/CodeWorkspaceComponents.swift; sourceTree = "<group>"; };
 		DFC28C6ECF9E77074AA2BF17 /* HubNetworkManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HubNetworkManager.swift; path = MagnetarHub/HubNetworkManager.swift; sourceTree = "<group>"; };
 		E03654A7DB82435A07B213DD /* TeamService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TeamService.swift; sourceTree = "<group>"; };
+		73B928BF4FB8E16637CAEA0A /* DataLabService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DataLabService.swift; sourceTree = "<group>"; };
 		E0B5547ECD973EFF39678E79 /* NavigationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationStore.swift; sourceTree = "<group>"; };
 		E14DD2FC8D25B4ABB8A2326D /* ContextBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContextBundle.swift; sourceTree = "<group>"; };
 		E221F2C3BD9E5578CD6F60FC /* HubModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HubModels.swift; path = MagnetarHub/HubModels.swift; sourceTree = "<group>"; };
@@ -1091,6 +1093,7 @@
 				C043D3F1AFA96A4DDC52FAA0 /* ContextService.swift */,
 				37B8FC1C1C55127972DBE544 /* ModelMemoryTracker.swift */,
 				E03654A7DB82435A07B213DD /* TeamService.swift */,
+				73B928BF4FB8E16637CAEA0A /* DataLabService.swift */,
 				BF608E6633F1DCE6E6542EBD /* EmergencyModeService.swift */,
 				E4A86189DF1FE9A17A22F231 /* PanicModeService.swift */,
 				D2CCB34E2EDE7C5E00E20014 /* SecurityManager.swift */,
@@ -1273,6 +1276,7 @@
 				6E29B084EF0AB46C6DFB6D23 /* ContextService.swift in Sources */,
 				664594858BB924BBA1BFF3DD /* ModelMemoryTracker.swift in Sources */,
 				C0BBF6544683748DF15A980B /* TeamService.swift in Sources */,
+				53F177913C2C5FBCD14E1C47 /* DataLabService.swift in Sources */,
 				C53221D23E846FE6D425B460 /* EditDocumentModal.swift in Sources */,
 				462E1B85191C4E7D6E5D04E1 /* EmergencyModeService.swift in Sources */,
 				E17B166B1C783211B6290194 /* PanicModeService.swift in Sources */,

@@ -143,8 +143,8 @@ final class ChatStore {
     private func restorePersistedSession() async {
         guard let sessionId = pendingRestoreSessionId else { return }
         if let session = sessions.first(where: { $0.id == sessionId }) {
-            currentSession = session
-            await loadMessages(for: session)
+            // Use selectSession which handles loading messages and model preferences
+            await selectSession(session)
         }
         pendingRestoreSessionId = nil
     }

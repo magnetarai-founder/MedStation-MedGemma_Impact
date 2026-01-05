@@ -34,7 +34,7 @@ class KanbanCRUDOperations {
         // Check if creation succeeded
         guard store.error == nil,
               let apiBoard = store.boards.first(where: { $0.name == name }) else {
-            logger.error("Failed to create board: \(store.error ?? "Unknown error")")
+            logger.error("Failed to create board: \(self.store.error ?? "Unknown error")")
             return nil
         }
 
@@ -58,7 +58,7 @@ class KanbanCRUDOperations {
 
         // Return false if there was an error (SIMPLE-C3 fix)
         if store.error != nil {
-            logger.error("Failed to delete board: \(store.error ?? "Unknown error")")
+            logger.error("Failed to delete board: \(self.store.error ?? "Unknown error")")
             return false
         }
 
@@ -90,7 +90,7 @@ class KanbanCRUDOperations {
         // Check if creation succeeded
         guard store.error == nil,
               let apiTask = store.tasks.first(where: { $0.title == title }) else {
-            logger.error("Failed to create task: \(store.error ?? "Unknown error")")
+            logger.error("Failed to create task: \(self.store.error ?? "Unknown error")")
             return nil
         }
 
@@ -120,7 +120,7 @@ class KanbanCRUDOperations {
 
         // Return false if there was an error (SIMPLE-C3 fix)
         if store.error != nil {
-            logger.error("Failed to delete task: \(store.error ?? "Unknown error")")
+            logger.error("Failed to delete task: \(self.store.error ?? "Unknown error")")
             return false
         }
 
