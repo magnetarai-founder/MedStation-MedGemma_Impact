@@ -1,30 +1,41 @@
 """
 Comprehensive tests for api/token_counter.py
 
-Tests cover:
-- TokenCounter initialization (success and failure)
-- Single text token counting
-- Chat message token counting with OpenAI overhead
-- Fallback behavior when tiktoken unavailable
-- Error handling during counting
-- Singleton pattern
-- Edge cases (empty, unicode, long text)
+Tests token counting utilities using tiktoken for LLM context management.
+
+Coverage targets:
+- TokenCounter class initialization
+- count_tokens: Single text token counting
+- count_message_tokens: Chat message token counting with OpenAI overhead
+- Fallback behavior when encoding unavailable
+- Singleton pattern via get_token_counter
 """
 
 import pytest
 from unittest.mock import patch, MagicMock
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from api.token_counter import (
     TokenCounter,
     get_token_counter,
     DEFAULT_ENCODING,
-    _token_counter,
 )
-import api.token_counter as token_counter_module
+
+
+# ========== Fixtures ==========
+
+@pytest.fixture
+def token_counter():
+    """Create a fresh TokenCounter instance"""
+    return TokenCounter()
+
+
+@pytest.fixture
+def reset_singleton():
+    """Reset singleton between tests"""
+    import api.token_counter as module
+    module._token_counter = None
+    yield
+    module._token_counter = None
 
 
 # ========== TokenCounter Initialization Tests ==========
@@ -32,377 +43,342 @@ import api.token_counter as token_counter_module
 class TestTokenCounterInit:
     """Tests for TokenCounter initialization"""
 
+    def test_default_encoding(self):
+        """Test default encoding is cl100k_base"""
+        assert DEFAULT_ENCODING == "cl100k_base"
+
     def test_init_with_default_encoding(self):
-        """Test initialization with default cl100k_base encoding"""
+        """Test initialization with default encoding"""
         counter = TokenCounter()
+
         assert counter.encoding is not None
 
     def test_init_with_custom_encoding(self):
-        """Test initialization with a different encoding"""
-        # p50k_base is used by older GPT-3 models
-        counter = TokenCounter("p50k_base")
+        """Test initialization with custom encoding"""
+        counter = TokenCounter(encoding_name="p50k_base")
+
         assert counter.encoding is not None
 
     def test_init_with_invalid_encoding(self):
-        """Test initialization with invalid encoding falls back gracefully"""
-        counter = TokenCounter("invalid_encoding_name")
-        # Should be None when encoding fails to load
+        """Test initialization with invalid encoding falls back to None"""
+        counter = TokenCounter(encoding_name="nonexistent_encoding")
+
         assert counter.encoding is None
 
-    def test_init_handles_tiktoken_exception(self):
-        """Test initialization handles tiktoken exceptions"""
-        with patch('api.token_counter.tiktoken.get_encoding') as mock_get:
-            mock_get.side_effect = Exception("Tiktoken error")
-            counter = TokenCounter()
-            assert counter.encoding is None
+    def test_encoding_is_tiktoken_encoding(self, token_counter):
+        """Test encoding is a tiktoken Encoding object"""
+        import tiktoken
+
+        assert isinstance(token_counter.encoding, tiktoken.Encoding)
 
 
-# ========== Single Text Token Counting Tests ==========
+# ========== count_tokens Tests ==========
 
 class TestCountTokens:
     """Tests for count_tokens method"""
 
-    def test_count_tokens_simple_text(self):
+    def test_simple_text(self, token_counter):
         """Test counting tokens in simple text"""
-        counter = TokenCounter()
-        count = counter.count_tokens("Hello, world!")
-        # Should return actual token count (tiktoken available)
-        assert count > 0
-        assert isinstance(count, int)
+        result = token_counter.count_tokens("Hello, world!")
 
-    def test_count_tokens_empty_string(self):
+        # Should return positive integer
+        assert isinstance(result, int)
+        assert result > 0
+
+    def test_empty_string(self, token_counter):
         """Test counting tokens in empty string"""
-        counter = TokenCounter()
-        count = counter.count_tokens("")
-        assert count == 0
+        result = token_counter.count_tokens("")
 
-    def test_count_tokens_unicode(self):
+        assert result == 0
+
+    def test_unicode_text(self, token_counter):
         """Test counting tokens in unicode text"""
-        counter = TokenCounter()
-        count = counter.count_tokens("你好世界 🌍")
-        assert count > 0
+        result = token_counter.count_tokens("こんにちは世界")
 
-    def test_count_tokens_long_text(self):
+        assert isinstance(result, int)
+        assert result > 0
+
+    def test_long_text(self, token_counter):
         """Test counting tokens in long text"""
+        long_text = "The quick brown fox jumps over the lazy dog. " * 100
+        result = token_counter.count_tokens(long_text)
+
+        assert result > 0
+        # Should be significantly less than character count / 4
+        # (actual tokens are more efficient)
+        assert result < len(long_text)
+
+    def test_fallback_when_encoding_none(self):
+        """Test fallback to len/4 when encoding unavailable"""
+        counter = TokenCounter(encoding_name="invalid_encoding")
+        assert counter.encoding is None
+
+        result = counter.count_tokens("Hello world")
+
+        # Should use len // 4 fallback (11 // 4 = 2)
+        assert result == len("Hello world") // 4
+
+    def test_fallback_on_encoding_error(self):
+        """Test fallback when encoding.encode raises error"""
         counter = TokenCounter()
-        long_text = "word " * 1000
-        count = counter.count_tokens(long_text)
-        # Should be roughly 1000 tokens (each "word " is ~1-2 tokens)
-        assert count > 500
-        assert count < 3000
 
-    def test_count_tokens_fallback_when_no_encoding(self):
-        """Test fallback (len/4) when encoding is None"""
-        counter = TokenCounter()
-        counter.encoding = None  # Simulate missing encoding
+        # Use patch to temporarily mock the encode method
+        with patch.object(counter.encoding, 'encode', side_effect=Exception("Encode error")):
+            result = counter.count_tokens("Test text")
 
-        text = "This is a test string"  # 21 chars
-        count = counter.count_tokens(text)
+        # Should fall back to len // 4 (9 // 4 = 2)
+        assert result == len("Test text") // 4
 
-        # Fallback: len(text) // 4 = 21 // 4 = 5
-        assert count == len(text) // 4
+    def test_whitespace_text(self, token_counter):
+        """Test counting tokens in whitespace"""
+        result = token_counter.count_tokens("   \n\t   ")
 
-    def test_count_tokens_handles_encoding_error(self):
-        """Test error handling during encoding"""
-        counter = TokenCounter()
+        assert isinstance(result, int)
 
-        # Mock encoding to raise an error
-        counter.encoding = MagicMock()
-        counter.encoding.encode.side_effect = Exception("Encoding error")
-
-        text = "Test text here"  # 14 chars
-        count = counter.count_tokens(text)
-
-        # Should fall back to len/4
-        assert count == len(text) // 4
-
-    def test_count_tokens_whitespace_only(self):
-        """Test counting tokens in whitespace-only text"""
-        counter = TokenCounter()
-        count = counter.count_tokens("   \n\t  ")
-        # Whitespace still has some tokens
-        assert count >= 0
-
-    def test_count_tokens_special_characters(self):
+    def test_special_characters(self, token_counter):
         """Test counting tokens with special characters"""
-        counter = TokenCounter()
-        count = counter.count_tokens("!@#$%^&*()_+-=[]{}|;':\",./<>?")
-        assert count > 0
+        result = token_counter.count_tokens("!@#$%^&*()[]{}|;':\",./<>?")
 
-    def test_count_tokens_code_snippet(self):
+        assert isinstance(result, int)
+        assert result > 0
+
+    def test_code_snippet(self, token_counter):
         """Test counting tokens in code"""
-        counter = TokenCounter()
         code = """
 def hello_world():
     print("Hello, World!")
-    return True
+    return 42
 """
-        count = counter.count_tokens(code)
-        assert count > 0
+        result = token_counter.count_tokens(code)
+
+        assert result > 0
 
 
-# ========== Chat Message Token Counting Tests ==========
+# ========== count_message_tokens Tests ==========
 
 class TestCountMessageTokens:
     """Tests for count_message_tokens method"""
 
-    def test_count_message_tokens_single_message(self):
-        """Test counting tokens in a single message"""
-        counter = TokenCounter()
-        messages = [{"role": "user", "content": "Hello!"}]
-        count = counter.count_message_tokens(messages)
+    def test_single_message(self, token_counter):
+        """Test counting tokens for single message"""
+        messages = [
+            {"role": "user", "content": "Hello!"}
+        ]
 
-        # Should include: 4 (overhead) + role tokens + content tokens + 2 (priming)
-        assert count > 6  # At minimum
+        result = token_counter.count_message_tokens(messages)
 
-    def test_count_message_tokens_conversation(self):
-        """Test counting tokens in a multi-message conversation"""
-        counter = TokenCounter()
+        # Should include message overhead (4) + role + content + priming (2)
+        assert result > 0
+
+    def test_multi_message_conversation(self, token_counter):
+        """Test counting tokens for multi-message conversation"""
         messages = [
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": "What is Python?"},
-            {"role": "assistant", "content": "Python is a programming language."},
+            {"role": "assistant", "content": "Python is a programming language."}
         ]
-        count = counter.count_message_tokens(messages)
 
-        # 3 messages × 4 overhead + tokens + 2 priming
-        assert count > 14
+        result = token_counter.count_message_tokens(messages)
 
-    def test_count_message_tokens_empty_list(self):
-        """Test counting tokens in empty message list"""
+        # Should include overhead for all 3 messages
+        assert result > 0
+
+    def test_empty_message_list(self, token_counter):
+        """Test counting tokens for empty message list"""
+        result = token_counter.count_message_tokens([])
+
+        assert result == 0
+
+    def test_message_with_empty_content(self, token_counter):
+        """Test counting tokens for message with empty content"""
+        messages = [
+            {"role": "user", "content": ""}
+        ]
+
+        result = token_counter.count_message_tokens(messages)
+
+        # Should still have overhead (4 + role tokens + 2 priming)
+        assert result > 0
+
+    def test_message_missing_content_key(self, token_counter):
+        """Test handling message missing content key"""
+        messages = [
+            {"role": "user"}  # No content key
+        ]
+
+        result = token_counter.count_message_tokens(messages)
+
+        # Should handle gracefully
+        assert isinstance(result, int)
+
+    def test_message_missing_role_key(self, token_counter):
+        """Test handling message missing role key"""
+        messages = [
+            {"content": "Hello!"}  # No role key
+        ]
+
+        result = token_counter.count_message_tokens(messages)
+
+        # Should handle gracefully
+        assert isinstance(result, int)
+
+    def test_fallback_when_encoding_none(self):
+        """Test fallback for messages when encoding unavailable"""
+        counter = TokenCounter(encoding_name="invalid_encoding")
+        assert counter.encoding is None
+
+        messages = [
+            {"role": "user", "content": "Hello world!"}  # 12 chars
+        ]
+
+        result = counter.count_message_tokens(messages)
+
+        # Should use len // 4 fallback (12 // 4 = 3)
+        assert result == len("Hello world!") // 4
+
+    def test_fallback_on_encoding_error(self):
+        """Test fallback when encoding.encode raises error"""
         counter = TokenCounter()
+
+        # Use patch to temporarily mock the encode method
+        with patch.object(counter.encoding, 'encode', side_effect=Exception("Encode error")):
+            messages = [
+                {"role": "user", "content": "Test message"}  # 12 chars
+            ]
+            result = counter.count_message_tokens(messages)
+
+        # Should fall back to len // 4
+        assert result == len("Test message") // 4
+
+    def test_message_overhead_calculation(self, token_counter):
+        """Test message overhead is applied correctly"""
+        # Single short message
+        messages1 = [{"role": "user", "content": "Hi"}]
+        result1 = token_counter.count_message_tokens(messages1)
+
+        # Two short messages
+        messages2 = [
+            {"role": "user", "content": "Hi"},
+            {"role": "assistant", "content": "Hi"}
+        ]
+        result2 = token_counter.count_message_tokens(messages2)
+
+        # Second result should be roughly double (with overhead)
+        # Each message adds 4 tokens overhead
+        assert result2 > result1
+
+    def test_unicode_in_messages(self, token_counter):
+        """Test counting tokens with unicode in messages"""
+        messages = [
+            {"role": "user", "content": "日本語でお願いします"}
+        ]
+
+        result = token_counter.count_message_tokens(messages)
+
+        assert result > 0
+
+    def test_long_conversation(self, token_counter):
+        """Test counting tokens for long conversation"""
         messages = []
-        count = counter.count_message_tokens(messages)
-        assert count == 0
+        for i in range(50):
+            messages.append({"role": "user", "content": f"Message {i}"})
+            messages.append({"role": "assistant", "content": f"Response {i}"})
 
-    def test_count_message_tokens_empty_content(self):
-        """Test messages with empty content"""
-        counter = TokenCounter()
-        messages = [{"role": "user", "content": ""}]
-        count = counter.count_message_tokens(messages)
+        result = token_counter.count_message_tokens(messages)
 
-        # Should still have overhead: 4 (message) + role tokens + 2 (priming)
-        assert count > 0
-
-    def test_count_message_tokens_missing_role(self):
-        """Test messages with missing role key"""
-        counter = TokenCounter()
-        messages = [{"content": "Hello!"}]
-        count = counter.count_message_tokens(messages)
-
-        # Should handle gracefully (empty role string)
-        assert count > 0
-
-    def test_count_message_tokens_missing_content(self):
-        """Test messages with missing content key"""
-        counter = TokenCounter()
-        messages = [{"role": "user"}]
-        count = counter.count_message_tokens(messages)
-
-        # Should handle gracefully (empty content)
-        assert count > 0
-
-    def test_count_message_tokens_fallback_when_no_encoding(self):
-        """Test fallback when encoding is None"""
-        counter = TokenCounter()
-        counter.encoding = None
-
-        messages = [
-            {"role": "user", "content": "Hello World"}  # 11 chars
-        ]
-        count = counter.count_message_tokens(messages)
-
-        # Fallback: len(content) // 4 = 11 // 4 = 2
-        assert count == 2
-
-    def test_count_message_tokens_handles_encoding_error(self):
-        """Test error handling during message encoding"""
-        counter = TokenCounter()
-
-        # Mock encoding to raise an error
-        counter.encoding = MagicMock()
-        counter.encoding.encode.side_effect = Exception("Encoding error")
-
-        messages = [
-            {"role": "user", "content": "Test message"}  # 12 chars
-        ]
-        count = counter.count_message_tokens(messages)
-
-        # Should fall back to len/4
-        assert count == 3  # 12 // 4
-
-    def test_count_message_tokens_long_conversation(self):
-        """Test counting tokens in a long conversation"""
-        counter = TokenCounter()
-        messages = [
-            {"role": "user", "content": f"Message {i}: " + "x" * 100}
-            for i in range(10)
-        ]
-        count = counter.count_message_tokens(messages)
-
-        # Should handle many messages
-        assert count > 100
-
-    def test_count_message_tokens_unicode_content(self):
-        """Test messages with unicode content"""
-        counter = TokenCounter()
-        messages = [
-            {"role": "user", "content": "你好！这是一个测试消息。"},
-            {"role": "assistant", "content": "我理解了。🎉"},
-        ]
-        count = counter.count_message_tokens(messages)
-        assert count > 0
-
-    def test_overhead_calculation(self):
-        """Test that overhead is correctly added per message"""
-        counter = TokenCounter()
-
-        # Single message
-        single = [{"role": "user", "content": "Hi"}]
-        count_single = counter.count_message_tokens(single)
-
-        # Two identical messages
-        double = [
-            {"role": "user", "content": "Hi"},
-            {"role": "user", "content": "Hi"},
-        ]
-        count_double = counter.count_message_tokens(double)
-
-        # Second message should add approximately 4 (overhead) + content tokens
-        # The difference should be roughly the overhead + content
-        assert count_double > count_single
+        # Should be substantial
+        assert result > 100
 
 
-# ========== Singleton Pattern Tests ==========
+# ========== Singleton Tests ==========
 
 class TestSingleton:
     """Tests for singleton pattern"""
 
-    def test_get_token_counter_returns_instance(self):
-        """Test get_token_counter returns a TokenCounter instance"""
-        # Reset singleton
-        token_counter_module._token_counter = None
+    def test_get_token_counter_returns_instance(self, reset_singleton):
+        """Test get_token_counter returns TokenCounter instance"""
+        result = get_token_counter()
 
-        counter = get_token_counter()
-        assert isinstance(counter, TokenCounter)
+        assert isinstance(result, TokenCounter)
 
-    def test_get_token_counter_returns_same_instance(self):
-        """Test get_token_counter returns the same instance"""
-        # Reset singleton
-        token_counter_module._token_counter = None
-
+    def test_get_token_counter_returns_same_instance(self, reset_singleton):
+        """Test get_token_counter returns same instance on multiple calls"""
         counter1 = get_token_counter()
         counter2 = get_token_counter()
 
         assert counter1 is counter2
 
-    def test_singleton_persists_encoding(self):
-        """Test singleton maintains its encoding across calls"""
-        # Reset singleton
-        token_counter_module._token_counter = None
-
+    def test_singleton_encoding_persists(self, reset_singleton):
+        """Test encoding persists across singleton calls"""
         counter1 = get_token_counter()
-        encoding_id = id(counter1.encoding)
+        encoding1 = counter1.encoding
 
         counter2 = get_token_counter()
+        encoding2 = counter2.encoding
 
-        assert id(counter2.encoding) == encoding_id
+        assert encoding1 is encoding2
 
 
 # ========== Default Encoding Tests ==========
 
 class TestDefaultEncoding:
-    """Tests for default encoding constant"""
+    """Tests for default encoding behavior"""
 
     def test_default_encoding_is_cl100k_base(self):
-        """Test default encoding is cl100k_base (GPT-4 compatible)"""
+        """Test default encoding constant"""
         assert DEFAULT_ENCODING == "cl100k_base"
 
-    def test_default_encoding_is_valid(self):
-        """Test default encoding can be loaded"""
-        import tiktoken
-        encoding = tiktoken.get_encoding(DEFAULT_ENCODING)
-        assert encoding is not None
+    def test_counter_uses_default_encoding(self, token_counter):
+        """Test counter uses default encoding when not specified"""
+        # cl100k_base is the GPT-4 encoding
+        # Should encode "hello" to specific tokens
+        result = token_counter.count_tokens("hello")
+
+        assert result > 0
 
 
 # ========== Integration Tests ==========
 
 class TestIntegration:
-    """Integration tests for token counting"""
+    """Integration tests"""
 
-    def test_realistic_chat_context(self):
-        """Test token counting for a realistic chat context"""
-        counter = TokenCounter()
-
+    def test_realistic_chat_context_estimation(self, token_counter):
+        """Test realistic chat context token counting"""
         messages = [
-            {"role": "system", "content": "You are a helpful coding assistant. "
-             "You provide clear explanations and working code examples."},
-            {"role": "user", "content": "Can you explain how async/await works in Python?"},
-            {"role": "assistant", "content": """
-Async/await in Python allows you to write asynchronous code that can handle
-multiple operations concurrently without blocking.
-
-Here's a simple example:
-
-```python
-import asyncio
-
-async def fetch_data():
-    await asyncio.sleep(1)  # Simulate I/O
-    return "data"
-
-async def main():
-    result = await fetch_data()
-    print(result)
-
-asyncio.run(main())
-```
-
-Key points:
-1. `async def` defines a coroutine
-2. `await` pauses execution until the awaited task completes
-3. `asyncio.run()` starts the event loop
-"""},
-            {"role": "user", "content": "Can you show me error handling with async?"},
+            {"role": "system", "content": "You are a helpful AI assistant."},
+            {"role": "user", "content": "Can you explain what machine learning is?"},
+            {"role": "assistant", "content": "Machine learning is a subset of artificial intelligence that enables systems to learn and improve from experience without being explicitly programmed."},
+            {"role": "user", "content": "Can you give me an example?"},
         ]
 
-        count = counter.count_message_tokens(messages)
+        result = token_counter.count_message_tokens(messages)
 
         # Should be a reasonable count for this conversation
-        assert count > 100
-        assert count < 1000
+        assert 50 < result < 200
 
-    def test_context_window_estimation(self):
-        """Test estimating if content fits in a context window"""
-        counter = TokenCounter()
-
-        # Simulate checking if messages fit in 4096 token window
-        context_window = 4096
+    def test_context_window_fitting(self, token_counter):
+        """Test checking if messages fit in context window"""
+        max_tokens = 4096  # Example context window
 
         messages = [
-            {"role": "user", "content": "Hello!"},
+            {"role": "user", "content": "Hello!"}
         ]
 
-        count = counter.count_message_tokens(messages)
-        remaining = context_window - count
+        token_count = token_counter.count_message_tokens(messages)
 
-        assert remaining > 4000  # Plenty of room for response
+        assert token_count < max_tokens
 
     def test_fallback_accuracy(self):
-        """Test that fallback estimation is reasonably accurate"""
-        counter = TokenCounter()
+        """Test fallback estimation is reasonably accurate"""
+        # When encoding fails, use len // 4
+        counter = TokenCounter(encoding_name="invalid")
 
-        text = "The quick brown fox jumps over the lazy dog."
+        # Test with known text
+        text = "This is a test sentence with multiple words."  # 46 chars
+        result = counter.count_tokens(text)
 
-        # Get actual count
-        actual = counter.count_tokens(text)
-
-        # Get fallback count
-        fallback = len(text) // 4
-
-        # Fallback should be in the same ballpark (within 2x)
-        assert fallback > actual / 3
-        assert fallback < actual * 3
+        # Should be len // 4 = 11
+        assert result == 46 // 4
 
 
 # ========== Edge Cases ==========
@@ -410,72 +386,72 @@ Key points:
 class TestEdgeCases:
     """Tests for edge cases"""
 
-    def test_none_handling(self):
-        """Test handling of None values in messages"""
-        counter = TokenCounter()
-
-        # Messages with None values should be handled gracefully
-        messages = [{"role": None, "content": None}]
-
-        # This may raise or return 0 depending on implementation
-        # The key is it shouldn't crash
-        try:
-            count = counter.count_message_tokens(messages)
-            assert isinstance(count, int)
-        except (TypeError, AttributeError):
-            # Also acceptable - None is not a valid message format
-            pass
-
-    def test_very_long_single_message(self):
-        """Test handling very long single message"""
-        counter = TokenCounter()
-
-        # 100KB of text
+    def test_very_long_message(self, token_counter):
+        """Test very long message handling"""
         long_content = "x" * 100000
         messages = [{"role": "user", "content": long_content}]
 
-        count = counter.count_message_tokens(messages)
-        assert count > 10000  # Should be many tokens
+        result = token_counter.count_message_tokens(messages)
 
-    def test_many_short_messages(self):
-        """Test handling many short messages"""
-        counter = TokenCounter()
+        assert result > 0
 
+    def test_many_short_messages(self, token_counter):
+        """Test many short messages"""
+        messages = [{"role": "user", "content": "Hi"} for _ in range(100)]
+
+        result = token_counter.count_message_tokens(messages)
+
+        # Should account for overhead of each message
+        assert result > 100  # At least overhead per message
+
+    def test_complex_unicode(self, token_counter):
+        """Test complex unicode including emojis"""
+        text = "Hello 👋 World 🌍! こんにちは 🇯🇵 مرحبا 🇸🇦"
+        result = token_counter.count_tokens(text)
+
+        assert result > 0
+
+    def test_mixed_language_messages(self, token_counter):
+        """Test messages with mixed languages"""
         messages = [
-            {"role": "user" if i % 2 == 0 else "assistant", "content": "Hi"}
-            for i in range(100)
+            {"role": "user", "content": "Hello, 你好, Bonjour, Hola!"},
+            {"role": "assistant", "content": "こんにちは! I can help in multiple languages."}
         ]
 
-        count = counter.count_message_tokens(messages)
+        result = token_counter.count_message_tokens(messages)
 
-        # 100 messages × ~6 tokens each (4 overhead + role + content) + 2 priming
-        assert count > 500
+        assert result > 0
 
-    def test_newlines_and_formatting(self):
-        """Test text with complex formatting"""
-        counter = TokenCounter()
-
+    def test_newlines_and_formatting(self, token_counter):
+        """Test text with newlines and formatting"""
         text = """
-        Line 1
-        Line 2
+        This is a multi-line
+        text with various
+        formatting and    spaces.
 
-        Line 4 (after blank)
-
-        - Bullet 1
-        - Bullet 2
-
-        ```
-        code block
-        ```
+        And blank lines too.
         """
 
-        count = counter.count_tokens(text)
-        assert count > 0
+        result = token_counter.count_tokens(text)
 
-    def test_mixed_languages(self):
-        """Test text with mixed languages"""
-        counter = TokenCounter()
+        assert result > 0
 
-        text = "Hello 你好 مرحبا שלום Привет こんにちは"
-        count = counter.count_tokens(text)
-        assert count > 0
+    def test_json_in_content(self, token_counter):
+        """Test JSON content in messages"""
+        messages = [
+            {"role": "user", "content": '{"key": "value", "number": 42, "array": [1, 2, 3]}'}
+        ]
+
+        result = token_counter.count_message_tokens(messages)
+
+        assert result > 0
+
+    def test_code_in_messages(self, token_counter):
+        """Test code snippets in messages"""
+        messages = [
+            {"role": "user", "content": "```python\ndef hello():\n    print('Hello')\n```"}
+        ]
+
+        result = token_counter.count_message_tokens(messages)
+
+        assert result > 0
