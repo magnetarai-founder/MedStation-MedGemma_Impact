@@ -308,7 +308,7 @@ class VaultService:
                 created_at TEXT NOT NULL,
                 updated_at TEXT,
                 FOREIGN KEY(file_id) REFERENCES vault_files(id),
-                UNIQUE(file_id, key)
+                UNIQUE(file_id, user_id, vault_type, key)
             )
         """)
 
