@@ -51,9 +51,9 @@ async def get_user_permissions(request: Request) -> SuccessResponse[UserPermissi
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
-                error=ErrorCode.INTERNAL_ERROR,
+                error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to retrieve user permissions"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -90,9 +90,9 @@ async def add_workflow_perm_endpoint(request: Request, team_id: str, workflow_id
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=ErrorResponse(
-                    error=ErrorCode.VALIDATION_ERROR,
+                    error_code=ErrorCode.VALIDATION_ERROR,
                     message=message
-                ).model_dump()
+                ).model_dump(mode='json')
             )
 
         return SuccessResponse(
@@ -106,9 +106,9 @@ async def add_workflow_perm_endpoint(request: Request, team_id: str, workflow_id
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
-                error=ErrorCode.INTERNAL_ERROR,
+                error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to add workflow permission"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -143,9 +143,9 @@ async def remove_workflow_perm_endpoint(request: Request, team_id: str, workflow
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=ErrorResponse(
-                    error=ErrorCode.VALIDATION_ERROR,
+                    error_code=ErrorCode.VALIDATION_ERROR,
                     message=message
-                ).model_dump()
+                ).model_dump(mode='json')
             )
 
         return SuccessResponse(
@@ -159,9 +159,9 @@ async def remove_workflow_perm_endpoint(request: Request, team_id: str, workflow
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
-                error=ErrorCode.INTERNAL_ERROR,
+                error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to remove workflow permission"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -197,9 +197,9 @@ async def get_workflow_perms_endpoint(request: Request, team_id: str, workflow_i
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
-                error=ErrorCode.INTERNAL_ERROR,
+                error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to retrieve workflow permissions"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -238,9 +238,9 @@ async def check_workflow_perm_endpoint(request: Request, team_id: str, workflow_
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
-                error=ErrorCode.INTERNAL_ERROR,
+                error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to check workflow permission"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -276,9 +276,9 @@ async def create_queue_endpoint(request: Request, team_id: str) -> SuccessRespon
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=ErrorResponse(
-                    error=ErrorCode.VALIDATION_ERROR,
+                    error_code=ErrorCode.VALIDATION_ERROR,
                     message=message
-                ).model_dump()
+                ).model_dump(mode='json')
             )
 
         return SuccessResponse(
@@ -292,9 +292,9 @@ async def create_queue_endpoint(request: Request, team_id: str) -> SuccessRespon
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
-                error=ErrorCode.INTERNAL_ERROR,
+                error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to create queue"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -329,9 +329,9 @@ async def add_queue_perm_endpoint(request: Request, team_id: str, queue_id: str)
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=ErrorResponse(
-                    error=ErrorCode.VALIDATION_ERROR,
+                    error_code=ErrorCode.VALIDATION_ERROR,
                     message=message
-                ).model_dump()
+                ).model_dump(mode='json')
             )
 
         return SuccessResponse(
@@ -345,9 +345,9 @@ async def add_queue_perm_endpoint(request: Request, team_id: str, queue_id: str)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
-                error=ErrorCode.INTERNAL_ERROR,
+                error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to add queue permission"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -382,9 +382,9 @@ async def remove_queue_perm_endpoint(request: Request, team_id: str, queue_id: s
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=ErrorResponse(
-                    error=ErrorCode.VALIDATION_ERROR,
+                    error_code=ErrorCode.VALIDATION_ERROR,
                     message=message
-                ).model_dump()
+                ).model_dump(mode='json')
             )
 
         return SuccessResponse(
@@ -398,9 +398,9 @@ async def remove_queue_perm_endpoint(request: Request, team_id: str, queue_id: s
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
-                error=ErrorCode.INTERNAL_ERROR,
+                error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to remove queue permission"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -436,9 +436,9 @@ async def get_queue_perms_endpoint(request: Request, team_id: str, queue_id: str
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
-                error=ErrorCode.INTERNAL_ERROR,
+                error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to retrieve queue permissions"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -477,9 +477,9 @@ async def check_queue_access_endpoint(request: Request, team_id: str, queue_id: 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
-                error=ErrorCode.INTERNAL_ERROR,
+                error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to check queue access"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -516,9 +516,9 @@ async def get_accessible_queues_endpoint(request: Request, team_id: str, user_id
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
-                error=ErrorCode.INTERNAL_ERROR,
+                error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to retrieve accessible queues"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -544,9 +544,9 @@ async def get_queue_endpoint(request: Request, team_id: str, queue_id: str) -> S
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=ErrorResponse(
-                    error=ErrorCode.NOT_FOUND,
+                    error_code=ErrorCode.NOT_FOUND,
                     message="Queue not found"
-                ).model_dump()
+                ).model_dump(mode='json')
             )
 
         return SuccessResponse(
@@ -560,9 +560,9 @@ async def get_queue_endpoint(request: Request, team_id: str, queue_id: str) -> S
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
-                error=ErrorCode.INTERNAL_ERROR,
+                error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to retrieve queue"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -597,9 +597,9 @@ async def grant_god_rights_endpoint(request: Request) -> SuccessResponse[Dict]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=ErrorResponse(
-                    error=ErrorCode.VALIDATION_ERROR,
+                    error_code=ErrorCode.VALIDATION_ERROR,
                     message=message
-                ).model_dump()
+                ).model_dump(mode='json')
             )
 
         return SuccessResponse(
@@ -613,9 +613,9 @@ async def grant_god_rights_endpoint(request: Request) -> SuccessResponse[Dict]:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
-                error=ErrorCode.INTERNAL_ERROR,
+                error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to grant god rights"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -647,9 +647,9 @@ async def revoke_god_rights_endpoint(request: Request) -> SuccessResponse[Dict]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=ErrorResponse(
-                    error=ErrorCode.VALIDATION_ERROR,
+                    error_code=ErrorCode.VALIDATION_ERROR,
                     message=message
-                ).model_dump()
+                ).model_dump(mode='json')
             )
 
         return SuccessResponse(
@@ -663,9 +663,9 @@ async def revoke_god_rights_endpoint(request: Request) -> SuccessResponse[Dict]:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
-                error=ErrorCode.INTERNAL_ERROR,
+                error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to revoke god rights"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -699,9 +699,9 @@ async def check_god_rights_endpoint(request: Request) -> SuccessResponse[Dict]:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
-                error=ErrorCode.INTERNAL_ERROR,
+                error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to check god rights"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -732,9 +732,9 @@ async def get_god_rights_users_endpoint(request: Request) -> SuccessResponse[Dic
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
-                error=ErrorCode.INTERNAL_ERROR,
+                error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to retrieve god rights users"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -765,9 +765,9 @@ async def get_revoked_god_rights_endpoint(request: Request) -> SuccessResponse[D
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
-                error=ErrorCode.INTERNAL_ERROR,
+                error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to retrieve revoked god rights"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -804,9 +804,9 @@ async def add_vault_perm_endpoint(request: Request, team_id: str, item_id: str) 
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=ErrorResponse(
-                    error=ErrorCode.VALIDATION_ERROR,
+                    error_code=ErrorCode.VALIDATION_ERROR,
                     message=message
-                ).model_dump()
+                ).model_dump(mode='json')
             )
 
         return SuccessResponse(
@@ -820,9 +820,9 @@ async def add_vault_perm_endpoint(request: Request, team_id: str, item_id: str) 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
-                error=ErrorCode.INTERNAL_ERROR,
+                error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to add vault permission"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -857,9 +857,9 @@ async def remove_vault_perm_endpoint(request: Request, team_id: str, item_id: st
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=ErrorResponse(
-                    error=ErrorCode.VALIDATION_ERROR,
+                    error_code=ErrorCode.VALIDATION_ERROR,
                     message=message
-                ).model_dump()
+                ).model_dump(mode='json')
             )
 
         return SuccessResponse(
@@ -873,9 +873,9 @@ async def remove_vault_perm_endpoint(request: Request, team_id: str, item_id: st
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
-                error=ErrorCode.INTERNAL_ERROR,
+                error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to remove vault permission"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -911,9 +911,9 @@ async def get_vault_perms_endpoint(request: Request, team_id: str, item_id: str)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
-                error=ErrorCode.INTERNAL_ERROR,
+                error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to retrieve vault permissions"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -952,7 +952,7 @@ async def check_vault_perm_endpoint(request: Request, team_id: str, item_id: str
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
-                error=ErrorCode.INTERNAL_ERROR,
+                error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to check vault permission"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
