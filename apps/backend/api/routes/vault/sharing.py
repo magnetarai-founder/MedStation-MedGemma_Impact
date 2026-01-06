@@ -65,7 +65,7 @@ async def create_share_link_endpoint(
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=ErrorResponse(
-                error_code=ErrorCode.RATE_LIMIT_EXCEEDED,
+                error_code=ErrorCode.RATE_LIMITED,
                 message="Rate limit exceeded for vault.share.created"
             ).model_dump()
         )
@@ -151,7 +151,7 @@ async def get_file_shares_endpoint(
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=ErrorResponse(
-                error_code=ErrorCode.RATE_LIMIT_EXCEEDED,
+                error_code=ErrorCode.RATE_LIMITED,
                 message="Rate limit exceeded for vault.share.list"
             ).model_dump()
         )
@@ -209,7 +209,7 @@ async def revoke_share_link_endpoint(
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=ErrorResponse(
-                error_code=ErrorCode.RATE_LIMIT_EXCEEDED,
+                error_code=ErrorCode.RATE_LIMITED,
                 message="Rate limit exceeded for vault.share.revoked"
             ).model_dump()
         )
@@ -479,7 +479,7 @@ async def login_user(
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail=ErrorResponse(
-                        error_code=ErrorCode.AUTH_ERROR,
+                        error_code=ErrorCode.UNAUTHORIZED,
                         message="Invalid credentials"
                     ).model_dump()
                 )
@@ -493,7 +493,7 @@ async def login_user(
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail=ErrorResponse(
-                        error_code=ErrorCode.AUTH_ERROR,
+                        error_code=ErrorCode.UNAUTHORIZED,
                         message="Invalid credentials"
                     ).model_dump()
                 )
