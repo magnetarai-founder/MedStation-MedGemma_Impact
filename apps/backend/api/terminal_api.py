@@ -17,12 +17,28 @@ from api.auth_middleware import extract_websocket_token
 
 logger = logging.getLogger(__name__)
 
+# Import terminal bridge - handle various import scenarios
 import sys
 from pathlib import Path
 
-# Import terminal bridge from parent services directory
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from services.terminal_bridge import terminal_bridge, TerminalSession
+# Ensure backend root is in path for services import
+# Use resolve() to get absolute path, insert at position 0 to ensure priority
+_backend_root = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_backend_root))
+
+try:
+    from services.terminal_bridge import terminal_bridge, TerminalSession
+except ModuleNotFoundError:
+    # Fallback: try direct import if services is at a different location
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "terminal_bridge",
+        _backend_root / "services" / "terminal_bridge.py"
+    )
+    terminal_bridge_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(terminal_bridge_module)
+    terminal_bridge = terminal_bridge_module.terminal_bridge
+    TerminalSession = terminal_bridge_module.TerminalSession
 
 # Import auth middleware
 try:

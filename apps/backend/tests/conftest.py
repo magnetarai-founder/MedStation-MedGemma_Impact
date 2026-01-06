@@ -17,14 +17,29 @@ from pathlib import Path
 from datetime import datetime, timedelta, UTC
 from typing import Generator, Dict, Any
 
-# Add backend to path for imports
+# Add backend to path for imports - this runs during conftest.py loading
+# which happens before test module collection
 backend_root = Path(__file__).parent.parent
-sys.path.insert(0, str(backend_root))
-sys.path.insert(0, str(backend_root / "api"))
+if str(backend_root) not in sys.path:
+    sys.path.insert(0, str(backend_root))
+if str(backend_root / "api") not in sys.path:
+    sys.path.insert(0, str(backend_root / "api"))
 
 # Set test environment before importing modules
 os.environ["ELOHIMOS_JWT_SECRET_KEY"] = "test-secret-key-for-unit-tests-only"
 os.environ["ELOHIM_ENV"] = "test"
+
+
+def pytest_configure(config):
+    """
+    Called before test collection begins.
+    Ensures paths are set up early enough for all imports.
+    """
+    backend_root = Path(__file__).parent.parent
+    if str(backend_root) not in sys.path:
+        sys.path.insert(0, str(backend_root))
+    if str(backend_root / "api") not in sys.path:
+        sys.path.insert(0, str(backend_root / "api"))
 
 
 @pytest.fixture

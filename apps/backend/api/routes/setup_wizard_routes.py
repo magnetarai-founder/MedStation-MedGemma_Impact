@@ -208,7 +208,7 @@ async def get_setup_status(request: Request) -> SuccessResponse[SetupStatusRespo
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to retrieve setup status"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -257,7 +257,7 @@ async def check_ollama(request: Request) -> SuccessResponse[OllamaStatusResponse
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to check Ollama status"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -305,7 +305,7 @@ async def get_system_resources(request: Request) -> SuccessResponse[SystemResour
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to detect system resources"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -355,7 +355,7 @@ async def get_model_recommendations(request: Request, tier: Optional[str] = None
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to retrieve model recommendations"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -400,7 +400,7 @@ async def get_installed_models(request: Request) -> SuccessResponse[InstalledMod
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to retrieve installed models"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -453,7 +453,7 @@ async def download_model(request: Request, body: DownloadModelRequest) -> Succes
                 detail=ErrorResponse(
                     error_code=ErrorCode.INTERNAL_ERROR,
                     message=f"Failed to download model '{body.model_name}'"
-                ).model_dump()
+                ).model_dump(mode='json')
             )
 
     except HTTPException:
@@ -466,7 +466,7 @@ async def download_model(request: Request, body: DownloadModelRequest) -> Succes
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to download model"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -638,7 +638,7 @@ async def configure_hot_slots(request: Request, body: ConfigureHotSlotsRequest) 
                     detail=ErrorResponse(
                         error_code=ErrorCode.VALIDATION_ERROR,
                         message=f"Invalid slot number: {slot_num} (must be 1-4)"
-                    ).model_dump()
+                    ).model_dump(mode='json')
                 )
 
         # Configure hot slots
@@ -660,7 +660,7 @@ async def configure_hot_slots(request: Request, body: ConfigureHotSlotsRequest) 
                 detail=ErrorResponse(
                     error_code=ErrorCode.INTERNAL_ERROR,
                     message="Failed to configure hot slots"
-                ).model_dump()
+                ).model_dump(mode='json')
             )
 
     except HTTPException:
@@ -673,7 +673,7 @@ async def configure_hot_slots(request: Request, body: ConfigureHotSlotsRequest) 
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to configure hot slots"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -745,7 +745,7 @@ async def create_account(request: Request, body: CreateAccountRequest) -> Succes
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to create account"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -789,7 +789,7 @@ async def complete_setup(request: Request) -> SuccessResponse[CompleteSetupRespo
                 detail=ErrorResponse(
                     error_code=ErrorCode.INTERNAL_ERROR,
                     message="Failed to complete setup"
-                ).model_dump()
+                ).model_dump(mode='json')
             )
 
     except HTTPException:
@@ -802,7 +802,7 @@ async def complete_setup(request: Request) -> SuccessResponse[CompleteSetupRespo
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to complete setup"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
