@@ -30,7 +30,7 @@ except ImportError:
 from api.config_paths import get_config_paths
 from api.utils import sanitize_for_log
 from api.rate_limiter import rate_limiter, get_client_ip
-from api.services.crypto_wrap import wrap_key, unwrap_key
+from api.services.crypto_wrap import wrap_key as crypto_wrap_key, unwrap_key as crypto_unwrap_key
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 from api.services.webauthn_verify import verify_assertion, verify_registration
 from api.config import get_settings
@@ -283,7 +283,7 @@ def _wrap_kek(kek: bytes, wrap_key: bytes, method: str = "aes_kw") -> bytes:
         return bytes(a ^ b for a, b in zip(kek, wrap_key[:len(kek)]))
 
     # Use crypto_wrap utilities (AES-KW or XChaCha20-Poly1305)
-    return wrap_key(kek, wrap_key[:32], method=method)
+    return crypto_wrap_key(kek, wrap_key[:32], method=method)
 
 
 def _unwrap_kek(wrapped_kek: bytes, wrap_key: bytes, method: str = "aes_kw") -> bytes:
@@ -303,7 +303,7 @@ def _unwrap_kek(wrapped_kek: bytes, wrap_key: bytes, method: str = "aes_kw") -> 
         return bytes(a ^ b for a, b in zip(wrapped_kek, wrap_key[:len(wrapped_kek)]))
 
     # Use crypto_wrap utilities
-    return unwrap_key(wrapped_kek, wrap_key[:32], method=method)
+    return crypto_unwrap_key(wrapped_kek, wrap_key[:32], method=method)
 
 
 def _migrate_xor_to_aes_kw(
