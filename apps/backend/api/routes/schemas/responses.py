@@ -100,6 +100,13 @@ class ErrorResponse(BaseModel):
     )
     request_id: Optional[str] = Field(None, description="Request ID for debugging")
 
+    def model_dump(self, **kwargs) -> dict:
+        """Override model_dump to serialize datetime to ISO format for JSON compatibility."""
+        data = super().model_dump(**kwargs)
+        if isinstance(data.get("timestamp"), datetime):
+            data["timestamp"] = data["timestamp"].isoformat()
+        return data
+
     class Config:
         json_schema_extra = {
             "example": {
