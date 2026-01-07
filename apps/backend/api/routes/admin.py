@@ -53,7 +53,7 @@ class AdminOperationResponse(BaseModel):
 @require_perm("system.manage_settings")
 async def admin_reset_all_endpoint(
     request: Request,
-    current_user: dict = Depends(get_current_user_dep)
+    current_user: dict = Depends(get_current_user_dep())
 ) -> SuccessResponse[AdminOperationResponse]:
     """
     Reset all app data - clears database and temp files (DANGER ZONE)
@@ -96,7 +96,7 @@ async def admin_reset_all_endpoint(
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to reset all data"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -111,7 +111,7 @@ async def admin_reset_all_endpoint(
 @require_perm("system.manage_settings")
 async def admin_uninstall_endpoint(
     request: Request,
-    current_user: dict = Depends(get_current_user_dep)
+    current_user: dict = Depends(get_current_user_dep())
 ) -> SuccessResponse[AdminOperationResponse]:
     """
     Uninstall app - removes all data directories (DANGER ZONE)
@@ -153,7 +153,7 @@ async def admin_uninstall_endpoint(
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to uninstall app"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -168,7 +168,7 @@ async def admin_uninstall_endpoint(
 @require_perm("system.manage_settings")
 async def admin_clear_chats_endpoint(
     request: Request,
-    current_user: dict = Depends(get_current_user_dep)
+    current_user: dict = Depends(get_current_user_dep())
 ) -> SuccessResponse[AdminOperationResponse]:
     """
     Clear all AI chat history (DANGER ZONE)
@@ -210,7 +210,7 @@ async def admin_clear_chats_endpoint(
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to clear AI chat history"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -225,7 +225,7 @@ async def admin_clear_chats_endpoint(
 @require_perm("system.manage_settings")
 async def admin_clear_team_messages_endpoint(
     request: Request,
-    current_user: dict = Depends(get_current_user_dep)
+    current_user: dict = Depends(get_current_user_dep())
 ) -> SuccessResponse[AdminOperationResponse]:
     """
     Clear P2P team chat history (DANGER ZONE)
@@ -267,7 +267,7 @@ async def admin_clear_team_messages_endpoint(
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to clear team chat history"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -282,7 +282,7 @@ async def admin_clear_team_messages_endpoint(
 @require_perm("system.manage_settings")
 async def admin_clear_query_library_endpoint(
     request: Request,
-    current_user: dict = Depends(get_current_user_dep)
+    current_user: dict = Depends(get_current_user_dep())
 ) -> SuccessResponse[AdminOperationResponse]:
     """
     Clear all saved SQL queries (DANGER ZONE)
@@ -324,7 +324,7 @@ async def admin_clear_query_library_endpoint(
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to clear query library"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -339,7 +339,7 @@ async def admin_clear_query_library_endpoint(
 @require_perm("system.manage_settings")
 async def admin_clear_query_history_endpoint(
     request: Request,
-    current_user: dict = Depends(get_current_user_dep)
+    current_user: dict = Depends(get_current_user_dep())
 ) -> SuccessResponse[AdminOperationResponse]:
     """
     Clear SQL execution history (DANGER ZONE)
@@ -381,7 +381,7 @@ async def admin_clear_query_history_endpoint(
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to clear query history"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -396,7 +396,7 @@ async def admin_clear_query_history_endpoint(
 @require_perm("system.manage_settings")
 async def admin_clear_temp_files_endpoint(
     request: Request,
-    current_user: dict = Depends(get_current_user_dep)
+    current_user: dict = Depends(get_current_user_dep())
 ) -> SuccessResponse[AdminOperationResponse]:
     """
     Clear uploaded files and exports
@@ -436,7 +436,7 @@ async def admin_clear_temp_files_endpoint(
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to clear temporary files"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -451,7 +451,7 @@ async def admin_clear_temp_files_endpoint(
 @require_perm("system.manage_settings")
 async def admin_clear_code_files_endpoint(
     request: Request,
-    current_user: dict = Depends(get_current_user_dep)
+    current_user: dict = Depends(get_current_user_dep())
 ) -> SuccessResponse[AdminOperationResponse]:
     """
     Clear saved code editor files
@@ -491,7 +491,7 @@ async def admin_clear_code_files_endpoint(
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to clear code editor files"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -506,7 +506,7 @@ async def admin_clear_code_files_endpoint(
 @require_perm("system.manage_settings")
 async def admin_reset_settings_endpoint(
     request: Request,
-    current_user: dict = Depends(get_current_user_dep)
+    current_user: dict = Depends(get_current_user_dep())
 ) -> SuccessResponse[AdminOperationResponse]:
     """
     Reset all settings to defaults (DANGER ZONE)
@@ -548,7 +548,7 @@ async def admin_reset_settings_endpoint(
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to reset settings"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -563,7 +563,7 @@ async def admin_reset_settings_endpoint(
 @require_perm("system.manage_settings")
 async def admin_reset_data_endpoint(
     request: Request,
-    current_user: dict = Depends(get_current_user_dep)
+    current_user: dict = Depends(get_current_user_dep())
 ) -> SuccessResponse[AdminOperationResponse]:
     """
     Delete all data but keep settings (DANGER ZONE)
@@ -605,7 +605,7 @@ async def admin_reset_data_endpoint(
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to reset data"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -622,7 +622,7 @@ async def admin_reset_data_endpoint(
 @require_perm("data.export")
 async def admin_export_all_endpoint(
     request: Request,
-    current_user: dict = Depends(get_current_user_dep)
+    current_user: dict = Depends(get_current_user_dep())
 ) -> SuccessResponse[AdminOperationResponse]:
     """
     Export complete backup as ZIP
@@ -664,7 +664,7 @@ async def admin_export_all_endpoint(
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to export complete backup"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -679,7 +679,7 @@ async def admin_export_all_endpoint(
 @require_perm("data.export")
 async def admin_export_chats_endpoint(
     request: Request,
-    current_user: dict = Depends(get_current_user_dep)
+    current_user: dict = Depends(get_current_user_dep())
 ) -> SuccessResponse[AdminOperationResponse]:
     """
     Export AI chat history as JSON
@@ -721,7 +721,7 @@ async def admin_export_chats_endpoint(
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to export AI chat history"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -736,7 +736,7 @@ async def admin_export_chats_endpoint(
 @require_perm("data.export")
 async def admin_export_queries_endpoint(
     request: Request,
-    current_user: dict = Depends(get_current_user_dep)
+    current_user: dict = Depends(get_current_user_dep())
 ) -> SuccessResponse[AdminOperationResponse]:
     """
     Export query library as JSON
@@ -778,5 +778,5 @@ async def admin_export_queries_endpoint(
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to export query library"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
