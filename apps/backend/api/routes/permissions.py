@@ -65,7 +65,7 @@ async def get_all_permissions_endpoint(
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to get permissions"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -104,7 +104,7 @@ async def get_profiles_endpoint(
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to get permission profiles"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -146,7 +146,7 @@ async def create_profile_endpoint(request: Request) -> SuccessResponse[Dict]:
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to create permission profile"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -179,7 +179,7 @@ async def get_profile_endpoint(request: Request, profile_id: str) -> SuccessResp
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to get permission profile"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -229,7 +229,7 @@ async def update_profile_endpoint(request: Request, profile_id: str) -> SuccessR
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to update permission profile"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -277,7 +277,7 @@ async def update_profile_grants_endpoint(request: Request, profile_id: str) -> S
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to update profile grants"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -309,7 +309,7 @@ async def get_profile_grants_endpoint(request: Request, profile_id: str) -> Succ
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to get profile grants"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -348,7 +348,7 @@ async def assign_profile_endpoint(request: Request, profile_id: str, user_id: st
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to assign profile to user"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -385,7 +385,7 @@ async def unassign_profile_endpoint(request: Request, profile_id: str, user_id: 
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to unassign profile from user"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -417,7 +417,7 @@ async def get_user_profiles_endpoint(request: Request, user_id: str) -> SuccessR
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to get user profiles"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -453,7 +453,7 @@ async def get_permission_sets_endpoint(request: Request) -> SuccessResponse[List
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to get permission sets"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -494,7 +494,7 @@ async def create_permission_set_endpoint(request: Request) -> SuccessResponse[Di
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to create permission set"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -537,7 +537,7 @@ async def assign_permission_set_endpoint(
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to assign permission set to user"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -574,7 +574,7 @@ async def unassign_permission_set_endpoint(request: Request, set_id: str, user_i
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to unassign permission set from user"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -623,7 +623,7 @@ async def update_permission_set_grants_endpoint(request: Request, set_id: str) -
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to update permission set grants"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -655,7 +655,7 @@ async def get_permission_set_grants_endpoint(request: Request, set_id: str) -> S
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to get permission set grants"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -696,7 +696,7 @@ async def delete_permission_set_grant_endpoint(
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to delete permission set grant"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -739,7 +739,7 @@ async def invalidate_user_permissions_endpoint(request: Request, user_id: str) -
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to invalidate permission cache"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
 
 
@@ -808,5 +808,5 @@ async def get_effective_permissions_endpoint(
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
                 message="Failed to get effective permissions"
-            ).model_dump()
+            ).model_dump(mode='json')
         )
