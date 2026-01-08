@@ -5,7 +5,9 @@ User registration and login for vault access.
 """
 
 import base64
+import hashlib
 import logging
+import os
 import sqlite3
 import uuid
 from datetime import datetime, UTC
@@ -42,8 +44,15 @@ async def register_user(
         user_id = str(uuid.uuid4())
         now = datetime.now(UTC).isoformat()
 
-        # Hash password with PBKDF2
-        password_key, salt = service._get_encryption_key(password)
+        # Hash password with PBKDF2 (OWASP 2023: 600k iterations)
+        salt = os.urandom(32)  # Unique salt per user
+        password_key = hashlib.pbkdf2_hmac(
+            'sha256',
+            password.encode('utf-8'),
+            salt,
+            600000,  # OWASP 2023 recommended iterations
+            dklen=32
+        )
         password_hash = base64.b64encode(password_key).decode('utf-8')
         salt_b64 = base64.b64encode(salt).decode('utf-8')
 
@@ -130,9 +139,15 @@ async def login_user(
                     ).model_dump()
                 )
 
-            # Verify password
+            # Verify password with PBKDF2
             stored_salt = base64.b64decode(user['salt'])
-            password_key, _ = service._get_encryption_key(password, stored_salt)
+            password_key = hashlib.pbkdf2_hmac(
+                'sha256',
+                password.encode('utf-8'),
+                stored_salt,
+                600000,  # Must match registration iterations
+                dklen=32
+            )
             password_hash = base64.b64encode(password_key).decode('utf-8')
 
             if password_hash != user['password_hash']:
