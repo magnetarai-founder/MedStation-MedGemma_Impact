@@ -17,10 +17,10 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Request, Form, D
 
 try:
     from api.auth_middleware import get_current_user
-    from api.utils import sanitize_filename
+    from api.utils import sanitize_filename, get_user_id
 except ImportError:
     from auth_middleware import get_current_user
-    from utils import sanitize_filename
+    from utils import sanitize_filename, get_user_id
 from api.schemas.insights_models import (
     Recording, CreateRecordingResponse, RecordingListResponse, UpdateRecordingRequest
 )
@@ -50,7 +50,7 @@ async def create_recording(
     Audio is saved permanently to the vault, transcribed with Whisper,
     and default templates are auto-applied.
     """
-    user_id = current_user.get("user_id") or current_user.get("id")
+    user_id = get_user_id(current_user)
 
     # Validate file type
     safe_filename = sanitize_filename(audio_file.filename or "audio")
@@ -131,7 +131,7 @@ async def list_recordings(
     current_user: dict = Depends(get_current_user)
 ):
     """List all recordings for the current user/team"""
-    user_id = current_user.get("user_id") or current_user.get("id")
+    user_id = get_user_id(current_user)
 
     conn = get_db()
     cursor = conn.cursor()

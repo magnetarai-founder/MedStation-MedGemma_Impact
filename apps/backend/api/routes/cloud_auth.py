@@ -34,7 +34,7 @@ import base64
 from api.auth_middleware import get_current_user, User
 from api.config_paths import get_config_paths
 from api.config import is_airgap_mode
-from api.utils import sanitize_for_log
+from api.utils import sanitize_for_log, get_user_id, get_username
 from api.rate_limiter import rate_limiter, get_client_ip
 from api.routes.schemas import SuccessResponse
 
@@ -305,8 +305,11 @@ async def pair_device(
     """
     client_ip = get_client_ip(http_request)
 
-    # Rate limit check
-    if not _check_pairing_rate_limit(current_user.user_id, client_ip):
+    # Extract user_id from dict or User object (tests may pass User, production returns Dict)
+    user_id = get_user_id(current_user)
+    username = get_username(current_user)
+
+    if not _check_pairing_rate_limit(user_id, client_ip):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Too many pairing attempts. Please wait 1 hour."
@@ -316,13 +319,13 @@ async def pair_device(
         logger.info(
             "Cloud pairing request",
             extra={
-                "user_id": current_user.user_id,
+                "user_id": user_id,
                 "device_id": sanitize_for_log(request.device_id)
             }
         )
 
         # Generate cloud credentials
-        cloud_device_id = _generate_cloud_device_id(current_user.user_id, request.device_fingerprint)
+        cloud_device_id = _generate_cloud_device_id(user_id, request.device_fingerprint)
         cloud_token = _generate_cloud_token()
         cloud_refresh_token = _generate_cloud_token()
 
@@ -337,7 +340,7 @@ async def pair_device(
             cursor.execute("""
                 SELECT id, is_active FROM cloud_devices
                 WHERE user_id = ? AND device_id = ?
-            """, (current_user.user_id, request.device_id))
+            """, (user_id, request.device_id))
 
             existing = cursor.fetchone()
 
@@ -376,7 +379,7 @@ async def pair_device(
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     secrets.token_urlsafe(16),
-                    current_user.user_id,
+                    user_id,
                     request.device_id,
                     request.device_name,
                     request.device_platform,
@@ -399,7 +402,7 @@ async def pair_device(
                 cloud_token=cloud_token,
                 cloud_refresh_token=cloud_refresh_token,
                 expires_at=token_expires.isoformat(),
-                username=current_user.username
+                username=username
             ),
             message="Device paired with MagnetarCloud"
         )
@@ -534,6 +537,9 @@ async def get_cloud_status(
     - List of paired devices with their status
     - Current device's cloud credentials (if paired)
     """
+    user_id = get_user_id(current_user)
+    username = get_username(current_user)
+
     try:
         with sqlite3.connect(str(CLOUD_DB_PATH)) as conn:
             cursor = conn.cursor()
@@ -545,7 +551,7 @@ async def get_cloud_status(
                 FROM cloud_devices
                 WHERE user_id = ?
                 ORDER BY created_at DESC
-            """, (current_user.user_id,))
+            """, (user_id,))
 
             rows = cursor.fetchall()
 
@@ -582,7 +588,7 @@ async def get_cloud_status(
                 data=CloudStatusResponse(
                     is_paired=bool(active_device),
                     cloud_device_id=active_device[0] if active_device else None,
-                    username=current_user.username,
+                    username=username,
                     token_expires_at=active_device[1] if active_device else None,
                     last_sync_at=active_device[2] if active_device else None,
                     paired_devices=devices
@@ -615,6 +621,8 @@ async def unpair_device(
     This revokes the cloud token for the specified device.
     Users can only unpair their own devices.
     """
+    user_id = get_user_id(current_user)
+
     try:
         with sqlite3.connect(str(CLOUD_DB_PATH)) as conn:
             cursor = conn.cursor()
@@ -623,7 +631,7 @@ async def unpair_device(
             cursor.execute("""
                 SELECT id FROM cloud_devices
                 WHERE cloud_device_id = ? AND user_id = ?
-            """, (cloud_device_id, current_user.user_id))
+            """, (cloud_device_id, user_id))
 
             row = cursor.fetchone()
 
@@ -651,7 +659,7 @@ async def unpair_device(
             conn.commit()
 
         _log_sync_operation(cloud_device_id, "device_unpair", True)
-        logger.info("Device unpaired", extra={"cloud_device_id": cloud_device_id, "user_id": current_user.user_id})
+        logger.info("Device unpaired", extra={"cloud_device_id": cloud_device_id, "user_id": user_id})
 
         return SuccessResponse(
             data={"unpaired": True, "cloud_device_id": cloud_device_id},
@@ -784,6 +792,8 @@ async def revoke_all_sessions(
     Emergency logout - use when you suspect a device has been compromised.
     This immediately invalidates all cloud tokens and sessions.
     """
+    user_id = get_user_id(current_user)
+
     try:
         with sqlite3.connect(str(CLOUD_DB_PATH)) as conn:
             cursor = conn.cursor()
@@ -792,7 +802,7 @@ async def revoke_all_sessions(
             cursor.execute("""
                 SELECT cloud_device_id FROM cloud_devices
                 WHERE user_id = ?
-            """, (current_user.user_id,))
+            """, (user_id,))
 
             device_ids = [row[0] for row in cursor.fetchall()]
 
@@ -803,7 +813,7 @@ async def revoke_all_sessions(
                     cloud_refresh_token_hash = '',
                     is_active = 0
                 WHERE user_id = ?
-            """, (current_user.user_id,))
+            """, (user_id,))
 
             # Delete all sessions
             for device_id in device_ids:
@@ -811,13 +821,13 @@ async def revoke_all_sessions(
                     DELETE FROM cloud_sessions
                     WHERE cloud_device_id = ?
                 """, (device_id,))
-                _log_sync_operation(device_id, "emergency_revoke", True, f"User: {current_user.user_id}")
+                _log_sync_operation(device_id, "emergency_revoke", True, f"User: {user_id}")
 
             conn.commit()
 
         logger.warning(
             "All cloud sessions revoked",
-            extra={"user_id": current_user.user_id, "devices_affected": len(device_ids)}
+            extra={"user_id": user_id, "devices_affected": len(device_ids)}
         )
 
         return SuccessResponse(

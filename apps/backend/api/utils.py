@@ -8,6 +8,69 @@ from typing import Dict, Any
 
 # MED-02: Compile regex patterns once at module load (not per function call)
 _FILENAME_DANGEROUS_CHARS = re.compile(r'[^\w\-_.]')
+
+
+def get_user_id(current_user) -> str | None:
+    """
+    Extract user_id from current_user object robustly.
+
+    Handles multiple structures:
+    - Dict with "user_id" key (production FastAPI dependency)
+    - Object with .user_id attribute (Pydantic User model)
+    - Object with .id attribute (some test mocks)
+    - Object with __getitem__ but no .get() (MockUser in tests)
+
+    Args:
+        current_user: User object from get_current_user dependency
+
+    Returns:
+        User ID string or None if not found
+
+    Example:
+        >>> get_user_id({"user_id": "123"})
+        '123'
+        >>> get_user_id(User(user_id="123"))
+        '123'
+    """
+    # Try .user_id attribute first (Pydantic model, most common)
+    if hasattr(current_user, 'user_id') and current_user.user_id is not None:
+        return current_user.user_id
+
+    # Try .id attribute (some test mocks use this)
+    if hasattr(current_user, 'id') and current_user.id is not None:
+        return current_user.id
+
+    # Try dict-style .get() method
+    if hasattr(current_user, 'get'):
+        return current_user.get("user_id")
+
+    # Try bracket access as last resort (for __getitem__ without .get())
+    try:
+        return current_user["user_id"]
+    except (KeyError, TypeError):
+        return None
+
+
+def get_username(current_user) -> str:
+    """
+    Extract username from current_user object robustly.
+
+    Args:
+        current_user: User object from get_current_user dependency
+
+    Returns:
+        Username string or "unknown" if not found
+    """
+    if hasattr(current_user, 'username') and current_user.username:
+        return current_user.username
+
+    if hasattr(current_user, 'get'):
+        return current_user.get("username", "unknown")
+
+    try:
+        return current_user["username"] or "unknown"
+    except (KeyError, TypeError):
+        return "unknown"
 _SECRET_PATTERNS_COMPILED = [
     (re.compile(r'password\s*[=:]\s*\S+', re.IGNORECASE), 'password=***REDACTED***'),
     (re.compile(r'token\s*[=:]\s*\S+', re.IGNORECASE), 'token=***REDACTED***'),

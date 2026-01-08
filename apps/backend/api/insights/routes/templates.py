@@ -13,8 +13,10 @@ from fastapi import APIRouter, HTTPException, Request, Depends, Body
 
 try:
     from api.auth_middleware import get_current_user
+    from api.utils import get_user_id
 except ImportError:
     from auth_middleware import get_current_user
+    from utils import get_user_id
 from api.schemas.insights_models import (
     Template, CreateTemplateRequest, UpdateTemplateRequest, TemplateListResponse,
     TemplateCategory, OutputFormat
@@ -35,7 +37,7 @@ async def list_templates(
     current_user: dict = Depends(get_current_user)
 ):
     """List all available templates"""
-    user_id = current_user.get("user_id") or current_user.get("id")
+    user_id = get_user_id(current_user)
 
     conn = get_db()
     cursor = conn.cursor()
@@ -81,7 +83,7 @@ async def create_template(
     current_user: dict = Depends(get_current_user)
 ) -> Dict[str, str]:
     """Create a custom template"""
-    user_id = current_user.get("user_id") or current_user.get("id")
+    user_id = get_user_id(current_user)
     template_id = f"tmpl_{uuid4().hex[:12]}"
 
     conn = get_db()

@@ -16,7 +16,7 @@ try:
 except ImportError:
     from api.auth_middleware import get_current_user, User
 from api.services.data_profiler import get_data_profiler
-from api.utils import sanitize_for_log
+from api.utils import sanitize_for_log, get_user_id
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 
 logger = logging.getLogger(__name__)
@@ -86,11 +86,14 @@ async def discover_patterns(
             ).model_dump()
         )
 
+    # Extract user_id from dict (get_current_user returns Dict, not User object)
+    user_id = get_user_id(current_user)
+
     # Log request (sanitized)
     logger.info(
         "Pattern discovery request",
         extra={
-            "user_id": current_user.user_id,
+            "user_id": user_id,
             "dataset_id": request.dataset_id,
             "session_id": request.session_id,
             "table_name": sanitize_for_log(request.table_name) if request.table_name else None,

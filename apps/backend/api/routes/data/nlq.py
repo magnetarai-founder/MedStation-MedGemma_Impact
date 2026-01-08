@@ -18,7 +18,7 @@ try:
 except ImportError:
     from api.auth_middleware import get_current_user, User
 from api.services.nlq_service import get_nlq_service
-from api.utils import sanitize_for_log
+from api.utils import sanitize_for_log, get_user_id
 from api.config_paths import PATHS
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 
@@ -76,11 +76,14 @@ async def natural_language_query(
         Generated SQL query, results, and natural language summary
     """
     try:
+        # Extract user_id from dict (get_current_user returns Dict, not User object)
+        user_id = get_user_id(current_user)
+
         # Log request (sanitized)
         logger.info(
             "NLQ request",
             extra={
-                "user_id": current_user.user_id,
+                "user_id": user_id,
                 "question_length": len(request.question),
                 "dataset_id": request.dataset_id,
                 "session_id": request.session_id,
@@ -100,7 +103,7 @@ async def natural_language_query(
             dataset_id=request.dataset_id,
             session_id=request.session_id,
             model=request.model,
-            user_id=current_user.user_id
+            user_id=user_id
         )
 
         # Log result metadata
@@ -177,6 +180,9 @@ async def nlq_recent(
         List of recent NLQ history items ordered by created_at DESC
     """
     try:
+        # Extract user_id from dict (get_current_user returns Dict, not User object)
+        user_id = get_user_id(current_user)
+
         # Clamp limit
         limit = max(1, min(limit, 50))
 
@@ -187,7 +193,7 @@ async def nlq_recent(
             cur = conn.execute(
                 "SELECT id, question, sql, summary, created_at FROM nlq_history "
                 "WHERE user_id = ? ORDER BY datetime(created_at) DESC LIMIT ?",
-                (current_user.user_id, limit)
+                (user_id, limit)
             )
             rows = cur.fetchall()
             for r in rows:

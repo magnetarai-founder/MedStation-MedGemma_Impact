@@ -38,6 +38,7 @@ import json
 
 from api.auth_middleware import get_current_user, User
 from api.config_paths import get_config_paths
+from api.utils import get_user_id
 from api.config import is_airgap_mode, get_settings
 from api.routes.schemas import SuccessResponse
 
@@ -248,6 +249,8 @@ async def register_oauth_client(
     Only authenticated users can register clients. The client_secret is only
     returned once on creation - store it securely!
     """
+    user_id = get_user_id(current_user)
+
     client_id = f"mc_{secrets.token_urlsafe(16)}"
     client_secret = secrets.token_urlsafe(32) if request.client_type == "confidential" else None
 
@@ -280,11 +283,11 @@ async def register_oauth_client(
             json.dumps(valid_scopes),
             request.client_type,
             datetime.now(UTC).isoformat(),
-            current_user.id
+            user_id
         ))
         conn.commit()
 
-    logger.info(f"✅ OAuth client registered: {client_id} by user {current_user.id}")
+    logger.info(f"✅ OAuth client registered: {client_id} by user {user_id}")
 
     return SuccessResponse(
         data=OAuthClientResponse(
@@ -308,6 +311,8 @@ async def list_oauth_clients(
     current_user: User = Depends(get_current_user)
 ):
     """List OAuth clients created by the current user"""
+    user_id = get_user_id(current_user)
+
     with sqlite3.connect(str(OAUTH_DB_PATH)) as conn:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
@@ -315,7 +320,7 @@ async def list_oauth_clients(
             SELECT client_id, client_name, redirect_uris, allowed_scopes, client_type
             FROM oauth_clients
             WHERE created_by = ? AND is_active = 1
-        """, (current_user.id,))
+        """, (user_id,))
         rows = cursor.fetchall()
 
     clients = [
@@ -356,6 +361,8 @@ async def oauth_authorize(
     Displays consent screen and redirects back with authorization code.
     PKCE (code_challenge) is required for public clients.
     """
+    user_id = get_user_id(current_user)
+
     if response_type != "code":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -407,7 +414,7 @@ async def oauth_authorize(
         """, (
             auth_code,
             client_id,
-            current_user.id,
+            user_id,
             redirect_uri,
             json.dumps(valid_scopes),
             code_challenge,
@@ -424,7 +431,7 @@ async def oauth_authorize(
 
     redirect_url = f"{redirect_uri}?{urlencode(params)}"
 
-    logger.info(f"✅ OAuth authorization granted for client {client_id} user {current_user.id}")
+    logger.info(f"✅ OAuth authorization granted for client {client_id} user {user_id}")
 
     return RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)
 

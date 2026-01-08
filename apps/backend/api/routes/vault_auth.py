@@ -28,7 +28,7 @@ try:
 except ImportError:
     from api.auth_middleware import get_current_user, User
 from api.config_paths import get_config_paths
-from api.utils import sanitize_for_log
+from api.utils import sanitize_for_log, get_user_id
 from api.rate_limiter import rate_limiter, get_client_ip
 from api.services.crypto_wrap import wrap_key as crypto_wrap_key, unwrap_key as crypto_unwrap_key
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
@@ -397,11 +397,14 @@ async def setup_biometric(
     This is a demo - client should derive KEK locally and send only wrapped KEK.
     """
     try:
+        # Extract user_id from dict (get_current_user returns Dict, not User object)
+        user_id = get_user_id(current_user)
+
         # Sanitize logs
         logger.info(
             "Biometric setup request",
             extra={
-                "user_id": current_user.user_id,
+                "user_id": user_id,
                 "vault_id": sanitize_for_log(request.vault_id)
             }
         )
@@ -424,7 +427,7 @@ async def setup_biometric(
             cursor.execute("""
                 SELECT id FROM vault_auth_metadata
                 WHERE user_id = ? AND vault_id = ?
-            """, (current_user.user_id, request.vault_id))
+            """, (user_id, request.vault_id))
 
             existing = cursor.fetchone()
 
@@ -446,7 +449,7 @@ async def setup_biometric(
                     wrapped_kek_real.hex(),
                     "aes_kw",
                     datetime.now().isoformat(),
-                    current_user.user_id,
+                    user_id,
                     request.vault_id
                 ))
             else:
@@ -461,7 +464,7 @@ async def setup_biometric(
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     secrets.token_urlsafe(16),
-                    current_user.user_id,
+                    user_id,
                     request.vault_id,
                     request.webauthn_credential_id,
                     request.webauthn_public_key,
@@ -476,14 +479,14 @@ async def setup_biometric(
 
         # Create session
         session_id = secrets.token_urlsafe(32)
-        vault_sessions[(current_user.user_id, request.vault_id)] = {
+        vault_sessions[(user_id, request.vault_id)] = {
             'kek': kek_real,
             'vault_type': 'real',
             'unlocked_at': time.time(),
             'session_id': session_id
         }
 
-        logger.info("Biometric setup successful", extra={"user_id": current_user.user_id})
+        logger.info("Biometric setup successful", extra={"user_id": user_id})
 
         return SuccessResponse(
             data=UnlockResponse(
@@ -533,17 +536,20 @@ async def get_biometric_challenge(
     """
     import base64
 
+    # Extract user_id from dict (get_current_user returns Dict, not User object)
+    user_id = get_user_id(current_user)
+
     # Cleanup expired challenges periodically
     _cleanup_expired_challenges()
 
     # Generate new challenge
-    challenge_bytes = _generate_challenge(current_user.user_id, vault_id)
+    challenge_bytes = _generate_challenge(user_id, vault_id)
     challenge_b64 = base64.urlsafe_b64encode(challenge_bytes).rstrip(b'=').decode('ascii')
 
     logger.info(
         "Generated biometric challenge",
         extra={
-            "user_id": current_user.user_id,
+            "user_id": user_id,
             "vault_id": sanitize_for_log(vault_id)
         }
     )
@@ -580,11 +586,14 @@ async def unlock_biometric(
 
     Rate limited: 5 attempts per 5 minutes
     """
+    # Extract user_id from dict (get_current_user returns Dict, not User object)
+    user_id = get_user_id(current_user)
+
     client_ip = get_client_ip(request)
 
     # Rate limit check
-    if not _check_rate_limit(current_user.user_id, req.vault_id, client_ip):
-        _record_unlock_attempt(current_user.user_id, req.vault_id, False, 'biometric')
+    if not _check_rate_limit(user_id, req.vault_id, client_ip):
+        _record_unlock_attempt(user_id, req.vault_id, False, 'biometric')
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=ErrorResponse(
@@ -597,7 +606,7 @@ async def unlock_biometric(
         logger.info(
             "Biometric unlock attempt",
             extra={
-                "user_id": current_user.user_id,
+                "user_id": user_id,
                 "vault_id": sanitize_for_log(req.vault_id)
             }
         )
@@ -609,12 +618,12 @@ async def unlock_biometric(
                 SELECT webauthn_credential_id, webauthn_public_key, wrapped_kek_real, salt_real, wrap_method, webauthn_counter
                 FROM vault_auth_metadata
                 WHERE user_id = ? AND vault_id = ?
-            """, (current_user.user_id, req.vault_id))
+            """, (user_id, req.vault_id))
 
             row = cursor.fetchone()
 
             if not row:
-                _record_unlock_attempt(current_user.user_id, req.vault_id, False, 'biometric')
+                _record_unlock_attempt(user_id, req.vault_id, False, 'biometric')
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail=ErrorResponse(
@@ -628,9 +637,9 @@ async def unlock_biometric(
             stored_sign_count = stored_sign_count or 0  # Default for old entries without counter
 
         # Verify WebAuthn assertion with challenge validation
-        challenge = _consume_challenge(current_user.user_id, req.vault_id)
+        challenge = _consume_challenge(user_id, req.vault_id)
         if not challenge:
-            _record_unlock_attempt(current_user.user_id, req.vault_id, False, 'biometric')
+            _record_unlock_attempt(user_id, req.vault_id, False, 'biometric')
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=ErrorResponse(
@@ -659,20 +668,20 @@ async def unlock_biometric(
                     UPDATE vault_auth_metadata
                     SET webauthn_counter = ?, updated_at = ?
                     WHERE user_id = ? AND vault_id = ?
-                """, (verified.sign_count, datetime.now().isoformat(), current_user.user_id, req.vault_id))
+                """, (verified.sign_count, datetime.now().isoformat(), user_id, req.vault_id))
                 conn.commit()
 
             logger.info(
                 "WebAuthn assertion verified",
                 extra={
-                    "user_id": current_user.user_id,
+                    "user_id": user_id,
                     "credential_id": credential_id[:16] + "...",
                     "old_sign_count": stored_sign_count,
                     "new_sign_count": verified.sign_count
                 }
             )
         except Exception as e:
-            _record_unlock_attempt(current_user.user_id, req.vault_id, False, 'biometric')
+            _record_unlock_attempt(user_id, req.vault_id, False, 'biometric')
             logger.warning(f"WebAuthn verification failed: {e}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -689,21 +698,21 @@ async def unlock_biometric(
 
         # Create session
         session_id = secrets.token_urlsafe(32)
-        vault_sessions[(current_user.user_id, req.vault_id)] = {
+        vault_sessions[(user_id, req.vault_id)] = {
             'kek': kek_real,
             'vault_type': 'real',
             'unlocked_at': time.time(),
             'session_id': session_id
         }
 
-        _record_unlock_attempt(current_user.user_id, req.vault_id, True, 'biometric')
+        _record_unlock_attempt(user_id, req.vault_id, True, 'biometric')
 
-        logger.info("Biometric unlock successful", extra={"user_id": current_user.user_id})
+        logger.info("Biometric unlock successful", extra={"user_id": user_id})
 
         # Automatic migration: Upgrade XOR legacy vaults to AES-KW on successful unlock
         if wrap_method == "xor_legacy":
             _migrate_xor_to_aes_kw(
-                user_id=current_user.user_id,
+                user_id=user_id,
                 vault_id=req.vault_id,
                 kek=kek_real,
                 wrap_key=wrap_key,
@@ -724,7 +733,7 @@ async def unlock_biometric(
         raise
 
     except Exception as e:
-        _record_unlock_attempt(current_user.user_id, req.vault_id, False, 'biometric')
+        _record_unlock_attempt(user_id, req.vault_id, False, 'biometric')
         logger.error(f"Biometric unlock failed", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -772,10 +781,13 @@ async def setup_dual_password(
                 ).model_dump()
             )
 
+        # Extract user_id from dict (get_current_user returns Dict, not User object)
+        user_id = get_user_id(current_user)
+
         logger.info(
             "Dual-password setup request",
             extra={
-                "user_id": current_user.user_id,
+                "user_id": user_id,
                 "vault_id": sanitize_for_log(request.vault_id)
             }
         )
@@ -803,7 +815,7 @@ async def setup_dual_password(
             cursor.execute("""
                 SELECT id FROM vault_auth_metadata
                 WHERE user_id = ? AND vault_id = ?
-            """, (current_user.user_id, request.vault_id))
+            """, (user_id, request.vault_id))
 
             existing = cursor.fetchone()
 
@@ -826,7 +838,7 @@ async def setup_dual_password(
                     wrapped_kek_unsensitive.hex(),
                     "aes_kw",
                     datetime.now().isoformat(),
-                    current_user.user_id,
+                    user_id,
                     request.vault_id
                 ))
             else:
@@ -842,7 +854,7 @@ async def setup_dual_password(
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
                 """, (
                     secrets.token_urlsafe(16),
-                    current_user.user_id,
+                    user_id,
                     request.vault_id,
                     salt_sensitive.hex(),
                     wrapped_kek_sensitive.hex(),
@@ -857,14 +869,14 @@ async def setup_dual_password(
 
         # Create session with sensitive vault
         session_id = secrets.token_urlsafe(32)
-        vault_sessions[(current_user.user_id, request.vault_id)] = {
+        vault_sessions[(user_id, request.vault_id)] = {
             'kek': kek_sensitive,
             'vault_type': 'real',
             'unlocked_at': time.time(),
             'session_id': session_id
         }
 
-        logger.info("Dual-password setup successful", extra={"user_id": current_user.user_id})
+        logger.info("Dual-password setup successful", extra={"user_id": user_id})
 
         return SuccessResponse(
             data=UnlockResponse(
@@ -921,11 +933,14 @@ async def unlock_passphrase(
 
     Rate limited: 5 attempts per 5 minutes
     """
+    # Extract user_id from dict (get_current_user returns Dict, not User object)
+    user_id = get_user_id(current_user)
+
     client_ip = get_client_ip(request)
 
     # Rate limit check
-    if not _check_rate_limit(current_user.user_id, vault_id, client_ip):
-        _record_unlock_attempt(current_user.user_id, vault_id, False, 'passphrase')
+    if not _check_rate_limit(user_id, vault_id, client_ip):
+        _record_unlock_attempt(user_id, vault_id, False, 'passphrase')
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=ErrorResponse(
@@ -938,7 +953,7 @@ async def unlock_passphrase(
         logger.info(
             "Passphrase unlock attempt",
             extra={
-                "user_id": current_user.user_id,
+                "user_id": user_id,
                 "vault_id": sanitize_for_log(vault_id)
             }
         )
@@ -950,12 +965,12 @@ async def unlock_passphrase(
                 SELECT salt_real, wrapped_kek_real, salt_decoy, wrapped_kek_decoy, decoy_enabled, wrap_method
                 FROM vault_auth_metadata
                 WHERE user_id = ? AND vault_id = ?
-            """, (current_user.user_id, vault_id))
+            """, (user_id, vault_id))
 
             row = cursor.fetchone()
 
             if not row:
-                _record_unlock_attempt(current_user.user_id, vault_id, False, 'passphrase')
+                _record_unlock_attempt(user_id, vault_id, False, 'passphrase')
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail=ErrorResponse(
@@ -971,7 +986,7 @@ async def unlock_passphrase(
         salt_real = bytes.fromhex(salt_real_hex) if salt_real_hex else None
 
         if not salt_real:
-            _record_unlock_attempt(current_user.user_id, vault_id, False, 'passphrase')
+            _record_unlock_attempt(user_id, vault_id, False, 'passphrase')
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=ErrorResponse(
@@ -1005,22 +1020,22 @@ async def unlock_passphrase(
 
         # Create session
         session_id = secrets.token_urlsafe(32)
-        vault_sessions[(current_user.user_id, vault_id)] = {
+        vault_sessions[(user_id, vault_id)] = {
             'kek': kek,
             'vault_type': vault_type,
             'unlocked_at': time.time(),
             'session_id': session_id
         }
 
-        _record_unlock_attempt(current_user.user_id, vault_id, True, 'passphrase')
+        _record_unlock_attempt(user_id, vault_id, True, 'passphrase')
 
-        logger.info("Passphrase unlock successful", extra={"user_id": current_user.user_id})
+        logger.info("Passphrase unlock successful", extra={"user_id": user_id})
 
         # Automatic migration: Upgrade XOR legacy vaults to AES-KW on successful unlock
         # This is transparent to the user and provides stronger key protection
         if wrap_method == "xor_legacy":
             _migrate_xor_to_aes_kw(
-                user_id=current_user.user_id,
+                user_id=user_id,
                 vault_id=vault_id,
                 kek=kek,
                 wrap_key=wrap_key,
@@ -1041,7 +1056,7 @@ async def unlock_passphrase(
         raise
 
     except Exception as e:
-        _record_unlock_attempt(current_user.user_id, vault_id, False, 'passphrase')
+        _record_unlock_attempt(user_id, vault_id, False, 'passphrase')
         logger.error(f"Passphrase unlock failed", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1070,7 +1085,10 @@ async def get_session_status(
     - unlocked: bool
     - session_id: str (if unlocked)
     """
-    session_key = (current_user.user_id, vault_id)
+    # Extract user_id from dict (get_current_user returns Dict, not User object)
+    user_id = get_user_id(current_user)
+
+    session_key = (user_id, vault_id)
 
     if session_key in vault_sessions:
         session = vault_sessions[session_key]
@@ -1111,11 +1129,14 @@ async def lock_vault(
     """
     Lock vault (clear session)
     """
-    session_key = (current_user.user_id, vault_id)
+    # Extract user_id from dict (get_current_user returns Dict, not User object)
+    user_id = get_user_id(current_user)
+
+    session_key = (user_id, vault_id)
 
     if session_key in vault_sessions:
         del vault_sessions[session_key]
-        logger.info("Vault locked", extra={"user_id": current_user.user_id, "vault_id": vault_id})
+        logger.info("Vault locked", extra={"user_id": user_id, "vault_id": vault_id})
 
     return SuccessResponse(
         data={"success": True},

@@ -41,6 +41,7 @@ except ImportError:
     from api.auth_middleware import get_current_user, User
 from api.config_paths import get_config_paths
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.utils import get_user_id
 
 logger = logging.getLogger(__name__)
 PATHS = get_config_paths()
@@ -190,6 +191,9 @@ async def init_transfer(
         # Calculate total chunks
         total_chunks = (body.size_bytes + CHUNK_SIZE - 1) // CHUNK_SIZE
 
+        # Extract user_id from dict (get_current_user returns Dict, not User object)
+        user_id = get_user_id(current_user)
+
         # Create metadata
         metadata = {
             "transfer_id": transfer_id,
@@ -199,7 +203,7 @@ async def init_transfer(
             "chunk_size": CHUNK_SIZE,
             "total_chunks": total_chunks,
             "uploaded_chunks": [],
-            "user_id": current_user.user_id,
+            "user_id": user_id,
             "created_at": datetime.now().isoformat(),
             "status": "initialized"
         }
@@ -213,7 +217,7 @@ async def init_transfer(
                 "filename": body.filename,
                 "size_bytes": body.size_bytes,
                 "total_chunks": total_chunks,
-                "user_id": current_user.user_id
+                "user_id": user_id
             }
         )
 
@@ -267,6 +271,9 @@ async def upload_chunk(
         Upload progress and status
     """
     try:
+        # Extract user_id from dict (get_current_user returns Dict, not User object)
+        user_id = get_user_id(current_user)
+
         # Load metadata
         metadata = _load_metadata(transfer_id)
         if not metadata:
@@ -279,7 +286,7 @@ async def upload_chunk(
             )
 
         # Verify ownership
-        if metadata["user_id"] != current_user.user_id:
+        if metadata["user_id"] != user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=ErrorResponse(
@@ -412,6 +419,9 @@ async def commit_transfer(
         Final file path and SHA-256 hash
     """
     try:
+        # Extract user_id from dict (get_current_user returns Dict, not User object)
+        user_id = get_user_id(current_user)
+
         # Load metadata
         metadata = _load_metadata(body.transfer_id)
         if not metadata:
@@ -424,7 +434,7 @@ async def commit_transfer(
             )
 
         # Verify ownership
-        if metadata["user_id"] != current_user.user_id:
+        if metadata["user_id"] != user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=ErrorResponse(
@@ -495,7 +505,7 @@ async def commit_transfer(
                 "filename": metadata["filename"],
                 "size_bytes": metadata["size_bytes"],
                 "final_hash": final_hash,
-                "user_id": current_user.user_id
+                "user_id": user_id
             }
         )
 
@@ -566,6 +576,9 @@ async def get_status(
         Transfer status with progress and missing chunks
     """
     try:
+        # Extract user_id from dict (get_current_user returns Dict, not User object)
+        user_id = get_user_id(current_user)
+
         # Load metadata
         metadata = _load_metadata(transfer_id)
         if not metadata:
@@ -578,7 +591,7 @@ async def get_status(
             )
 
         # Verify ownership
-        if metadata["user_id"] != current_user.user_id:
+        if metadata["user_id"] != user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=ErrorResponse(
