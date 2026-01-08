@@ -412,7 +412,7 @@ class TrainingDataCollector:
                             tool: str, success: bool, output: str = "") -> None:
         """Add a training example"""
         example = {
-            "input": input_text,
+            "command": input_text,
             "task_type": task_type,
             "tool": tool,
             "success": success,
