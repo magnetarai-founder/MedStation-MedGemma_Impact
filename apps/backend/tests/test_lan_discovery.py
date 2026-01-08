@@ -267,11 +267,11 @@ class TestLANDiscoveryServiceAsync:
         """Test starting discovery"""
         service = LANDiscoveryService()
 
-        with patch("api.lan_discovery.AsyncZeroconf") as mock_zc:
+        with patch("api.lan_discovery.service.AsyncZeroconf") as mock_zc:
             mock_instance = MagicMock()
             mock_zc.return_value = mock_instance
 
-            with patch("api.lan_discovery.AsyncServiceBrowser"):
+            with patch("api.lan_discovery.service.AsyncServiceBrowser"):
                 await service.start_discovery()
 
             assert service.zeroconf is not None
@@ -302,7 +302,7 @@ class TestLANDiscoveryServiceAsync:
         """Test starting as hub"""
         service = LANDiscoveryService(device_name="TestHub")
 
-        with patch("api.lan_discovery.AsyncZeroconf") as mock_zc:
+        with patch("api.lan_discovery.service.AsyncZeroconf") as mock_zc:
             mock_instance = MagicMock()
             mock_instance.async_register_service = AsyncMock()
             mock_zc.return_value = mock_instance

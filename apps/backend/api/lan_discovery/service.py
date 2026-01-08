@@ -1,246 +1,29 @@
 """
 LAN Discovery Service
 
-Enables local network discovery of ElohimOS instances using mDNS/Bonjour.
-Central Hub Model: One laptop acts as hub, others connect to it.
-
-Built for the persecuted Church - no cloud, no central servers.
-"And they overcame him by the blood of the Lamb, and by the word of their testimony" - Revelation 12:11
+Main service for LAN discovery and central hub functionality.
+Uses mDNS/Bonjour for local network discovery.
 """
 
-import socket
 import asyncio
 import logging
-from typing import Any, Callable, Dict, List, Optional, Set
-from dataclasses import dataclass, asdict, field
+import socket
 from datetime import datetime, UTC
-from enum import Enum
-from zeroconf import ServiceInfo, Zeroconf, ServiceBrowser, ServiceListener
+from typing import Any, Callable, Dict, List, Optional
+
+from zeroconf import ServiceInfo
 from zeroconf.asyncio import AsyncZeroconf, AsyncServiceBrowser
 
+from api.lan_discovery.connection import (
+    ConnectionState,
+    ConnectionHealth,
+    ConnectionRetryHandler,
+    RetryConfig,
+)
+from api.lan_discovery.models import LANClient, LANDevice, SERVICE_TYPE
+from api.lan_discovery.listener import LANDiscoveryListener
+
 logger = logging.getLogger(__name__)
-
-
-# ============== Connection Retry Configuration ==============
-
-class ConnectionState(Enum):
-    """Connection state for hub connections"""
-    DISCONNECTED = "disconnected"
-    CONNECTING = "connecting"
-    CONNECTED = "connected"
-    RECONNECTING = "reconnecting"
-    FAILED = "failed"
-
-
-@dataclass
-class RetryConfig:
-    """Configuration for connection retry logic"""
-    max_retries: int = 5
-    initial_delay: float = 1.0  # seconds
-    max_delay: float = 30.0  # seconds
-    backoff_multiplier: float = 2.0
-    jitter: float = 0.1  # ±10% randomization
-
-
-@dataclass
-class ConnectionHealth:
-    """Tracks connection health status"""
-    last_heartbeat: Optional[datetime] = None
-    consecutive_failures: int = 0
-    total_reconnects: int = 0
-    state: ConnectionState = ConnectionState.DISCONNECTED
-    last_error: Optional[str] = None
-
-    def record_success(self) -> None:
-        """Record successful heartbeat/connection"""
-        self.last_heartbeat = datetime.now(UTC)
-        self.consecutive_failures = 0
-        self.state = ConnectionState.CONNECTED
-        self.last_error = None
-
-    def record_failure(self, error: str) -> None:
-        """Record failed heartbeat/connection"""
-        self.consecutive_failures += 1
-        self.last_error = error
-
-    def record_reconnect(self) -> None:
-        """Record reconnection attempt"""
-        self.total_reconnects += 1
-        self.state = ConnectionState.RECONNECTING
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "last_heartbeat": self.last_heartbeat.isoformat() if self.last_heartbeat else None,
-            "consecutive_failures": self.consecutive_failures,
-            "total_reconnects": self.total_reconnects,
-            "state": self.state.value,
-            "last_error": self.last_error,
-        }
-
-
-class ConnectionRetryHandler:
-    """
-    Handles connection retry logic with exponential backoff.
-
-    Usage:
-        handler = ConnectionRetryHandler(config)
-        async for delay in handler:
-            try:
-                await connect()
-                handler.mark_success()
-                break
-            except ConnectionError as e:
-                handler.mark_failure(str(e))
-                # Loop continues with next delay
-    """
-
-    def __init__(self, config: Optional[RetryConfig] = None):
-        self.config = config or RetryConfig()
-        self._attempt = 0
-        self._exhausted = False
-
-    def __aiter__(self):
-        self._attempt = 0
-        self._exhausted = False
-        return self
-
-    async def __anext__(self) -> float:
-        """Return next delay, or raise StopAsyncIteration if exhausted"""
-        if self._exhausted or self._attempt >= self.config.max_retries:
-            self._exhausted = True
-            raise StopAsyncIteration
-
-        delay = self._calculate_delay()
-        self._attempt += 1
-
-        if delay > 0:
-            await asyncio.sleep(delay)
-
-        return delay
-
-    def _calculate_delay(self) -> float:
-        """Calculate delay with exponential backoff and jitter"""
-        import random
-
-        if self._attempt == 0:
-            return 0  # No delay for first attempt
-
-        delay = self.config.initial_delay * (
-            self.config.backoff_multiplier ** (self._attempt - 1)
-        )
-        delay = min(delay, self.config.max_delay)
-
-        # Add jitter
-        jitter_range = delay * self.config.jitter
-        delay += random.uniform(-jitter_range, jitter_range)
-
-        return max(0, delay)
-
-    def mark_success(self) -> None:
-        """Mark connection as successful, stops iteration"""
-        self._exhausted = True
-
-    def mark_failure(self, error: str) -> None:
-        """Mark connection as failed, continues iteration"""
-        logger.warning(
-            f"Connection attempt {self._attempt}/{self.config.max_retries} failed: {error}"
-        )
-
-    @property
-    def attempt(self) -> int:
-        return self._attempt
-
-    @property
-    def is_exhausted(self) -> bool:
-        return self._exhausted
-
-
-@dataclass
-class LANClient:
-    """Represents a connected client to this hub"""
-    id: str
-    name: str
-    ip: str
-    connected_at: str
-
-    def to_dict(self) -> Dict[str, Any]:
-        return asdict(self)
-
-# Service type for mDNS discovery
-SERVICE_TYPE = "_omnistudio._tcp.local."
-
-@dataclass
-class LANDevice:
-    """Represents a discovered ElohimOS instance on the network"""
-    id: str
-    name: str
-    ip: str
-    port: int
-    is_hub: bool
-    version: str
-    discovered_at: str
-
-    def to_dict(self) -> Dict[str, Any]:
-        return asdict(self)
-
-
-class LANDiscoveryListener(ServiceListener):
-    """Listener for mDNS service discovery"""
-
-    def __init__(self, on_device_discovered=None, on_device_removed=None):
-        self.on_device_discovered = on_device_discovered
-        self.on_device_removed = on_device_removed
-
-    def add_service(self, zeroconf: Zeroconf, service_type: str, name: str) -> None:
-        """Called when a new service is discovered"""
-        logger.info(f"Service added: {name}")
-        info = zeroconf.get_service_info(service_type, name)
-
-        if info and self.on_device_discovered:
-            device = self._parse_service_info(info)
-            if device:
-                asyncio.create_task(self.on_device_discovered(device))
-
-    def remove_service(self, zeroconf: Zeroconf, service_type: str, name: str) -> None:
-        """Called when a service is removed"""
-        logger.info(f"Service removed: {name}")
-        if self.on_device_removed:
-            asyncio.create_task(self.on_device_removed(name))
-
-    def update_service(self, zeroconf: Zeroconf, service_type: str, name: str) -> None:
-        """Called when a service is updated"""
-        logger.debug(f"Service updated: {name}")
-
-    def _parse_service_info(self, info: ServiceInfo) -> Optional[LANDevice]:
-        """Parse ServiceInfo into LANDevice"""
-        try:
-            properties = {}
-            if info.properties:
-                for key, value in info.properties.items():
-                    properties[key.decode('utf-8')] = value.decode('utf-8')
-
-            # Get IP address
-            addresses = info.parsed_addresses()
-            ip = addresses[0] if addresses else None
-
-            if not ip:
-                return None
-
-            device = LANDevice(
-                id=properties.get('id', info.name),
-                name=properties.get('name', info.name),
-                ip=ip,
-                port=info.port,
-                is_hub=properties.get('is_hub', 'false').lower() == 'true',
-                version=properties.get('version', '1.0.0'),
-                discovered_at=datetime.now().isoformat()
-            )
-
-            return device
-
-        except Exception as e:
-            logger.error(f"Error parsing service info: {e}")
-            return None
 
 
 class LANDiscoveryService:
@@ -851,16 +634,13 @@ class LANDiscoveryService:
 # Global instance
 lan_service = LANDiscoveryService()
 
-# Export connection types for external use
-__all__ = [
-    "LANDiscoveryService",
-    "LANDevice",
-    "LANClient",
-    "LANDiscoveryListener",
-    "ConnectionState",
-    "ConnectionHealth",
-    "ConnectionRetryHandler",
-    "RetryConfig",
-    "lan_service",
-    "SERVICE_TYPE",
-]
+
+def get_lan_service() -> LANDiscoveryService:
+    """Get the global LAN discovery service instance"""
+    return lan_service
+
+
+def _reset_lan_service() -> None:
+    """Reset the global instance - for testing only"""
+    global lan_service
+    lan_service = LANDiscoveryService()
