@@ -13,6 +13,10 @@ from pydantic import BaseModel
 
 from api.auth_middleware import get_current_user
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+try:
+    from api.utils import get_user_id
+except ImportError:
+    from api.utils import get_user_id
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +64,7 @@ async def semantic_search_queries(
     Helps users find relevant queries they've run before.
     """
     try:
-        user_id = user_claims["user_id"]
+        user_id = get_user_id(user_claims)
         logger.info(f"Query semantic search: user={user_id}, query='{request.query[:50]}...'")
 
         # Get embedding for query

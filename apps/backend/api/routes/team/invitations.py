@@ -9,6 +9,10 @@ Follows MagnetarStudio API standards (see API_STANDARDS.md).
 from fastapi import APIRouter, HTTPException, Request, status
 
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+try:
+    from api.utils import get_user_id
+except ImportError:
+    from api.utils import get_user_id
 
 router = APIRouter(prefix="/api/v1/team", tags=["team-invitations"])
 
@@ -35,17 +39,17 @@ async def create_invite_endpoint(request: Request, team_id: str) -> SuccessRespo
     # Permission check
     user = request.state.user
     require_perm("team.use")(lambda: None)()
-    require_team_admin(team_id, user["user_id"])
+    require_team_admin(team_id, get_user_id(user))
 
     try:
         body_data = await request.json()
         body = InviteRequest(**body_data)
         tm = get_team_manager()
-        result = await tm.create_invite(team_id, body.email_or_username, body.role, user["user_id"])
+        result = await tm.create_invite(team_id, body.email_or_username, body.role, get_user_id(user))
 
         # Audit log
         audit_log_sync(
-            user_id=user["user_id"],
+            user_id=get_user_id(user),
             action="team.invite.created",
             resource_type="team",
             resource_id=team_id,
@@ -93,14 +97,14 @@ async def accept_invite_endpoint(request: Request, invite_id: str) -> SuccessRes
 
     try:
         tm = get_team_manager()
-        result = await tm.accept_invite(invite_id, user["user_id"])
+        result = await tm.accept_invite(invite_id, get_user_id(user))
 
         # Invalidate permission cache
-        get_permission_engine().invalidate_user_permissions(user["user_id"])
+        get_permission_engine().invalidate_user_permissions(get_user_id(user))
 
         # Audit log
         audit_log_sync(
-            user_id=user["user_id"],
+            user_id=get_user_id(user),
             action="team.invite.accepted",
             resource_type="team",
             resource_id=result["team_id"],
