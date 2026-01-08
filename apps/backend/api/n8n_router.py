@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 
 from fastapi import Depends
 from api.auth_middleware import get_current_user
+from api.utils import get_user_id
 
 # Dependency to check if n8n is enabled
 def require_n8n_enabled() -> N8NIntegrationService:
@@ -175,7 +176,7 @@ async def export_stage_to_n8n(
     try:
         # Fetch workflow from storage using authenticated user
         storage = get_workflow_storage()
-        user_id = current_user['user_id']
+        user_id = get_user_id(current_user)
 
         workflow = storage.get_workflow(
             workflow_id=request.workflow_id,

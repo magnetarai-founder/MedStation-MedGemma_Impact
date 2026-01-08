@@ -12,6 +12,7 @@ from ..dependencies import (
     orchestrator,
     require_perm,
     get_current_user,
+    get_user_id,
 )
 
 logger = logging.getLogger(__name__)
@@ -34,7 +35,7 @@ async def star_workflow(
     Returns:
         Success status and message
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     success = orchestrator.storage.star_workflow(workflow_id, user_id)
 
@@ -63,7 +64,7 @@ async def unstar_workflow(
     Returns:
         Success status
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     orchestrator.storage.unstar_workflow(workflow_id, user_id)
 
@@ -86,7 +87,7 @@ async def get_starred_workflows(
     Returns:
         List of starred workflow IDs
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     starred_ids = orchestrator.storage.get_starred_workflows(user_id, workflow_type)
 

@@ -11,6 +11,7 @@ import logging
 from ..dependencies import (
     orchestrator,
     get_current_user,
+    get_user_id,
     WorkItem,
 )
 
@@ -37,7 +38,7 @@ async def get_queue_for_role(
     Returns:
         List of work items available for this role
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
     queue = orchestrator.get_queue_for_role(
         workflow_id=workflow_id,
         role_name=role_name,
@@ -65,7 +66,7 @@ async def get_my_active_work(
     Returns:
         List of user's active work items
     """
-    authenticated_user_id = current_user["user_id"]
+    authenticated_user_id = get_user_id(current_user)
 
     # Verify the user is requesting their own work
     if user_id != authenticated_user_id:

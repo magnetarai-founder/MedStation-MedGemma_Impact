@@ -33,6 +33,7 @@ try:
     from ..audit_logger import get_audit_logger, AuditAction
     from ..config_paths import get_config_paths
     from ..metrics import get_metrics
+    from ..utils import get_user_id, get_username
 except ImportError:
     from auth_middleware import get_current_user
     from rate_limiter import rate_limiter, get_client_ip
@@ -40,6 +41,7 @@ except ImportError:
     from audit_logger import get_audit_logger, AuditAction
     from config_paths import get_config_paths
     from metrics import get_metrics
+    from utils import get_user_id, get_username
 
 PATHS = get_config_paths()
 metrics = get_metrics()
@@ -167,7 +169,7 @@ async def update_model_settings(
     """
     try:
         result = update_model_settings_logic(body)
-        logger.info(f"Model settings updated by {current_user['username']}")
+        logger.info(f"Model settings updated by {get_username(current_user)}")
         return result
     except FileNotFoundError as e:
         raise HTTPException(404, str(e))
@@ -254,7 +256,7 @@ async def generate_plan(
     Permission required: code.use
     """
     start_time = time.perf_counter()
-    user_id = current_user['user_id']
+    user_id = get_user_id(current_user)
 
     # Rate limit
     if not rate_limiter.check_rate_limit(
@@ -318,7 +320,7 @@ async def get_context_bundle(
     Permission required: code.use
     """
     start_time = time.perf_counter()
-    user_id = current_user['user_id']
+    user_id = get_user_id(current_user)
 
     # Rate limit
     if not rate_limiter.check_rate_limit(
@@ -387,7 +389,7 @@ async def apply_plan(
     Permissions required: code.use + code.edit
     """
     start_time = time.perf_counter()
-    user_id = current_user['user_id']
+    user_id = get_user_id(current_user)
 
     # Rate limit (more restrictive for apply)
     if not rate_limiter.check_rate_limit(
@@ -527,7 +529,7 @@ async def create_agent_session_endpoint(
     Returns:
         Created AgentSession with unique session ID
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         session = create_agent_session(
@@ -558,7 +560,7 @@ async def list_agent_sessions_endpoint(
     Returns:
         List of AgentSession objects, ordered by last_activity_at DESC
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         sessions = list_agent_sessions_for_user(user_id, active_only=active_only)
@@ -587,7 +589,7 @@ async def get_agent_session_endpoint(
     Raises:
         404: If session not found or user doesn't have access
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         session = get_agent_session(session_id)
@@ -624,7 +626,7 @@ async def close_agent_session_endpoint(
     Raises:
         404: If session not found or user doesn't have access
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         # Verify ownership

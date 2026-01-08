@@ -13,7 +13,7 @@ from ..dependencies import (
     orchestrator, storage,
     require_perm, require_perm_team,
     get_current_user, is_team_member,
-    rate_limiter, get_user_team_id,
+    rate_limiter, get_user_id, get_user_team_id,
     Workflow, WorkflowType, Stage,
     CreateWorkflowRequest,
 )
@@ -49,7 +49,7 @@ async def create_workflow(
     if not rate_limiter.check_rate_limit(f"create_workflow:{user_id}", max_requests=5, window_seconds=60):
         raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 5 workflow creations per minute.")
     try:
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
 
         # Phase 3: Check team membership if creating team workflow
         if team_id:
@@ -108,7 +108,7 @@ async def list_workflows(
     Returns:
         List of workflows visible to this user
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     # T3-1: Get user's team for visibility (use helper)
     if not team_id:
@@ -150,7 +150,7 @@ async def get_workflow(
     Raises:
         HTTPException: If workflow not found or access denied
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
     team_id = get_user_team_id(user_id)  # T3-1: Get user's team for visibility
 
     workflow = orchestrator.get_workflow(workflow_id, user_id=user_id, team_id=team_id)
@@ -177,7 +177,7 @@ async def delete_workflow(
     Returns:
         Success status
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
     team_id = get_user_team_id(user_id)  # T3-1
 
     workflow = orchestrator.get_workflow(workflow_id, user_id=user_id, team_id=team_id)

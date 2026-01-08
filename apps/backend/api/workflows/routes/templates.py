@@ -13,7 +13,7 @@ from ..dependencies import (
     orchestrator, storage,
     require_perm,
     get_current_user, is_team_member,
-    get_user_team_id,
+    get_user_id, get_user_team_id,
     Workflow,
 )
 
@@ -49,7 +49,7 @@ async def list_workflow_templates(
     Returns:
         List of template workflows
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     # T3-1: Get user's team for visibility
     if not team_id:
@@ -93,7 +93,7 @@ async def get_workflow_template(
     Raises:
         HTTPException: If not found or not a template
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
     team_id = get_user_team_id(user_id)  # T3-1
 
     workflow = storage.get_workflow(template_id, user_id=user_id, team_id=team_id)
@@ -129,7 +129,7 @@ async def instantiate_template(
     Raises:
         HTTPException: If template not found or instantiation fails
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
     user_team_id = get_user_team_id(user_id)  # T3-1
 
     # T3-1: Get template with visibility check

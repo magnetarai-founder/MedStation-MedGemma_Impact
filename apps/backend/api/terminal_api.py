@@ -46,6 +46,12 @@ try:
 except ImportError:
     from .auth_middleware import get_current_user
 
+# Import user ID helper
+try:
+    from utils import get_user_id
+except ImportError:
+    from .utils import get_user_id
+
 try:
     from permission_engine import require_perm
 except ImportError:
@@ -128,7 +134,7 @@ async def spawn_terminal(
     Returns:
         Terminal session info with ID and WebSocket URL
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     # HIGH-09: Enforce server-side terminal session limit (max 3 per user)
     active_sessions = terminal_bridge.list_sessions(user_id=user_id)
@@ -179,7 +185,7 @@ async def spawn_system_terminal(current_user: dict = Depends(get_current_user)):
     Returns:
         Active terminal count and session info
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         # Check current session count (max 3) - use system terminal list
@@ -379,7 +385,7 @@ async def start_terminal_socket(
         terminal_id: Session ID
         socket_path: Path to Unix socket for external process to connect
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         # Import PATHS
@@ -429,7 +435,7 @@ async def list_terminal_sessions(current_user: dict = Depends(get_current_user))
     Returns:
         List of active terminal sessions
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
     sessions = terminal_bridge.list_sessions(user_id=user_id)
 
     return {
@@ -449,7 +455,7 @@ async def get_terminal_session(terminal_id: str, current_user: dict = Depends(ge
     Returns:
         Session info
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
     session = terminal_bridge.get_session(terminal_id)
 
     if not session:
@@ -479,7 +485,7 @@ async def close_terminal_session(terminal_id: str, current_user: dict = Depends(
     Returns:
         Success message
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
     session = terminal_bridge.get_session(terminal_id)
 
     if not session:
@@ -519,7 +525,7 @@ async def get_terminal_context(
     Returns:
         Recent terminal output as context
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
     session = terminal_bridge.get_session(terminal_id)
 
     if not session:
@@ -820,7 +826,7 @@ async def resize_terminal(
     Returns:
         Success message
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
     session = terminal_bridge.get_session(terminal_id)
 
     if not session:
@@ -885,7 +891,7 @@ async def bash_assist(
 
     Rate limited: 30/min per user
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     # Rate limiting
     try:

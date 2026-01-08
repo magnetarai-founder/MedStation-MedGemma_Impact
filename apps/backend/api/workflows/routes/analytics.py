@@ -12,7 +12,7 @@ from ..dependencies import (
     storage, analytics,
     require_perm,
     get_current_user,
-    get_user_team_id,
+    get_user_id, get_user_team_id,
 )
 
 logger = logging.getLogger(__name__)
@@ -40,7 +40,7 @@ async def get_workflow_analytics(
     Returns:
         Analytics dictionary
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
     team_id = get_user_team_id(user_id)  # T3-1
 
     # T3-1: Verify access to workflow with visibility check

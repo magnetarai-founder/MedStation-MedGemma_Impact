@@ -18,9 +18,9 @@ from ..dependencies import (
 )
 
 try:
-    from utils import sanitize_for_log
+    from utils import sanitize_for_log, get_user_id
 except ImportError:
-    from api.utils import sanitize_for_log
+    from api.utils import sanitize_for_log, get_user_id
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -56,7 +56,7 @@ async def create_work_item(
         raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 30 work item creations per minute.")
 
     try:
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
 
         work_item = orchestrator.create_work_item(
             workflow_id=body.workflow_id,
@@ -110,7 +110,7 @@ async def list_work_items(
     Returns:
         List of work items
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
     # Use orchestrator method that filters by user_id
     items = orchestrator.list_work_items(
         user_id=user_id,
@@ -142,7 +142,7 @@ async def get_work_item(
     Raises:
         HTTPException: If not found or access denied
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
     # Use storage to ensure user isolation
     work_item = orchestrator.storage.get_work_item(work_item_id, user_id) if orchestrator.storage else None
     if not work_item:
@@ -181,7 +181,7 @@ async def claim_work_item(
         raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 60 claims per minute.")
 
     try:
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
         # Correct call signature (positional only)
         work_item = orchestrator.claim_work_item(work_item_id, user_id)
         logger.info(f"Work item {work_item_id} claimed by {user_id}")
@@ -223,7 +223,7 @@ async def start_work(
         raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 60 starts per minute.")
 
     try:
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
         # Correct call signature (positional only)
         work_item = orchestrator.start_work(work_item_id, user_id)
         logger.info(f"Work item {work_item_id} started by {user_id}")
@@ -254,7 +254,7 @@ async def complete_stage(
         HTTPException: If cannot complete
     """
     try:
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
 
         work_item = orchestrator.complete_stage(
             work_item_id=body.work_item_id,
@@ -305,7 +305,7 @@ async def cancel_work_item(
     Returns:
         Updated work item
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
     work_item = orchestrator.active_work_items.get(work_item_id)
     if not work_item:
         raise HTTPException(status_code=404, detail=f"Work item not found or access denied: {work_item_id}")

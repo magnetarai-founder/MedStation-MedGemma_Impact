@@ -123,7 +123,7 @@ async def create_backup(
             }
         )
 
-        logger.info(f"User {current_user['user_id']} created backup: {backup_path.name}")
+        logger.info(f"User {get_user_id(current_user)} created backup: {backup_path.name}")
 
         return BackupCreateResponse(
             success=True,
@@ -160,7 +160,7 @@ async def list_backups(
         backup_service = BackupService("temp_for_list")
         backups = backup_service.list_backups()
 
-        logger.info(f"User {current_user['user_id']} listed {len(backups)} backups")
+        logger.info(f"User {get_user_id(current_user)} listed {len(backups)} backups")
 
         return {
             "backups": backups,
@@ -220,7 +220,7 @@ async def verify_backup(
             }
         )
 
-        logger.info(f"User {current_user['user_id']} verified backup: {backup_path.name} - Valid: {is_valid}")
+        logger.info(f"User {get_user_id(current_user)} verified backup: {backup_path.name} - Valid: {is_valid}")
 
         return {
             "valid": is_valid,
@@ -283,7 +283,7 @@ async def restore_backup(
             }
         )
 
-        logger.info(f"User {current_user['user_id']} restored backup: {backup_path.name} - Success: {success}")
+        logger.info(f"User {get_user_id(current_user)} restored backup: {backup_path.name} - Success: {success}")
 
         return {
             "success": success,
@@ -330,7 +330,7 @@ async def cleanup_old_backups(
             }
         )
 
-        logger.info(f"User {current_user['user_id']} cleaned up {deleted_count} old backups")
+        logger.info(f"User {get_user_id(current_user)} cleaned up {deleted_count} old backups")
 
         return {
             "deleted_count": deleted_count,
@@ -386,7 +386,7 @@ async def download_backup(
             }
         )
 
-        logger.info(f"User {current_user['user_id']} downloading backup: {backup_name}")
+        logger.info(f"User {get_user_id(current_user)} downloading backup: {backup_name}")
 
         return FileResponse(
             path=str(backup_path),

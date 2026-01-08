@@ -15,11 +15,13 @@ try:
     from api.auth_middleware import get_current_user
     from api.services.team import is_team_member
     from api.rate_limiter import rate_limiter, get_client_ip
+    from api.utils import get_user_id
 except ImportError:
     from permission_engine import require_perm, require_perm_team
     from auth_middleware import get_current_user
     from api.services.team import is_team_member
     from rate_limiter import rate_limiter, get_client_ip
+    from utils import get_user_id
 
 try:
     from api.workflow_models import (
@@ -88,6 +90,7 @@ __all__ = [
     "workflow_sync",
     "setup_p2p_sync",
     # Helpers
+    "get_user_id",
     "get_user_team_id",
     # Decorators
     "require_perm",

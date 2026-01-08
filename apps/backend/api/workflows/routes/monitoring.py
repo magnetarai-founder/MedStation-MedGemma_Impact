@@ -11,6 +11,7 @@ import logging
 from ..dependencies import (
     orchestrator,
     get_current_user,
+    get_user_id,
     WorkItem,
 )
 
@@ -29,7 +30,7 @@ async def get_overdue_items(current_user: Dict = Depends(get_current_user)):
     Returns:
         List of overdue work items
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
     overdue = orchestrator.check_overdue_items(user_id=user_id)
 
     logger.info(f"Overdue items: {len(overdue)}")
@@ -52,7 +53,7 @@ async def get_workflow_statistics(
     Returns:
         Dictionary of statistics
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
     stats = orchestrator.get_workflow_statistics(workflow_id, user_id=user_id)
 
     return stats
