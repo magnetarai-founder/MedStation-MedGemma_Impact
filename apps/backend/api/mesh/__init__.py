@@ -1,21 +1,17 @@
 """
-Mesh Relay Routing for ElohimOS - Backwards Compatibility Shim
+Mesh Relay Package
 
-This file provides backwards compatibility after the mesh_relay module
-was decomposed into a package during P2 monolithic file fixes.
+Multi-hop message routing for peer-to-peer mesh networking.
+Supports signed handshakes with Ed25519 for peer authentication.
 
-The actual implementation is now in api/mesh/:
-- security.py: SignedHandshake, verify_handshake_signature
-- models.py: RouteMetrics, MeshMessage
-- connection.py: MeshConnection, MeshConnectionPool
-- relay.py: MeshRelay, get_mesh_relay
-
-Import from api.mesh for new code.
+Modules:
+- security: SignedHandshake, verify_handshake_signature
+- models: RouteMetrics, MeshMessage
+- connection: MeshConnection, MeshConnectionPool
+- relay: MeshRelay, get_mesh_relay
 """
 
-# Re-export everything from the package for backwards compatibility
-from api.mesh import (
-    # Security
+from api.mesh.security import (
     SignedHandshake,
     verify_handshake_signature,
     HANDSHAKE_TIMESTAMP_TOLERANCE_SECONDS,
@@ -23,14 +19,20 @@ from api.mesh import (
     NACL_AVAILABLE,
     _check_handshake_nonce,
     _clear_nonce_cache,
-    # Models
+)
+
+from api.mesh.models import (
     RouteMetrics,
     MeshMessage,
-    # Connection
+)
+
+from api.mesh.connection import (
     MeshConnection,
     MeshConnectionPool,
     WEBSOCKETS_AVAILABLE,
-    # Relay
+)
+
+from api.mesh.relay import (
     MeshRelay,
     get_mesh_relay,
     _reset_mesh_relay,
