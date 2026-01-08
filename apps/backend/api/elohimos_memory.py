@@ -25,8 +25,12 @@ from datetime import datetime
 import json
 import time
 import hashlib
+import logging
+import threading
 
 from api.jarvis_bigquery_memory import JarvisBigQueryMemory
+
+logger = logging.getLogger(__name__)
 
 
 class ElohimOSMemory:
@@ -41,6 +45,10 @@ class ElohimOSMemory:
 
         db_path.parent.mkdir(parents=True, exist_ok=True)
         self.memory = JarvisBigQueryMemory(db_path)
+
+        # Thread lock for database operations (use underlying memory's lock for consistency)
+        self._db_lock = self.memory._write_lock
+
         self._setup_elohimos_tables()
 
         # In-memory cache for history queries
@@ -51,8 +59,9 @@ class ElohimOSMemory:
     def _setup_elohimos_tables(self) -> None:
         """Create ElohimOS-specific tables"""
 
-        # Query history table (replaces localStorage)
-        self.memory.conn.execute("""
+        with self._db_lock:
+            # Query history table (replaces localStorage)
+            self.memory.conn.execute("""
             CREATE TABLE IF NOT EXISTS query_history (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 query TEXT NOT NULL,
@@ -208,9 +217,11 @@ class ElohimOSMemory:
 
         params.extend([limit, offset])
 
-        cursor = self.memory.conn.execute(query, params)
-        rows = cursor.fetchall()
-        result = [dict(row) for row in rows]
+        # Use lock for thread-safe database access
+        with self._db_lock:
+            cursor = self.memory.conn.execute(query, params)
+            rows = cursor.fetchall()
+            result = [dict(row) for row in rows]
 
         # Store in cache
         self._history_cache[cache_key] = result
@@ -237,23 +248,24 @@ class ElohimOSMemory:
             params.append(f"%{query_text}%")
             params.append(limit)
 
-            cursor = self.memory.conn.execute(f"""
-                SELECT
-                    id,
-                    query,
-                    query_type,
-                    execution_time,
-                    row_count,
-                    timestamp
-                FROM query_history
-                WHERE {where_clause}
-                  AND query LIKE ?
-                  AND success = 1
-                ORDER BY timestamp DESC
-                LIMIT ?
-            """, params)
+            with self._db_lock:
+                cursor = self.memory.conn.execute(f"""
+                    SELECT
+                        id,
+                        query,
+                        query_type,
+                        execution_time,
+                        row_count,
+                        timestamp
+                    FROM query_history
+                    WHERE {where_clause}
+                      AND query LIKE ?
+                      AND success = 1
+                    ORDER BY timestamp DESC
+                    LIMIT ?
+                """, params)
+                rows = cursor.fetchall()
 
-            rows = cursor.fetchall()
             return [dict(row) for row in rows]
 
         # Fetch candidate queries with embeddings
@@ -261,23 +273,23 @@ class ElohimOSMemory:
         params = [query_type] if query_type else []
 
         try:
-            cursor = self.memory.conn.execute(f"""
-                SELECT
-                    id,
-                    query,
-                    query_type,
-                    embedding,
-                    execution_time,
-                    row_count,
-                    timestamp
-                FROM query_history
-                WHERE {where_clause}
-                  AND success = 1
-                ORDER BY timestamp DESC
-                LIMIT 100
-            """, params)
-
-            candidates = cursor.fetchall()
+            with self._db_lock:
+                cursor = self.memory.conn.execute(f"""
+                    SELECT
+                        id,
+                        query,
+                        query_type,
+                        embedding,
+                        execution_time,
+                        row_count,
+                        timestamp
+                    FROM query_history
+                    WHERE {where_clause}
+                      AND success = 1
+                    ORDER BY timestamp DESC
+                    LIMIT 100
+                """, params)
+                candidates = cursor.fetchall()
 
             if not candidates:
                 return []
@@ -351,13 +363,15 @@ class ElohimOSMemory:
 
         where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
 
-        cursor = self.memory.conn.execute(f"""
-            SELECT COUNT(*) as count
-            FROM query_history
-            WHERE {where_sql}
-        """, params)
+        with self._db_lock:
+            cursor = self.memory.conn.execute(f"""
+                SELECT COUNT(*) as count
+                FROM query_history
+                WHERE {where_sql}
+            """, params)
+            result = cursor.fetchone()['count']
 
-        return cursor.fetchone()['count']
+        return result
 
     def delete_history_item(self, history_id: int) -> bool:
         """Delete a specific history item"""
@@ -451,14 +465,15 @@ class ElohimOSMemory:
 
         where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
 
-        cursor = self.memory.conn.execute(f"""
-            SELECT *
-            FROM saved_queries
-            WHERE {where_sql}
-            ORDER BY folder, name
-        """, params)
+        with self._db_lock:
+            cursor = self.memory.conn.execute(f"""
+                SELECT *
+                FROM saved_queries
+                WHERE {where_sql}
+                ORDER BY folder, name
+            """, params)
+            rows = cursor.fetchall()
 
-        rows = cursor.fetchall()
         return [dict(row) for row in rows]
 
     def update_saved_query(
@@ -512,10 +527,11 @@ class ElohimOSMemory:
 
     def get_setting(self, key: str, default: Any = None) -> Any:
         """Get a setting value"""
-        cursor = self.memory.conn.execute("""
-            SELECT value FROM app_settings WHERE key = ?
-        """, (key,))
-        row = cursor.fetchone()
+        with self._db_lock:
+            cursor = self.memory.conn.execute("""
+                SELECT value FROM app_settings WHERE key = ?
+            """, (key,))
+            row = cursor.fetchone()
         if row:
             return json.loads(row['value'])
         return default
@@ -531,10 +547,12 @@ class ElohimOSMemory:
 
     def get_all_settings(self) -> Dict[str, Any]:
         """Get all settings as a dictionary"""
-        cursor = self.memory.conn.execute("""
-            SELECT key, value FROM app_settings
-        """)
-        return {row['key']: json.loads(row['value']) for row in cursor.fetchall()}
+        with self._db_lock:
+            cursor = self.memory.conn.execute("""
+                SELECT key, value FROM app_settings
+            """)
+            rows = cursor.fetchall()
+        return {row['key']: json.loads(row['value']) for row in rows}
 
     def set_all_settings(self, settings: Dict[str, Any]) -> None:
         """Bulk update settings"""
