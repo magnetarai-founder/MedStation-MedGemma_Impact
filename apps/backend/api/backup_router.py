@@ -18,11 +18,13 @@ try:
     from .auth_middleware import get_current_user
     from .backup_service import BackupService
     from .permission_engine import require_perm
+    from .utils import get_user_id
 except ImportError:
     from audit_logger import AuditAction, get_audit_logger
     from auth_middleware import get_current_user
     from backup_service import BackupService
     from permission_engine import require_perm
+    from utils import get_user_id
 
 logger = logging.getLogger(__name__)
 audit_logger = get_audit_logger()
@@ -110,7 +112,7 @@ async def create_backup(
 
         # Audit log
         audit_logger.log(
-            user_id=current_user["user_id"],
+            user_id=get_user_id(current_user),
             action=AuditAction.BACKUP_CREATED,
             resource="backup",
             resource_id=backup_path.name,
@@ -207,7 +209,7 @@ async def verify_backup(
 
         # Audit log
         audit_logger.log(
-            user_id=current_user["user_id"],
+            user_id=get_user_id(current_user),
             action="backup.verified",
             resource="backup",
             resource_id=backup_path.name,
@@ -270,7 +272,7 @@ async def restore_backup(
 
         # Audit log
         audit_logger.log(
-            user_id=current_user["user_id"],
+            user_id=get_user_id(current_user),
             action=AuditAction.BACKUP_RESTORED,
             resource="backup",
             resource_id=backup_path.name,
@@ -319,7 +321,7 @@ async def cleanup_old_backups(
 
         # Audit log
         audit_logger.log(
-            user_id=current_user["user_id"],
+            user_id=get_user_id(current_user),
             action="backup.cleanup",
             resource="backup",
             ip_address=request.client.host if request.client else None,
@@ -373,7 +375,7 @@ async def download_backup(
 
         # Audit log
         audit_logger.log(
-            user_id=current_user["user_id"],
+            user_id=get_user_id(current_user),
             action="backup.downloaded",
             resource="backup",
             resource_id=backup_name,

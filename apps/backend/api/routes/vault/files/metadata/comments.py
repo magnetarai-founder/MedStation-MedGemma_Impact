@@ -19,6 +19,7 @@ try:
     from api.auth_middleware import get_current_user
 except ImportError:
     from api.auth_middleware import get_current_user
+from api.utils import get_user_id
 from api.services.vault.core import get_vault_service
 from api.rate_limiter import get_client_ip, rate_limiter
 from api.audit_logger import get_audit_logger
@@ -52,7 +53,7 @@ async def add_file_comment_endpoint(
     """
     # Rate limiting: 60 requests per minute per user
     ip = get_client_ip(request)
-    key = f"vault:comment:add:{current_user['user_id']}:{ip}"
+    key = f"vault:comment:add:{get_user_id(current_user)}:{ip}"
     if not rate_limiter.check_rate_limit(key, max_requests=60, window_seconds=60):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -115,7 +116,7 @@ async def get_file_comments_endpoint(
     """
     # Rate limiting: 60 requests per minute per user
     ip = get_client_ip(request)
-    key = f"vault:comment:list:{current_user['user_id']}:{ip}"
+    key = f"vault:comment:list:{get_user_id(current_user)}:{ip}"
     if not rate_limiter.check_rate_limit(key, max_requests=60, window_seconds=60):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -181,7 +182,7 @@ async def update_file_comment_endpoint(
     """
     # Rate limiting: 60 requests per minute per user
     ip = get_client_ip(request)
-    key = f"vault:comment:update:{current_user['user_id']}:{ip}"
+    key = f"vault:comment:update:{get_user_id(current_user)}:{ip}"
     if not rate_limiter.check_rate_limit(key, max_requests=60, window_seconds=60):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -250,7 +251,7 @@ async def delete_file_comment_endpoint(
     """
     # Rate limiting: 60 requests per minute per user
     ip = get_client_ip(request)
-    key = f"vault:comment:delete:{current_user['user_id']}:{ip}"
+    key = f"vault:comment:delete:{get_user_id(current_user)}:{ip}"
     if not rate_limiter.check_rate_limit(key, max_requests=60, window_seconds=60):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,

@@ -28,8 +28,10 @@ from fastapi.responses import Response
 
 try:
     from .auth_middleware import get_current_user
+    from .utils import get_user_id, get_username
 except ImportError:
     from auth_middleware import get_current_user
+    from utils import get_user_id, get_username
 
 try:
     from .audit_logger import AuditAction, get_audit_logger
@@ -90,7 +92,7 @@ async def list_all_users(request: Request, current_user: dict = Depends(require_
 
     result = await admin_support.list_all_users()
 
-    logger.info(f"Founder Rights {current_user['username']} listed {result['total']} users")
+    logger.info(f"Founder Rights {get_username(current_user)} listed {result['total']} users")
     return result
 
 
@@ -117,7 +119,7 @@ async def get_user_details(
 
     result = await admin_support.get_user_details(target_user_id)
 
-    logger.info(f"Founder Rights {current_user['username']} viewed user {target_user_id}")
+    logger.info(f"Founder Rights {get_username(current_user)} viewed user {target_user_id}")
     return result
 
 
@@ -149,7 +151,7 @@ async def get_user_chats(
     result = await admin_support.get_user_chats(target_user_id)
 
     logger.info(
-        f"Founder Rights {current_user['username']} viewed chats for user {target_user_id}: "
+        f"Founder Rights {get_username(current_user)} viewed chats for user {target_user_id}: "
         f"{result['total']} sessions"
     )
     return result
@@ -172,7 +174,7 @@ async def list_all_chats(request: Request, current_user: dict = Depends(require_
 
     result = await admin_support.list_all_chats()
 
-    logger.info(f"Founder Rights {current_user['username']} listed {result['total']} chat sessions")
+    logger.info(f"Founder Rights {get_username(current_user)} listed {result['total']} chat sessions")
     return result
 
 
@@ -212,7 +214,7 @@ async def reset_user_password(
     )
 
     logger.info(
-        f"Founder Rights {current_user['username']} reset password for user "
+        f"Founder Rights {get_username(current_user)} reset password for user "
         f"{result['username']} (ID: {target_user_id})"
     )
 
@@ -245,7 +247,7 @@ async def unlock_user_account(
     )
 
     logger.info(
-        f"Founder Rights {current_user['username']} unlocked account for user "
+        f"Founder Rights {get_username(current_user)} unlocked account for user "
         f"{result['username']} ({target_user_id})"
     )
 
@@ -288,7 +290,7 @@ async def get_user_vault_status(
     )
 
     logger.info(
-        f"Founder Rights {current_user['username']} viewed vault status for "
+        f"Founder Rights {get_username(current_user)} viewed vault status for "
         f"{result['username']} ({target_user_id})"
     )
 
@@ -341,7 +343,7 @@ async def get_device_overview(
 
     result = await admin_support.get_device_overview_metrics()
 
-    logger.info(f"Founder Rights {current_user['username']} viewed device overview")
+    logger.info(f"Founder Rights {get_username(current_user)} viewed device overview")
     return result
 
 
@@ -380,7 +382,7 @@ async def get_user_workflows(
     result = await admin_support.get_user_workflows(target_user_id)
 
     logger.info(
-        f"Founder Rights {current_user['username']} viewed workflows for user {target_user_id}: "
+        f"Founder Rights {get_username(current_user)} viewed workflows for user {target_user_id}: "
         f"{result['total_workflows']} workflows, {result['total_work_items']} items"
     )
 
@@ -440,7 +442,7 @@ async def get_audit_logs(
         end_date=end_date
     )
 
-    logger.info(f"User {current_user['username']} queried audit logs: {result['total']} results")
+    logger.info(f"User {get_username(current_user)} queried audit logs: {result['total']} results")
     return result
 
 
@@ -484,7 +486,7 @@ async def export_audit_logs(
         end_date=end_date
     )
 
-    logger.info(f"User {current_user['username']} exported audit logs")
+    logger.info(f"User {get_username(current_user)} exported audit logs")
 
     # Return CSV response
     return Response(

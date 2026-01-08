@@ -16,6 +16,7 @@ try:
     from api.auth_middleware import get_current_user
 except ImportError:
     from api.auth_middleware import get_current_user
+from api.utils import get_user_id
 from api.services.vault.core import get_vault_service
 from api.rate_limiter import get_client_ip, rate_limiter
 from api.audit_logger import get_audit_logger
@@ -60,7 +61,7 @@ async def create_share_link_endpoint(
     """
     # Rate limiting: 10 requests per minute per user
     ip = get_client_ip(request)
-    key = f"vault:share:create:{current_user['user_id']}:{ip}"
+    key = f"vault:share:create:{get_user_id(current_user)}:{ip}"
     if not rate_limiter.check_rate_limit(key, max_requests=10, window_seconds=60):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -72,7 +73,7 @@ async def create_share_link_endpoint(
 
     try:
         service = get_vault_service()
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
 
         # Apply default 24h TTL if not provided
         if not expires_at:
@@ -146,7 +147,7 @@ async def get_file_shares_endpoint(
     """
     # Rate limiting: 60 requests per minute per user
     ip = get_client_ip(request)
-    key = f"vault:share:list:{current_user['user_id']}:{ip}"
+    key = f"vault:share:list:{get_user_id(current_user)}:{ip}"
     if not rate_limiter.check_rate_limit(key, max_requests=60, window_seconds=60):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -158,7 +159,7 @@ async def get_file_shares_endpoint(
 
     try:
         service = get_vault_service()
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
 
         shares = service.get_file_shares(user_id, vault_type, file_id)
         shares_data = {"shares": shares}
@@ -204,7 +205,7 @@ async def revoke_share_link_endpoint(
     """
     # Rate limiting: 30 requests per minute per user
     ip = get_client_ip(request)
-    key = f"vault:share:revoke:{current_user['user_id']}:{ip}"
+    key = f"vault:share:revoke:{get_user_id(current_user)}:{ip}"
     if not rate_limiter.check_rate_limit(key, max_requests=30, window_seconds=60):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -216,7 +217,7 @@ async def revoke_share_link_endpoint(
 
     try:
         service = get_vault_service()
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
 
         success = service.revoke_share_link(user_id, vault_type, share_id)
         if not success:

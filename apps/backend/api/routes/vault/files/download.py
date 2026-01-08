@@ -20,6 +20,7 @@ try:
     from api.auth_middleware import get_current_user
 except ImportError:
     from api.auth_middleware import get_current_user
+from api.utils import get_user_id
 from api.services.vault.core import get_vault_service
 from api.rate_limiter import get_client_ip, rate_limiter
 from api.audit_logger import get_audit_logger
@@ -201,7 +202,7 @@ async def download_vault_file(
     try:
         # Rate limiting: 120 requests per minute per user
         ip = get_client_ip(request)
-        key = f"vault:file:download:{current_user['user_id']}:{ip}"
+        key = f"vault:file:download:{get_user_id(current_user)}:{ip}"
         if not rate_limiter.check_rate_limit(key, max_requests=120, window_seconds=60):
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,

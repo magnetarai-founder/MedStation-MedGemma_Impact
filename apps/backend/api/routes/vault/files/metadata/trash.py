@@ -20,6 +20,7 @@ try:
     from api.auth_middleware import get_current_user
 except ImportError:
     from api.auth_middleware import get_current_user
+from api.utils import get_user_id
 from api.services.vault.core import get_vault_service
 from api.rate_limiter import get_client_ip, rate_limiter
 from api.audit_logger import get_audit_logger
@@ -52,7 +53,7 @@ async def move_to_trash_endpoint(
     """
     # Rate limiting: 60 requests per minute per user
     ip = get_client_ip(request)
-    key = f"vault:file:trash:{current_user['user_id']}:{ip}"
+    key = f"vault:file:trash:{get_user_id(current_user)}:{ip}"
     if not rate_limiter.check_rate_limit(key, max_requests=60, window_seconds=60):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -121,7 +122,7 @@ async def restore_from_trash_endpoint(
     """
     # Rate limiting: 30 requests per minute per user
     ip = get_client_ip(request)
-    key = f"vault:file:restore:{current_user['user_id']}:{ip}"
+    key = f"vault:file:restore:{get_user_id(current_user)}:{ip}"
     if not rate_limiter.check_rate_limit(key, max_requests=30, window_seconds=60):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -191,7 +192,7 @@ async def get_trash_files_endpoint(
     """
     # Rate limiting: 60 requests per minute per user
     ip = get_client_ip(request)
-    key = f"vault:trash:list:{current_user['user_id']}:{ip}"
+    key = f"vault:trash:list:{get_user_id(current_user)}:{ip}"
     if not rate_limiter.check_rate_limit(key, max_requests=60, window_seconds=60):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -255,7 +256,7 @@ async def empty_trash_endpoint(
     """
     # Rate limiting: 5 requests per minute per user (destructive operation)
     ip = get_client_ip(request)
-    key = f"vault:trash:empty:{current_user['user_id']}:{ip}"
+    key = f"vault:trash:empty:{get_user_id(current_user)}:{ip}"
     if not rate_limiter.check_rate_limit(key, max_requests=5, window_seconds=60):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
