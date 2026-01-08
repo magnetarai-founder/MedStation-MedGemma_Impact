@@ -207,7 +207,7 @@ async def download_vault_file(
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail=ErrorResponse(
-                    error_code=ErrorCode.RATE_LIMIT,
+                    error_code=ErrorCode.RATE_LIMITED,
                     message="Rate limit exceeded. Max 120 downloads per minute"
                 ).model_dump()
             )

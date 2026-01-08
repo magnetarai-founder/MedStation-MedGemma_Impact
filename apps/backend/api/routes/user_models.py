@@ -141,7 +141,7 @@ async def get_user_setup_status(current_user = Depends(get_current_user)) -> Suc
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=ErrorResponse(
-                    error_code=ErrorCode.AUTH_ERROR,
+                    error_code=ErrorCode.UNAUTHORIZED,
                     message="User ID not found in token"
                 ).model_dump()
             )
@@ -210,7 +210,7 @@ async def get_user_model_preferences(current_user = Depends(get_current_user)) -
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=ErrorResponse(
-                    error_code=ErrorCode.AUTH_ERROR,
+                    error_code=ErrorCode.UNAUTHORIZED,
                     message="User ID not found in token"
                 ).model_dump()
             )
@@ -276,7 +276,7 @@ async def update_user_model_preferences(
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=ErrorResponse(
-                    error_code=ErrorCode.AUTH_ERROR,
+                    error_code=ErrorCode.UNAUTHORIZED,
                     message="User ID not found in token"
                 ).model_dump()
             )
@@ -398,7 +398,7 @@ async def get_user_hot_slots(current_user = Depends(get_current_user)) -> Succes
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=ErrorResponse(
-                    error_code=ErrorCode.AUTH_ERROR,
+                    error_code=ErrorCode.UNAUTHORIZED,
                     message="User ID not found in token"
                 ).model_dump()
             )
@@ -456,7 +456,7 @@ async def update_user_hot_slots(
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=ErrorResponse(
-                    error_code=ErrorCode.AUTH_ERROR,
+                    error_code=ErrorCode.UNAUTHORIZED,
                     message="User ID not found in token"
                 ).model_dump()
             )

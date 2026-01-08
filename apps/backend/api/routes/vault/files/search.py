@@ -140,7 +140,7 @@ async def search_files_endpoint(
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail=ErrorResponse(
-                    error_code=ErrorCode.RATE_LIMIT,
+                    error_code=ErrorCode.RATE_LIMITED,
                     message="Rate limit exceeded. Max 60 searches per minute"
                 ).model_dump()
             )
@@ -222,7 +222,7 @@ async def get_storage_trends(
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail=ErrorResponse(
-                    error_code=ErrorCode.RATE_LIMIT,
+                    error_code=ErrorCode.RATE_LIMITED,
                     message="Rate limit exceeded. Max 120 requests per minute"
                 ).model_dump()
             )
@@ -347,7 +347,7 @@ async def get_access_patterns(
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail=ErrorResponse(
-                    error_code=ErrorCode.RATE_LIMIT,
+                    error_code=ErrorCode.RATE_LIMITED,
                     message="Rate limit exceeded. Max 120 requests per minute"
                 ).model_dump()
             )
@@ -484,7 +484,7 @@ async def get_activity_timeline(
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail=ErrorResponse(
-                    error_code=ErrorCode.RATE_LIMIT,
+                    error_code=ErrorCode.RATE_LIMITED,
                     message="Rate limit exceeded. Max 120 requests per minute"
                 ).model_dump()
             )

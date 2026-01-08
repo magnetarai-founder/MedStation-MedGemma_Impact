@@ -265,7 +265,7 @@ async def join_team_endpoint(request: Request) -> SuccessResponse:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=ErrorResponse(
-                error_code=ErrorCode.RATE_LIMIT,
+                error_code=ErrorCode.RATE_LIMITED,
                 message="Rate limit exceeded. Max 10 join attempts per minute"
             ).model_dump()
         )
