@@ -146,7 +146,7 @@ async def search_files_endpoint(
             )
 
         service = get_vault_service()
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
 
         # Parse tags if provided
         tags_list = tags.split(",") if tags else None
@@ -227,7 +227,7 @@ async def get_storage_trends(
                 ).model_dump()
             )
 
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
         service = get_vault_service()
 
         if vault_type not in ('real', 'decoy'):
@@ -352,7 +352,7 @@ async def get_access_patterns(
                 ).model_dump()
             )
 
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
         service = get_vault_service()
 
         if vault_type not in ('real', 'decoy'):
@@ -489,7 +489,7 @@ async def get_activity_timeline(
                 ).model_dump()
             )
 
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
         service = get_vault_service()
 
         if vault_type not in ('real', 'decoy'):

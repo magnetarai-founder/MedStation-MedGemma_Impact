@@ -16,6 +16,10 @@ try:
     from api.auth_middleware import get_current_user
 except ImportError:
     from api.auth_middleware import get_current_user
+try:
+    from api.utils import get_user_id
+except ImportError:
+    from api.utils import get_user_id
 from api.services.vault.core import get_vault_service
 from api.services.vault.schemas import VaultFile
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
@@ -90,7 +94,7 @@ async def list_vault_files(
         List of vault files
     """
     try:
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
 
         if vault_type not in ('real', 'decoy'):
             raise HTTPException(
@@ -153,7 +157,7 @@ async def get_vault_files_paginated(
         Paginated list of files with metadata
     """
     try:
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
         service = get_vault_service()
 
         if vault_type not in ('real', 'decoy'):
@@ -290,7 +294,7 @@ async def delete_vault_file(
         Success confirmation
     """
     try:
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
 
         if vault_type not in ('real', 'decoy'):
             raise HTTPException(
@@ -371,7 +375,7 @@ async def rename_vault_file(
         Success confirmation with new filename
     """
     try:
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
 
         if vault_type not in ('real', 'decoy'):
             raise HTTPException(
@@ -462,7 +466,7 @@ async def move_vault_file(
         Success confirmation with new folder path
     """
     try:
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
 
         if vault_type not in ('real', 'decoy'):
             raise HTTPException(

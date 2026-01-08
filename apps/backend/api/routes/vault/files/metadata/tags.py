@@ -18,6 +18,10 @@ try:
     from api.auth_middleware import get_current_user
 except ImportError:
     from api.auth_middleware import get_current_user
+try:
+    from api.utils import get_user_id
+except ImportError:
+    from api.utils import get_user_id
 from api.services.vault.core import get_vault_service
 
 logger = logging.getLogger(__name__)
@@ -47,7 +51,7 @@ async def add_file_tag(
         SuccessResponse containing tag details
     """
     service = get_vault_service()
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         result = service.add_tag_to_file(user_id, vault_type, file_id, tag_name, tag_color)
@@ -86,7 +90,7 @@ async def remove_file_tag(
         SuccessResponse confirming tag removal
     """
     service = get_vault_service()
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         success = service.remove_tag_from_file(user_id, vault_type, file_id, tag_name)
@@ -132,7 +136,7 @@ async def get_file_tags(
         SuccessResponse containing list of tags
     """
     service = get_vault_service()
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         tags = service.get_file_tags(user_id, vault_type, file_id)

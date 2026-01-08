@@ -64,7 +64,7 @@ async def add_file_comment_endpoint(
         )
 
     service = get_vault_service()
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         result = service.add_file_comment(user_id, vault_type, file_id, comment_text)
@@ -127,7 +127,7 @@ async def get_file_comments_endpoint(
         )
 
     service = get_vault_service()
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         all_comments = service.get_file_comments(user_id, vault_type, file_id)
@@ -193,7 +193,7 @@ async def update_file_comment_endpoint(
         )
 
     service = get_vault_service()
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         result = service.update_file_comment(user_id, vault_type, comment_id, comment_text)
@@ -262,7 +262,7 @@ async def delete_file_comment_endpoint(
         )
 
     service = get_vault_service()
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         success = service.delete_file_comment(user_id, vault_type, comment_id)

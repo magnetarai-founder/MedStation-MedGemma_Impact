@@ -19,6 +19,10 @@ try:
     from api.auth_middleware import get_current_user
 except ImportError:
     from api.auth_middleware import get_current_user
+try:
+    from api.utils import get_user_id
+except ImportError:
+    from api.utils import get_user_id
 from api.services.vault.core import get_vault_service
 
 logger = logging.getLogger(__name__)
@@ -47,7 +51,7 @@ async def log_file_access_endpoint(
         SuccessResponse confirming access logged
     """
     service = get_vault_service()
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         service.log_file_access(user_id, vault_type, file_id, access_type)
@@ -80,7 +84,7 @@ async def get_recent_files_endpoint(
         SuccessResponse containing list of recent files
     """
     service = get_vault_service()
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         recent = service.get_recent_files(user_id, vault_type, limit)
@@ -117,7 +121,7 @@ async def get_storage_statistics(
         SuccessResponse containing storage statistics
     """
     service = get_vault_service()
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         stats = service.get_storage_stats(user_id, vault_type)
@@ -160,7 +164,7 @@ async def get_audit_logs_endpoint(
         SuccessResponse containing paginated audit logs
     """
     service = get_vault_service()
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         # Get all matching logs first (service applies limit internally)

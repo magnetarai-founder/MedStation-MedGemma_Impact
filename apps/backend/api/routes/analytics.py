@@ -17,6 +17,10 @@ try:
 except ImportError:
     from api.auth_middleware import get_current_user
     from permission_engine import require_perm
+try:
+    from api.utils import get_user_id
+except ImportError:
+    from api.utils import get_user_id
 
 from api.services.analytics import get_analytics_service
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
@@ -61,7 +65,7 @@ async def get_usage_analytics(
 
     # Non-founders/admins can only view their own data
     if current_user.get("role") not in ["founder", "admin"]:
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
         logger.info(f"Non-admin user {user_id} requesting analytics (restricted to own data)")
 
     try:
@@ -136,7 +140,7 @@ async def export_analytics(
 
     # Non-founders/admins can only export their own data
     if current_user.get("role") not in ["founder", "admin"]:
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
 
     try:
         analytics = get_analytics_service()

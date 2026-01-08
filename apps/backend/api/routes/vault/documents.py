@@ -15,6 +15,10 @@ try:
     from api.auth_middleware import get_current_user
 except ImportError:
     from api.auth_middleware import get_current_user
+try:
+    from api.utils import get_user_id
+except ImportError:
+    from api.utils import get_user_id
 from api.permission_engine import require_perm_team, require_perm
 from api.services.team import is_team_member
 from api.services.vault.core import get_vault_service
@@ -58,7 +62,7 @@ async def create_vault_document(
     - "team": Team vault (requires team_id, Founder Rights can decrypt metadata)
     """
     try:
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
 
         # Phase 3: Support team vault type
         if vault_type not in ('personal', 'decoy', 'team'):
@@ -155,7 +159,7 @@ async def list_vault_documents(
     - "team": Team vault documents (requires team_id and membership)
     """
     try:
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
 
         # Phase 3: Support team vault type
         if vault_type not in ('personal', 'decoy', 'team'):
@@ -236,7 +240,7 @@ async def get_vault_document(
     - "team": Team vault document (requires team_id and membership)
     """
     try:
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
 
         # Phase 3: Support team vault type
         if vault_type not in ('personal', 'decoy', 'team'):
@@ -326,7 +330,7 @@ async def update_vault_document(
     - "team": Team vault document (requires team_id and membership)
     """
     try:
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
 
         # Phase 3: Support team vault type
         if vault_type not in ('personal', 'decoy', 'team'):
@@ -411,7 +415,7 @@ async def delete_vault_document(
     - "team": Team vault document (requires team_id and membership)
     """
     try:
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
 
         # Phase 3: Support team vault type
         if vault_type not in ('personal', 'decoy', 'team'):
@@ -491,7 +495,7 @@ async def get_vault_stats(
 ) -> SuccessResponse[Dict[str, Any]]:
     """Get vault statistics (Phase 1: uses authenticated user_id)"""
     try:
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
 
         if vault_type not in ('real', 'decoy'):
             raise HTTPException(

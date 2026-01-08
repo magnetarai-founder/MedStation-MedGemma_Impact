@@ -15,6 +15,10 @@ try:
     from api.auth_middleware import get_current_user
 except ImportError:
     from api.auth_middleware import get_current_user
+try:
+    from api.utils import get_user_id
+except ImportError:
+    from api.utils import get_user_id
 from api.services.vault.core import get_vault_service
 from api.services.vault.schemas import VaultFolder
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
@@ -40,7 +44,7 @@ async def create_vault_folder(
 ) -> SuccessResponse[VaultFolder]:
     """Create a new folder in the vault"""
     try:
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
 
         if vault_type not in ('real', 'decoy'):
             raise HTTPException(
@@ -88,7 +92,7 @@ async def list_vault_folders(
 ) -> SuccessResponse[List[VaultFolder]]:
     """List folders, optionally filtered by parent path"""
     try:
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
 
         if vault_type not in ('real', 'decoy'):
             raise HTTPException(
@@ -141,7 +145,7 @@ async def delete_vault_folder(
 ) -> SuccessResponse[DeleteFolderResponse]:
     """Delete a folder (and all its contents)"""
     try:
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
 
         if vault_type not in ('real', 'decoy'):
             raise HTTPException(
@@ -205,7 +209,7 @@ async def rename_vault_folder(
 ) -> SuccessResponse[RenameFolderResponse]:
     """Rename a folder"""
     try:
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
 
         if vault_type not in ('real', 'decoy'):
             raise HTTPException(
@@ -323,7 +327,7 @@ async def set_folder_color_endpoint(
     """Set color for a folder"""
     try:
         service = get_vault_service()
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
 
         result = service.set_folder_color(user_id, vault_type, folder_id, color)
 
@@ -365,7 +369,7 @@ async def get_folder_colors_endpoint(
     """Get all folder colors"""
     try:
         service = get_vault_service()
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
 
         colors = service.get_folder_colors(user_id, vault_type)
 

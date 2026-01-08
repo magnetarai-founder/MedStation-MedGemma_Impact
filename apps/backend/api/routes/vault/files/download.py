@@ -58,7 +58,7 @@ async def get_file_thumbnail(
         JPEG thumbnail image (200x200 max)
     """
     try:
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
         service = get_vault_service()
 
         if vault_type not in ('real', 'decoy'):
@@ -212,7 +212,7 @@ async def download_vault_file(
                 ).model_dump()
             )
 
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
 
         if vault_type not in ('real', 'decoy'):
             raise HTTPException(

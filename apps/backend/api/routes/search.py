@@ -14,6 +14,10 @@ try:
     from api.auth_middleware import get_current_user
 except ImportError:
     from api.auth_middleware import get_current_user
+try:
+    from api.utils import get_user_id
+except ImportError:
+    from api.utils import get_user_id
 
 from api.services.search import get_search_service
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
@@ -58,7 +62,7 @@ async def search_sessions(
 
         results = search_service.search_sessions(
             query=q,
-            user_id=current_user["user_id"],
+            user_id=get_user_id(current_user),
             user_role=current_user.get("role", "user"),
             team_id=team_id,
             model=model,

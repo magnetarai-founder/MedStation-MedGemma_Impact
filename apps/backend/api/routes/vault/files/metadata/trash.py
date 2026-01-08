@@ -64,7 +64,7 @@ async def move_to_trash_endpoint(
         )
 
     service = get_vault_service()
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         result = service.move_to_trash(user_id, vault_type, file_id)
@@ -133,7 +133,7 @@ async def restore_from_trash_endpoint(
         )
 
     service = get_vault_service()
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         result = service.restore_from_trash(user_id, vault_type, file_id)
@@ -203,7 +203,7 @@ async def get_trash_files_endpoint(
         )
 
     service = get_vault_service()
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         all_trash_files = service.get_trash_files(user_id, vault_type)
@@ -267,7 +267,7 @@ async def empty_trash_endpoint(
         )
 
     service = get_vault_service()
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         result = service.empty_trash(user_id, vault_type)
@@ -316,7 +316,7 @@ async def secure_delete_file_endpoint(
         SuccessResponse confirming secure deletion
     """
     service = get_vault_service()
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         success = service.secure_delete_file(user_id, vault_type, file_id)

@@ -16,6 +16,10 @@ try:
     from api.auth_middleware import get_current_user
 except ImportError:
     from api.auth_middleware import get_current_user
+try:
+    from api.utils import get_user_id
+except ImportError:
+    from api.utils import get_user_id
 from api.services.vault.core import get_vault_service
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 
@@ -501,7 +505,7 @@ async def seed_decoy_vault_endpoint(
     Returns:
         Seeding result with status and document count
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         from vault_seed_data import get_seeder
@@ -551,7 +555,7 @@ async def clear_decoy_vault_endpoint(
     Returns:
         Deletion result with document count
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         from vault_seed_data import get_seeder

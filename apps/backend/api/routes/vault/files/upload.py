@@ -15,7 +15,7 @@ try:
     from api.auth_middleware import get_current_user
 except ImportError:
     from api.auth_middleware import get_current_user
-from api.utils import sanitize_filename, file_lock
+from api.utils import sanitize_filename, file_lock, get_user_id
 from api.services.vault.core import get_vault_service
 from api.services.vault.schemas import VaultFile
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
@@ -61,7 +61,7 @@ async def upload_vault_file(
         VaultFile metadata
     """
     try:
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
 
         if vault_type not in ('real', 'decoy'):
             raise HTTPException(
@@ -165,7 +165,7 @@ async def upload_chunk(
     import mimetypes
 
     try:
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
         service = get_vault_service()
 
         # Create temp directory for chunks

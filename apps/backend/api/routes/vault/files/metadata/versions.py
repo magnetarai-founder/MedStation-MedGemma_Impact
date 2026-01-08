@@ -64,7 +64,7 @@ async def get_file_versions_endpoint(
         )
 
     service = get_vault_service()
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         all_versions = service.get_file_versions(user_id, vault_type, file_id)
@@ -130,7 +130,7 @@ async def restore_file_version_endpoint(
         )
 
     service = get_vault_service()
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         result = service.restore_file_version(user_id, vault_type, file_id, version_id)
@@ -200,7 +200,7 @@ async def delete_file_version_endpoint(
         )
 
     service = get_vault_service()
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         success = service.delete_file_version(user_id, vault_type, version_id)

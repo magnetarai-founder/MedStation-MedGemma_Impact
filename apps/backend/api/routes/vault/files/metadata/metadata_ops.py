@@ -17,6 +17,10 @@ try:
     from api.auth_middleware import get_current_user
 except ImportError:
     from api.auth_middleware import get_current_user
+try:
+    from api.utils import get_user_id
+except ImportError:
+    from api.utils import get_user_id
 from api.services.vault.core import get_vault_service
 from api.audit_logger import get_audit_logger
 
@@ -48,7 +52,7 @@ async def set_file_metadata_endpoint(
         SuccessResponse containing metadata details
     """
     service = get_vault_service()
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         result = service.set_file_metadata(user_id, vault_type, file_id, key, value)
@@ -96,7 +100,7 @@ async def get_file_metadata_endpoint(
         SuccessResponse containing file metadata
     """
     service = get_vault_service()
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         metadata = service.get_file_metadata(user_id, vault_type, file_id)

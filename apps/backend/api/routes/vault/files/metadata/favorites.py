@@ -21,6 +21,10 @@ try:
     from api.auth_middleware import get_current_user
 except ImportError:
     from api.auth_middleware import get_current_user
+try:
+    from api.utils import get_user_id
+except ImportError:
+    from api.utils import get_user_id
 from api.services.vault.core import get_vault_service
 
 logger = logging.getLogger(__name__)
@@ -48,7 +52,7 @@ async def add_favorite_file(
         SuccessResponse confirming favorite added
     """
     service = get_vault_service()
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         result = service.add_favorite(user_id, vault_type, file_id)
@@ -86,7 +90,7 @@ async def remove_favorite_file(
         SuccessResponse confirming favorite removed
     """
     service = get_vault_service()
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         success = service.remove_favorite(user_id, vault_type, file_id)
@@ -131,7 +135,7 @@ async def get_favorite_files(
         SuccessResponse containing list of favorite file IDs
     """
     service = get_vault_service()
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         favorites = service.get_favorites(user_id, vault_type)
@@ -170,7 +174,7 @@ async def pin_file_endpoint(
         SuccessResponse containing pin details
     """
     service = get_vault_service()
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         result = service.pin_file(user_id, vault_type, file_id, pin_order)
@@ -208,7 +212,7 @@ async def unpin_file_endpoint(
         SuccessResponse confirming file unpinned
     """
     service = get_vault_service()
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         success = service.unpin_file(user_id, vault_type, file_id)
@@ -253,7 +257,7 @@ async def get_pinned_files_endpoint(
         SuccessResponse containing list of pinned files
     """
     service = get_vault_service()
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         pinned = service.get_pinned_files(user_id, vault_type)
