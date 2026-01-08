@@ -216,7 +216,10 @@ public final class SecurityManager {
 
         do {
             // Build audit log request
-            let url = URL(string: "\(APIConfiguration.shared.versionedBaseURL)/audit/log")!
+            guard let url = URL(string: "\(APIConfiguration.shared.versionedBaseURL)/audit/log") else {
+                logger.warning("Invalid audit log URL - skipping remote audit")
+                return
+            }
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")

@@ -378,7 +378,11 @@ struct ModelManagerWindow: View {
 
         // Fetch models with tags
         do {
-            let url = URL(string: "\(APIConfiguration.shared.chatModelsURL)/with-tags")!
+            guard let url = URL(string: "\(APIConfiguration.shared.chatModelsURL)/with-tags") else {
+                logger.error("Invalid URL for chat models with tags")
+                isLoading = false
+                return
+            }
             let (data, _) = try await URLSession.shared.data(from: url)
 
             struct ModelResponseWithTags: Codable {
@@ -398,7 +402,11 @@ struct ModelManagerWindow: View {
             logger.error("Failed to fetch models with tags: \(error)")
             // Fallback to basic models endpoint
             do {
-                let url = URL(string: APIConfiguration.shared.chatModelsURL)!
+                guard let url = URL(string: APIConfiguration.shared.chatModelsURL) else {
+                    logger.error("Invalid URL for basic chat models")
+                    isLoading = false
+                    return
+                }
                 let (data, _) = try await URLSession.shared.data(from: url)
 
                 struct ModelResponse: Codable {

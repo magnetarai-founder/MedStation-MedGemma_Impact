@@ -57,7 +57,10 @@ extension EmergencyModeService {
         // Send emergency log directly to backend audit API
         // Non-blocking - don't fail if network unavailable
         do {
-            let url = URL(string: "\(APIConfiguration.shared.versionedBaseURL)/audit/log")!
+            guard let url = URL(string: "\(APIConfiguration.shared.versionedBaseURL)/audit/log") else {
+                logger.warning("Invalid audit log URL - skipping remote log")
+                return
+            }
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")

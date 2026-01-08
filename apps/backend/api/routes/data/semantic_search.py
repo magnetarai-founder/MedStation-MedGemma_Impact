@@ -13,10 +13,8 @@ from pydantic import BaseModel
 
 from api.auth_middleware import get_current_user
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
-try:
-    from api.utils import get_user_id
-except ImportError:
-    from api.utils import get_user_id
+from api.utils import get_user_id
+from api.shared import embed_query, compute_cosine_similarity
 
 logger = logging.getLogger(__name__)
 
@@ -139,17 +137,6 @@ async def semantic_search_queries(
 
 # MARK: - Helper Functions
 
-async def embed_query(text: str) -> Optional[List[float]]:
-    """Generate embedding for query text using ANE Context Engine"""
-    try:
-        from api.ane_context_engine import _embed_with_ane
-        embedding = _embed_with_ane(text)
-        return embedding
-    except Exception as e:
-        logger.warning(f"⚠️ Embedding failed: {e}")
-        return None
-
-
 async def get_query_history(user_id: str, limit: int = 100) -> List[dict]:
     """Get recent query history for user"""
     try:
@@ -169,18 +156,3 @@ async def get_query_history(user_id: str, limit: int = 100) -> List[dict]:
     except Exception as e:
         logger.warning(f"⚠️ Failed to get query history: {e}")
         return []
-
-
-def compute_cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
-    """Compute cosine similarity between two vectors"""
-    if len(vec1) != len(vec2):
-        return 0.0
-
-    dot_product = sum(a * b for a, b in zip(vec1, vec2))
-    magnitude1 = sum(a * a for a in vec1) ** 0.5
-    magnitude2 = sum(b * b for b in vec2) ** 0.5
-
-    if magnitude1 == 0 or magnitude2 == 0:
-        return 0.0
-
-    return dot_product / (magnitude1 * magnitude2)

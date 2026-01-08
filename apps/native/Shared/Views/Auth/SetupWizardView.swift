@@ -175,7 +175,11 @@ struct SetupWizardView: View {
     private func completeSetup() async {
         do {
             // Build request to mark setup as complete
-            let url = URL(string: "\(APIConfiguration.shared.versionedBaseURL)/setup/complete")!
+            guard let url = URL(string: "\(APIConfiguration.shared.versionedBaseURL)/setup/complete") else {
+                logger.error("Invalid setup complete URL")
+                authStore.completeSetup()  // Complete locally even if URL is invalid
+                return
+            }
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")

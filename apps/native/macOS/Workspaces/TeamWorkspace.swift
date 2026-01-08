@@ -248,7 +248,11 @@ struct TeamWorkspace: View {
 
         do {
             // Try to access vault by checking folders endpoint
-            let url = URL(string: "\(APIConfiguration.shared.vaultURL)/folders?vault_type=real")!
+            guard let url = URL(string: "\(APIConfiguration.shared.vaultURL)/folders?vault_type=real") else {
+                vaultError = "Invalid vault URL"
+                checkingVaultStatus = false
+                return
+            }
             var request = URLRequest(url: url)
             request.httpMethod = "GET"
 

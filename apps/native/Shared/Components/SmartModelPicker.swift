@@ -150,7 +150,10 @@ struct SmartModelPicker: View {
 
         // Fetch available models
         do {
-            let url = URL(string: APIConfiguration.shared.chatModelsURL)!
+            guard let url = URL(string: APIConfiguration.shared.chatModelsURL) else {
+                logger.error("Invalid chat models URL")
+                return
+            }
             let (data, _) = try await URLSession.shared.data(from: url)
 
             struct ModelResponse: Codable {

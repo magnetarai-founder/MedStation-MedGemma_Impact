@@ -22,7 +22,9 @@ class ModelTagService {
     // MARK: - Get Available Tags
 
     func getAvailableTags() async throws -> [ModelCapabilityTag] {
-        let url = URL(string: "\(baseURL)/api/v1/chat/tags/available")!
+        guard let url = URL(string: "\(baseURL)/api/v1/chat/tags/available") else {
+            throw TagServiceError.invalidResponse
+        }
         var request = URLRequest(url: url)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
@@ -54,7 +56,9 @@ class ModelTagService {
             throw TagServiceError.invalidModelName
         }
 
-        let url = URL(string: "\(baseURL)/api/v1/chat/models/\(encodedName)/tags")!
+        guard let url = URL(string: "\(baseURL)/api/v1/chat/models/\(encodedName)/tags") else {
+            throw TagServiceError.invalidResponse
+        }
         var request = URLRequest(url: url)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
@@ -86,7 +90,9 @@ class ModelTagService {
             throw TagServiceError.invalidModelName
         }
 
-        let url = URL(string: "\(baseURL)/api/v1/chat/models/\(encodedName)/tags")!
+        guard let url = URL(string: "\(baseURL)/api/v1/chat/models/\(encodedName)/tags") else {
+            throw TagServiceError.invalidResponse
+        }
         var request = URLRequest(url: url)
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -125,7 +131,9 @@ class ModelTagService {
             throw TagServiceError.invalidModelName
         }
 
-        let url = URL(string: "\(baseURL)/api/v1/chat/models/\(encodedName)/tags")!
+        guard let url = URL(string: "\(baseURL)/api/v1/chat/models/\(encodedName)/tags") else {
+            throw TagServiceError.invalidResponse
+        }
         var request = URLRequest(url: url)
         request.httpMethod = "DELETE"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")

@@ -86,7 +86,10 @@ class ModelMemoryTracker {
     /// Refresh model sizes from Ollama
     func refresh() async {
         do {
-            let url = URL(string: "\(ollamaBaseURL)/api/tags")!
+            guard let url = URL(string: "\(ollamaBaseURL)/api/tags") else {
+                logger.error("Invalid Ollama tags URL")
+                return
+            }
             let (data, _) = try await URLSession.shared.data(from: url)
 
             let response = try JSONDecoder().decode(OllamaTagsResponseMemory.self, from: data)

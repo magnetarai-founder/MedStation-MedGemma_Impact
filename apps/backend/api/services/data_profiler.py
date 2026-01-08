@@ -13,8 +13,10 @@ import pandas as pd
 
 try:
     from api.config import get_settings
+    from api.security.sql_safety import quote_identifier
 except ImportError:
     from config import get_settings
+    from security.sql_safety import quote_identifier
 
 logger = logging.getLogger(__name__)
 
@@ -92,11 +94,14 @@ class DataProfiler:
             total_rows = metadata.get("rows", 0) if dataset_id or session_id else 0
             sample_size = sample_rows or DEFAULT_SAMPLE_SIZE
 
+            # SECURITY: Use quote_identifier for defense-in-depth, even though table_name
+            # comes from internal metadata (not user input)
+            safe_table = quote_identifier(table_name)
             if total_rows > sample_size:
-                sample_query = f"SELECT * FROM {table_name} LIMIT {sample_size}"
+                sample_query = f"SELECT * FROM {safe_table} LIMIT {sample_size}"
                 warnings.append(f"Analyzing sample of {sample_size:,} rows (total: {total_rows:,})")
             else:
-                sample_query = f"SELECT * FROM {table_name}"
+                sample_query = f"SELECT * FROM {safe_table}"
 
             # Load data into DataFrame
             result = engine.execute_sql(sample_query)
