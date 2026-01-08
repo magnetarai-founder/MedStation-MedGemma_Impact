@@ -71,6 +71,52 @@ def get_username(current_user) -> str:
         return current_user["username"] or "unknown"
     except (KeyError, TypeError):
         return "unknown"
+
+
+def get_user_role(current_user) -> str | None:
+    """
+    Extract role from current_user object robustly.
+
+    Args:
+        current_user: User object from get_current_user dependency
+
+    Returns:
+        Role string or None if not found
+    """
+    if hasattr(current_user, 'role') and current_user.role is not None:
+        return current_user.role
+
+    if hasattr(current_user, 'get'):
+        return current_user.get("role")
+
+    try:
+        return current_user["role"]
+    except (KeyError, TypeError):
+        return None
+
+
+def get_user_team_id(current_user) -> str | None:
+    """
+    Extract team_id from current_user object robustly.
+
+    Args:
+        current_user: User object from get_current_user dependency
+
+    Returns:
+        Team ID string or None if not found
+    """
+    if hasattr(current_user, 'team_id') and current_user.team_id is not None:
+        return current_user.team_id
+
+    if hasattr(current_user, 'get'):
+        return current_user.get("team_id")
+
+    try:
+        return current_user["team_id"]
+    except (KeyError, TypeError):
+        return None
+
+
 _SECRET_PATTERNS_COMPILED = [
     (re.compile(r'password\s*[=:]\s*\S+', re.IGNORECASE), 'password=***REDACTED***'),
     (re.compile(r'token\s*[=:]\s*\S+', re.IGNORECASE), 'token=***REDACTED***'),

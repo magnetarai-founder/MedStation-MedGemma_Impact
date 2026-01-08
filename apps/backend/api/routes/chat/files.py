@@ -14,6 +14,7 @@ try:
     from api.auth_middleware import get_current_user, User
 except ImportError:
     from api.auth_middleware import get_current_user, User
+from api.utils import get_user_id
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 
 logger = logging.getLogger(__name__)
@@ -40,7 +41,7 @@ async def upload_file_to_chat(
     from api.services import chat
 
     try:
-        user_id = current_user.get("user_id") if isinstance(current_user, dict) else current_user.user_id
+        user_id = get_user_id(current_user)
 
         # Verify session exists
         session = await chat.get_session(chat_id, user_id=user_id)

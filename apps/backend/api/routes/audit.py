@@ -16,6 +16,7 @@ try:
     from api.auth_middleware import get_current_user, User
 except ImportError:
     from api.auth_middleware import get_current_user, User
+from api.utils import get_user_id, get_user_role
 from api.audit_logger import get_audit_logger, AuditEntry, AuditAction
 from api.telemetry import track_metric, TelemetryMetric
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
@@ -52,7 +53,7 @@ async def log_audit_event(
 
     Non-blocking best-effort logging
     """
-    user_id = current_user.get("user_id") if isinstance(current_user, dict) else current_user.user_id
+    user_id = get_user_id(current_user)
 
     try:
         audit_logger = get_audit_logger()
@@ -106,8 +107,8 @@ async def get_session_audit_logs(
     Returns events in reverse chronological order (newest first).
     Users can only see their own session logs unless they're admin/founder.
     """
-    user_id = current_user.get("user_id") if isinstance(current_user, dict) else current_user.user_id
-    user_role = current_user.get("role", "user") if isinstance(current_user, dict) else getattr(current_user, "role", "user")
+    user_id = get_user_id(current_user)
+    user_role = get_user_role(current_user) or "user"
 
     try:
         audit_logger = get_audit_logger()

@@ -19,6 +19,7 @@ try:
     from api.auth_middleware import get_current_user, User
 except ImportError:
     from api.auth_middleware import get_current_user, User
+from api.utils import get_user_id, get_user_role
 from api.permission_engine import require_perm_team
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 from api.schemas.chat_models import SendMessageRequest
@@ -51,8 +52,8 @@ async def get_messages(
     from api.services.chat.core.messages import count_messages
 
     try:
-        user_id = current_user.get("user_id") if isinstance(current_user, dict) else current_user.user_id
-        role = current_user.get("role") if isinstance(current_user, dict) else getattr(current_user, "role", None)
+        user_id = get_user_id(current_user)
+        role = get_user_role(current_user)
 
         # Verify session exists and user has access
         session = await chat_service.get_session(
@@ -122,8 +123,8 @@ async def send_message(
     from api.services import chat as chat_service
 
     try:
-        user_id = current_user.get("user_id") if isinstance(current_user, dict) else current_user.user_id
-        role = current_user.get("role") if isinstance(current_user, dict) else getattr(current_user, "role", None)
+        user_id = get_user_id(current_user)
+        role = get_user_role(current_user)
 
         # Verify session exists
         session = await chat_service.get_session(
@@ -201,7 +202,7 @@ async def semantic_search(
     from api.services import chat
 
     try:
-        user_id = current_user.get("user_id") if isinstance(current_user, dict) else current_user.user_id
+        user_id = get_user_id(current_user)
         result = await chat.semantic_search(query, limit, user_id, team_id)
 
         return SuccessResponse(
@@ -241,7 +242,7 @@ async def get_analytics(
     from api.services import chat
 
     try:
-        user_id = current_user.get("user_id") if isinstance(current_user, dict) else current_user.user_id
+        user_id = get_user_id(current_user)
         analytics = await chat.get_analytics(session_id, user_id, team_id)
 
         return SuccessResponse(
@@ -281,8 +282,8 @@ async def get_session_analytics(
     from api.services import chat
 
     try:
-        user_id = current_user.get("user_id") if isinstance(current_user, dict) else current_user.user_id
-        role = current_user.get("role") if isinstance(current_user, dict) else getattr(current_user, "role", None)
+        user_id = get_user_id(current_user)
+        role = get_user_role(current_user)
 
         # Verify session access
         session = await chat.get_session(chat_id, user_id, role, team_id)

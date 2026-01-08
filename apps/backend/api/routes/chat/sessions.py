@@ -18,6 +18,7 @@ try:
     from api.auth_middleware import get_current_user, User
 except ImportError:
     from api.auth_middleware import get_current_user, User
+from api.utils import get_user_id, get_user_role
 from api.permission_engine import require_perm_team
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 from api.schemas.chat_models import CreateChatRequest, ChatSession
@@ -55,7 +56,7 @@ async def create_chat_session(
         result = await chat.create_session(
             title=body.title or "New Chat",
             model=body.model,
-            user_id=current_user.get("user_id") if isinstance(current_user, dict) else current_user.user_id,
+            user_id=get_user_id(current_user),
             team_id=team_id
         )
 
@@ -95,8 +96,8 @@ async def list_chat_sessions(
     from api.schemas.chat_models import ChatSession
 
     try:
-        user_id = current_user.get("user_id") if isinstance(current_user, dict) else current_user.user_id
-        role = current_user.get("role") if isinstance(current_user, dict) else getattr(current_user, "role", None)
+        user_id = get_user_id(current_user)
+        role = get_user_role(current_user)
 
         sessions = await chat.list_sessions(
             user_id=user_id,
@@ -147,8 +148,8 @@ async def get_chat_session(
     from api.schemas.chat_models import ChatSession
 
     try:
-        user_id = current_user.get("user_id") if isinstance(current_user, dict) else current_user.user_id
-        role = current_user.get("role") if isinstance(current_user, dict) else getattr(current_user, "role", None)
+        user_id = get_user_id(current_user)
+        role = get_user_role(current_user)
 
         session = await chat.get_session(
             chat_id,
@@ -206,8 +207,8 @@ async def delete_chat_session(
     from api.services import chat
 
     try:
-        user_id = current_user.get("user_id") if isinstance(current_user, dict) else current_user.user_id
-        role = current_user.get("role") if isinstance(current_user, dict) else getattr(current_user, "role", None)
+        user_id = get_user_id(current_user)
+        role = get_user_role(current_user)
 
         deleted = await chat.delete_session(
             chat_id,
@@ -264,7 +265,7 @@ async def update_session_model(
     from api.services.team_model_policy import get_policy_service
 
     try:
-        user_id = current_user.get("user_id") if isinstance(current_user, dict) else current_user.user_id
+        user_id = get_user_id(current_user)
 
         # Verify session exists and user has access
         session = await chat.get_session(chat_id, user_id=user_id)
@@ -369,7 +370,7 @@ async def rename_session(
     from api.services import chat
 
     try:
-        user_id = current_user.get("user_id") if isinstance(current_user, dict) else current_user.user_id
+        user_id = get_user_id(current_user)
 
         session = await chat.get_session(chat_id, user_id=user_id)
         if not session:
@@ -429,7 +430,7 @@ async def archive_session(
     from api.services import chat
 
     try:
-        user_id = current_user.get("user_id") if isinstance(current_user, dict) else current_user.user_id
+        user_id = get_user_id(current_user)
 
         session = await chat.get_session(chat_id, user_id=user_id)
         if not session:
@@ -487,7 +488,7 @@ async def get_token_count(
     from api.services import chat
 
     try:
-        user_id = current_user.get("user_id") if isinstance(current_user, dict) else current_user.user_id
+        user_id = get_user_id(current_user)
 
         session = await chat.get_session(chat_id, user_id=user_id)
         if not session:
@@ -539,7 +540,7 @@ async def get_token_count_cached(
     global _token_count_cache
 
     try:
-        user_id = current_user.get("user_id") if isinstance(current_user, dict) else current_user.user_id
+        user_id = get_user_id(current_user)
 
         session = await chat.get_session(chat_id, user_id=user_id)
         if not session:
@@ -615,7 +616,7 @@ async def get_model_preferences(
     from api.chat_memory import get_memory
 
     try:
-        user_id = current_user.get("user_id") if isinstance(current_user, dict) else current_user.user_id
+        user_id = get_user_id(current_user)
 
         # Verify session exists and user has access
         memory = get_memory()
@@ -679,7 +680,7 @@ async def update_model_preferences(
     from pydantic import Field
 
     try:
-        user_id = current_user.get("user_id") if isinstance(current_user, dict) else current_user.user_id
+        user_id = get_user_id(current_user)
 
         # Verify session exists and user has access
         memory = get_memory()

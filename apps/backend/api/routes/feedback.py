@@ -17,6 +17,7 @@ try:
     from api.auth_middleware import get_current_user, User
 except ImportError:
     from ..auth_middleware import get_current_user, User
+from api.utils import get_user_id, get_user_role, get_user_team_id
 
 try:
     from permission_engine import require_perm_team
@@ -61,9 +62,9 @@ async def submit_message_feedback(
     """
     from api.services.analytics import get_analytics_service
 
-    user_id = current_user.get("user_id") if isinstance(current_user, dict) else current_user.user_id
-    user_role = current_user.get("role", "user") if isinstance(current_user, dict) else getattr(current_user, "role", "user")
-    team_id = current_user.get("team_id") if isinstance(current_user, dict) else getattr(current_user, "team_id", None)
+    user_id = get_user_id(current_user)
+    user_role = get_user_role(current_user) or "user"
+    team_id = get_user_team_id(current_user)
 
     try:
         analytics = get_analytics_service()
@@ -122,7 +123,7 @@ async def get_message_feedback(
     """
     from api.services.analytics import get_analytics_service
 
-    user_id = current_user.get("user_id") if isinstance(current_user, dict) else current_user.user_id
+    user_id = get_user_id(current_user)
 
     try:
         analytics = get_analytics_service()
