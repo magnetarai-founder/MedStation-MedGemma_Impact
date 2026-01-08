@@ -1,188 +1,26 @@
-#!/usr/bin/env python3
 """
-Metal 4 Unified Command Queue Engine for ElohimOS
+Metal 4 Unified Command Queue Engine
 
-"The Lord is my rock, my firm foundation." - Psalm 18:2
-
-Provides:
-- Unified command queues (Q_render, Q_ml, Q_blit)
-- Event-based synchronization (zero CPU overhead)
-- Zero-copy unified memory heaps
-- True parallelism for AI + DB + UI operations
-
-Architecture:
-- Q_render: Graphics/UI (never blocks on ML)
-- Q_ml: ML/Compute (embeddings, inference, SQL kernels)
+Manages three specialized queues:
+- Q_render: Graphics/UI (60fps, never blocks)
+- Q_ml: ML/Compute (embeddings, inference, SQL)
 - Q_blit: Async transfers (background I/O)
 
-Performance Target:
-- 60fps UI (locked, no stuttering)
-- 2-5× faster ML operations
-- 3-5× faster SQL → AI pipeline
+Uses event-based synchronization for zero-overhead coordination.
 """
 
-import os
 import logging
 from collections.abc import Callable
 from typing import Any
-from dataclasses import dataclass
-from enum import Enum
+
+from api.metal4_engine.capabilities import (
+    MetalVersion,
+    MetalCapabilities,
+    detect_metal_capabilities,
+)
 
 logger = logging.getLogger(__name__)
 
-
-# ===== Metal 4 Capability Detection =====
-
-class MetalVersion(Enum):
-    """Metal framework versions"""
-    UNAVAILABLE = 0
-    METAL_2 = 2
-    METAL_3 = 3
-    METAL_4 = 4  # macOS Sequoia 15.0+
-
-
-@dataclass
-class MetalCapabilities:
-    """Metal GPU capabilities"""
-    available: bool
-    version: MetalVersion
-    device_name: str
-    is_apple_silicon: bool
-    supports_unified_memory: bool
-    supports_mps: bool
-    supports_ane: bool
-    supports_sparse_resources: bool
-    supports_ml_command_encoder: bool
-    max_buffer_size_mb: int
-    recommended_heap_size_mb: int
-
-
-def detect_metal_capabilities() -> MetalCapabilities:
-    """
-    Detect Metal 4 capabilities on the system
-
-    Returns:
-        MetalCapabilities with full feature detection
-    """
-    try:
-        import platform
-        import subprocess
-
-        # Check if we're on macOS
-        if platform.system() != "Darwin":
-            logger.info("Not on macOS - Metal unavailable")
-            return MetalCapabilities(
-                available=False,
-                version=MetalVersion.UNAVAILABLE,
-                device_name="N/A",
-                is_apple_silicon=False,
-                supports_unified_memory=False,
-                supports_mps=False,
-                supports_ane=False,
-                supports_sparse_resources=False,
-                supports_ml_command_encoder=False,
-                max_buffer_size_mb=0,
-                recommended_heap_size_mb=0
-            )
-
-        # Check macOS version
-        mac_ver = platform.mac_ver()[0]
-        major_version = int(mac_ver.split('.')[0]) if mac_ver else 0
-
-        # Determine Metal version based on macOS version
-        # macOS 15 (Sequoia) = Metal 4
-        # macOS 14 (Sonoma) = Metal 3
-        # macOS 13 (Ventura) = Metal 3
-        if major_version >= 26:  # macOS 15+ (Darwin 26 = macOS Sequoia)
-            metal_version = MetalVersion.METAL_4
-        elif major_version >= 23:  # macOS 14/13
-            metal_version = MetalVersion.METAL_3
-        else:
-            metal_version = MetalVersion.METAL_2
-
-        # Check if Apple Silicon
-        machine = platform.machine()
-        is_apple_silicon = machine == "arm64"
-
-        # Get GPU info
-        device_name = "Unknown"
-        try:
-            result = subprocess.run(
-                ["system_profiler", "SPDisplaysDataType"],
-                capture_output=True,
-                text=True,
-                timeout=5
-            )
-            if result.returncode == 0:
-                for line in result.stdout.split('\n'):
-                    if 'Chipset Model:' in line:
-                        device_name = line.split(':')[1].strip()
-                        break
-        except Exception as e:
-            logger.debug(f"Could not get GPU info: {e}")
-
-        # Feature detection based on version and hardware
-        supports_unified_memory = is_apple_silicon
-        supports_mps = metal_version.value >= MetalVersion.METAL_3.value and is_apple_silicon
-        supports_ane = is_apple_silicon  # ANE available on all Apple Silicon
-        supports_sparse_resources = metal_version.value >= MetalVersion.METAL_4.value
-        supports_ml_command_encoder = metal_version.value >= MetalVersion.METAL_4.value
-
-        # Calculate recommended sizes
-        # Apple Silicon typically has 8-64GB unified memory
-        # Use 25% for Metal heaps (conservative)
-        try:
-            import psutil
-            total_memory_gb = psutil.virtual_memory().total / (1024**3)
-            max_buffer_size_mb = int(total_memory_gb * 1024 * 0.5)  # 50% of RAM
-            recommended_heap_size_mb = int(total_memory_gb * 1024 * 0.25)  # 25% of RAM
-        except ImportError:
-            # Fallback defaults
-            max_buffer_size_mb = 4096  # 4GB
-            recommended_heap_size_mb = 2048  # 2GB
-
-        caps = MetalCapabilities(
-            available=True,
-            version=metal_version,
-            device_name=device_name,
-            is_apple_silicon=is_apple_silicon,
-            supports_unified_memory=supports_unified_memory,
-            supports_mps=supports_mps,
-            supports_ane=supports_ane,
-            supports_sparse_resources=supports_sparse_resources,
-            supports_ml_command_encoder=supports_ml_command_encoder,
-            max_buffer_size_mb=max_buffer_size_mb,
-            recommended_heap_size_mb=recommended_heap_size_mb
-        )
-
-        logger.info(f"✅ Metal {metal_version.value} detected on {device_name}")
-        logger.info(f"   Apple Silicon: {is_apple_silicon}")
-        logger.info(f"   Unified Memory: {supports_unified_memory}")
-        logger.info(f"   MPS Available: {supports_mps}")
-        logger.info(f"   ANE Available: {supports_ane}")
-        logger.info(f"   Sparse Resources: {supports_sparse_resources}")
-        logger.info(f"   ML Command Encoder: {supports_ml_command_encoder}")
-
-        return caps
-
-    except Exception as e:
-        logger.error(f"Failed to detect Metal capabilities: {e}")
-        return MetalCapabilities(
-            available=False,
-            version=MetalVersion.UNAVAILABLE,
-            device_name="Error",
-            is_apple_silicon=False,
-            supports_unified_memory=False,
-            supports_mps=False,
-            supports_ane=False,
-            supports_sparse_resources=False,
-            supports_ml_command_encoder=False,
-            max_buffer_size_mb=0,
-            recommended_heap_size_mb=0
-        )
-
-
-# ===== Metal 4 Command Queue Architecture =====
 
 class Metal4Engine:
     """
@@ -252,9 +90,9 @@ class Metal4Engine:
             # Create Metal device
             device = Metal.MTLCreateSystemDefaultDevice()
             if device is None:
-                logger.error("❌ Failed to create Metal device")
-                logger.error("⚠️  CRITICAL: GPU acceleration unavailable - falling back to CPU")
-                logger.error("⚠️  Performance will be severely degraded for AI operations")
+                logger.error("Failed to create Metal device")
+                logger.error("CRITICAL: GPU acceleration unavailable - falling back to CPU")
+                logger.error("Performance will be severely degraded for AI operations")
                 self.initialization_error = "Metal device creation failed - GPU unavailable"
                 return
 
@@ -266,7 +104,7 @@ class Metal4Engine:
             self.Q_blit = device.newCommandQueue()    # Async transfers (background I/O)
 
             if not all([self.Q_render, self.Q_ml, self.Q_blit]):
-                logger.error("❌ Failed to create command queues")
+                logger.error("Failed to create command queues")
                 return
 
             # Create shared events for synchronization (Metal 3+ feature)
@@ -276,7 +114,7 @@ class Metal4Engine:
             self.E_rag = device.newSharedEvent()    # RAG context ready
 
             if not all([self.E_frame, self.E_data, self.E_embed, self.E_rag]):
-                logger.error("❌ Failed to create shared events")
+                logger.error("Failed to create shared events")
                 return
 
             # Create unified memory heap (Metal 4 placement resources)
@@ -295,27 +133,27 @@ class Metal4Engine:
             self.H_main = device.newHeapWithDescriptor_(heap_desc)
 
             if self.H_main is None:
-                logger.warning("⚠️  Failed to create heap - zero-copy features disabled")
+                logger.warning("Failed to create heap - zero-copy features disabled")
 
             self._initialized = True
 
-            logger.info("✅ Metal 4 engine initialized with REAL Metal APIs")
+            logger.info("Metal 4 engine initialized with REAL Metal APIs")
             logger.info(f"   Device: {device.name()}")
             logger.info(f"   Unified Memory: {self.capabilities.supports_unified_memory}")
             logger.info(f"   Max Buffer: {device.maxBufferLength() / (1024**3):.2f} GB")
             logger.info(f"   Heap Size: {heap_size_mb} MB")
-            logger.info(f"   Command Queues: Q_render, Q_ml, Q_blit ✓")
-            logger.info(f"   Shared Events: E_frame, E_data, E_embed, E_rag ✓")
+            logger.info(f"   Command Queues: Q_render, Q_ml, Q_blit")
+            logger.info(f"   Shared Events: E_frame, E_data, E_embed, E_rag")
             logger.info(f"   ML Command Encoder: {self.capabilities.supports_ml_command_encoder}")
 
         except ImportError as e:
-            logger.error(f"❌ Metal framework not available: {e}")
+            logger.error(f"Metal framework not available: {e}")
             logger.error("   Install with: pip install pyobjc-framework-Metal")
-            logger.error("⚠️  CRITICAL: GPU acceleration unavailable - falling back to CPU")
+            logger.error("CRITICAL: GPU acceleration unavailable - falling back to CPU")
             self.initialization_error = f"Metal framework not available: {e}"
         except Exception as e:
-            logger.error(f"❌ Metal 4 initialization failed: {e}")
-            logger.error("⚠️  CRITICAL: GPU acceleration unavailable - falling back to CPU")
+            logger.error(f"Metal 4 initialization failed: {e}")
+            logger.error("CRITICAL: GPU acceleration unavailable - falling back to CPU")
             import traceback
             traceback.print_exc()
             self.initialization_error = f"Metal 4 initialization failed: {e}"
@@ -327,7 +165,7 @@ class Metal4Engine:
 
             if torch.backends.mps.is_available():
                 self._initialized = True
-                logger.info("✅ Metal 3 fallback initialized (basic MPS)")
+                logger.info("Metal 3 fallback initialized (basic MPS)")
             else:
                 logger.warning("MPS not available")
 
@@ -417,12 +255,12 @@ class Metal4Engine:
             self.frame_counter += 1
             self.stats['frames_rendered'] += 1
 
-            # MED-08: Only log every 100 frames to reduce I/O overhead
+            # Only log every 100 frames to reduce I/O overhead
             if self.frame_counter % 100 == 0:
-                logger.debug(f"✓ Frame {self.frame_counter} kicked")
+                logger.debug(f"Frame {self.frame_counter} kicked")
 
         except Exception as e:
-            logger.error(f"❌ Failed to kick frame: {e}")
+            logger.error(f"Failed to kick frame: {e}")
 
     def process_chat_message(
         self,
@@ -469,7 +307,6 @@ class Metal4Engine:
             embedding = None
             if embedder:
                 embedding = embedder(user_message)
-                # MED-08: Removed hot-path logging (ran on every message)
 
             # SIGNAL embeddings ready
             self.embed_counter += 1
@@ -483,7 +320,6 @@ class Metal4Engine:
             context = None
             if rag_retriever and embedding:
                 context = rag_retriever(embedding)
-                # MED-08: Removed hot-path logging (ran on every RAG query)
 
             # SIGNAL RAG ready
             self.rag_counter += 1
@@ -498,9 +334,9 @@ class Metal4Engine:
             elapsed_ms = (time.time() - start_time) * 1000
             self.stats['ml_operations'] += 1
 
-            # MED-08: Only log slow operations (>100ms) to reduce noise
+            # Only log slow operations (>100ms) to reduce noise
             if elapsed_ms > 100:
-                logger.info(f"✅ Chat message processed in {elapsed_ms:.2f}ms")
+                logger.info(f"Chat message processed in {elapsed_ms:.2f}ms")
                 logger.info(f"   Frame: {self.frame_counter}, Embed: {self.embed_counter}, RAG: {self.rag_counter}")
 
             # Record diagnostics
@@ -522,7 +358,7 @@ class Metal4Engine:
             }
 
         except Exception as e:
-            logger.error(f"❌ Chat message processing failed: {e}")
+            logger.error(f"Chat message processing failed: {e}")
             import traceback
             traceback.print_exc()
             return None
@@ -592,7 +428,7 @@ class Metal4Engine:
                 import duckdb
                 conn = duckdb.connect(':memory:')
                 results = conn.execute(sql).fetchall()
-                logger.debug(f"✓ SQL executed: {len(results)} rows")
+                logger.debug(f"SQL executed: {len(results)} rows")
             except Exception as e:
                 logger.error(f"SQL execution failed: {e}")
 
@@ -602,7 +438,7 @@ class Metal4Engine:
                 # Convert results to text and embed
                 result_texts = [str(row) for row in results[:100]]  # Limit for now
                 embeddings = [embedder(text) for text in result_texts]
-                logger.debug(f"✓ Embedded {len(embeddings)} result rows")
+                logger.debug(f"Embedded {len(embeddings)} result rows")
 
             # SIGNAL embeddings ready
             self.embed_counter += 1
@@ -615,7 +451,7 @@ class Metal4Engine:
             elapsed_ms = (time.time() - start_time) * 1000
             self.stats['ml_operations'] += 1
 
-            logger.info(f"✅ SQL query processed in {elapsed_ms:.2f}ms")
+            logger.info(f"SQL query processed in {elapsed_ms:.2f}ms")
 
             return {
                 'results': results,
@@ -626,7 +462,7 @@ class Metal4Engine:
             }
 
         except Exception as e:
-            logger.error(f"❌ SQL query processing failed: {e}")
+            logger.error(f"SQL query processing failed: {e}")
             import traceback
             traceback.print_exc()
             return None
@@ -693,9 +529,9 @@ class Metal4Engine:
                 rag_available = current_rag >= self.rag_counter
 
                 if rag_available:
-                    logger.debug("✓ RAG data available - rendering with context")
+                    logger.debug("RAG data available - rendering with context")
                 else:
-                    logger.debug("⏳ RAG not ready yet - rendering placeholder")
+                    logger.debug("RAG not ready yet - rendering placeholder")
 
             # In real implementation, would encode render commands here
             # For now, just track the frame
@@ -724,7 +560,7 @@ class Metal4Engine:
             }
 
         except Exception as e:
-            logger.error(f"❌ UI render failed: {e}")
+            logger.error(f"UI render failed: {e}")
             return {'rendered': False, 'error': str(e)}
 
     def async_memory_operations(self, source_buffer: Any, dest_buffer: Any) -> Any | None:
@@ -763,12 +599,12 @@ class Metal4Engine:
             cmd.commit()
 
             self.stats['blit_operations'] += 1
-            logger.debug(f"✓ Async blit queued: {min_length / 1024:.2f} KB")
+            logger.debug(f"Async blit queued: {min_length / 1024:.2f} KB")
 
             return cmd
 
         except Exception as e:
-            logger.error(f"❌ Async blit failed: {e}")
+            logger.error(f"Async blit failed: {e}")
             return None
 
     # ========================================================================
@@ -824,67 +660,3 @@ class Metal4Engine:
             }
 
         return base_settings
-
-
-# ===== Global Engine Instance =====
-
-_metal4_engine: Metal4Engine | None = None
-
-
-def get_metal4_engine() -> Metal4Engine:
-    """Get singleton Metal 4 engine instance"""
-    global _metal4_engine
-    if _metal4_engine is None:
-        _metal4_engine = Metal4Engine()
-    return _metal4_engine
-
-
-def validate_metal4_setup() -> dict[str, Any]:
-    """
-    Validate Metal 4 setup and return detailed status
-
-    Returns:
-        Status dict with capabilities and recommendations
-    """
-    engine = get_metal4_engine()
-    caps = engine.get_capabilities_dict()
-
-    status = {
-        'status': 'ready' if engine.is_available() else 'unavailable',
-        'capabilities': caps,
-        'recommendations': []
-    }
-
-    # Add recommendations
-    if not engine.capabilities.is_apple_silicon:
-        status['recommendations'].append(
-            "Consider using Apple Silicon for optimal performance (3-5× faster)"
-        )
-
-    if engine.capabilities.version.value < MetalVersion.METAL_4.value:
-        status['recommendations'].append(
-            f"Upgrade to macOS Sequoia 15.0+ for Metal 4 features"
-        )
-
-    if not engine.capabilities.supports_mps:
-        status['recommendations'].append(
-            "Install PyTorch with MPS support for GPU acceleration"
-        )
-
-    if engine.is_available():
-        status['recommendations'].append(
-            f"✅ All optimizations enabled - expect 3-5× performance improvement"
-        )
-
-    return status
-
-
-# Export
-__all__ = [
-    'Metal4Engine',
-    'MetalVersion',
-    'MetalCapabilities',
-    'get_metal4_engine',
-    'detect_metal_capabilities',
-    'validate_metal4_setup'
-]
