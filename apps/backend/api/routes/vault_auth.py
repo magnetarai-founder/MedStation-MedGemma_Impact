@@ -13,27 +13,60 @@ Security model:
 Follows MagnetarStudio API standards (see API_STANDARDS.md).
 """
 
-import logging
+import base64
 import hashlib
+import logging
 import secrets
 import sqlite3
 import time
-from typing import Optional, Dict, Any
-from datetime import datetime, timedelta
-from fastapi import APIRouter, HTTPException, Depends, Request, Query, status
-from pydantic import BaseModel, Field
+from datetime import datetime
+from typing import Dict, Any
 
-try:
-    from api.auth_middleware import get_current_user, User
-except ImportError:
-    from api.auth_middleware import get_current_user, User
-from api.config_paths import get_config_paths
-from api.utils import sanitize_for_log, get_user_id
-from api.rate_limiter import rate_limiter, get_client_ip
-from api.services.crypto_wrap import wrap_key as crypto_wrap_key, unwrap_key as crypto_unwrap_key
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
-from api.services.webauthn_verify import verify_assertion, verify_registration
+from fastapi import APIRouter, HTTPException, Depends, Request, Query, status
+
+from api.auth_middleware import get_current_user, User
 from api.config import get_settings
+from api.config_paths import get_config_paths
+from api.rate_limiter import rate_limiter, get_client_ip
+from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.services.webauthn_verify import verify_assertion
+from api.utils import sanitize_for_log, get_user_id
+
+# Import extracted utilities
+from api.routes.vault_auth_utils import (
+    # Models
+    BiometricSetupRequest,
+    BiometricUnlockRequest,
+    DualPasswordSetupRequest,
+    UnlockResponse,
+    ChallengeResponse,
+    # Challenges
+    generate_challenge,
+    get_challenge,
+    consume_challenge,
+    cleanup_expired_challenges,
+    CHALLENGE_TTL_SECONDS,
+    webauthn_challenges,  # Re-exported for test compatibility
+    # Crypto
+    derive_kek_from_passphrase,
+    wrap_kek,
+    unwrap_kek,
+    migrate_xor_to_aes_kw,
+    PBKDF2_ITERATIONS,
+    crypto_wrap_key,
+    crypto_unwrap_key,
+    # Database
+    init_vault_auth_db,
+    # Backwards compatibility aliases (underscore-prefixed)
+    _generate_challenge,
+    _get_challenge,
+    _consume_challenge,
+    _cleanup_expired_challenges,
+    _derive_kek_from_passphrase,
+    _wrap_kek,
+    _unwrap_kek,
+    _migrate_xor_to_aes_kw,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -42,17 +75,21 @@ _settings = get_settings()
 WEBAUTHN_RP_ID = _settings.webauthn_rp_id  # Relying Party ID (domain)
 WEBAUTHN_ORIGIN = _settings.webauthn_origin  # Expected origin
 
-# In-memory challenge storage with TTL (5 minutes)
-# Format: {(user_id, vault_id): {'challenge': bytes, 'created_at': timestamp}}
-# NOTE: For distributed deployments, replace with Redis-backed storage (see SECURITY_ROADMAP.md)
-webauthn_challenges: Dict[tuple, Dict[str, Any]] = {}
-CHALLENGE_TTL_SECONDS = 300  # 5 minutes
-
 router = APIRouter(prefix="/api/v1/vault", tags=["vault-auth"])
 
 # Database path
 PATHS = get_config_paths()
 VAULT_DB_PATH = PATHS.data_dir / "vault.db"
+
+
+def _init_vault_auth_db() -> None:
+    """Initialize vault auth database using module-level VAULT_DB_PATH.
+
+    This wrapper exists for test compatibility - tests patch VAULT_DB_PATH
+    and call this no-argument function.
+    """
+    init_vault_auth_db(VAULT_DB_PATH)
+
 
 # In-memory session storage for unlocked vaults (KEK is kept in memory)
 # Format: {(user_id, vault_id): {'kek': bytes, 'vault_type': str, 'unlocked_at': timestamp}}
@@ -62,164 +99,8 @@ vault_sessions: Dict[tuple, Dict[str, Any]] = {}
 UNLOCK_RATE_LIMIT = 5  # attempts
 UNLOCK_WINDOW_SECONDS = 300  # 5 minutes
 
-
-# ===== WebAuthn Challenge Management =====
-
-def _generate_challenge(user_id: str, vault_id: str) -> bytes:
-    """Generate and store a WebAuthn challenge for biometric unlock."""
-    challenge = secrets.token_bytes(32)
-    webauthn_challenges[(user_id, vault_id)] = {
-        'challenge': challenge,
-        'created_at': time.time()
-    }
-    return challenge
-
-
-def _get_challenge(user_id: str, vault_id: str) -> Optional[bytes]:
-    """Get stored challenge if still valid (within TTL)."""
-    key = (user_id, vault_id)
-    if key not in webauthn_challenges:
-        return None
-
-    entry = webauthn_challenges[key]
-    if time.time() - entry['created_at'] > CHALLENGE_TTL_SECONDS:
-        # Challenge expired, remove it
-        del webauthn_challenges[key]
-        return None
-
-    return entry['challenge']
-
-
-def _consume_challenge(user_id: str, vault_id: str) -> Optional[bytes]:
-    """Get and remove challenge (one-time use)."""
-    challenge = _get_challenge(user_id, vault_id)
-    if challenge:
-        del webauthn_challenges[(user_id, vault_id)]
-    return challenge
-
-
-def _cleanup_expired_challenges() -> None:
-    """Remove expired challenges (call periodically)."""
-    now = time.time()
-    expired = [
-        key for key, entry in webauthn_challenges.items()
-        if now - entry['created_at'] > CHALLENGE_TTL_SECONDS
-    ]
-    for key in expired:
-        del webauthn_challenges[key]
-
-
-# ===== Database Initialization =====
-
-def _init_vault_auth_db() -> None:
-    """Initialize vault auth metadata table"""
-    VAULT_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-
-    with sqlite3.connect(str(VAULT_DB_PATH)) as conn:
-        cursor = conn.cursor()
-
-        # Vault authentication metadata
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS vault_auth_metadata (
-                id TEXT PRIMARY KEY,
-                user_id TEXT NOT NULL,
-                vault_id TEXT NOT NULL,
-
-                -- Biometric (WebAuthn) fields
-                webauthn_credential_id TEXT,
-                webauthn_public_key TEXT,
-                webauthn_counter INTEGER DEFAULT 0,
-
-                -- Real vault fields
-                salt_real TEXT,
-                wrapped_kek_real TEXT,
-
-                -- Decoy vault fields (optional)
-                salt_decoy TEXT,
-                wrapped_kek_decoy TEXT,
-                decoy_enabled INTEGER DEFAULT 0,
-
-                -- Key wrapping method (aes_kw, xchacha20p, xor_legacy)
-                wrap_method TEXT DEFAULT 'aes_kw',
-
-                -- Metadata
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL,
-
-                UNIQUE(user_id, vault_id)
-            )
-        """)
-
-        # Index for fast lookups
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_vault_auth_user
-            ON vault_auth_metadata(user_id, vault_id)
-        """)
-
-        # Unlock attempt tracking table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS vault_unlock_attempts (
-                id TEXT PRIMARY KEY,
-                user_id TEXT NOT NULL,
-                vault_id TEXT NOT NULL,
-                attempt_time TEXT NOT NULL,
-                success INTEGER NOT NULL,
-                method TEXT NOT NULL CHECK(method IN ('biometric', 'passphrase'))
-            )
-        """)
-
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_unlock_attempts_user
-            ON vault_unlock_attempts(user_id, vault_id, attempt_time DESC)
-        """)
-
-        # Migration: Add wrap_method column if it doesn't exist
-        cursor.execute("PRAGMA table_info(vault_auth_metadata)")
-        columns = [row[1] for row in cursor.fetchall()]
-        if 'wrap_method' not in columns:
-            cursor.execute("""
-                ALTER TABLE vault_auth_metadata
-                ADD COLUMN wrap_method TEXT DEFAULT 'xor_legacy'
-            """)
-            logger.info("Migration: Added wrap_method column (defaulting existing entries to xor_legacy)")
-
-        conn.commit()
-
-
-# Initialize on module load
-_init_vault_auth_db()
-
-
-# ===== Request/Response Models =====
-
-class BiometricSetupRequest(BaseModel):
-    """Setup biometric unlock for vault"""
-    vault_id: str = Field(..., description="Vault UUID")
-    passphrase: str = Field(..., min_length=8, description="Master passphrase (for KEK derivation)")
-    webauthn_credential_id: str = Field(..., description="WebAuthn credential ID (base64)")
-    webauthn_public_key: str = Field(..., description="WebAuthn public key (base64)")
-
-
-class BiometricUnlockRequest(BaseModel):
-    """Unlock vault with biometric"""
-    vault_id: str = Field(..., description="Vault UUID")
-    webauthn_assertion: str = Field(..., description="WebAuthn assertion response (base64)")
-    signature: str = Field(..., description="WebAuthn signature (base64)")
-
-
-class DualPasswordSetupRequest(BaseModel):
-    """Setup dual-password mode (sensitive vs unsensitive)"""
-    vault_id: str = Field(..., description="Vault UUID")
-    password_sensitive: str = Field(..., min_length=8, description="Sensitive vault password")
-    password_unsensitive: str = Field(..., min_length=8, description="Unsensitive vault password")
-
-
-class UnlockResponse(BaseModel):
-    """Unlock response"""
-    success: bool
-    vault_type: Optional[str] = None  # Never disclosed to maintain plausible deniability
-    session_id: str
-    message: str
+# Initialize database on module load
+init_vault_auth_db(VAULT_DB_PATH)
 
 
 # ===== Helper Functions =====
@@ -248,129 +129,6 @@ def _record_unlock_attempt(user_id: str, vault_id: str, success: bool, method: s
         conn.commit()
 
 
-# PBKDF2 iteration count - OWASP 2023 recommends 600,000 for SHA-256
-# NOTE: Client-side derivation must use the same iteration count
-PBKDF2_ITERATIONS = 600_000
-
-
-def _derive_kek_from_passphrase(passphrase: str, salt: bytes) -> bytes:
-    """
-    Derive KEK from passphrase using PBKDF2 with 600K iterations.
-
-    Security note: Uses OWASP 2023 recommended iteration count.
-    This must match client-side derivation (VaultService.swift).
-
-    Migration: Existing vaults may use 100K iterations. Store iteration
-    count in vault metadata for backwards compatibility if needed.
-    """
-    return hashlib.pbkdf2_hmac('sha256', passphrase.encode(), salt, iterations=PBKDF2_ITERATIONS, dklen=32)
-
-
-def _wrap_kek(kek: bytes, wrap_key: bytes, method: str = "aes_kw") -> bytes:
-    """
-    Wrap KEK with a wrapping key using AES-KW (RFC 3394)
-
-    Args:
-        kek: Key Encryption Key to wrap (32 bytes)
-        wrap_key: Wrapping key (derived from WebAuthn credential or passphrase, 32 bytes)
-        method: Wrapping method (aes_kw, xchacha20p, or xor_legacy)
-
-    Returns:
-        Wrapped KEK bytes
-    """
-    if method == "xor_legacy":
-        # Legacy XOR wrap (kept for backward compatibility with existing vaults)
-        return bytes(a ^ b for a, b in zip(kek, wrap_key[:len(kek)]))
-
-    # Use crypto_wrap utilities (AES-KW or XChaCha20-Poly1305)
-    return crypto_wrap_key(kek, wrap_key[:32], method=method)
-
-
-def _unwrap_kek(wrapped_kek: bytes, wrap_key: bytes, method: str = "aes_kw") -> bytes:
-    """
-    Unwrap KEK (inverse of wrap)
-
-    Args:
-        wrapped_kek: Wrapped KEK bytes
-        wrap_key: Wrapping key (32 bytes)
-        method: Wrapping method (aes_kw, xchacha20p, or xor_legacy)
-
-    Returns:
-        Unwrapped KEK bytes
-    """
-    if method == "xor_legacy":
-        # Legacy XOR unwrap (XOR is self-inverse)
-        return bytes(a ^ b for a, b in zip(wrapped_kek, wrap_key[:len(wrapped_kek)]))
-
-    # Use crypto_wrap utilities
-    return crypto_unwrap_key(wrapped_kek, wrap_key[:32], method=method)
-
-
-def _migrate_xor_to_aes_kw(
-    user_id: str,
-    vault_id: str,
-    kek: bytes,
-    wrap_key: bytes,
-    vault_type: str = "real"
-) -> bool:
-    """
-    Migrate vault from XOR legacy wrapping to AES-KW.
-
-    Called automatically after successful unlock when wrap_method is 'xor_legacy'.
-    This provides transparent upgrade to stronger key wrapping without user action.
-
-    Args:
-        user_id: User ID
-        vault_id: Vault ID
-        kek: Unwrapped KEK (from successful unlock)
-        wrap_key: Wrap key derived from passphrase
-        vault_type: 'real' or 'decoy' to indicate which KEK column to update
-
-    Returns:
-        True if migration successful, False otherwise
-    """
-    try:
-        # Re-wrap KEK with AES-KW
-        wrapped_kek_new = _wrap_kek(kek, wrap_key, method="aes_kw")
-        wrapped_kek_hex = wrapped_kek_new.hex()
-
-        with sqlite3.connect(str(VAULT_DB_PATH)) as conn:
-            cursor = conn.cursor()
-
-            # Update the appropriate column based on vault type
-            if vault_type == "real":
-                cursor.execute("""
-                    UPDATE vault_auth_metadata
-                    SET wrapped_kek_real = ?, wrap_method = 'aes_kw'
-                    WHERE user_id = ? AND vault_id = ?
-                """, (wrapped_kek_hex, user_id, vault_id))
-            else:
-                cursor.execute("""
-                    UPDATE vault_auth_metadata
-                    SET wrapped_kek_decoy = ?, wrap_method = 'aes_kw'
-                    WHERE user_id = ? AND vault_id = ?
-                """, (wrapped_kek_hex, user_id, vault_id))
-
-            conn.commit()
-
-        logger.info(
-            "Migrated vault from xor_legacy to aes_kw",
-            extra={
-                "user_id": user_id,
-                "vault_id": sanitize_for_log(vault_id),
-                "vault_type": vault_type
-            }
-        )
-        return True
-
-    except Exception as e:
-        logger.warning(
-            f"XOR to AES-KW migration failed (non-fatal): {e}",
-            extra={"user_id": user_id, "vault_id": sanitize_for_log(vault_id)}
-        )
-        return False
-
-
 # ===== Endpoints =====
 
 @router.post(
@@ -397,27 +155,22 @@ async def setup_biometric(
     This is a demo - client should derive KEK locally and send only wrapped KEK.
     """
     try:
-        # Extract user_id from dict (get_current_user returns Dict, not User object)
         user_id = get_user_id(current_user)
 
-        # Sanitize logs
         logger.info(
             "Biometric setup request",
-            extra={
-                "user_id": user_id,
-                "vault_id": sanitize_for_log(request.vault_id)
-            }
+            extra={"user_id": user_id, "vault_id": sanitize_for_log(request.vault_id)}
         )
 
         # Generate salt for real vault
         salt_real = secrets.token_bytes(32)
 
         # Derive KEK from passphrase
-        kek_real = _derive_kek_from_passphrase(request.passphrase, salt_real)
+        kek_real = derive_kek_from_passphrase(request.passphrase, salt_real)
 
         # Wrap KEK with WebAuthn credential ID (as wrap key) using AES-KW
         wrap_key = hashlib.sha256(request.webauthn_credential_id.encode()).digest()
-        wrapped_kek_real = _wrap_kek(kek_real, wrap_key, method="aes_kw")
+        wrapped_kek_real = wrap_kek(kek_real, wrap_key, method="aes_kw")
 
         # Store in database
         with sqlite3.connect(str(VAULT_DB_PATH)) as conn:
@@ -432,7 +185,6 @@ async def setup_biometric(
             existing = cursor.fetchone()
 
             if existing:
-                # Update existing
                 cursor.execute("""
                     UPDATE vault_auth_metadata
                     SET webauthn_credential_id = ?,
@@ -453,7 +205,6 @@ async def setup_biometric(
                     request.vault_id
                 ))
             else:
-                # Insert new
                 cursor.execute("""
                     INSERT INTO vault_auth_metadata (
                         id, user_id, vault_id,
@@ -499,9 +250,8 @@ async def setup_biometric(
 
     except HTTPException:
         raise
-
     except Exception as e:
-        logger.error(f"Biometric setup failed", exc_info=True)
+        logger.error("Biometric setup failed", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
@@ -509,12 +259,6 @@ async def setup_biometric(
                 message="Failed to setup biometric unlock"
             ).model_dump()
         )
-
-
-class ChallengeResponse(BaseModel):
-    """WebAuthn challenge for biometric verification"""
-    challenge: str = Field(..., description="Base64url-encoded challenge")
-    timeout: int = Field(default=300000, description="Challenge timeout in milliseconds")
 
 
 @router.post(
@@ -534,24 +278,18 @@ async def get_biometric_challenge(
     The challenge must be signed by the client's biometric credential
     and submitted to /unlock/biometric within 5 minutes.
     """
-    import base64
-
-    # Extract user_id from dict (get_current_user returns Dict, not User object)
     user_id = get_user_id(current_user)
 
     # Cleanup expired challenges periodically
-    _cleanup_expired_challenges()
+    cleanup_expired_challenges()
 
     # Generate new challenge
-    challenge_bytes = _generate_challenge(user_id, vault_id)
+    challenge_bytes = generate_challenge(user_id, vault_id)
     challenge_b64 = base64.urlsafe_b64encode(challenge_bytes).rstrip(b'=').decode('ascii')
 
     logger.info(
         "Generated biometric challenge",
-        extra={
-            "user_id": user_id,
-            "vault_id": sanitize_for_log(vault_id)
-        }
+        extra={"user_id": user_id, "vault_id": sanitize_for_log(vault_id)}
     )
 
     return SuccessResponse(
@@ -586,9 +324,7 @@ async def unlock_biometric(
 
     Rate limited: 5 attempts per 5 minutes
     """
-    # Extract user_id from dict (get_current_user returns Dict, not User object)
     user_id = get_user_id(current_user)
-
     client_ip = get_client_ip(request)
 
     # Rate limit check
@@ -605,10 +341,7 @@ async def unlock_biometric(
     try:
         logger.info(
             "Biometric unlock attempt",
-            extra={
-                "user_id": user_id,
-                "vault_id": sanitize_for_log(req.vault_id)
-            }
+            extra={"user_id": user_id, "vault_id": sanitize_for_log(req.vault_id)}
         )
 
         # Fetch vault auth metadata
@@ -633,11 +366,11 @@ async def unlock_biometric(
                 )
 
             credential_id, public_key, wrapped_kek_hex, salt_hex, wrap_method, stored_sign_count = row
-            wrap_method = wrap_method or "xor_legacy"  # Default for old entries
-            stored_sign_count = stored_sign_count or 0  # Default for old entries without counter
+            wrap_method = wrap_method or "xor_legacy"
+            stored_sign_count = stored_sign_count or 0
 
         # Verify WebAuthn assertion with challenge validation
-        challenge = _consume_challenge(user_id, req.vault_id)
+        challenge = consume_challenge(user_id, req.vault_id)
         if not challenge:
             _record_unlock_attempt(user_id, req.vault_id, False, 'biometric')
             raise HTTPException(
@@ -650,7 +383,6 @@ async def unlock_biometric(
 
         try:
             # Verify the WebAuthn assertion cryptographically
-            # Pass stored_sign_count to detect replay attacks (counter must always increase)
             verified = verify_assertion(
                 assert_response=req.webauthn_assertion,
                 rp_id=WEBAUTHN_RP_ID,
@@ -694,7 +426,7 @@ async def unlock_biometric(
         # Unwrap KEK using the stored wrap method
         wrap_key = hashlib.sha256(credential_id.encode()).digest()
         wrapped_kek = bytes.fromhex(wrapped_kek_hex)
-        kek_real = _unwrap_kek(wrapped_kek, wrap_key, method=wrap_method)
+        kek_real = unwrap_kek(wrapped_kek, wrap_key, method=wrap_method)
 
         # Create session
         session_id = secrets.token_urlsafe(32)
@@ -706,20 +438,19 @@ async def unlock_biometric(
         }
 
         _record_unlock_attempt(user_id, req.vault_id, True, 'biometric')
-
         logger.info("Biometric unlock successful", extra={"user_id": user_id})
 
-        # Automatic migration: Upgrade XOR legacy vaults to AES-KW on successful unlock
+        # Automatic migration: Upgrade XOR legacy vaults to AES-KW
         if wrap_method == "xor_legacy":
-            _migrate_xor_to_aes_kw(
+            migrate_xor_to_aes_kw(
                 user_id=user_id,
                 vault_id=req.vault_id,
                 kek=kek_real,
                 wrap_key=wrap_key,
-                vault_type="real"  # Biometric always unlocks real vault
+                vault_type="real",
+                vault_db_path=VAULT_DB_PATH
             )
 
-        # Do NOT disclose vault_type to maintain plausible deniability
         return SuccessResponse(
             data=UnlockResponse(
                 success=True,
@@ -731,10 +462,9 @@ async def unlock_biometric(
 
     except HTTPException:
         raise
-
     except Exception as e:
         _record_unlock_attempt(user_id, req.vault_id, False, 'biometric')
-        logger.error(f"Biometric unlock failed", exc_info=True)
+        logger.error("Biometric unlock failed", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
@@ -771,7 +501,6 @@ async def setup_dual_password(
     - Never discloses which password was used (plausible deniability)
     """
     try:
-        # Validate passwords differ
         if request.password_sensitive == request.password_unsensitive:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -781,15 +510,11 @@ async def setup_dual_password(
                 ).model_dump()
             )
 
-        # Extract user_id from dict (get_current_user returns Dict, not User object)
         user_id = get_user_id(current_user)
 
         logger.info(
             "Dual-password setup request",
-            extra={
-                "user_id": user_id,
-                "vault_id": sanitize_for_log(request.vault_id)
-            }
+            extra={"user_id": user_id, "vault_id": sanitize_for_log(request.vault_id)}
         )
 
         # Generate salts
@@ -797,21 +522,20 @@ async def setup_dual_password(
         salt_unsensitive = secrets.token_bytes(32)
 
         # Derive KEKs
-        kek_sensitive = _derive_kek_from_passphrase(request.password_sensitive, salt_sensitive)
-        kek_unsensitive = _derive_kek_from_passphrase(request.password_unsensitive, salt_unsensitive)
+        kek_sensitive = derive_kek_from_passphrase(request.password_sensitive, salt_sensitive)
+        kek_unsensitive = derive_kek_from_passphrase(request.password_unsensitive, salt_unsensitive)
 
         # Wrap KEKs using AES-KW with password-derived wrap keys
         wrap_key_sensitive = hashlib.sha256(request.password_sensitive.encode()).digest()
         wrap_key_unsensitive = hashlib.sha256(request.password_unsensitive.encode()).digest()
 
-        wrapped_kek_sensitive = _wrap_kek(kek_sensitive, wrap_key_sensitive, method="aes_kw")
-        wrapped_kek_unsensitive = _wrap_kek(kek_unsensitive, wrap_key_unsensitive, method="aes_kw")
+        wrapped_kek_sensitive = wrap_kek(kek_sensitive, wrap_key_sensitive, method="aes_kw")
+        wrapped_kek_unsensitive = wrap_kek(kek_unsensitive, wrap_key_unsensitive, method="aes_kw")
 
         # Store in database
         with sqlite3.connect(str(VAULT_DB_PATH)) as conn:
             cursor = conn.cursor()
 
-            # Check if metadata exists
             cursor.execute("""
                 SELECT id FROM vault_auth_metadata
                 WHERE user_id = ? AND vault_id = ?
@@ -820,7 +544,6 @@ async def setup_dual_password(
             existing = cursor.fetchone()
 
             if existing:
-                # Update
                 cursor.execute("""
                     UPDATE vault_auth_metadata
                     SET salt_real = ?,
@@ -842,7 +565,6 @@ async def setup_dual_password(
                     request.vault_id
                 ))
             else:
-                # Insert
                 cursor.execute("""
                     INSERT INTO vault_auth_metadata (
                         id, user_id, vault_id,
@@ -889,9 +611,8 @@ async def setup_dual_password(
 
     except HTTPException:
         raise
-
     except Exception as e:
-        logger.error(f"Dual-password setup failed", exc_info=True)
+        logger.error("Dual-password setup failed", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
@@ -933,12 +654,9 @@ async def unlock_passphrase(
 
     Rate limited: 5 attempts per 5 minutes
     """
-    # Extract user_id from dict (get_current_user returns Dict, not User object)
     user_id = get_user_id(current_user)
-
     client_ip = get_client_ip(request)
 
-    # Rate limit check
     if not _check_rate_limit(user_id, vault_id, client_ip):
         _record_unlock_attempt(user_id, vault_id, False, 'passphrase')
         raise HTTPException(
@@ -952,10 +670,7 @@ async def unlock_passphrase(
     try:
         logger.info(
             "Passphrase unlock attempt",
-            extra={
-                "user_id": user_id,
-                "vault_id": sanitize_for_log(vault_id)
-            }
+            extra={"user_id": user_id, "vault_id": sanitize_for_log(vault_id)}
         )
 
         # Fetch vault auth metadata
@@ -980,7 +695,7 @@ async def unlock_passphrase(
                 )
 
             salt_real_hex, wrapped_kek_real_hex, salt_decoy_hex, wrapped_kek_decoy_hex, decoy_enabled, wrap_method = row
-            wrap_method = wrap_method or "xor_legacy"  # Default for old entries
+            wrap_method = wrap_method or "xor_legacy"
 
         # Derive KEK from passphrase
         salt_real = bytes.fromhex(salt_real_hex) if salt_real_hex else None
@@ -996,10 +711,10 @@ async def unlock_passphrase(
             )
 
         # Try real vault first
-        kek_attempt = _derive_kek_from_passphrase(passphrase, salt_real)
+        kek_attempt = derive_kek_from_passphrase(passphrase, salt_real)
         wrap_key = hashlib.sha256(passphrase.encode()).digest()
         wrapped_kek_real = bytes.fromhex(wrapped_kek_real_hex)
-        kek_real = _unwrap_kek(wrapped_kek_real, wrap_key, method=wrap_method)
+        kek_real = unwrap_kek(wrapped_kek_real, wrap_key, method=wrap_method)
 
         vault_type = 'real'
         kek = kek_real
@@ -1007,13 +722,11 @@ async def unlock_passphrase(
         # If decoy enabled, check if passphrase matches decoy
         if decoy_enabled and salt_decoy_hex and wrapped_kek_decoy_hex:
             salt_decoy = bytes.fromhex(salt_decoy_hex)
-            kek_attempt_decoy = _derive_kek_from_passphrase(passphrase, salt_decoy)
+            kek_attempt_decoy = derive_kek_from_passphrase(passphrase, salt_decoy)
             wrap_key_decoy = hashlib.sha256(passphrase.encode()).digest()
             wrapped_kek_decoy = bytes.fromhex(wrapped_kek_decoy_hex)
-            kek_decoy = _unwrap_kek(wrapped_kek_decoy, wrap_key_decoy, method=wrap_method)
+            kek_decoy = unwrap_kek(wrapped_kek_decoy, wrap_key_decoy, method=wrap_method)
 
-            # Check which KEK matches (constant-time comparison to avoid timing attacks)
-            # In production, verify by attempting decryption of a known-encrypted value
             if kek_attempt_decoy == kek_decoy:
                 vault_type = 'decoy'
                 kek = kek_decoy
@@ -1028,21 +741,19 @@ async def unlock_passphrase(
         }
 
         _record_unlock_attempt(user_id, vault_id, True, 'passphrase')
-
         logger.info("Passphrase unlock successful", extra={"user_id": user_id})
 
-        # Automatic migration: Upgrade XOR legacy vaults to AES-KW on successful unlock
-        # This is transparent to the user and provides stronger key protection
+        # Automatic migration: Upgrade XOR legacy vaults to AES-KW
         if wrap_method == "xor_legacy":
-            _migrate_xor_to_aes_kw(
+            migrate_xor_to_aes_kw(
                 user_id=user_id,
                 vault_id=vault_id,
                 kek=kek,
                 wrap_key=wrap_key,
-                vault_type=vault_type
+                vault_type=vault_type,
+                vault_db_path=VAULT_DB_PATH
             )
 
-        # Do NOT disclose vault_type
         return SuccessResponse(
             data=UnlockResponse(
                 success=True,
@@ -1054,10 +765,9 @@ async def unlock_passphrase(
 
     except HTTPException:
         raise
-
     except Exception as e:
         _record_unlock_attempt(user_id, vault_id, False, 'passphrase')
-        logger.error(f"Passphrase unlock failed", exc_info=True)
+        logger.error("Passphrase unlock failed", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
@@ -1078,16 +788,8 @@ async def get_session_status(
     vault_id: str = Query(..., description="Vault UUID"),
     current_user: User = Depends(get_current_user)
 ) -> SuccessResponse[Dict]:
-    """
-    Check if vault is unlocked in current session
-
-    Returns:
-    - unlocked: bool
-    - session_id: str (if unlocked)
-    """
-    # Extract user_id from dict (get_current_user returns Dict, not User object)
+    """Check if vault is unlocked in current session"""
     user_id = get_user_id(current_user)
-
     session_key = (user_id, vault_id)
 
     if session_key in vault_sessions:
@@ -1096,10 +798,7 @@ async def get_session_status(
         # Check if session is still valid (< 1 hour old)
         if time.time() - session['unlocked_at'] < 3600:
             return SuccessResponse(
-                data={
-                    "unlocked": True,
-                    "session_id": session['session_id']
-                },
+                data={"unlocked": True, "session_id": session['session_id']},
                 message="Vault is unlocked"
             )
         else:
@@ -1107,10 +806,7 @@ async def get_session_status(
             del vault_sessions[session_key]
 
     return SuccessResponse(
-        data={
-            "unlocked": False,
-            "session_id": None
-        },
+        data={"unlocked": False, "session_id": None},
         message="Vault is locked"
     )
 
@@ -1126,12 +822,8 @@ async def lock_vault(
     vault_id: str = Query(..., description="Vault UUID"),
     current_user: User = Depends(get_current_user)
 ) -> SuccessResponse[Dict]:
-    """
-    Lock vault (clear session)
-    """
-    # Extract user_id from dict (get_current_user returns Dict, not User object)
+    """Lock vault (clear session)"""
     user_id = get_user_id(current_user)
-
     session_key = (user_id, vault_id)
 
     if session_key in vault_sessions:

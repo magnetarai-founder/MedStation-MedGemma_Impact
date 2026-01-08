@@ -263,7 +263,7 @@ class TestKeyWrapping:
 
     def test_wrap_kek_aes_kw(self):
         """Test AES-KW wrapping calls crypto_wrap"""
-        with patch('api.routes.vault_auth.crypto_wrap_key') as mock_wrap:
+        with patch('api.routes.vault_auth_utils.crypto.crypto_wrap_key') as mock_wrap:
             mock_wrap.return_value = b'wrapped_data'
 
             from api.routes.vault_auth import _wrap_kek
@@ -277,7 +277,7 @@ class TestKeyWrapping:
 
     def test_unwrap_kek_aes_kw(self):
         """Test AES-KW unwrapping calls crypto_wrap"""
-        with patch('api.routes.vault_auth.crypto_unwrap_key') as mock_unwrap:
+        with patch('api.routes.vault_auth_utils.crypto.crypto_unwrap_key') as mock_unwrap:
             mock_unwrap.return_value = b'unwrapped_data'
 
             from api.routes.vault_auth import _unwrap_kek
@@ -404,7 +404,7 @@ class TestMigration:
             conn.close()
 
             # Mock crypto_wrap to avoid actual crypto operations
-            with patch('api.routes.vault_auth.crypto_wrap_key') as mock_wrap:
+            with patch('api.routes.vault_auth_utils.crypto.crypto_wrap_key') as mock_wrap:
                 mock_wrap.return_value = b'\x00' * 40  # AES-KW output
 
                 from api.routes.vault_auth import _migrate_xor_to_aes_kw
@@ -412,7 +412,8 @@ class TestMigration:
                 kek = secrets.token_bytes(32)
                 wrap_key_bytes = secrets.token_bytes(32)
 
-                result = _migrate_xor_to_aes_kw("user1", "vault1", kek, wrap_key_bytes, "real")
+                # Pass vault_db_path explicitly (extracted function requires it)
+                result = _migrate_xor_to_aes_kw("user1", "vault1", kek, wrap_key_bytes, "real", db_path)
 
                 assert result is True
 

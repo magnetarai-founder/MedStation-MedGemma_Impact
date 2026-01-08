@@ -140,10 +140,10 @@ class TestCreateShareLink:
             "expires_at": "2025-01-02T00:00:00Z"
         }
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service), \
-             patch('api.routes.vault.sharing.rate_limiter') as mock_limiter, \
-             patch('api.routes.vault.sharing.get_client_ip', return_value="127.0.0.1"), \
-             patch('api.routes.vault.sharing.audit_logger'):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service), \
+             patch('api.routes.vault.sharing.share_links.rate_limiter') as mock_limiter, \
+             patch('api.routes.vault.sharing.share_links.get_client_ip', return_value="127.0.0.1"), \
+             patch('api.routes.vault.sharing.share_links.audit_logger'):
             mock_limiter.check_rate_limit.return_value = True
 
             result = await create_share_link_endpoint(
@@ -169,10 +169,10 @@ class TestCreateShareLink:
         mock_service = MagicMock()
         mock_service.create_share_link.return_value = {"id": "share_123"}
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service), \
-             patch('api.routes.vault.sharing.rate_limiter') as mock_limiter, \
-             patch('api.routes.vault.sharing.get_client_ip', return_value="127.0.0.1"), \
-             patch('api.routes.vault.sharing.audit_logger'):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service), \
+             patch('api.routes.vault.sharing.share_links.rate_limiter') as mock_limiter, \
+             patch('api.routes.vault.sharing.share_links.get_client_ip', return_value="127.0.0.1"), \
+             patch('api.routes.vault.sharing.share_links.audit_logger'):
             mock_limiter.check_rate_limit.return_value = True
 
             await create_share_link_endpoint(
@@ -196,8 +196,8 @@ class TestCreateShareLink:
         """Test rate limiting on share link creation"""
         from api.routes.vault.sharing import create_share_link_endpoint
 
-        with patch('api.routes.vault.sharing.rate_limiter') as mock_limiter, \
-             patch('api.routes.vault.sharing.get_client_ip', return_value="127.0.0.1"):
+        with patch('api.routes.vault.sharing.share_links.rate_limiter') as mock_limiter, \
+             patch('api.routes.vault.sharing.share_links.get_client_ip', return_value="127.0.0.1"):
             mock_limiter.check_rate_limit.return_value = False
 
             with pytest.raises(HTTPException) as exc:
@@ -232,9 +232,9 @@ class TestGetFileShares:
             {"id": "share_2", "token": "token2"}
         ]
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service), \
-             patch('api.routes.vault.sharing.rate_limiter') as mock_limiter, \
-             patch('api.routes.vault.sharing.get_client_ip', return_value="127.0.0.1"):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service), \
+             patch('api.routes.vault.sharing.share_links.rate_limiter') as mock_limiter, \
+             patch('api.routes.vault.sharing.share_links.get_client_ip', return_value="127.0.0.1"):
             mock_limiter.check_rate_limit.return_value = True
 
             result = await get_file_shares_endpoint(
@@ -255,9 +255,9 @@ class TestGetFileShares:
         mock_service = MagicMock()
         mock_service.get_file_shares.return_value = []
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service), \
-             patch('api.routes.vault.sharing.rate_limiter') as mock_limiter, \
-             patch('api.routes.vault.sharing.get_client_ip', return_value="127.0.0.1"):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service), \
+             patch('api.routes.vault.sharing.share_links.rate_limiter') as mock_limiter, \
+             patch('api.routes.vault.sharing.share_links.get_client_ip', return_value="127.0.0.1"):
             mock_limiter.check_rate_limit.return_value = True
 
             result = await get_file_shares_endpoint(
@@ -283,10 +283,10 @@ class TestRevokeShareLink:
         mock_service = MagicMock()
         mock_service.revoke_share_link.return_value = True
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service), \
-             patch('api.routes.vault.sharing.rate_limiter') as mock_limiter, \
-             patch('api.routes.vault.sharing.get_client_ip', return_value="127.0.0.1"), \
-             patch('api.routes.vault.sharing.audit_logger'):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service), \
+             patch('api.routes.vault.sharing.share_links.rate_limiter') as mock_limiter, \
+             patch('api.routes.vault.sharing.share_links.get_client_ip', return_value="127.0.0.1"), \
+             patch('api.routes.vault.sharing.share_links.audit_logger'):
             mock_limiter.check_rate_limit.return_value = True
 
             result = await revoke_share_link_endpoint(
@@ -306,9 +306,9 @@ class TestRevokeShareLink:
         mock_service = MagicMock()
         mock_service.revoke_share_link.return_value = False
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service), \
-             patch('api.routes.vault.sharing.rate_limiter') as mock_limiter, \
-             patch('api.routes.vault.sharing.get_client_ip', return_value="127.0.0.1"):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service), \
+             patch('api.routes.vault.sharing.share_links.rate_limiter') as mock_limiter, \
+             patch('api.routes.vault.sharing.share_links.get_client_ip', return_value="127.0.0.1"):
             mock_limiter.check_rate_limit.return_value = True
 
             with pytest.raises(HTTPException) as exc:
@@ -339,9 +339,9 @@ class TestAccessShareLink:
             "expires_at": "2025-12-31T00:00:00Z"
         }
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service), \
-             patch('api.routes.vault.sharing.rate_limiter') as mock_limiter, \
-             patch('api.routes.vault.sharing.get_client_ip', return_value="127.0.0.1"):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service), \
+             patch('api.routes.vault.sharing.share_links.rate_limiter') as mock_limiter, \
+             patch('api.routes.vault.sharing.share_links.get_client_ip', return_value="127.0.0.1"):
             mock_limiter.check_rate_limit.return_value = True
 
             result = await access_share_link_endpoint(
@@ -363,9 +363,9 @@ class TestAccessShareLink:
             "requires_password": True
         }
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service), \
-             patch('api.routes.vault.sharing.rate_limiter') as mock_limiter, \
-             patch('api.routes.vault.sharing.get_client_ip', return_value="127.0.0.1"):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service), \
+             patch('api.routes.vault.sharing.share_links.rate_limiter') as mock_limiter, \
+             patch('api.routes.vault.sharing.share_links.get_client_ip', return_value="127.0.0.1"):
             mock_limiter.check_rate_limit.return_value = True
 
             with pytest.raises(HTTPException) as exc:
@@ -390,9 +390,9 @@ class TestAccessShareLink:
         }
         mock_service.verify_share_password.return_value = False
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service), \
-             patch('api.routes.vault.sharing.rate_limiter') as mock_limiter, \
-             patch('api.routes.vault.sharing.get_client_ip', return_value="127.0.0.1"):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service), \
+             patch('api.routes.vault.sharing.share_links.rate_limiter') as mock_limiter, \
+             patch('api.routes.vault.sharing.share_links.get_client_ip', return_value="127.0.0.1"):
             mock_limiter.check_rate_limit.return_value = True
 
             with pytest.raises(HTTPException) as exc:
@@ -413,9 +413,9 @@ class TestAccessShareLink:
         mock_service = MagicMock()
         mock_service.get_share_link.side_effect = ValueError("Share link expired")
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service), \
-             patch('api.routes.vault.sharing.rate_limiter') as mock_limiter, \
-             patch('api.routes.vault.sharing.get_client_ip', return_value="127.0.0.1"):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service), \
+             patch('api.routes.vault.sharing.share_links.rate_limiter') as mock_limiter, \
+             patch('api.routes.vault.sharing.share_links.get_client_ip', return_value="127.0.0.1"):
             mock_limiter.check_rate_limit.return_value = True
 
             with pytest.raises(HTTPException) as exc:
@@ -436,9 +436,9 @@ class TestAccessShareLink:
         mock_service = MagicMock()
         mock_service.get_share_link.side_effect = ValueError("Max download limit reached")
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service), \
-             patch('api.routes.vault.sharing.rate_limiter') as mock_limiter, \
-             patch('api.routes.vault.sharing.get_client_ip', return_value="127.0.0.1"):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service), \
+             patch('api.routes.vault.sharing.share_links.rate_limiter') as mock_limiter, \
+             patch('api.routes.vault.sharing.share_links.get_client_ip', return_value="127.0.0.1"):
             mock_limiter.check_rate_limit.return_value = True
 
             with pytest.raises(HTTPException) as exc:
@@ -456,8 +456,8 @@ class TestAccessShareLink:
         """Test per-minute rate limiting"""
         from api.routes.vault.sharing import access_share_link_endpoint
 
-        with patch('api.routes.vault.sharing.rate_limiter') as mock_limiter, \
-             patch('api.routes.vault.sharing.get_client_ip', return_value="127.0.0.1"):
+        with patch('api.routes.vault.sharing.share_links.rate_limiter') as mock_limiter, \
+             patch('api.routes.vault.sharing.share_links.get_client_ip', return_value="127.0.0.1"):
             mock_limiter.check_rate_limit.return_value = False
 
             with pytest.raises(HTTPException) as exc:
@@ -484,7 +484,7 @@ class TestUserRegistration:
         mock_service.db_path = temp_db
         mock_service._get_encryption_key.return_value = (b"key" * 8, b"salt" * 8)
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service):
             result = await register_user(
                 username="newuser",
                 email="newuser@example.com",
@@ -504,7 +504,7 @@ class TestUserRegistration:
         mock_service.db_path = temp_db
         mock_service._get_encryption_key.return_value = (b"key" * 8, b"salt" * 8)
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service):
             # Register first user
             await register_user(
                 username="duplicate",
@@ -545,7 +545,7 @@ class TestUserLogin:
 
         mock_service._get_encryption_key.side_effect = get_key
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service):
             # Register user
             await register_user(
                 username="logintest",
@@ -584,7 +584,7 @@ class TestUserLogin:
 
         mock_service._get_encryption_key.side_effect = get_key
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service):
             # Register user
             await register_user(
                 username="wrongpass",
@@ -609,7 +609,7 @@ class TestUserLogin:
         mock_service = MagicMock()
         mock_service.db_path = temp_db
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service):
             with pytest.raises(HTTPException) as exc:
                 await login_user(
                     username="nonexistent",
@@ -632,7 +632,7 @@ class TestGrantPermission:
         mock_service = MagicMock()
         mock_service.db_path = temp_db
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service):
             result = await grant_file_permission(
                 file_id="file_123",
                 user_id="user_456",
@@ -652,7 +652,7 @@ class TestGrantPermission:
         mock_service = MagicMock()
         mock_service.db_path = temp_db
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service):
             with pytest.raises(HTTPException) as exc:
                 await grant_file_permission(
                     file_id="file_123",
@@ -672,7 +672,7 @@ class TestGrantPermission:
         mock_service = MagicMock()
         mock_service.db_path = temp_db
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service):
             for perm in ['read', 'write', 'delete', 'share']:
                 result = await grant_file_permission(
                     file_id=f"file_{perm}",
@@ -698,7 +698,7 @@ class TestCheckPermission:
         mock_service = MagicMock()
         mock_service.db_path = temp_db
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service):
             # Grant permission
             await grant_file_permission(
                 file_id="file_check",
@@ -725,7 +725,7 @@ class TestCheckPermission:
         mock_service = MagicMock()
         mock_service.db_path = temp_db
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service):
             result = await check_file_permission(
                 file_id="file_no_perm",
                 user_id="user_no_perm",
@@ -758,7 +758,7 @@ class TestGetFilePermissions:
         conn.commit()
         conn.close()
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service):
             # Grant permission
             await grant_file_permission(
                 file_id="file_multi",
@@ -788,7 +788,7 @@ class TestRevokePermission:
         mock_service = MagicMock()
         mock_service.db_path = temp_db
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service):
             # Grant permission
             grant_result = await grant_file_permission(
                 file_id="file_revoke",
@@ -813,7 +813,7 @@ class TestRevokePermission:
         mock_service = MagicMock()
         mock_service.db_path = temp_db
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service):
             with pytest.raises(HTTPException) as exc:
                 await revoke_permission(acl_id="nonexistent_acl")
 
@@ -833,7 +833,7 @@ class TestSharingInvitations:
         mock_service = MagicMock()
         mock_service.db_path = temp_db
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service):
             result = await create_sharing_invitation(
                 resource_type="file",
                 resource_id="file_123",
@@ -856,7 +856,7 @@ class TestSharingInvitations:
         mock_service = MagicMock()
         mock_service.db_path = temp_db
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service):
             with pytest.raises(HTTPException) as exc:
                 await create_sharing_invitation(
                     resource_type="invalid",
@@ -877,7 +877,7 @@ class TestSharingInvitations:
         mock_service = MagicMock()
         mock_service.db_path = temp_db
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service):
             with pytest.raises(HTTPException) as exc:
                 await create_sharing_invitation(
                     resource_type="file",
@@ -904,7 +904,7 @@ class TestAcceptInvitation:
         mock_service = MagicMock()
         mock_service.db_path = temp_db
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service):
             # Create invitation
             create_result = await create_sharing_invitation(
                 resource_type="file",
@@ -934,7 +934,7 @@ class TestAcceptInvitation:
         mock_service = MagicMock()
         mock_service.db_path = temp_db
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service):
             with pytest.raises(HTTPException) as exc:
                 await accept_sharing_invitation(
                     invitation_token="nonexistent_token",
@@ -957,7 +957,7 @@ class TestDeclineInvitation:
         mock_service = MagicMock()
         mock_service.db_path = temp_db
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service):
             # Create invitation
             create_result = await create_sharing_invitation(
                 resource_type="file",
@@ -983,7 +983,7 @@ class TestDeclineInvitation:
         mock_service = MagicMock()
         mock_service.db_path = temp_db
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service):
             with pytest.raises(HTTPException) as exc:
                 await decline_sharing_invitation(invitation_token="nonexistent")
 
@@ -1013,7 +1013,7 @@ class TestGetMyInvitations:
         conn.commit()
         conn.close()
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service):
             # Create invitation
             await create_sharing_invitation(
                 resource_type="file",
@@ -1038,7 +1038,7 @@ class TestGetMyInvitations:
         mock_service = MagicMock()
         mock_service.db_path = temp_db
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service):
             result = await get_my_invitations(user_email="noinvites@example.com")
 
             assert result.data["invitations"] == []
@@ -1087,7 +1087,7 @@ class TestEdgeCases:
         mock_service = MagicMock()
         mock_service.db_path = temp_db
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service):
             result = await create_sharing_invitation(
                 resource_type="file",
                 resource_id="file_unicode",
@@ -1107,10 +1107,10 @@ class TestEdgeCases:
         mock_service = MagicMock()
         mock_service.create_share_link.return_value = {"id": "share_full"}
 
-        with patch('api.routes.vault.sharing.get_vault_service', return_value=mock_service), \
-             patch('api.routes.vault.sharing.rate_limiter') as mock_limiter, \
-             patch('api.routes.vault.sharing.get_client_ip', return_value="127.0.0.1"), \
-             patch('api.routes.vault.sharing.audit_logger'):
+        with patch('api.routes.vault.sharing.share_links.get_vault_service', return_value=mock_service), \
+             patch('api.routes.vault.sharing.share_links.rate_limiter') as mock_limiter, \
+             patch('api.routes.vault.sharing.share_links.get_client_ip', return_value="127.0.0.1"), \
+             patch('api.routes.vault.sharing.share_links.audit_logger'):
             mock_limiter.check_rate_limit.return_value = True
 
             result = await create_share_link_endpoint(
