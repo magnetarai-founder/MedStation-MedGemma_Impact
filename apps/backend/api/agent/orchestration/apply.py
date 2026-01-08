@@ -31,6 +31,11 @@ except ImportError:
     from models import ApplyRequest, FilePatch
     from config import get_agent_config
 
+try:
+    from api.utils import get_user_id
+except ImportError:
+    from utils import get_user_id
+
 logger = logging.getLogger(__name__)
 
 
@@ -190,13 +195,13 @@ def apply_plan_logic(
             workspace_session_id = body.session_id
             if not workspace_session_id and body.repo_root:
                 workspace_session_id = ws_mgr.get_or_create_for_workspace(
-                    user_id=current_user['user_id'],
+                    user_id=get_user_id(current_user),
                     workspace_root=body.repo_root
                 )
 
             if workspace_session_id:
                 context_mgr.add_entry(
-                    user_id=current_user['user_id'],
+                    user_id=get_user_id(current_user),
                     session_id=workspace_session_id,
                     source='agent',
                     entry_type='patch',
@@ -225,7 +230,7 @@ def apply_plan_logic(
             # Build agent event
             agent_event = {
                 "type": "agent.apply.success",
-                "user_id": current_user['user_id'],
+                "user_id": get_user_id(current_user),
                 "repo_root": body.repo_root or str(repo_root),
                 "files": apply_result.get('files', []),
                 "patch_id": patch_id,
@@ -239,7 +244,7 @@ def apply_plan_logic(
             handle_agent_event(
                 event=agent_event,
                 storage=workflow_storage,
-                user_id=current_user['user_id'],
+                user_id=get_user_id(current_user),
             )
             logger.debug(f"🔔 Fired agent event: agent.apply.success")
 

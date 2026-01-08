@@ -8,6 +8,7 @@ Follows MagnetarStudio API standards (see API_STANDARDS.md).
 
 from fastapi import APIRouter, HTTPException, Request, status
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.utils import get_user_id
 import logging
 
 logger = logging.getLogger(__name__)
@@ -33,7 +34,7 @@ async def get_members_endpoint(request: Request, team_id: str) -> SuccessRespons
 
     # Allow founder regardless of membership
     if user.get("role") != "founder_rights":
-        require_team_admin(team_id, user["user_id"])
+        require_team_admin(team_id, get_user_id(user))
 
     try:
         tm = get_team_manager()
@@ -71,7 +72,7 @@ async def change_role_endpoint(request: Request, team_id: str, user_id: str) -> 
     require_perm("team.use")(lambda: None)()
 
     if current_user.get("role") != "founder_rights":
-        caller_role = is_team_member(team_id, current_user["user_id"])
+        caller_role = is_team_member(team_id, get_user_id(current_user))
         if caller_role != "super_admin":
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -92,7 +93,7 @@ async def change_role_endpoint(request: Request, team_id: str, user_id: str) -> 
 
         # Audit log
         audit_log_sync(
-            user_id=current_user["user_id"],
+            user_id=get_user_id(current_user),
             action="team.member.role.changed",
             resource_type="team",
             resource_id=team_id,
@@ -131,7 +132,7 @@ async def remove_member_endpoint(request: Request, team_id: str, user_id: str) -
     require_perm("team.use")(lambda: None)()
 
     if current_user.get("role") != "founder_rights":
-        caller_role = is_team_member(team_id, current_user["user_id"])
+        caller_role = is_team_member(team_id, get_user_id(current_user))
         if caller_role != "super_admin":
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -150,7 +151,7 @@ async def remove_member_endpoint(request: Request, team_id: str, user_id: str) -
 
         # Audit log
         audit_log_sync(
-            user_id=current_user["user_id"],
+            user_id=get_user_id(current_user),
             action="team.member.removed",
             resource_type="team",
             resource_id=team_id,

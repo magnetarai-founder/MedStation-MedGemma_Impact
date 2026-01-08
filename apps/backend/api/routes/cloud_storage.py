@@ -42,7 +42,7 @@ from api.auth_middleware import get_current_user
 from api.config_paths import get_config_paths
 from api.config import is_airgap_mode, get_settings
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
-from api.utils import file_lock
+from api.utils import file_lock, get_user_id
 
 logger = logging.getLogger(__name__)
 
@@ -263,7 +263,7 @@ async def init_upload(
 
     metadata = {
         "upload_id": upload_id,
-        "user_id": current_user["user_id"],
+        "user_id": get_user_id(current_user),
         "filename": request.filename,
         "size_bytes": request.size_bytes,
         "content_type": request.content_type,
@@ -313,7 +313,7 @@ async def upload_chunk(
         )
 
     # Verify ownership
-    if metadata["user_id"] != current_user["user_id"]:
+    if metadata["user_id"] != get_user_id(current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": "forbidden", "message": "Not authorized for this upload"}
@@ -411,7 +411,7 @@ async def commit_upload(
         )
 
     # Verify ownership
-    if metadata["user_id"] != current_user["user_id"]:
+    if metadata["user_id"] != get_user_id(current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": "forbidden", "message": "Not authorized for this upload"}
@@ -589,7 +589,7 @@ async def get_upload_status(
         )
 
     # Verify ownership
-    if metadata["user_id"] != current_user["user_id"]:
+    if metadata["user_id"] != get_user_id(current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": "forbidden", "message": "Not authorized for this upload"}
@@ -638,7 +638,7 @@ async def init_download(
         file_metadata = json.load(f)
 
     # Verify ownership (or implement sharing logic)
-    if file_metadata["user_id"] != current_user["user_id"]:
+    if file_metadata["user_id"] != get_user_id(current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": "forbidden", "message": "Not authorized to access this file"}
@@ -681,7 +681,7 @@ async def init_download(
     # Store download token with expiry
     download_meta = {
         "file_id": request.file_id,
-        "user_id": current_user["user_id"],
+        "user_id": get_user_id(current_user),
         "expires_at": expires_at.isoformat()
     }
     download_token_path = cloud_files_dir / f"download_{download_token}.json"
@@ -793,7 +793,7 @@ async def list_files(
             if not meta_file.name.startswith("download_"):
                 with open(meta_file, 'r') as f:
                     metadata = json.load(f)
-                    if metadata.get("user_id") == current_user["user_id"]:
+                    if metadata.get("user_id") == get_user_id(current_user):
                         files.append({
                             "file_id": metadata["file_id"],
                             "filename": metadata["filename"],
@@ -833,7 +833,7 @@ async def delete_file(
         file_metadata = json.load(f)
 
     # Verify ownership
-    if file_metadata["user_id"] != current_user["user_id"]:
+    if file_metadata["user_id"] != get_user_id(current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": "forbidden", "message": "Not authorized to delete this file"}

@@ -38,10 +38,12 @@ try:
     from permission_engine import require_perm, require_perm_team
     from auth_middleware import get_current_user
     from api.services.team import is_team_member
+    from utils import get_user_id
 except ImportError:
     from api.permission_engine import require_perm, require_perm_team
     from api.auth_middleware import get_current_user
     from api.services.team import is_team_member
+    from api.utils import get_user_id
 
 logger = logging.getLogger(__name__)
 
@@ -301,7 +303,7 @@ async def create_document(
     - If team_id is None, creates a personal document
     - Checks team membership before allowing team document creation
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     # Phase 3: Check team membership if creating team document
     if team_id:
@@ -378,7 +380,7 @@ async def list_documents(
     - If team_id is provided, lists team documents (if member)
     - If team_id is None, lists personal documents
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     # Phase 3: Check team membership if listing team documents
     if team_id:
@@ -460,7 +462,7 @@ async def get_document(
     - For personal documents: user must own it
     - For team documents: user must be team member
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     conn = get_db()
     cursor = conn.cursor()
@@ -524,7 +526,7 @@ async def update_document(
     - For personal documents: user must own it
     - For team documents: user must be team member
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     # Phase 3: Check team membership if updating team document
     if team_id:
@@ -640,7 +642,7 @@ async def delete_document(
     - For personal documents: user must own it
     - For team documents: user must be team member (permissions checked via decorator)
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     # Phase 3: Check team membership if deleting team document
     if team_id:
@@ -697,7 +699,7 @@ async def sync_documents(
     conn = get_db()
     cursor = conn.cursor()
     now = datetime.now(UTC).isoformat()
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
     conflicts = []
     updated_documents = []
 

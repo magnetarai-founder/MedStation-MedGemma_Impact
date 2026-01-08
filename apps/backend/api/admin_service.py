@@ -84,10 +84,10 @@ async def list_all_users(request: Request, current_user: dict = Depends(require_
     """
     # Audit log
     audit_logger.log(
-        user_id=current_user["user_id"],
+        user_id=get_user_id(current_user),
         action=AuditAction.ADMIN_LIST_USERS,
         ip_address=request.client.host if request.client else None,
-        details={"admin_username": current_user["username"]}
+        details={"admin_username": get_username(current_user)}
     )
 
     result = await admin_support.list_all_users()
@@ -109,12 +109,12 @@ async def get_user_details(
     """
     # Audit log
     audit_logger.log(
-        user_id=current_user["user_id"],
+        user_id=get_user_id(current_user),
         action=AuditAction.ADMIN_VIEW_USER,
         resource="user",
         resource_id=target_user_id,
         ip_address=request.client.host if request.client else None,
-        details={"admin_username": current_user["username"]}
+        details={"admin_username": get_username(current_user)}
     )
 
     result = await admin_support.get_user_details(target_user_id)
@@ -140,12 +140,12 @@ async def get_user_chats(
     """
     # Audit log
     audit_logger.log(
-        user_id=current_user["user_id"],
+        user_id=get_user_id(current_user),
         action=AuditAction.ADMIN_VIEW_USER_CHATS,
         resource="chat",
         resource_id=target_user_id,
         ip_address=request.client.host if request.client else None,
-        details={"admin_username": current_user["username"]}
+        details={"admin_username": get_username(current_user)}
     )
 
     result = await admin_support.get_user_chats(target_user_id)
@@ -166,10 +166,10 @@ async def list_all_chats(request: Request, current_user: dict = Depends(require_
     """
     # Audit log
     audit_logger.log(
-        user_id=current_user["user_id"],
+        user_id=get_user_id(current_user),
         action=AuditAction.ADMIN_LIST_CHATS,
         ip_address=request.client.host if request.client else None,
-        details={"admin_username": current_user["username"]}
+        details={"admin_username": get_username(current_user)}
     )
 
     result = await admin_support.list_all_chats()
@@ -202,14 +202,14 @@ async def reset_user_password(
 
     # Audit log
     audit_logger.log(
-        user_id=current_user["user_id"],
+        user_id=get_user_id(current_user),
         action=AuditAction.PASSWORD_RESET,
         resource="user",
         resource_id=target_user_id,
         ip_address=request.client.host if request.client else None,
         details={
             "target_username": result["username"],
-            "reset_by": current_user["username"]
+            "reset_by": get_username(current_user)
         }
     )
 
@@ -235,14 +235,14 @@ async def unlock_user_account(
 
     # Audit log
     audit_logger.log(
-        user_id=current_user["user_id"],
+        user_id=get_user_id(current_user),
         action=AuditAction.ACCOUNT_UNLOCKED,
         resource="user",
         resource_id=target_user_id,
         ip_address=request.client.host if request.client else None,
         details={
             "target_username": result["username"],
-            "unlocked_by": current_user["username"]
+            "unlocked_by": get_username(current_user)
         }
     )
 
@@ -278,7 +278,7 @@ async def get_user_vault_status(
 
     # Audit log
     audit_logger.log(
-        user_id=current_user["user_id"],
+        user_id=get_user_id(current_user),
         action="admin.vault.status_viewed",
         resource="vault",
         resource_id=target_user_id,
@@ -333,10 +333,10 @@ async def get_device_overview(
     # Audit log (best-effort)
     try:
         audit_logger.log(
-            user_id=current_user["user_id"],
+            user_id=get_user_id(current_user),
             action="admin.device_overview_viewed",
             ip_address=request.client.host if request.client else None,
-            details={"admin_username": current_user["username"]}
+            details={"admin_username": get_username(current_user)}
         )
     except Exception as e:
         logger.error(f"Failed to write audit log for device overview: {e}")
@@ -371,12 +371,12 @@ async def get_user_workflows(
     """
     # Audit log
     audit_logger.log(
-        user_id=current_user["user_id"],
+        user_id=get_user_id(current_user),
         action=AuditAction.ADMIN_VIEW_USER_WORKFLOWS,
         resource="workflows",
         resource_id=target_user_id,
         ip_address=request.client.host if request.client else None,
-        details={"admin_username": current_user["username"]}
+        details={"admin_username": get_username(current_user)}
     )
 
     result = await admin_support.get_user_workflows(target_user_id)

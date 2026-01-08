@@ -15,6 +15,10 @@ try:
     from api.auth_middleware import get_current_user
 except ImportError:
     from ..auth_middleware import get_current_user
+try:
+    from api.utils import get_user_id
+except ImportError:
+    from ..utils import get_user_id
 from api.services.recommendations import get_recommendations_service, TaskType
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 
@@ -48,7 +52,7 @@ async def get_model_recommendations(
     - Scored based on latency, satisfaction, and efficiency
     - Weighted according to task type
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
     team_id = current_user.get("team_id")
 
     try:

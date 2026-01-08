@@ -21,6 +21,11 @@ try:
 except ImportError:
     from models import ContextRequest, ContextResponse
 
+try:
+    from api.utils import get_user_id
+except ImportError:
+    from utils import get_user_id
+
 logger = logging.getLogger(__name__)
 
 
@@ -57,7 +62,7 @@ def build_context_bundle(
 
         # Security: Validate repo_root is within user's code_workspaces
         # This matches the pattern used in code_operations.py for consistent security
-        user_id = current_user['user_id']
+        user_id = get_user_id(current_user)
         user_workspace_root = paths.data_dir / "code_workspaces" / user_id
 
         # Allow user's home directory for convenience (can be disabled via env var)
@@ -168,7 +173,7 @@ def build_context_bundle(
 
                 # Get recent context entries
                 recent_entries = context_mgr.get_recent_context(
-                    user_id=current_user['user_id'],
+                    user_id=get_user_id(current_user),
                     max_entries=50,
                     sources=['code', 'file', 'chat']
                 )
@@ -217,7 +222,7 @@ def build_context_bundle(
 
             context_mgr = get_unified_context()
             recent_entries = context_mgr.get_recent_context(
-                user_id=current_user['user_id'],
+                user_id=get_user_id(current_user),
                 max_entries=10,
                 sources=['chat']
             )

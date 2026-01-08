@@ -18,6 +18,10 @@ try:
     from api.auth_middleware import get_current_user
 except ImportError:
     from api.auth_middleware import get_current_user
+try:
+    from api.utils import get_user_id
+except ImportError:
+    from api.utils import get_user_id
 from api.services import kanban_service as kb
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 
@@ -87,7 +91,7 @@ async def create_comment(
 ) -> SuccessResponse[CommentItem]:
     """Create a new comment on a task"""
     try:
-        c = kb.create_comment(body.task_id, current_user["user_id"], body.content)
+        c = kb.create_comment(body.task_id, get_user_id(current_user), body.content)
         return SuccessResponse(
             data=CommentItem(**c),
             message="Comment created successfully"

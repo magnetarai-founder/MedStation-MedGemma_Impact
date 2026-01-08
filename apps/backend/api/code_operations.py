@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 # Import auth middleware
 from api.auth_middleware import get_current_user
 from api.permission_engine import require_perm
+from api.utils import get_user_id
 
 try:
     from api.audit_logger import log_action
@@ -75,7 +76,7 @@ async def get_file_tree(
     Security: absolute_path is restricted to code_workspaces
     """
     try:
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
         logger.info(f"[CODE] GET /files - user_id={user_id}, path={path}, absolute_path={absolute_path}, recursive={recursive}")
 
         # Get user workspace for validation
@@ -164,7 +165,7 @@ async def read_file(
     Security: absolute_path is restricted to code_workspaces
     """
     try:
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
         user_workspace = code_service.get_user_workspace(user_id)
 
         # Resolve file path
@@ -263,7 +264,7 @@ async def read_file(
 async def get_workspace_info(current_user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
     """Get information about user's code workspace"""
     try:
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
         user_workspace = code_service.get_user_workspace(user_id)
 
         # Count files and directories
@@ -313,7 +314,7 @@ async def preview_diff(
     Shows unified diff of changes
     """
     try:
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
         user_workspace = code_service.get_user_workspace(user_id)
         file_path = user_workspace / request.path
 
@@ -371,7 +372,7 @@ async def write_file(
     Write file with permission checking and rate limiting
     Rate limited: 30 writes/min per user
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     # Rate limiting (orchestration layer)
     if not rate_limiter.check_rate_limit(
@@ -455,7 +456,7 @@ async def delete_file(
     Delete file with permission checking and rate limiting
     Rate limited: 20 deletes/min per user
     """
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     # Rate limiting (orchestration layer)
     if not rate_limiter.check_rate_limit(
@@ -578,7 +579,7 @@ async def get_library_documents(current_user: Dict[str, Any] = Depends(get_curre
     """Get all project library documents"""
     try:
         import json
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
         db_path = get_library_db_path()
         conn = sqlite3.connect(str(db_path))
         cursor = conn.cursor()
@@ -615,7 +616,7 @@ async def create_library_document(doc: ProjectLibraryDocument, current_user: Dic
     """Create new project library document"""
     try:
         import json
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
         db_path = get_library_db_path()
         conn = sqlite3.connect(str(db_path))
         cursor = conn.cursor()
@@ -657,7 +658,7 @@ async def update_library_document(doc_id: int, update: UpdateDocumentRequest, cu
     """Update project library document"""
     try:
         import json
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
         db_path = get_library_db_path()
         conn = sqlite3.connect(str(db_path))
         cursor = conn.cursor()
@@ -711,7 +712,7 @@ async def update_library_document(doc_id: int, update: UpdateDocumentRequest, cu
 async def delete_library_document(doc_id: int, current_user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, bool]:
     """Delete project library document"""
     try:
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
         db_path = get_library_db_path()
         conn = sqlite3.connect(str(db_path))
         cursor = conn.cursor()
@@ -789,7 +790,7 @@ async def get_git_log(current_user: Dict[str, Any] = Depends(get_current_user)) 
     Returns commits from the workspace root stored in localStorage
     """
     try:
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
 
         # Get workspace root from marker file
         workspace_root = None

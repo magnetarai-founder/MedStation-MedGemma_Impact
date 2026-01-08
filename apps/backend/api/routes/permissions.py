@@ -16,6 +16,10 @@ try:
     from api.auth_middleware import get_current_user
 except ImportError:
     from api.auth_middleware import get_current_user
+try:
+    from api.utils import get_user_id
+except ImportError:
+    from api.utils import get_user_id
 
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 
@@ -131,7 +135,7 @@ async def create_profile_endpoint(request: Request) -> SuccessResponse[Dict]:
             profile_description=body.profile_description,
             team_id=body.team_id,
             applies_to_role=body.applies_to_role,
-            created_by=user["user_id"]
+            created_by=get_user_id(user)
         )
         return SuccessResponse(
             data=PermissionProfileModel(**result).model_dump(),
@@ -214,7 +218,7 @@ async def update_profile_endpoint(request: Request, profile_id: str) -> SuccessR
         result = await permissions.update_profile(
             profile_id=profile_id,
             updates=updates,
-            modified_by=user["user_id"]
+            modified_by=get_user_id(user)
         )
         return SuccessResponse(
             data=PermissionProfileModel(**result).model_dump(),
@@ -262,7 +266,7 @@ async def update_profile_grants_endpoint(request: Request, profile_id: str) -> S
         result = await permissions.update_profile_grants(
             profile_id=profile_id,
             grants=grants_dicts,
-            modified_by=user["user_id"]
+            modified_by=get_user_id(user)
         )
         return SuccessResponse(
             data=result,
@@ -333,7 +337,7 @@ async def assign_profile_endpoint(request: Request, profile_id: str, user_id: st
         result = await permissions.assign_profile_to_user(
             profile_id=profile_id,
             user_id=user_id,
-            assigning_user_id=current_user["user_id"]
+            assigning_user_id=get_user_id(current_user)
         )
         return SuccessResponse(
             data=result,
@@ -370,7 +374,7 @@ async def unassign_profile_endpoint(request: Request, profile_id: str, user_id: 
         result = await permissions.unassign_profile_from_user(
             profile_id=profile_id,
             user_id=user_id,
-            unassigning_user_id=current_user["user_id"]
+            unassigning_user_id=get_user_id(current_user)
         )
         return SuccessResponse(
             data=result,
@@ -479,7 +483,7 @@ async def create_permission_set_endpoint(request: Request) -> SuccessResponse[Di
             set_name=body.set_name,
             set_description=body.set_description,
             team_id=body.team_id,
-            created_by=user["user_id"]
+            created_by=get_user_id(user)
         )
         return SuccessResponse(
             data=PermissionSetModel(**result).model_dump(),
@@ -522,7 +526,7 @@ async def assign_permission_set_endpoint(
             set_id=set_id,
             user_id=user_id,
             expires_at=expires_at,
-            assigning_user_id=current_user["user_id"]
+            assigning_user_id=get_user_id(current_user)
         )
         return SuccessResponse(
             data=result,
@@ -559,7 +563,7 @@ async def unassign_permission_set_endpoint(request: Request, set_id: str, user_i
         result = await permissions.unassign_permission_set_from_user(
             set_id=set_id,
             user_id=user_id,
-            unassigning_user_id=current_user["user_id"]
+            unassigning_user_id=get_user_id(current_user)
         )
         return SuccessResponse(
             data=result,
@@ -608,7 +612,7 @@ async def update_permission_set_grants_endpoint(request: Request, set_id: str) -
         result = await permissions.update_permission_set_grants(
             set_id=set_id,
             grants=grants_dicts,
-            modified_by=user["user_id"]
+            modified_by=get_user_id(user)
         )
         return SuccessResponse(
             data=result,
@@ -681,7 +685,7 @@ async def delete_permission_set_grant_endpoint(
         result = await permissions.delete_permission_set_grant(
             set_id=set_id,
             permission_id=permission_id,
-            deleting_user_id=current_user["user_id"]
+            deleting_user_id=get_user_id(current_user)
         )
         return SuccessResponse(
             data=result,
@@ -724,7 +728,7 @@ async def invalidate_user_permissions_endpoint(request: Request, user_id: str) -
     try:
         result = await permissions.invalidate_user_permissions(
             user_id=user_id,
-            invalidating_user_id=current_user["user_id"]
+            invalidating_user_id=get_user_id(current_user)
         )
         return SuccessResponse(
             data=result,
@@ -777,7 +781,7 @@ async def get_effective_permissions_endpoint(
 
     try:
         engine = get_permission_engine()
-        user_id = current_user["user_id"]
+        user_id = get_user_id(current_user)
 
         # Get user's role
         role = current_user.get("role", "user")
