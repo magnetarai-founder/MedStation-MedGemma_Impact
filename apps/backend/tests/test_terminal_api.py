@@ -452,8 +452,8 @@ class TestSpawnTerminal:
         mock_terminal_bridge.list_sessions.return_value = []
         mock_terminal_bridge.spawn_terminal.return_value = mock_terminal_session
 
-        with patch('api.terminal_api.terminal_bridge', mock_terminal_bridge), \
-             patch('api.terminal_api.log_action', new_callable=AsyncMock):
+        with patch('api.terminal.routes.terminal_bridge', mock_terminal_bridge), \
+             patch('api.terminal.routes.log_action', new_callable=AsyncMock):
 
             from api.terminal_api import spawn_terminal
 
@@ -487,7 +487,7 @@ class TestListTerminalSessions:
         """Test listing when no sessions"""
         mock_terminal_bridge.list_sessions.return_value = []
 
-        with patch('api.terminal_api.terminal_bridge', mock_terminal_bridge):
+        with patch('api.terminal.routes.terminal_bridge', mock_terminal_bridge):
             from api.terminal_api import list_terminal_sessions
 
             result = await list_terminal_sessions(current_user=mock_current_user)
@@ -500,7 +500,7 @@ class TestListTerminalSessions:
         """Test listing with active sessions"""
         mock_terminal_bridge.list_sessions.return_value = [mock_terminal_session]
 
-        with patch('api.terminal_api.terminal_bridge', mock_terminal_bridge):
+        with patch('api.terminal.routes.terminal_bridge', mock_terminal_bridge):
             from api.terminal_api import list_terminal_sessions
 
             result = await list_terminal_sessions(current_user=mock_current_user)
@@ -518,7 +518,7 @@ class TestGetTerminalSession:
         """Test getting non-existent terminal"""
         mock_terminal_bridge.get_session.return_value = None
 
-        with patch('api.terminal_api.terminal_bridge', mock_terminal_bridge):
+        with patch('api.terminal.routes.terminal_bridge', mock_terminal_bridge):
             from api.terminal_api import get_terminal_session
 
             with pytest.raises(HTTPException) as exc:
@@ -532,7 +532,7 @@ class TestGetTerminalSession:
         mock_terminal_session.user_id = "other-user"
         mock_terminal_bridge.get_session.return_value = mock_terminal_session
 
-        with patch('api.terminal_api.terminal_bridge', mock_terminal_bridge):
+        with patch('api.terminal.routes.terminal_bridge', mock_terminal_bridge):
             from api.terminal_api import get_terminal_session
 
             with pytest.raises(HTTPException) as exc:
@@ -545,7 +545,7 @@ class TestGetTerminalSession:
         """Test successful terminal get"""
         mock_terminal_bridge.get_session.return_value = mock_terminal_session
 
-        with patch('api.terminal_api.terminal_bridge', mock_terminal_bridge):
+        with patch('api.terminal.routes.terminal_bridge', mock_terminal_bridge):
             from api.terminal_api import get_terminal_session
 
             result = await get_terminal_session("term-abc123", current_user=mock_current_user)
@@ -564,7 +564,7 @@ class TestCloseTerminalSession:
         """Test closing non-existent terminal"""
         mock_terminal_bridge.get_session.return_value = None
 
-        with patch('api.terminal_api.terminal_bridge', mock_terminal_bridge):
+        with patch('api.terminal.routes.terminal_bridge', mock_terminal_bridge):
             from api.terminal_api import close_terminal_session
 
             with pytest.raises(HTTPException) as exc:
@@ -578,7 +578,7 @@ class TestCloseTerminalSession:
         mock_terminal_session.user_id = "other-user"
         mock_terminal_bridge.get_session.return_value = mock_terminal_session
 
-        with patch('api.terminal_api.terminal_bridge', mock_terminal_bridge):
+        with patch('api.terminal.routes.terminal_bridge', mock_terminal_bridge):
             from api.terminal_api import close_terminal_session
 
             with pytest.raises(HTTPException) as exc:
@@ -591,8 +591,8 @@ class TestCloseTerminalSession:
         """Test successful terminal close"""
         mock_terminal_bridge.get_session.return_value = mock_terminal_session
 
-        with patch('api.terminal_api.terminal_bridge', mock_terminal_bridge), \
-             patch('api.terminal_api.log_action', new_callable=AsyncMock):
+        with patch('api.terminal.routes.terminal_bridge', mock_terminal_bridge), \
+             patch('api.terminal.routes.log_action', new_callable=AsyncMock):
             from api.terminal_api import close_terminal_session
 
             result = await close_terminal_session("term-abc123", current_user=mock_current_user)
@@ -611,7 +611,7 @@ class TestGetTerminalContext:
         """Test getting context for non-existent terminal"""
         mock_terminal_bridge.get_session.return_value = None
 
-        with patch('api.terminal_api.terminal_bridge', mock_terminal_bridge):
+        with patch('api.terminal.routes.terminal_bridge', mock_terminal_bridge):
             from api.terminal_api import get_terminal_context
 
             with pytest.raises(HTTPException) as exc:
@@ -625,7 +625,7 @@ class TestGetTerminalContext:
         mock_terminal_session.user_id = "other-user"
         mock_terminal_bridge.get_session.return_value = mock_terminal_session
 
-        with patch('api.terminal_api.terminal_bridge', mock_terminal_bridge):
+        with patch('api.terminal.routes.terminal_bridge', mock_terminal_bridge):
             from api.terminal_api import get_terminal_context
 
             with pytest.raises(HTTPException) as exc:
@@ -639,7 +639,7 @@ class TestGetTerminalContext:
         mock_terminal_bridge.get_session.return_value = mock_terminal_session
         mock_terminal_bridge.get_context.return_value = "$ ls -la\nfile1.txt\nfile2.txt"
 
-        with patch('api.terminal_api.terminal_bridge', mock_terminal_bridge):
+        with patch('api.terminal.routes.terminal_bridge', mock_terminal_bridge):
             from api.terminal_api import get_terminal_context
 
             result = await get_terminal_context("term-abc123", lines=50, current_user=mock_current_user)
@@ -659,7 +659,7 @@ class TestResizeTerminal:
         """Test resizing non-existent terminal"""
         mock_terminal_bridge.get_session.return_value = None
 
-        with patch('api.terminal_api.terminal_bridge', mock_terminal_bridge):
+        with patch('api.terminal.routes.terminal_bridge', mock_terminal_bridge):
             from api.terminal_api import resize_terminal
 
             with pytest.raises(HTTPException) as exc:
@@ -673,7 +673,7 @@ class TestResizeTerminal:
         mock_terminal_session.user_id = "other-user"
         mock_terminal_bridge.get_session.return_value = mock_terminal_session
 
-        with patch('api.terminal_api.terminal_bridge', mock_terminal_bridge):
+        with patch('api.terminal.routes.terminal_bridge', mock_terminal_bridge):
             from api.terminal_api import resize_terminal
 
             with pytest.raises(HTTPException) as exc:
@@ -686,7 +686,7 @@ class TestResizeTerminal:
         """Test successful terminal resize"""
         mock_terminal_bridge.get_session.return_value = mock_terminal_session
 
-        with patch('api.terminal_api.terminal_bridge', mock_terminal_bridge):
+        with patch('api.terminal.routes.terminal_bridge', mock_terminal_bridge):
             from api.terminal_api import resize_terminal
 
             result = await resize_terminal("term-abc123", rows=50, cols=120, current_user=mock_current_user)
@@ -721,7 +721,7 @@ class TestBashAssist:
         mock_rate_limiter.check_rate_limit.return_value = True
 
         # rate_limiter is lazy imported inside bash_assist, so patch at source module
-        with patch('api.terminal_api.get_bash_intelligence', return_value=mock_bash_intel), \
+        with patch('api.terminal.bash_assist.get_bash_intelligence', return_value=mock_bash_intel), \
              patch('api.rate_limiter.rate_limiter', mock_rate_limiter):
             from api.terminal_api import bash_assist
 
@@ -750,7 +750,7 @@ class TestBashAssist:
         mock_rate_limiter.check_rate_limit.return_value = True
 
         # rate_limiter is lazy imported inside bash_assist, so patch at source module
-        with patch('api.terminal_api.get_bash_intelligence', return_value=mock_bash_intel), \
+        with patch('api.terminal.bash_assist.get_bash_intelligence', return_value=mock_bash_intel), \
              patch('api.rate_limiter.rate_limiter', mock_rate_limiter):
             from api.terminal_api import bash_assist
 
@@ -779,7 +779,7 @@ class TestBashAssist:
         mock_rate_limiter.check_rate_limit.return_value = True
 
         # rate_limiter is lazy imported inside bash_assist, so patch at source module
-        with patch('api.terminal_api.get_bash_intelligence', return_value=mock_bash_intel), \
+        with patch('api.terminal.bash_assist.get_bash_intelligence', return_value=mock_bash_intel), \
              patch('api.rate_limiter.rate_limiter', mock_rate_limiter):
             from api.terminal_api import bash_assist
 
@@ -943,8 +943,8 @@ class TestIntegration:
         mock_terminal_bridge.list_sessions.return_value = []
         mock_terminal_bridge.get_session.return_value = mock_terminal_session
 
-        with patch('api.terminal_api.terminal_bridge', mock_terminal_bridge), \
-             patch('api.terminal_api.log_action', new_callable=AsyncMock):
+        with patch('api.terminal.routes.terminal_bridge', mock_terminal_bridge), \
+             patch('api.terminal.routes.log_action', new_callable=AsyncMock):
             from api.terminal_api import list_terminal_sessions, get_terminal_session, close_terminal_session
 
             # List (empty)
