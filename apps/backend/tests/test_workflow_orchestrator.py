@@ -22,6 +22,11 @@ from datetime import datetime, timedelta, UTC
 from uuid import uuid4
 
 from api.services.workflow_orchestrator import WorkflowOrchestrator
+from api.services.workflow_automation import (
+    execute_automation_stage,
+    run_local_ai_automation,
+    run_custom_automation,
+)
 from api.workflow_models import (
     WorkItem,
     Workflow,
@@ -1066,8 +1071,8 @@ class TestAutomation:
             data={},
         )
 
-        # Should not raise
-        orchestrator._execute_automation_stage(work_item, stage, sample_user_id)
+        # Should not raise - call module function directly
+        execute_automation_stage(work_item, stage, sample_user_id)
 
     def test_run_local_ai_automation(self, orchestrator, sample_user_id):
         """Test local AI automation execution"""
@@ -1094,7 +1099,7 @@ class TestAutomation:
             data={"content": "Test content to summarize"},
         )
 
-        orchestrator._run_local_ai_automation(work_item, stage, sample_user_id)
+        run_local_ai_automation(work_item, stage, sample_user_id)
 
         assert "ai_automation" in work_item.data
         assert work_item.data["ai_automation"]["model"] == "llama3"
@@ -1124,7 +1129,7 @@ class TestAutomation:
             data={},
         )
 
-        orchestrator._run_custom_automation(work_item, stage, sample_user_id)
+        run_custom_automation(work_item, stage, sample_user_id)
 
         assert "custom_automation" in work_item.data
         assert work_item.data["custom_automation"]["script"] == "/scripts/process.py"
