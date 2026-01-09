@@ -152,7 +152,10 @@ def mock_db_connection(temp_db):
         conn.row_factory = sqlite3.Row
         return conn
 
-    with patch('api.permissions.admin.get_db_connection', side_effect=_get_connection):
+    # Patch all modules that import get_db_connection
+    with patch('api.permissions.admin.get_db_connection', side_effect=_get_connection), \
+         patch('api.permissions.profiles.get_db_connection', side_effect=_get_connection), \
+         patch('api.permissions.sets.get_db_connection', side_effect=_get_connection):
         yield _get_connection
 
 
