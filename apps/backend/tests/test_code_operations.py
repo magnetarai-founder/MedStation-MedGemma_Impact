@@ -67,7 +67,7 @@ def temp_db():
 @pytest.fixture
 def mock_code_service():
     """Mock code service"""
-    with patch('api.code_operations.code_service') as mock:
+    with patch('api.code_operations.file_routes.code_service') as mock:
         mock.get_user_workspace.return_value = Path("/tmp/workspace")
         mock.get_code_workspace_base.return_value = Path("/tmp/code_workspaces")
         mock.is_safe_path.return_value = True
@@ -81,7 +81,7 @@ def mock_code_service():
 def mock_permission_layer():
     """Mock permission layer"""
     from api.permission_layer import RiskLevel
-    with patch('api.code_operations.permission_layer') as mock:
+    with patch('api.code_operations.file_routes.permission_layer') as mock:
         mock.assess_risk.return_value = (RiskLevel.LOW, "Safe operation")
         yield mock
 
@@ -89,7 +89,7 @@ def mock_permission_layer():
 @pytest.fixture
 def mock_rate_limiter():
     """Mock rate limiter"""
-    with patch('api.code_operations.rate_limiter') as mock:
+    with patch('api.code_operations.file_routes.rate_limiter') as mock:
         mock.check_rate_limit.return_value = True
         yield mock
 
@@ -208,7 +208,7 @@ class TestInitLibraryDb:
 
     def test_creates_database(self, temp_db):
         """Test creates database file"""
-        with patch('api.code_operations.get_library_db_path', return_value=temp_db):
+        with patch('api.code_operations.library_db.get_library_db_path', return_value=temp_db):
             init_library_db()
 
             # Database should be created
@@ -216,7 +216,7 @@ class TestInitLibraryDb:
 
     def test_creates_documents_table(self, temp_db):
         """Test creates documents table"""
-        with patch('api.code_operations.get_library_db_path', return_value=temp_db):
+        with patch('api.code_operations.library_db.get_library_db_path', return_value=temp_db):
             init_library_db()
 
             # Check table exists
@@ -234,7 +234,7 @@ class TestInitLibraryDb:
 
     def test_idempotent(self, temp_db):
         """Test can be called multiple times safely"""
-        with patch('api.code_operations.get_library_db_path', return_value=temp_db):
+        with patch('api.code_operations.library_db.get_library_db_path', return_value=temp_db):
             init_library_db()
             init_library_db()
             init_library_db()
@@ -273,7 +273,7 @@ class TestGetFileTree:
             {'name': 'src', 'is_dir': True}
         ]
 
-        with patch('api.code_operations.log_action', new_callable=AsyncMock):
+        with patch('api.code_operations.file_routes.log_action', new_callable=AsyncMock):
             from api.code_operations import get_file_tree
 
             result = await get_file_tree(
@@ -337,7 +337,7 @@ class TestReadFile:
         """Test reading file successfully"""
         mock_code_service.get_user_workspace.return_value = temp_workspace
 
-        with patch('api.code_operations.log_action', new_callable=AsyncMock):
+        with patch('api.code_operations.file_routes.log_action', new_callable=AsyncMock):
             from api.code_operations import read_file
 
             result = await read_file(
@@ -413,7 +413,7 @@ class TestReadFile:
         mock_code_service.get_user_workspace.return_value = temp_workspace
 
         from api.permission_layer import RiskLevel
-        with patch('api.code_operations.permission_layer') as mock_perm:
+        with patch('api.code_operations.file_routes.permission_layer') as mock_perm:
             mock_perm.assess_risk.return_value = (RiskLevel.CRITICAL, "Access denied")
 
             from api.code_operations import read_file
@@ -515,7 +515,7 @@ class TestWriteFile:
         mock_request.content = "print('hello')"
         mock_request.create_if_missing = True
 
-        with patch('api.code_operations.log_action', new_callable=AsyncMock):
+        with patch('api.code_operations.file_routes.log_action', new_callable=AsyncMock):
             from api.code_operations import write_file
 
             result = await write_file(
@@ -529,7 +529,7 @@ class TestWriteFile:
     @pytest.mark.asyncio
     async def test_write_file_rate_limited(self, mock_code_service, mock_current_user):
         """Test write file rate limiting"""
-        with patch('api.code_operations.rate_limiter') as mock_limiter:
+        with patch('api.code_operations.file_routes.rate_limiter') as mock_limiter:
             mock_limiter.check_rate_limit.return_value = False
 
             mock_request = MagicMock()
@@ -572,7 +572,7 @@ class TestWriteFile:
         mock_code_service.get_user_workspace.return_value = temp_workspace
 
         from api.permission_layer import RiskLevel
-        with patch('api.code_operations.permission_layer') as mock_perm:
+        with patch('api.code_operations.file_routes.permission_layer') as mock_perm:
             mock_perm.assess_risk.return_value = (RiskLevel.CRITICAL, "Dangerous operation")
 
             mock_request = MagicMock()
@@ -601,7 +601,7 @@ class TestDeleteFile:
         """Test deleting file successfully"""
         mock_code_service.get_user_workspace.return_value = temp_workspace
 
-        with patch('api.code_operations.log_action', new_callable=AsyncMock):
+        with patch('api.code_operations.file_routes.log_action', new_callable=AsyncMock):
             from api.code_operations import delete_file
 
             result = await delete_file(
@@ -630,7 +630,7 @@ class TestDeleteFile:
     @pytest.mark.asyncio
     async def test_delete_file_rate_limited(self, mock_code_service, mock_current_user):
         """Test delete file rate limiting"""
-        with patch('api.code_operations.rate_limiter') as mock_limiter:
+        with patch('api.code_operations.file_routes.rate_limiter') as mock_limiter:
             mock_limiter.check_rate_limit.return_value = False
 
             from api.code_operations import delete_file
@@ -667,7 +667,7 @@ class TestLibraryEndpoints:
     @pytest.mark.asyncio
     async def test_get_library_documents_empty(self, mock_current_user, temp_db):
         """Test getting empty library"""
-        with patch('api.code_operations.get_library_db_path', return_value=temp_db):
+        with patch('api.code_operations.library_db.get_library_db_path', return_value=temp_db):
             # Initialize database
             conn = sqlite3.connect(str(temp_db))
             conn.execute("""
@@ -694,7 +694,7 @@ class TestLibraryEndpoints:
     @pytest.mark.asyncio
     async def test_create_library_document(self, mock_current_user, temp_db):
         """Test creating library document"""
-        with patch('api.code_operations.get_library_db_path', return_value=temp_db):
+        with patch('api.code_operations.library_db.get_library_db_path', return_value=temp_db):
             # Initialize database
             conn = sqlite3.connect(str(temp_db))
             conn.execute("""
@@ -718,7 +718,7 @@ class TestLibraryEndpoints:
                 tags=["test"]
             )
 
-            with patch('api.code_operations.log_action', new_callable=AsyncMock):
+            with patch('api.code_operations.library_routes.log_action', new_callable=AsyncMock):
                 from api.code_operations import create_library_document
 
                 result = await create_library_document(doc=doc, current_user=mock_current_user)
@@ -729,7 +729,7 @@ class TestLibraryEndpoints:
     @pytest.mark.asyncio
     async def test_update_library_document(self, mock_current_user, temp_db):
         """Test updating library document"""
-        with patch('api.code_operations.get_library_db_path', return_value=temp_db):
+        with patch('api.code_operations.library_db.get_library_db_path', return_value=temp_db):
             # Initialize and insert test document
             import json
             conn = sqlite3.connect(str(temp_db))
@@ -754,7 +754,7 @@ class TestLibraryEndpoints:
 
             update = UpdateDocumentRequest(name="new.md", content="new content")
 
-            with patch('api.code_operations.log_action', new_callable=AsyncMock):
+            with patch('api.code_operations.library_routes.log_action', new_callable=AsyncMock):
                 from api.code_operations import update_library_document
 
                 result = await update_library_document(doc_id=1, update=update, current_user=mock_current_user)
@@ -764,7 +764,7 @@ class TestLibraryEndpoints:
     @pytest.mark.asyncio
     async def test_delete_library_document(self, mock_current_user, temp_db):
         """Test deleting library document"""
-        with patch('api.code_operations.get_library_db_path', return_value=temp_db):
+        with patch('api.code_operations.library_db.get_library_db_path', return_value=temp_db):
             # Initialize and insert test document
             import json
             conn = sqlite3.connect(str(temp_db))
@@ -787,7 +787,7 @@ class TestLibraryEndpoints:
             conn.commit()
             conn.close()
 
-            with patch('api.code_operations.log_action', new_callable=AsyncMock):
+            with patch('api.code_operations.library_routes.log_action', new_callable=AsyncMock):
                 from api.code_operations import delete_library_document
 
                 result = await delete_library_document(doc_id=1, current_user=mock_current_user)
@@ -851,7 +851,7 @@ class TestGetGitLog:
             mock_paths = MagicMock()
             mock_paths.data_dir = Path(tmpdir)
 
-            with patch('api.code_operations.PATHS', mock_paths):
+            with patch('api.code_operations.git_routes.PATHS', mock_paths):
                 from api.code_operations import get_git_log
 
                 result = await get_git_log(current_user=mock_current_user)
@@ -870,7 +870,7 @@ class TestGetGitLog:
             marker_file = Path(tmpdir) / "current_workspace.txt"
             marker_file.write_text(str(temp_workspace))
 
-            with patch('api.code_operations.PATHS', mock_paths):
+            with patch('api.code_operations.git_routes.PATHS', mock_paths):
                 from api.code_operations import get_git_log
 
                 result = await get_git_log(current_user=mock_current_user)
@@ -893,8 +893,8 @@ class TestGetGitLog:
             marker_file = Path(tmpdir) / "current_workspace.txt"
             marker_file.write_text(str(temp_workspace))
 
-            with patch('api.code_operations.PATHS', mock_paths), \
-                 patch('subprocess.run', side_effect=subprocess.TimeoutExpired("git", 5)):
+            with patch('api.code_operations.git_routes.PATHS', mock_paths), \
+                 patch('api.code_operations.git_routes.subprocess.run', side_effect=subprocess.TimeoutExpired("git", 5)):
                 from api.code_operations import get_git_log
 
                 with pytest.raises(HTTPException) as exc:
@@ -925,8 +925,8 @@ class TestIntegration:
     @pytest.mark.asyncio
     async def test_full_library_lifecycle(self, mock_current_user, temp_db):
         """Test full library document lifecycle"""
-        with patch('api.code_operations.get_library_db_path', return_value=temp_db), \
-             patch('api.code_operations.log_action', new_callable=AsyncMock):
+        with patch('api.code_operations.library_db.get_library_db_path', return_value=temp_db), \
+             patch('api.code_operations.library_routes.log_action', new_callable=AsyncMock):
 
             # Initialize database
             conn = sqlite3.connect(str(temp_db))
