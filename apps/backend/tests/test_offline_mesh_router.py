@@ -27,7 +27,7 @@ import tempfile
 import json
 
 # Import the router
-from api.offline_mesh_router import router
+from api.offline_mesh import router
 
 
 # ========== Fixtures ==========
@@ -131,7 +131,7 @@ class TestResponseModels:
 
     def test_discovery_start_response(self):
         """Test DiscoveryStartResponse model"""
-        from api.offline_mesh_router import DiscoveryStartResponse
+        from api.offline_mesh import DiscoveryStartResponse
 
         data = DiscoveryStartResponse(
             status="started",
@@ -145,7 +145,7 @@ class TestResponseModels:
 
     def test_peer_info(self):
         """Test PeerInfo model"""
-        from api.offline_mesh_router import PeerInfo
+        from api.offline_mesh import PeerInfo
 
         data = PeerInfo(
             peer_id="peer-123",
@@ -162,7 +162,7 @@ class TestResponseModels:
 
     def test_peers_list_response(self):
         """Test PeersListResponse model"""
-        from api.offline_mesh_router import PeersListResponse
+        from api.offline_mesh import PeersListResponse
 
         data = PeersListResponse(count=0, peers=[])
 
@@ -171,7 +171,7 @@ class TestResponseModels:
 
     def test_file_share_response(self):
         """Test FileShareResponse model"""
-        from api.offline_mesh_router import FileShareResponse
+        from api.offline_mesh import FileShareResponse
 
         data = FileShareResponse(
             file_id="file-123",
@@ -185,7 +185,7 @@ class TestResponseModels:
 
     def test_relay_peer_response(self):
         """Test RelayPeerResponse model"""
-        from api.offline_mesh_router import RelayPeerResponse
+        from api.offline_mesh import RelayPeerResponse
 
         data = RelayPeerResponse(
             status="added",
@@ -197,7 +197,7 @@ class TestResponseModels:
 
     def test_sync_response(self):
         """Test SyncResponse model"""
-        from api.offline_mesh_router import SyncResponse
+        from api.offline_mesh import SyncResponse
 
         data = SyncResponse(
             status="completed",
@@ -218,7 +218,7 @@ class TestPeerDiscoveryEndpoints:
 
     def test_start_discovery_success(self, client, mock_mesh_discovery):
         """Test starting peer discovery"""
-        with patch('api.offline_mesh_router.get_mesh_discovery', return_value=mock_mesh_discovery):
+        with patch('api.offline_mesh.discovery_routes.get_mesh_discovery', return_value=mock_mesh_discovery):
             response = client.post(
                 "/api/v1/mesh/discovery/start",
                 params={"display_name": "Test Peer", "device_name": "test-device"}
@@ -234,7 +234,7 @@ class TestPeerDiscoveryEndpoints:
         """Test discovery start failure"""
         mock_mesh_discovery.start = AsyncMock(return_value=False)
 
-        with patch('api.offline_mesh_router.get_mesh_discovery', return_value=mock_mesh_discovery):
+        with patch('api.offline_mesh.discovery_routes.get_mesh_discovery', return_value=mock_mesh_discovery):
             response = client.post(
                 "/api/v1/mesh/discovery/start",
                 params={"display_name": "Test", "device_name": "test"}
@@ -247,7 +247,7 @@ class TestPeerDiscoveryEndpoints:
         """Test discovery start exception"""
         mock_mesh_discovery.start = AsyncMock(side_effect=Exception("Network error"))
 
-        with patch('api.offline_mesh_router.get_mesh_discovery', return_value=mock_mesh_discovery):
+        with patch('api.offline_mesh.discovery_routes.get_mesh_discovery', return_value=mock_mesh_discovery):
             response = client.post(
                 "/api/v1/mesh/discovery/start",
                 params={"display_name": "Test", "device_name": "test"}
@@ -258,7 +258,7 @@ class TestPeerDiscoveryEndpoints:
 
     def test_get_discovered_peers_empty(self, client, mock_mesh_discovery):
         """Test getting empty peer list"""
-        with patch('api.offline_mesh_router.get_mesh_discovery', return_value=mock_mesh_discovery):
+        with patch('api.offline_mesh.discovery_routes.get_mesh_discovery', return_value=mock_mesh_discovery):
             response = client.get("/api/v1/mesh/discovery/peers")
 
             assert response.status_code == 200
@@ -280,7 +280,7 @@ class TestPeerDiscoveryEndpoints:
 
         mock_mesh_discovery.get_peers = MagicMock(return_value=[mock_peer])
 
-        with patch('api.offline_mesh_router.get_mesh_discovery', return_value=mock_mesh_discovery):
+        with patch('api.offline_mesh.discovery_routes.get_mesh_discovery', return_value=mock_mesh_discovery):
             response = client.get("/api/v1/mesh/discovery/peers")
 
             assert response.status_code == 200
@@ -295,7 +295,7 @@ class TestPeerDiscoveryEndpoints:
             "uptime_seconds": 3600
         })
 
-        with patch('api.offline_mesh_router.get_mesh_discovery', return_value=mock_mesh_discovery):
+        with patch('api.offline_mesh.discovery_routes.get_mesh_discovery', return_value=mock_mesh_discovery):
             response = client.get("/api/v1/mesh/discovery/stats")
 
             assert response.status_code == 200
@@ -304,7 +304,7 @@ class TestPeerDiscoveryEndpoints:
 
     def test_stop_discovery(self, client, mock_mesh_discovery):
         """Test stopping discovery"""
-        with patch('api.offline_mesh_router.get_mesh_discovery', return_value=mock_mesh_discovery):
+        with patch('api.offline_mesh.discovery_routes.get_mesh_discovery', return_value=mock_mesh_discovery):
             response = client.post("/api/v1/mesh/discovery/stop")
 
             assert response.status_code == 200
@@ -333,7 +333,7 @@ class TestFileSharingEndpoints:
 
             mock_file_share.share_file = AsyncMock(return_value=mock_shared_file)
 
-            with patch('api.offline_mesh_router.get_file_share', return_value=mock_file_share):
+            with patch('api.offline_mesh.files_routes.get_file_share', return_value=mock_file_share):
                 response = client.post(
                     "/api/v1/mesh/files/share",
                     json={
@@ -352,7 +352,7 @@ class TestFileSharingEndpoints:
 
     def test_share_file_not_found(self, client, mock_file_share):
         """Test sharing nonexistent file"""
-        with patch('api.offline_mesh_router.get_file_share', return_value=mock_file_share):
+        with patch('api.offline_mesh.files_routes.get_file_share', return_value=mock_file_share):
             response = client.post(
                 "/api/v1/mesh/files/share",
                 json={
@@ -367,7 +367,7 @@ class TestFileSharingEndpoints:
 
     def test_list_shared_files_empty(self, client, mock_file_share):
         """Test listing shared files when empty"""
-        with patch('api.offline_mesh_router.get_file_share', return_value=mock_file_share):
+        with patch('api.offline_mesh.files_routes.get_file_share', return_value=mock_file_share):
             response = client.get("/api/v1/mesh/files/list")
 
             assert response.status_code == 200
@@ -389,7 +389,7 @@ class TestFileSharingEndpoints:
 
         mock_file_share.get_shared_files = MagicMock(return_value=[mock_file])
 
-        with patch('api.offline_mesh_router.get_file_share', return_value=mock_file_share):
+        with patch('api.offline_mesh.files_routes.get_file_share', return_value=mock_file_share):
             response = client.get("/api/v1/mesh/files/list")
 
             assert response.status_code == 200
@@ -399,7 +399,7 @@ class TestFileSharingEndpoints:
 
     def test_list_shared_files_with_tags(self, client, mock_file_share):
         """Test listing shared files with tag filter"""
-        with patch('api.offline_mesh_router.get_file_share', return_value=mock_file_share):
+        with patch('api.offline_mesh.files_routes.get_file_share', return_value=mock_file_share):
             response = client.get("/api/v1/mesh/files/list", params={"tags": "doc,report"})
 
             assert response.status_code == 200
@@ -409,7 +409,7 @@ class TestFileSharingEndpoints:
         """Test downloading a file"""
         mock_file_share.download_file = AsyncMock(return_value=Path("/tmp/downloaded.txt"))
 
-        with patch('api.offline_mesh_router.get_file_share', return_value=mock_file_share):
+        with patch('api.offline_mesh.files_routes.get_file_share', return_value=mock_file_share):
             response = client.post(
                 "/api/v1/mesh/files/download",
                 json={
@@ -437,7 +437,7 @@ class TestFileSharingEndpoints:
 
         mock_file_share.get_active_transfers = MagicMock(return_value=[mock_transfer])
 
-        with patch('api.offline_mesh_router.get_file_share', return_value=mock_file_share):
+        with patch('api.offline_mesh.files_routes.get_file_share', return_value=mock_file_share):
             response = client.get("/api/v1/mesh/files/transfers")
 
             assert response.status_code == 200
@@ -447,7 +447,7 @@ class TestFileSharingEndpoints:
 
     def test_delete_shared_file_success(self, client, mock_file_share):
         """Test deleting a shared file"""
-        with patch('api.offline_mesh_router.get_file_share', return_value=mock_file_share):
+        with patch('api.offline_mesh.files_routes.get_file_share', return_value=mock_file_share):
             response = client.delete("/api/v1/mesh/files/file-123")
 
             assert response.status_code == 200
@@ -457,7 +457,7 @@ class TestFileSharingEndpoints:
         """Test deleting nonexistent file"""
         mock_file_share.delete_shared_file = AsyncMock(return_value=False)
 
-        with patch('api.offline_mesh_router.get_file_share', return_value=mock_file_share):
+        with patch('api.offline_mesh.files_routes.get_file_share', return_value=mock_file_share):
             response = client.delete("/api/v1/mesh/files/nonexistent")
 
             assert response.status_code == 404
@@ -469,7 +469,7 @@ class TestFileSharingEndpoints:
             "total_bytes_shared": 1048576
         })
 
-        with patch('api.offline_mesh_router.get_file_share', return_value=mock_file_share):
+        with patch('api.offline_mesh.files_routes.get_file_share', return_value=mock_file_share):
             response = client.get("/api/v1/mesh/files/stats")
 
             assert response.status_code == 200
@@ -483,7 +483,7 @@ class TestMeshRelayEndpoints:
 
     def test_add_relay_peer(self, client, mock_mesh_relay):
         """Test adding a relay peer"""
-        with patch('api.offline_mesh_router.get_mesh_relay', return_value=mock_mesh_relay):
+        with patch('api.offline_mesh.relay_routes.get_mesh_relay', return_value=mock_mesh_relay):
             response = client.post(
                 "/api/v1/mesh/relay/peer/add",
                 params={"peer_id": "peer-456", "latency_ms": 15.0}
@@ -497,7 +497,7 @@ class TestMeshRelayEndpoints:
 
     def test_remove_relay_peer(self, client, mock_mesh_relay):
         """Test removing a relay peer"""
-        with patch('api.offline_mesh_router.get_mesh_relay', return_value=mock_mesh_relay):
+        with patch('api.offline_mesh.relay_routes.get_mesh_relay', return_value=mock_mesh_relay):
             response = client.delete("/api/v1/mesh/relay/peer/peer-456")
 
             assert response.status_code == 200
@@ -506,7 +506,7 @@ class TestMeshRelayEndpoints:
 
     def test_send_relay_message_success(self, client, mock_mesh_relay):
         """Test sending a message through relay"""
-        with patch('api.offline_mesh_router.get_mesh_relay', return_value=mock_mesh_relay):
+        with patch('api.offline_mesh.relay_routes.get_mesh_relay', return_value=mock_mesh_relay):
             response = client.post(
                 "/api/v1/mesh/relay/send",
                 json={
@@ -522,7 +522,7 @@ class TestMeshRelayEndpoints:
         """Test message queued when no route available"""
         mock_mesh_relay.send_message = AsyncMock(return_value=False)
 
-        with patch('api.offline_mesh_router.get_mesh_relay', return_value=mock_mesh_relay):
+        with patch('api.offline_mesh.relay_routes.get_mesh_relay', return_value=mock_mesh_relay):
             response = client.post(
                 "/api/v1/mesh/relay/send",
                 json={
@@ -538,7 +538,7 @@ class TestMeshRelayEndpoints:
         """Test getting route when route exists"""
         mock_mesh_relay.get_route_to = MagicMock(return_value=["local", "peer-123", "peer-456"])
 
-        with patch('api.offline_mesh_router.get_mesh_relay', return_value=mock_mesh_relay):
+        with patch('api.offline_mesh.relay_routes.get_mesh_relay', return_value=mock_mesh_relay):
             response = client.get("/api/v1/mesh/relay/route/peer-456")
 
             assert response.status_code == 200
@@ -547,7 +547,7 @@ class TestMeshRelayEndpoints:
 
     def test_get_route_to_peer_not_found(self, client, mock_mesh_relay):
         """Test getting route when no route exists"""
-        with patch('api.offline_mesh_router.get_mesh_relay', return_value=mock_mesh_relay):
+        with patch('api.offline_mesh.relay_routes.get_mesh_relay', return_value=mock_mesh_relay):
             response = client.get("/api/v1/mesh/relay/route/unknown-peer")
 
             assert response.status_code == 404
@@ -560,7 +560,7 @@ class TestMeshRelayEndpoints:
             "messages_relayed": 50
         })
 
-        with patch('api.offline_mesh_router.get_mesh_relay', return_value=mock_mesh_relay):
+        with patch('api.offline_mesh.relay_routes.get_mesh_relay', return_value=mock_mesh_relay):
             response = client.get("/api/v1/mesh/relay/stats")
 
             assert response.status_code == 200
@@ -573,7 +573,7 @@ class TestMeshRelayEndpoints:
             "peer-789": ["local", "peer-123", "peer-789"]
         })
 
-        with patch('api.offline_mesh_router.get_mesh_relay', return_value=mock_mesh_relay):
+        with patch('api.offline_mesh.relay_routes.get_mesh_relay', return_value=mock_mesh_relay):
             response = client.get("/api/v1/mesh/relay/routing-table")
 
             assert response.status_code == 200
@@ -598,8 +598,8 @@ class TestDataSyncEndpoints:
 
         mock_data_sync.sync_with_peer = AsyncMock(return_value=mock_state)
 
-        with patch('api.offline_mesh_router.get_data_sync', return_value=mock_data_sync):
-            with patch('api.offline_mesh_router.metrics') as mock_metrics:
+        with patch('api.offline_mesh.sync_routes.get_data_sync', return_value=mock_data_sync):
+            with patch('api.offline_mesh.sync_routes.metrics') as mock_metrics:
                 mock_metrics.track.return_value.__enter__ = MagicMock()
                 mock_metrics.track.return_value.__exit__ = MagicMock()
 
@@ -617,13 +617,13 @@ class TestDataSyncEndpoints:
         """Test sync failure"""
         mock_data_sync.sync_with_peer = AsyncMock(side_effect=Exception("Connection failed"))
 
-        with patch('api.offline_mesh_router.get_data_sync', return_value=mock_data_sync):
+        with patch('api.offline_mesh.sync_routes.get_data_sync', return_value=mock_data_sync):
             # Create a proper context manager mock for metrics.track
             mock_cm = MagicMock()
             mock_cm.__enter__ = MagicMock(return_value=None)
             mock_cm.__exit__ = MagicMock(return_value=False)
 
-            with patch('api.offline_mesh_router.metrics') as mock_metrics:
+            with patch('api.offline_mesh.sync_routes.metrics') as mock_metrics:
                 mock_metrics.track.return_value = mock_cm
 
                 response = client.post(
@@ -646,7 +646,7 @@ class TestDataSyncEndpoints:
 
         mock_data_sync.get_sync_state = MagicMock(return_value=mock_state)
 
-        with patch('api.offline_mesh_router.get_data_sync', return_value=mock_data_sync):
+        with patch('api.offline_mesh.sync_routes.get_data_sync', return_value=mock_data_sync):
             response = client.get("/api/v1/mesh/sync/state/peer-456")
 
             assert response.status_code == 200
@@ -655,7 +655,7 @@ class TestDataSyncEndpoints:
 
     def test_get_sync_state_not_found(self, client, mock_data_sync):
         """Test getting nonexistent sync state"""
-        with patch('api.offline_mesh_router.get_data_sync', return_value=mock_data_sync):
+        with patch('api.offline_mesh.sync_routes.get_data_sync', return_value=mock_data_sync):
             response = client.get("/api/v1/mesh/sync/state/unknown-peer")
 
             assert response.status_code == 404
@@ -673,7 +673,7 @@ class TestDataSyncEndpoints:
 
         mock_data_sync.get_all_sync_states = MagicMock(return_value=[mock_state])
 
-        with patch('api.offline_mesh_router.get_data_sync', return_value=mock_data_sync):
+        with patch('api.offline_mesh.sync_routes.get_data_sync', return_value=mock_data_sync):
             response = client.get("/api/v1/mesh/sync/states")
 
             assert response.status_code == 200
@@ -687,7 +687,7 @@ class TestDataSyncEndpoints:
             "total_conflicts": 10
         })
 
-        with patch('api.offline_mesh_router.get_data_sync', return_value=mock_data_sync):
+        with patch('api.offline_mesh.sync_routes.get_data_sync', return_value=mock_data_sync):
             response = client.get("/api/v1/mesh/sync/stats")
 
             assert response.status_code == 200
@@ -697,7 +697,7 @@ class TestDataSyncEndpoints:
         """Test exchanging sync operations"""
         # The endpoint imports SyncOperation locally from offline_data_sync
         # We need to patch it at the source module
-        with patch('api.offline_mesh_router.get_data_sync', return_value=mock_data_sync):
+        with patch('api.offline_mesh.sync_routes.get_data_sync', return_value=mock_data_sync):
             # Mock the module-level import inside the endpoint function
             with patch.dict('sys.modules', {'offline_data_sync': MagicMock()}):
                 # With empty operations list, the loop doesn't execute
@@ -722,7 +722,7 @@ class TestMLXDistributedEndpoints:
 
     def test_start_compute_server_success(self, client, mock_mlx_distributed):
         """Test starting compute server"""
-        with patch('api.offline_mesh_router.get_mlx_distributed', return_value=mock_mlx_distributed):
+        with patch('api.offline_mesh.compute_routes.get_mlx_distributed', return_value=mock_mlx_distributed):
             response = client.post("/api/v1/mesh/compute/start", params={"port": 8766})
 
             assert response.status_code == 200
@@ -734,7 +734,7 @@ class TestMLXDistributedEndpoints:
         """Test compute server start failure"""
         mock_mlx_distributed.start_server = AsyncMock(return_value=False)
 
-        with patch('api.offline_mesh_router.get_mlx_distributed', return_value=mock_mlx_distributed):
+        with patch('api.offline_mesh.compute_routes.get_mlx_distributed', return_value=mock_mlx_distributed):
             response = client.post("/api/v1/mesh/compute/start")
 
             assert response.status_code == 500
@@ -742,7 +742,7 @@ class TestMLXDistributedEndpoints:
 
     def test_get_compute_nodes_empty(self, client, mock_mlx_distributed):
         """Test getting empty compute nodes list"""
-        with patch('api.offline_mesh_router.get_mlx_distributed', return_value=mock_mlx_distributed):
+        with patch('api.offline_mesh.compute_routes.get_mlx_distributed', return_value=mock_mlx_distributed):
             response = client.get("/api/v1/mesh/compute/nodes")
 
             assert response.status_code == 200
@@ -765,7 +765,7 @@ class TestMLXDistributedEndpoints:
 
         mock_mlx_distributed.get_nodes = MagicMock(return_value=[mock_node])
 
-        with patch('api.offline_mesh_router.get_mlx_distributed', return_value=mock_mlx_distributed):
+        with patch('api.offline_mesh.compute_routes.get_mlx_distributed', return_value=mock_mlx_distributed):
             response = client.get("/api/v1/mesh/compute/nodes")
 
             assert response.status_code == 200
@@ -784,7 +784,7 @@ class TestMLXDistributedEndpoints:
 
         mock_mlx_distributed.submit_job = AsyncMock(return_value=mock_job)
 
-        with patch('api.offline_mesh_router.get_mlx_distributed', return_value=mock_mlx_distributed):
+        with patch('api.offline_mesh.compute_routes.get_mlx_distributed', return_value=mock_mlx_distributed):
             response = client.post(
                 "/api/v1/mesh/compute/job/submit",
                 json={
@@ -812,7 +812,7 @@ class TestMLXDistributedEndpoints:
 
         mock_mlx_distributed.get_job = MagicMock(return_value=mock_job)
 
-        with patch('api.offline_mesh_router.get_mlx_distributed', return_value=mock_mlx_distributed):
+        with patch('api.offline_mesh.compute_routes.get_mlx_distributed', return_value=mock_mlx_distributed):
             response = client.get("/api/v1/mesh/compute/job/job-123")
 
             assert response.status_code == 200
@@ -822,7 +822,7 @@ class TestMLXDistributedEndpoints:
 
     def test_get_job_status_not_found(self, client, mock_mlx_distributed):
         """Test getting nonexistent job"""
-        with patch('api.offline_mesh_router.get_mlx_distributed', return_value=mock_mlx_distributed):
+        with patch('api.offline_mesh.compute_routes.get_mlx_distributed', return_value=mock_mlx_distributed):
             response = client.get("/api/v1/mesh/compute/job/nonexistent")
 
             assert response.status_code == 404
@@ -835,7 +835,7 @@ class TestMLXDistributedEndpoints:
             "total_compute_time_seconds": 3600
         })
 
-        with patch('api.offline_mesh_router.get_mlx_distributed', return_value=mock_mlx_distributed):
+        with patch('api.offline_mesh.compute_routes.get_mlx_distributed', return_value=mock_mlx_distributed):
             response = client.get("/api/v1/mesh/compute/stats")
 
             assert response.status_code == 200
@@ -849,7 +849,7 @@ class TestRequestModels:
 
     def test_share_file_request(self):
         """Test ShareFileRequest model"""
-        from api.offline_mesh_router import ShareFileRequest
+        from api.offline_mesh import ShareFileRequest
 
         data = ShareFileRequest(
             file_path="/path/to/file.txt",
@@ -864,7 +864,7 @@ class TestRequestModels:
 
     def test_share_file_request_optional_fields(self):
         """Test ShareFileRequest with optional fields"""
-        from api.offline_mesh_router import ShareFileRequest
+        from api.offline_mesh import ShareFileRequest
 
         data = ShareFileRequest(
             file_path="/path/to/file.txt",
@@ -877,7 +877,7 @@ class TestRequestModels:
 
     def test_download_file_request(self):
         """Test DownloadFileRequest model"""
-        from api.offline_mesh_router import DownloadFileRequest
+        from api.offline_mesh import DownloadFileRequest
 
         data = DownloadFileRequest(
             file_id="file-123",
@@ -890,7 +890,7 @@ class TestRequestModels:
 
     def test_send_message_request(self):
         """Test SendMessageRequest model"""
-        from api.offline_mesh_router import SendMessageRequest
+        from api.offline_mesh import SendMessageRequest
 
         data = SendMessageRequest(
             dest_peer_id="peer-456",
@@ -902,7 +902,7 @@ class TestRequestModels:
 
     def test_send_message_request_optional_ttl(self):
         """Test SendMessageRequest without TTL"""
-        from api.offline_mesh_router import SendMessageRequest
+        from api.offline_mesh import SendMessageRequest
 
         data = SendMessageRequest(
             dest_peer_id="peer-456",
@@ -913,7 +913,7 @@ class TestRequestModels:
 
     def test_sync_request(self):
         """Test SyncRequest model"""
-        from api.offline_mesh_router import SyncRequest
+        from api.offline_mesh import SyncRequest
 
         data = SyncRequest(
             peer_id="peer-456",
@@ -924,7 +924,7 @@ class TestRequestModels:
 
     def test_sync_request_optional_tables(self):
         """Test SyncRequest without tables"""
-        from api.offline_mesh_router import SyncRequest
+        from api.offline_mesh import SyncRequest
 
         data = SyncRequest(peer_id="peer-456")
 
@@ -932,7 +932,7 @@ class TestRequestModels:
 
     def test_sync_exchange_request(self):
         """Test SyncExchangeRequest model"""
-        from api.offline_mesh_router import SyncExchangeRequest
+        from api.offline_mesh import SyncExchangeRequest
 
         data = SyncExchangeRequest(
             sender_peer_id="peer-456",
@@ -945,7 +945,7 @@ class TestRequestModels:
 
     def test_submit_job_request(self):
         """Test SubmitJobRequest model"""
-        from api.offline_mesh_router import SubmitJobRequest
+        from api.offline_mesh import SubmitJobRequest
 
         data = SubmitJobRequest(
             job_type="embedding",
@@ -965,7 +965,7 @@ class TestErrorHandling:
         """Test exception handling in discovery endpoints"""
         mock_mesh_discovery.get_peers = MagicMock(side_effect=Exception("Service unavailable"))
 
-        with patch('api.offline_mesh_router.get_mesh_discovery', return_value=mock_mesh_discovery):
+        with patch('api.offline_mesh.discovery_routes.get_mesh_discovery', return_value=mock_mesh_discovery):
             response = client.get("/api/v1/mesh/discovery/peers")
 
             assert response.status_code == 500
@@ -975,7 +975,7 @@ class TestErrorHandling:
         """Test exception handling in file share endpoints"""
         mock_file_share.get_shared_files = MagicMock(side_effect=Exception("Storage error"))
 
-        with patch('api.offline_mesh_router.get_file_share', return_value=mock_file_share):
+        with patch('api.offline_mesh.files_routes.get_file_share', return_value=mock_file_share):
             response = client.get("/api/v1/mesh/files/list")
 
             assert response.status_code == 500
@@ -985,7 +985,7 @@ class TestErrorHandling:
         """Test exception handling in relay endpoints"""
         mock_mesh_relay.get_stats = MagicMock(side_effect=Exception("Network error"))
 
-        with patch('api.offline_mesh_router.get_mesh_relay', return_value=mock_mesh_relay):
+        with patch('api.offline_mesh.relay_routes.get_mesh_relay', return_value=mock_mesh_relay):
             response = client.get("/api/v1/mesh/relay/stats")
 
             assert response.status_code == 500
@@ -995,7 +995,7 @@ class TestErrorHandling:
         """Test exception handling in compute endpoints"""
         mock_mlx_distributed.start_server = AsyncMock(side_effect=Exception("GPU unavailable"))
 
-        with patch('api.offline_mesh_router.get_mlx_distributed', return_value=mock_mlx_distributed):
+        with patch('api.offline_mesh.compute_routes.get_mlx_distributed', return_value=mock_mlx_distributed):
             response = client.post("/api/v1/mesh/compute/start")
 
             assert response.status_code == 500
@@ -1010,7 +1010,7 @@ class TestIntegration:
     def test_discovery_to_sync_workflow(self, client, mock_mesh_discovery, mock_data_sync):
         """Test discovery then sync workflow"""
         # Start discovery
-        with patch('api.offline_mesh_router.get_mesh_discovery', return_value=mock_mesh_discovery):
+        with patch('api.offline_mesh.discovery_routes.get_mesh_discovery', return_value=mock_mesh_discovery):
             response = client.post(
                 "/api/v1/mesh/discovery/start",
                 params={"display_name": "Test", "device_name": "test"}
@@ -1028,8 +1028,8 @@ class TestIntegration:
         mock_state.conflicts_resolved = 0
         mock_data_sync.sync_with_peer = AsyncMock(return_value=mock_state)
 
-        with patch('api.offline_mesh_router.get_data_sync', return_value=mock_data_sync):
-            with patch('api.offline_mesh_router.metrics') as mock_metrics:
+        with patch('api.offline_mesh.sync_routes.get_data_sync', return_value=mock_data_sync):
+            with patch('api.offline_mesh.sync_routes.metrics') as mock_metrics:
                 mock_metrics.track.return_value.__enter__ = MagicMock()
                 mock_metrics.track.return_value.__exit__ = MagicMock()
 
@@ -1055,7 +1055,7 @@ class TestIntegration:
             mock_shared.shared_at = "2024-01-01T00:00:00Z"
             mock_file_share.share_file = AsyncMock(return_value=mock_shared)
 
-            with patch('api.offline_mesh_router.get_file_share', return_value=mock_file_share):
+            with patch('api.offline_mesh.files_routes.get_file_share', return_value=mock_file_share):
                 response = client.post(
                     "/api/v1/mesh/files/share",
                     json={
@@ -1070,7 +1070,7 @@ class TestIntegration:
             # Download file
             mock_file_share.download_file = AsyncMock(return_value=Path("/tmp/downloaded.txt"))
 
-            with patch('api.offline_mesh_router.get_file_share', return_value=mock_file_share):
+            with patch('api.offline_mesh.files_routes.get_file_share', return_value=mock_file_share):
                 response = client.post(
                     "/api/v1/mesh/files/download",
                     json={
@@ -1093,14 +1093,14 @@ class TestEdgeCases:
 
     def test_empty_tags_filter(self, client, mock_file_share):
         """Test file list with empty tags"""
-        with patch('api.offline_mesh_router.get_file_share', return_value=mock_file_share):
+        with patch('api.offline_mesh.files_routes.get_file_share', return_value=mock_file_share):
             response = client.get("/api/v1/mesh/files/list", params={"tags": ""})
 
             assert response.status_code == 200
 
     def test_unicode_in_display_name(self, client, mock_mesh_discovery):
         """Test unicode in display name"""
-        with patch('api.offline_mesh_router.get_mesh_discovery', return_value=mock_mesh_discovery):
+        with patch('api.offline_mesh.discovery_routes.get_mesh_discovery', return_value=mock_mesh_discovery):
             response = client.post(
                 "/api/v1/mesh/discovery/start",
                 params={"display_name": "テスト機器", "device_name": "test-日本語"}
@@ -1112,7 +1112,7 @@ class TestEdgeCases:
         """Test sending message with large payload"""
         large_payload = {"data": "x" * 10000}
 
-        with patch('api.offline_mesh_router.get_mesh_relay', return_value=mock_mesh_relay):
+        with patch('api.offline_mesh.relay_routes.get_mesh_relay', return_value=mock_mesh_relay):
             response = client.post(
                 "/api/v1/mesh/relay/send",
                 json={
@@ -1125,7 +1125,7 @@ class TestEdgeCases:
 
     def test_zero_latency_peer(self, client, mock_mesh_relay):
         """Test adding peer with zero latency"""
-        with patch('api.offline_mesh_router.get_mesh_relay', return_value=mock_mesh_relay):
+        with patch('api.offline_mesh.relay_routes.get_mesh_relay', return_value=mock_mesh_relay):
             response = client.post(
                 "/api/v1/mesh/relay/peer/add",
                 params={"peer_id": "peer-456", "latency_ms": 0.0}
@@ -1146,7 +1146,7 @@ class TestEdgeCases:
 
         mock_file_share.get_active_transfers = MagicMock(return_value=[mock_transfer])
 
-        with patch('api.offline_mesh_router.get_file_share', return_value=mock_file_share):
+        with patch('api.offline_mesh.files_routes.get_file_share', return_value=mock_file_share):
             response = client.get("/api/v1/mesh/files/transfers")
 
             assert response.status_code == 200
