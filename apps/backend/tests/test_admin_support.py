@@ -191,7 +191,7 @@ class TestGetAdminDbConnection:
         """Test returns SQLite connection"""
         from api.services.admin_support import get_admin_db_connection
 
-        with patch('api.services.admin_support._get_auth_service', return_value=mock_auth_service):
+        with patch('api.services.admin_account._get_auth_service', return_value=mock_auth_service):
             with patch('api.auth_middleware.auth_service', mock_auth_service):
                 conn = get_admin_db_connection()
 
@@ -336,7 +336,7 @@ class TestGetUserChats:
         """Test getting user's chat sessions"""
         from api.services.admin_support import get_user_chats
 
-        with patch('api.services.admin_support._get_memory', return_value=mock_memory):
+        with patch('api.services.admin_users._get_memory', return_value=mock_memory):
             result = await get_user_chats("user-123")
 
         assert result["user_id"] == "user-123"
@@ -349,7 +349,7 @@ class TestGetUserChats:
         """Test only session metadata returned, not messages"""
         from api.services.admin_support import get_user_chats
 
-        with patch('api.services.admin_support._get_memory', return_value=mock_memory):
+        with patch('api.services.admin_users._get_memory', return_value=mock_memory):
             result = await get_user_chats("user-123")
 
         # Should have session metadata
@@ -369,7 +369,7 @@ class TestListAllChats:
         """Test listing all chat sessions"""
         from api.services.admin_support import list_all_chats
 
-        with patch('api.services.admin_support._get_memory', return_value=mock_memory):
+        with patch('api.services.admin_users._get_memory', return_value=mock_memory):
             result = await list_all_chats()
 
         assert "sessions" in result
@@ -391,7 +391,7 @@ class TestResetUserPassword:
         mock_paths.app_db = temp_app_db
 
         with patch('api.config_paths.PATHS', mock_paths), \
-             patch('api.services.admin_support._get_auth_service', return_value=mock_auth_service):
+             patch('api.services.admin_account._get_auth_service', return_value=mock_auth_service):
             result = await reset_user_password(sample_user["user_id"])
 
         assert result["success"] == True
@@ -411,7 +411,7 @@ class TestResetUserPassword:
         mock_paths.app_db = temp_app_db
 
         with patch('api.config_paths.PATHS', mock_paths), \
-             patch('api.services.admin_support._get_auth_service', return_value=mock_auth_service):
+             patch('api.services.admin_account._get_auth_service', return_value=mock_auth_service):
             with pytest.raises(HTTPException) as exc:
                 await reset_user_password("nonexistent-user")
 
@@ -436,7 +436,7 @@ class TestResetUserPassword:
         mock_paths.app_db = temp_app_db
 
         with patch('api.config_paths.PATHS', mock_paths), \
-             patch('api.services.admin_support._get_auth_service', return_value=mock_auth_service):
+             patch('api.services.admin_account._get_auth_service', return_value=mock_auth_service):
             with pytest.raises(HTTPException) as exc:
                 await reset_user_password("inactive-user")
 
@@ -452,7 +452,7 @@ class TestResetUserPassword:
         mock_paths.app_db = temp_app_db
 
         with patch('api.config_paths.PATHS', mock_paths), \
-             patch('api.services.admin_support._get_auth_service', return_value=mock_auth_service):
+             patch('api.services.admin_account._get_auth_service', return_value=mock_auth_service):
             await reset_user_password(sample_user["user_id"])
 
         # Verify flag was set in database
@@ -489,7 +489,7 @@ class TestUnlockUserAccount:
         mock_memory.memory.conn = sqlite3.connect(str(temp_app_db))
         mock_memory.memory.conn.row_factory = sqlite3.Row
 
-        with patch('api.services.admin_support._get_memory', return_value=mock_memory):
+        with patch('api.services.admin_account._get_memory', return_value=mock_memory):
             result = await unlock_user_account(sample_user["user_id"])
 
         assert result["success"] == True
@@ -506,7 +506,7 @@ class TestUnlockUserAccount:
         mock_memory.memory.conn = sqlite3.connect(str(temp_app_db))
         mock_memory.memory.conn.row_factory = sqlite3.Row
 
-        with patch('api.services.admin_support._get_memory', return_value=mock_memory):
+        with patch('api.services.admin_account._get_memory', return_value=mock_memory):
             with pytest.raises(HTTPException) as exc:
                 await unlock_user_account("nonexistent-user")
 
@@ -530,7 +530,7 @@ class TestUnlockUserAccount:
         mock_memory.memory.conn = sqlite3.connect(str(temp_app_db))
         mock_memory.memory.conn.row_factory = sqlite3.Row
 
-        with patch('api.services.admin_support._get_memory', return_value=mock_memory):
+        with patch('api.services.admin_account._get_memory', return_value=mock_memory):
             await unlock_user_account(sample_user["user_id"])
 
         mock_memory.memory.conn.close()
@@ -574,7 +574,7 @@ class TestGetVaultStatus:
         mock_memory.memory.conn = sqlite3.connect(str(temp_app_db))
         mock_memory.memory.conn.row_factory = sqlite3.Row
 
-        with patch('api.services.admin_support._get_memory', return_value=mock_memory):
+        with patch('api.services.admin_metrics._get_memory', return_value=mock_memory):
             result = await get_vault_status(sample_user["user_id"])
 
         assert result["user_id"] == sample_user["user_id"]
@@ -593,7 +593,7 @@ class TestGetVaultStatus:
         mock_memory.memory.conn = sqlite3.connect(str(temp_app_db))
         mock_memory.memory.conn.row_factory = sqlite3.Row
 
-        with patch('api.services.admin_support._get_memory', return_value=mock_memory):
+        with patch('api.services.admin_metrics._get_memory', return_value=mock_memory):
             with pytest.raises(HTTPException) as exc:
                 await get_vault_status("nonexistent-user")
 
@@ -620,7 +620,7 @@ class TestGetVaultStatus:
         mock_memory.memory.conn = sqlite3.connect(str(temp_app_db))
         mock_memory.memory.conn.row_factory = sqlite3.Row
 
-        with patch('api.services.admin_support._get_memory', return_value=mock_memory):
+        with patch('api.services.admin_metrics._get_memory', return_value=mock_memory):
             result = await get_vault_status(sample_user["user_id"])
 
         # Only non-deleted document counted
@@ -636,7 +636,7 @@ class TestGetVaultStatus:
         mock_memory.memory.conn = sqlite3.connect(str(temp_app_db))
         mock_memory.memory.conn.row_factory = sqlite3.Row
 
-        with patch('api.services.admin_support._get_memory', return_value=mock_memory):
+        with patch('api.services.admin_metrics._get_memory', return_value=mock_memory):
             result = await get_vault_status(sample_user["user_id"])
 
         # Should NOT contain actual document content
@@ -663,7 +663,7 @@ class TestGetDeviceOverviewMetrics:
         mock_paths = MagicMock()
         mock_paths.data_dir = temp_data_dir
 
-        with patch('api.services.admin_support._get_memory', return_value=mock_memory), \
+        with patch('api.services.admin_metrics._get_memory', return_value=mock_memory), \
              patch('api.config_paths.PATHS', mock_paths):
             result = await get_device_overview_metrics()
 
@@ -686,7 +686,7 @@ class TestGetDeviceOverviewMetrics:
         mock_paths = MagicMock()
         mock_paths.data_dir = temp_app_db.parent
 
-        with patch('api.services.admin_support._get_memory', return_value=mock_memory), \
+        with patch('api.services.admin_metrics._get_memory', return_value=mock_memory), \
              patch('api.config_paths.PATHS', mock_paths):
             result = await get_device_overview_metrics()
 
@@ -711,7 +711,7 @@ class TestGetDeviceOverviewMetrics:
         mock_paths = MagicMock()
         mock_paths.data_dir = temp_app_db.parent
 
-        with patch('api.services.admin_support._get_memory', return_value=mock_memory), \
+        with patch('api.services.admin_metrics._get_memory', return_value=mock_memory), \
              patch('api.config_paths.PATHS', mock_paths):
             result = await get_device_overview_metrics()
 
@@ -1039,11 +1039,33 @@ class TestExportAuditLogs:
 # ========== Helper Function Tests ==========
 
 class TestHelperFunctions:
-    """Tests for helper functions"""
+    """Tests for helper functions in extracted modules"""
 
-    def test_get_memory_returns_memory_instance(self):
-        """Test _get_memory returns memory instance"""
-        from api.services.admin_support import _get_memory
+    def test_get_memory_returns_memory_instance_users(self):
+        """Test _get_memory in admin_users returns memory instance"""
+        from api.services.admin_users import _get_memory
+
+        mock_memory = MagicMock()
+
+        with patch('api.chat_memory.get_memory', return_value=mock_memory):
+            result = _get_memory()
+
+        assert result == mock_memory
+
+    def test_get_memory_returns_memory_instance_account(self):
+        """Test _get_memory in admin_account returns memory instance"""
+        from api.services.admin_account import _get_memory
+
+        mock_memory = MagicMock()
+
+        with patch('api.chat_memory.get_memory', return_value=mock_memory):
+            result = _get_memory()
+
+        assert result == mock_memory
+
+    def test_get_memory_returns_memory_instance_metrics(self):
+        """Test _get_memory in admin_metrics returns memory instance"""
+        from api.services.admin_metrics import _get_memory
 
         mock_memory = MagicMock()
 
@@ -1054,7 +1076,7 @@ class TestHelperFunctions:
 
     def test_get_auth_service_returns_service(self, mock_auth_service):
         """Test _get_auth_service returns auth service"""
-        from api.services.admin_support import _get_auth_service
+        from api.services.admin_account import _get_auth_service
 
         with patch('api.auth_middleware.auth_service', mock_auth_service):
             result = _get_auth_service()
@@ -1137,7 +1159,7 @@ class TestIntegration:
 
         # Reset password
         with patch('api.config_paths.PATHS', mock_paths), \
-             patch('api.services.admin_support._get_auth_service', return_value=mock_auth_service):
+             patch('api.services.admin_account._get_auth_service', return_value=mock_auth_service):
             reset_result = await reset_user_password(sample_user["user_id"])
 
         assert reset_result["success"] == True
@@ -1157,7 +1179,7 @@ class TestIntegration:
         mock_memory.memory.conn.row_factory = sqlite3.Row
 
         # Unlock account
-        with patch('api.services.admin_support._get_memory', return_value=mock_memory):
+        with patch('api.services.admin_account._get_memory', return_value=mock_memory):
             unlock_result = await unlock_user_account(sample_user["user_id"])
 
         assert unlock_result["success"] == True
