@@ -1,20 +1,55 @@
 #!/usr/bin/env python3
 """
-Offline Data Sync for ElohimOS
+Offline Data Sync for ElohimOS - Facade Module
+
 Sync databases, query results, chat history across missionary team
-Uses CRDTs for conflict-free synchronization
+Uses CRDTs for conflict-free synchronization.
+
+This module serves as a backward-compatible facade that re-exports dataclasses
+and constants from extracted modules. Direct imports from extracted modules
+are preferred for new code.
+
+Extracted modules (P2 decomposition):
+- offline_sync_models.py: Dataclasses, constants, and schema definitions
+- offline_sync_db.py: Database utilities and query functions
 """
+
+from __future__ import annotations
 
 import asyncio
 import json
 import sqlite3
 import logging
 import re
-from typing import Dict, List, Optional, Set, Any
-from dataclasses import dataclass, asdict
+from typing import Dict, List, Optional, Any
 from datetime import datetime, UTC
 from pathlib import Path
-import hashlib
+
+# Re-export models for backward compatibility
+from .offline_sync_models import (
+    SYNCABLE_TABLES,
+    SyncOperation,
+    SyncState,
+    SYNC_OPERATIONS_SCHEMA,
+    PEER_SYNC_STATE_SCHEMA,
+    VERSION_TRACKING_SCHEMA,
+)
+
+# Import database utilities
+from .offline_sync_db import (
+    get_sync_db_path,
+    init_sync_db,
+    save_sync_operation,
+    load_pending_operations,
+    mark_operations_synced,
+    get_max_version,
+    get_peer_last_sync,
+    save_sync_state,
+    load_sync_state,
+    check_version_conflict,
+    update_version_tracking,
+    get_operations_since,
+)
 
 # Phase 4: Team cryptography for P2P sync
 try:
@@ -37,55 +72,6 @@ except ImportError:
         return f'"{name.replace(chr(34), chr(34)+chr(34))}"'
 
 logger = logging.getLogger(__name__)
-
-# SECURITY: Allowlist of tables that can be synced via P2P
-# Only these tables can be modified by incoming sync operations
-# This prevents SQL injection via malicious table names from peers
-SYNCABLE_TABLES: frozenset[str] = frozenset({
-    # Chat and messages
-    "chat_sessions",
-    "chat_messages",
-    "chat_context",
-    # Vault and files
-    "vault_files",
-    "vault_folders",
-    "vault_metadata",
-    # Workflows
-    "workflows",
-    "work_items",
-    # Team collaboration
-    "team_notes",
-    "team_documents",
-    "shared_queries",
-    # Query history
-    "query_history",
-})
-
-
-@dataclass
-class SyncOperation:
-    """A single sync operation"""
-    op_id: str
-    table_name: str
-    operation: str  # 'insert', 'update', 'delete'
-    row_id: Any
-    data: Optional[dict]
-    timestamp: str
-    peer_id: str
-    version: int  # Vector clock for conflict resolution
-    team_id: Optional[str] = None  # Phase 4: Team isolation
-    signature: str = ""  # Phase 4: HMAC signature for team ops
-
-
-@dataclass
-class SyncState:
-    """Synchronization state with a peer"""
-    peer_id: str
-    last_sync: str
-    operations_sent: int
-    operations_received: int
-    conflicts_resolved: int
-    status: str  # 'syncing', 'idle', 'error'
 
 
 class OfflineDataSync:
@@ -110,9 +96,9 @@ class OfflineDataSync:
         # Vector clock for this peer
         self.local_version = 0
 
-        # Initialize sync metadata database
-        self.sync_db_path = db_path.parent / f"{db_path.stem}_sync.db"
-        self._init_sync_db()
+        # Initialize sync metadata database using extracted utility
+        self.sync_db_path = get_sync_db_path(db_path)
+        init_sync_db(self.sync_db_path)
 
         # Load any pending operations from previous session (Tier 10.4)
         self._load_pending_operations()
@@ -120,57 +106,8 @@ class OfflineDataSync:
         logger.info(f"🔄 Data sync initialized for peer {local_peer_id}")
 
     def _init_sync_db(self) -> None:
-        """Initialize sync metadata database"""
-        conn = sqlite3.connect(str(self.sync_db_path))
-        cursor = conn.cursor()
-
-        # Sync operations log
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS sync_operations (
-                op_id TEXT PRIMARY KEY,
-                table_name TEXT NOT NULL,
-                operation TEXT NOT NULL,
-                row_id TEXT NOT NULL,
-                data TEXT,
-                timestamp TEXT NOT NULL,
-                peer_id TEXT NOT NULL,
-                version INTEGER NOT NULL,
-                team_id TEXT,
-                signature TEXT,
-                synced INTEGER DEFAULT 0,
-                created_at TEXT DEFAULT (datetime('now'))
-            )
-        """)
-
-        # Peer sync state
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS peer_sync_state (
-                peer_id TEXT PRIMARY KEY,
-                last_sync TEXT,
-                operations_sent INTEGER DEFAULT 0,
-                operations_received INTEGER DEFAULT 0,
-                conflicts_resolved INTEGER DEFAULT 0,
-                status TEXT DEFAULT 'idle',
-                updated_at TEXT DEFAULT (datetime('now'))
-            )
-        """)
-
-        # Version tracking (vector clocks)
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS version_tracking (
-                table_name TEXT,
-                row_id TEXT,
-                peer_id TEXT,
-                version INTEGER,
-                timestamp TEXT,
-                PRIMARY KEY (table_name, row_id, peer_id)
-            )
-        """)
-
-        conn.commit()
-        conn.close()
-
-        logger.info(f"✅ Sync database initialized: {self.sync_db_path}")
+        """Initialize sync metadata database (delegates to extracted module)."""
+        init_sync_db(self.sync_db_path)
 
     def _load_pending_operations(self) -> None:
         """
@@ -179,42 +116,16 @@ class OfflineDataSync:
         Tier 10.4: Ensures sync operations survive app restarts.
         Operations are retried automatically when sync resumes.
         """
-        conn = sqlite3.connect(str(self.sync_db_path))
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
+        operations = load_pending_operations(self.sync_db_path, self.local_peer_id)
 
-        cursor.execute("""
-            SELECT op_id, table_name, operation, row_id, data, timestamp,
-                   peer_id, version, team_id, signature
-            FROM sync_operations
-            WHERE synced = 0 AND peer_id = ?
-            ORDER BY version ASC
-        """, (self.local_peer_id,))
-
-        rows = cursor.fetchall()
-        conn.close()
-
-        for row in rows:
-            op = SyncOperation(
-                op_id=row['op_id'],
-                table_name=row['table_name'],
-                operation=row['operation'],
-                row_id=row['row_id'],
-                data=json.loads(row['data']) if row['data'] else None,
-                timestamp=row['timestamp'],
-                peer_id=row['peer_id'],
-                version=row['version'],
-                team_id=row['team_id'],
-                signature=row['signature'] or ''
-            )
+        for op in operations:
             self.pending_operations.append(op)
-
             # Update local_version to highest seen version
-            if row['version'] > self.local_version:
-                self.local_version = row['version']
+            if op.version > self.local_version:
+                self.local_version = op.version
 
-        if rows:
-            logger.info(f"📥 Loaded {len(rows)} pending sync operations from previous session")
+        if operations:
+            logger.info(f"📥 Loaded {len(operations)} pending sync operations from previous session")
 
     def _mark_operations_synced(self, op_ids: list[str]) -> None:
         """
@@ -226,23 +137,7 @@ class OfflineDataSync:
         Args:
             op_ids: List of operation IDs that were synced
         """
-        if not op_ids:
-            return
-
-        conn = sqlite3.connect(str(self.sync_db_path))
-        cursor = conn.cursor()
-
-        placeholders = ','.join('?' for _ in op_ids)
-        cursor.execute(f"""
-            UPDATE sync_operations
-            SET synced = 1
-            WHERE op_id IN ({placeholders})
-        """, op_ids)
-
-        conn.commit()
-        conn.close()
-
-        logger.debug(f"✅ Marked {len(op_ids)} operations as synced")
+        mark_operations_synced(self.sync_db_path, op_ids)
 
     async def track_operation(self,
                              table_name: str,
@@ -273,45 +168,13 @@ class OfflineDataSync:
 
         # Phase 4: Sign payload for team operations
         if team_id:
-            payload_to_sign = {
-                "op_id": op.op_id,
-                "table_name": op.table_name,
-                "operation": op.operation,
-                "row_id": op.row_id,
-                "data": op.data,
-                "timestamp": op.timestamp,
-                "peer_id": op.peer_id,
-                "version": op.version,
-                "team_id": op.team_id
-            }
-            op.signature = sign_payload(payload_to_sign, team_id)
+            op.signature = sign_payload(op.to_payload(), team_id)
             logger.debug(f"🔐 Signed team operation {op.op_id} for team {team_id}")
         else:
             op.signature = ""
 
-        # Save to sync log
-        conn = sqlite3.connect(str(self.sync_db_path))
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            INSERT INTO sync_operations
-            (op_id, table_name, operation, row_id, data, timestamp, peer_id, version, team_id, signature)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            op.op_id,
-            op.table_name,
-            op.operation,
-            op.row_id,
-            json.dumps(op.data) if op.data else None,
-            op.timestamp,
-            op.peer_id,
-            op.version,
-            op.team_id,
-            op.signature
-        ))
-
-        conn.commit()
-        conn.close()
+        # Save to sync log using extracted function
+        save_sync_operation(self.sync_db_path, op)
 
         self.pending_operations.append(op)
         logger.debug(f"📝 Tracked {operation} on {table_name}:{row_id}")
@@ -390,56 +253,13 @@ class OfflineDataSync:
                                              peer_id: str,
                                              tables: Optional[List[str]] = None) -> List[SyncOperation]:
         """Get operations that haven't been synced to peer yet"""
-        conn = sqlite3.connect(str(self.sync_db_path))
-        cursor = conn.cursor()
-
-        # Get last sync time
-        cursor.execute("""
-            SELECT last_sync FROM peer_sync_state WHERE peer_id = ?
-        """, (peer_id,))
-
-        row = cursor.fetchone()
-        last_sync = row[0] if row else None
-
-        # Build query
-        query = """
-            SELECT op_id, table_name, operation, row_id, data, timestamp, peer_id, version, team_id, signature
-            FROM sync_operations
-            WHERE peer_id = ?
-        """
-        params = [self.local_peer_id]
-
-        if last_sync:
-            query += " AND timestamp > ?"
-            params.append(last_sync)
-
-        if tables:
-            placeholders = ','.join('?' * len(tables))
-            query += f" AND table_name IN ({placeholders})"
-            params.extend(tables)
-
-        query += " ORDER BY version ASC"
-
-        cursor.execute(query, params)
-
-        operations = []
-        for row in cursor.fetchall():
-            op = SyncOperation(
-                op_id=row[0],
-                table_name=row[1],
-                operation=row[2],
-                row_id=row[3],
-                data=json.loads(row[4]) if row[4] else None,
-                timestamp=row[5],
-                peer_id=row[6],
-                version=row[7],
-                team_id=row[8],
-                signature=row[9] or ""
-            )
-            operations.append(op)
-
-        conn.close()
-        return operations
+        last_sync = get_peer_last_sync(self.sync_db_path, peer_id)
+        return get_operations_since(
+            self.sync_db_path,
+            self.local_peer_id,
+            last_sync=last_sync,
+            tables=tables
+        )
 
     async def _apply_operations(self, operations: List[SyncOperation], user_id: Optional[str] = None) -> int:
         """
@@ -511,18 +331,12 @@ class OfflineDataSync:
 
     async def _has_conflict(self, op: SyncOperation) -> bool:
         """Check if operation conflicts with local data"""
-        conn = sqlite3.connect(str(self.sync_db_path))
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            SELECT COUNT(*) FROM version_tracking
-            WHERE table_name = ? AND row_id = ? AND peer_id != ?
-        """, (op.table_name, op.row_id, op.peer_id))
-
-        count = cursor.fetchone()[0]
-        conn.close()
-
-        return count > 0
+        return check_version_conflict(
+            self.sync_db_path,
+            op.table_name,
+            op.row_id,
+            op.peer_id
+        )
 
     async def _should_apply_operation(self, op: SyncOperation) -> bool:
         """
@@ -617,17 +431,7 @@ class OfflineDataSync:
 
     async def _update_version_tracking(self, op: SyncOperation) -> None:
         """Update version tracking for conflict detection"""
-        conn = sqlite3.connect(str(self.sync_db_path))
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            INSERT OR REPLACE INTO version_tracking
-            (table_name, row_id, peer_id, version, timestamp)
-            VALUES (?, ?, ?, ?, ?)
-        """, (op.table_name, op.row_id, op.peer_id, op.version, op.timestamp))
-
-        conn.commit()
-        conn.close()
+        update_version_tracking(self.sync_db_path, op)
 
     async def _exchange_operations_with_peer(self,
                                              peer_id: str,
@@ -713,24 +517,7 @@ class OfflineDataSync:
 
     async def _save_sync_state(self, state: SyncState) -> None:
         """Save sync state to database"""
-        conn = sqlite3.connect(str(self.sync_db_path))
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            INSERT OR REPLACE INTO peer_sync_state
-            (peer_id, last_sync, operations_sent, operations_received, conflicts_resolved, status, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
-        """, (
-            state.peer_id,
-            state.last_sync,
-            state.operations_sent,
-            state.operations_received,
-            state.conflicts_resolved,
-            state.status
-        ))
-
-        conn.commit()
-        conn.close()
+        save_sync_state(self.sync_db_path, state)
 
     def _generate_op_id(self) -> str:
         """Generate unique operation ID using UUID"""
@@ -789,3 +576,30 @@ def get_data_sync(db_path: Path = None, local_peer_id: str = None) -> OfflineDat
         logger.info("🔄 Offline data sync ready")
 
     return _data_sync
+
+
+__all__ = [
+    # Re-exported from offline_sync_models.py (backward compatibility)
+    "SYNCABLE_TABLES",
+    "SyncOperation",
+    "SyncState",
+    "SYNC_OPERATIONS_SCHEMA",
+    "PEER_SYNC_STATE_SCHEMA",
+    "VERSION_TRACKING_SCHEMA",
+    # Re-exported from offline_sync_db.py (backward compatibility)
+    "get_sync_db_path",
+    "init_sync_db",
+    "save_sync_operation",
+    "load_pending_operations",
+    "mark_operations_synced",
+    "get_max_version",
+    "get_peer_last_sync",
+    "save_sync_state",
+    "load_sync_state",
+    "check_version_conflict",
+    "update_version_tracking",
+    "get_operations_since",
+    # Main class and singleton
+    "OfflineDataSync",
+    "get_data_sync",
+]
