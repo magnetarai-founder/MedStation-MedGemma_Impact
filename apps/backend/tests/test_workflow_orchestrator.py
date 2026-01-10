@@ -22,6 +22,12 @@ from datetime import datetime, timedelta, UTC
 from uuid import uuid4
 
 from api.services.workflow_orchestrator import WorkflowOrchestrator
+from api.services.workflow_orchestrator_routing import evaluate_conditions
+from api.services.workflow_orchestrator_utils import (
+    priority_score,
+    find_stage,
+    apply_auto_assignment,
+)
 from api.services.workflow_automation import (
     execute_automation_stage,
     run_local_ai_automation,
@@ -607,9 +613,9 @@ class TestStageCompletion:
 # ========== Conditional Routing Tests ==========
 
 class TestConditionalRouting:
-    """Tests for conditional routing evaluation"""
+    """Tests for conditional routing evaluation (uses standalone evaluate_conditions function)"""
 
-    def test_evaluate_equals_condition_true(self, orchestrator):
+    def test_evaluate_equals_condition_true(self):
         """Test EQUALS condition evaluates correctly"""
         conditions = [
             RoutingCondition(
@@ -619,11 +625,11 @@ class TestConditionalRouting:
             )
         ]
 
-        result = orchestrator._evaluate_conditions(conditions, {"status": "approved"})
+        result = evaluate_conditions(conditions, {"status": "approved"})
 
         assert result is True
 
-    def test_evaluate_equals_condition_false(self, orchestrator):
+    def test_evaluate_equals_condition_false(self):
         """Test EQUALS condition fails correctly"""
         conditions = [
             RoutingCondition(
@@ -633,11 +639,11 @@ class TestConditionalRouting:
             )
         ]
 
-        result = orchestrator._evaluate_conditions(conditions, {"status": "rejected"})
+        result = evaluate_conditions(conditions, {"status": "rejected"})
 
         assert result is False
 
-    def test_evaluate_not_equals_condition(self, orchestrator):
+    def test_evaluate_not_equals_condition(self):
         """Test NOT_EQUALS condition"""
         conditions = [
             RoutingCondition(
@@ -647,11 +653,11 @@ class TestConditionalRouting:
             )
         ]
 
-        result = orchestrator._evaluate_conditions(conditions, {"status": "approved"})
+        result = evaluate_conditions(conditions, {"status": "approved"})
 
         assert result is True
 
-    def test_evaluate_greater_than_condition(self, orchestrator):
+    def test_evaluate_greater_than_condition(self):
         """Test GREATER_THAN condition"""
         conditions = [
             RoutingCondition(
@@ -661,10 +667,10 @@ class TestConditionalRouting:
             )
         ]
 
-        assert orchestrator._evaluate_conditions(conditions, {"amount": 150}) is True
-        assert orchestrator._evaluate_conditions(conditions, {"amount": 50}) is False
+        assert evaluate_conditions(conditions, {"amount": 150}) is True
+        assert evaluate_conditions(conditions, {"amount": 50}) is False
 
-    def test_evaluate_less_than_condition(self, orchestrator):
+    def test_evaluate_less_than_condition(self):
         """Test LESS_THAN condition"""
         conditions = [
             RoutingCondition(
@@ -674,10 +680,10 @@ class TestConditionalRouting:
             )
         ]
 
-        assert orchestrator._evaluate_conditions(conditions, {"amount": 50}) is True
-        assert orchestrator._evaluate_conditions(conditions, {"amount": 150}) is False
+        assert evaluate_conditions(conditions, {"amount": 50}) is True
+        assert evaluate_conditions(conditions, {"amount": 150}) is False
 
-    def test_evaluate_contains_condition(self, orchestrator):
+    def test_evaluate_contains_condition(self):
         """Test CONTAINS condition"""
         conditions = [
             RoutingCondition(
@@ -687,10 +693,10 @@ class TestConditionalRouting:
             )
         ]
 
-        assert orchestrator._evaluate_conditions(conditions, {"description": "This is urgent!"}) is True
-        assert orchestrator._evaluate_conditions(conditions, {"description": "Normal task"}) is False
+        assert evaluate_conditions(conditions, {"description": "This is urgent!"}) is True
+        assert evaluate_conditions(conditions, {"description": "Normal task"}) is False
 
-    def test_evaluate_not_contains_condition(self, orchestrator):
+    def test_evaluate_not_contains_condition(self):
         """Test NOT_CONTAINS condition"""
         conditions = [
             RoutingCondition(
@@ -700,10 +706,10 @@ class TestConditionalRouting:
             )
         ]
 
-        assert orchestrator._evaluate_conditions(conditions, {"description": "Valid content"}) is True
-        assert orchestrator._evaluate_conditions(conditions, {"description": "This is spam"}) is False
+        assert evaluate_conditions(conditions, {"description": "Valid content"}) is True
+        assert evaluate_conditions(conditions, {"description": "This is spam"}) is False
 
-    def test_evaluate_is_true_condition(self, orchestrator):
+    def test_evaluate_is_true_condition(self):
         """Test IS_TRUE condition"""
         conditions = [
             RoutingCondition(
@@ -713,10 +719,10 @@ class TestConditionalRouting:
             )
         ]
 
-        assert orchestrator._evaluate_conditions(conditions, {"approved": True}) is True
-        assert orchestrator._evaluate_conditions(conditions, {"approved": False}) is False
+        assert evaluate_conditions(conditions, {"approved": True}) is True
+        assert evaluate_conditions(conditions, {"approved": False}) is False
 
-    def test_evaluate_is_false_condition(self, orchestrator):
+    def test_evaluate_is_false_condition(self):
         """Test IS_FALSE condition"""
         conditions = [
             RoutingCondition(
@@ -726,21 +732,21 @@ class TestConditionalRouting:
             )
         ]
 
-        assert orchestrator._evaluate_conditions(conditions, {"rejected": False}) is True
-        assert orchestrator._evaluate_conditions(conditions, {"rejected": True}) is False
+        assert evaluate_conditions(conditions, {"rejected": False}) is True
+        assert evaluate_conditions(conditions, {"rejected": True}) is False
 
-    def test_evaluate_multiple_conditions_all_must_pass(self, orchestrator):
+    def test_evaluate_multiple_conditions_all_must_pass(self):
         """Test AND logic for multiple conditions"""
         conditions = [
             RoutingCondition(field="status", operator=ConditionOperator.EQUALS, value="approved"),
             RoutingCondition(field="amount", operator=ConditionOperator.GREATER_THAN, value=100),
         ]
 
-        assert orchestrator._evaluate_conditions(conditions, {"status": "approved", "amount": 150}) is True
-        assert orchestrator._evaluate_conditions(conditions, {"status": "approved", "amount": 50}) is False
-        assert orchestrator._evaluate_conditions(conditions, {"status": "rejected", "amount": 150}) is False
+        assert evaluate_conditions(conditions, {"status": "approved", "amount": 150}) is True
+        assert evaluate_conditions(conditions, {"status": "approved", "amount": 50}) is False
+        assert evaluate_conditions(conditions, {"status": "rejected", "amount": 150}) is False
 
-    def test_evaluate_missing_field(self, orchestrator):
+    def test_evaluate_missing_field(self):
         """Test condition with missing field"""
         conditions = [
             RoutingCondition(
@@ -750,7 +756,7 @@ class TestConditionalRouting:
             )
         ]
 
-        result = orchestrator._evaluate_conditions(conditions, {})
+        result = evaluate_conditions(conditions, {})
 
         assert result is False
 
@@ -758,9 +764,9 @@ class TestConditionalRouting:
 # ========== Assignment Tests ==========
 
 class TestAssignment:
-    """Tests for auto-assignment logic"""
+    """Tests for auto-assignment logic (uses standalone apply_auto_assignment function)"""
 
-    def test_auto_assign_specific_user(self, orchestrator):
+    def test_auto_assign_specific_user(self):
         """Test auto-assignment to specific user"""
         stage = Stage(
             id="s1",
@@ -779,12 +785,13 @@ class TestAssignment:
             created_by="creator",
         )
 
-        orchestrator._auto_assign_if_needed(work_item, stage)
+        result = apply_auto_assignment(work_item, stage)
 
+        assert result is True
         assert work_item.assigned_to == "specific_user"
         assert work_item.status == WorkItemStatus.CLAIMED
 
-    def test_auto_assign_automation(self, orchestrator):
+    def test_auto_assign_automation(self):
         """Test auto-assignment to automation"""
         stage = Stage(
             id="s1",
@@ -802,8 +809,9 @@ class TestAssignment:
             created_by="creator",
         )
 
-        orchestrator._auto_assign_if_needed(work_item, stage)
+        result = apply_auto_assignment(work_item, stage)
 
+        assert result is True
         assert work_item.assigned_to == "system"
         assert work_item.status == WorkItemStatus.IN_PROGRESS
 
@@ -1023,27 +1031,27 @@ class TestStatistics:
 # ========== Utility Tests ==========
 
 class TestUtilities:
-    """Tests for utility methods"""
+    """Tests for utility functions (uses standalone find_stage and priority_score)"""
 
-    def test_find_stage(self, orchestrator, sample_workflow):
+    def test_find_stage(self, sample_workflow):
         """Test finding stage by ID"""
-        result = orchestrator._find_stage(sample_workflow, "stage_1")
+        result = find_stage(sample_workflow, "stage_1")
 
         assert result is not None
         assert result.name == "Initial Review"
 
-    def test_find_stage_not_found(self, orchestrator, sample_workflow):
+    def test_find_stage_not_found(self, sample_workflow):
         """Test finding non-existent stage"""
-        result = orchestrator._find_stage(sample_workflow, "nonexistent")
+        result = find_stage(sample_workflow, "nonexistent")
 
         assert result is None
 
-    def test_priority_score(self, orchestrator):
+    def test_priority_score(self):
         """Test priority scoring"""
-        assert orchestrator._priority_score(WorkItemPriority.LOW) == 1
-        assert orchestrator._priority_score(WorkItemPriority.NORMAL) == 2
-        assert orchestrator._priority_score(WorkItemPriority.HIGH) == 3
-        assert orchestrator._priority_score(WorkItemPriority.URGENT) == 4
+        assert priority_score(WorkItemPriority.LOW) == 1
+        assert priority_score(WorkItemPriority.NORMAL) == 2
+        assert priority_score(WorkItemPriority.HIGH) == 3
+        assert priority_score(WorkItemPriority.URGENT) == 4
 
 
 # ========== Automation Tests ==========

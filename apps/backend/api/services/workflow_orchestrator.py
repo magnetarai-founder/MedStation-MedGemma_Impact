@@ -14,16 +14,36 @@ Responsibilities:
 - SLA tracking and overdue detection
 - Queue management and assignment
 
-Extracted from workflow_orchestrator.py during Phase 6.3e modularization.
+Module structure (P2 decomposition):
+- workflow_orchestrator_routing.py: Condition evaluation logic
+- workflow_orchestrator_utils.py: Helper functions (priority, stage lookup)
+- workflow_orchestrator.py: Main WorkflowOrchestrator class (this file)
 """
 
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta, UTC
 import logging
-from collections import defaultdict
 
 # Import automation execution functions (extracted during P2 decomposition)
 from api.services.workflow_automation import execute_automation_stage
+
+# Import from extracted modules (P2 decomposition)
+try:
+    from api.services.workflow_orchestrator_routing import evaluate_conditions
+    from api.services.workflow_orchestrator_utils import (
+        priority_score,
+        find_stage,
+        find_first_stage,
+        apply_auto_assignment,
+    )
+except ImportError:
+    from workflow_orchestrator_routing import evaluate_conditions
+    from workflow_orchestrator_utils import (
+        priority_score,
+        find_stage,
+        find_first_stage,
+        apply_auto_assignment,
+    )
 
 # Import from parent api directory
 try:
@@ -259,11 +279,10 @@ class WorkflowOrchestrator:
         if not workflow:
             raise ValueError(f"Workflow not found: {workflow_id}")
 
-        if not workflow.stages:
-            raise ValueError(f"Workflow has no stages: {workflow.name}")
-
         # Find first stage (lowest order)
-        first_stage = min(workflow.stages, key=lambda s: s.order)
+        first_stage = find_first_stage(workflow)
+        if not first_stage:
+            raise ValueError(f"Workflow has no stages: {workflow.name}")
 
         # Create work item
         work_item = WorkItem(
@@ -292,7 +311,7 @@ class WorkflowOrchestrator:
         work_item.history.append(transition)
 
         # Auto-assign if stage requires it
-        self._auto_assign_if_needed(work_item, first_stage)
+        apply_auto_assignment(work_item, first_stage)
 
         # Store active work item
         self.active_work_items[work_item.id] = work_item
@@ -499,7 +518,7 @@ class WorkflowOrchestrator:
             raise ValueError(f"Workflow not found: {work_item.workflow_id}")
 
         # Find current stage
-        current_stage = self._find_stage(workflow, work_item.current_stage_id)
+        current_stage = find_stage(workflow, work_item.current_stage_id)
         if not current_stage:
             raise ValueError(f"Current stage not found: {work_item.current_stage_id}")
 
@@ -585,65 +604,21 @@ class WorkflowOrchestrator:
                 # Default route (no conditions)
                 workflow = self.get_workflow(work_item.workflow_id, user_id)
                 if workflow:
-                    return self._find_stage(workflow, route.next_stage_id)
+                    return find_stage(workflow, route.next_stage_id)
             else:
-                # Check all conditions
-                if self._evaluate_conditions(route.conditions, work_item.data):
+                # Check all conditions (using extracted function)
+                if evaluate_conditions(route.conditions, work_item.data):
                     workflow = self.get_workflow(work_item.workflow_id, user_id)
                     if workflow:
                         logger.info(f"🔀 Conditional route matched: {route.description or route.next_stage_id}")
-                        return self._find_stage(workflow, route.next_stage_id)
+                        return find_stage(workflow, route.next_stage_id)
 
         # No matching route
         logger.warning(f"⚠️  No matching route found for work item {work_item.id}")
         return None
 
-    def _evaluate_conditions(
-        self,
-        conditions: List[RoutingCondition],
-        data: Dict[str, Any]
-    ) -> bool:
-        """
-        Evaluate all conditions (AND logic)
-
-        Args:
-            conditions: List of conditions to check
-            data: Work item data
-
-        Returns:
-            True if all conditions match
-        """
-        for condition in conditions:
-            field_value = data.get(condition.field)
-            target_value = condition.value
-
-            # Evaluate based on operator
-            if condition.operator == ConditionOperator.EQUALS:
-                if field_value != target_value:
-                    return False
-            elif condition.operator == ConditionOperator.NOT_EQUALS:
-                if field_value == target_value:
-                    return False
-            elif condition.operator == ConditionOperator.GREATER_THAN:
-                if not (field_value and field_value > target_value):
-                    return False
-            elif condition.operator == ConditionOperator.LESS_THAN:
-                if not (field_value and field_value < target_value):
-                    return False
-            elif condition.operator == ConditionOperator.CONTAINS:
-                if not (field_value and target_value in str(field_value)):
-                    return False
-            elif condition.operator == ConditionOperator.NOT_CONTAINS:
-                if field_value and target_value in str(field_value):
-                    return False
-            elif condition.operator == ConditionOperator.IS_TRUE:
-                if not field_value:
-                    return False
-            elif condition.operator == ConditionOperator.IS_FALSE:
-                if field_value:
-                    return False
-
-        return True
+    # Note: _evaluate_conditions moved to workflow_orchestrator_routing.py
+    # as evaluate_conditions() for better testability
 
     # ============================================
     # STAGE TRANSITIONS
@@ -696,7 +671,7 @@ class WorkflowOrchestrator:
         work_item.history.append(transition)
 
         # Auto-assign if needed
-        self._auto_assign_if_needed(work_item, next_stage)
+        apply_auto_assignment(work_item, next_stage)
 
         logger.info(f"→ Transitioned to stage: {next_stage.name}")
 
@@ -724,32 +699,10 @@ class WorkflowOrchestrator:
                     logger.warning(f"Agent Assist encountered error (graceful degradation): {e}")
 
     # ============================================
-    # ASSIGNMENT LOGIC
-    # ============================================
-
-    def _auto_assign_if_needed(self, work_item: WorkItem, stage: Stage) -> None:
-        """
-        Auto-assign work item if stage requires it
-
-        Args:
-            work_item: Work item to assign
-            stage: Stage definition
-        """
-        if stage.assignment_type == AssignmentType.SPECIFIC_USER:
-            if stage.assigned_user_id:
-                work_item.assigned_to = stage.assigned_user_id
-                work_item.status = WorkItemStatus.CLAIMED
-                work_item.claimed_at = datetime.now(UTC)
-                logger.info(f"👤 Auto-assigned to user: {stage.assigned_user_id}")
-
-        elif stage.assignment_type == AssignmentType.AUTOMATION:
-            work_item.assigned_to = "system"
-            work_item.status = WorkItemStatus.IN_PROGRESS
-            logger.info(f"🤖 Auto-assigned to automation")
-
-    # ============================================
     # QUEUE MANAGEMENT
     # ============================================
+    # Note: _auto_assign_if_needed moved to workflow_orchestrator_utils.py
+    # as apply_auto_assignment() for better testability
 
     def get_queue_for_role(
         self,
@@ -798,13 +751,13 @@ class WorkflowOrchestrator:
                 continue
 
             # Check if current stage matches role
-            stage = self._find_stage(workflow, work_item.current_stage_id)
+            stage = find_stage(workflow, work_item.current_stage_id)
             if stage and stage.role_name == role_name:
                 queue.append(work_item)
 
         # Sort by priority, then age
         queue.sort(key=lambda w: (
-            -self._priority_score(w.priority),
+            -priority_score(w.priority),
             w.created_at
         ))
 
@@ -848,7 +801,7 @@ class WorkflowOrchestrator:
 
         # Sort by priority, then SLA
         my_work.sort(key=lambda w: (
-            -self._priority_score(w.priority),
+            -priority_score(w.priority),
             w.sla_due_at or datetime.max
         ))
 
@@ -896,29 +849,10 @@ class WorkflowOrchestrator:
         return overdue
 
     # ============================================
-    # UTILITIES
-    # ============================================
-
-    def _find_stage(self, workflow: Workflow, stage_id: str) -> Optional[Stage]:
-        """Find stage by ID in workflow"""
-        for stage in workflow.stages:
-            if stage.id == stage_id:
-                return stage
-        return None
-
-    def _priority_score(self, priority: WorkItemPriority) -> int:
-        """Convert priority to numeric score for sorting"""
-        scores = {
-            WorkItemPriority.LOW: 1,
-            WorkItemPriority.NORMAL: 2,
-            WorkItemPriority.HIGH: 3,
-            WorkItemPriority.URGENT: 4,
-        }
-        return scores.get(priority, 2)
-
-    # ============================================
     # STATISTICS
     # ============================================
+    # Note: _find_stage and _priority_score moved to workflow_orchestrator_utils.py
+    # as find_stage() and priority_score() for better testability
 
     def get_workflow_statistics(self, workflow_id: str, user_id: str) -> Dict[str, Any]:
         """
@@ -956,3 +890,16 @@ class WorkflowOrchestrator:
             "overdue": overdue,
             "completion_rate": (completed / total * 100) if total > 0 else 0,
         }
+
+
+__all__ = [
+    # Main class
+    "WorkflowOrchestrator",
+    # Re-export from utils for backwards compatibility
+    "priority_score",
+    "find_stage",
+    "find_first_stage",
+    "apply_auto_assignment",
+    # Re-export from routing for backwards compatibility
+    "evaluate_conditions",
+]
