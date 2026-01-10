@@ -2,40 +2,44 @@
 """
 Recursive NLP Prompt Library for ElohimOS
 Breaks complex prompts into optimized sub-tasks with Metal 4 + ANE acceleration
+
+Extracted modules (P2 decomposition):
+- recursive_prompt_constants.py: Safety limits, enums, patterns, and helper functions
 """
 
 import asyncio
 import time
 import logging
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
-from enum import Enum
-from pathlib import Path
+
+# Import from extracted module (P2 decomposition)
+from api.recursive_prompt_constants import (
+    # Safety constants
+    MAX_RECURSION_DEPTH,
+    TIMEOUT_PER_STEP_SECONDS,
+    GLOBAL_TIMEOUT_SECONDS,
+    MAX_RETRIES,
+    BACKOFF_BASE_SECONDS,
+    MAX_CONCURRENT_EXECUTIONS,
+    # Enums
+    TaskComplexity,
+    ExecutionBackend,
+    # Patterns and data
+    DECOMPOSITION_PATTERNS,
+    ANE_MODEL,
+    METAL_MODEL,
+    ANE_MAX_TOKENS,
+    METAL_MAX_TOKENS,
+    ESTIMATED_SINGLE_PROMPT_TIME_MS,
+    # Helper functions
+    get_step_time_estimate,
+    get_power_estimate,
+    select_backend_for_complexity,
+    detect_query_type,
+)
 
 logger = logging.getLogger(__name__)
-
-
-# ===== SAFETY LIMITS (For Missionary Field Use) =====
-MAX_RECURSION_DEPTH = 5           # Prevent infinite loops
-MAX_TOKENS_PER_STEP = 2000        # Limit token usage per step
-TIMEOUT_PER_STEP_SECONDS = 15     # Kill slow steps
-GLOBAL_TIMEOUT_SECONDS = 60       # Kill entire query if too slow
-MAX_RETRIES = 2                   # Retry failed steps
-BACKOFF_BASE_SECONDS = 1          # Exponential backoff base
-
-
-class TaskComplexity(Enum):
-    """Complexity levels for routing to ANE vs Metal GPU"""
-    SIMPLE = "simple"      # ANE: 0.1-0.5s, <0.5W
-    MODERATE = "moderate"  # Metal: 0.5-2s, 2-5W
-    COMPLEX = "complex"    # Metal: 2-10s, 5-10W
-
-
-class ExecutionBackend(Enum):
-    """Where to run the inference"""
-    ANE = "ane"           # Apple Neural Engine (low power, fast for small tasks)
-    METAL_GPU = "metal"   # Metal GPU (high power, fast for big tasks)
-    CPU = "cpu"           # CPU fallback
 
 
 @dataclass
@@ -83,70 +87,13 @@ class PromptDecomposer:
     """Breaks complex prompts into optimized sub-tasks"""
 
     def __init__(self):
-        self.decomposition_patterns = self._load_patterns()
-
-    def _load_patterns(self) -> Dict[str, Any]:
-        """Load decomposition patterns for common query types"""
-        return {
-            'data_analysis': {
-                'keywords': ['analyze', 'data', 'sales', 'trends', 'patterns'],
-                'steps': [
-                    {'description': 'Identify data requirements', 'complexity': TaskComplexity.SIMPLE},
-                    {'description': 'Generate SQL queries', 'complexity': TaskComplexity.MODERATE},
-                    {'description': 'Execute analysis', 'complexity': TaskComplexity.COMPLEX},
-                    {'description': 'Interpret results', 'complexity': TaskComplexity.SIMPLE},
-                ]
-            },
-            'missionary_report': {
-                'keywords': ['field', 'report', 'missionary', 'health', 'security'],
-                'steps': [
-                    {'description': 'Extract key information', 'complexity': TaskComplexity.SIMPLE},
-                    {'description': 'Categorize by type', 'complexity': TaskComplexity.SIMPLE},
-                    {'description': 'Identify risks/concerns', 'complexity': TaskComplexity.MODERATE},
-                    {'description': 'Generate recommendations', 'complexity': TaskComplexity.MODERATE},
-                ]
-            },
-            'message_compose': {
-                'keywords': ['send', 'message', 'email', 'update', 'notify'],
-                'steps': [
-                    {'description': 'Identify recipients', 'complexity': TaskComplexity.SIMPLE},
-                    {'description': 'Detect language preferences', 'complexity': TaskComplexity.SIMPLE},
-                    {'description': 'Compose message', 'complexity': TaskComplexity.MODERATE},
-                    {'description': 'Translate if needed', 'complexity': TaskComplexity.MODERATE},
-                ]
-            },
-            'prediction': {
-                'keywords': ['predict', 'forecast', 'estimate', 'project'],
-                'steps': [
-                    {'description': 'Gather historical data', 'complexity': TaskComplexity.MODERATE},
-                    {'description': 'Identify trends', 'complexity': TaskComplexity.COMPLEX},
-                    {'description': 'Apply forecasting model', 'complexity': TaskComplexity.COMPLEX},
-                    {'description': 'Generate prediction', 'complexity': TaskComplexity.SIMPLE},
-                ]
-            },
-            'general': {
-                'keywords': [],  # Fallback
-                'steps': [
-                    {'description': 'Understand question', 'complexity': TaskComplexity.SIMPLE},
-                    {'description': 'Generate answer', 'complexity': TaskComplexity.MODERATE},
-                ]
-            }
-        }
+        self.decomposition_patterns = DECOMPOSITION_PATTERNS
 
     def decompose(self, query: str) -> RecursiveExecutionPlan:
         """Break query into optimized execution steps"""
 
-        # Detect query type
-        query_lower = query.lower()
-        detected_type = 'general'
-
-        for pattern_type, pattern_data in self.decomposition_patterns.items():
-            if pattern_type == 'general':
-                continue
-            keywords = pattern_data['keywords']
-            if any(kw in query_lower for kw in keywords):
-                detected_type = pattern_type
-                break
+        # Detect query type using helper function
+        detected_type = detect_query_type(query)
 
         logger.info(f"📋 Detected query type: {detected_type}")
 
@@ -155,7 +102,7 @@ class PromptDecomposer:
         steps = []
 
         for i, step_template in enumerate(pattern['steps']):
-            backend = self._select_backend(step_template['complexity'])
+            backend = select_backend_for_complexity(step_template['complexity'])
 
             step = PromptStep(
                 step_number=i + 1,
@@ -167,9 +114,9 @@ class PromptDecomposer:
             )
             steps.append(step)
 
-        # Estimate total time and power
-        total_time = sum(self._estimate_step_time(s.complexity) for s in steps)
-        avg_power = sum(self._estimate_power(s.backend) for s in steps) / len(steps)
+        # Estimate total time and power using helper functions
+        total_time = sum(get_step_time_estimate(s.complexity) for s in steps)
+        avg_power = sum(get_power_estimate(s.backend) for s in steps) / len(steps)
 
         plan = RecursiveExecutionPlan(
             original_query=query,
@@ -182,15 +129,6 @@ class PromptDecomposer:
 
         return plan
 
-    def _select_backend(self, complexity: TaskComplexity) -> ExecutionBackend:
-        """Choose optimal backend based on task complexity"""
-        if complexity == TaskComplexity.SIMPLE:
-            return ExecutionBackend.ANE
-        elif complexity == TaskComplexity.MODERATE:
-            return ExecutionBackend.METAL_GPU
-        else:  # COMPLEX
-            return ExecutionBackend.METAL_GPU
-
     def _generate_step_prompt(self, original_query: str, step_desc: str, step_num: int) -> str:
         """Generate specific prompt for this step"""
         if step_num == 0:
@@ -200,24 +138,6 @@ class PromptDecomposer:
             # Subsequent steps - reference previous results
             return f"Based on the previous analysis, {step_desc.lower()} for: '{original_query}'"
 
-    def _estimate_step_time(self, complexity: TaskComplexity) -> float:
-        """Estimate execution time in milliseconds"""
-        estimates = {
-            TaskComplexity.SIMPLE: 300,      # 0.3s on ANE
-            TaskComplexity.MODERATE: 1000,   # 1s on Metal
-            TaskComplexity.COMPLEX: 3000,    # 3s on Metal
-        }
-        return estimates[complexity]
-
-    def _estimate_power(self, backend: ExecutionBackend) -> float:
-        """Estimate power usage in watts"""
-        estimates = {
-            ExecutionBackend.ANE: 0.2,        # Very low power
-            ExecutionBackend.METAL_GPU: 4.0,  # Moderate power
-            ExecutionBackend.CPU: 2.0,        # Low-moderate power
-        }
-        return estimates[backend]
-
 
 class RecursiveExecutor:
     """Executes recursive prompt plans with Metal 4 + ANE optimization"""
@@ -226,7 +146,7 @@ class RecursiveExecutor:
         self.cache = {}  # Metal 4 dynamic caching simulation
         self.execution_history = []
         self.active_executions = 0  # Track concurrent executions
-        self.max_concurrent = 3     # Limit concurrent branches
+        self.max_concurrent = MAX_CONCURRENT_EXECUTIONS
 
     async def execute_plan(self, plan: RecursiveExecutionPlan, ollama_client: Any = None) -> List[StepResult]:
         """Execute the recursive prompt plan with safety limits"""
@@ -374,14 +294,12 @@ class RecursiveExecutor:
 
     async def _execute_on_ane(self, prompt: str, ollama_client: Any) -> str:
         """Execute on Apple Neural Engine (simulated - uses fast model)"""
-        # In practice, this would use a smaller, ANE-optimized model
-        # For now, use the fastest Ollama model available
         try:
             if ollama_client:
                 response = await ollama_client.generate(
-                    model="qwen2.5-coder:1.5b-instruct",  # Smallest/fastest
+                    model=ANE_MODEL,
                     prompt=prompt,
-                    options={"num_predict": 128}  # Limit tokens for speed
+                    options={"num_predict": ANE_MAX_TOKENS}
                 )
                 return response.get('response', '')
         except Exception as e:
@@ -395,9 +313,9 @@ class RecursiveExecutor:
         try:
             if ollama_client:
                 response = await ollama_client.generate(
-                    model="qwen2.5-coder:7b-instruct",  # Bigger model
+                    model=METAL_MODEL,
                     prompt=prompt,
-                    options={"num_predict": 512}
+                    options={"num_predict": METAL_MAX_TOKENS}
                 )
                 return response.get('response', '')
         except Exception as e:
@@ -455,8 +373,7 @@ class RecursivePromptLibrary:
         self.stats['cache_hits'] += cache_hits
 
         # Estimate time saved vs single prompt
-        estimated_single_prompt_time = 8000  # Assume 8s for complex single prompt
-        time_saved = max(0, estimated_single_prompt_time - total_time)
+        time_saved = max(0, ESTIMATED_SINGLE_PROMPT_TIME_MS - total_time)
         self.stats['total_time_saved_ms'] += time_saved
 
         return {
