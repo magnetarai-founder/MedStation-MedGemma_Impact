@@ -1,13 +1,24 @@
 """
 Model Management Service
 Handles model favorites, status tracking, and auto-loading
+
+Extracted modules (P2 decomposition):
+- model_filtering.py: Pattern constants and pure classification functions
 """
 
 import json
 import logging
-from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime, UTC
+
+# Import from extracted module (P2 decomposition)
+from api.model_filtering import (
+    is_chat_model,
+    is_orchestrator_suitable,
+    get_model_unavailable_reason,
+    EMBEDDING_MODEL_PATTERNS,
+    FOUNDATION_MODEL_PATTERNS,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -15,121 +26,6 @@ logger = logging.getLogger(__name__)
 from api.config_paths import get_config_paths
 PATHS = get_config_paths()
 HOT_SLOTS_FILE = PATHS.data_dir / "model_hot_slots.json"
-
-# Model filtering patterns
-EMBEDDING_MODEL_PATTERNS = [
-    'embed',
-    'embedding',
-    'nomic-embed',
-    'mxbai-embed',
-    'bge-',
-    'e5-',
-    'gte-',
-    'sentence-',
-]
-
-FOUNDATION_MODEL_PATTERNS = [
-    '-base',
-    'foundation',
-    'pretrain',
-    'base-',
-]
-
-
-def is_chat_model(model_name: str) -> bool:
-    """
-    Determine if a model is suitable for chat
-
-    Returns False for:
-    - Embedding models (nomic-embed-text, mxbai-embed-large, etc.)
-    - Foundation models (base models without instruction tuning)
-
-    Returns True for:
-    - Instruction-tuned chat models
-    - Code models
-    - Reasoning models
-    """
-    name_lower = model_name.lower()
-
-    # Filter out embedding models
-    for pattern in EMBEDDING_MODEL_PATTERNS:
-        if pattern in name_lower:
-            return False
-
-    # Filter out foundation models
-    for pattern in FOUNDATION_MODEL_PATTERNS:
-        if pattern in name_lower:
-            return False
-
-    return True
-
-
-def is_orchestrator_suitable(model_name: str, model_size: str) -> bool:
-    """
-    Determine if a model is suitable for orchestrator use
-
-    Orchestrator needs:
-    - Small, efficient models (1.5B-3B params recommended)
-    - Can route/reason (doesn't need perfect chat formatting)
-    - NOT embedding models
-
-    Returns True for:
-    - Small base models (< 4GB) - efficient for routing
-    - Small instruction-tuned models
-    - Code models
-
-    Returns False for:
-    - Embedding models (not suitable for reasoning)
-    - Large models (> 4GB) - too heavy for always-running orchestrator
-    """
-    name_lower = model_name.lower()
-
-    # Filter out embedding models (can't reason/route)
-    for pattern in EMBEDDING_MODEL_PATTERNS:
-        if pattern in name_lower:
-            return False
-
-    # Parse size to check if model is small enough
-    # Size format examples: "4.7 GB", "986 MB", "2.2GB"
-    try:
-        size_str = model_size.upper().replace(' ', '')
-        if 'GB' in size_str:
-            size_gb = float(size_str.replace('GB', ''))
-            # Only allow models < 4GB for orchestrator (lightweight, always-running)
-            return size_gb < 4.0
-        elif 'MB' in size_str:
-            # MB models are definitely small enough
-            return True
-        else:
-            # Unknown format, be conservative
-            return False
-    except (ValueError, AttributeError):
-        # If we can't parse size, default to regular chat model check
-        return is_chat_model(model_name)
-
-
-def get_model_unavailable_reason(model_name: str) -> Optional[str]:
-    """
-    Get the reason why a model is unavailable for chat
-
-    Returns:
-    - "Embedding Model (not for chat)" for embedding models
-    - "Foundation Model (requires instruction tuning)" for foundation models
-    - None if model is available
-    """
-    name_lower = model_name.lower()
-
-    # Check embedding patterns first
-    for pattern in EMBEDDING_MODEL_PATTERNS:
-        if pattern in name_lower:
-            return "Embedding Model (not for chat)"
-
-    # Check foundation patterns
-    for pattern in FOUNDATION_MODEL_PATTERNS:
-        if pattern in name_lower:
-            return "Foundation Model (requires instruction tuning)"
-
-    return None
 
 
 class ModelManager:
