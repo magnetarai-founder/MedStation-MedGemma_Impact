@@ -7,52 +7,52 @@ Instead of ChromaDB, we use:
 1. SQL CTE Templates (Approach 1) - Grounded patterns for zero hallucination
 2. Semantic Embeddings (Approach 2) - Find similar commands and contexts
 3. Multimodal Analysis (Approach 3) - Handle screenshots, diagrams, etc.
+
+Module structure (P2 decomposition):
+- jarvis_memory_models.py: Enums, dataclasses, CTE templates
+- jarvis_memory_db.py: Database schema, embedding utilities
+- jarvis_memory.py: Main JarvisMemory class (this file)
 """
 
-import sqlite3
-import os
 import json
-import hashlib
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
-from dataclasses import dataclass, asdict
+from typing import Dict, List, Optional, Any
 from datetime import datetime
-from enum import Enum
-from concurrent.futures import ThreadPoolExecutor
-import re
 import threading
 
-
-class MemoryType(Enum):
-    """Types of memory patterns"""
-    COMMAND_PATTERN = "command_pattern"
-    CODE_TEMPLATE = "code_template"
-    ERROR_SOLUTION = "error_solution"
-    WORKFLOW_SEQUENCE = "workflow_sequence"
-    SEMANTIC_CLUSTER = "semantic_cluster"
-    
-
-@dataclass
-class MemoryTemplate:
-    """SQL template for memory operations"""
-    id: str
-    name: str
-    category: str
-    pattern: str  # SQL CTE pattern
-    parameters: List[str]
-    confidence: float = 0.8
-    
-
-@dataclass
-class SemanticMemory:
-    """Semantic memory entry with embedding"""
-    command: str
-    embedding: List[float]  # Vector representation
-    context: Dict[str, Any]
-    timestamp: str
-    success: bool
-    tool_used: str
-    execution_time: float
+# Import from extracted modules (support both package and standalone import)
+try:
+    from .jarvis_memory_models import (
+        MemoryType,
+        MemoryTemplate,
+        SemanticMemory,
+        get_default_templates,
+    )
+    from .jarvis_memory_db import (
+        get_default_db_path,
+        create_connection,
+        setup_schema,
+        generate_embedding,
+        cosine_similarity,
+        command_hash,
+        error_hash,
+    )
+except ImportError:
+    from jarvis_memory_models import (
+        MemoryType,
+        MemoryTemplate,
+        SemanticMemory,
+        get_default_templates,
+    )
+    from jarvis_memory_db import (
+        get_default_db_path,
+        create_connection,
+        setup_schema,
+        generate_embedding,
+        cosine_similarity,
+        command_hash,
+        error_hash,
+    )
     
 
 class JarvisMemory:
@@ -60,265 +60,52 @@ class JarvisMemory:
     Advanced memory system inspired by BigQuery competition approaches
     Uses SQL patterns, semantic search, and multimodal analysis
     """
-    
+
     def __init__(self, db_path: Path = None):
         if db_path is None:
-            from config_paths import get_config_paths
-            paths = get_config_paths()
-            base = Path(os.getenv('JARVIS_DB_DIR', str(paths.data_dir))).expanduser()
-            db_path = base / "jarvis_memory.db"
-        
+            db_path = get_default_db_path()
+
         self.db_path = db_path
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        # Use WAL mode for better concurrent access and add timeout
-        self.conn = sqlite3.connect(
-            str(self.db_path), 
-            check_same_thread=False,
-            timeout=30.0,  # 30 second timeout for locks
-            isolation_level='DEFERRED'  # Better concurrency
-        )
-        self.conn.row_factory = sqlite3.Row
-        
-        # Enable WAL mode for better concurrent access
-        self.conn.execute("PRAGMA journal_mode=WAL")
-        self.conn.execute("PRAGMA synchronous=NORMAL")
-        self.conn.execute("PRAGMA temp_store=MEMORY")
-        self.conn.execute("PRAGMA mmap_size=30000000000")
-        
+
+        # Create connection with WAL mode and optimizations
+        self.conn = create_connection(db_path)
+
         # Thread lock for write operations
         self._write_lock = threading.Lock()
-        
-        self.templates = self._initialize_templates()
-        self.memory_templates = self.templates  # Alias for compatibility
-        self._setup_database()
-        
-    def _setup_database(self) -> None:
-        """Create advanced memory tables"""
-        
-        # Main command memory with embeddings
-        self.conn.execute("""
-            CREATE TABLE IF NOT EXISTS command_memory (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                command TEXT NOT NULL,
-                command_hash TEXT UNIQUE,
-                embedding_json TEXT,  -- JSON array of floats
-                task_type TEXT,
-                tool_used TEXT,
-                success BOOLEAN,
-                execution_time REAL,
-                context_json TEXT,
-                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        
-        # Pattern templates (like BigQuery CTE templates)
-        self.conn.execute("""
-            CREATE TABLE IF NOT EXISTS pattern_templates (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                pattern_name TEXT UNIQUE,
-                pattern_sql TEXT,
-                category TEXT,
-                usage_count INTEGER DEFAULT 0,
-                success_rate REAL DEFAULT 0,
-                avg_execution_time REAL DEFAULT 0,
-                last_used DATETIME
-            )
-        """)
-        
-        # Semantic clusters for similarity search
-        self.conn.execute("""
-            CREATE TABLE IF NOT EXISTS semantic_clusters (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                cluster_name TEXT,
-                centroid_embedding TEXT,  -- JSON array
-                member_commands TEXT,  -- JSON array of command IDs
-                common_tools TEXT,  -- JSON array
-                cluster_confidence REAL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        
-        # Error patterns and solutions
-        self.conn.execute("""
-            CREATE TABLE IF NOT EXISTS error_solutions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                error_pattern TEXT,
-                error_hash TEXT UNIQUE,
-                solution_template TEXT,
-                tool_suggestion TEXT,
-                success_count INTEGER DEFAULT 0,
-                failure_count INTEGER DEFAULT 0,
-                last_seen DATETIME
-            )
-        """)
-        
-        # Workflow sequences (chains of commands)
-        self.conn.execute("""
-            CREATE TABLE IF NOT EXISTS workflow_sequences (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                workflow_name TEXT,
-                command_sequence TEXT,  -- JSON array
-                total_time REAL,
-                success_rate REAL,
-                usage_count INTEGER DEFAULT 0,
-                last_executed DATETIME
-            )
-        """)
-        
-        # Semantic memory table (was missing)
-        self.conn.execute("""
-            CREATE TABLE IF NOT EXISTS semantic_memory (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                command TEXT,
-                embedding TEXT,  -- JSON array
-                context TEXT,  -- JSON object
-                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
 
-        # Content chunks for RAG
-        self.conn.execute("""
-            CREATE TABLE IF NOT EXISTS content_chunks (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                path TEXT,
-                start_line INTEGER,
-                end_line INTEGER,
-                chunk TEXT,
-                embedding_json TEXT,
-                tags TEXT,
-                touched_at TIMESTAMP,
-                ingested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
+        # Initialize CTE templates from extracted module
+        self.templates = get_default_templates()
+        self.memory_templates = self.templates  # Alias for compatibility
+
+        # Set up database schema
+        setup_schema(self.conn)
         
-        # Create indexes for performance
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_command_hash ON command_memory(command_hash)")
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_timestamp ON command_memory(timestamp)")
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_task_type ON command_memory(task_type)")
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_semantic_timestamp ON semantic_memory(timestamp)")
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_chunks_path ON content_chunks(path)")
-        
-        self.conn.commit()
-        
-    def _initialize_templates(self) -> List[MemoryTemplate]:
-        """Initialize SQL CTE templates for memory operations"""
-        return [
-            # Command Analysis Templates
-            MemoryTemplate(
-                id="CMD_001",
-                name="Similar Command Finder",
-                category="command_analysis",
-                pattern="""
-                WITH command_patterns AS (
-                    SELECT 
-                        command,
-                        task_type,
-                        tool_used,
-                        AVG(execution_time) as avg_time,
-                        COUNT(*) as usage_count,
-                        AVG(CASE WHEN success THEN 1.0 ELSE 0.0 END) as success_rate
-                    FROM command_memory
-                    WHERE command LIKE ?
-                    GROUP BY command, task_type, tool_used
-                ),
-                ranked_patterns AS (
-                    SELECT *,
-                        ROW_NUMBER() OVER (ORDER BY usage_count DESC, success_rate DESC) as rank
-                    FROM command_patterns
-                )
-                SELECT * FROM ranked_patterns WHERE rank <= 5
-                """,
-                parameters=["command_pattern"],
-                confidence=0.85
-            ),
-            
-            # Error Pattern Templates
-            MemoryTemplate(
-                id="ERR_001",
-                name="Error Solution Finder",
-                category="error_handling",
-                pattern="""
-                WITH error_matches AS (
-                    SELECT 
-                        error_pattern,
-                        solution_template,
-                        tool_suggestion,
-                        (success_count * 1.0) / NULLIF(success_count + failure_count, 0) as success_rate
-                    FROM error_solutions
-                    WHERE error_pattern LIKE ?
-                        OR error_hash = ?
-                ),
-                ranked_solutions AS (
-                    SELECT *,
-                        ROW_NUMBER() OVER (ORDER BY success_rate DESC) as rank
-                    FROM error_matches
-                    WHERE success_rate > 0.5
-                )
-                SELECT * FROM ranked_solutions WHERE rank = 1
-                """,
-                parameters=["error_pattern", "error_hash"],
-                confidence=0.9
-            ),
-            
-            # Workflow Discovery Templates
-            MemoryTemplate(
-                id="WF_001",
-                name="Workflow Pattern Detector",
-                category="workflow_analysis",
-                pattern="""
-                WITH recent_commands AS (
-                    SELECT 
-                        command,
-                        task_type,
-                        tool_used,
-                        timestamp,
-                        LAG(command, 1) OVER (ORDER BY timestamp) as prev_command,
-                        LAG(command, 2) OVER (ORDER BY timestamp) as prev_command_2
-                    FROM command_memory
-                    WHERE timestamp > datetime('now', '-1 hour')
-                ),
-                command_sequences AS (
-                    SELECT 
-                        prev_command_2 || ' -> ' || prev_command || ' -> ' || command as sequence,
-                        COUNT(*) as occurrence_count
-                    FROM recent_commands
-                    WHERE prev_command IS NOT NULL
-                    GROUP BY sequence
-                    HAVING occurrence_count > 1
-                )
-                SELECT * FROM command_sequences
-                ORDER BY occurrence_count DESC
-                LIMIT 5
-                """,
-                parameters=[],
-                confidence=0.75
-            ),
-        ]
+    # Note: _setup_database and _initialize_templates moved to extracted modules
+    # - setup_schema() in jarvis_memory_db.py
+    # - get_default_templates() in jarvis_memory_models.py
         
     def store_command(self, command: str, task_type: str, tool: str,
                      success: bool, execution_time: float, output: str = "", context: Dict = None) -> None:
         """Store a command execution in memory"""
-        
+
         # Handle None command values
         if command is None:
             command = ""
-        
-        # Generate embedding (simplified - in real version would use actual embedding model)
-        embedding = self._generate_embedding(command)
-        command_hash = hashlib.sha256(command.encode()).hexdigest()
+
+        # Generate embedding using extracted utility
+        embedding = generate_embedding(command)
+        cmd_hash = command_hash(command)
         
         # Use thread lock for write operations
         with self._write_lock:
             self.conn.execute("""
-                INSERT OR REPLACE INTO command_memory 
-                (command, command_hash, embedding_json, task_type, tool_used, 
+                INSERT OR REPLACE INTO command_memory
+                (command, command_hash, embedding_json, task_type, tool_used,
                  success, execution_time, context_json)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 command,
-                command_hash,
+                cmd_hash,
                 json.dumps(embedding),
                 task_type,
                 tool,
@@ -335,53 +122,12 @@ class JarvisMemory:
             # Check for workflow patterns
             self._detect_workflow_patterns()
         
-    def _generate_embedding(self, text: str) -> List[float]:
-        """Generate an embedding using available embedding systems.
-
-        Priority order:
-        1. MLX embedder (if available)
-        2. SimpleEmbedding from chat_enhancements
-        3. Legacy hash embedding (fallback)
-        """
-        # Try MLX embedder first
-        try:
-            from mlx_embedder import get_mlx_embedder
-            embedder = get_mlx_embedder()
-            if embedder.is_available():
-                vec = embedder.embed(text or "")
-                if isinstance(vec, list) and vec and isinstance(vec[0], (int, float)):
-                    return [float(x) for x in vec]
-        except ImportError:
-            pass  # MLX not available, silently continue
-        except Exception:
-            pass
-
-        # Try SimpleEmbedding from chat_enhancements
-        try:
-            from chat_enhancements import SimpleEmbedding
-            return SimpleEmbedding.create_embedding(text or "")
-        except ImportError:
-            try:
-                from api.chat_enhancements import SimpleEmbedding
-                return SimpleEmbedding.create_embedding(text or "")
-            except ImportError:
-                pass
-        except Exception:
-            pass
-
-        # Legacy fallback: simple 128-d hash embedding
-        words = (text or "").lower().split()
-        vector = [0.0] * 128
-        for word in words:
-            idx = abs(hash(word)) % 128
-            vector[idx] += 1.0
-        norm = sum(v * v for v in vector) ** 0.5 or 1.0
-        return [v / norm for v in vector]
+    # Note: _generate_embedding moved to jarvis_memory_db.py as generate_embedding()
         
     def find_similar_commands(self, query: str, limit: int = 5) -> List[Dict]:
         """Find similar commands using semantic search"""
-        
-        query_embedding = self._generate_embedding(query)
+
+        query_embedding = generate_embedding(query)
         
         # Get all commands with embeddings
         cursor = self.conn.execute("""
@@ -396,7 +142,7 @@ class JarvisMemory:
         results = []
         for row in cursor:
             stored_embedding = json.loads(row['embedding_json'])
-            similarity = self._cosine_similarity(query_embedding, stored_embedding)
+            similarity = cosine_similarity(query_embedding, stored_embedding)
             
             results.append({
                 'command': row['command'],
@@ -411,18 +157,9 @@ class JarvisMemory:
         # Sort by similarity and return top matches
         results.sort(key=lambda x: x['similarity'], reverse=True)
         return results[:limit]
-        
-    def _cosine_similarity(self, vec1: List[float], vec2: List[float]) -> float:
-        """Calculate cosine similarity between two vectors"""
-        dot_product = sum(a * b for a, b in zip(vec1, vec2))
-        norm1 = sum(a**2 for a in vec1) ** 0.5
-        norm2 = sum(b**2 for b in vec2) ** 0.5
-        
-        if norm1 * norm2 == 0:
-            return 0.0
-            
-        return dot_product / (norm1 * norm2)
-        
+
+    # Note: _cosine_similarity moved to jarvis_memory_db.py as cosine_similarity()
+
     def _update_pattern_stats(self, task_type: str, tool: str,
                              success: bool, execution_time: float) -> None:
         """Update pattern statistics"""
@@ -547,15 +284,15 @@ class JarvisMemory:
         
     def get_error_solution(self, error_message: str) -> Optional[Dict]:
         """Find solution for an error"""
-        
-        error_hash = hashlib.sha256(error_message.encode()).hexdigest()
+
+        err_hash = error_hash(error_message)
         
         # Use the error solution template
         template = next(t for t in self.templates if t.id == "ERR_001")
-        
+
         cursor = self.conn.execute(
             template.pattern,
-            (f'%{error_message[:50]}%', error_hash)
+            (f'%{error_message[:50]}%', err_hash)
         )
         
         row = cursor.fetchone()
@@ -635,8 +372,8 @@ class JarvisMemory:
     
     def add_semantic_memory(self, command: str, context: Dict[str, Any]) -> None:
         """Add semantic memory entry"""
-        # Generate embedding
-        embedding = self._generate_embedding(command)
+        # Generate embedding using extracted utility
+        embedding = generate_embedding(command)
         
         # Store in semantic memory with thread lock
         with self._write_lock:
@@ -665,6 +402,29 @@ class JarvisMemory:
             """, (limit,)).fetchall()
             
         return [dict(row) for row in results]
+
+
+# ===== Backward Compatibility Exports =====
+# Re-export from extracted modules for backward compatibility
+__all__ = [
+    # Main class
+    "JarvisMemory",
+    # Re-exported from jarvis_memory_models
+    "MemoryType",
+    "MemoryTemplate",
+    "SemanticMemory",
+    "get_default_templates",
+    # Re-exported from jarvis_memory_db
+    "get_default_db_path",
+    "create_connection",
+    "setup_schema",
+    "generate_embedding",
+    "cosine_similarity",
+    "command_hash",
+    "error_hash",
+    # Test function
+    "test_memory_system",
+]
 
 
 def test_memory_system() -> None:

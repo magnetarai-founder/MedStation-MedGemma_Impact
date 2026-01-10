@@ -29,6 +29,13 @@ from jarvis_memory import (
     SemanticMemory,
     JarvisMemory,
 )
+# Import extracted utilities (P2 decomposition)
+from jarvis_memory_db import (
+    generate_embedding,
+    cosine_similarity,
+    command_hash,
+    error_hash,
+)
 
 
 # ============================================================================
@@ -353,45 +360,45 @@ class TestStoreCommand:
 # ============================================================================
 
 class TestGenerateEmbedding:
-    """Tests for _generate_embedding method"""
+    """Tests for generate_embedding function (extracted to jarvis_memory_db.py)"""
 
     def test_embedding_returns_list(self, memory):
         """Embedding returns a list of floats"""
-        embedding = memory._generate_embedding("test text")
+        embedding = generate_embedding("test text")
         assert isinstance(embedding, list)
         assert len(embedding) > 0
         assert all(isinstance(x, float) for x in embedding)
 
     def test_embedding_is_normalized(self, memory):
         """Embedding is approximately normalized"""
-        embedding = memory._generate_embedding("test text")
+        embedding = generate_embedding("test text")
         norm = sum(v * v for v in embedding) ** 0.5
         # Should be normalized (norm ~= 1.0) or zero vector
         assert abs(norm - 1.0) < 0.01 or norm == 0.0
 
     def test_empty_text_embedding(self, memory):
         """Empty text produces valid embedding"""
-        embedding = memory._generate_embedding("")
+        embedding = generate_embedding("")
         assert isinstance(embedding, list)
         assert len(embedding) > 0  # Any valid embedding dimension
 
     def test_embedding_deterministic(self, memory):
         """Same text produces same embedding"""
-        emb1 = memory._generate_embedding("hello world")
-        emb2 = memory._generate_embedding("hello world")
+        emb1 = generate_embedding("hello world")
+        emb2 = generate_embedding("hello world")
         assert emb1 == emb2
 
     def test_different_text_different_embedding(self, memory):
         """Different text produces different embedding"""
-        emb1 = memory._generate_embedding("hello world")
-        emb2 = memory._generate_embedding("goodbye world")
+        emb1 = generate_embedding("hello world")
+        emb2 = generate_embedding("goodbye world")
         assert emb1 != emb2
 
     def test_embedding_consistent_dimensions(self, memory):
         """All embeddings have same dimension"""
-        emb1 = memory._generate_embedding("test one")
-        emb2 = memory._generate_embedding("test two")
-        emb3 = memory._generate_embedding("different text")
+        emb1 = generate_embedding("test one")
+        emb2 = generate_embedding("test two")
+        emb3 = generate_embedding("different text")
         assert len(emb1) == len(emb2) == len(emb3)
 
 
@@ -432,33 +439,33 @@ class TestFindSimilarCommands:
 
 
 class TestCosineSimilarity:
-    """Tests for _cosine_similarity method"""
+    """Tests for cosine_similarity function (extracted to jarvis_memory_db.py)"""
 
     def test_identical_vectors(self, memory):
         """Identical vectors have similarity 1.0"""
         vec = [1.0, 2.0, 3.0]
-        sim = memory._cosine_similarity(vec, vec)
+        sim = cosine_similarity(vec, vec)
         assert abs(sim - 1.0) < 0.001
 
     def test_orthogonal_vectors(self, memory):
         """Orthogonal vectors have similarity 0.0"""
         vec1 = [1.0, 0.0, 0.0]
         vec2 = [0.0, 1.0, 0.0]
-        sim = memory._cosine_similarity(vec1, vec2)
+        sim = cosine_similarity(vec1, vec2)
         assert abs(sim) < 0.001
 
     def test_opposite_vectors(self, memory):
         """Opposite vectors have similarity -1.0"""
         vec1 = [1.0, 0.0, 0.0]
         vec2 = [-1.0, 0.0, 0.0]
-        sim = memory._cosine_similarity(vec1, vec2)
+        sim = cosine_similarity(vec1, vec2)
         assert abs(sim + 1.0) < 0.001
 
     def test_zero_vector(self, memory):
         """Zero vector returns 0.0"""
         vec1 = [0.0, 0.0, 0.0]
         vec2 = [1.0, 2.0, 3.0]
-        sim = memory._cosine_similarity(vec1, vec2)
+        sim = cosine_similarity(vec1, vec2)
         assert sim == 0.0
 
 
