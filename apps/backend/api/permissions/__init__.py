@@ -8,10 +8,12 @@ This package provides:
 - FastAPI decorators for route protection
 - Permission management admin/service functions
 - Type definitions and hierarchy
+- Role baseline definitions
 
 Public API:
 - Types: PermissionLevel, UserPermissionContext
 - Hierarchy: LEVEL_HIERARCHY
+- Role Baselines: get_role_baseline, ALL_PERMISSION_KEYS
 - Engine: PermissionEngine, get_permission_engine, get_effective_permissions
 - Decorators: require_perm, require_perm_team
 - Admin functions: Available via .admin module
@@ -19,6 +21,7 @@ Public API:
 
 from .types import PermissionLevel, UserPermissionContext
 from .hierarchy import LEVEL_HIERARCHY
+from .role_baselines import get_role_baseline, ALL_PERMISSION_KEYS
 from .engine import PermissionEngine, get_permission_engine, get_effective_permissions
 from .decorators import require_perm, require_perm_team
 from . import admin
@@ -30,6 +33,9 @@ __all__ = [
     "UserPermissionContext",
     # Hierarchy
     "LEVEL_HIERARCHY",
+    # Role Baselines
+    "get_role_baseline",
+    "ALL_PERMISSION_KEYS",
     # Engine
     "PermissionEngine",
     "get_permission_engine",

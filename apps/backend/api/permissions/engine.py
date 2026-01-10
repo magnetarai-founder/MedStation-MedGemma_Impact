@@ -32,6 +32,7 @@ from functools import lru_cache
 from .types import PermissionLevel, UserPermissionContext
 from .hierarchy import LEVEL_HIERARCHY
 from .storage import get_db_connection
+from .role_baselines import get_role_baseline
 
 logger = logging.getLogger(__name__)
 
@@ -353,14 +354,9 @@ class PermissionEngine:
 
     def _get_role_baseline(self, role: str) -> Dict[str, any]:
         """
-        Get default permission baseline for a role
+        Get default permission baseline for a role.
 
-        Baseline permissions before any profiles/sets are applied:
-        - founder_rights: N/A (bypasses all checks)
-        - super_admin: All features + resources (some system perms)
-        - admin: Most features + resources, limited system perms
-        - member: Core features (chat, vault, workflows, docs), no system perms
-        - guest: Read-only access
+        Delegates to standalone function from role_baselines module.
 
         Args:
             role: User role
@@ -368,192 +364,8 @@ class PermissionEngine:
         Returns:
             Dict of default permissions
         """
-        # For founder_rights, baseline doesn't matter (always bypassed)
-        if role == 'founder_rights':
-            return {}
-
-        # Super Admin: Grant everything by default
-        if role == 'super_admin':
-            return {
-                # Features
-                'chat.use': True,
-                'vault.use': True,
-                'workflows.use': True,
-                'docs.use': True,
-                'data.run_sql': True,
-                'data.export': True,
-                'insights.use': True,
-                'code.use': True,
-                'team.use': True,
-                'panic.use': True,
-                'backups.use': True,
-
-                # Vault resources (level-based)
-                'vault.documents.create': PermissionLevel.ADMIN,
-                'vault.documents.read': PermissionLevel.ADMIN,
-                'vault.documents.update': PermissionLevel.ADMIN,
-                'vault.documents.delete': PermissionLevel.ADMIN,
-                'vault.documents.share': PermissionLevel.ADMIN,
-
-                # Workflow resources
-                'workflows.create': PermissionLevel.ADMIN,
-                'workflows.view': PermissionLevel.ADMIN,
-                'workflows.edit': PermissionLevel.ADMIN,
-                'workflows.delete': PermissionLevel.ADMIN,
-                'workflows.manage': PermissionLevel.ADMIN,
-
-                # Docs resources
-                'docs.create': PermissionLevel.ADMIN,
-                'docs.read': PermissionLevel.ADMIN,
-                'docs.update': PermissionLevel.ADMIN,
-                'docs.delete': PermissionLevel.ADMIN,
-                'docs.share': PermissionLevel.ADMIN,
-
-                # System permissions
-                'system.view_admin_dashboard': True,
-                'system.manage_users': True,
-                'system.view_audit_logs': True,
-                'system.manage_permissions': True,
-                'system.manage_settings': True,
-            }
-
-        # Admin: Most features, limited system perms
-        if role == 'admin':
-            return {
-                # Features
-                'chat.use': True,
-                'vault.use': True,
-                'workflows.use': True,
-                'docs.use': True,
-                'data.run_sql': True,
-                'data.export': True,
-                'insights.use': True,
-                'code.use': True,
-                'team.use': True,
-                'panic.use': True,
-                'backups.use': False,  # Require explicit grant via profile/set
-
-                # Vault resources (write level)
-                'vault.documents.create': PermissionLevel.WRITE,
-                'vault.documents.read': PermissionLevel.WRITE,
-                'vault.documents.update': PermissionLevel.WRITE,
-                'vault.documents.delete': PermissionLevel.WRITE,
-                'vault.documents.share': PermissionLevel.READ,
-
-                # Workflow resources
-                'workflows.create': PermissionLevel.WRITE,
-                'workflows.view': PermissionLevel.WRITE,
-                'workflows.edit': PermissionLevel.WRITE,
-                'workflows.delete': PermissionLevel.WRITE,
-                'workflows.manage': PermissionLevel.READ,
-
-                # Docs resources
-                'docs.create': PermissionLevel.WRITE,
-                'docs.read': PermissionLevel.WRITE,
-                'docs.update': PermissionLevel.WRITE,
-                'docs.delete': PermissionLevel.WRITE,
-                'docs.share': PermissionLevel.READ,
-
-                # System permissions (limited)
-                'system.view_admin_dashboard': True,
-                'system.manage_users': True,
-                'system.view_audit_logs': True,
-                'system.manage_permissions': False,  # Not by default
-                'system.manage_settings': True,
-            }
-
-        # Member: Core features, own resources
-        if role == 'member':
-            return {
-                # Features
-                'chat.use': True,
-                'vault.use': True,
-                'workflows.use': True,
-                'docs.use': True,
-                'data.run_sql': True,
-                'data.export': False,  # Not by default
-                'insights.use': False,
-                'code.use': False,
-                'team.use': False,
-                'panic.use': False,
-                'backups.use': False,
-
-                # Vault resources (read/write on own)
-                'vault.documents.create': PermissionLevel.WRITE,
-                'vault.documents.read': PermissionLevel.WRITE,
-                'vault.documents.update': PermissionLevel.WRITE,
-                'vault.documents.delete': PermissionLevel.WRITE,
-                'vault.documents.share': PermissionLevel.NONE,
-
-                # Workflow resources
-                'workflows.create': PermissionLevel.WRITE,
-                'workflows.view': PermissionLevel.WRITE,
-                'workflows.edit': PermissionLevel.WRITE,
-                'workflows.delete': PermissionLevel.READ,  # Own only
-                'workflows.manage': PermissionLevel.NONE,
-
-                # Docs resources
-                'docs.create': PermissionLevel.WRITE,
-                'docs.read': PermissionLevel.WRITE,
-                'docs.update': PermissionLevel.WRITE,
-                'docs.delete': PermissionLevel.WRITE,
-                'docs.share': PermissionLevel.NONE,
-
-                # System permissions (none)
-                'system.view_admin_dashboard': False,
-                'system.manage_users': False,
-                'system.view_audit_logs': False,
-                'system.manage_permissions': False,
-                'system.manage_settings': False,
-            }
-
-        # Guest: Read-only
-        if role == 'guest':
-            return {
-                # Features (very limited)
-                'chat.use': True,
-                'vault.use': False,
-                'workflows.use': False,
-                'docs.use': True,
-                'data.run_sql': False,
-                'data.export': False,
-                'insights.use': False,
-                'code.use': False,
-                'team.use': False,
-                'panic.use': False,
-                'backups.use': False,
-
-                # Vault resources (none)
-                'vault.documents.create': PermissionLevel.NONE,
-                'vault.documents.read': PermissionLevel.READ,
-                'vault.documents.update': PermissionLevel.NONE,
-                'vault.documents.delete': PermissionLevel.NONE,
-                'vault.documents.share': PermissionLevel.NONE,
-
-                # Workflow resources (read-only)
-                'workflows.create': PermissionLevel.NONE,
-                'workflows.view': PermissionLevel.READ,
-                'workflows.edit': PermissionLevel.NONE,
-                'workflows.delete': PermissionLevel.NONE,
-                'workflows.manage': PermissionLevel.NONE,
-
-                # Docs resources (read-only)
-                'docs.create': PermissionLevel.NONE,
-                'docs.read': PermissionLevel.READ,
-                'docs.update': PermissionLevel.NONE,
-                'docs.delete': PermissionLevel.NONE,
-                'docs.share': PermissionLevel.NONE,
-
-                # System permissions (none)
-                'system.view_admin_dashboard': False,
-                'system.manage_users': False,
-                'system.view_audit_logs': False,
-                'system.manage_permissions': False,
-                'system.manage_settings': False,
-            }
-
-        # Default: Empty (deny all)
-        return {}
+        # Delegate to extracted module (P2 decomposition)
+        return get_role_baseline(role)
 
     def has_permission(
         self,
