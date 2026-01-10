@@ -7,6 +7,10 @@ Instead of ChromaDB, we use:
 1. SQL CTE Templates (Approach 1) - Grounded patterns for zero hallucination
 2. Semantic Embeddings (Approach 2) - Find similar commands and contexts
 3. Multimodal Analysis (Approach 3) - Handle screenshots, diagrams, etc.
+
+Module structure (P2 decomposition):
+- jarvis_memory_templates.py: Static templates, dataclasses, pure utility functions
+- jarvis_bigquery_memory.py: Main JarvisBigQueryMemory class (this file)
 """
 
 import sqlite3
@@ -15,44 +19,21 @@ import json
 import hashlib
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
-from dataclasses import dataclass, asdict
 from datetime import datetime
-from enum import Enum
 from concurrent.futures import ThreadPoolExecutor
 import re
 import threading
 
-
-class MemoryType(Enum):
-    """Types of memory patterns"""
-    COMMAND_PATTERN = "command_pattern"
-    CODE_TEMPLATE = "code_template"
-    ERROR_SOLUTION = "error_solution"
-    WORKFLOW_SEQUENCE = "workflow_sequence"
-    SEMANTIC_CLUSTER = "semantic_cluster"
-    
-
-@dataclass
-class MemoryTemplate:
-    """SQL template for memory operations"""
-    id: str
-    name: str
-    category: str
-    pattern: str  # SQL CTE pattern
-    parameters: List[str]
-    confidence: float = 0.8
-    
-
-@dataclass
-class SemanticMemory:
-    """Semantic memory entry with embedding"""
-    command: str
-    embedding: List[float]  # Vector representation
-    context: Dict[str, Any]
-    timestamp: str
-    success: bool
-    tool_used: str
-    execution_time: float
+# Import from extracted module (P2 decomposition)
+from api.jarvis_memory_templates import (
+    MemoryType,
+    MemoryTemplate,
+    SemanticMemory,
+    cosine_similarity,
+    generate_hash_embedding,
+    get_default_templates,
+    get_template_by_id,
+)
     
 
 class JarvisBigQueryMemory:
@@ -206,99 +187,12 @@ class JarvisBigQueryMemory:
         self.conn.commit()
         
     def _initialize_templates(self) -> List[MemoryTemplate]:
-        """Initialize SQL CTE templates for memory operations"""
-        return [
-            # Command Analysis Templates
-            MemoryTemplate(
-                id="CMD_001",
-                name="Similar Command Finder",
-                category="command_analysis",
-                pattern="""
-                WITH command_patterns AS (
-                    SELECT 
-                        command,
-                        task_type,
-                        tool_used,
-                        AVG(execution_time) as avg_time,
-                        COUNT(*) as usage_count,
-                        AVG(CASE WHEN success THEN 1.0 ELSE 0.0 END) as success_rate
-                    FROM command_memory
-                    WHERE command LIKE ?
-                    GROUP BY command, task_type, tool_used
-                ),
-                ranked_patterns AS (
-                    SELECT *,
-                        ROW_NUMBER() OVER (ORDER BY usage_count DESC, success_rate DESC) as rank
-                    FROM command_patterns
-                )
-                SELECT * FROM ranked_patterns WHERE rank <= 5
-                """,
-                parameters=["command_pattern"],
-                confidence=0.85
-            ),
-            
-            # Error Pattern Templates
-            MemoryTemplate(
-                id="ERR_001",
-                name="Error Solution Finder",
-                category="error_handling",
-                pattern="""
-                WITH error_matches AS (
-                    SELECT 
-                        error_pattern,
-                        solution_template,
-                        tool_suggestion,
-                        (success_count * 1.0) / NULLIF(success_count + failure_count, 0) as success_rate
-                    FROM error_solutions
-                    WHERE error_pattern LIKE ?
-                        OR error_hash = ?
-                ),
-                ranked_solutions AS (
-                    SELECT *,
-                        ROW_NUMBER() OVER (ORDER BY success_rate DESC) as rank
-                    FROM error_matches
-                    WHERE success_rate > 0.5
-                )
-                SELECT * FROM ranked_solutions WHERE rank = 1
-                """,
-                parameters=["error_pattern", "error_hash"],
-                confidence=0.9
-            ),
-            
-            # Workflow Discovery Templates
-            MemoryTemplate(
-                id="WF_001",
-                name="Workflow Pattern Detector",
-                category="workflow_analysis",
-                pattern="""
-                WITH recent_commands AS (
-                    SELECT 
-                        command,
-                        task_type,
-                        tool_used,
-                        timestamp,
-                        LAG(command, 1) OVER (ORDER BY timestamp) as prev_command,
-                        LAG(command, 2) OVER (ORDER BY timestamp) as prev_command_2
-                    FROM command_memory
-                    WHERE timestamp > datetime('now', '-1 hour')
-                ),
-                command_sequences AS (
-                    SELECT 
-                        prev_command_2 || ' -> ' || prev_command || ' -> ' || command as sequence,
-                        COUNT(*) as occurrence_count
-                    FROM recent_commands
-                    WHERE prev_command IS NOT NULL
-                    GROUP BY sequence
-                    HAVING occurrence_count > 1
-                )
-                SELECT * FROM command_sequences
-                ORDER BY occurrence_count DESC
-                LIMIT 5
-                """,
-                parameters=[],
-                confidence=0.75
-            ),
-        ]
+        """
+        Initialize SQL CTE templates for memory operations.
+
+        Delegates to extracted module (P2 decomposition).
+        """
+        return get_default_templates()
         
     def store_command(self, command: str, task_type: str, tool: str, 
                      success: bool, execution_time: float, output: str = "", context: Dict = None):
@@ -343,7 +237,7 @@ class JarvisBigQueryMemory:
 
         Prefers the unified embedding provider (MLX → ollama → hash) to keep
         memory, RAG, and retrieval dimensions consistent across the system.
-        Falls back to the legacy hash embedding if anything fails.
+        Falls back to the extracted hash embedding function if anything fails.
         """
         try:
             from unified_embedder import embed_text
@@ -354,14 +248,8 @@ class JarvisBigQueryMemory:
         except Exception:
             pass
 
-        # Legacy fallback: simple 128-d hash embedding
-        words = (text or "").lower().split()
-        vector = [0.0] * 128
-        for word in words:
-            idx = abs(hash(word)) % 128
-            vector[idx] += 1.0
-        norm = sum(v * v for v in vector) ** 0.5 or 1.0
-        return [v / norm for v in vector]
+        # Legacy fallback: use extracted hash embedding function (P2 decomposition)
+        return generate_hash_embedding(text or "", dimensions=128)
         
     def find_similar_commands(self, query: str, limit: int = 5) -> List[Dict]:
         """Find similar commands using semantic search"""
@@ -398,15 +286,12 @@ class JarvisBigQueryMemory:
         return results[:limit]
         
     def _cosine_similarity(self, vec1: List[float], vec2: List[float]) -> float:
-        """Calculate cosine similarity between two vectors"""
-        dot_product = sum(a * b for a, b in zip(vec1, vec2))
-        norm1 = sum(a**2 for a in vec1) ** 0.5
-        norm2 = sum(b**2 for b in vec2) ** 0.5
-        
-        if norm1 * norm2 == 0:
-            return 0.0
-            
-        return dot_product / (norm1 * norm2)
+        """
+        Calculate cosine similarity between two vectors.
+
+        Delegates to extracted pure function (P2 decomposition).
+        """
+        return cosine_similarity(vec1, vec2)
         
     def _update_pattern_stats(self, task_type: str, tool: str,
                              success: bool, execution_time: float) -> None:
