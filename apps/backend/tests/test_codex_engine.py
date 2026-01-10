@@ -30,6 +30,19 @@ import subprocess
 
 from api.agent.engines.codex_engine import CodexEngine
 
+# Import standalone functions from extracted modules (P2 decomposition)
+from api.agent.engines.codex_diff_utils import (
+    detect_patch_level,
+    validate_diff_paths,
+    reverse_unified_diff,
+    extract_targets,
+    split_unified_diff,
+    unified_text_diff,
+    unified_add_file,
+    unified_delete_file,
+)
+from api.agent.engines.codex_search import search_code
+
 
 # ========== Fixtures ==========
 
@@ -372,7 +385,7 @@ class TestRollback:
 # ========== _validate_diff_paths Tests ==========
 
 class TestValidateDiffPaths:
-    """Tests for _validate_diff_paths security validation"""
+    """Tests for validate_diff_paths security validation (standalone function)"""
 
     def test_valid_relative_path(self, codex_engine):
         """Test valid relative paths are accepted"""
@@ -382,7 +395,7 @@ class TestValidateDiffPaths:
 -old
 +new
 """
-        is_safe, msg = codex_engine._validate_diff_paths(diff)
+        is_safe, msg = validate_diff_paths(diff, codex_engine.repo_root)
 
         assert is_safe is True
         assert msg == ""
@@ -394,7 +407,7 @@ class TestValidateDiffPaths:
 @@ -0,0 +1 @@
 +new content
 """
-        is_safe, msg = codex_engine._validate_diff_paths(diff)
+        is_safe, msg = validate_diff_paths(diff, codex_engine.repo_root)
 
         assert is_safe is True
 
@@ -406,7 +419,7 @@ class TestValidateDiffPaths:
 -root
 +hacked
 """
-        is_safe, msg = codex_engine._validate_diff_paths(diff)
+        is_safe, msg = validate_diff_paths(diff, codex_engine.repo_root)
 
         assert is_safe is False
         assert "Absolute path" in msg
@@ -419,7 +432,7 @@ class TestValidateDiffPaths:
 -root
 +hacked
 """
-        is_safe, msg = codex_engine._validate_diff_paths(diff)
+        is_safe, msg = validate_diff_paths(diff, codex_engine.repo_root)
 
         assert is_safe is False
         assert "traversal" in msg.lower()
@@ -432,7 +445,7 @@ class TestValidateDiffPaths:
 -secret
 +exposed
 """
-        is_safe, msg = codex_engine._validate_diff_paths(diff)
+        is_safe, msg = validate_diff_paths(diff, codex_engine.repo_root)
 
         assert is_safe is False
 
@@ -445,7 +458,7 @@ class TestValidateDiffPaths:
 -old
 +new
 """
-        is_safe, msg = codex_engine._validate_diff_paths(diff)
+        is_safe, msg = validate_diff_paths(diff, codex_engine.repo_root)
 
         # Should be caught by ../ check
         assert is_safe is False
@@ -458,7 +471,7 @@ class TestValidateDiffPaths:
 -old
 +new
 """
-        is_safe, msg = codex_engine._validate_diff_paths(diff)
+        is_safe, msg = validate_diff_paths(diff, codex_engine.repo_root)
 
         assert is_safe is True
 
@@ -470,7 +483,7 @@ class TestValidateDiffPaths:
 -old
 +new
 """
-        is_safe, msg = codex_engine._validate_diff_paths(diff)
+        is_safe, msg = validate_diff_paths(diff, codex_engine.repo_root)
 
         assert is_safe is True
 
@@ -478,9 +491,9 @@ class TestValidateDiffPaths:
 # ========== _detect_patch_level Tests ==========
 
 class TestDetectPatchLevel:
-    """Tests for _detect_patch_level method"""
+    """Tests for detect_patch_level standalone function"""
 
-    def test_detect_p1_with_prefix(self, codex_engine):
+    def test_detect_p1_with_prefix(self):
         """Test detection of -p1 format (a/ b/ prefix)"""
         diff = """--- a/src/module.py
 +++ b/src/module.py
@@ -488,11 +501,11 @@ class TestDetectPatchLevel:
 -old
 +new
 """
-        level = codex_engine._detect_patch_level(diff)
+        level = detect_patch_level(diff)
 
         assert level == 1
 
-    def test_detect_p0_without_prefix(self, codex_engine):
+    def test_detect_p0_without_prefix(self):
         """Test detection of -p0 format (no prefix)"""
         diff = """--- src/module.py
 +++ src/module.py
@@ -500,23 +513,23 @@ class TestDetectPatchLevel:
 -old
 +new
 """
-        level = codex_engine._detect_patch_level(diff)
+        level = detect_patch_level(diff)
 
         assert level == 0
 
-    def test_detect_with_dev_null(self, codex_engine):
+    def test_detect_with_dev_null(self):
         """Test detection with /dev/null"""
         diff = """--- /dev/null
 +++ b/new_file.py
 @@ -0,0 +1 @@
 +new content
 """
-        level = codex_engine._detect_patch_level(diff)
+        level = detect_patch_level(diff)
 
         # Has b/ prefix
         assert level == 1
 
-    def test_detect_with_timestamp(self, codex_engine):
+    def test_detect_with_timestamp(self):
         """Test detection with timestamps in paths"""
         diff = """--- a/module.py	2024-01-01 00:00:00 +0000
 +++ b/module.py	2024-01-02 00:00:00 +0000
@@ -524,17 +537,17 @@ class TestDetectPatchLevel:
 -old
 +new
 """
-        level = codex_engine._detect_patch_level(diff)
+        level = detect_patch_level(diff)
 
         assert level == 1
 
-    def test_detect_default_to_p1(self, codex_engine):
+    def test_detect_default_to_p1(self):
         """Test default to -p1 for unclear format"""
         diff = """@@ -1 +1 @@
 -old
 +new
 """
-        level = codex_engine._detect_patch_level(diff)
+        level = detect_patch_level(diff)
 
         assert level == 1
 
@@ -542,9 +555,9 @@ class TestDetectPatchLevel:
 # ========== _reverse_unified_diff Tests ==========
 
 class TestReverseUnifiedDiff:
-    """Tests for _reverse_unified_diff method"""
+    """Tests for reverse_unified_diff standalone function"""
 
-    def test_reverse_headers(self, codex_engine):
+    def test_reverse_headers(self):
         """Test --- and +++ headers are swapped"""
         diff = """--- a/file.py
 +++ b/file.py
@@ -552,12 +565,12 @@ class TestReverseUnifiedDiff:
 -old
 +new
 """
-        reversed_diff = codex_engine._reverse_unified_diff(diff)
+        reversed_diff = reverse_unified_diff(diff)
 
         assert "+++ a/file.py" in reversed_diff
         assert "--- b/file.py" in reversed_diff
 
-    def test_reverse_content_lines(self, codex_engine):
+    def test_reverse_content_lines(self):
         """Test + and - content lines are swapped"""
         diff = """--- a/file.py
 +++ b/file.py
@@ -565,12 +578,12 @@ class TestReverseUnifiedDiff:
 -removed line
 +added line
 """
-        reversed_diff = codex_engine._reverse_unified_diff(diff)
+        reversed_diff = reverse_unified_diff(diff)
 
         assert "+removed line" in reversed_diff
         assert "-added line" in reversed_diff
 
-    def test_reverse_preserves_context(self, codex_engine):
+    def test_reverse_preserves_context(self):
         """Test context lines (no prefix) are preserved"""
         diff = """--- a/file.py
 +++ b/file.py
@@ -580,12 +593,12 @@ class TestReverseUnifiedDiff:
 +new
  more context
 """
-        reversed_diff = codex_engine._reverse_unified_diff(diff)
+        reversed_diff = reverse_unified_diff(diff)
 
         assert " context line" in reversed_diff
         assert " more context" in reversed_diff
 
-    def test_reverse_preserves_hunk_header(self, codex_engine):
+    def test_reverse_preserves_hunk_header(self):
         """Test @@ hunk headers are preserved"""
         diff = """--- a/file.py
 +++ b/file.py
@@ -593,7 +606,7 @@ class TestReverseUnifiedDiff:
 -old
 +new
 """
-        reversed_diff = codex_engine._reverse_unified_diff(diff)
+        reversed_diff = reverse_unified_diff(diff)
 
         assert "@@ -1,3 +1,3 @@" in reversed_diff
 
@@ -601,9 +614,9 @@ class TestReverseUnifiedDiff:
 # ========== _extract_targets Tests ==========
 
 class TestExtractTargets:
-    """Tests for _extract_targets method"""
+    """Tests for extract_targets standalone function"""
 
-    def test_extract_single_file(self, codex_engine):
+    def test_extract_single_file(self):
         """Test extracting single file from diff"""
         diff = """--- a/module.py
 +++ b/module.py
@@ -611,11 +624,11 @@ class TestExtractTargets:
 -old
 +new
 """
-        targets = codex_engine._extract_targets(diff)
+        targets = extract_targets(diff)
 
         assert "module.py" in targets
 
-    def test_extract_strips_prefix(self, codex_engine):
+    def test_extract_strips_prefix(self):
         """Test a/ and b/ prefixes are stripped"""
         diff = """--- a/src/module.py
 +++ b/src/module.py
@@ -623,13 +636,13 @@ class TestExtractTargets:
 -old
 +new
 """
-        targets = codex_engine._extract_targets(diff)
+        targets = extract_targets(diff)
 
         assert "src/module.py" in targets
         assert "a/src/module.py" not in targets
         assert "b/src/module.py" not in targets
 
-    def test_extract_strips_timestamp(self, codex_engine):
+    def test_extract_strips_timestamp(self):
         """Test timestamps are stripped from paths"""
         diff = """--- a/module.py	2024-01-01 00:00:00 +0000
 +++ b/module.py	2024-01-02 00:00:00 +0000
@@ -637,11 +650,11 @@ class TestExtractTargets:
 -old
 +new
 """
-        targets = codex_engine._extract_targets(diff)
+        targets = extract_targets(diff)
 
         assert "module.py" in targets
 
-    def test_extract_multiple_files(self, codex_engine):
+    def test_extract_multiple_files(self):
         """Test extracting multiple files from multi-file diff"""
         diff = """--- a/file1.py
 +++ b/file1.py
@@ -654,12 +667,12 @@ class TestExtractTargets:
 -old
 +new
 """
-        targets = codex_engine._extract_targets(diff)
+        targets = extract_targets(diff)
 
         assert "file1.py" in targets
         assert "file2.py" in targets
 
-    def test_extract_unique_targets(self, codex_engine):
+    def test_extract_unique_targets(self):
         """Test targets are unique (no duplicates)"""
         diff = """--- a/module.py
 +++ b/module.py
@@ -667,7 +680,7 @@ class TestExtractTargets:
 -old
 +new
 """
-        targets = codex_engine._extract_targets(diff)
+        targets = extract_targets(diff)
 
         # Check no duplicates
         assert len(targets) == len(set(targets))
@@ -676,9 +689,9 @@ class TestExtractTargets:
 # ========== _split_unified_diff Tests ==========
 
 class TestSplitUnifiedDiff:
-    """Tests for _split_unified_diff method"""
+    """Tests for split_unified_diff standalone function"""
 
-    def test_split_single_file_diff(self, codex_engine):
+    def test_split_single_file_diff(self):
         """Test splitting single file diff returns one shard"""
         diff = """--- a/module.py
 +++ b/module.py
@@ -686,11 +699,11 @@ class TestSplitUnifiedDiff:
 -old
 +new
 """
-        shards = codex_engine._split_unified_diff(diff)
+        shards = split_unified_diff(diff)
 
         assert len(shards) == 1
 
-    def test_split_multi_file_diff(self, codex_engine):
+    def test_split_multi_file_diff(self):
         """Test splitting multi-file diff"""
         diff = """--- a/file1.py
 +++ b/file1.py
@@ -703,11 +716,11 @@ class TestSplitUnifiedDiff:
 -old
 +new
 """
-        shards = codex_engine._split_unified_diff(diff)
+        shards = split_unified_diff(diff)
 
         assert len(shards) == 2
 
-    def test_split_git_format_diff(self, codex_engine):
+    def test_split_git_format_diff(self):
         """Test splitting git format diff (with diff --git)"""
         diff = """diff --git a/file1.py b/file1.py
 --- a/file1.py
@@ -722,11 +735,11 @@ diff --git a/file2.py b/file2.py
 -old
 +new
 """
-        shards = codex_engine._split_unified_diff(diff)
+        shards = split_unified_diff(diff)
 
         assert len(shards) == 2
 
-    def test_split_filters_invalid_shards(self, codex_engine):
+    def test_split_filters_invalid_shards(self):
         """Test invalid shards (missing headers) are filtered"""
         diff = """garbage
 --- a/valid.py
@@ -735,7 +748,7 @@ diff --git a/file2.py b/file2.py
 -old
 +new
 """
-        shards = codex_engine._split_unified_diff(diff)
+        shards = split_unified_diff(diff)
 
         # Should only have one valid shard
         assert len(shards) == 1
@@ -811,7 +824,7 @@ class TestApplySimpleDiff:
 # ========== search_code Tests ==========
 
 class TestSearchCode:
-    """Tests for search_code method"""
+    """Tests for search_code_in_repo method and standalone search_code function"""
 
     def test_search_code_with_ripgrep(self, codex_engine, temp_repo):
         """Test search using ripgrep"""
@@ -827,7 +840,7 @@ class TestSearchCode:
                     stdout="module.py:1:def hello():"
                 )
 
-                results = codex_engine.search_code(r"def hello")
+                results = codex_engine.search_code_in_repo(r"def hello")
 
                 # Returns list of tuples
                 assert isinstance(results, list)
@@ -840,7 +853,7 @@ class TestSearchCode:
 """)
 
         with patch('shutil.which', return_value=None):
-            results = codex_engine.search_code(r"def hello", globs=["*.py"])
+            results = codex_engine.search_code_in_repo(r"def hello", globs=["*.py"])
 
             # Should find the pattern
             assert isinstance(results, list)
@@ -854,7 +867,7 @@ class TestSearchCode:
         (temp_repo / "many_matches.py").write_text(content)
 
         with patch('shutil.which', return_value=None):
-            results = codex_engine.search_code(r"match_", max_results=10, globs=["*.py"])
+            results = codex_engine.search_code_in_repo(r"match_", max_results=10, globs=["*.py"])
 
             assert len(results) <= 10
 
@@ -864,7 +877,7 @@ class TestSearchCode:
         (temp_repo / "test.js").write_text("javascript match")
 
         with patch('shutil.which', return_value=None):
-            results = codex_engine.search_code(r"match", globs=["*.py"])
+            results = codex_engine.search_code_in_repo(r"match", globs=["*.py"])
 
             # Should only search Python files
             assert all("test.py" in r[0] or ".py" in r[0] for r in results if results)
@@ -878,9 +891,22 @@ class TestSearchCode:
                     stdout=""
                 )
 
-                results = codex_engine.search_code(r"nonexistent_pattern")
+                results = codex_engine.search_code_in_repo(r"nonexistent_pattern")
 
                 assert results == []
+
+    def test_standalone_search_code_function(self, temp_repo):
+        """Test standalone search_code function directly"""
+        # Create searchable file
+        (temp_repo / "module.py").write_text("""def hello():
+    print("Hello, World!")
+""")
+
+        with patch('shutil.which', return_value=None):
+            results = search_code(r"def hello", temp_repo, globs=["*.py"])
+
+            assert isinstance(results, list)
+            assert all(isinstance(r, tuple) for r in results)
 
 
 # ========== generate_rename_diff Tests ==========
@@ -1075,35 +1101,35 @@ class TestCodemodOperations:
 # ========== Diff Generation Tests ==========
 
 class TestDiffGeneration:
-    """Tests for diff generation helpers"""
+    """Tests for diff generation standalone functions"""
 
-    def test_unified_text_diff(self, codex_engine):
-        """Test _unified_text_diff generates valid diff"""
+    def test_unified_text_diff(self):
+        """Test unified_text_diff generates valid diff"""
         before = "line1\nline2\n"
         after = "line1\nmodified\n"
 
-        diff = codex_engine._unified_text_diff("file.py", "file.py", before, after)
+        diff = unified_text_diff("file.py", "file.py", before, after)
 
         assert "--- file.py" in diff
         assert "+++ file.py" in diff
         assert "-line2" in diff
         assert "+modified" in diff
 
-    def test_unified_add_file(self, codex_engine):
-        """Test _unified_add_file generates add diff"""
+    def test_unified_add_file(self):
+        """Test unified_add_file generates add diff"""
         content = "new content\n"
 
-        diff = codex_engine._unified_add_file("new_file.py", content)
+        diff = unified_add_file("new_file.py", content)
 
         assert "--- /dev/null" in diff
         assert "+++ new_file.py" in diff
         assert "+new content" in diff
 
-    def test_unified_delete_file(self, codex_engine):
-        """Test _unified_delete_file generates delete diff"""
+    def test_unified_delete_file(self):
+        """Test unified_delete_file generates delete diff"""
         content = "old content\n"
 
-        diff = codex_engine._unified_delete_file("old_file.py", content)
+        diff = unified_delete_file("old_file.py", content)
 
         assert "--- old_file.py" in diff
         assert "+++ /dev/null" in diff
@@ -1209,7 +1235,7 @@ def greet():
 """)
 
         with patch('shutil.which', return_value=None):
-            results = codex_engine.search_code(r"日本語", globs=["*.py"])
+            results = codex_engine.search_code_in_repo(r"日本語", globs=["*.py"])
 
             # Should handle unicode
             assert isinstance(results, list)
@@ -1230,7 +1256,7 @@ def greet():
         (temp_repo / "large.py").write_text(content)
 
         with patch('shutil.which', return_value=None):
-            results = codex_engine.search_code(r"line", max_results=10, globs=["*.py"])
+            results = codex_engine.search_code_in_repo(r"line", max_results=10, globs=["*.py"])
 
             assert len(results) <= 10
 
@@ -1240,7 +1266,7 @@ def greet():
         (temp_repo / "binary.py").write_bytes(b'\x00\x01\x02\x03')
 
         with patch('shutil.which', return_value=None):
-            results = codex_engine.search_code(r"pattern", globs=["*.py"])
+            results = codex_engine.search_code_in_repo(r"pattern", globs=["*.py"])
 
             # Should handle errors gracefully
             assert isinstance(results, list)
@@ -1256,7 +1282,7 @@ def greet():
             pytest.skip("Symlinks not supported on this platform")
 
         with patch('shutil.which', return_value=None):
-            results = codex_engine.search_code(r"content", globs=["*.py"])
+            results = codex_engine.search_code_in_repo(r"content", globs=["*.py"])
 
             assert isinstance(results, list)
 
@@ -1371,7 +1397,7 @@ old_func()
 
         # Search for symbol
         with patch('shutil.which', return_value=None):
-            results = codex_engine.search_code(r"\bold_func\b", globs=["*.py"])
+            results = codex_engine.search_code_in_repo(r"\bold_func\b", globs=["*.py"])
 
         # Generate rename diff
         diff = codex_engine.generate_rename_diff("old_func", "new_func", globs=["*.py"])

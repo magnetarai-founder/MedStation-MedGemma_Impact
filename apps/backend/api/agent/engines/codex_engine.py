@@ -2,6 +2,13 @@
 """
 CodexEngine (minimal): deterministic patch application and rollback.
 For now, uses the system 'patch' command to apply unified diffs transactionally.
+
+Module structure (P2 decomposition):
+- codex_diff_utils.py: Diff parsing, validation, and generation
+- codex_search.py: Code search utilities
+- codex_deterministic_ops.py: AST-based code transformations
+- codex_codemods.py: Codemod operations (imports, class extraction)
+- codex_engine.py: Main CodexEngine class (this file)
 """
 
 import os
@@ -16,6 +23,19 @@ from typing import Tuple, List, Dict, Any, Optional
 import difflib
 from .codex_deterministic_ops import DeterministicOps
 from .codex_codemods import CodemodOperations
+
+# Import from extracted modules (P2 decomposition)
+from .codex_diff_utils import (
+    detect_patch_level,
+    validate_diff_paths,
+    reverse_unified_diff,
+    extract_targets,
+    split_unified_diff,
+    unified_text_diff,
+    unified_add_file,
+    unified_delete_file,
+)
+from .codex_search import search_code
 
 # Platform-specific lock import (safe for Windows)
 try:
@@ -35,7 +55,7 @@ class CodexEngine:
             return False, "Empty diff"
 
         # SECURITY: Pre-scan diff for path traversal attacks
-        is_safe, safety_msg = self._validate_diff_paths(diff_text)
+        is_safe, safety_msg = validate_diff_paths(diff_text, self.repo_root)
         if not is_safe:
             return False, f"Security: {safety_msg}"
 
@@ -73,7 +93,7 @@ class CodexEngine:
                 pass
 
             # Backup target files mentioned in diff (best-effort)
-            targets = self._extract_targets(diff_text)
+            targets = extract_targets(diff_text)
             for t in targets:
                 tp = (self.repo_root / t).resolve()
                 if tp.exists() and tp.is_file():
@@ -86,7 +106,7 @@ class CodexEngine:
 
             # Detect patch strip level (-p0 vs -p1)
             # Check if headers have a/ b/ prefixes (typical git diff format)
-            patch_level = self._detect_patch_level(diff_text)
+            patch_level = detect_patch_level(diff_text)
 
             try:
                 # SECURITY: Use subprocess without shell=True to prevent command injection
@@ -131,7 +151,7 @@ class CodexEngine:
             except Exception as e:
                 # Create parent dirs for added files before retry
                 try:
-                    for f in self._extract_targets(diff_text):
+                    for f in extract_targets(diff_text):
                         if '/dev/null' in f:
                             continue
                         p = self.repo_root / f
@@ -189,7 +209,7 @@ class CodexEngine:
         if not patch_file.exists():
             return False, "Patch not found"
         diff = patch_file.read_text()
-        reversed_diff = self._reverse_unified_diff(diff)
+        reversed_diff = reverse_unified_diff(diff)
         tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".diff")
         tmp.write(reversed_diff.encode())
         tmp.close()
@@ -210,92 +230,8 @@ class CodexEngine:
             return False, f"Rollback failed: {applied.stderr.strip() or applied.stdout.strip()}"
         return True, "Rolled back"
 
-    def _detect_patch_level(self, diff: str) -> int:
-        """
-        Detect whether diff uses -p0 or -p1 format by checking path prefixes.
-
-        Returns:
-            0 for -p0 (no prefix), 1 for -p1 (a/ b/ prefix)
-        """
-        for ln in diff.splitlines():
-            if ln.startswith('--- ') or ln.startswith('+++ '):
-                path = ln.split(' ', 1)[1].strip()
-                if '\t' in path:
-                    path = path.split('\t', 1)[0]
-
-                # Check for a/ or b/ prefix (git format)
-                if path.startswith('a/') or path.startswith('b/'):
-                    return 1
-
-                # If no prefix and not /dev/null, assume -p0
-                if path != '/dev/null':
-                    return 0
-
-        # Default to -p1 for git-style diffs
-        return 1
-
-    def _validate_diff_paths(self, diff: str) -> Tuple[bool, str]:
-        """
-        Validate diff paths to prevent path traversal attacks
-
-        Security checks:
-        - Rejects absolute paths (starting with /)
-        - Rejects parent directory traversal (../)
-        - Rejects paths outside repo_root after resolution
-        - Allows /dev/null (standard for new/deleted files)
-
-        Returns:
-            (is_safe, error_message)
-        """
-        for ln in diff.splitlines():
-            if not (ln.startswith('--- ') or ln.startswith('+++ ')):
-                continue
-
-            # Extract path from diff header
-            path = ln.split(' ', 1)[1].strip()
-            if '\t' in path:
-                path = path.split('\t', 1)[0]
-
-            # Strip a/ b/ prefixes if present
-            if path.startswith('a/') or path.startswith('b/'):
-                path = path[2:]
-
-            # Allow /dev/null (standard for new/deleted files)
-            if path == '/dev/null':
-                continue
-
-            # REJECT: Absolute paths
-            if path.startswith('/'):
-                return False, f"Absolute path not allowed: {path}"
-
-            # REJECT: Parent directory traversal
-            if '../' in path or path.startswith('..'):
-                return False, f"Path traversal not allowed: {path}"
-
-            # REJECT: Paths that resolve outside repo_root
-            try:
-                resolved = (self.repo_root / path).resolve()
-                if not resolved.is_relative_to(self.repo_root.resolve()):
-                    return False, f"Path escapes repo root: {path}"
-            except (ValueError, RuntimeError):
-                return False, f"Invalid path: {path}"
-
-        return True, ""
-
-    def _reverse_unified_diff(self, diff: str) -> str:
-        lines = []
-        for ln in diff.splitlines():
-            if ln.startswith('--- '):
-                lines.append('+++ ' + ln[4:])
-            elif ln.startswith('+++ '):
-                lines.append('--- ' + ln[4:])
-            elif ln.startswith('+') and not ln.startswith('+++'):
-                lines.append('-' + ln[1:])
-            elif ln.startswith('-') and not ln.startswith('---'):
-                lines.append('+' + ln[1:])
-            else:
-                lines.append(ln)
-        return "\n".join(lines) + "\n"
+    # Note: _detect_patch_level, _validate_diff_paths, _reverse_unified_diff
+    # moved to codex_diff_utils.py for better testability
 
     def _apply_simple_diff(self, diff: str) -> Tuple[bool, str]:
         """Very simple unified diff applier for single-file, single-hunk replacements.
@@ -347,51 +283,11 @@ class CodexEngine:
         except Exception as e:
             return False, str(e)
 
-    def _extract_targets(self, diff: str) -> list:
-        targets = []
-        for ln in diff.splitlines():
-            if ln.startswith('+++ '):
-                f = ln.split(' ', 1)[1].strip()
-                # strip timestamp if present
-                if '\t' in f:
-                    f = f.split('\t', 1)[0]
-                if f.startswith('b/'):
-                    f = f[2:]
-                targets.append(f)
-            elif ln.startswith('--- '):
-                f = ln.split(' ', 1)[1].strip()
-                if '\t' in f:
-                    f = f.split('\t', 1)[0]
-                if f.startswith('a/'):
-                    f = f[2:]
-                targets.append(f)
-        # Unique and relative
-        uniq = []
-        seen = set()
-        for t in targets:
-            if t not in seen:
-                uniq.append(t)
-                seen.add(t)
-        return uniq
-
-    def _split_unified_diff(self, diff: str) -> list:
-        """Split a multi-file unified diff into a list of per-file diffs."""
-        files = []
-        current = []
-        for ln in diff.splitlines():
-            if ln.startswith('diff --git') or ln.startswith('--- '):
-                if current:
-                    files.append('\n'.join(current) + '\n')
-                    current = []
-            current.append(ln)
-        if current:
-            files.append('\n'.join(current) + '\n')
-        # Filter out empty shards
-        return [d for d in files if '--- ' in d and '+++ ' in d]
+    # Note: _extract_targets and _split_unified_diff moved to codex_diff_utils.py
 
     def _apply_per_file(self, diff_text: str) -> Tuple[bool, str]:
         """Attempt to apply a multi-file diff per-file, improving resilience."""
-        shards = self._split_unified_diff(diff_text)
+        shards = split_unified_diff(diff_text)
         if not shards:
             return False, 'no per-file shards found'
         # Try applying each shard independently
@@ -492,57 +388,13 @@ class CodexEngine:
         return True, 'per-file apply ok'
 
     # --- Added search and codemod helpers ---
-    def search_code(self, pattern: str, globs: List[str] = None, max_results: int = 200) -> List[Tuple[str,int,str]]:
-        """Search code for a regex pattern; returns list of (path, line_no, line)."""
-        globs = globs or ['**/*.py', '**/*.js', '**/*.ts']
-        results = []
-        # If ripgrep is available, use it
-        if shutil.which('rg'):
-            # Convert glob patterns to ripgrep glob syntax
-            rg_globs = []
-            for g in globs:
-                if g.startswith('**/'):
-                    # **/*.py -> -g '*.py'
-                    rg_globs.extend(['-g', g[3:]])
-                else:
-                    # *.py -> -g '*.py'
-                    rg_globs.extend(['-g', g])
-            
-            cmd = ['rg', '-n', '--no-heading', '-e', pattern] + rg_globs
-            try:
-                p = subprocess.run(cmd, cwd=self.repo_root, capture_output=True, text=True)
-                if p.returncode in (0, 1):  # 1 = no matches
-                    for line in p.stdout.strip().splitlines():
-                        if not line:
-                            continue
-                        try:
-                            path, lno, content = line.split(':', 2)
-                            results.append((path, int(lno), content))
-                        except ValueError:
-                            continue
-                        if len(results) >= max_results:
-                            return results[:max_results]
-            except Exception:
-                pass  # Fall through to Python implementation
-            if results:
-                return results[:max_results]
-        # Fallback: simple Python scan
-        import re as _re
-        rx = _re.compile(pattern)
-        for g in globs:
-            for p in self.repo_root.rglob(g.replace('**/','')):
-                if not p.is_file():
-                    continue
-                try:
-                    text = p.read_text(errors='ignore')
-                except Exception:
-                    continue
-                for idx, ln in enumerate(text.splitlines(), 1):
-                    if rx.search(ln):
-                        results.append((str(p.relative_to(self.repo_root)), idx, ln))
-                        if len(results) >= max_results:
-                            return results
-        return results
+    # Note: search_code implementation moved to codex_search.py
+    def search_code_in_repo(self, pattern: str, globs: List[str] = None, max_results: int = 200) -> List[Tuple[str, int, str]]:
+        """Search code for a regex pattern; returns list of (path, line_no, line).
+
+        Delegates to codex_search.search_code() with this engine's repo_root.
+        """
+        return search_code(pattern, self.repo_root, globs, max_results)
 
     def generate_rename_diff(self, old: str, new: str, globs: List[str] = None) -> str:
         """Generate a unified diff for renaming a symbol across files."""
@@ -561,7 +413,7 @@ class CodexEngine:
                 after = rx.sub(new, before)
                 if after != before:
                     rel = str(p.relative_to(self.repo_root))
-                    ud = self._unified_text_diff(rel, rel, before, after)
+                    ud = unified_text_diff(rel, rel, before, after)
                     diffs.append(ud)
         return '\n'.join(diffs)
     
@@ -644,28 +496,8 @@ class CodexEngine:
         mod = str(rel.with_suffix('')).replace('/', '.').replace('\\', '.')
         return mod
 
-    def _unified_text_diff(self, old_path: str, new_path: str, before: str, after: str) -> str:
-        a = before.splitlines(keepends=True)
-        b = after.splitlines(keepends=True)
-        # Handle add/delete sentinel correctly for patch
-        # Add a tab and timestamp to guard spaces in filenames
-        ts = '\t1970-01-01 00:00:00 +0000'
-        fromfile = old_path if old_path == '/dev/null' else f"{old_path}{ts}"
-        tofile = new_path if new_path == '/dev/null' else f"{new_path}{ts}"
-        ud = difflib.unified_diff(a, b, fromfile=fromfile, tofile=tofile)
-        return ''.join(ud)
-
-    def _unified_add_file(self, new_path: str, content: str) -> str:
-        before = ''
-        after = content
-        # Proper add-file headers: --- /dev/null, +++ new_path
-        return self._unified_text_diff('/dev/null', new_path, before, after)
-
-    def _unified_delete_file(self, old_path: str, content: str) -> str:
-        before = content
-        after = ''
-        # Proper delete-file headers: --- old_path, +++ /dev/null
-        return self._unified_text_diff(old_path, '/dev/null', before, after)
+    # Note: _unified_text_diff, _unified_add_file, _unified_delete_file
+    # moved to codex_diff_utils.py for better testability
 
     def generate_move_module_diff(self, old_path: str, new_path: str, update_imports: bool = True,
                                   include_globs: list | None = None,
@@ -680,8 +512,8 @@ class CodexEngine:
             return ''
 
         # Create add-new and delete-old diffs
-        add_diff = self._unified_add_file(new_path, before)
-        del_diff = self._unified_delete_file(old_path, before)
+        add_diff = unified_add_file(new_path, before)
+        del_diff = unified_delete_file(old_path, before)
 
         diffs = [del_diff, add_diff]
 
@@ -768,8 +600,8 @@ class CodexEngine:
             src_after_lines.insert(0, import_stmt)
         src_after = ''.join(src_after_lines)
 
-        src_diff = self._unified_text_diff(source_file, source_file, src_text, src_after)
-        tgt_diff = self._unified_text_diff('/dev/null' if not tgt_before else target_file, target_file, tgt_before if tgt_before else '', tgt_after)
+        src_diff = unified_text_diff(source_file, source_file, src_text, src_after)
+        tgt_diff = unified_text_diff('/dev/null' if not tgt_before else target_file, target_file, tgt_before if tgt_before else '', tgt_after)
         # Optionally organize imports in the source after inserting new import
         try:
             org_diff = self.generate_organize_imports_diff(source_file)
@@ -837,7 +669,7 @@ class CodexEngine:
             new_content = ''.join(import_lines + lines[import_end:])
             if new_content == content:
                 return ''
-            return self._unified_text_diff(file_path, file_path, content, new_content)
+            return unified_text_diff(file_path, file_path, content, new_content)
         except Exception:
             return ''
     
