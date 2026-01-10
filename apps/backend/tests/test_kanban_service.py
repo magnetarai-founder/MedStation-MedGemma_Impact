@@ -41,10 +41,13 @@ def patch_paths(temp_db_dir):
     mock_paths = MagicMock()
     mock_paths.app_db = temp_db_dir / "test_kanban.db"
 
-    with patch('api.services.kanban_service.PATHS', mock_paths):
+    # After P2 decomposition, PATHS is now in kanban_core.py
+    with patch('api.services.kanban_core.PATHS', mock_paths):
         # Re-import to get fresh module with patched paths
         import importlib
+        import api.services.kanban_core as kc
         import api.services.kanban_service as ks
+        importlib.reload(kc)
         importlib.reload(ks)
         yield ks
 
