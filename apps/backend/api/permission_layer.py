@@ -2,6 +2,10 @@
 """
 Interactive Permission Layer for Jarvis
 User-controlled execution with yes/no/always/never options
+
+Module structure (P2 decomposition):
+- permission_layer_risk.py: Pure functions, risk patterns, static data
+- permission_layer.py: Main PermissionLayer class (this file)
 """
 
 import json
@@ -14,6 +18,16 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+# Import from extracted module (P2 decomposition)
+from api.permission_layer_risk import (
+    assess_risk_level,
+    matches_pattern,
+    highlight_dangerous_terms,
+    create_similar_pattern,
+    COMMAND_EXPLANATIONS,
+    FLAG_EXPLANATIONS,
+)
 
 # ANSI colors for better visibility
 RED = "\033[91m"
@@ -162,77 +176,22 @@ class PermissionLayer:
             print(f"{YELLOW}Could not save permission rules: {e}{RESET}")
 
     def assess_risk(self, command: str, operation_type: str = "command") -> Tuple[RiskLevel, str]:
-        """Assess the risk level of a command"""
-        command_lower = command.lower()
+        """
+        Assess the risk level of a command.
 
-        # Critical risk patterns
-        if any(
-            pattern in command_lower
-            for pattern in [
-                "rm -rf /",
-                "rm -rf ~",
-                "format",
-                "mkfs",
-                "> /dev/",
-                "dd if=",
-                "fork bomb",
-            ]
-        ):
-            return RiskLevel.CRITICAL, "Potentially destructive operation"
+        Delegates to extracted pure function (P2 decomposition).
+        """
+        # Map risk level int to RiskLevel enum
+        risk_level_map = {
+            0: RiskLevel.SAFE,
+            1: RiskLevel.LOW,
+            2: RiskLevel.MEDIUM,
+            3: RiskLevel.HIGH,
+            4: RiskLevel.CRITICAL,
+        }
 
-        # High risk patterns
-        if any(
-            pattern in command_lower
-            for pattern in [
-                "sudo",
-                "rm -rf",
-                "chmod 777",
-                "chown",
-                "kill -9",
-                "killall",
-                "systemctl stop",
-            ]
-        ):
-            return RiskLevel.HIGH, "System modification or termination"
-
-        # Medium risk patterns
-        if any(
-            pattern in command_lower
-            for pattern in [
-                "rm ",
-                "delete",
-                "drop",
-                "truncate",
-                "mv ",
-                "cp -f",
-                "install",
-                "uninstall",
-                "git push --force",
-                "curl",
-                "wget",
-            ]
-        ):
-            return RiskLevel.MEDIUM, "File modification or network operation"
-
-        # Low risk patterns
-        if any(
-            pattern in command_lower
-            for pattern in [
-                "mkdir",
-                "touch",
-                "echo >",
-                "cat >",
-                "pip install",
-                "npm install",
-                "apt-get",
-                "git commit",
-                "git add",
-            ]
-        ):
-            return RiskLevel.LOW, "Creating or modifying user files"
-
-        # Safe operations
-        return RiskLevel.SAFE, "Read-only or safe operation"
+        level_int, reason = assess_risk_level(command)
+        return risk_level_map[level_int], reason
 
     def check_existing_rules(self, request: PermissionRequest) -> Optional[PermissionResponse]:
         """Check if we have an existing rule for this request"""
@@ -257,19 +216,17 @@ class PermissionLayer:
         return None
 
     def _matches_rule(self, request: PermissionRequest, rule: PermissionRule) -> bool:
-        """Check if a request matches a rule"""
-        # Check operation type
-        if rule.operation_type != "*" and rule.operation_type != request.operation_type:
-            return False
+        """
+        Check if a request matches a rule.
 
-        # Check command pattern
-        if rule.pattern == "*":
-            return True
-        elif rule.pattern.startswith("regex:"):
-            pattern = rule.pattern[6:]
-            return bool(re.match(pattern, request.command))
-        else:
-            return rule.pattern in request.command
+        Delegates to extracted pure function (P2 decomposition).
+        """
+        return matches_pattern(
+            command=request.command,
+            pattern=rule.pattern,
+            command_operation_type=request.operation_type,
+            rule_operation_type=rule.operation_type,
+        )
 
     def check_permission(self, command: str, risk_level: str = "low") -> bool:
         """Check if command is allowed (simplified interface)"""
@@ -397,24 +354,12 @@ class PermissionLayer:
                 return PermissionResponse.NO
 
     def _highlight_command(self, command: str) -> str:
-        """Add color highlighting to dangerous parts of commands"""
-        dangerous_terms = [
-            "rm",
-            "delete",
-            "sudo",
-            "kill",
-            "format",
-            "dd",
-            "mkfs",
-            "chmod",
-            "chown",
-        ]
+        """
+        Add color highlighting to dangerous parts of commands.
 
-        highlighted = command
-        for term in dangerous_terms:
-            highlighted = highlighted.replace(term, f"{RED}{term}{RESET}")
-
-        return highlighted
+        Delegates to extracted pure function (P2 decomposition).
+        """
+        return highlight_dangerous_terms(command, red_code=RED, reset_code=RESET)
 
     def _non_interactive_decision(self, request: PermissionRequest) -> PermissionResponse:
         """Make decision in non-interactive mode based on policy"""
@@ -456,7 +401,11 @@ class PermissionLayer:
                 return PermissionResponse.NO
 
     def _explain_command(self, request: PermissionRequest) -> None:
-        """Explain what a command does"""
+        """
+        Explain what a command does.
+
+        Uses imported constants from extracted module (P2 decomposition).
+        """
         print(f"\n{BOLD}Command Explanation:{RESET}")
 
         # Parse command for explanation
@@ -467,42 +416,17 @@ class PermissionLayer:
 
         base_cmd = cmd_parts[0]
 
-        # Common command explanations
-        explanations = {
-            "rm": "Remove/delete files or directories",
-            "ls": "List directory contents",
-            "cd": "Change directory",
-            "cp": "Copy files or directories",
-            "mv": "Move/rename files or directories",
-            "mkdir": "Create directories",
-            "sudo": "Run command with administrator privileges",
-            "kill": "Terminate a process",
-            "curl": "Transfer data from/to a server",
-            "wget": "Download files from the internet",
-            "git": "Version control operations",
-            "pip": "Python package management",
-            "npm": "Node.js package management",
-            "docker": "Container management",
-        }
+        # Use imported command explanations
+        if base_cmd in COMMAND_EXPLANATIONS:
+            print(f"  {CYAN}{base_cmd}:{RESET} {COMMAND_EXPLANATIONS[base_cmd]}")
 
-        if base_cmd in explanations:
-            print(f"  {CYAN}{base_cmd}:{RESET} {explanations[base_cmd]}")
-
-        # Explain flags
+        # Explain flags using imported explanations
         flags = [p for p in cmd_parts[1:] if p.startswith("-")]
         if flags:
             print(f"\n  {CYAN}Flags:{RESET}")
-            flag_explanations = {
-                "-r": "Recursive (include subdirectories)",
-                "-f": "Force (no confirmation)",
-                "-rf": "Recursive + Force (DANGEROUS!)",
-                "-la": "List all files with details",
-                "-i": "Interactive (ask before each action)",
-                "-v": "Verbose (show details)",
-            }
             for flag in flags:
-                if flag in flag_explanations:
-                    print(f"    {flag}: {flag_explanations[flag]}")
+                if flag in FLAG_EXPLANATIONS:
+                    print(f"    {flag}: {FLAG_EXPLANATIONS[flag]}")
                 else:
                     print(f"    {flag}: (flag)")
 
@@ -568,25 +492,12 @@ class PermissionLayer:
         return False
 
     def _create_similar_pattern(self, command: str) -> str:
-        """Create a pattern for similar commands"""
-        # Extract the base command
-        parts = command.split()
-        if not parts:
-            return command
+        """
+        Create a pattern for similar commands.
 
-        base = parts[0]
-
-        # For file operations, match the command but not the paths
-        if base in ["rm", "cp", "mv", "ls", "cat", "mkdir"]:
-            return f"{base} "
-        # For git operations
-        elif base == "git" and len(parts) > 1:
-            return f"git {parts[1]}"
-        # For package managers
-        elif base in ["pip", "npm", "apt-get", "brew"] and len(parts) > 1:
-            return f"{base} {parts[1]}"
-        else:
-            return base
+        Delegates to extracted pure function (P2 decomposition).
+        """
+        return create_similar_pattern(command)
 
     def _save_permanent_rule(self, request: PermissionRequest) -> None:
         """Save a permanent permission rule"""
