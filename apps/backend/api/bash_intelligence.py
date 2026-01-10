@@ -3,6 +3,9 @@
 Bash Intelligence for ElohimOS Terminal
 Powered by Codex patterns + local models
 
+Extracted modules (P2 decomposition):
+- bash_patterns.py: Pattern constants, templates, and helper functions
+
 Features:
 - Natural language → bash command translation
 - Context-aware command suggestions
@@ -21,6 +24,19 @@ try:
 except ImportError:
     from config import get_settings
 
+# Import from extracted module (P2 decomposition)
+from api.bash_patterns import (
+    DANGEROUS_PATTERNS,
+    NL_TEMPLATES,
+    NL_INDICATOR_WORDS,
+    is_dangerous_command,
+    match_nl_template,
+    has_nl_indicators,
+    get_command_improvements,
+    check_root_operation,
+    check_sudo_rm,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -32,85 +48,9 @@ class BashIntelligence:
     - NL to bash translation
     - Command safety checking
     - Context-aware suggestions
+
+    Static patterns and templates are defined in bash_patterns.py (P2 decomposition).
     """
-
-    # Dangerous commands that require confirmation
-    DANGEROUS_PATTERNS = [
-        # Recursive file removal
-        r'\brm\s+-rf\s+/',  # rm -rf /
-        r'\brm\s+-rf\s+\*',  # rm -rf *
-        r'\brm\s+-rf\s+~',  # rm -rf ~
-        r'\brm\s+-rf\s+\.',  # rm -rf .
-        r'\brm\s+-rf\s+\./',  # rm -rf ./
-        r'\brm\s+-r\s+\*',  # rm -r *
-        r'\brm\s+.*\*.*\s+-rf?',  # rm */ -rf or rm * -r
-
-        # Disk operations
-        r'\bdd\s+if=',  # dd if= (dangerous write)
-        r'\bdd\s+.*of=/dev/',  # dd to device
-        r'\b(sudo\s+)?mkfs',  # Format filesystem
-        r'\bshred',  # Secure deletion
-        r'\bwipefs',  # Wipe filesystem signatures
-        r'\bformat\b',  # Format command
-
-        # Permission changes
-        r'\bchmod\s+-R\s+777',  # Recursive 777
-        r'\bchmod\s+777\s+/',  # 777 on root
-
-        # Redirect to device
-        r'>\s*/dev/sd[a-z]',  # > /dev/sda
-        r'>\s*/dev/disk',  # > /dev/disk*
-
-        # Truncate file
-        r'\b:>',  # :> file
-
-        # Fork bomb and malicious patterns
-        r':\(\)\s*\{\s*:\|:&\s*\}',  # :(){:|:&};:
-        r'\bwhile\s+true.*do.*done',  # Potential infinite loop with destructive commands
-
-        # Sudo with shell command injection
-        r"sudo\s+sh\s+-c\s+['\"].*>.*\/dev\/",  # sudo sh -c '... > /dev/*'
-        r"sudo\s+bash\s+-c\s+['\"].*>.*\/dev\/",  # sudo bash -c '... > /dev/*'
-
-        # Multiple dangerous operations
-        r'&&.*\brm\s+-rf?\s+[/~*\.]',  # Chained with rm -rf
-        r'\|.*\brm\s+-rf?\s+[/~*\.]',  # Piped to rm -rf
-    ]
-
-    # Common NL patterns → bash templates
-    NL_TEMPLATES = {
-        # File operations
-        r'(list|show|display)\s+(all\s+)?files': 'ls -lah',
-        r'find\s+(.+?)\s+files?': r'find . -name "\1"',
-        r'search\s+for\s+"?(.+?)"?\s+in\s+files?': r'grep -r "\1" .',
-        r'count\s+lines\s+in\s+(.+)': r'wc -l "\1"',
-        r'show\s+disk\s+usage': 'df -h',
-        r'show\s+directory\s+size': 'du -sh',
-
-        # Git operations
-        r'commit\s+(.+)': r'git add -A && git commit -m "\1"',
-        r'push\s+to\s+(.+)': r'git push \1',
-        r'create\s+branch\s+(.+)': r'git checkout -b "\1"',
-        r'git\s+status': 'git status',
-        r'show\s+git\s+log': 'git log --oneline -10',
-        r'undo\s+last\s+commit': 'git reset --soft HEAD~1',
-
-        # Process management
-        r'kill\s+process\s+(.+)': r'pkill -f "\1"',
-        r'show\s+running\s+processes': 'ps aux',
-        r'find\s+process\s+(.+)': r'ps aux | grep "\1"',
-
-        # Network
-        r'check\s+port\s+(\d+)': r'lsof -i :\1',
-        r'test\s+connection\s+to\s+(.+)': r'ping -c 4 \1',
-        r'download\s+(.+)': r'curl -O "\1"',
-
-        # System
-        r'show\s+environment': 'env',
-        r'which\s+(.+)': r'which "\1"',
-        r'create\s+directory\s+(.+)': r'mkdir -p "\1"',
-        r'go\s+to\s+(.+)': r'cd "\1"',
-    }
 
     def __init__(self, model_manager=None):
         """
@@ -153,10 +93,10 @@ class BashIntelligence:
             text.endswith(';'),
         ]
 
-        # Check for NL indicators
+        # Check for NL indicators (using imported helper)
         nl_indicators = [
             text.endswith('?'),
-            any(word in text.lower() for word in ['please', 'can you', 'could you', 'how do i', 'show me']),
+            has_nl_indicators(text),
             len(text.split()) > 6 and not any(bash_indicators),  # Long phrases
         ]
 
@@ -203,22 +143,11 @@ class BashIntelligence:
             return f"# Could not translate: {nl_text}"
 
     def _try_template_match(self, text: str) -> Optional[str]:
-        """Try to match against template patterns"""
-        text_lower = text.lower().strip()
-
-        for pattern, template in self.NL_TEMPLATES.items():
-            match = re.search(pattern, text_lower)
-            if match:
-                # Replace capture groups
-                if '\\1' in template:
-                    cmd = re.sub(pattern, template, text_lower)
-                else:
-                    cmd = template
-
-                logger.debug(f"Template matched: '{text}' -> '{cmd}'")
-                return cmd
-
-        return None
+        """Try to match against template patterns (uses imported match_nl_template)"""
+        cmd = match_nl_template(text)
+        if cmd:
+            logger.debug(f"Template matched: '{text}' -> '{cmd}'")
+        return cmd
 
     def _llm_translate(self, nl_text: str) -> str:
         """Use LLM to translate NL to bash"""
@@ -262,49 +191,34 @@ Bash command:"""
 
     def check_safety(self, command: str) -> Tuple[bool, str]:
         """
-        Check if command is safe to execute
+        Check if command is safe to execute (uses imported safety helpers)
 
         Returns:
             (is_safe: bool, warning_message: str)
         """
-        # Check against dangerous patterns
-        for pattern in self.DANGEROUS_PATTERNS:
-            if re.search(pattern, command, re.IGNORECASE):
-                return False, f"⚠️  Dangerous command detected: matches pattern '{pattern}'"
+        # Check against dangerous patterns (using imported helper)
+        is_dangerous, matched_pattern = is_dangerous_command(command)
+        if is_dangerous:
+            return False, f"⚠️  Dangerous command detected: matches pattern '{matched_pattern}'"
 
-        # Check for sudo without confirmation
-        if command.strip().startswith('sudo') and 'rm' in command:
+        # Check for sudo without confirmation (using imported helper)
+        if check_sudo_rm(command):
             return False, "⚠️  sudo + rm detected - requires confirmation"
 
-        # Check for operations on root
-        if re.search(r'[/\s](/+|~)\s*$', command):
+        # Check for operations on root (using imported helper)
+        if check_root_operation(command):
             return False, "⚠️  Operation on root directory detected"
 
         return True, ""
 
     def suggest_improvements(self, command: str) -> List[str]:
         """
-        Suggest improvements to a bash command
+        Suggest improvements to a bash command (uses imported get_command_improvements)
 
         Returns:
             List of suggestions
         """
-        suggestions = []
-
-        # Check for common improvements
-        if re.search(r'\bfind\b.*\|\s*grep', command):
-            suggestions.append("💡 Consider using 'find -name' instead of piping to grep")
-
-        if 'cat' in command and '|' in command and 'grep' in command:
-            suggestions.append("💡 Consider using 'grep' directly instead of 'cat | grep'")
-
-        if re.search(r'\bls\s+\|', command):
-            suggestions.append("💡 Consider using ls options instead of piping")
-
-        if 'rm' in command and '-r' in command:
-            suggestions.append("⚠️  Use 'rm -r' carefully - specify explicit paths to avoid accidents")
-
-        return suggestions
+        return get_command_improvements(command)
 
 
 # Global instance
