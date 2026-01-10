@@ -1,25 +1,49 @@
 """
-P2P Mesh Service for Network Selector
+P2P Mesh Service for Network Selector - Facade Module
 
 Wrapper around existing p2p_chat_service for the Network Selector UI.
 Provides simple API for peer discovery, connection codes, and mesh networking.
+
+This module serves as a backward-compatible facade that re-exports models
+from extracted modules. Direct imports from extracted modules are preferred
+for new code.
+
+Extracted modules (P2 decomposition):
+- p2p_mesh_models.py: Pydantic models for requests/responses
+- p2p_mesh_db.py: Database operations for connection codes
 """
 
-from typing import List, Dict, Optional, Any
-from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
+from __future__ import annotations
+
+from typing import Dict, Any
+from fastapi import APIRouter, HTTPException, Request, Depends
 import logging
-import secrets
-import string
-import json
 
 from api.p2p_chat_service import get_p2p_chat_service, init_p2p_chat_service
 from api.rate_limiter import connection_code_limiter, get_client_ip
+from api.auth_middleware import get_current_user
+
+# Re-export models for backward compatibility
+from .p2p_mesh_models import (
+    ConnectionCode,
+    AddPeerRequest,
+    P2PMeshPeer,
+    DiagnosticCheck,
+    DiagnosticsResponse,
+    RunChecksResponse,
+)
+
+# Import database utilities
+from .p2p_mesh_db import (
+    PATHS,
+    CODES_DB_PATH,
+    init_codes_db,
+    save_connection_code,
+    load_connection_codes,
+    generate_connection_code,
+)
 
 logger = logging.getLogger(__name__)
-
-from fastapi import Depends
-from api.auth_middleware import get_current_user
 
 router = APIRouter(
     prefix="/api/v1/p2p",
@@ -27,109 +51,13 @@ router = APIRouter(
     dependencies=[Depends(get_current_user)]  # Require auth for all P2P mesh endpoints
 )
 
-
-class ConnectionCode(BaseModel):
-    """Connection code for pairing peers"""
-    code: str
-    peer_id: str
-    multiaddrs: List[str]
-    expires_at: Optional[str] = None
-
-
-class AddPeerRequest(BaseModel):
-    """Request to add peer by connection code"""
-    code: str
-
-
-class P2PMeshPeer(BaseModel):
-    """Peer information for NetworkSelector"""
-    id: str
-    name: str
-    location: Optional[str] = None
-    connected: bool
-
-
-# Persistent storage for connection codes
-# Store in database to survive restarts (critical for offline deployments)
-from api.config_paths import get_config_paths
-import sqlite3
-from datetime import datetime, timedelta
-
-PATHS = get_config_paths()
-CODES_DB_PATH = PATHS.data_dir / "p2p_connection_codes.db"
-
-
-def _init_codes_db() -> None:
-    """Initialize database for connection codes"""
-    CODES_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(str(CODES_DB_PATH)) as conn:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS connection_codes (
-                code TEXT PRIMARY KEY,
-                peer_id TEXT NOT NULL,
-                multiaddrs TEXT NOT NULL,
-                expires_at TEXT,
-                created_at TEXT NOT NULL
-            )
-        """)
-        conn.commit()
-
-
-def _save_connection_code(code: str, connection: ConnectionCode) -> None:
-    """Save connection code to persistent storage"""
-    with sqlite3.connect(str(CODES_DB_PATH)) as conn:
-        conn.execute("""
-            INSERT OR REPLACE INTO connection_codes (code, peer_id, multiaddrs, expires_at, created_at)
-            VALUES (?, ?, ?, ?, ?)
-        """, (
-            code,
-            connection.peer_id,
-            json.dumps(connection.multiaddrs),
-            connection.expires_at,
-            datetime.now().isoformat()
-        ))
-        conn.commit()
-
-
-def _load_connection_codes() -> Dict[str, ConnectionCode]:
-    """Load all valid connection codes from database"""
-    codes = {}
-    try:
-        with sqlite3.connect(str(CODES_DB_PATH)) as conn:
-            cursor = conn.execute("""
-                SELECT code, peer_id, multiaddrs, expires_at
-                FROM connection_codes
-                WHERE expires_at IS NULL OR datetime(expires_at) > datetime('now')
-            """)
-            for row in cursor.fetchall():
-                code, peer_id, multiaddrs_json, expires_at = row
-                codes[code] = ConnectionCode(
-                    code=code,
-                    peer_id=peer_id,
-                    multiaddrs=json.loads(multiaddrs_json),
-                    expires_at=expires_at
-                )
-    except Exception as e:
-        logger.error(f"Failed to load connection codes: {e}")
-    return codes
-
-
-# Initialize persistent storage
-_init_codes_db()
+# Initialize persistent storage using extracted function
+init_codes_db()
 
 # Load existing connection codes from database
-connection_codes: Dict[str, ConnectionCode] = _load_connection_codes()
+connection_codes: Dict[str, ConnectionCode] = load_connection_codes()
 
 logger.info(f"Loaded {len(connection_codes)} connection codes from database")
-
-
-def generate_connection_code() -> str:
-    """Generate a human-readable connection code"""
-    # Format: OMNI-XXXX-XXXX (8 characters total)
-    chars = string.ascii_uppercase + string.digits
-    part1 = ''.join(secrets.choice(chars) for _ in range(4))
-    part2 = ''.join(secrets.choice(chars) for _ in range(4))
-    return f"OMNI-{part1}-{part2}"
 
 
 @router.post("/start")
@@ -275,7 +203,7 @@ async def generate_connection_code_endpoint(request: Request) -> Dict[str, Any]:
         )
 
         connection_codes[code] = connection_info
-        _save_connection_code(code, connection_info)  # Persist to database
+        save_connection_code(code, connection_info)  # Persist to database
 
         return {
             "status": "success",
@@ -423,27 +351,7 @@ async def get_p2p_mesh_status() -> Dict[str, Any]:
 
 
 # ===== Diagnostics Endpoints =====
-
-class DiagnosticCheck(BaseModel):
-    """Single diagnostic check result"""
-    name: str
-    ok: bool
-    message: str
-    remediation: Optional[str] = None
-
-
-class DiagnosticsResponse(BaseModel):
-    """P2P diagnostics response"""
-    mdns_ok: bool
-    port_8000_open: bool
-    peer_count: int
-    hints: List[str]
-
-
-class RunChecksResponse(BaseModel):
-    """Detailed diagnostic checks response"""
-    checks: List[DiagnosticCheck]
-
+# Models imported from p2p_mesh_models.py
 
 @router.get("/diagnostics", response_model=DiagnosticsResponse)
 async def get_diagnostics(request: Request):
@@ -654,3 +562,25 @@ async def run_diagnostic_checks(request: Request):
     ))
 
     return RunChecksResponse(checks=checks)
+
+
+__all__ = [
+    # Re-exported from p2p_mesh_models.py (backward compatibility)
+    "ConnectionCode",
+    "AddPeerRequest",
+    "P2PMeshPeer",
+    "DiagnosticCheck",
+    "DiagnosticsResponse",
+    "RunChecksResponse",
+    # Re-exported from p2p_mesh_db.py (backward compatibility)
+    "PATHS",
+    "CODES_DB_PATH",
+    "init_codes_db",
+    "save_connection_code",
+    "load_connection_codes",
+    "generate_connection_code",
+    # Module state
+    "connection_codes",
+    # Router
+    "router",
+]

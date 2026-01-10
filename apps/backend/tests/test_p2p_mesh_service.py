@@ -22,19 +22,23 @@ from datetime import datetime, timedelta
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
-# Import module under test
-from api.p2p_mesh_service import (
-    router,
+# Import from extracted modules (P2 decomposition)
+from api.p2p_mesh_models import (
     ConnectionCode,
     AddPeerRequest,
     P2PMeshPeer,
     DiagnosticCheck,
     DiagnosticsResponse,
     RunChecksResponse,
+)
+from api.p2p_mesh_db import (
+    init_codes_db,
+    save_connection_code,
+    load_connection_codes,
     generate_connection_code,
-    _init_codes_db,
-    _save_connection_code,
-    _load_connection_codes,
+)
+from api.p2p_mesh_service import (
+    router,
     connection_codes,
 )
 
@@ -251,9 +255,9 @@ class TestDatabaseOperations:
     def test_save_and_load_connection_code(self, temp_db):
         """Save and load connection code"""
         # Patch the database path
-        with patch('api.p2p_mesh_service.CODES_DB_PATH', temp_db):
+        with patch('api.p2p_mesh_db.CODES_DB_PATH', temp_db):
             # Initialize db
-            _init_codes_db()
+            init_codes_db()
 
             # Create and save a code
             code = ConnectionCode(
@@ -262,18 +266,18 @@ class TestDatabaseOperations:
                 multiaddrs=["/ip4/192.168.1.1/tcp/8000"],
                 expires_at="2030-01-01T00:00:00Z"
             )
-            _save_connection_code("OMNI-TEST-CODE", code)
+            save_connection_code("OMNI-TEST-CODE", code)
 
             # Load codes
-            loaded = _load_connection_codes()
+            loaded = load_connection_codes()
 
             assert "OMNI-TEST-CODE" in loaded
             assert loaded["OMNI-TEST-CODE"].peer_id == "peer123"
 
     def test_load_filters_expired_codes(self, temp_db):
         """Expired codes are not loaded"""
-        with patch('api.p2p_mesh_service.CODES_DB_PATH', temp_db):
-            _init_codes_db()
+        with patch('api.p2p_mesh_db.CODES_DB_PATH', temp_db):
+            init_codes_db()
 
             # Insert expired code directly
             with sqlite3.connect(str(temp_db)) as conn:
@@ -289,13 +293,13 @@ class TestDatabaseOperations:
                 ))
                 conn.commit()
 
-            loaded = _load_connection_codes()
+            loaded = load_connection_codes()
             assert "OMNI-EXPD-CODE" not in loaded
 
     def test_load_includes_non_expiring_codes(self, temp_db):
         """Codes without expiry are always loaded"""
-        with patch('api.p2p_mesh_service.CODES_DB_PATH', temp_db):
-            _init_codes_db()
+        with patch('api.p2p_mesh_db.CODES_DB_PATH', temp_db):
+            init_codes_db()
 
             # Insert code without expiry
             with sqlite3.connect(str(temp_db)) as conn:
@@ -311,7 +315,7 @@ class TestDatabaseOperations:
                 ))
                 conn.commit()
 
-            loaded = _load_connection_codes()
+            loaded = load_connection_codes()
             assert "OMNI-PERM-CODE" in loaded
 
 
@@ -774,10 +778,10 @@ class TestIntegration:
         mock_service.host.get_addrs.return_value = []
 
         with patch('api.p2p_mesh_service.get_p2p_chat_service', return_value=mock_service), \
-             patch('api.p2p_mesh_service.CODES_DB_PATH', temp_db):
+             patch('api.p2p_mesh_db.CODES_DB_PATH', temp_db):
 
             # Initialize db for this test
-            _init_codes_db()
+            init_codes_db()
 
             resp = client.post("/api/v1/p2p/connection-code")
             assert resp.status_code == 200
