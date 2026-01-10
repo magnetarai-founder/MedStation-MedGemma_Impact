@@ -143,7 +143,10 @@ def mock_db_connection(temp_db):
         conn.row_factory = sqlite3.Row
         return conn
 
-    with patch('api.services.team.storage._get_app_conn', side_effect=_get_connection):
+    # Patch all modules that have _get_app_conn (after P2 extraction)
+    with patch('api.services.team.storage._get_app_conn', side_effect=_get_connection), \
+         patch('api.services.team.promotions._get_app_conn', side_effect=_get_connection), \
+         patch('api.services.team.god_rights._get_app_conn', side_effect=_get_connection):
         yield _get_connection
 
 
