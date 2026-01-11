@@ -2,52 +2,30 @@
 """
 Context API Router - Phase 5: ANE Context Engine
 Provides semantic search and RAG document retrieval for intelligent model routing
+
+Module structure (P2 decomposition):
+- context_types.py: Request/response models
+- context_router.py: API endpoints (this file)
 """
 
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
+from typing import Dict, Any
 import logging
 
 from api.ane_context_engine import get_ane_engine
 from api.auth_middleware import get_current_user
 
+# Import from extracted module (P2 decomposition)
+from api.context_types import (
+    ContextSearchRequest,
+    ContextSearchResult,
+    ContextSearchResponse,
+    StoreContextRequest,
+)
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/context", tags=["context"])
-
-
-# MARK: - Request/Response Models
-
-class ContextSearchRequest(BaseModel):
-    """Search for relevant context across all workspaces"""
-    query: str
-    session_id: Optional[str] = None
-    workspace_types: Optional[List[str]] = None  # ["vault", "data", "chat", etc.]
-    limit: int = 10
-
-
-class ContextSearchResult(BaseModel):
-    """Single context search result"""
-    source: str  # "vault", "chat", "data", "kanban", etc.
-    content: str
-    relevance_score: float
-    metadata: Dict[str, Any]
-
-
-class ContextSearchResponse(BaseModel):
-    """Response from context search"""
-    results: List[ContextSearchResult]
-    total_found: int
-    query_embedding_dims: int
-
-
-class StoreContextRequest(BaseModel):
-    """Store context for future retrieval"""
-    session_id: str
-    workspace_type: str  # "chat", "vault", "data", etc.
-    content: str
-    metadata: Dict[str, Any]
 
 
 # MARK: - Endpoints

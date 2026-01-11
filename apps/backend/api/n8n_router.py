@@ -1,11 +1,14 @@
 """
 n8n Integration REST API
 Endpoints for managing n8n integration
+
+Module structure (P2 decomposition):
+- n8n_types.py: Request/response models
+- n8n_router.py: API endpoints (this file)
 """
 
-from fastapi import APIRouter, HTTPException, Body
-from pydantic import BaseModel
-from typing import Dict, Any, Optional, List
+from fastapi import APIRouter, HTTPException, Body, Depends
+from typing import Dict, Any
 from datetime import datetime, UTC
 import logging
 
@@ -30,11 +33,18 @@ except ImportError:
     from api.workflow_orchestrator import WorkflowOrchestrator
     from api.workflow_storage import get_workflow_storage
 
-logger = logging.getLogger(__name__)
-
-from fastapi import Depends
 from api.auth_middleware import get_current_user
 from api.utils import get_user_id
+
+# Import from extracted module (P2 decomposition)
+from api.n8n_types import (
+    N8NConfigRequest,
+    ExportStageRequest,
+    N8NWebhookRequest,
+)
+
+logger = logging.getLogger(__name__)
+
 
 # Dependency to check if n8n is enabled
 def require_n8n_enabled() -> N8NIntegrationService:
@@ -52,30 +62,6 @@ router = APIRouter(
     tags=["n8n"],
     dependencies=[Depends(get_current_user)]  # Require auth
 )
-
-# ============================================
-# REQUEST/RESPONSE MODELS
-# ============================================
-
-class N8NConfigRequest(BaseModel):
-    """Request to configure n8n"""
-    base_url: str
-    api_key: str
-    enabled: bool = True
-
-
-class ExportStageRequest(BaseModel):
-    """Request to export stage to n8n"""
-    workflow_id: str
-    stage_id: str
-
-
-class N8NWebhookRequest(BaseModel):
-    """Incoming webhook from n8n"""
-    work_item_id: str
-    results: Dict[str, Any]
-    status: str  # completed, failed, etc.
-    error: Optional[str] = None
 
 
 # ============================================

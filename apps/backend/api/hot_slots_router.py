@@ -4,65 +4,29 @@ Hot Slot Management API Router
 Phase 2: Hot Slot Management - HTTP API Layer
 
 Provides REST endpoints for managing model hot slots (4 slots with LRU eviction and pinning).
+
+Module structure (P2 decomposition):
+- hot_slots_types.py: Request/response models
+- hot_slots_router.py: API endpoints (this file)
 """
 
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel, Field
 from typing import Any
 import logging
 
 from api.auth_middleware import get_current_user
 
+# Import from extracted module (P2 decomposition)
+from api.hot_slots_types import (
+    HotSlot,
+    HotSlotsResponse,
+    LoadSlotRequest,
+    SlotOperationResponse,
+)
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/chat", tags=["hot_slots"])
-
-
-# ===== Request/Response Models =====
-
-class HotSlot(BaseModel):
-    """Hot slot state"""
-    slotNumber: int = Field(..., alias="slot_number")
-    modelId: str | None = Field(None, alias="model_id")
-    modelName: str | None = Field(None, alias="model_name")
-    isPinned: bool = Field(False, alias="is_pinned")
-    loadedAt: str | None = Field(None, alias="loaded_at")  # ISO timestamp
-    lastUsed: str | None = Field(None, alias="last_used")  # ISO timestamp
-
-    class Config:
-        populate_by_name = True
-
-
-class HotSlotsResponse(BaseModel):
-    """Response for GET /hot-slots"""
-    slots: list[HotSlot]
-    totalSlots: int = Field(4, alias="total_slots")
-    occupied: int
-    available: int
-
-    class Config:
-        populate_by_name = True
-
-
-class LoadSlotRequest(BaseModel):
-    """Request for POST /hot-slots/{slot}/load"""
-    modelId: str = Field(..., alias="model_id")
-    pin: bool = False  # Whether to pin this model
-
-    class Config:
-        populate_by_name = True
-
-
-class SlotOperationResponse(BaseModel):
-    """Generic response for slot operations"""
-    success: bool
-    slotNumber: int = Field(..., alias="slot_number")
-    modelId: str | None = Field(None, alias="model_id")
-    message: str
-    hotSlots: dict[int, str | None] = Field(..., alias="hot_slots")
-
-    class Config:
-        populate_by_name = True
 
 
 # ===== Endpoints =====
