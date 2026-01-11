@@ -13,12 +13,14 @@ Security:
 - Strong password validation
 - Audit logging of all operations
 - Rate limiting on verify endpoint
+
+Module structure (P2 decomposition):
+- founder_setup_types.py: Request/response models
+- founder_setup_routes.py: API endpoints (this file)
 """
 
 import logging
-from typing import Dict, Optional
-from fastapi import APIRouter, HTTPException, Request, Depends
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, Request
 
 try:
     from .founder_setup_wizard import get_founder_wizard
@@ -27,43 +29,18 @@ except ImportError:
     from founder_setup_wizard import get_founder_wizard
     from audit_logger import audit_log_sync
 
+# Import from extracted module (P2 decomposition)
+from api.founder_setup_types import (
+    SetupStatusResponse,
+    InitializeSetupRequest,
+    InitializeSetupResponse,
+    VerifyPasswordRequest,
+    VerifyPasswordResponse,
+)
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/founder-setup", tags=["founder-setup"])
-
-
-# ===== Pydantic Models =====
-
-class SetupStatusResponse(BaseModel):
-    """Setup status response"""
-    setup_completed: bool
-    setup_timestamp: Optional[str] = None
-    password_storage_type: Optional[str] = None
-    is_macos: bool
-
-
-class InitializeSetupRequest(BaseModel):
-    """Initialize setup request"""
-    password: str
-    confirm_password: str
-
-
-class InitializeSetupResponse(BaseModel):
-    """Initialize setup response"""
-    success: bool
-    message: Optional[str] = None
-    error: Optional[str] = None
-    storage_type: Optional[str] = None
-
-
-class VerifyPasswordRequest(BaseModel):
-    """Verify password request"""
-    password: str
-
-
-class VerifyPasswordResponse(BaseModel):
-    """Verify password response"""
-    valid: bool
 
 
 # ===== API Endpoints =====
@@ -221,3 +198,16 @@ async def verify_founder_password(
     except Exception as e:
         logger.error(f"Failed to verify founder password: {e}")
         raise HTTPException(status_code=500, detail="Failed to verify password")
+
+
+# Re-exports for backwards compatibility (P2 decomposition)
+__all__ = [
+    # Router
+    "router",
+    # Re-exported from founder_setup_types
+    "SetupStatusResponse",
+    "InitializeSetupRequest",
+    "InitializeSetupResponse",
+    "VerifyPasswordRequest",
+    "VerifyPasswordResponse",
+]

@@ -2,19 +2,32 @@
 """
 Panic Mode API Router
 Provides REST endpoints for emergency security operations
+
+Module structure (P2 decomposition):
+- panic_mode_types.py: Request/response models
+- panic_mode_router.py: API endpoints (this file)
 """
 
 import logging
 import os
 import time
 from datetime import datetime, UTC
-from fastapi import APIRouter, HTTPException, Request, Body
-from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any, List
+from fastapi import APIRouter, HTTPException, Request, Depends
+from typing import Dict, Any
 
 from api.panic_mode import get_panic_mode
 from api.rate_limiter import rate_limiter, get_client_ip
 from api.utils import sanitize_for_log
+from api.auth_middleware import get_current_user
+
+# Import from extracted module (P2 decomposition)
+from api.panic_mode_types import (
+    PanicTriggerRequest,
+    PanicStatusResponse,
+    PanicTriggerResponse,
+    EmergencyModeRequest,
+    EmergencyModeResponse,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -29,53 +42,6 @@ if not ALLOW_EMERGENCY_WIPE:
 else:
     logger.critical("🚨 Emergency wipe ENABLED (ELOHIM_ALLOW_EMERGENCY_WIPE=true)")
     logger.critical("   ⚠️  DoD 7-pass wipe is active and IRREVERSIBLE")
-
-# ===== Models =====
-
-class PanicTriggerRequest(BaseModel):
-    """Request to trigger panic mode"""
-    confirmation: str = Field(..., description="Must be 'CONFIRM' to proceed")
-    reason: Optional[str] = Field("Manual trigger", description="Reason for panic activation")
-
-
-class PanicStatusResponse(BaseModel):
-    """Current panic mode status"""
-    panic_active: bool
-    last_panic: Optional[str]
-    secure_mode: bool
-
-
-class PanicTriggerResponse(BaseModel):
-    """Response after triggering panic mode"""
-    panic_activated: bool
-    timestamp: str
-    reason: str
-    actions_taken: list[str]
-    errors: list[str]
-    status: str
-
-
-class EmergencyModeRequest(BaseModel):
-    """Request to trigger emergency mode (DoD 7-pass wipe)"""
-    confirmation: str = Field(..., description="Must be 'CONFIRM' to proceed")
-    reason: Optional[str] = Field("User-initiated emergency", description="Reason for emergency activation")
-
-
-class EmergencyModeResponse(BaseModel):
-    """Response after emergency mode wipe"""
-    success: bool
-    files_wiped: int
-    passes: int
-    method: str
-    duration_seconds: float
-    timestamp: str
-    errors: List[str] = []
-
-
-# ===== Router =====
-
-from fastapi import Depends
-from api.auth_middleware import get_current_user
 
 router = APIRouter(
     prefix="/api/v1/panic",
@@ -292,3 +258,16 @@ async def trigger_emergency_mode(
 
 
 # DoD wipe functions moved to emergency_wipe.py for independent testing
+
+
+# Re-exports for backwards compatibility (P2 decomposition)
+__all__ = [
+    # Router
+    "router",
+    # Re-exported from panic_mode_types
+    "PanicTriggerRequest",
+    "PanicStatusResponse",
+    "PanicTriggerResponse",
+    "EmergencyModeRequest",
+    "EmergencyModeResponse",
+]
