@@ -17,9 +17,159 @@ import pytest
 import asyncio
 import json
 import sqlite3
+import sys
 from unittest.mock import Mock, patch, MagicMock, AsyncMock
 from pathlib import Path
 from datetime import datetime, UTC, timedelta
+from types import ModuleType
+
+
+# ===== Mock libp2p Module =====
+# libp2p is an optional dependency. We inject a mock module to test the network layer.
+
+def _create_mock_libp2p_modules():
+    """Create mock libp2p modules for testing."""
+
+    # Mock PeerID class
+    class MockPeerID:
+        def __init__(self, peer_id_str: str = "QmTestPeer"):
+            self._peer_id = peer_id_str
+
+        def pretty(self) -> str:
+            return self._peer_id
+
+        @classmethod
+        def from_base58(cls, peer_id_str: str) -> "MockPeerID":
+            return cls(peer_id_str)
+
+    # Mock Multiaddr class
+    class MockMultiaddr:
+        def __init__(self, addr: str):
+            self._addr = addr
+
+        def __str__(self) -> str:
+            return self._addr
+
+    # Mock NetStream class
+    class MockNetStream:
+        async def read(self):
+            return b'{}'
+
+        async def write(self, data: bytes):
+            pass
+
+        async def close(self):
+            pass
+
+    # Mock key pair
+    class MockPublicKey:
+        def serialize(self) -> bytes:
+            return b'mock_public_key_bytes'
+
+    class MockKeyPair:
+        def __init__(self):
+            self.public_key = MockPublicKey()
+
+    # Mock host
+    class MockHost:
+        def __init__(self, **kwargs):
+            self._peer_id = MockPeerID("QmMockHost123")
+            self._addrs = [MockMultiaddr("/ip4/127.0.0.1/tcp/4001")]
+            self._stream_handlers = {}
+
+        def get_id(self):
+            return self._peer_id
+
+        def get_addrs(self):
+            return self._addrs
+
+        def set_stream_handler(self, protocol_id, handler):
+            self._stream_handlers[protocol_id] = handler
+
+        async def new_stream(self, peer_id, protocols):
+            return MockNetStream()
+
+        async def connect(self, peer_id):
+            pass
+
+        async def close(self):
+            pass
+
+        def get_network(self):
+            return Mock(peerstore=Mock(peer_ids=lambda: [], addrs=lambda x: []))
+
+    def mock_new_host(**kwargs):
+        return MockHost(**kwargs)
+
+    def mock_create_new_key_pair():
+        return MockKeyPair()
+
+    # Create libp2p module
+    libp2p_module = ModuleType("libp2p")
+    libp2p_module.new_host = mock_new_host
+    libp2p_module.create_new_key_pair = mock_create_new_key_pair
+
+    # Create libp2p.network.stream.net_stream module
+    net_stream_module = ModuleType("libp2p.network.stream.net_stream")
+    net_stream_module.NetStream = MockNetStream
+
+    # Create libp2p.peer.id module
+    peer_id_module = ModuleType("libp2p.peer.id")
+    peer_id_module.ID = MockPeerID
+
+    # Create multiaddr module
+    multiaddr_module = ModuleType("multiaddr")
+    multiaddr_module.Multiaddr = MockMultiaddr
+
+    # Create intermediate modules for proper namespace
+    libp2p_network = ModuleType("libp2p.network")
+    libp2p_network_stream = ModuleType("libp2p.network.stream")
+    libp2p_peer = ModuleType("libp2p.peer")
+
+    return {
+        "libp2p": libp2p_module,
+        "libp2p.network": libp2p_network,
+        "libp2p.network.stream": libp2p_network_stream,
+        "libp2p.network.stream.net_stream": net_stream_module,
+        "libp2p.peer": libp2p_peer,
+        "libp2p.peer.id": peer_id_module,
+        "multiaddr": multiaddr_module,
+    }
+
+
+# Store original modules to restore later
+_original_modules = {}
+
+def _inject_mock_libp2p():
+    """Inject mock libp2p modules into sys.modules."""
+    global _original_modules
+    mock_modules = _create_mock_libp2p_modules()
+
+    for name, module in mock_modules.items():
+        if name in sys.modules:
+            _original_modules[name] = sys.modules[name]
+        sys.modules[name] = module
+
+def _restore_original_modules():
+    """Restore original modules after tests."""
+    global _original_modules
+    for name, module in _original_modules.items():
+        sys.modules[name] = module
+    _original_modules.clear()
+
+
+# Inject mock libp2p before any imports that might use it
+_inject_mock_libp2p()
+
+# Force reimport of the network module so it picks up the mock libp2p
+# Remove cached modules that depend on libp2p
+_modules_to_remove = [
+    "api.services.p2p_chat.network",
+    "api.services.p2p_chat",
+]
+for mod_name in _modules_to_remove:
+    if mod_name in sys.modules:
+        del sys.modules[mod_name]
 
 
 # ===== Test Module Import and Availability =====
