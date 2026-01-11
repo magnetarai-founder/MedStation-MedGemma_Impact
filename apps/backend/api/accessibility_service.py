@@ -14,75 +14,29 @@ Features:
 - Theme variant management
 - Status indicator configurations
 - Persistent settings storage
+
+Module structure (P2 decomposition):
+- accessibility_types.py: Enums (ColorblindType, ThemeVariant, FontSize) and models
+- accessibility_service.py: AccessibilityService class (this file)
 """
 
-from enum import Enum
-from typing import Optional, Dict, Any
+from typing import Optional
 from datetime import datetime, UTC
 import sqlite3
 import json
 from pathlib import Path
 import logging
 
-from pydantic import BaseModel
+# Import from extracted module (P2 decomposition)
+from api.accessibility_types import (
+    ColorblindType,
+    ThemeVariant,
+    FontSize,
+    StatusIndicatorStyle,
+    AccessibilityPreferences,
+)
 
 logger = logging.getLogger(__name__)
-
-
-class ColorblindType(str, Enum):
-    """Types of colorblindness"""
-    NONE = "none"
-    PROTANOPIA = "protanopia"  # Red-blind (1% males)
-    DEUTERANOPIA = "deuteranopia"  # Green-blind (1% males)
-    TRITANOPIA = "tritanopia"  # Blue-blind (0.01% population)
-    PROTANOMALY = "protanomaly"  # Red-weak (1% males)
-    DEUTERANOMALY = "deuteranomaly"  # Green-weak (5% males)
-    TRITANOMALY = "tritanomaly"  # Blue-weak (0.01% population)
-    ACHROMATOPSIA = "achromatopsia"  # Total colorblindness (0.003% population)
-
-
-class ThemeVariant(str, Enum):
-    """Theme variants for accessibility"""
-    DEFAULT = "default"
-    HIGH_CONTRAST = "high_contrast"
-    COLORBLIND_SAFE = "colorblind_safe"
-    REDUCED_MOTION = "reduced_motion"
-    DARK_HIGH_CONTRAST = "dark_high_contrast"
-
-
-class FontSize(str, Enum):
-    """Font size presets"""
-    SMALL = "small"  # 12px base
-    MEDIUM = "medium"  # 14px base (default)
-    LARGE = "large"  # 16px base
-    EXTRA_LARGE = "extra_large"  # 18px base
-    ACCESSIBILITY = "accessibility"  # 20px base
-
-
-class StatusIndicatorStyle(BaseModel):
-    """Configuration for status indicators"""
-    use_icons: bool = True
-    use_patterns: bool = False
-    use_text_labels: bool = False
-    high_contrast: bool = False
-
-
-class AccessibilityPreferences(BaseModel):
-    """User accessibility preferences"""
-    user_id: str
-    colorblind_mode_enabled: bool = False
-    colorblind_type: ColorblindType = ColorblindType.NONE
-    theme_variant: ThemeVariant = ThemeVariant.DEFAULT
-    font_size: FontSize = FontSize.MEDIUM
-    high_contrast: bool = False
-    reduce_animations: bool = False
-    increase_click_areas: bool = False
-    show_text_labels: bool = False
-    keyboard_navigation: bool = True
-    screen_reader_support: bool = False
-    status_indicator_style: StatusIndicatorStyle = StatusIndicatorStyle()
-    custom_settings: Dict[str, Any] = {}
-    updated_at: Optional[str] = None
 
 
 class AccessibilityService:
@@ -466,3 +420,17 @@ def get_accessibility_service() -> AccessibilityService:
         _accessibility_service = AccessibilityService()
 
     return _accessibility_service
+
+
+# Re-exports for backwards compatibility (P2 decomposition)
+__all__ = [
+    # Service
+    "AccessibilityService",
+    "get_accessibility_service",
+    # Re-exported from accessibility_types
+    "ColorblindType",
+    "ThemeVariant",
+    "FontSize",
+    "StatusIndicatorStyle",
+    "AccessibilityPreferences",
+]
