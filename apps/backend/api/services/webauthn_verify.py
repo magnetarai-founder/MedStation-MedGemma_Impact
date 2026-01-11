@@ -3,14 +3,20 @@ WebAuthn verification helpers (registration and assertion).
 
 Provides full WebAuthn verification using the webauthn library.
 Supports platform authenticators (Touch ID, Face ID, Windows Hello).
+
+Module structure (P2 decomposition):
+- webauthn_types.py: VerifiedRegistration, VerifiedAssertion dataclasses
+- webauthn_verify.py: Verification functions (this file)
 """
 
 from __future__ import annotations
 
 import base64
 import logging
-from dataclasses import dataclass
 from typing import Any, Dict
+
+# Import from extracted module (P2 decomposition)
+from api.services.webauthn_types import VerifiedRegistration, VerifiedAssertion
 
 logger = logging.getLogger(__name__)
 
@@ -49,20 +55,6 @@ except ImportError:
     AuthenticatorSelectionCriteria = None
     UserVerificationRequirement = None
     AuthenticatorAttachment = None
-
-
-@dataclass
-class VerifiedRegistration:
-    credential_id: str
-    public_key_pem: str
-    sign_count: int
-
-
-@dataclass
-class VerifiedAssertion:
-    credential_id: str
-    user_handle: str | None
-    sign_count: int
 
 
 def verify_registration(

@@ -3,28 +3,22 @@ Hot Slots Metadata Storage - Enhanced with Pinning & Timestamps
 
 Adds pinned status, loaded_at, and last_used tracking to hot slots.
 Enables LRU eviction that respects pinned models.
+
+Module structure (P2 decomposition):
+- hot_slots_metadata_types.py: HotSlotMetadata dataclass
+- hot_slots_metadata.py: HotSlotsMetadataStorage class (this file)
 """
 
 import logging
 import sqlite3
 from pathlib import Path
-from typing import Dict, Optional, List
+from typing import Optional, List
 from datetime import datetime, UTC
-from dataclasses import dataclass
+
+# Import from extracted module (P2 decomposition)
+from api.services.hot_slots_metadata_types import HotSlotMetadata
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class HotSlotMetadata:
-    """Metadata for a single hot slot"""
-    slot_number: int
-    model_name: Optional[str]
-    is_pinned: bool
-    loaded_at: Optional[datetime]
-    last_used: Optional[datetime]
-    created_at: datetime
-    updated_at: datetime
 
 
 class HotSlotsMetadataStorage:

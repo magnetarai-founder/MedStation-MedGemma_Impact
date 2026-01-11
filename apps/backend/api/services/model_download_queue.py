@@ -3,39 +3,21 @@ Model Download Queue Service
 
 Manages concurrent model downloads with FIFO queue.
 Sprint 5 Theme B: Download Queue Management
+
+Module structure (P2 decomposition):
+- model_download_types.py: DownloadStatus, DownloadJob
+- model_download_queue.py: ModelDownloadQueue class (this file)
 """
 
 import asyncio
 import logging
-from typing import Dict, List, Optional, Literal
-from dataclasses import dataclass, field
+from typing import Dict, List, Optional
 from datetime import datetime, UTC
-from enum import Enum
+
+# Import from extracted module (P2 decomposition)
+from api.services.model_download_types import DownloadStatus, DownloadJob
 
 logger = logging.getLogger(__name__)
-
-
-class DownloadStatus(str, Enum):
-    """Download status states"""
-    QUEUED = "queued"
-    DOWNLOADING = "downloading"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    CANCELED = "canceled"
-
-
-@dataclass
-class DownloadJob:
-    """Represents a model download job"""
-    model_name: str
-    status: DownloadStatus = DownloadStatus.QUEUED
-    progress: float = 0.0
-    speed: Optional[str] = None
-    error: Optional[str] = None
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    position: Optional[int] = None  # Queue position (1-indexed)
-    task: Optional[asyncio.Task] = field(default=None, repr=False)  # Internal task reference
 
 
 class ModelDownloadQueue:
