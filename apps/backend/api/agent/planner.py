@@ -1,33 +1,18 @@
 """
 Base planner implementation for agent system
+
+Module structure (P2 decomposition):
+- planner_types.py: Step, Plan dataclasses
+- planner.py: Planner class (this file)
 """
 
 import logging
-from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional
+from typing import List, Optional
+
+# Import from extracted module (P2 decomposition)
+from api.agent.planner_types import Step, Plan
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class Step:
-    """Single step in execution plan"""
-    description: str
-    risk: str = "low"  # low, medium, high
-    files: int = 0
-    tool: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass
-class Plan:
-    """Execution plan for a task"""
-    steps: List[Step]
-    risks: List[str] = field(default_factory=list)
-    requires_approval: bool = False
-    estimated_time_min: int = 0
-    model_used: str = "qwen2.5-coder:32b"
-    metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 class Planner:

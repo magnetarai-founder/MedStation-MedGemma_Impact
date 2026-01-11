@@ -5,10 +5,13 @@ Normalizes proposals from engines (Aider/Continue) and applies them via CodexEng
 
 Env flags:
 - PATCHBUS_SKIP_VERIFY=1|true|yes|on  -> Skips verification step (still returns summary)
+
+Module structure (P2 decomposition):
+- patchbus_types.py: ChangeProposal dataclass
+- patchbus.py: PatchBus class (this file)
 """
 
-from dataclasses import dataclass, field
-from typing import List, Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple
 import hashlib
 import time
 import re
@@ -17,16 +20,8 @@ import os
 import io
 from contextlib import redirect_stdout, redirect_stderr
 
-
-@dataclass
-class ChangeProposal:
-    description: str
-    diff: str  # unified diff text
-    affected_files: List[str] = field(default_factory=list)
-    confidence: float = 0.6
-    rationale: Optional[str] = None
-    test_hints: List[str] = field(default_factory=list)
-    dry_run: bool = False
+# Import from extracted module (P2 decomposition)
+from api.agent.patchbus_types import ChangeProposal
 
 
 class PatchBus:
