@@ -5,6 +5,7 @@ Tests the S3StorageService with mocked boto3 to avoid actual AWS calls.
 """
 
 import io
+import sys
 import json
 import pytest
 import hashlib
@@ -23,6 +24,64 @@ from api.services.cloud_storage_s3 import (
 
 # Path to patch for get_settings - the S3 service imports it inside __init__
 SETTINGS_PATCH_PATH = "api.config.get_settings"
+
+
+# ===== Mock boto3 module =====
+# Create a mock boto3 module to inject into sys.modules
+# This allows patching boto3.client even when boto3 isn't installed
+
+def _create_mock_boto3_module():
+    """Create a mock boto3 module with client function."""
+    mock_boto3 = MagicMock()
+    mock_boto3.client = MagicMock()
+    return mock_boto3
+
+
+def _create_mock_botocore_module():
+    """Create a mock botocore module with Config class."""
+    mock_botocore = MagicMock()
+    mock_botocore_config = MagicMock()
+    mock_botocore_config.Config = MagicMock(return_value=MagicMock())
+    mock_botocore.config = mock_botocore_config
+    return mock_botocore
+
+
+@pytest.fixture(autouse=True)
+def mock_boto3_module():
+    """
+    Auto-use fixture that injects mock boto3 into sys.modules.
+    This allows tests to patch boto3.client even when boto3 isn't installed.
+    """
+    mock_boto3 = _create_mock_boto3_module()
+    mock_botocore = _create_mock_botocore_module()
+
+    # Store original modules if they exist
+    original_boto3 = sys.modules.get("boto3")
+    original_botocore = sys.modules.get("botocore")
+    original_botocore_config = sys.modules.get("botocore.config")
+
+    # Inject mocks
+    sys.modules["boto3"] = mock_boto3
+    sys.modules["botocore"] = mock_botocore
+    sys.modules["botocore.config"] = mock_botocore.config
+
+    yield mock_boto3
+
+    # Restore original modules
+    if original_boto3 is not None:
+        sys.modules["boto3"] = original_boto3
+    else:
+        sys.modules.pop("boto3", None)
+
+    if original_botocore is not None:
+        sys.modules["botocore"] = original_botocore
+    else:
+        sys.modules.pop("botocore", None)
+
+    if original_botocore_config is not None:
+        sys.modules["botocore.config"] = original_botocore_config
+    else:
+        sys.modules.pop("botocore.config", None)
 
 
 # ===== Fixtures =====
