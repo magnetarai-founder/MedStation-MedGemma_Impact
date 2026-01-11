@@ -12,7 +12,98 @@ Coverage targets:
 """
 
 import pytest
+import sys
 from unittest.mock import patch, MagicMock
+from types import ModuleType
+
+
+# ===== Mock tiktoken Module =====
+# tiktoken is an optional dependency. We inject a mock module for testing.
+
+def _create_mock_tiktoken_module():
+    """Create mock tiktoken module for testing."""
+
+    # Valid encoding names that tiktoken supports
+    VALID_ENCODINGS = {"cl100k_base", "p50k_base", "p50k_edit", "r50k_base", "gpt2"}
+
+    class MockEncoding:
+        """Mock tiktoken encoding."""
+        def __init__(self, name: str):
+            self.name = name
+            # Simulated token vocabulary (word-based for simplicity)
+            self._tokens = {}
+            self._next_id = 0
+
+        def encode(self, text: str) -> list:
+            """Encode text into tokens (simple word-based simulation)."""
+            # Simple tokenization: split on whitespace and punctuation
+            tokens = []
+            current_word = ""
+            for char in text:
+                if char.isalnum():
+                    current_word += char
+                else:
+                    if current_word:
+                        tokens.append(self._get_token_id(current_word))
+                        current_word = ""
+                    if char.strip():  # Non-whitespace punctuation
+                        tokens.append(self._get_token_id(char))
+            if current_word:
+                tokens.append(self._get_token_id(current_word))
+            return tokens
+
+        def _get_token_id(self, token: str) -> int:
+            """Get or create token ID."""
+            if token not in self._tokens:
+                self._tokens[token] = self._next_id
+                self._next_id += 1
+            return self._tokens[token]
+
+        def decode(self, tokens: list) -> str:
+            """Decode tokens back to text."""
+            # Reverse lookup
+            id_to_token = {v: k for k, v in self._tokens.items()}
+            return "".join(id_to_token.get(t, "") for t in tokens)
+
+    # Available encodings cache
+    _encodings = {}
+
+    def get_encoding(name: str) -> MockEncoding:
+        """Get encoding by name. Raises ValueError for invalid names."""
+        if name not in VALID_ENCODINGS:
+            raise ValueError(f"Unknown encoding {name}")
+        if name not in _encodings:
+            _encodings[name] = MockEncoding(name)
+        return _encodings[name]
+
+    def encoding_for_model(model: str) -> MockEncoding:
+        """Get encoding for a model."""
+        # Map models to encodings (simplified)
+        model_encodings = {
+            "gpt-4": "cl100k_base",
+            "gpt-3.5-turbo": "cl100k_base",
+            "text-davinci-003": "p50k_base",
+        }
+        enc_name = model_encodings.get(model, "cl100k_base")
+        return get_encoding(enc_name)
+
+    # Create module
+    tiktoken_module = ModuleType("tiktoken")
+    tiktoken_module.get_encoding = get_encoding
+    tiktoken_module.encoding_for_model = encoding_for_model
+    # Add Encoding class for isinstance checks
+    tiktoken_module.Encoding = MockEncoding
+
+    return tiktoken_module
+
+
+# Inject mock tiktoken before any imports
+_mock_tiktoken = _create_mock_tiktoken_module()
+sys.modules["tiktoken"] = _mock_tiktoken
+
+# Remove cached token_counter module to force reimport with mock
+if "api.token_counter" in sys.modules:
+    del sys.modules["api.token_counter"]
 
 from api.token_counter import (
     TokenCounter,

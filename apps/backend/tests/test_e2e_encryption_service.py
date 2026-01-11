@@ -17,7 +17,304 @@ Coverage target: 100%
 
 import pytest
 import hashlib
+import hmac
+import os
+import sys
 from unittest.mock import Mock, MagicMock, patch
+from types import ModuleType
+
+
+# ===== Mock NaCl Module =====
+# PyNaCl is an optional dependency. We inject a mock module to test the encryption service.
+
+def _create_mock_nacl_modules():
+    """Create comprehensive mock nacl modules for testing."""
+
+    # --- Mock encoding module ---
+    class MockHexEncoder:
+        """Hex encoder for key serialization."""
+        @staticmethod
+        def decode(data: bytes) -> bytes:
+            if isinstance(data, str):
+                return bytes.fromhex(data)
+            return bytes.fromhex(data.decode())
+
+        @staticmethod
+        def encode(data: bytes) -> bytes:
+            return data.hex().encode()
+
+    class MockRawEncoder:
+        """Raw encoder (passthrough)."""
+        @staticmethod
+        def decode(data: bytes) -> bytes:
+            return data
+
+        @staticmethod
+        def encode(data: bytes) -> bytes:
+            return data
+
+    class MockBase64Encoder:
+        """Base64 encoder."""
+        import base64
+
+        @staticmethod
+        def decode(data: bytes) -> bytes:
+            import base64
+            if isinstance(data, str):
+                data = data.encode()
+            return base64.b64decode(data)
+
+        @staticmethod
+        def encode(data: bytes) -> bytes:
+            import base64
+            return base64.b64encode(data)
+
+    # --- Mock public key cryptography ---
+    class MockPublicKey:
+        """Mock Curve25519 public key."""
+        SIZE = 32
+
+        def __init__(self, key_bytes: bytes = None):
+            self._key = key_bytes or os.urandom(32)
+
+        def encode(self, encoder=None) -> bytes:
+            return self._key
+
+        def __bytes__(self) -> bytes:
+            return self._key
+
+        def __eq__(self, other):
+            if isinstance(other, MockPublicKey):
+                return self._key == other._key
+            return False
+
+    class MockPrivateKey:
+        """Mock Curve25519 private key."""
+        SIZE = 32
+
+        def __init__(self, key_bytes: bytes = None):
+            self._key = key_bytes or os.urandom(32)
+            # Derive public key deterministically from private key
+            self._public_key = MockPublicKey(
+                hashlib.sha256(self._key + b"public").digest()
+            )
+
+        @property
+        def public_key(self) -> MockPublicKey:
+            return self._public_key
+
+        def encode(self, encoder=None) -> bytes:
+            return self._key
+
+        def __bytes__(self) -> bytes:
+            return self._key
+
+        @classmethod
+        def generate(cls) -> "MockPrivateKey":
+            return cls(os.urandom(32))
+
+    # --- Mock SealedBox (anonymous encryption) ---
+    class MockSealedBox:
+        """Mock sealed box for anonymous encryption.
+
+        In real NaCl, SealedBox uses asymmetric encryption with the recipient's
+        public key. For our mock, we derive a symmetric key from the public key.
+        """
+        def __init__(self, key):
+            if isinstance(key, MockPublicKey):
+                # For encryption: use the public key bytes
+                self._symmetric_key = key._key
+                self._can_decrypt = False
+            elif isinstance(key, MockPrivateKey):
+                # For decryption: use the PUBLIC key bytes (derived from private)
+                # This ensures encryption with PublicKey and decryption with PrivateKey
+                # use the same symmetric key
+                self._symmetric_key = key.public_key._key
+                self._can_decrypt = True
+            else:
+                self._symmetric_key = bytes(key) if hasattr(key, '__bytes__') else key
+                self._can_decrypt = True
+
+        def encrypt(self, plaintext: bytes) -> bytes:
+            """Encrypt using XOR with derived key (mock implementation)."""
+            nonce = os.urandom(24)
+            key_stream = hashlib.sha256(self._symmetric_key + nonce).digest()
+            # Simple XOR encryption for testing
+            ciphertext = bytes(p ^ key_stream[i % 32] for i, p in enumerate(plaintext))
+            return nonce + ciphertext
+
+        def decrypt(self, ciphertext: bytes) -> bytes:
+            """Decrypt using XOR with derived key (mock implementation)."""
+            if not self._can_decrypt:
+                raise ValueError("Cannot decrypt with public key only")
+            nonce = ciphertext[:24]
+            encrypted = ciphertext[24:]
+            key_stream = hashlib.sha256(self._symmetric_key + nonce).digest()
+            return bytes(c ^ key_stream[i % 32] for i, c in enumerate(encrypted))
+
+    # --- Mock Box (authenticated encryption) ---
+    class MockBox:
+        """Mock box for authenticated encryption."""
+        def __init__(self, private_key: MockPrivateKey, public_key: MockPublicKey):
+            self._shared_key = hashlib.sha256(
+                private_key._key + public_key._key
+            ).digest()
+
+        def encrypt(self, plaintext: bytes, nonce: bytes = None) -> bytes:
+            """Encrypt with authentication."""
+            nonce = nonce or os.urandom(24)
+            key_stream = hashlib.sha256(self._shared_key + nonce).digest()
+            ciphertext = bytes(p ^ key_stream[i % 32] for i, p in enumerate(plaintext))
+            return nonce + ciphertext
+
+        def decrypt(self, ciphertext: bytes) -> bytes:
+            """Decrypt with authentication."""
+            nonce = ciphertext[:24]
+            encrypted = ciphertext[24:]
+            key_stream = hashlib.sha256(self._shared_key + nonce).digest()
+            return bytes(c ^ key_stream[i % 32] for i, c in enumerate(encrypted))
+
+    # --- Mock signing key (Ed25519) ---
+    class MockVerifyKey:
+        """Mock Ed25519 verify key."""
+        SIZE = 32
+
+        def __init__(self, key_bytes: bytes = None):
+            self._key = key_bytes or os.urandom(32)
+
+        def verify(self, message: bytes, signature: bytes = None) -> bytes:
+            """Verify signature (mock - uses HMAC-SHA512 to match signing)."""
+            expected = hmac.new(self._key, message, hashlib.sha512).digest()
+            if signature is not None and not hmac.compare_digest(signature, expected):
+                raise Exception("Signature verification failed")
+            return message
+
+        def encode(self, encoder=None) -> bytes:
+            return self._key
+
+        def __bytes__(self) -> bytes:
+            return self._key
+
+    class MockSignedMessage:
+        """Mock signed message (signature + message)."""
+        def __init__(self, signature: bytes, message: bytes):
+            self._signature = signature
+            self._message = message
+
+        @property
+        def signature(self) -> bytes:
+            return self._signature
+
+        @property
+        def message(self) -> bytes:
+            return self._message
+
+        def __bytes__(self) -> bytes:
+            return self._signature + self._message
+
+    class MockSigningKey:
+        """Mock Ed25519 signing key."""
+        SIZE = 32
+        SEED_SIZE = 32
+
+        def __init__(self, seed: bytes = None):
+            self._seed = seed or os.urandom(32)
+            self._key = hashlib.sha256(self._seed + b"signing").digest()
+            self._verify_key = MockVerifyKey(self._key)
+
+        @property
+        def verify_key(self) -> MockVerifyKey:
+            return self._verify_key
+
+        def sign(self, message: bytes) -> MockSignedMessage:
+            """Sign message (mock using HMAC-SHA512 for 64-byte signature like Ed25519)."""
+            signature = hmac.new(self._key, message, hashlib.sha512).digest()
+            return MockSignedMessage(signature, message)
+
+        def encode(self, encoder=None) -> bytes:
+            return self._seed
+
+        def __bytes__(self) -> bytes:
+            return self._seed
+
+        @classmethod
+        def generate(cls) -> "MockSigningKey":
+            return cls(os.urandom(32))
+
+    # --- Mock hash module ---
+    def mock_sha256(data: bytes, encoder=None) -> bytes:
+        digest = hashlib.sha256(data).digest()
+        if encoder:
+            return encoder.encode(digest)
+        return digest
+
+    # --- Mock utils module ---
+    def mock_random(size: int) -> bytes:
+        return os.urandom(size)
+
+    # Create module structure
+    nacl_module = ModuleType("nacl")
+
+    nacl_public = ModuleType("nacl.public")
+    nacl_public.PublicKey = MockPublicKey
+    nacl_public.PrivateKey = MockPrivateKey
+    nacl_public.SealedBox = MockSealedBox
+    nacl_public.Box = MockBox
+
+    nacl_signing = ModuleType("nacl.signing")
+    nacl_signing.SigningKey = MockSigningKey
+    nacl_signing.VerifyKey = MockVerifyKey
+
+    nacl_encoding = ModuleType("nacl.encoding")
+    nacl_encoding.HexEncoder = MockHexEncoder
+    nacl_encoding.RawEncoder = MockRawEncoder
+    nacl_encoding.Base64Encoder = MockBase64Encoder
+
+    nacl_utils = ModuleType("nacl.utils")
+    nacl_utils.random = mock_random
+
+    nacl_hash = ModuleType("nacl.hash")
+    nacl_hash.sha256 = mock_sha256
+
+    # Link modules
+    nacl_module.public = nacl_public
+    nacl_module.signing = nacl_signing
+    nacl_module.encoding = nacl_encoding
+    nacl_module.utils = nacl_utils
+    nacl_module.hash = nacl_hash
+
+    return {
+        "nacl": nacl_module,
+        "nacl.public": nacl_public,
+        "nacl.signing": nacl_signing,
+        "nacl.encoding": nacl_encoding,
+        "nacl.utils": nacl_utils,
+        "nacl.hash": nacl_hash,
+    }
+
+
+# Store original modules
+_original_nacl_modules = {}
+
+def _inject_mock_nacl():
+    """Inject mock nacl modules into sys.modules."""
+    global _original_nacl_modules
+    mock_modules = _create_mock_nacl_modules()
+
+    for name, module in mock_modules.items():
+        if name in sys.modules:
+            _original_nacl_modules[name] = sys.modules[name]
+        sys.modules[name] = module
+
+
+# Inject mock nacl before any imports that might use it
+_inject_mock_nacl()
+
+# Remove cached e2e encryption module to force reimport with mock nacl
+if "api.e2e_encryption_service" in sys.modules:
+    del sys.modules["api.e2e_encryption_service"]
+
+# Now import nacl (will get the mock)
 import nacl.public
 import nacl.signing
 
