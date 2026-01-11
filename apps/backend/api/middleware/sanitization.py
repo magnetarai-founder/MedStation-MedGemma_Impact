@@ -9,6 +9,10 @@ Provides input validation and output sanitization to prevent injection attacks:
 - Path traversal prevention
 
 Based on OWASP Input Validation and Output Encoding guidelines.
+
+Module structure (P2 decomposition):
+- sanitization_patterns.py: Static security patterns (XSS, SQL injection, path traversal)
+- sanitization.py: InputSanitizer, OutputEncoder, SanitizationMiddleware (this file)
 """
 
 import logging
@@ -18,6 +22,14 @@ from typing import Any, Dict, Optional
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.datastructures import Headers
+
+# Import from extracted module (P2 decomposition)
+from api.middleware.sanitization_patterns import (
+    DANGEROUS_PATTERNS,
+    SQL_INJECTION_PATTERNS,
+    PATH_TRAVERSAL_PATTERNS,
+    SKIP_SANITIZATION_PATHS,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -32,37 +44,9 @@ class InputSanitizer:
     - Path traversal prevention
     - Control character filtering
     - SQL injection pattern detection (warning only, use parameterized queries)
+
+    Patterns imported from sanitization_patterns.py (P2 decomposition).
     """
-
-    # Dangerous patterns that should never appear in user input
-    DANGEROUS_PATTERNS = [
-        r'<script[^>]*>.*?</script>',  # Script tags
-        r'javascript:',                 # JavaScript protocol
-        r'onerror\s*=',                # Event handlers
-        r'onload\s*=',
-        r'onclick\s*=',
-        r'<iframe[^>]*>',              # iframes
-        r'<embed[^>]*>',               # embeds
-        r'<object[^>]*>',              # objects
-    ]
-
-    # SQL injection patterns (detection only - we use parameterized queries)
-    SQL_INJECTION_PATTERNS = [
-        r"(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE)\b)",
-        r"(--|;|\/\*|\*\/)",  # SQL comments
-        r"(\bOR\b.*=.*)",     # OR injection
-        r"(\bAND\b.*=.*)",    # AND injection
-        r"('|\")\s*\w+\s*=",  # Quote injection
-    ]
-
-    # Path traversal patterns
-    PATH_TRAVERSAL_PATTERNS = [
-        r'\.\.',              # Parent directory
-        r'%2e%2e',            # URL encoded ..
-        r'%252e%252e',        # Double URL encoded ..
-        r'\x00',              # Null byte
-        r'%00',               # URL encoded null byte
-    ]
 
     def __init__(self, strict_mode: bool = False):
         """
@@ -94,7 +78,7 @@ class InputSanitizer:
             value = value.replace('\x00', '').replace('%00', '')
 
         # Check for dangerous XSS patterns
-        for pattern in self.DANGEROUS_PATTERNS:
+        for pattern in DANGEROUS_PATTERNS:
             if re.search(pattern, value, re.IGNORECASE):
                 logger.warning(f"Dangerous XSS pattern detected in field '{field_name}': {pattern}")
                 if self.strict_mode:
@@ -103,7 +87,7 @@ class InputSanitizer:
                 value = re.sub(pattern, '', value, flags=re.IGNORECASE)
 
         # Check for SQL injection patterns (warning only - we use parameterized queries)
-        for pattern in self.SQL_INJECTION_PATTERNS:
+        for pattern in SQL_INJECTION_PATTERNS:
             if re.search(pattern, value, re.IGNORECASE):
                 logger.warning(
                     f"Potential SQL injection pattern in field '{field_name}': "
@@ -113,7 +97,7 @@ class InputSanitizer:
                 # This is just for detection and logging
 
         # Check for path traversal
-        for pattern in self.PATH_TRAVERSAL_PATTERNS:
+        for pattern in PATH_TRAVERSAL_PATTERNS:
             if re.search(pattern, value, re.IGNORECASE):
                 logger.warning(f"Path traversal pattern detected in field '{field_name}': {pattern}")
                 if self.strict_mode:
@@ -226,15 +210,9 @@ class SanitizationMiddleware(BaseHTTPMiddleware):
     - Validates query parameters
     - Logs suspicious patterns
     - Optional strict mode (rejects dangerous input)
-    """
 
-    # Endpoints that should skip sanitization (raw file uploads, etc.)
-    SKIP_SANITIZATION_PATHS = [
-        "/api/v1/vault/files/upload",       # File uploads (binary data)
-        "/api/v1/vault/files/download",     # File downloads
-        "/api/v1/database/import",          # CSV/JSON imports
-        "/metrics",                         # Prometheus metrics
-    ]
+    SKIP_SANITIZATION_PATHS imported from sanitization_patterns.py (P2 decomposition).
+    """
 
     def __init__(self, app, strict_mode: bool = False):
         """
@@ -263,7 +241,7 @@ class SanitizationMiddleware(BaseHTTPMiddleware):
         request_id = request.headers.get("X-Request-ID", "unknown")
 
         # Skip sanitization for certain endpoints
-        if any(request.url.path.startswith(path) for path in self.SKIP_SANITIZATION_PATHS):
+        if any(request.url.path.startswith(path) for path in SKIP_SANITIZATION_PATHS):
             return await call_next(request)
 
         # Sanitize query parameters
