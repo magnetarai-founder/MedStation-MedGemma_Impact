@@ -2,48 +2,35 @@
 LAN Discovery API Endpoints
 
 FastAPI routes for LAN discovery and central hub management.
+
+Module structure (P2 decomposition):
+- lan_types.py: Request models
+- lan_service.py: API endpoints (this file)
 """
 
-from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
-from typing import Any, Dict, List, Optional
+from fastapi import APIRouter, HTTPException, Request, Depends
+from typing import Any, Dict, List
 import logging
 
 from .lan_discovery import lan_service
+from api.auth_middleware import get_current_user
+
+# Import from extracted module (P2 decomposition)
+from api.lan_types import (
+    StartHubRequest,
+    JoinDeviceRequest,
+    RegisterClientRequest,
+    UnregisterClientRequest,
+    HeartbeatConfigRequest,
+)
 
 logger = logging.getLogger(__name__)
-
-from fastapi import Depends
-from api.auth_middleware import get_current_user
 
 router = APIRouter(
     prefix="/api/v1/lan",
     tags=["LAN Discovery"],
     dependencies=[Depends(get_current_user)]  # Require auth
 )
-
-
-class StartHubRequest(BaseModel):
-    """Request to start hub"""
-    port: Optional[int] = 8765
-    device_name: Optional[str] = None
-
-
-class JoinDeviceRequest(BaseModel):
-    """Request to join a discovered device"""
-    device_id: str
-
-
-class RegisterClientRequest(BaseModel):
-    """Request from a client to register with this hub"""
-    client_id: str
-    client_name: str
-    client_ip: str
-
-
-class UnregisterClientRequest(BaseModel):
-    """Request from a client to unregister from this hub"""
-    client_id: str
 
 
 @router.post("/discovery/start")
@@ -335,12 +322,6 @@ async def get_connected_clients() -> Dict[str, Any]:
 # ========== Connection Health & Resilience Endpoints ==========
 
 
-class HeartbeatConfigRequest(BaseModel):
-    """Request to configure heartbeat settings"""
-    interval_seconds: Optional[float] = None
-    auto_reconnect: Optional[bool] = None
-
-
 @router.get("/health")
 async def get_connection_health() -> Dict[str, Any]:
     """
@@ -464,3 +445,16 @@ async def manual_reconnect(request: Request) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Reconnect failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# Re-exports for backwards compatibility (P2 decomposition)
+__all__ = [
+    # Router
+    "router",
+    # Re-exported from lan_types
+    "StartHubRequest",
+    "JoinDeviceRequest",
+    "RegisterClientRequest",
+    "UnregisterClientRequest",
+    "HeartbeatConfigRequest",
+]
