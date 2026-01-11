@@ -3,16 +3,21 @@
 Trash Service for ElohimOS
 30-day soft delete system for vault items
 All deleted items are recoverable for 30 days before permanent deletion
+
+Module structure (P2 decomposition):
+- trash_types.py: TrashItem and TrashStats models
+- trash_service.py: TrashService class (this file)
 """
 
 import json
 import sqlite3
 import logging
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 from datetime import datetime, timedelta, UTC
-from pydantic import BaseModel
-from fastapi import APIRouter, HTTPException
+
+# Import from extracted module (P2 decomposition)
+from api.trash_types import TrashItem, TrashStats
 
 logger = logging.getLogger(__name__)
 
@@ -20,31 +25,6 @@ logger = logging.getLogger(__name__)
 from api.config_paths import get_config_paths
 PATHS = get_config_paths()
 VAULT_DB_PATH = PATHS.data_dir / "vault.db"
-
-
-# ===== Models =====
-
-class TrashItem(BaseModel):
-    """Trash item (soft-deleted document or file)"""
-    id: str
-    user_id: str
-    vault_type: str  # 'real' or 'decoy'
-    item_type: str  # 'document', 'file', 'folder'
-    item_id: str  # Original item ID
-    item_name: str  # Display name
-    deleted_at: str
-    permanent_delete_at: str  # Auto-delete after 30 days
-    original_data: str  # JSON blob with original item data for restoration
-
-
-class TrashStats(BaseModel):
-    """Trash statistics"""
-    total_items: int
-    document_count: int
-    file_count: int
-    folder_count: int
-    total_size_bytes: int
-    oldest_item_date: Optional[str]
 
 
 # ===== Service =====
@@ -484,3 +464,14 @@ def get_trash_service() -> TrashService:
         _trash_service = TrashService()
         logger.info("🗑️ Trash service ready")
     return _trash_service
+
+
+# Re-exports for backwards compatibility (P2 decomposition)
+__all__ = [
+    # Service
+    "TrashService",
+    "get_trash_service",
+    # Re-exported from trash_types
+    "TrashItem",
+    "TrashStats",
+]
