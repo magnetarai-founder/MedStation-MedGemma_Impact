@@ -21,6 +21,18 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 from datetime import datetime
 
+# Check if openpyxl is available for Excel tests
+try:
+    import openpyxl
+    HAS_OPENPYXL = True
+except ImportError:
+    HAS_OPENPYXL = False
+
+requires_openpyxl = pytest.mark.skipif(
+    not HAS_OPENPYXL,
+    reason="openpyxl not installed - Excel tests skipped"
+)
+
 # Import module under test
 from api.data_engine import (
     DataEngine,
@@ -87,7 +99,9 @@ def sample_json(tmp_path):
 
 @pytest.fixture
 def sample_excel(tmp_path):
-    """Create a sample Excel file"""
+    """Create a sample Excel file (requires openpyxl)"""
+    if not HAS_OPENPYXL:
+        pytest.skip("openpyxl not installed - Excel tests skipped")
     excel_path = tmp_path / "sample.xlsx"
     df = pd.DataFrame({
         'Product': ['Widget', 'Gadget', 'Gizmo'],
