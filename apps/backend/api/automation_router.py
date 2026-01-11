@@ -1,20 +1,35 @@
 """
 Automation Workflow Router
 Handles workflow execution and management
+
+Module structure (P2 decomposition):
+- automation_types.py: Request/response models
+- automation_router.py: API endpoints (this file)
 """
 
-from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, Request, Depends
 from typing import List, Dict, Any, Optional
 import asyncio
 import logging
 from datetime import datetime
 
-logger = logging.getLogger(__name__)
-
-from fastapi import Depends
 from api.auth_middleware import get_current_user
 from api.utils import sanitize_for_log
+
+# Import from extracted module (P2 decomposition)
+from api.automation_types import (
+    WorkflowNode,
+    WorkflowEdge,
+    WorkflowRunRequest,
+    WorkflowSaveRequest,
+    WorkflowRunResponse,
+    WorkflowSaveResponse,
+    WorkflowSemanticSearchRequest,
+    WorkflowSearchResult,
+    WorkflowSemanticSearchResponse,
+)
+
+logger = logging.getLogger(__name__)
 
 try:
     from .automation_storage import get_automation_storage
@@ -26,47 +41,6 @@ router = APIRouter(
     tags=["automation"],
     dependencies=[Depends(get_current_user)]  # Require auth
 )
-
-
-class WorkflowNode(BaseModel):
-    id: str
-    type: str
-    position: Dict[str, float]
-    label: str
-
-
-class WorkflowEdge(BaseModel):
-    source: str
-    target: str
-
-
-class WorkflowRunRequest(BaseModel):
-    workflow_id: str
-    name: str
-    nodes: List[WorkflowNode]
-    edges: List[WorkflowEdge]
-
-
-class WorkflowSaveRequest(BaseModel):
-    workflow_id: str
-    name: str
-    nodes: List[Any]
-    edges: List[Any]
-
-
-class WorkflowRunResponse(BaseModel):
-    status: str
-    workflow_id: str
-    workflow_name: str
-    steps_executed: int
-    execution_time_ms: int
-    results: Dict[str, Any]
-
-
-class WorkflowSaveResponse(BaseModel):
-    status: str
-    workflow_id: str
-    saved_at: str
 
 
 @router.post("/run", response_model=WorkflowRunResponse)
@@ -314,26 +288,6 @@ async def get_workflow_executions(
 # MARK: - Semantic Search
 
 
-class WorkflowSemanticSearchRequest(BaseModel):
-    query: str
-    limit: int = 10
-    min_similarity: float = 0.4
-
-
-class WorkflowSearchResult(BaseModel):
-    workflow_id: str
-    workflow_name: str
-    description: Optional[str]
-    created_at: str
-    similarity_score: float
-
-
-class WorkflowSemanticSearchResponse(BaseModel):
-    results: List[WorkflowSearchResult]
-    query: str
-    total_results: int
-
-
 @router.post("/workflows/semantic-search")
 async def semantic_search_workflows(
     request: WorkflowSemanticSearchRequest,
@@ -439,3 +393,20 @@ def _compute_cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
         return 0.0
 
     return dot_product / (magnitude1 * magnitude2)
+
+
+# Re-exports for backwards compatibility (P2 decomposition)
+__all__ = [
+    # Router
+    "router",
+    # Re-exported from automation_types
+    "WorkflowNode",
+    "WorkflowEdge",
+    "WorkflowRunRequest",
+    "WorkflowSaveRequest",
+    "WorkflowRunResponse",
+    "WorkflowSaveResponse",
+    "WorkflowSemanticSearchRequest",
+    "WorkflowSearchResult",
+    "WorkflowSemanticSearchResponse",
+]
