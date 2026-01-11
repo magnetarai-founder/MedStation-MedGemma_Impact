@@ -252,8 +252,22 @@ def _create_mock_nacl_modules():
     def mock_random(size: int) -> bytes:
         return os.urandom(size)
 
+    # --- Mock exceptions module ---
+    class MockBadSignatureError(Exception):
+        """Mock bad signature error."""
+        pass
+
+    class MockCryptoError(Exception):
+        """Mock crypto error."""
+        pass
+
+    class MockNaClValueError(Exception):
+        """Mock nacl ValueError (distinct from builtin ValueError)."""
+        pass
+
     # Create module structure
     nacl_module = ModuleType("nacl")
+    nacl_module.__path__ = []  # Make it a package
 
     nacl_public = ModuleType("nacl.public")
     nacl_public.PublicKey = MockPublicKey
@@ -276,12 +290,18 @@ def _create_mock_nacl_modules():
     nacl_hash = ModuleType("nacl.hash")
     nacl_hash.sha256 = mock_sha256
 
+    nacl_exceptions = ModuleType("nacl.exceptions")
+    nacl_exceptions.BadSignatureError = MockBadSignatureError
+    nacl_exceptions.CryptoError = MockCryptoError
+    nacl_exceptions.ValueError = MockNaClValueError  # Use custom class to avoid catching binascii.Error
+
     # Link modules
     nacl_module.public = nacl_public
     nacl_module.signing = nacl_signing
     nacl_module.encoding = nacl_encoding
     nacl_module.utils = nacl_utils
     nacl_module.hash = nacl_hash
+    nacl_module.exceptions = nacl_exceptions
 
     return {
         "nacl": nacl_module,
@@ -290,6 +310,7 @@ def _create_mock_nacl_modules():
         "nacl.encoding": nacl_encoding,
         "nacl.utils": nacl_utils,
         "nacl.hash": nacl_hash,
+        "nacl.exceptions": nacl_exceptions,
     }
 
 

@@ -7,10 +7,142 @@ including signature verification for node registration.
 
 import pytest
 import base64
+import sys
+import hashlib
+import hmac
+import os
 from unittest.mock import patch, MagicMock
 from datetime import datetime, timedelta, UTC
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
+from types import ModuleType
+
+
+# ===== Mock NaCl Module =====
+# PyNaCl is an optional dependency. We inject a mock module for testing.
+
+def _create_mock_nacl_modules():
+    """Create mock nacl modules for testing trust router."""
+
+    class MockSignedMessage:
+        """Mock signed message (signature + message)."""
+        def __init__(self, signature: bytes, message: bytes):
+            self._signature = signature
+            self._message = message
+
+        @property
+        def signature(self) -> bytes:
+            return self._signature
+
+        @property
+        def message(self) -> bytes:
+            return self._message
+
+        def __bytes__(self) -> bytes:
+            return self._signature + self._message
+
+    class MockVerifyKey:
+        """Mock Ed25519 verify key."""
+        SIZE = 32
+
+        def __init__(self, key_bytes: bytes = None):
+            self._key = key_bytes or os.urandom(32)
+
+        def verify(self, signed_message: bytes, signature: bytes = None) -> bytes:
+            """Verify signature."""
+            if isinstance(signed_message, MockSignedMessage):
+                message = signed_message.message
+                sig = signed_message.signature
+            else:
+                message = signed_message
+                sig = signature
+
+            expected = hmac.new(self._key, message, hashlib.sha512).digest()
+            if sig is not None and not hmac.compare_digest(sig, expected):
+                from nacl.exceptions import BadSignatureError
+                raise BadSignatureError("Signature verification failed")
+            return message
+
+        def encode(self, encoder=None) -> bytes:
+            return self._key
+
+        def __bytes__(self) -> bytes:
+            return self._key
+
+    class MockSigningKey:
+        """Mock Ed25519 signing key."""
+        SIZE = 32
+        SEED_SIZE = 32
+
+        def __init__(self, seed: bytes = None):
+            self._seed = seed or os.urandom(32)
+            self._key = hashlib.sha256(self._seed + b"signing").digest()
+            self._verify_key = MockVerifyKey(self._key)
+
+        @property
+        def verify_key(self) -> MockVerifyKey:
+            return self._verify_key
+
+        def sign(self, message: bytes) -> MockSignedMessage:
+            """Sign message."""
+            signature = hmac.new(self._key, message, hashlib.sha512).digest()
+            return MockSignedMessage(signature, message)
+
+        def encode(self, encoder=None) -> bytes:
+            return self._seed
+
+        def __bytes__(self) -> bytes:
+            return self._seed
+
+        @classmethod
+        def generate(cls) -> "MockSigningKey":
+            return cls(os.urandom(32))
+
+    # Mock exceptions
+    class MockBadSignatureError(Exception):
+        """Mock bad signature error."""
+        pass
+
+    class MockCryptoError(Exception):
+        """Mock crypto error."""
+        pass
+
+    class MockNaClValueError(Exception):
+        """Mock nacl ValueError (distinct from builtin ValueError)."""
+        pass
+
+    # Create module structure
+    nacl_module = ModuleType("nacl")
+    nacl_module.__path__ = []  # Make it a package
+
+    nacl_signing = ModuleType("nacl.signing")
+    nacl_signing.SigningKey = MockSigningKey
+    nacl_signing.VerifyKey = MockVerifyKey
+
+    nacl_exceptions = ModuleType("nacl.exceptions")
+    nacl_exceptions.BadSignatureError = MockBadSignatureError
+    nacl_exceptions.CryptoError = MockCryptoError
+    nacl_exceptions.ValueError = MockNaClValueError  # Use custom class to avoid catching binascii.Error
+
+    nacl_module.signing = nacl_signing
+    nacl_module.exceptions = nacl_exceptions
+
+    return {
+        "nacl": nacl_module,
+        "nacl.signing": nacl_signing,
+        "nacl.exceptions": nacl_exceptions,
+    }
+
+
+# Inject mock nacl before any imports
+_mock_modules = _create_mock_nacl_modules()
+for name, module in _mock_modules.items():
+    sys.modules[name] = module
+
+# Remove cached trust_router module to force reimport with mock nacl
+if "api.trust_router" in sys.modules:
+    del sys.modules["api.trust_router"]
+
 import nacl.signing
 
 from api.trust_router import router, public_router, verify_registration_signature
