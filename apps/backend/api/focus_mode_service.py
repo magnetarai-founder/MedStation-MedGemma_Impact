@@ -11,9 +11,12 @@ Features:
 - Auto-trigger logic (battery monitor, panic mode)
 - Audit logging of mode changes
 - User preferences per mode
+
+Module structure (P2 decomposition):
+- focus_mode_types.py: FocusMode enum and Pydantic models
+- focus_mode_service.py: FocusModeService class (this file)
 """
 
-from enum import Enum
 from typing import Optional, Dict, Any
 from datetime import datetime, UTC
 import sqlite3
@@ -21,35 +24,10 @@ import json
 from pathlib import Path
 import logging
 
-from pydantic import BaseModel
+# Import from extracted module (P2 decomposition)
+from api.focus_mode_types import FocusMode, FocusModeConfig, FocusModeState
 
 logger = logging.getLogger(__name__)
-
-
-class FocusMode(str, Enum):
-    """Focus mode types"""
-    QUIET = "quiet"
-    FIELD = "field"
-    EMERGENCY = "emergency"
-
-
-class FocusModeConfig(BaseModel):
-    """Configuration for a focus mode"""
-    mode: FocusMode
-    enabled: bool = True
-    auto_trigger_battery: Optional[int] = None  # Battery % to auto-trigger
-    auto_trigger_panic: bool = False  # Trigger on panic mode
-    preferences: Dict[str, Any] = {}
-
-
-class FocusModeState(BaseModel):
-    """Current focus mode state"""
-    current_mode: FocusMode
-    previous_mode: Optional[FocusMode] = None
-    changed_at: str
-    changed_by: Optional[str] = None
-    trigger_reason: Optional[str] = None  # "manual", "battery", "panic"
-    battery_level: Optional[int] = None
 
 
 class FocusModeService:
@@ -477,3 +455,15 @@ def get_focus_mode_service() -> FocusModeService:
         _focus_mode_service = FocusModeService()
 
     return _focus_mode_service
+
+
+# Re-exports for backwards compatibility (P2 decomposition)
+__all__ = [
+    # Service
+    "FocusModeService",
+    "get_focus_mode_service",
+    # Re-exported from focus_mode_types
+    "FocusMode",
+    "FocusModeConfig",
+    "FocusModeState",
+]
