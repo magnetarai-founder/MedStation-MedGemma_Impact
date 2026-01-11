@@ -250,7 +250,8 @@ class DataEngine:
 
         # Try datetime
         try:
-            return pd.to_datetime(series, errors='raise')
+            # Use format='mixed' to allow per-element format inference (suppresses warning)
+            return pd.to_datetime(series, errors='raise', format='mixed')
         except (ValueError, TypeError):
             pass
 
