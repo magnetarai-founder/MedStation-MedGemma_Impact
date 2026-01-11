@@ -8,15 +8,21 @@ Security: Uses PBKDF2 + AES-256-GCM envelope encryption.
 The passphrase derives a key that encrypts the master key before storing in Keychain.
 
 "The name of the Lord is a fortified tower; the righteous run to it and are safe." - Proverbs 18:10
+
+Module structure (P2 decomposition):
+- secure_enclave_types.py: Request/response models
+- secure_enclave_service.py: Service class and router (this file)
 """
 
 from fastapi import APIRouter, HTTPException, Request, Depends
-from pydantic import BaseModel
 import secrets
 import base64
 import hashlib
 import logging
 from typing import Optional, Tuple, Dict, Any
+
+# Import from extracted module (P2 decomposition)
+from api.secure_enclave_types import StoreKeyRequest, RetrieveKeyRequest, KeyResponse
 
 # Graceful degradation for optional dependencies
 try:
@@ -53,23 +59,6 @@ router = APIRouter(
 # No need to explicitly set it - it detects the platform
 
 SERVICE_NAME = "com.magnetarai.elohimos"
-
-
-class StoreKeyRequest(BaseModel):
-    key_id: str
-    passphrase: str  # User's passphrase for additional protection
-
-
-class RetrieveKeyRequest(BaseModel):
-    key_id: str
-    passphrase: str
-
-
-class KeyResponse(BaseModel):
-    success: bool
-    key_exists: bool
-    message: str
-    key_data: Optional[str] = None  # Base64 encoded key
 
 
 # ===== Secure Enclave Key Management =====
@@ -425,3 +414,21 @@ async def health_check() -> Dict[str, Any]:
             "secure_enclave_available": False,
             "message": f"Keychain not accessible: {str(e)}"
         }
+
+
+# Re-exports for backwards compatibility (P2 decomposition)
+__all__ = [
+    # Service
+    "SecureEnclaveService",
+    # Router
+    "router",
+    # Functions
+    "store_key_in_keychain",
+    "retrieve_key_from_keychain",
+    "delete_key_from_keychain",
+    "key_exists_in_keychain",
+    # Re-exported from secure_enclave_types
+    "StoreKeyRequest",
+    "RetrieveKeyRequest",
+    "KeyResponse",
+]
