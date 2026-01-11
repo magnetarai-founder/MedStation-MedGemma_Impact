@@ -15,64 +15,23 @@ Features:
 - Action type registry
 - State preservation for rollback
 - Audit logging of undo actions
+
+Module structure (P2 decomposition):
+- undo_types.py: ActionType enum and Pydantic models
+- undo_service.py: UndoService class (this file)
 """
 
-from enum import Enum
 from typing import Optional, Dict, Any, Callable
 from datetime import datetime, timedelta, UTC
 import sqlite3
 import json
 from pathlib import Path
 import logging
-import asyncio
 
-from pydantic import BaseModel
+# Import from extracted module (P2 decomposition)
+from api.undo_types import ActionType, UndoAction, UndoResult
 
 logger = logging.getLogger(__name__)
-
-
-class ActionType(str, Enum):
-    """Types of undoable actions"""
-    MESSAGE_SENT = "message_sent"
-    MESSAGE_DELETED = "message_deleted"
-    WORKFLOW_CREATED = "workflow_created"
-    WORKFLOW_UPDATED = "workflow_updated"
-    WORKFLOW_DELETED = "workflow_deleted"
-    FILE_UPLOADED = "file_uploaded"
-    FILE_DELETED = "file_deleted"
-    USER_CREATED = "user_created"
-    USER_UPDATED = "user_updated"
-    USER_ROLE_CHANGED = "user_role_changed"
-    SETTINGS_CHANGED = "settings_changed"
-    VAULT_ITEM_CREATED = "vault_item_created"
-    VAULT_ITEM_UPDATED = "vault_item_updated"
-    VAULT_ITEM_DELETED = "vault_item_deleted"
-
-
-class UndoAction(BaseModel):
-    """Undoable action model"""
-    id: Optional[int] = None
-    action_type: ActionType
-    user_id: str
-    resource_type: str
-    resource_id: str
-    state_before: Dict[str, Any]
-    state_after: Optional[Dict[str, Any]] = None
-    created_at: str
-    expires_at: str
-    is_undone: bool = False
-    undone_at: Optional[str] = None
-    timeout_seconds: int = 5
-
-
-class UndoResult(BaseModel):
-    """Result of an undo operation"""
-    success: bool
-    action_id: int
-    action_type: ActionType
-    resource_type: str
-    resource_id: str
-    message: str
 
 
 class UndoService:
@@ -517,3 +476,15 @@ def get_undo_service() -> UndoService:
         _undo_service = UndoService()
 
     return _undo_service
+
+
+# Re-exports for backwards compatibility (P2 decomposition)
+__all__ = [
+    # Service
+    "UndoService",
+    "get_undo_service",
+    # Re-exported from undo_types
+    "ActionType",
+    "UndoAction",
+    "UndoResult",
+]
