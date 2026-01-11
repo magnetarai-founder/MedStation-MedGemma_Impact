@@ -3,15 +3,18 @@ Backup Router for ElohimOS
 
 Provides RESTful API endpoints for backup operations.
 Requires backups.use permission.
+
+Module structure (P2 decomposition):
+- backup_types.py: Request/response models
+- backup_router.py: API endpoints (this file)
 """
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
 
 try:
     from .audit_logger import AuditAction, get_audit_logger
@@ -26,40 +29,19 @@ except ImportError:
     from permission_engine import require_perm
     from utils import get_user_id
 
+# Import from extracted module (P2 decomposition)
+from api.backup_types import (
+    BackupCreateRequest,
+    BackupCreateResponse,
+    BackupVerifyRequest,
+    BackupRestoreRequest,
+    BackupCleanupRequest,
+)
+
 logger = logging.getLogger(__name__)
 audit_logger = get_audit_logger()
 
 router = APIRouter(prefix="/api/v1/backups", tags=["backups"])
-
-
-class BackupCreateRequest(BaseModel):
-    passphrase: str
-
-
-class BackupCreateResponse(BaseModel):
-    success: bool
-    backup_path: str | None = None
-    backup_name: str | None = None
-    size_bytes: int | None = None
-    created_at: str | None = None
-    verified: bool = False  # HIGH-08: Auto-verification status
-    error: str | None = None
-
-
-class BackupVerifyRequest(BaseModel):
-    backup_path: str | None = None
-    backup_name: str | None = None
-    passphrase: str
-
-
-class BackupRestoreRequest(BaseModel):
-    backup_path: str | None = None
-    backup_name: str | None = None
-    passphrase: str
-
-
-class BackupCleanupRequest(BaseModel):
-    passphrase: str | None = None  # Optional for cleanup
 
 
 def get_backup_service(passphrase: str) -> BackupService:
@@ -401,5 +383,14 @@ async def download_backup(
         raise HTTPException(status_code=500, detail=f"Failed to download backup: {str(e)}")
 
 
-# Export the router
-__all__ = ["router"]
+# Re-exports for backwards compatibility (P2 decomposition)
+__all__ = [
+    # Router
+    "router",
+    # Re-exported from backup_types
+    "BackupCreateRequest",
+    "BackupCreateResponse",
+    "BackupVerifyRequest",
+    "BackupRestoreRequest",
+    "BackupCleanupRequest",
+]
