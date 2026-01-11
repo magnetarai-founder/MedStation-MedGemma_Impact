@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """
 Authentication Routes for ElohimOS API
+
+Module structure (P2 decomposition):
+- auth_types.py: Request/response models
+- auth_routes.py: API endpoints (this file)
 """
 
 import logging
 import os
 from fastapi import APIRouter, HTTPException, Depends, Request
-from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 from datetime import UTC
 
@@ -40,55 +43,19 @@ except ImportError:
     from error_codes import ErrorCode
     from query_cache import cache_query, invalidate_query, build_permissions_cache_key
 
+# Import from extracted module (P2 decomposition)
+from api.auth_types import (
+    RegisterRequest,
+    LoginRequest,
+    RefreshRequest,
+    ChangePasswordFirstLoginRequest,
+    LoginResponse,
+    UserResponse,
+)
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/auth", tags=["authentication"])
-
-
-class RegisterRequest(BaseModel):
-    """User registration request"""
-    username: str = Field(..., min_length=3, max_length=50)
-    password: str = Field(..., min_length=8)
-    device_id: str = Field(..., description="Unique device identifier")
-
-
-class LoginRequest(BaseModel):
-    """User login request"""
-    username: str
-    password: str
-    device_fingerprint: Optional[str] = None
-
-
-class RefreshRequest(BaseModel):
-    """Token refresh request"""
-    refresh_token: str = Field(..., description="Refresh token from login")
-
-
-class ChangePasswordFirstLoginRequest(BaseModel):
-    """Forced password change request for first login after reset"""
-    username: str
-    temp_password: str = Field(..., min_length=1)
-    new_password: str = Field(..., min_length=12)
-    confirm_password: str = Field(..., min_length=12)
-
-
-class LoginResponse(BaseModel):
-    """Login response with JWT token"""
-    token: str
-    refresh_token: Optional[str] = None  # LOW-02: Refresh token
-    user_id: str
-    username: str
-    device_id: str
-    role: str = Field(default="member", description="User role")
-    expires_in: int = Field(default=7 * 24 * 60 * 60, description="Token expiration in seconds")
-
-
-class UserResponse(BaseModel):
-    """User information response"""
-    user_id: str
-    username: str
-    device_id: str
-    role: str = Field(default="member", description="User role (member, founder_rights)")
 
 
 @router.get("/setup-needed")
@@ -616,3 +583,17 @@ async def get_current_user_permissions(
     except Exception as e:
         logger.exception("Failed to get user permissions")
         raise internal_error(ErrorCode.SYSTEM_INTERNAL_ERROR, technical_detail=str(e))
+
+
+# Re-exports for backwards compatibility (P2 decomposition)
+__all__ = [
+    # Router
+    "router",
+    # Re-exported from auth_types
+    "RegisterRequest",
+    "LoginRequest",
+    "RefreshRequest",
+    "ChangePasswordFirstLoginRequest",
+    "LoginResponse",
+    "UserResponse",
+]
