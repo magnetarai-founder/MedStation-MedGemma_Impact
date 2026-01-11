@@ -6,9 +6,125 @@ Tests the multi-hop message routing and connection pooling for mesh networking.
 
 import pytest
 import asyncio
+import sys
 import time
+import hashlib
+import secrets
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, UTC
+
+
+# ===== Mock nacl module =====
+# Create a mock nacl module to allow tests to run without PyNaCl installed
+# This provides a simplified but functional Ed25519 simulation using HMAC
+
+def _create_mock_nacl_module():
+    """
+    Create a mock nacl module that simulates Ed25519 signing.
+    Uses HMAC-SHA256 for signature simulation (not cryptographically secure,
+    but sufficient for testing the handshake protocol logic).
+    """
+    import hmac
+
+    class MockBadSignature(Exception):
+        """Mock nacl.exceptions.BadSignature"""
+        pass
+
+    # Alias for nacl.exceptions.BadSignatureError (used in some nacl versions)
+    MockBadSignatureError = MockBadSignature
+
+    class MockValueError(ValueError):
+        """Mock nacl.exceptions.ValueError"""
+        pass
+
+    class MockSignedMessage:
+        """Mock signed message with signature attribute"""
+        def __init__(self, signature: bytes, message: bytes):
+            self.signature = signature
+            self.message = message
+
+    class MockVerifyKey:
+        """Mock nacl.signing.VerifyKey"""
+        def __init__(self, public_key_bytes: bytes):
+            self._public_key = public_key_bytes
+
+        def __bytes__(self):
+            return self._public_key
+
+        def encode(self):
+            return self._public_key
+
+        def verify(self, message: bytes, signature: bytes = None) -> bytes:
+            """
+            Verify signature - uses HMAC for simulation.
+            Matches PyNaCl API: verify(message, signature) or verify(signed_message)
+            """
+            if signature is None:
+                # If no signature provided, assume message is signed_message (sig + msg)
+                # In PyNaCl, signature is 64 bytes
+                signature = message[:64]
+                message = message[64:]
+
+            # Simulate verification using the public key as HMAC key
+            expected = hmac.new(self._public_key, message, hashlib.sha256).digest()
+            if not hmac.compare_digest(signature, expected):
+                raise MockBadSignature("Signature verification failed")
+            return message
+
+    class MockSigningKey:
+        """Mock nacl.signing.SigningKey"""
+        def __init__(self, seed: bytes = None):
+            # Generate random 32-byte key
+            self._seed = seed or secrets.token_bytes(32)
+            # Derive "public key" from seed (in real Ed25519, this is a proper derivation)
+            self._public_key = hashlib.sha256(self._seed + b"public").digest()
+            self.verify_key = MockVerifyKey(self._public_key)
+
+        def __bytes__(self):
+            return self._seed
+
+        @classmethod
+        def generate(cls) -> "MockSigningKey":
+            """Generate a new signing key"""
+            return cls()
+
+        def sign(self, message: bytes) -> MockSignedMessage:
+            """Sign a message - uses HMAC for simulation"""
+            if isinstance(message, str):
+                message = message.encode('utf-8')
+            # Use HMAC-SHA256 as signature simulation
+            signature = hmac.new(self._public_key, message, hashlib.sha256).digest()
+            return MockSignedMessage(signature=signature, message=message)
+
+    # Create mock module structure
+    mock_nacl = MagicMock()
+    mock_signing = MagicMock()
+    mock_exceptions = MagicMock()
+
+    # Set up the classes
+    mock_signing.SigningKey = MockSigningKey
+    mock_signing.VerifyKey = MockVerifyKey
+
+    # Set up all exception types (nacl uses various names)
+    mock_exceptions.BadSignature = MockBadSignature
+    mock_exceptions.BadSignatureError = MockBadSignatureError
+    mock_exceptions.ValueError = MockValueError
+
+    mock_nacl.signing = mock_signing
+    mock_nacl.exceptions = mock_exceptions
+
+    return mock_nacl, mock_signing, mock_exceptions
+
+
+# Inject mock nacl module BEFORE importing api.mesh_relay
+# This must happen at module level, not in a fixture
+_mock_nacl, _mock_signing, _mock_exceptions = _create_mock_nacl_module()
+
+# Only inject if nacl is not already installed
+if "nacl" not in sys.modules:
+    sys.modules["nacl"] = _mock_nacl
+    sys.modules["nacl.signing"] = _mock_signing
+    sys.modules["nacl.exceptions"] = _mock_exceptions
 
 from api.mesh_relay import (
     MeshRelay,
@@ -18,6 +134,13 @@ from api.mesh_relay import (
     RouteMetrics,
     get_mesh_relay,
 )
+
+# Ensure NACL_AVAILABLE is True after importing (since we injected mock)
+try:
+    import api.mesh.security as _security_module
+    _security_module.NACL_AVAILABLE = True
+except ImportError:
+    pass
 
 
 class TestMeshConnection:
