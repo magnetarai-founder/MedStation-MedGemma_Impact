@@ -13,6 +13,11 @@ Tests cover:
 """
 
 import pytest
+
+# Suppress JWT_SECRET_KEY warning in tests - expected when testing without configured secret
+pytestmark = pytest.mark.filterwarnings(
+    "ignore:JWT_SECRET_KEY not set:UserWarning"
+)
 import sqlite3
 import tempfile
 import re

@@ -17,6 +17,12 @@ import os
 import tempfile
 import pytest
 from pathlib import Path
+
+# Suppress JWT_SECRET_KEY warning in tests - this is expected behavior
+# when testing without a configured secret
+pytestmark = pytest.mark.filterwarnings(
+    "ignore:JWT_SECRET_KEY not set:UserWarning"
+)
 from unittest.mock import patch, MagicMock
 
 from api.config import (
