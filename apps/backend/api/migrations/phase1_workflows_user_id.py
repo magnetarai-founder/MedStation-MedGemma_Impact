@@ -16,6 +16,11 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, Optional
 
+try:
+    from api.security.sql_safety import quote_identifier
+except ImportError:
+    from security.sql_safety import quote_identifier
+
 logger = logging.getLogger(__name__)
 
 
@@ -52,6 +57,8 @@ def add_user_id_columns(conn: sqlite3.Connection) -> None:
 
     logger.info("  Adding user_id columns to tables...")
 
+    # Whitelist of tables for defense-in-depth
+    WORKFLOW_TABLES = frozenset({'workflows', 'work_items', 'stage_transitions', 'attachments'})
     tables = [
         ('workflows', 'workflows'),
         ('work_items', 'work_items'),
@@ -60,15 +67,20 @@ def add_user_id_columns(conn: sqlite3.Connection) -> None:
     ]
 
     for table_name, display_name in tables:
+        if table_name not in WORKFLOW_TABLES:
+            logger.warning(f"    Skipping unknown table: {table_name}")
+            continue
+
         try:
-            # Check if column already exists
-            cursor.execute(f"PRAGMA table_info({table_name})")
+            # Check if column already exists (use quoted identifier for safety)
+            quoted_table = quote_identifier(table_name)
+            cursor.execute(f"PRAGMA table_info({quoted_table})")
             columns = [row[1] for row in cursor.fetchall()]
 
             if 'user_id' in columns:
                 logger.info(f"    ✓ {display_name} already has user_id column")
             else:
-                cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN user_id TEXT")
+                cursor.execute(f"ALTER TABLE {quoted_table} ADD COLUMN user_id TEXT")
                 logger.info(f"    ✓ Added user_id to {display_name}")
         except sqlite3.OperationalError as e:
             logger.warning(f"    Could not add user_id to {table_name}: {e}")

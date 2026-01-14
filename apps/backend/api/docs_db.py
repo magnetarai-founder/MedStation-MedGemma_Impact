@@ -24,6 +24,11 @@ try:
 except ImportError:
     from api.db_pool import SQLiteConnectionPool
 
+try:
+    from api.security.sql_safety import quote_identifier
+except ImportError:
+    from security.sql_safety import quote_identifier
+
 logger = logging.getLogger(__name__)
 
 # Storage paths - use centralized config_paths
@@ -42,7 +47,7 @@ DOCUMENT_UPDATE_COLUMNS = frozenset({
 
 def build_safe_update(updates_dict: Dict[str, Any], allowed_columns: frozenset) -> Tuple[List[str], List[Any]]:
     """
-    Build safe SQL UPDATE clause with whitelist validation.
+    Build safe SQL UPDATE clause with whitelist validation and identifier quoting.
 
     Args:
         updates_dict: Dict of column_name -> value pairs
@@ -60,7 +65,8 @@ def build_safe_update(updates_dict: Dict[str, Any], allowed_columns: frozenset) 
     for column, value in updates_dict.items():
         if column not in allowed_columns:
             raise ValueError(f"Invalid column for update: {column}")
-        clauses.append(f"{column} = ?")
+        # quote_identifier adds defense-in-depth even with whitelist
+        clauses.append(f"{quote_identifier(column)} = ?")
         params.append(value)
 
     return clauses, params

@@ -337,12 +337,13 @@ class TestBuildSafeUpdate:
     """Tests for build_safe_update function"""
 
     def test_valid_columns(self):
-        """Test with valid columns"""
+        """Test with valid columns - returns quoted identifiers for SQL safety"""
         updates = {"title": "New Title", "content": "New Content"}
         clauses, params = build_safe_update(updates, DOCUMENT_UPDATE_COLUMNS)
 
-        assert "title = ?" in clauses
-        assert "content = ?" in clauses
+        # Columns are now quoted with quote_identifier for defense-in-depth
+        assert '"title" = ?' in clauses
+        assert '"content" = ?' in clauses
         assert "New Title" in params
         assert "New Content" in params
 

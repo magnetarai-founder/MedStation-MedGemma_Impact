@@ -127,9 +127,13 @@ async def update_user_profile(updates: Dict[str, Any]) -> Any:
     """
     # Lazy imports
     from config_paths import get_config_paths
+    from api.security.sql_safety import quote_identifier
 
     PATHS = get_config_paths()
     USER_DB_PATH = PATHS.app_db
+
+    # Whitelist of allowed profile columns for defense-in-depth
+    PROFILE_COLUMNS = frozenset({'display_name', 'device_name', 'avatar_color', 'bio'})
 
     # Get current user first
     user = await get_or_create_user_profile()
@@ -137,25 +141,14 @@ async def update_user_profile(updates: Dict[str, Any]) -> Any:
     conn = sqlite3.connect(USER_DB_PATH)
     cursor = conn.cursor()
 
-    # Build UPDATE query for user_profiles table
+    # Build UPDATE query for user_profiles table with quoted identifiers
     profile_fields = []
     profile_values = []
 
-    if 'display_name' in updates:
-        profile_fields.append("display_name = ?")
-        profile_values.append(updates['display_name'])
-
-    if 'device_name' in updates:
-        profile_fields.append("device_name = ?")
-        profile_values.append(updates['device_name'])
-
-    if 'avatar_color' in updates:
-        profile_fields.append("avatar_color = ?")
-        profile_values.append(updates['avatar_color'])
-
-    if 'bio' in updates:
-        profile_fields.append("bio = ?")
-        profile_values.append(updates['bio'])
+    for column in PROFILE_COLUMNS:
+        if column in updates:
+            profile_fields.append(f"{quote_identifier(column)} = ?")
+            profile_values.append(updates[column])
 
     if profile_fields:
         profile_values.append(user.user_id)

@@ -8,6 +8,11 @@ import sqlite3
 import logging
 from pathlib import Path
 
+try:
+    from api.security.sql_safety import quote_identifier
+except ImportError:
+    from security.sql_safety import quote_identifier
+
 logger = logging.getLogger(__name__)
 
 
@@ -161,9 +166,11 @@ def _create_indexes(cursor: sqlite3.Cursor) -> None:
 def _run_migrations(cursor: sqlite3.Cursor) -> None:
     """Run schema migrations for existing databases."""
     # Phase 3.5: Add team_id columns if they don't exist
-    for table in ["workflows", "work_items", "stage_transitions", "attachments"]:
+    # Whitelist of tables for defense-in-depth
+    TEAM_ID_TABLES = frozenset({"workflows", "work_items", "stage_transitions", "attachments"})
+    for table in TEAM_ID_TABLES:
         try:
-            cursor.execute(f"ALTER TABLE {table} ADD COLUMN team_id TEXT")
+            cursor.execute(f"ALTER TABLE {quote_identifier(table)} ADD COLUMN team_id TEXT")
         except sqlite3.OperationalError:
             pass  # Column already exists
 

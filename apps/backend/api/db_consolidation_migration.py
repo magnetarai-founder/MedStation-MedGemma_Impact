@@ -36,6 +36,7 @@ def _validate_identifier(name: str, kind: str = "identifier") -> None:
 
 # Use centralized config paths
 from api.config_paths import get_config_paths
+from api.security.sql_safety import quote_identifier
 PATHS = get_config_paths()
 
 # Old database paths
@@ -91,20 +92,22 @@ def attach_and_copy(conn: sqlite3.Connection, db_name: str, db_path: Path) -> No
             # Security: Validate table name before using in SQL
             # This prevents SQL injection if the source database contains malicious table names
             _validate_identifier(table_name, "table name")
+            # Use quote_identifier for defense-in-depth (db_name is from hardcoded dict)
+            quoted_table = quote_identifier(table_name)
 
-            # Get table schema (db_name is from hardcoded OLD_DBS dict, table_name is now validated)
-            cursor.execute(f"SELECT sql FROM {db_name}.sqlite_master WHERE type='table' AND name='{table_name}'")
+            # Get table schema (db_name is from hardcoded OLD_DBS dict, table_name is validated+quoted)
+            cursor.execute(f"SELECT sql FROM {db_name}.sqlite_master WHERE type='table' AND name=?", (table_name,))
             create_sql = cursor.fetchone()[0]
 
             # Create table in new database if it doesn't exist
             cursor.execute(create_sql)
 
             # Copy data
-            cursor.execute(f"SELECT COUNT(*) FROM {db_name}.{table_name}")
+            cursor.execute(f"SELECT COUNT(*) FROM {db_name}.{quoted_table}")
             row_count = cursor.fetchone()[0]
 
             if row_count > 0:
-                cursor.execute(f"INSERT OR IGNORE INTO {table_name} SELECT * FROM {db_name}.{table_name}")
+                cursor.execute(f"INSERT OR IGNORE INTO {quoted_table} SELECT * FROM {db_name}.{quoted_table}")
                 print(f"   ✓ Copied {row_count} rows from {db_name}.{table_name}")
             else:
                 print(f"   - {db_name}.{table_name} is empty")
