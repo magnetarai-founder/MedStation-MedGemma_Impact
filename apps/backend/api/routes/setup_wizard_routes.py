@@ -33,6 +33,7 @@ except ImportError:
 
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 from api.middleware.rate_limit import limiter, RATE_LIMITS
+from api.auth_middleware import auth_service
 
 logger = logging.getLogger(__name__)
 
@@ -177,8 +178,6 @@ async def get_setup_status(request: Request) -> SuccessResponse[SetupStatusRespo
         Setup status including founder setup completion
     """
     try:
-        from api.auth_middleware import auth_service
-
         # Check if any users exist in the database
         users = auth_service.get_all_users()
         has_users = len(users) > 0
@@ -683,17 +682,22 @@ async def configure_hot_slots(request: Request, body: ConfigureHotSlotsRequest) 
     status_code=status.HTTP_201_CREATED,
     name="setup_create_account",
     summary="Create account",
-    description="Create local super_admin account (public endpoint - first-time setup)"
+    description="Create local super_admin account (public endpoint - first-time setup only)"
 )
 @limiter.limit(RATE_LIMITS["setup_account"])
 async def create_account(request: Request, body: CreateAccountRequest) -> SuccessResponse[CreateAccountResponse]:
     """
     Create local super_admin account
 
+    SECURITY: This endpoint is only available during first-time setup.
+    If any users already exist, this endpoint will reject the request
+    to prevent unauthorized admin account creation.
+
     This endpoint:
-    1. Optionally initializes founder password (if provided and not already setup)
-    2. Creates local super_admin user account
-    3. Returns user_id for session creation
+    1. Verifies no users exist (first-time setup only)
+    2. Optionally initializes founder password (if provided and not already setup)
+    3. Creates local super_admin user account
+    4. Returns user_id for session creation
 
     Args:
         username: Username (3-20 chars, alphanumeric + underscore)
@@ -701,12 +705,27 @@ async def create_account(request: Request, body: CreateAccountRequest) -> Succes
         confirm_password: Password confirmation
         founder_password: Optional founder password (for founder_rights setup)
 
-    Public endpoint - no authentication required (first-time setup).
+    Public endpoint - no authentication required (first-time setup only).
 
     Returns:
         Account creation confirmation with user ID
     """
     try:
+        # SECURITY: Verify setup is actually needed (no users exist)
+        existing_users = auth_service.get_all_users()
+        if len(existing_users) > 0:
+            logger.warning(
+                f"SECURITY: Attempted account creation after setup complete. "
+                f"IP: {request.client.host if request.client else 'unknown'}"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.FORBIDDEN,
+                    message="Setup already completed. Cannot create accounts via setup wizard."
+                ).model_dump(mode='json')
+            )
+
         # Validate password confirmation
         if body.password != body.confirm_password:
             account_data = CreateAccountResponse(

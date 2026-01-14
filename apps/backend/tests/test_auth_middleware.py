@@ -796,19 +796,27 @@ class TestWebSocketAuth:
         token = extract_websocket_token(websocket)
         assert token == "mytoken456"
 
-    def test_extract_token_from_query_param(self):
-        """Test extracting token from query parameter"""
+    def test_extract_token_rejects_query_param_for_security(self):
+        """Test that query parameter tokens are rejected for security.
+
+        SECURITY: Query param tokens are rejected to prevent token leakage via:
+        - Server access logs
+        - Browser history
+        - Referer headers
+        """
         websocket = Mock()
         websocket.headers.get.return_value = ""
 
+        # Query param tokens should be rejected (returns None)
         token = extract_websocket_token(websocket, query_token="querytoken789")
-        assert token == "querytoken789"
+        assert token is None  # Rejected for security
 
-    def test_extract_token_prefers_header_over_query(self):
-        """Test that header token is preferred over query param"""
+    def test_extract_token_header_only_not_query(self):
+        """Test that only header token is used, query param is ignored"""
         websocket = Mock()
         websocket.headers.get.return_value = "jwt-headertoken"
 
+        # Header token is used, query param is ignored
         token = extract_websocket_token(websocket, query_token="querytoken")
         assert token == "headertoken"
 

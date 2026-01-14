@@ -172,3 +172,208 @@ class RateLimitExceededError(MagnetarException):
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             details={"retry_after_seconds": retry_after}
         )
+
+
+class ServiceUnavailableError(MagnetarException):
+    """Raised when service is temporarily unavailable."""
+
+    def __init__(self, message: str = "Service temporarily unavailable", details: Optional[Dict] = None):
+        super().__init__(
+            message=message,
+            code="SERVICE_UNAVAILABLE",
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            details=details
+        )
+
+
+class TimeoutError(MagnetarException):
+    """Raised when an operation times out."""
+
+    def __init__(self, message: str = "Operation timed out", details: Optional[Dict] = None):
+        super().__init__(
+            message=message,
+            code="TIMEOUT",
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            details=details
+        )
+
+
+# ===== Exception Handler Utilities =====
+
+import functools
+import logging
+import sqlite3
+import asyncio
+from pydantic import ValidationError as PydanticValidationError
+
+_handler_logger = logging.getLogger(__name__)
+
+
+def handle_exceptions(
+    operation_name: str,
+    *,
+    resource_type: Optional[str] = None,
+    reraise_http: bool = True
+):
+    """
+    Decorator that maps standard Python exceptions to appropriate HTTP responses.
+
+    This decorator provides consistent exception handling across API endpoints by:
+    1. Letting HTTPException and MagnetarException pass through (already HTTP-aware)
+    2. Mapping standard Python exceptions to appropriate HTTP status codes
+    3. Logging all errors with full context
+
+    Args:
+        operation_name: Human-readable name for logging (e.g., "get profile")
+        resource_type: Optional resource type for 404 errors (e.g., "Profile")
+        reraise_http: Whether to re-raise HTTPException as-is (default True)
+
+    Exception Mapping:
+        - ValueError, TypeError, PydanticValidationError -> 422 Unprocessable Entity
+        - KeyError, LookupError -> 404 Not Found (if resource_type given) or 422
+        - PermissionError -> 403 Forbidden
+        - sqlite3.Error -> 500 Database Error
+        - asyncio.TimeoutError -> 504 Gateway Timeout
+        - MemoryError, OSError -> 503 Service Unavailable
+        - Exception -> 500 Internal Server Error
+
+    Usage:
+        @router.get("/profiles/{profile_id}")
+        @handle_exceptions("get profile", resource_type="Profile")
+        async def get_profile(profile_id: str):
+            return await service.get_profile(profile_id)
+
+    Note:
+        Apply AFTER route decorator but BEFORE the function definition.
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        async def async_wrapper(*args, **kwargs):
+            try:
+                return await func(*args, **kwargs)
+            except HTTPException:
+                if reraise_http:
+                    raise
+                # Convert to MagnetarException format if not reraising
+                raise
+            except MagnetarException:
+                # Already well-typed, just re-raise
+                raise
+            except PydanticValidationError as e:
+                _handler_logger.warning(f"Validation error in {operation_name}: {e}")
+                raise ValidationError(
+                    message="Invalid input data",
+                    details={"errors": e.errors()}
+                ).to_http_exception()
+            except (ValueError, TypeError) as e:
+                _handler_logger.warning(f"Validation error in {operation_name}: {e}")
+                raise ValidationError(
+                    message=str(e) if str(e) else "Invalid input"
+                ).to_http_exception()
+            except (KeyError, LookupError) as e:
+                if resource_type:
+                    _handler_logger.warning(f"Resource not found in {operation_name}: {e}")
+                    raise ResourceNotFoundError(
+                        resource_type=resource_type,
+                        resource_id=str(e)
+                    ).to_http_exception()
+                else:
+                    _handler_logger.warning(f"Lookup error in {operation_name}: {e}")
+                    raise ValidationError(
+                        message=f"Required key not found: {e}"
+                    ).to_http_exception()
+            except PermissionError as e:
+                _handler_logger.warning(f"Permission denied in {operation_name}: {e}")
+                raise AuthorizationError(
+                    message=str(e) if str(e) else "Permission denied"
+                ).to_http_exception()
+            except sqlite3.Error as e:
+                _handler_logger.error(f"Database error in {operation_name}: {e}", exc_info=True)
+                raise DatabaseError(
+                    message="Database operation failed"
+                ).to_http_exception()
+            except asyncio.TimeoutError as e:
+                _handler_logger.error(f"Timeout in {operation_name}: {e}")
+                raise TimeoutError(
+                    message=f"Operation timed out: {operation_name}"
+                ).to_http_exception()
+            except (MemoryError, OSError) as e:
+                _handler_logger.error(f"Resource error in {operation_name}: {e}", exc_info=True)
+                raise ServiceUnavailableError(
+                    message="Insufficient system resources"
+                ).to_http_exception()
+            except Exception as e:
+                # Catch-all for unexpected errors - log full traceback
+                _handler_logger.error(
+                    f"Unexpected error in {operation_name}: {type(e).__name__}: {e}",
+                    exc_info=True
+                )
+                raise MagnetarException(
+                    message=f"An unexpected error occurred during {operation_name}",
+                    code="INTERNAL_ERROR"
+                ).to_http_exception()
+
+        @functools.wraps(func)
+        def sync_wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except HTTPException:
+                if reraise_http:
+                    raise
+                raise
+            except MagnetarException:
+                raise
+            except PydanticValidationError as e:
+                _handler_logger.warning(f"Validation error in {operation_name}: {e}")
+                raise ValidationError(
+                    message="Invalid input data",
+                    details={"errors": e.errors()}
+                ).to_http_exception()
+            except (ValueError, TypeError) as e:
+                _handler_logger.warning(f"Validation error in {operation_name}: {e}")
+                raise ValidationError(
+                    message=str(e) if str(e) else "Invalid input"
+                ).to_http_exception()
+            except (KeyError, LookupError) as e:
+                if resource_type:
+                    _handler_logger.warning(f"Resource not found in {operation_name}: {e}")
+                    raise ResourceNotFoundError(
+                        resource_type=resource_type,
+                        resource_id=str(e)
+                    ).to_http_exception()
+                else:
+                    _handler_logger.warning(f"Lookup error in {operation_name}: {e}")
+                    raise ValidationError(
+                        message=f"Required key not found: {e}"
+                    ).to_http_exception()
+            except PermissionError as e:
+                _handler_logger.warning(f"Permission denied in {operation_name}: {e}")
+                raise AuthorizationError(
+                    message=str(e) if str(e) else "Permission denied"
+                ).to_http_exception()
+            except sqlite3.Error as e:
+                _handler_logger.error(f"Database error in {operation_name}: {e}", exc_info=True)
+                raise DatabaseError(
+                    message="Database operation failed"
+                ).to_http_exception()
+            except (MemoryError, OSError) as e:
+                _handler_logger.error(f"Resource error in {operation_name}: {e}", exc_info=True)
+                raise ServiceUnavailableError(
+                    message="Insufficient system resources"
+                ).to_http_exception()
+            except Exception as e:
+                _handler_logger.error(
+                    f"Unexpected error in {operation_name}: {type(e).__name__}: {e}",
+                    exc_info=True
+                )
+                raise MagnetarException(
+                    message=f"An unexpected error occurred during {operation_name}",
+                    code="INTERNAL_ERROR"
+                ).to_http_exception()
+
+        # Return appropriate wrapper based on function type
+        if asyncio.iscoroutinefunction(func):
+            return async_wrapper
+        return sync_wrapper
+
+    return decorator

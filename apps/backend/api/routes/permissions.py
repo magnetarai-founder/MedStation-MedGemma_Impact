@@ -22,6 +22,7 @@ except ImportError:
     from api.utils import get_user_id
 
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.core.exceptions import handle_exceptions
 
 logger = logging.getLogger(__name__)
 
@@ -40,37 +41,24 @@ router = APIRouter(
     status_code=status.HTTP_200_OK,
     name="permissions_get_all"
 )
+@handle_exceptions("get all permissions")
 async def get_all_permissions_endpoint(
     request: Request,
     category: Optional[str] = Query(None)
 ) -> SuccessResponse[List[Dict]]:
     """Get all permissions from the registry"""
-    # Lazy imports
     from api.services import permissions
     from api.schemas.permission_models import PermissionModel
     from permission_engine import require_perm
 
-    # Permission check
     require_perm("system.manage_permissions")(lambda: None)()
 
-    try:
-        result = await permissions.get_all_permissions(category)
-        data = [PermissionModel(**p).model_dump() for p in result]
-        return SuccessResponse(
-            data=data,
-            message=f"Retrieved {len(data)} permissions"
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to get permissions", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to get permissions"
-            ).model_dump(mode='json')
-        )
+    result = await permissions.get_all_permissions(category)
+    data = [PermissionModel(**p).model_dump() for p in result]
+    return SuccessResponse(
+        data=data,
+        message=f"Retrieved {len(data)} permissions"
+    )
 
 
 # ===== Permission Profile Endpoints =====
@@ -81,6 +69,7 @@ async def get_all_permissions_endpoint(
     status_code=status.HTTP_200_OK,
     name="permissions_get_profiles"
 )
+@handle_exceptions("get permission profiles")
 async def get_profiles_endpoint(
     request: Request,
     team_id: Optional[str] = Query(None)
@@ -92,24 +81,12 @@ async def get_profiles_endpoint(
 
     require_perm("system.manage_permissions")(lambda: None)()
 
-    try:
-        result = await permissions.get_all_profiles(team_id)
-        data = [PermissionProfileModel(**p).model_dump() for p in result]
-        return SuccessResponse(
-            data=data,
-            message=f"Retrieved {len(data)} permission profiles"
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to get profiles", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to get permission profiles"
-            ).model_dump(mode='json')
-        )
+    result = await permissions.get_all_profiles(team_id)
+    data = [PermissionProfileModel(**p).model_dump() for p in result]
+    return SuccessResponse(
+        data=data,
+        message=f"Retrieved {len(data)} permission profiles"
+    )
 
 
 @router.post(
@@ -118,6 +95,7 @@ async def get_profiles_endpoint(
     status_code=status.HTTP_201_CREATED,
     name="permissions_create_profile"
 )
+@handle_exceptions("create permission profile")
 async def create_profile_endpoint(request: Request) -> SuccessResponse[Dict]:
     """Create a new permission profile"""
     from api.services import permissions
@@ -127,31 +105,19 @@ async def create_profile_endpoint(request: Request) -> SuccessResponse[Dict]:
     user = request.state.user
     require_perm("system.manage_permissions")(lambda: None)()
 
-    try:
-        body_data = await request.json()
-        body = CreateProfileRequest(**body_data)
-        result = await permissions.create_profile(
-            profile_name=body.profile_name,
-            profile_description=body.profile_description,
-            team_id=body.team_id,
-            applies_to_role=body.applies_to_role,
-            created_by=get_user_id(user)
-        )
-        return SuccessResponse(
-            data=PermissionProfileModel(**result).model_dump(),
-            message="Permission profile created successfully"
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to create profile", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to create permission profile"
-            ).model_dump(mode='json')
-        )
+    body_data = await request.json()
+    body = CreateProfileRequest(**body_data)
+    result = await permissions.create_profile(
+        profile_name=body.profile_name,
+        profile_description=body.profile_description,
+        team_id=body.team_id,
+        applies_to_role=body.applies_to_role,
+        created_by=get_user_id(user)
+    )
+    return SuccessResponse(
+        data=PermissionProfileModel(**result).model_dump(),
+        message="Permission profile created successfully"
+    )
 
 
 @router.get(
@@ -160,6 +126,7 @@ async def create_profile_endpoint(request: Request) -> SuccessResponse[Dict]:
     status_code=status.HTTP_200_OK,
     name="permissions_get_profile"
 )
+@handle_exceptions("get permission profile", resource_type="Profile")
 async def get_profile_endpoint(request: Request, profile_id: str) -> SuccessResponse[Dict]:
     """Get a specific permission profile"""
     from api.services import permissions
@@ -168,23 +135,11 @@ async def get_profile_endpoint(request: Request, profile_id: str) -> SuccessResp
 
     require_perm("system.manage_permissions")(lambda: None)()
 
-    try:
-        result = await permissions.get_profile(profile_id)
-        return SuccessResponse(
-            data=PermissionProfileModel(**result).model_dump(),
-            message="Permission profile retrieved successfully"
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to get profile", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to get permission profile"
-            ).model_dump(mode='json')
-        )
+    result = await permissions.get_profile(profile_id)
+    return SuccessResponse(
+        data=PermissionProfileModel(**result).model_dump(),
+        message="Permission profile retrieved successfully"
+    )
 
 
 @router.put(
@@ -193,6 +148,7 @@ async def get_profile_endpoint(request: Request, profile_id: str) -> SuccessResp
     status_code=status.HTTP_200_OK,
     name="permissions_update_profile"
 )
+@handle_exceptions("update permission profile", resource_type="Profile")
 async def update_profile_endpoint(request: Request, profile_id: str) -> SuccessResponse[Dict]:
     """Update a permission profile"""
     from api.services import permissions
@@ -202,39 +158,26 @@ async def update_profile_endpoint(request: Request, profile_id: str) -> SuccessR
     user = request.state.user
     require_perm("system.manage_permissions")(lambda: None)()
 
-    try:
-        body_data = await request.json()
-        body = UpdateProfileRequest(**body_data)
+    body_data = await request.json()
+    body = UpdateProfileRequest(**body_data)
 
-        # Build updates dictionary from request
-        updates = {}
-        if body.profile_name is not None:
-            updates["profile_name"] = body.profile_name
-        if body.profile_description is not None:
-            updates["profile_description"] = body.profile_description
-        if body.is_active is not None:
-            updates["is_active"] = body.is_active
+    updates = {}
+    if body.profile_name is not None:
+        updates["profile_name"] = body.profile_name
+    if body.profile_description is not None:
+        updates["profile_description"] = body.profile_description
+    if body.is_active is not None:
+        updates["is_active"] = body.is_active
 
-        result = await permissions.update_profile(
-            profile_id=profile_id,
-            updates=updates,
-            modified_by=get_user_id(user)
-        )
-        return SuccessResponse(
-            data=PermissionProfileModel(**result).model_dump(),
-            message="Permission profile updated successfully"
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to update profile", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to update permission profile"
-            ).model_dump(mode='json')
-        )
+    result = await permissions.update_profile(
+        profile_id=profile_id,
+        updates=updates,
+        modified_by=get_user_id(user)
+    )
+    return SuccessResponse(
+        data=PermissionProfileModel(**result).model_dump(),
+        message="Permission profile updated successfully"
+    )
 
 
 @router.post(
@@ -243,12 +186,9 @@ async def update_profile_endpoint(request: Request, profile_id: str) -> SuccessR
     status_code=status.HTTP_200_OK,
     name="permissions_update_profile_grants"
 )
+@handle_exceptions("update profile grants", resource_type="Profile")
 async def update_profile_grants_endpoint(request: Request, profile_id: str) -> SuccessResponse[Dict]:
-    """
-    Upsert permission grants for a profile
-
-    Replaces existing grants for specified permissions.
-    """
+    """Upsert permission grants for a profile. Replaces existing grants for specified permissions."""
     from api.services import permissions
     from api.schemas.permission_models import ProfilePermissionGrant
     from permission_engine import require_perm
@@ -256,33 +196,19 @@ async def update_profile_grants_endpoint(request: Request, profile_id: str) -> S
     user = request.state.user
     require_perm("system.manage_permissions")(lambda: None)()
 
-    try:
-        body_data = await request.json()
-        grants_list = [ProfilePermissionGrant(**g) for g in body_data]
+    body_data = await request.json()
+    grants_list = [ProfilePermissionGrant(**g) for g in body_data]
+    grants_dicts = [g.dict() for g in grants_list]
 
-        # Convert Pydantic models to dicts
-        grants_dicts = [g.dict() for g in grants_list]
-
-        result = await permissions.update_profile_grants(
-            profile_id=profile_id,
-            grants=grants_dicts,
-            modified_by=get_user_id(user)
-        )
-        return SuccessResponse(
-            data=result,
-            message="Profile grants updated successfully"
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to upsert profile grants", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to update profile grants"
-            ).model_dump(mode='json')
-        )
+    result = await permissions.update_profile_grants(
+        profile_id=profile_id,
+        grants=grants_dicts,
+        modified_by=get_user_id(user)
+    )
+    return SuccessResponse(
+        data=result,
+        message="Profile grants updated successfully"
+    )
 
 
 @router.get(
@@ -291,6 +217,7 @@ async def update_profile_grants_endpoint(request: Request, profile_id: str) -> S
     status_code=status.HTTP_200_OK,
     name="permissions_get_profile_grants"
 )
+@handle_exceptions("get profile grants", resource_type="Profile")
 async def get_profile_grants_endpoint(request: Request, profile_id: str) -> SuccessResponse[List[Dict]]:
     """Get all permission grants for a profile"""
     from api.services import permissions
@@ -298,23 +225,11 @@ async def get_profile_grants_endpoint(request: Request, profile_id: str) -> Succ
 
     require_perm("system.manage_permissions")(lambda: None)()
 
-    try:
-        result = await permissions.get_profile_grants(profile_id)
-        return SuccessResponse(
-            data=result,
-            message="Profile grants retrieved successfully"
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to get profile grants", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to get profile grants"
-            ).model_dump(mode='json')
-        )
+    result = await permissions.get_profile_grants(profile_id)
+    return SuccessResponse(
+        data=result,
+        message="Profile grants retrieved successfully"
+    )
 
 
 # ===== User Assignment Endpoints =====
@@ -325,6 +240,7 @@ async def get_profile_grants_endpoint(request: Request, profile_id: str) -> Succ
     status_code=status.HTTP_201_CREATED,
     name="permissions_assign_profile"
 )
+@handle_exceptions("assign profile to user", resource_type="Profile")
 async def assign_profile_endpoint(request: Request, profile_id: str, user_id: str) -> SuccessResponse[Dict]:
     """Assign a permission profile to a user"""
     from api.services import permissions
@@ -333,27 +249,15 @@ async def assign_profile_endpoint(request: Request, profile_id: str, user_id: st
     current_user = request.state.user
     require_perm("system.manage_permissions")(lambda: None)()
 
-    try:
-        result = await permissions.assign_profile_to_user(
-            profile_id=profile_id,
-            user_id=user_id,
-            assigning_user_id=get_user_id(current_user)
-        )
-        return SuccessResponse(
-            data=result,
-            message="Profile assigned to user successfully"
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to assign profile", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to assign profile to user"
-            ).model_dump(mode='json')
-        )
+    result = await permissions.assign_profile_to_user(
+        profile_id=profile_id,
+        user_id=user_id,
+        assigning_user_id=get_user_id(current_user)
+    )
+    return SuccessResponse(
+        data=result,
+        message="Profile assigned to user successfully"
+    )
 
 
 @router.delete(
@@ -362,6 +266,7 @@ async def assign_profile_endpoint(request: Request, profile_id: str, user_id: st
     status_code=status.HTTP_200_OK,
     name="permissions_unassign_profile"
 )
+@handle_exceptions("unassign profile from user", resource_type="Profile")
 async def unassign_profile_endpoint(request: Request, profile_id: str, user_id: str) -> SuccessResponse[Dict]:
     """Unassign a permission profile from a user"""
     from api.services import permissions
@@ -370,27 +275,15 @@ async def unassign_profile_endpoint(request: Request, profile_id: str, user_id: 
     current_user = request.state.user
     require_perm("system.manage_permissions")(lambda: None)()
 
-    try:
-        result = await permissions.unassign_profile_from_user(
-            profile_id=profile_id,
-            user_id=user_id,
-            unassigning_user_id=get_user_id(current_user)
-        )
-        return SuccessResponse(
-            data=result,
-            message="Profile unassigned from user successfully"
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to unassign profile", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to unassign profile from user"
-            ).model_dump(mode='json')
-        )
+    result = await permissions.unassign_profile_from_user(
+        profile_id=profile_id,
+        user_id=user_id,
+        unassigning_user_id=get_user_id(current_user)
+    )
+    return SuccessResponse(
+        data=result,
+        message="Profile unassigned from user successfully"
+    )
 
 
 @router.get(
@@ -399,6 +292,7 @@ async def unassign_profile_endpoint(request: Request, profile_id: str, user_id: 
     status_code=status.HTTP_200_OK,
     name="permissions_get_user_profiles"
 )
+@handle_exceptions("get user profiles", resource_type="User")
 async def get_user_profiles_endpoint(request: Request, user_id: str) -> SuccessResponse[List[Dict]]:
     """Get all permission profiles assigned to a user"""
     from api.services import permissions
@@ -406,23 +300,11 @@ async def get_user_profiles_endpoint(request: Request, user_id: str) -> SuccessR
 
     require_perm("system.manage_permissions")(lambda: None)()
 
-    try:
-        result = await permissions.get_user_profiles(user_id)
-        return SuccessResponse(
-            data=result,
-            message="User profiles retrieved successfully"
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to get user profiles", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to get user profiles"
-            ).model_dump(mode='json')
-        )
+    result = await permissions.get_user_profiles(user_id)
+    return SuccessResponse(
+        data=result,
+        message="User profiles retrieved successfully"
+    )
 
 
 # ===== Permission Set Endpoints =====
@@ -433,6 +315,7 @@ async def get_user_profiles_endpoint(request: Request, user_id: str) -> SuccessR
     status_code=status.HTTP_200_OK,
     name="permissions_get_permission_sets"
 )
+@handle_exceptions("get permission sets")
 async def get_permission_sets_endpoint(request: Request) -> SuccessResponse[List[Dict]]:
     """List all permission sets"""
     from api.services import permissions
@@ -441,24 +324,12 @@ async def get_permission_sets_endpoint(request: Request) -> SuccessResponse[List
 
     require_perm("system.manage_permissions")(lambda: None)()
 
-    try:
-        result = await permissions.get_all_permission_sets()
-        data = [PermissionSetModel(**s).model_dump() for s in result]
-        return SuccessResponse(
-            data=data,
-            message=f"Retrieved {len(data)} permission sets"
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to get permission sets", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to get permission sets"
-            ).model_dump(mode='json')
-        )
+    result = await permissions.get_all_permission_sets()
+    data = [PermissionSetModel(**s).model_dump() for s in result]
+    return SuccessResponse(
+        data=data,
+        message=f"Retrieved {len(data)} permission sets"
+    )
 
 
 @router.post(
@@ -467,6 +338,7 @@ async def get_permission_sets_endpoint(request: Request) -> SuccessResponse[List
     status_code=status.HTTP_201_CREATED,
     name="permissions_create_permission_set"
 )
+@handle_exceptions("create permission set")
 async def create_permission_set_endpoint(request: Request) -> SuccessResponse[Dict]:
     """Create a new permission set"""
     from api.services import permissions
@@ -476,30 +348,18 @@ async def create_permission_set_endpoint(request: Request) -> SuccessResponse[Di
     user = request.state.user
     require_perm("system.manage_permissions")(lambda: None)()
 
-    try:
-        body_data = await request.json()
-        body = CreatePermissionSetRequest(**body_data)
-        result = await permissions.create_permission_set(
-            set_name=body.set_name,
-            set_description=body.set_description,
-            team_id=body.team_id,
-            created_by=get_user_id(user)
-        )
-        return SuccessResponse(
-            data=PermissionSetModel(**result).model_dump(),
-            message="Permission set created successfully"
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to create permission set", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to create permission set"
-            ).model_dump(mode='json')
-        )
+    body_data = await request.json()
+    body = CreatePermissionSetRequest(**body_data)
+    result = await permissions.create_permission_set(
+        set_name=body.set_name,
+        set_description=body.set_description,
+        team_id=body.team_id,
+        created_by=get_user_id(user)
+    )
+    return SuccessResponse(
+        data=PermissionSetModel(**result).model_dump(),
+        message="Permission set created successfully"
+    )
 
 
 @router.post(
@@ -508,6 +368,7 @@ async def create_permission_set_endpoint(request: Request) -> SuccessResponse[Di
     status_code=status.HTTP_201_CREATED,
     name="permissions_assign_permission_set"
 )
+@handle_exceptions("assign permission set", resource_type="PermissionSet")
 async def assign_permission_set_endpoint(
     request: Request,
     set_id: str,
@@ -521,28 +382,16 @@ async def assign_permission_set_endpoint(
     current_user = request.state.user
     require_perm("system.manage_permissions")(lambda: None)()
 
-    try:
-        result = await permissions.assign_permission_set_to_user(
-            set_id=set_id,
-            user_id=user_id,
-            expires_at=expires_at,
-            assigning_user_id=get_user_id(current_user)
-        )
-        return SuccessResponse(
-            data=result,
-            message="Permission set assigned to user successfully"
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to assign permission set", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to assign permission set to user"
-            ).model_dump(mode='json')
-        )
+    result = await permissions.assign_permission_set_to_user(
+        set_id=set_id,
+        user_id=user_id,
+        expires_at=expires_at,
+        assigning_user_id=get_user_id(current_user)
+    )
+    return SuccessResponse(
+        data=result,
+        message="Permission set assigned to user successfully"
+    )
 
 
 @router.delete(
@@ -551,6 +400,7 @@ async def assign_permission_set_endpoint(
     status_code=status.HTTP_200_OK,
     name="permissions_unassign_permission_set"
 )
+@handle_exceptions("unassign permission set", resource_type="PermissionSet")
 async def unassign_permission_set_endpoint(request: Request, set_id: str, user_id: str) -> SuccessResponse[Dict]:
     """Unassign a permission set from a user"""
     from api.services import permissions
@@ -559,27 +409,15 @@ async def unassign_permission_set_endpoint(request: Request, set_id: str, user_i
     current_user = request.state.user
     require_perm("system.manage_permissions")(lambda: None)()
 
-    try:
-        result = await permissions.unassign_permission_set_from_user(
-            set_id=set_id,
-            user_id=user_id,
-            unassigning_user_id=get_user_id(current_user)
-        )
-        return SuccessResponse(
-            data=result,
-            message="Permission set unassigned from user successfully"
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to unassign permission set", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to unassign permission set from user"
-            ).model_dump(mode='json')
-        )
+    result = await permissions.unassign_permission_set_from_user(
+        set_id=set_id,
+        user_id=user_id,
+        unassigning_user_id=get_user_id(current_user)
+    )
+    return SuccessResponse(
+        data=result,
+        message="Permission set unassigned from user successfully"
+    )
 
 
 @router.post(
@@ -588,13 +426,9 @@ async def unassign_permission_set_endpoint(request: Request, set_id: str, user_i
     status_code=status.HTTP_200_OK,
     name="permissions_update_permission_set_grants"
 )
+@handle_exceptions("update permission set grants", resource_type="PermissionSet")
 async def update_permission_set_grants_endpoint(request: Request, set_id: str) -> SuccessResponse[Dict]:
-    """
-    Upsert permission grants for a permission set (Phase 2.5)
-
-    Similar to profile grants, but for permission sets.
-    Permission sets override profiles in the resolution order.
-    """
+    """Upsert permission grants for a permission set (Phase 2.5)"""
     from api.services import permissions
     from api.schemas.permission_models import PermissionSetGrant
     from permission_engine import require_perm
@@ -602,33 +436,19 @@ async def update_permission_set_grants_endpoint(request: Request, set_id: str) -
     user = request.state.user
     require_perm("system.manage_permissions")(lambda: None)()
 
-    try:
-        body_data = await request.json()
-        grants_list = [PermissionSetGrant(**g) for g in body_data]
+    body_data = await request.json()
+    grants_list = [PermissionSetGrant(**g) for g in body_data]
+    grants_dicts = [g.dict() for g in grants_list]
 
-        # Convert Pydantic models to dicts
-        grants_dicts = [g.dict() for g in grants_list]
-
-        result = await permissions.update_permission_set_grants(
-            set_id=set_id,
-            grants=grants_dicts,
-            modified_by=get_user_id(user)
-        )
-        return SuccessResponse(
-            data=result,
-            message="Permission set grants updated successfully"
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to upsert permission set grants", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to update permission set grants"
-            ).model_dump(mode='json')
-        )
+    result = await permissions.update_permission_set_grants(
+        set_id=set_id,
+        grants=grants_dicts,
+        modified_by=get_user_id(user)
+    )
+    return SuccessResponse(
+        data=result,
+        message="Permission set grants updated successfully"
+    )
 
 
 @router.get(
@@ -637,6 +457,7 @@ async def update_permission_set_grants_endpoint(request: Request, set_id: str) -
     status_code=status.HTTP_200_OK,
     name="permissions_get_permission_set_grants"
 )
+@handle_exceptions("get permission set grants", resource_type="PermissionSet")
 async def get_permission_set_grants_endpoint(request: Request, set_id: str) -> SuccessResponse[List[Dict]]:
     """Get all permission grants for a permission set (Phase 2.5)"""
     from api.services import permissions
@@ -644,23 +465,11 @@ async def get_permission_set_grants_endpoint(request: Request, set_id: str) -> S
 
     require_perm("system.manage_permissions")(lambda: None)()
 
-    try:
-        result = await permissions.get_permission_set_grants(set_id)
-        return SuccessResponse(
-            data=result,
-            message="Permission set grants retrieved successfully"
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to get permission set grants", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to get permission set grants"
-            ).model_dump(mode='json')
-        )
+    result = await permissions.get_permission_set_grants(set_id)
+    return SuccessResponse(
+        data=result,
+        message="Permission set grants retrieved successfully"
+    )
 
 
 @router.delete(
@@ -669,6 +478,7 @@ async def get_permission_set_grants_endpoint(request: Request, set_id: str) -> S
     status_code=status.HTTP_200_OK,
     name="permissions_delete_permission_set_grant"
 )
+@handle_exceptions("delete permission set grant", resource_type="PermissionSet")
 async def delete_permission_set_grant_endpoint(
     request: Request,
     set_id: str,
@@ -681,27 +491,15 @@ async def delete_permission_set_grant_endpoint(
     current_user = request.state.user
     require_perm("system.manage_permissions")(lambda: None)()
 
-    try:
-        result = await permissions.delete_permission_set_grant(
-            set_id=set_id,
-            permission_id=permission_id,
-            deleting_user_id=get_user_id(current_user)
-        )
-        return SuccessResponse(
-            data=result,
-            message="Permission set grant deleted successfully"
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to delete permission set grant", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to delete permission set grant"
-            ).model_dump(mode='json')
-        )
+    result = await permissions.delete_permission_set_grant(
+        set_id=set_id,
+        permission_id=permission_id,
+        deleting_user_id=get_user_id(current_user)
+    )
+    return SuccessResponse(
+        data=result,
+        message="Permission set grant deleted successfully"
+    )
 
 
 # ===== Phase 2.5: Cache Invalidation =====
@@ -712,6 +510,7 @@ async def delete_permission_set_grant_endpoint(
     status_code=status.HTTP_200_OK,
     name="permissions_invalidate_user_permissions"
 )
+@handle_exceptions("invalidate user permissions", resource_type="User")
 async def invalidate_user_permissions_endpoint(request: Request, user_id: str) -> SuccessResponse[Dict]:
     """
     Invalidate permission cache for a specific user (Phase 2.5)
@@ -725,26 +524,14 @@ async def invalidate_user_permissions_endpoint(request: Request, user_id: str) -
     current_user = request.state.user
     require_perm("system.manage_permissions")(lambda: None)()
 
-    try:
-        result = await permissions.invalidate_user_permissions(
-            user_id=user_id,
-            invalidating_user_id=get_user_id(current_user)
-        )
-        return SuccessResponse(
-            data=result,
-            message="User permissions cache invalidated successfully"
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to invalidate permission cache", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to invalidate permission cache"
-            ).model_dump(mode='json')
-        )
+    result = await permissions.invalidate_user_permissions(
+        user_id=user_id,
+        invalidating_user_id=get_user_id(current_user)
+    )
+    return SuccessResponse(
+        data=result,
+        message="User permissions cache invalidated successfully"
+    )
 
 
 # ===== Effective Permissions Endpoint =====
@@ -755,6 +542,7 @@ async def invalidate_user_permissions_endpoint(request: Request, user_id: str) -
     status_code=status.HTTP_200_OK,
     name="permissions_get_effective"
 )
+@handle_exceptions("get effective permissions")
 async def get_effective_permissions_endpoint(
     request: Request,
     team_id: Optional[str] = Query(None),
@@ -777,40 +565,23 @@ async def get_effective_permissions_endpoint(
     """
     from permission_engine import get_permission_engine
 
-    # Permission check is done via Depends(get_current_user) already
+    engine = get_permission_engine()
+    user_id = get_user_id(current_user)
 
-    try:
-        engine = get_permission_engine()
-        user_id = get_user_id(current_user)
+    role = current_user.get("role", "user")
+    is_founder = role == "founder"
 
-        # Get user's role
-        role = current_user.get("role", "user")
-        is_founder = role == "founder"
+    context = engine.load_user_context(user_id, team_id)
 
-        # Get effective permissions by loading user context
-        context = engine.load_user_context(user_id, team_id)
+    data = {
+        "user_id": user_id,
+        "role": role,
+        "is_founder": is_founder,
+        "team_id": team_id,
+        "effective_permissions": context.effective_permissions
+    }
 
-        data = {
-            "user_id": user_id,
-            "role": role,
-            "is_founder": is_founder,
-            "team_id": team_id,
-            "effective_permissions": context.effective_permissions
-        }
-
-        return SuccessResponse(
-            data=data,
-            message="Effective permissions retrieved successfully"
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to get effective permissions", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to get effective permissions"
-            ).model_dump(mode='json')
-        )
+    return SuccessResponse(
+        data=data,
+        message="Effective permissions retrieved successfully"
+    )

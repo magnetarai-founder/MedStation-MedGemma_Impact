@@ -244,6 +244,31 @@ class AuthService:
             created_at=created_at
         )
 
+    def get_all_users(self) -> list[User]:
+        """Get all users from the database.
+
+        Returns:
+            List of User objects (without passwords)
+        """
+        with sqlite3.connect(str(self.db_path)) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT user_id, username, device_id, created_at
+                FROM users
+                ORDER BY created_at ASC
+            """)
+            rows = cursor.fetchall()
+
+        return [
+            User(
+                user_id=row[0],
+                username=row[1],
+                device_id=row[2],
+                created_at=row[3]
+            )
+            for row in rows
+        ]
+
     def authenticate(self, username: str, password: str, device_fingerprint: Optional[str] = None) -> Optional[Dict]:
         """
         Authenticate user and return JWT token with user info
@@ -589,19 +614,20 @@ def extract_websocket_token(websocket, query_token: Optional[str] = None) -> Opt
     """
     Extract JWT token from WebSocket request.
 
-    SECURITY: Prefers Sec-WebSocket-Protocol header over query param to avoid
-    token leakage in server logs and browser history.
+    SECURITY: Only accepts token via Sec-WebSocket-Protocol header.
+    Query param fallback has been REMOVED to prevent token leakage
+    in server logs, browser history, and referrer headers.
 
     Protocol format: "jwt-<token>" or "bearer.<token>"
 
     Args:
         websocket: FastAPI WebSocket instance
-        query_token: Token from query parameter (fallback, deprecated)
+        query_token: DEPRECATED - Ignored for security reasons
 
     Returns:
         JWT token string or None
     """
-    # 1. Prefer Sec-WebSocket-Protocol header (secure)
+    # Only accept Sec-WebSocket-Protocol header (secure method)
     protocols = websocket.headers.get("sec-websocket-protocol", "")
     for protocol in protocols.split(","):
         protocol = protocol.strip()
@@ -611,10 +637,18 @@ def extract_websocket_token(websocket, query_token: Optional[str] = None) -> Opt
         if protocol.startswith("bearer."):
             return protocol[7:]  # Remove "bearer." prefix
 
-    # 2. Fallback to query param (deprecated but supported for backwards compat)
+    # SECURITY: Query param fallback REMOVED
+    # Token in query params is a security risk:
+    # - Logged in server access logs
+    # - Stored in browser history
+    # - Leaked via Referer header
     if query_token:
-        logger.debug("WebSocket auth via query param (deprecated - use Sec-WebSocket-Protocol header)")
-        return query_token
+        logger.warning(
+            "SECURITY: WebSocket query param token rejected. "
+            "Use Sec-WebSocket-Protocol header instead."
+        )
+        # Return None instead of accepting the token
+        return None
 
     return None
 
@@ -623,9 +657,12 @@ async def verify_websocket_auth(websocket, query_token: Optional[str] = None) ->
     """
     Verify WebSocket authentication and return user payload.
 
+    SECURITY: query_token parameter is DEPRECATED and ignored.
+    Clients must use Sec-WebSocket-Protocol header for authentication.
+
     Args:
         websocket: FastAPI WebSocket instance
-        query_token: Token from query parameter (fallback)
+        query_token: DEPRECATED - Ignored for security reasons
 
     Returns:
         User payload dict if authenticated, None otherwise

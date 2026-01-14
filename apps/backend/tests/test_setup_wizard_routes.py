@@ -688,7 +688,12 @@ class TestCreateAccount:
             "founder_setup_complete": False
         }
 
+        # Mock auth_service.get_all_users() to return empty list (no existing users)
+        mock_auth = MagicMock()
+        mock_auth.get_all_users.return_value = []
+
         with patch('api.routes.setup_wizard_routes.get_setup_wizard', return_value=mock_setup_wizard), \
+             patch('api.routes.setup_wizard_routes.auth_service', mock_auth), \
              patch('api.routes.setup_wizard_routes.limiter.limit', lambda x: lambda f: f):
             response = client.post(
                 "/api/v1/setup/account",
@@ -706,8 +711,12 @@ class TestCreateAccount:
 
     def test_password_mismatch(self, client, mock_setup_wizard):
         """Test password mismatch returns success=False but still 201 status"""
-        # Password validation happens before wizard call, so no need to mock wizard
-        with patch('api.routes.setup_wizard_routes.get_setup_wizard', return_value=mock_setup_wizard):
+        # Mock auth_service.get_all_users() to return empty list (no existing users)
+        mock_auth = MagicMock()
+        mock_auth.get_all_users.return_value = []
+
+        with patch('api.routes.setup_wizard_routes.get_setup_wizard', return_value=mock_setup_wizard), \
+             patch('api.routes.setup_wizard_routes.auth_service', mock_auth):
             response = client.post(
                 "/api/v1/setup/account",
                 json={
@@ -731,7 +740,12 @@ class TestCreateAccount:
             "founder_setup_complete": True
         }
 
+        # Mock auth_service.get_all_users() to return empty list (no existing users)
+        mock_auth = MagicMock()
+        mock_auth.get_all_users.return_value = []
+
         with patch('api.routes.setup_wizard_routes.get_setup_wizard', return_value=mock_setup_wizard), \
+             patch('api.routes.setup_wizard_routes.auth_service', mock_auth), \
              patch('api.routes.setup_wizard_routes.limiter.limit', lambda x: lambda f: f):
             response = client.post(
                 "/api/v1/setup/account",
@@ -841,7 +855,12 @@ class TestEdgeCases:
             "founder_setup_complete": False
         }
 
-        with patch('api.routes.setup_wizard_routes.get_setup_wizard', return_value=mock_setup_wizard):
+        # Mock auth_service.get_all_users() to return empty list (no existing users)
+        mock_auth = MagicMock()
+        mock_auth.get_all_users.return_value = []
+
+        with patch('api.routes.setup_wizard_routes.get_setup_wizard', return_value=mock_setup_wizard), \
+             patch('api.routes.setup_wizard_routes.auth_service', mock_auth):
             # ASCII-only usernames should work
             response = client.post(
                 "/api/v1/setup/account",
@@ -915,8 +934,13 @@ class TestIntegration:
         }
         mock_setup_wizard.complete_setup.return_value = True
 
+        # Mock auth_service.get_all_users() to return empty list (no existing users)
+        mock_auth = MagicMock()
+        mock_auth.get_all_users.return_value = []
+
         with patch('api.routes.setup_wizard_routes.get_setup_wizard', return_value=mock_setup_wizard), \
-             patch('api.routes.setup_wizard_routes.get_founder_wizard', return_value=mock_founder_wizard):
+             patch('api.routes.setup_wizard_routes.get_founder_wizard', return_value=mock_founder_wizard), \
+             patch('api.routes.setup_wizard_routes.auth_service', mock_auth):
 
             # Step 1: Check Ollama
             response = client.get("/api/v1/setup/ollama")

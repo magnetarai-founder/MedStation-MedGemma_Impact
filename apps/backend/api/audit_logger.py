@@ -11,6 +11,7 @@ Features:
 - Admin-only viewing (Super Admin + Admin roles)
 - 90-day retention with automatic cleanup
 - CSV export for compliance reviews
+- Fallback file queue when database unavailable (SECURITY)
 
 Note: Currently uses unencrypted SQLite. For production deployments requiring
 encryption at rest, enable filesystem-level encryption (LUKS, FileVault, BitLocker)
@@ -23,6 +24,8 @@ from pathlib import Path
 from datetime import datetime, timedelta, UTC
 from typing import Optional, Dict, Any, List, Callable, TypeVar
 from functools import wraps
+from threading import RLock
+from collections import deque
 
 F = TypeVar('F', bound=Callable[..., Any])
 import logging
@@ -33,6 +36,16 @@ from fastapi import Request
 from api.audit_actions import AuditEntry, AuditAction
 
 logger = logging.getLogger(__name__)
+
+# ============================================================================
+# FALLBACK QUEUE FOR AUDIT FAILURES
+# ============================================================================
+# When database writes fail, queue entries for retry to prevent audit gaps
+
+_fallback_queue_lock = RLock()
+_fallback_queue: deque[Dict[str, Any]] = deque(maxlen=10000)  # Cap at 10K entries
+_consecutive_failures: int = 0
+MAX_CONSECUTIVE_FAILURES = 5  # Alert after this many failures
 
 
 class AuditLogger:
@@ -118,7 +131,7 @@ class AuditLogger:
         details: Optional[Dict[str, Any]] = None
     ) -> int:
         """
-        Log an audit event
+        Log an audit event with fallback queue for reliability.
 
         Args:
             user_id: User performing the action
@@ -130,23 +143,37 @@ class AuditLogger:
             details: Additional context as JSON (will be sanitized)
 
         Returns:
-            ID of created audit log entry
+            ID of created audit log entry, or -1 if queued for retry
         """
+        global _consecutive_failures
+
+        # Import sanitization utility
         try:
-            # Import sanitization utility
-            try:
-                from .utils import sanitize_for_log
-            except ImportError:
-                from utils import sanitize_for_log
+            from .utils import sanitize_for_log
+        except ImportError:
+            from utils import sanitize_for_log
 
-            conn = sqlite3.connect(str(self.db_path))
+        timestamp = datetime.now(UTC).isoformat()
+
+        # Sanitize details before storing
+        sanitized_details = sanitize_for_log(details) if details else None
+        details_json = json.dumps(sanitized_details) if sanitized_details else None
+
+        # Prepare entry for both DB write and potential fallback
+        entry_data = {
+            "user_id": user_id,
+            "action": action,
+            "resource": resource,
+            "resource_id": resource_id,
+            "ip_address": ip_address,
+            "user_agent": user_agent,
+            "timestamp": timestamp,
+            "details_json": details_json
+        }
+
+        try:
+            conn = sqlite3.connect(str(self.db_path), timeout=10.0)
             cursor = conn.cursor()
-
-            timestamp = datetime.now(UTC).isoformat()
-
-            # Sanitize details before storing
-            sanitized_details = sanitize_for_log(details) if details else None
-            details_json = json.dumps(sanitized_details) if sanitized_details else None
 
             cursor.execute("""
                 INSERT INTO audit_log
@@ -167,13 +194,101 @@ class AuditLogger:
             conn.commit()
             conn.close()
 
+            # Reset failure counter on success
+            _consecutive_failures = 0
+
+            # Try to flush any queued entries
+            self._flush_fallback_queue()
+
             logger.debug(f"Audit log created: {action} by {user_id}")
             return audit_id
 
-        except Exception as e:
-            logger.error(f"Failed to create audit log: {e}")
-            # Don't raise - audit failures shouldn't break the app
+        except sqlite3.Error as e:
+            # Database-specific errors - queue for retry
+            self._queue_fallback_entry(entry_data)
+            _consecutive_failures += 1
+
+            if _consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
+                logger.critical(
+                    f"SECURITY ALERT: Audit logging failed {_consecutive_failures} times consecutively. "
+                    f"Latest error: {e}. {len(_fallback_queue)} entries queued."
+                )
+            else:
+                logger.error(f"Failed to create audit log (queued for retry): {e}")
+
             return -1
+
+        except Exception as e:
+            # Unexpected errors - still queue but log differently
+            self._queue_fallback_entry(entry_data)
+            logger.error(f"Unexpected audit log error (queued for retry): {e}")
+            return -1
+
+    def _queue_fallback_entry(self, entry_data: Dict[str, Any]) -> None:
+        """Add entry to fallback queue (thread-safe)"""
+        with _fallback_queue_lock:
+            _fallback_queue.append(entry_data)
+            queue_size = len(_fallback_queue)
+
+        if queue_size >= 1000 and queue_size % 1000 == 0:
+            logger.warning(f"Audit fallback queue has {queue_size} entries waiting")
+
+    def _flush_fallback_queue(self) -> int:
+        """Attempt to flush queued entries to database. Returns count flushed."""
+        flushed = 0
+
+        with _fallback_queue_lock:
+            if not _fallback_queue:
+                return 0
+
+            # Take a snapshot to avoid holding lock during DB operations
+            entries_to_flush = list(_fallback_queue)
+            _fallback_queue.clear()
+
+        try:
+            conn = sqlite3.connect(str(self.db_path), timeout=10.0)
+            cursor = conn.cursor()
+
+            for entry in entries_to_flush:
+                try:
+                    cursor.execute("""
+                        INSERT INTO audit_log
+                        (user_id, action, resource, resource_id, ip_address, user_agent, timestamp, details)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        entry["user_id"],
+                        entry["action"],
+                        entry["resource"],
+                        entry["resource_id"],
+                        entry["ip_address"],
+                        entry["user_agent"],
+                        entry["timestamp"],
+                        entry["details_json"]
+                    ))
+                    flushed += 1
+                except sqlite3.Error:
+                    # Re-queue failed entries
+                    with _fallback_queue_lock:
+                        _fallback_queue.append(entry)
+
+            conn.commit()
+            conn.close()
+
+            if flushed > 0:
+                logger.info(f"Flushed {flushed} queued audit entries to database")
+
+        except sqlite3.Error as e:
+            # Re-queue all entries on connection failure
+            with _fallback_queue_lock:
+                _fallback_queue.extend(entries_to_flush)
+            logger.warning(f"Failed to flush audit queue: {e}")
+
+        return flushed
+
+    def get_queue_size(self) -> int:
+        """Get current size of fallback queue"""
+        with _fallback_queue_lock:
+            return len(_fallback_queue)
 
     def get_logs(
         self,

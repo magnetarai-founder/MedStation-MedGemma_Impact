@@ -721,7 +721,7 @@ class TestEdgeCases:
                 assert data["data"]["success"] is True  # Default to True
 
     def test_service_timeout_handling(self, client):
-        """Test handling of service timeout"""
+        """Test handling of service timeout - returns 504 Gateway Timeout"""
         import asyncio
 
         async def slow_service():
@@ -733,8 +733,8 @@ class TestEdgeCases:
             with patch('api.routes.admin.record_audit_event'):
                 response = client.post("/api/v1/admin/reset-settings")
 
-                # Should return 500 for unhandled timeout
-                assert response.status_code == 500
+                # Should return 504 Gateway Timeout for timeout errors
+                assert response.status_code == 504
 
     def test_unicode_in_response_message(self, client):
         """Test handling of unicode in service response"""

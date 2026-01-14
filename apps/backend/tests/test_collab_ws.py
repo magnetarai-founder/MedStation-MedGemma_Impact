@@ -546,16 +546,17 @@ class TestEdgeCases:
 class TestWebSocketAuthFlow:
     """Tests for WebSocket authentication flow"""
 
-    def test_extract_token_from_query_param(self):
-        """Token extracted from query param"""
+    def test_extract_token_rejects_query_param_for_security(self):
+        """Query param tokens are rejected for security (prevent URL logging exposure)"""
         from api.auth_middleware import extract_websocket_token
 
         mock_ws = Mock(spec=WebSocket)
         mock_ws.headers = {}
 
+        # Query param tokens are now rejected for security reasons
         result = extract_websocket_token(mock_ws, "test-token")
 
-        assert result == "test-token"
+        assert result is None  # Rejected for security
 
     def test_extract_token_from_header(self):
         """Token extracted from header"""
