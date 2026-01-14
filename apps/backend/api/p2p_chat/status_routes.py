@@ -13,7 +13,7 @@ from api.p2p_chat_models import (
     PeerListResponse,
     P2PStatusResponse,
 )
-from api.p2p_chat_service import get_p2p_chat_service, init_p2p_chat_service
+from api.services.p2p_chat import get_p2p_chat_service, init_p2p_chat_service
 
 logger = logging.getLogger(__name__)
 

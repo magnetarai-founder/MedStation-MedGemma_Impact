@@ -197,7 +197,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Initialize P2P Chat Service (Core feature for offline/LAN operation)
     try:
-        from api.p2p_chat_service import init_p2p_chat_service
+        from api.services.p2p_chat import init_p2p_chat_service
         import socket
 
         # Get hostname for device identification
@@ -245,7 +245,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Stop P2P Chat Service
     try:
-        from api.p2p_chat_service import get_p2p_chat_service
+        from api.services.p2p_chat import get_p2p_chat_service
         p2p_service = get_p2p_chat_service()
         if p2p_service:
             await p2p_service.stop()

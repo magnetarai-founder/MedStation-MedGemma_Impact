@@ -17,7 +17,7 @@ from api.p2p_chat_models import (
     ChannelListResponse,
     ChannelType,
 )
-from api.p2p_chat_service import get_p2p_chat_service
+from api.services.p2p_chat import get_p2p_chat_service
 from api.auth_middleware import get_current_user
 from api.p2p_chat.state import get_channel_invitations
 from api.p2p_chat.websocket_routes import broadcast_event

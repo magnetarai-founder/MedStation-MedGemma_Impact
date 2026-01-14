@@ -308,7 +308,7 @@ class WorkflowP2PSync:
 
         # Integrate with p2p_chat_service to actually broadcast
         try:
-            from p2p_chat_service import get_p2p_chat_service
+            from api.services.p2p_chat import get_p2p_chat_service
             p2p_service = get_p2p_chat_service()
 
             if p2p_service and p2p_service.is_running:

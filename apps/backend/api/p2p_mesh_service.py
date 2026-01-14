@@ -19,7 +19,7 @@ from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, Request, Depends
 import logging
 
-from api.p2p_chat_service import get_p2p_chat_service, init_p2p_chat_service
+from api.services.p2p_chat import get_p2p_chat_service, init_p2p_chat_service
 from api.rate_limiter import connection_code_limiter, get_client_ip
 from api.auth_middleware import get_current_user
 

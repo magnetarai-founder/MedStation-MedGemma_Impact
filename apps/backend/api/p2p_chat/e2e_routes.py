@@ -8,7 +8,7 @@ from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, Request
 import logging
 
-from api.p2p_chat_service import get_p2p_chat_service
+from api.services.p2p_chat import get_p2p_chat_service
 
 logger = logging.getLogger(__name__)
 

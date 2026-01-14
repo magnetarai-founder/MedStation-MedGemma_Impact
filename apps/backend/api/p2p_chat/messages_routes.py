@@ -14,7 +14,7 @@ from api.p2p_chat_models import (
     SendMessageRequest,
     MessageListResponse,
 )
-from api.p2p_chat_service import get_p2p_chat_service
+from api.services.p2p_chat import get_p2p_chat_service
 from api.auth_middleware import get_current_user
 from api.p2p_chat.state import get_read_receipts, get_all_read_receipts
 from api.p2p_chat.websocket_routes import broadcast_event

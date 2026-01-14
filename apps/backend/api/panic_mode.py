@@ -92,7 +92,7 @@ class PanicMode:
         """Close all P2P connections immediately"""
         try:
             # Import P2P service and close all connections
-            from p2p_chat_service import get_p2p_chat_service
+            from api.services.p2p_chat import get_p2p_chat_service
             p2p = get_p2p_chat_service()
 
             if p2p and hasattr(p2p, 'close_all_connections'):
