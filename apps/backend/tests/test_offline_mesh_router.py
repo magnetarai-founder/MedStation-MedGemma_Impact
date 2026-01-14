@@ -972,14 +972,17 @@ class TestErrorHandling:
             assert "Service unavailable" in response.json()["detail"]
 
     def test_file_share_exception_handling(self, client, mock_file_share):
-        """Test exception handling in file share endpoints"""
+        """Test exception handling in file share endpoints - returns standardized error"""
         mock_file_share.get_shared_files = MagicMock(side_effect=Exception("Storage error"))
 
         with patch('api.offline_mesh.files_routes.get_file_share', return_value=mock_file_share):
             response = client.get("/api/v1/mesh/files/list")
 
             assert response.status_code == 500
-            assert "Storage error" in response.json()["detail"]
+            data = response.json()
+            # Standardized error response uses 'detail' wrapper with MagnetarException structure
+            assert data["detail"]["code"] == "INTERNAL_ERROR"
+            assert "list shared files" in data["detail"]["message"]
 
     def test_relay_exception_handling(self, client, mock_mesh_relay):
         """Test exception handling in relay endpoints"""

@@ -34,6 +34,7 @@ except ImportError:
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 from api.middleware.rate_limit import limiter, RATE_LIMITS
 from api.auth_middleware import auth_service
+from api.core.exceptions import handle_exceptions
 
 logger = logging.getLogger(__name__)
 
@@ -158,57 +159,32 @@ class CompleteSetupResponse(BaseModel):
     description="Get overall setup wizard status (public endpoint - no authentication required)"
 )
 @limiter.limit(RATE_LIMITS["setup_status"])
+@handle_exceptions("get setup status")
 async def get_setup_status(request: Request) -> SuccessResponse[SetupStatusResponse]:
     """
     Get overall setup status
 
     Setup is complete if ANY users exist in the database.
     This determines whether to show wizard or login screen.
-
-    Logic:
-    - No users exist → setup_completed = False (show wizard)
-    - Users exist → setup_completed = True (show login)
-
-    Founder login is always available via hardcoded credentials,
-    independent of setup status.
-
-    Public endpoint - no authentication required.
-
-    Returns:
-        Setup status including founder setup completion
     """
-    try:
-        # Check if any users exist in the database
-        users = auth_service.get_all_users()
-        has_users = len(users) > 0
+    # Check if any users exist in the database
+    users = auth_service.get_all_users()
+    has_users = len(users) > 0
 
-        founder_wizard = get_founder_wizard()
-        founder_info = founder_wizard.get_setup_info()
+    founder_wizard = get_founder_wizard()
+    founder_info = founder_wizard.get_setup_info()
 
-        status_data = SetupStatusResponse(
-            setup_completed=has_users,  # True if any users exist
-            founder_setup_completed=founder_info["setup_completed"],
-            founder_password_storage=founder_info.get("password_storage_type"),
-            is_macos=founder_info.get("is_macos", False)
-        )
+    status_data = SetupStatusResponse(
+        setup_completed=has_users,
+        founder_setup_completed=founder_info["setup_completed"],
+        founder_password_storage=founder_info.get("password_storage_type"),
+        is_macos=founder_info.get("is_macos", False)
+    )
 
-        return SuccessResponse(
-            data=status_data,
-            message="Setup status retrieved successfully"
-        )
-
-    except HTTPException:
-        raise
-
-    except Exception as e:
-        logger.error(f"Failed to get setup status", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve setup status"
-            ).model_dump(mode='json')
-        )
+    return SuccessResponse(
+        data=status_data,
+        message="Setup status retrieved successfully"
+    )
 
 
 @router.get(
@@ -220,44 +196,18 @@ async def get_setup_status(request: Request) -> SuccessResponse[SetupStatusRespo
     description="Check Ollama installation and service status (public endpoint)"
 )
 @limiter.limit(RATE_LIMITS["setup_status"])
+@handle_exceptions("check Ollama status")
 async def check_ollama(request: Request) -> SuccessResponse[OllamaStatusResponse]:
-    """
-    Check Ollama installation and service status
+    """Check Ollama installation and service status"""
+    wizard = get_setup_wizard()
+    ollama_status = await wizard.check_ollama_status()
 
-    Detects:
-    - If Ollama binary is installed
-    - If Ollama service is running
-    - Ollama version
-    - Platform-specific installation instructions
+    status_data = OllamaStatusResponse(**ollama_status)
 
-    Public endpoint - no authentication required (setup phase).
-
-    Returns:
-        Ollama installation and service status
-    """
-    try:
-        wizard = get_setup_wizard()
-        ollama_status = await wizard.check_ollama_status()
-
-        status_data = OllamaStatusResponse(**ollama_status)
-
-        return SuccessResponse(
-            data=status_data,
-            message="Ollama status checked successfully"
-        )
-
-    except HTTPException:
-        raise
-
-    except Exception as e:
-        logger.error(f"Failed to check Ollama status", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to check Ollama status"
-            ).model_dump(mode='json')
-        )
+    return SuccessResponse(
+        data=status_data,
+        message="Ollama status checked successfully"
+    )
 
 
 @router.get(
@@ -269,43 +219,18 @@ async def check_ollama(request: Request) -> SuccessResponse[OllamaStatusResponse
     description="Detect system resources and recommend tier (public endpoint)"
 )
 @limiter.limit(RATE_LIMITS["setup_status"])
+@handle_exceptions("detect system resources")
 async def get_system_resources(request: Request) -> SuccessResponse[SystemResourcesResponse]:
-    """
-    Detect system resources (RAM, disk space)
+    """Detect system resources (RAM, disk space)"""
+    wizard = get_setup_wizard()
+    resources = await wizard.detect_system_resources()
 
-    Returns recommended tier based on available RAM:
-    - Essential: 8GB+
-    - Balanced: 16GB+
-    - Power User: 32GB+
+    resources_data = SystemResourcesResponse(**resources)
 
-    Public endpoint - no authentication required (setup phase).
-
-    Returns:
-        System resources and recommended tier
-    """
-    try:
-        wizard = get_setup_wizard()
-        resources = await wizard.detect_system_resources()
-
-        resources_data = SystemResourcesResponse(**resources)
-
-        return SuccessResponse(
-            data=resources_data,
-            message=f"System resources detected ({resources_data.recommended_tier} tier)"
-        )
-
-    except HTTPException:
-        raise
-
-    except Exception as e:
-        logger.error(f"Failed to detect system resources", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to detect system resources"
-            ).model_dump(mode='json')
-        )
+    return SuccessResponse(
+        data=resources_data,
+        message=f"System resources detected ({resources_data.recommended_tier} tier)"
+    )
 
 
 @router.get(
@@ -317,45 +242,18 @@ async def get_system_resources(request: Request) -> SuccessResponse[SystemResour
     description="Get recommended models for a tier based on system resources (public endpoint)"
 )
 @limiter.limit(RATE_LIMITS["setup_config"])
+@handle_exceptions("get model recommendations")
 async def get_model_recommendations(request: Request, tier: Optional[str] = None) -> SuccessResponse[ModelRecommendationsResponse]:
-    """
-    Get recommended models for a tier
+    """Get recommended models for a tier"""
+    wizard = get_setup_wizard()
+    recommendations = await wizard.load_model_recommendations(tier=tier)
 
-    Args:
-        tier: Optional tier (essential|balanced|power_user)
-              If not provided, auto-detects based on system RAM
+    recommendations_data = ModelRecommendationsResponse(**recommendations)
 
-    Returns model recommendations from config/recommended_models.json
-    with hot slot suggestions.
-
-    Public endpoint - no authentication required (setup phase).
-
-    Returns:
-        Model recommendations and hot slot suggestions
-    """
-    try:
-        wizard = get_setup_wizard()
-        recommendations = await wizard.load_model_recommendations(tier=tier)
-
-        recommendations_data = ModelRecommendationsResponse(**recommendations)
-
-        return SuccessResponse(
-            data=recommendations_data,
-            message=f"Retrieved {len(recommendations_data.models)} recommended model{'s' if len(recommendations_data.models) != 1 else ''}"
-        )
-
-    except HTTPException:
-        raise
-
-    except Exception as e:
-        logger.error(f"Failed to get model recommendations", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve model recommendations"
-            ).model_dump(mode='json')
-        )
+    return SuccessResponse(
+        data=recommendations_data,
+        message=f"Retrieved {len(recommendations_data.models)} recommended model{'s' if len(recommendations_data.models) != 1 else ''}"
+    )
 
 
 @router.get(
@@ -367,40 +265,18 @@ async def get_model_recommendations(request: Request, tier: Optional[str] = None
     description="Get list of installed Ollama models (public endpoint)"
 )
 @limiter.limit(RATE_LIMITS["setup_status"])
+@handle_exceptions("get installed models")
 async def get_installed_models(request: Request) -> SuccessResponse[InstalledModelsResponse]:
-    """
-    Get list of installed Ollama models
+    """Get list of installed Ollama models"""
+    wizard = get_setup_wizard()
+    models = await wizard.get_installed_models()
 
-    Queries Ollama API for currently installed models.
+    models_data = InstalledModelsResponse(models=models)
 
-    Public endpoint - no authentication required (setup phase).
-
-    Returns:
-        List of installed models with size and modification date
-    """
-    try:
-        wizard = get_setup_wizard()
-        models = await wizard.get_installed_models()
-
-        models_data = InstalledModelsResponse(models=models)
-
-        return SuccessResponse(
-            data=models_data,
-            message=f"Retrieved {len(models)} installed model{'s' if len(models) != 1 else ''}"
-        )
-
-    except HTTPException:
-        raise
-
-    except Exception as e:
-        logger.error(f"Failed to get installed models", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve installed models"
-            ).model_dump(mode='json')
-        )
+    return SuccessResponse(
+        data=models_data,
+        message=f"Retrieved {len(models)} installed model{'s' if len(models) != 1 else ''}"
+    )
 
 
 @router.post(
@@ -412,59 +288,31 @@ async def get_installed_models(request: Request) -> SuccessResponse[InstalledMod
     description="Download a model via Ollama (blocking, for progress use SSE endpoint)"
 )
 @limiter.limit(RATE_LIMITS["setup_download"])
+@handle_exceptions("download model")
 async def download_model(request: Request, body: DownloadModelRequest) -> SuccessResponse[DownloadModelResponse]:
-    """
-    Download a model via Ollama
+    """Download a model via Ollama (blocking)"""
+    wizard = get_setup_wizard()
 
-    This is a blocking endpoint that downloads the model synchronously.
-    For progress updates, use Server-Sent Events (SSE) endpoint.
+    # Download model (blocking)
+    success = await wizard.download_model(body.model_name)
 
-    Args:
-        model_name: Ollama model name (e.g., "qwen2.5-coder:7b-instruct")
+    if success:
+        download_data = DownloadModelResponse(
+            success=True,
+            model_name=body.model_name,
+            message=f"Model '{body.model_name}' downloaded successfully"
+        )
 
-    Public endpoint - no authentication required (setup phase).
-
-    Note: This can take several minutes for large models.
-
-    Returns:
-        Download success confirmation
-    """
-    try:
-        wizard = get_setup_wizard()
-
-        # Download model (blocking)
-        success = await wizard.download_model(body.model_name)
-
-        if success:
-            download_data = DownloadModelResponse(
-                success=True,
-                model_name=body.model_name,
-                message=f"Model '{body.model_name}' downloaded successfully"
-            )
-
-            return SuccessResponse(
-                data=download_data,
-                message=f"Model '{body.model_name}' downloaded successfully"
-            )
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.INTERNAL_ERROR,
-                    message=f"Failed to download model '{body.model_name}'"
-                ).model_dump(mode='json')
-            )
-
-    except HTTPException:
-        raise
-
-    except Exception as e:
-        logger.error(f"Failed to download model", exc_info=True)
+        return SuccessResponse(
+            data=download_data,
+            message=f"Model '{body.model_name}' downloaded successfully"
+        )
+    else:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
                 error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to download model"
+                message=f"Failed to download model '{body.model_name}'"
             ).model_dump(mode='json')
         )
 
@@ -483,25 +331,13 @@ async def download_model_progress(request: Request, model_name: str) -> Streamin
     Download a model with real-time progress updates via Server-Sent Events (SSE)
 
     This endpoint streams progress updates while downloading a model from Ollama.
-    The frontend can listen to this stream to show a progress bar.
-
-    Args:
-        model_name: Ollama model name (e.g., "qwen2.5-coder:7b-instruct")
-
-    Returns:
-        SSE stream with progress updates
-
-    Event format:
-        data: {"progress": 45.5, "status": "downloading", "model": "qwen2.5-coder:7b"}
-
-    Public endpoint - no authentication required (setup phase).
     """
     async def progress_generator():
         """Generate SSE events for download progress"""
         try:
             import subprocess
 
-            logger.info(f"⬇️ Starting download stream for: {model_name}")
+            logger.info(f"Starting download stream for: {model_name}")
 
             # Start Ollama pull process
             process = subprocess.Popen(
@@ -558,7 +394,7 @@ async def download_model_progress(request: Request, model_name: str) -> Streamin
                     "message": f"Model '{model_name}' downloaded successfully"
                 }
                 yield f"data: {json.dumps(final_data)}\n\n"
-                logger.info(f"✅ Download stream complete: {model_name}")
+                logger.info(f"Download stream complete: {model_name}")
             else:
                 error_data = {
                     "model": model_name,
@@ -567,13 +403,13 @@ async def download_model_progress(request: Request, model_name: str) -> Streamin
                     "message": f"Download failed with exit code {process.returncode}"
                 }
                 yield f"data: {json.dumps(error_data)}\n\n"
-                logger.error(f"❌ Download stream failed: {model_name}")
+                logger.error(f"Download stream failed: {model_name}")
 
             # Send done marker
             yield "data: [DONE]\n\n"
 
         except Exception as e:
-            logger.error(f"❌ Download stream error: {e}", exc_info=True)
+            logger.error(f"Download stream error: {e}", exc_info=True)
             error_data = {
                 "model": model_name,
                 "status": "error",
@@ -603,70 +439,36 @@ async def download_model_progress(request: Request, model_name: str) -> Streamin
     description="Configure hot slots (1-4 favorite models) for quick access (public endpoint)"
 )
 @limiter.limit(RATE_LIMITS["setup_config"])
+@handle_exceptions("configure hot slots")
 async def configure_hot_slots(request: Request, body: ConfigureHotSlotsRequest) -> SuccessResponse[ConfigureHotSlotsResponse]:
-    """
-    Configure hot slots (1-4 favorite models)
+    """Configure hot slots (1-4 favorite models)"""
+    wizard = get_setup_wizard()
 
-    Args:
-        slots: Mapping of slot number (1-4) to model name
-               Use null to clear a slot
-
-    Example:
-        {
-            "slots": {
-                "1": "gpt-oss:20b",
-                "2": "qwen2.5-coder:14b",
-                "3": "llama3.1:8b",
-                "4": null
-            }
-        }
-
-    Public endpoint - no authentication required (setup phase).
-
-    Returns:
-        Hot slots configuration confirmation
-    """
-    try:
-        wizard = get_setup_wizard()
-
-        # Validate slot numbers
-        for slot_num in body.slots.keys():
-            if slot_num not in [1, 2, 3, 4]:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=ErrorResponse(
-                        error_code=ErrorCode.VALIDATION_ERROR,
-                        message=f"Invalid slot number: {slot_num} (must be 1-4)"
-                    ).model_dump(mode='json')
-                )
-
-        # Configure hot slots
-        success = await wizard.configure_hot_slots(body.slots)
-
-        if success:
-            config_data = ConfigureHotSlotsResponse(
-                success=True,
-                message="Hot slots configured successfully"
-            )
-
-            return SuccessResponse(
-                data=config_data,
-                message="Hot slots configured successfully"
-            )
-        else:
+    # Validate slot numbers
+    for slot_num in body.slots.keys():
+        if slot_num not in [1, 2, 3, 4]:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail=ErrorResponse(
-                    error_code=ErrorCode.INTERNAL_ERROR,
-                    message="Failed to configure hot slots"
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message=f"Invalid slot number: {slot_num} (must be 1-4)"
                 ).model_dump(mode='json')
             )
 
-    except HTTPException:
-        raise
+    # Configure hot slots
+    success = await wizard.configure_hot_slots(body.slots)
 
-    except Exception as e:
-        logger.error(f"Failed to configure hot slots", exc_info=True)
+    if success:
+        config_data = ConfigureHotSlotsResponse(
+            success=True,
+            message="Hot slots configured successfully"
+        )
+
+        return SuccessResponse(
+            data=config_data,
+            message="Hot slots configured successfully"
+        )
+    else:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
@@ -685,87 +487,56 @@ async def configure_hot_slots(request: Request, body: ConfigureHotSlotsRequest) 
     description="Create local super_admin account (public endpoint - first-time setup only)"
 )
 @limiter.limit(RATE_LIMITS["setup_account"])
+@handle_exceptions("create account")
 async def create_account(request: Request, body: CreateAccountRequest) -> SuccessResponse[CreateAccountResponse]:
     """
     Create local super_admin account
 
     SECURITY: This endpoint is only available during first-time setup.
-    If any users already exist, this endpoint will reject the request
-    to prevent unauthorized admin account creation.
-
-    This endpoint:
-    1. Verifies no users exist (first-time setup only)
-    2. Optionally initializes founder password (if provided and not already setup)
-    3. Creates local super_admin user account
-    4. Returns user_id for session creation
-
-    Args:
-        username: Username (3-20 chars, alphanumeric + underscore)
-        password: Password (min 8 chars)
-        confirm_password: Password confirmation
-        founder_password: Optional founder password (for founder_rights setup)
-
-    Public endpoint - no authentication required (first-time setup only).
-
-    Returns:
-        Account creation confirmation with user ID
+    If any users already exist, this endpoint will reject the request.
     """
-    try:
-        # SECURITY: Verify setup is actually needed (no users exist)
-        existing_users = auth_service.get_all_users()
-        if len(existing_users) > 0:
-            logger.warning(
-                f"SECURITY: Attempted account creation after setup complete. "
-                f"IP: {request.client.host if request.client else 'unknown'}"
-            )
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.FORBIDDEN,
-                    message="Setup already completed. Cannot create accounts via setup wizard."
-                ).model_dump(mode='json')
-            )
-
-        # Validate password confirmation
-        if body.password != body.confirm_password:
-            account_data = CreateAccountResponse(
-                success=False,
-                error="Passwords do not match"
-            )
-
-            return SuccessResponse(
-                data=account_data,
-                message="Password validation failed"
-            )
-
-        wizard = get_setup_wizard()
-
-        # Create account
-        result = await wizard.create_local_account(
-            username=body.username,
-            password=body.password,
-            founder_password=body.founder_password
+    # SECURITY: Verify setup is actually needed (no users exist)
+    existing_users = auth_service.get_all_users()
+    if len(existing_users) > 0:
+        logger.warning(
+            f"SECURITY: Attempted account creation after setup complete. "
+            f"IP: {request.client.host if request.client else 'unknown'}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=ErrorResponse(
+                error_code=ErrorCode.FORBIDDEN,
+                message="Setup already completed. Cannot create accounts via setup wizard."
+            ).model_dump(mode='json')
         )
 
-        account_data = CreateAccountResponse(**result)
+    # Validate password confirmation
+    if body.password != body.confirm_password:
+        account_data = CreateAccountResponse(
+            success=False,
+            error="Passwords do not match"
+        )
 
         return SuccessResponse(
             data=account_data,
-            message="Account created successfully" if account_data.success else "Account creation failed"
+            message="Password validation failed"
         )
 
-    except HTTPException:
-        raise
+    wizard = get_setup_wizard()
 
-    except Exception as e:
-        logger.error(f"Failed to create account", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to create account"
-            ).model_dump(mode='json')
-        )
+    # Create account
+    result = await wizard.create_local_account(
+        username=body.username,
+        password=body.password,
+        founder_password=body.founder_password
+    )
+
+    account_data = CreateAccountResponse(**result)
+
+    return SuccessResponse(
+        data=account_data,
+        message="Account created successfully" if account_data.success else "Account creation failed"
+    )
 
 
 @router.post(
@@ -777,45 +548,23 @@ async def create_account(request: Request, body: CreateAccountRequest) -> Succes
     description="Mark setup wizard as completed (public endpoint)"
 )
 @limiter.limit(RATE_LIMITS["setup_config"])
+@handle_exceptions("complete setup")
 async def complete_setup(request: Request) -> SuccessResponse[CompleteSetupResponse]:
-    """
-    Mark setup wizard as completed
+    """Mark setup wizard as completed"""
+    wizard = get_setup_wizard()
+    success = await wizard.complete_setup()
 
-    This is called after all setup steps are finished.
+    if success:
+        complete_data = CompleteSetupResponse(
+            success=True,
+            message="Setup wizard completed successfully"
+        )
 
-    Public endpoint - no authentication required (setup phase).
-
-    Returns:
-        Setup completion confirmation
-    """
-    try:
-        wizard = get_setup_wizard()
-        success = await wizard.complete_setup()
-
-        if success:
-            complete_data = CompleteSetupResponse(
-                success=True,
-                message="Setup wizard completed successfully"
-            )
-
-            return SuccessResponse(
-                data=complete_data,
-                message="Setup wizard completed successfully"
-            )
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.INTERNAL_ERROR,
-                    message="Failed to complete setup"
-                ).model_dump(mode='json')
-            )
-
-    except HTTPException:
-        raise
-
-    except Exception as e:
-        logger.error(f"Failed to complete setup", exc_info=True)
+        return SuccessResponse(
+            data=complete_data,
+            message="Setup wizard completed successfully"
+        )
+    else:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(

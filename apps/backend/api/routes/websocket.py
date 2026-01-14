@@ -222,8 +222,14 @@ async def dispatch_mesh_message(source_peer_id: str, message_type: str, payload:
 
             if result:
                 responses.append(result)
+        except (ValueError, TypeError) as e:
+            logger.warning(f"Mesh handler validation error for {message_type}: {e}")
+            responses.append({"error": f"validation: {e}"})
+        except (asyncio.TimeoutError, TimeoutError) as e:
+            logger.warning(f"Mesh handler timeout for {message_type}: {e}")
+            responses.append({"error": "timeout"})
         except Exception as e:
-            logger.error(f"Mesh handler error for {message_type}: {e}")
+            logger.error(f"Mesh handler unexpected error for {message_type}: {type(e).__name__}: {e}")
             responses.append({"error": str(e)})
 
     return {
@@ -307,8 +313,17 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                         execution_time_ms=exec_time_ms
                     )
 
+                except (ValueError, TypeError) as e:
+                    logger.warning(f"Query validation error: {e}")
+                    await progress.error(f"Invalid query: {e}")
+                except KeyError as e:
+                    logger.warning(f"Query resource not found: {e}")
+                    await progress.error(f"Resource not found: {e}")
+                except (asyncio.TimeoutError, TimeoutError) as e:
+                    logger.warning(f"Query timeout: {e}")
+                    await progress.error("Query execution timed out")
                 except Exception as e:
-                    logger.error(f"Query execution error: {e}")
+                    logger.error(f"Query execution error ({type(e).__name__}): {e}")
                     await progress.error(str(e))
 
                 finally:
@@ -332,14 +347,19 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
 
     except WebSocketDisconnect:
         logger.info(f"WebSocket disconnected for session {session_id}")
-    except Exception as e:
-        logger.error(f"WebSocket error for session {session_id}: {e}")
+    except json.JSONDecodeError as e:
+        logger.warning(f"WebSocket JSON error for session {session_id}: {e}")
         try:
-            await websocket.send_json({
-                "type": "error",
-                "message": str(e)
-            })
-        except Exception:
+            await websocket.send_json({"type": "error", "message": "Invalid JSON format"})
+        except (WebSocketDisconnect, ConnectionError, RuntimeError):
+            pass  # Connection already closed
+    except (ConnectionError, OSError) as e:
+        logger.warning(f"WebSocket connection error for session {session_id}: {e}")
+    except Exception as e:
+        logger.error(f"WebSocket unexpected error for session {session_id} ({type(e).__name__}): {e}")
+        try:
+            await websocket.send_json({"type": "error", "message": str(e)})
+        except (WebSocketDisconnect, ConnectionError, RuntimeError):
             pass  # Connection already closed
 
 
@@ -452,8 +472,10 @@ async def mesh_websocket_endpoint(websocket: WebSocket):
         logger.info(f"👋 Mesh peer disconnected: {peer_id}")
     except json.JSONDecodeError as e:
         logger.warning(f"Invalid JSON from mesh peer {peer_id}: {e}")
+    except (ConnectionError, OSError) as e:
+        logger.warning(f"Mesh connection error with {peer_id}: {e}")
     except Exception as e:
-        logger.error(f"Mesh connection error with {peer_id}: {e}")
+        logger.error(f"Mesh unexpected error with {peer_id} ({type(e).__name__}): {e}")
     finally:
         # Cleanup
         if peer_id:
@@ -464,8 +486,8 @@ async def mesh_websocket_endpoint(websocket: WebSocket):
                 from api.mesh_relay import get_mesh_relay
                 relay = get_mesh_relay()
                 relay.remove_direct_peer(peer_id)
-            except Exception:
-                pass
+            except (ImportError, AttributeError, KeyError):
+                pass  # Relay not available or peer not registered
 
 
 def get_active_mesh_peers() -> list:
@@ -480,5 +502,7 @@ async def broadcast_to_mesh_peers(message: dict, exclude_peer: str = None):
         if peer_id != exclude_peer:
             try:
                 await ws.send_text(data)
+            except (WebSocketDisconnect, ConnectionError, RuntimeError) as e:
+                logger.debug(f"Mesh peer {peer_id} disconnected during broadcast: {e}")
             except Exception as e:
-                logger.warning(f"Failed to send to mesh peer {peer_id}: {e}")
+                logger.warning(f"Failed to send to mesh peer {peer_id} ({type(e).__name__}): {e}")
