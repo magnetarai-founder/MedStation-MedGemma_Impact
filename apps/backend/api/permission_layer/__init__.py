@@ -1,13 +1,21 @@
 """
-Compatibility Shim for Permission Layer Risk Assessment
+Permission Layer Package
 
-The implementation now lives in the `api.permission_layer` package:
-- api.permission_layer.risk: Risk assessment functions and constants
-
-This shim maintains backward compatibility.
+Interactive permission system for Jarvis command execution:
+- User-controlled execution with yes/no/always/never options
+- Risk assessment for commands
+- Session and permanent rule management
 """
 
-# Re-export everything from the new package location
+from api.permission_layer.layer import (
+    PermissionResponse,
+    RiskLevel,
+    PermissionRequest,
+    PermissionRule,
+    PermissionLayer,
+    PermissionSystem,
+    test_permission_layer,
+)
 from api.permission_layer.risk import (
     # Risk pattern constants
     CRITICAL_RISK_PATTERNS,
@@ -32,6 +40,14 @@ from api.permission_layer.risk import (
 )
 
 __all__ = [
+    # Layer classes
+    "PermissionResponse",
+    "RiskLevel",
+    "PermissionRequest",
+    "PermissionRule",
+    "PermissionLayer",
+    "PermissionSystem",
+    "test_permission_layer",
     # Risk pattern constants
     "CRITICAL_RISK_PATTERNS",
     "HIGH_RISK_PATTERNS",
