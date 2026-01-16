@@ -1,10 +1,10 @@
 """
-Compatibility Shim for Context Types
+Context Package
 
-The implementation now lives in the `api.context` package:
-- api.context.types: Request/response models
-
-This shim maintains backward compatibility.
+ANE Context Engine API for ElohimOS:
+- Semantic search across workspaces
+- Background vectorization
+- RAG document retrieval
 """
 
 from api.context.types import (
@@ -13,10 +13,14 @@ from api.context.types import (
     ContextSearchResponse,
     StoreContextRequest,
 )
+from api.context.router import router
 
 __all__ = [
+    # Types
     "ContextSearchRequest",
     "ContextSearchResult",
     "ContextSearchResponse",
     "StoreContextRequest",
+    # Router
+    "router",
 ]

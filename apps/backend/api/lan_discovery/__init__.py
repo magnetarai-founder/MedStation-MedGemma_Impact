@@ -40,6 +40,16 @@ from api.lan_discovery.service import (
     _reset_lan_service,
 )
 
+# Router and types
+from api.lan_discovery.types import (
+    StartHubRequest,
+    JoinDeviceRequest,
+    RegisterClientRequest,
+    UnregisterClientRequest,
+    HeartbeatConfigRequest,
+)
+from api.lan_discovery.router import router
+
 
 __all__ = [
     # Service
@@ -58,4 +68,12 @@ __all__ = [
     "ConnectionHealth",
     "ConnectionRetryHandler",
     "RetryConfig",
+    # Router
+    "router",
+    # Types
+    "StartHubRequest",
+    "JoinDeviceRequest",
+    "RegisterClientRequest",
+    "UnregisterClientRequest",
+    "HeartbeatConfigRequest",
 ]

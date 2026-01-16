@@ -1,11 +1,10 @@
 """
-Compatibility Shim for Adaptive Router
+Adaptive Router Package
 
-The implementation now lives in the `api.adaptive_router` package:
-- api.adaptive_router.patterns: Enums and route patterns
-- api.adaptive_router.router: EnhancedRouter and AdaptiveRouter classes
-
-This shim maintains backward compatibility.
+Intelligent task routing for ElohimOS:
+- Pattern matching for task classification
+- Learning-based route optimization
+- Context-aware recommendations
 """
 
 from api.adaptive_router.patterns import (

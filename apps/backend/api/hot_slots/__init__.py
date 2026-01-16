@@ -1,10 +1,10 @@
 """
-Compatibility Shim for Hot Slots Types
+Hot Slots Package
 
-The implementation now lives in the `api.hot_slots` package:
-- api.hot_slots.types: Request/response models
-
-This shim maintains backward compatibility.
+Model hot slot management for ElohimOS:
+- 4 slots with LRU eviction
+- Pinning support
+- REST API endpoints
 """
 
 from api.hot_slots.types import (
@@ -13,10 +13,14 @@ from api.hot_slots.types import (
     LoadSlotRequest,
     SlotOperationResponse,
 )
+from api.hot_slots.router import router
 
 __all__ = [
+    # Types
     "HotSlot",
     "HotSlotsResponse",
     "LoadSlotRequest",
     "SlotOperationResponse",
+    # Router
+    "router",
 ]

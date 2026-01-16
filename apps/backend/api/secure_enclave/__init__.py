@@ -1,11 +1,10 @@
 """
-Compatibility Shim for Secure Enclave Service
+Secure Enclave Package
 
-The implementation now lives in the `api.secure_enclave` package:
-- api.secure_enclave.types: Request/response models
-- api.secure_enclave.service: Service class and router
-
-This shim maintains backward compatibility.
+macOS Keychain/Secure Enclave integration for ElohimOS:
+- Hardware-backed key storage
+- PBKDF2 + AES-256-GCM envelope encryption
+- Passphrase-protected encryption keys
 """
 
 from api.secure_enclave.types import (

@@ -35,6 +35,12 @@ try:
 except ImportError:
     from storage import get_default_db_path, create_connection, setup_database
 
+# Learning engine (model usage tracking)
+try:
+    from .engine import LearningEngine, get_learning_engine
+except ImportError:
+    from engine import LearningEngine, get_learning_engine
+
 
 __all__ = [
     # Main system
@@ -50,4 +56,8 @@ __all__ = [
     'get_default_db_path',
     'create_connection',
     'setup_database',
+
+    # Learning engine
+    'LearningEngine',
+    'get_learning_engine',
 ]
