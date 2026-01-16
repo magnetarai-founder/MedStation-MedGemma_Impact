@@ -9,6 +9,8 @@ Comprehensive security utilities including:
 - Session security and anomaly detection
 - Device identity management
 - Emergency data wipe (DoD 5220.22-M)
+- Rate limiting (token bucket)
+- Team cryptography (key derivation, HMAC signing)
 """
 
 import logging
@@ -84,6 +86,30 @@ from api.security.emergency_wipe import (
     wipe_single_file,
 )
 
+# Rate Limiter - always available
+from api.security.rate_limiter import (
+    RateLimiter,
+    rate_limiter,
+    get_client_ip,
+    ConnectionCodeLimiter,
+    connection_code_limiter,
+)
+
+# Team Crypto - requires cryptography package
+try:
+    from api.security.team_crypto import (
+        get_device_secret,
+        derive_team_key,
+        sign_team_payload,
+        verify_team_payload,
+    )
+except ImportError:
+    get_device_secret = None
+    derive_team_key = None
+    sign_team_payload = None
+    verify_team_payload = None
+    logger.debug("Team crypto unavailable - cryptography package not installed")
+
 __all__ = [
     # SQL Safety
     "SQLInjectionError",
@@ -115,4 +141,15 @@ __all__ = [
     # Emergency Wipe
     "perform_dod_wipe",
     "wipe_single_file",
+    # Rate Limiter
+    "RateLimiter",
+    "rate_limiter",
+    "get_client_ip",
+    "ConnectionCodeLimiter",
+    "connection_code_limiter",
+    # Team Crypto (optional)
+    "get_device_secret",
+    "derive_team_key",
+    "sign_team_payload",
+    "verify_team_payload",
 ]

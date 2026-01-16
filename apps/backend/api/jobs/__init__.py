@@ -1,10 +1,9 @@
 """
-Compatibility Shim for Background Jobs
+Jobs Package
 
-The implementation now lives in the `api.jobs` package:
-- api.jobs.manager: BackgroundJobManager class
-
-This shim maintains backward compatibility.
+Background job management for ElohimOS:
+- BackgroundJobManager: Scheduled cleanup and maintenance tasks
+- Analytics aggregation jobs (hourly/daily)
 """
 
 from api.jobs.manager import (
