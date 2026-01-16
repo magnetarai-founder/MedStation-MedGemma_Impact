@@ -58,6 +58,9 @@ router.include_router(templates_router)
 router.include_router(analytics_router)
 router.include_router(health_router)
 
+# Re-export core modules
+from api.workflows import enums, models, p2p_sync, seed_templates
+
 __all__ = [
     "router",
     "storage",
@@ -66,4 +69,9 @@ __all__ = [
     "workflow_sync",
     "setup_p2p_sync",
     "get_user_team_id",
+    # Core modules
+    "enums",
+    "models",
+    "p2p_sync",
+    "seed_templates",
 ]
