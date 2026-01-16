@@ -81,7 +81,7 @@ class TestRecordAuditEvent:
     def test_audit_event_logs_to_python_logger(self):
         """Test that audit events are also logged via Python logger"""
         with patch('api.audit_logger.audit_log_sync'):
-            with patch('api.audit_helper.logger') as mock_logger:
+            with patch('api.audit.helper.logger') as mock_logger:
                 record_audit_event(
                     user_id='user_123',
                     action='test.action',
@@ -100,7 +100,7 @@ class TestRecordAuditEvent:
     def test_audit_event_handles_exception(self):
         """Test that exceptions are caught and logged"""
         with patch('api.audit_logger.audit_log_sync', side_effect=Exception("DB error")):
-            with patch('api.audit_helper.logger') as mock_logger:
+            with patch('api.audit.helper.logger') as mock_logger:
                 result = record_audit_event(
                     user_id='user_123',
                     action='test.action'

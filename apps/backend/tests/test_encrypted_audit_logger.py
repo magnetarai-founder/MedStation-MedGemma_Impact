@@ -635,7 +635,7 @@ class TestGlobalFunction:
 
     def test_get_encrypted_audit_logger_singleton(self):
         """Test that function returns same instance"""
-        import api.encrypted_audit_logger as module
+        import api.audit.encrypted_logger as module
         module._encrypted_audit_logger = None
 
         # Create mock instance

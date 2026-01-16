@@ -650,7 +650,7 @@ class TestSingleton:
 
     def test_get_audit_logger_returns_instance(self, reset_singleton):
         """Test get_audit_logger returns AuditLogger instance"""
-        with patch('api.audit_logger.AuditLogger') as mock_class:
+        with patch('api.audit.logger.AuditLogger') as mock_class:
             mock_class.return_value = MagicMock(spec=AuditLogger)
             result = get_audit_logger()
 
@@ -658,7 +658,7 @@ class TestSingleton:
 
     def test_get_audit_logger_returns_same_instance(self, reset_singleton):
         """Test get_audit_logger returns same instance"""
-        with patch('api.audit_logger.AuditLogger') as mock_class:
+        with patch('api.audit.logger.AuditLogger') as mock_class:
             mock_instance = MagicMock(spec=AuditLogger)
             mock_class.return_value = mock_instance
 
@@ -679,7 +679,7 @@ class TestAuditLogDecorator:
     async def test_decorator_logs_action(self, reset_singleton):
         """Test decorator logs the action"""
         mock_logger = MagicMock()
-        with patch('api.audit_logger.get_audit_logger', return_value=mock_logger):
+        with patch('api.audit.logger.get_audit_logger', return_value=mock_logger):
 
             @audit_log(AuditAction.WORKFLOW_CREATED, resource="workflow")
             async def create_workflow(user_id: str):
@@ -697,7 +697,7 @@ class TestAuditLogDecorator:
 
         # Since isinstance(mock, Request) returns False for MagicMock,
         # we test that the decorator still works and logs with the user_id
-        with patch('api.audit_logger.get_audit_logger', return_value=mock_logger):
+        with patch('api.audit.logger.get_audit_logger', return_value=mock_logger):
 
             @audit_log(AuditAction.FILE_UPLOADED, resource="file")
             async def upload_file(user_id: str, file_id: str):
@@ -716,7 +716,7 @@ class TestAuditLogDecorator:
     async def test_decorator_extracts_resource_id(self, reset_singleton):
         """Test decorator extracts resource_id from kwargs"""
         mock_logger = MagicMock()
-        with patch('api.audit_logger.get_audit_logger', return_value=mock_logger):
+        with patch('api.audit.logger.get_audit_logger', return_value=mock_logger):
 
             @audit_log(AuditAction.WORKFLOW_DELETED, resource="workflow")
             async def delete_workflow(workflow_id: str, user_id: str):
@@ -732,7 +732,7 @@ class TestAuditLogDecorator:
     async def test_decorator_skips_log_without_user_id(self, reset_singleton):
         """Test decorator skips logging if no user_id"""
         mock_logger = MagicMock()
-        with patch('api.audit_logger.get_audit_logger', return_value=mock_logger):
+        with patch('api.audit.logger.get_audit_logger', return_value=mock_logger):
 
             @audit_log(AuditAction.FILE_UPLOADED, resource="file")
             async def upload_file():
@@ -748,7 +748,7 @@ class TestAuditLogDecorator:
         """Test decorator accepts current_user_id kwarg"""
         mock_logger = MagicMock()
 
-        with patch('api.audit_logger.get_audit_logger', return_value=mock_logger):
+        with patch('api.audit.logger.get_audit_logger', return_value=mock_logger):
 
             @audit_log(AuditAction.FILE_UPLOADED, resource="file")
             async def upload_file(current_user_id: str):
@@ -769,7 +769,7 @@ class TestAuditLogSync:
     def test_sync_logs_action(self, reset_singleton):
         """Test sync helper logs action"""
         mock_logger = MagicMock()
-        with patch('api.audit_logger.get_audit_logger', return_value=mock_logger):
+        with patch('api.audit.logger.get_audit_logger', return_value=mock_logger):
             audit_log_sync(
                 user_id="user123",
                 action=AuditAction.SETTINGS_CHANGED,

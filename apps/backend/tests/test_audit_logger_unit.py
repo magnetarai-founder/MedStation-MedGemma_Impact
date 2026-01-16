@@ -475,7 +475,7 @@ class TestAuditLogDecorator:
         mock_request.client.host = "127.0.0.1"
         mock_request.headers = {"user-agent": "Test Agent"}
 
-        with patch('api.audit_logger.get_audit_logger', return_value=mock_logger):
+        with patch('api.audit.logger.get_audit_logger', return_value=mock_logger):
             result = await create_workflow(
                 request=mock_request,
                 user_id="decorator-test-user",
@@ -490,7 +490,7 @@ class TestAuditLogSync:
 
     def test_audit_log_sync(self, audit_logger):
         """Test synchronous logging via helper function"""
-        with patch('api.audit_logger.get_audit_logger', return_value=audit_logger):
+        with patch('api.audit.logger.get_audit_logger', return_value=audit_logger):
             audit_log_sync(
                 user_id="sync-test-user",
                 action=AuditAction.SETTINGS_CHANGED,
@@ -525,7 +525,7 @@ class TestGetAuditLogger:
                     mock_config = MagicMock()
                     mock_config.get_data_dir.return_value = Path(tmpdir)
 
-                    with patch('api.audit_logger.get_data_dir', return_value=Path(tmpdir), create=True):
+                    with patch('api.audit.logger.get_data_dir', return_value=Path(tmpdir), create=True):
                         try:
                             logger = get_audit_logger()
                             assert logger is mock_instance
