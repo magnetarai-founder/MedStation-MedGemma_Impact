@@ -1,10 +1,11 @@
 """
-Compatibility Shim for Accessibility Types
+Accessibility Package
 
-The implementation now lives in the `api.accessibility` package:
-- api.accessibility.types: Enums and Pydantic models
-
-This shim maintains backward compatibility.
+Accessibility preferences management for ElohimOS:
+- Colorblind mode support
+- High contrast themes
+- Font size adjustments
+- Animation preferences
 """
 
 from api.accessibility.types import (
@@ -14,6 +15,7 @@ from api.accessibility.types import (
     StatusIndicatorStyle,
     AccessibilityPreferences,
 )
+from api.accessibility.service import AccessibilityService
 
 __all__ = [
     "ColorblindType",
@@ -21,4 +23,5 @@ __all__ = [
     "FontSize",
     "StatusIndicatorStyle",
     "AccessibilityPreferences",
+    "AccessibilityService",
 ]
