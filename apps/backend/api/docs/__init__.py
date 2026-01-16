@@ -1,7 +1,13 @@
-"""Backward Compatibility Shim - use api.docs instead."""
+"""
+Documents Package
 
-from api.docs.service import (
-    # Models
+Provides document storage and syncing for ElohimOS:
+- Documents, Spreadsheets, and Insights Lab
+- Notion-style periodic sync with conflict resolution
+- Security level support (public, private, team, sensitive, top-secret)
+"""
+
+from api.docs.models import (
     VALID_DOC_TYPES,
     VALID_SECURITY_LEVELS,
     DocumentCreate,
@@ -9,22 +15,16 @@ from api.docs.service import (
     Document,
     SyncRequest,
     SyncResponse,
-    # Database
-    PATHS,
+)
+from api.docs.db import (
     DOCS_DB_PATH,
     DOCUMENT_UPDATE_COLUMNS,
     build_safe_update,
     init_db,
     get_db,
     release_db,
-    # Router
-    router,
-    # Auth dependencies
-    get_current_user,
-    is_team_member,
-    get_user_id,
-    logger,
 )
+from api.docs.routes import router
 
 __all__ = [
     # Models
@@ -36,7 +36,6 @@ __all__ = [
     "SyncRequest",
     "SyncResponse",
     # Database
-    "PATHS",
     "DOCS_DB_PATH",
     "DOCUMENT_UPDATE_COLUMNS",
     "build_safe_update",
@@ -45,9 +44,4 @@ __all__ = [
     "release_db",
     # Router
     "router",
-    # Auth dependencies
-    "get_current_user",
-    "is_team_member",
-    "get_user_id",
-    "logger",
 ]

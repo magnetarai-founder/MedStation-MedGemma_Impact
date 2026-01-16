@@ -84,8 +84,8 @@ def client_not_team_member(mock_current_user):
     test_app.include_router(router)
     test_app.dependency_overrides[original_get_current_user] = lambda: mock_current_user
 
-    # After P2 decomposition, is_team_member is imported in docs_routes.py
-    with patch('api.docs_routes.is_team_member', return_value=False):
+    # After P3 decomposition, is_team_member is imported in docs/routes.py
+    with patch('api.docs.routes.is_team_member', return_value=False):
         yield TestClient(test_app)
 
 
@@ -99,8 +99,8 @@ def client_team_member(mock_current_user):
     test_app.include_router(router)
     test_app.dependency_overrides[original_get_current_user] = lambda: mock_current_user
 
-    # After P2 decomposition, is_team_member is imported in docs_routes.py
-    with patch('api.docs_routes.is_team_member', return_value=True):
+    # After P3 decomposition, is_team_member is imported in docs/routes.py
+    with patch('api.docs.routes.is_team_member', return_value=True):
         yield TestClient(test_app)
 
 
@@ -401,7 +401,7 @@ class TestDatabase:
     def test_init_db_creates_table(self, temp_db):
         """Test init_db creates documents table"""
         # After P2 decomposition, DOCS_DB_PATH is in docs_db.py
-        with patch('api.docs_db.DOCS_DB_PATH', Path(temp_db)):
+        with patch('api.docs.db.DOCS_DB_PATH', Path(temp_db)):
             init_db()
 
         conn = sqlite3.connect(temp_db)
@@ -413,7 +413,7 @@ class TestDatabase:
     def test_init_db_creates_indexes(self, temp_db):
         """Test init_db creates indexes"""
         # After P2 decomposition, DOCS_DB_PATH is in docs_db.py
-        with patch('api.docs_db.DOCS_DB_PATH', Path(temp_db)):
+        with patch('api.docs.db.DOCS_DB_PATH', Path(temp_db)):
             init_db()
 
         conn = sqlite3.connect(temp_db)
@@ -434,7 +434,7 @@ class TestCreateDocument:
 
     def test_create_document_success(self, client, sample_document_data):
         """Test successful document creation"""
-        with patch('api.docs_routes.get_db') as mock_get_db:
+        with patch('api.docs.routes.get_db') as mock_get_db:
             mock_conn = MagicMock()
             mock_cursor = MagicMock()
             mock_conn.cursor.return_value = mock_cursor
@@ -497,7 +497,7 @@ class TestListDocuments:
 
     def test_list_documents_empty(self, client):
         """Test listing documents when none exist"""
-        with patch('api.docs_routes.get_db') as mock_get_db:
+        with patch('api.docs.routes.get_db') as mock_get_db:
             mock_conn = MagicMock()
             mock_cursor = MagicMock()
             mock_conn.cursor.return_value = mock_cursor
@@ -513,7 +513,7 @@ class TestListDocuments:
 
     def test_list_documents_with_since(self, client):
         """Test listing documents with since parameter"""
-        with patch('api.docs_routes.get_db') as mock_get_db:
+        with patch('api.docs.routes.get_db') as mock_get_db:
             mock_conn = MagicMock()
             mock_cursor = MagicMock()
             mock_conn.cursor.return_value = mock_cursor
@@ -541,7 +541,7 @@ class TestGetDocument:
 
     def test_get_document_not_found(self, client):
         """Test getting nonexistent document"""
-        with patch('api.docs_routes.get_db') as mock_get_db:
+        with patch('api.docs.routes.get_db') as mock_get_db:
             mock_conn = MagicMock()
             mock_cursor = MagicMock()
             mock_conn.cursor.return_value = mock_cursor
@@ -567,7 +567,7 @@ class TestUpdateDocument:
 
     def test_update_document_not_found(self, client):
         """Test updating nonexistent document"""
-        with patch('api.docs_routes.get_db') as mock_get_db:
+        with patch('api.docs.routes.get_db') as mock_get_db:
             mock_conn = MagicMock()
             mock_cursor = MagicMock()
             mock_conn.cursor.return_value = mock_cursor
@@ -596,7 +596,7 @@ class TestDeleteDocument:
 
     def test_delete_document_not_found(self, client):
         """Test deleting nonexistent document"""
-        with patch('api.docs_routes.get_db') as mock_get_db:
+        with patch('api.docs.routes.get_db') as mock_get_db:
             mock_conn = MagicMock()
             mock_cursor = MagicMock()
             mock_conn.cursor.return_value = mock_cursor
@@ -609,7 +609,7 @@ class TestDeleteDocument:
 
     def test_delete_document_success(self, client):
         """Test successful document deletion"""
-        with patch('api.docs_routes.get_db') as mock_get_db:
+        with patch('api.docs.routes.get_db') as mock_get_db:
             mock_conn = MagicMock()
             mock_cursor = MagicMock()
             mock_conn.cursor.return_value = mock_cursor
@@ -639,7 +639,7 @@ class TestSyncEndpoint:
 
     def test_sync_empty_documents(self, client):
         """Test sync with empty documents list"""
-        with patch('api.docs_routes.get_db') as mock_get_db:
+        with patch('api.docs.routes.get_db') as mock_get_db:
             mock_conn = MagicMock()
             mock_cursor = MagicMock()
             mock_conn.cursor.return_value = mock_cursor
@@ -658,7 +658,7 @@ class TestSyncEndpoint:
 
     def test_sync_with_last_sync(self, client):
         """Test sync with last_sync timestamp"""
-        with patch('api.docs_routes.get_db') as mock_get_db:
+        with patch('api.docs.routes.get_db') as mock_get_db:
             mock_conn = MagicMock()
             mock_cursor = MagicMock()
             mock_conn.cursor.return_value = mock_cursor
@@ -678,7 +678,7 @@ class TestSyncEndpoint:
 
     def test_sync_document_without_id_skipped(self, client):
         """Test sync skips documents without ID"""
-        with patch('api.docs_routes.get_db') as mock_get_db:
+        with patch('api.docs.routes.get_db') as mock_get_db:
             mock_conn = MagicMock()
             mock_cursor = MagicMock()
             mock_conn.cursor.return_value = mock_cursor
@@ -728,7 +728,7 @@ class TestEdgeCases:
         """Test document with unicode title"""
         sample_document_data["title"] = "日本語ドキュメント 📄"
 
-        with patch('api.docs_routes.get_db') as mock_get_db:
+        with patch('api.docs.routes.get_db') as mock_get_db:
             mock_conn = MagicMock()
             mock_cursor = MagicMock()
             mock_conn.cursor.return_value = mock_cursor
@@ -772,7 +772,7 @@ class TestEdgeCases:
             ]
         }
 
-        with patch('api.docs_routes.get_db') as mock_get_db:
+        with patch('api.docs.routes.get_db') as mock_get_db:
             mock_conn = MagicMock()
             mock_cursor = MagicMock()
             mock_conn.cursor.return_value = mock_cursor
@@ -836,7 +836,7 @@ class TestIntegration:
     def test_document_crud_flow(self, client):
         """Test complete CRUD flow"""
         # Create document
-        with patch('api.docs_routes.get_db') as mock_get_db:
+        with patch('api.docs.routes.get_db') as mock_get_db:
             mock_conn = MagicMock()
             mock_cursor = MagicMock()
             mock_conn.cursor.return_value = mock_cursor
@@ -871,7 +871,7 @@ class TestIntegration:
         assert create_response.status_code == 200
 
         # Delete document
-        with patch('api.docs_routes.get_db') as mock_get_db:
+        with patch('api.docs.routes.get_db') as mock_get_db:
             mock_conn = MagicMock()
             mock_cursor = MagicMock()
             mock_conn.cursor.return_value = mock_cursor
@@ -884,7 +884,7 @@ class TestIntegration:
 
     def test_team_document_workflow(self, client_team_member):
         """Test team document workflow"""
-        with patch('api.docs_routes.get_db') as mock_get_db:
+        with patch('api.docs.routes.get_db') as mock_get_db:
             mock_conn = MagicMock()
             mock_cursor = MagicMock()
             mock_conn.cursor.return_value = mock_cursor
