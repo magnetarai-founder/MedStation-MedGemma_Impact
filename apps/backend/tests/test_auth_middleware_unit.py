@@ -445,7 +445,7 @@ class TestGetCurrentUserDependency:
         credentials.credentials = authenticated_user["token"]
 
         # Patch auth_service
-        with patch('api.auth_middleware.auth_service', auth_service):
+        with patch('api.auth.middleware.auth_service', auth_service):
             from api.auth_middleware import get_current_user
             result = await get_current_user(credentials)
 
@@ -461,7 +461,7 @@ class TestGetCurrentUserDependency:
         credentials = MagicMock(spec=HTTPAuthorizationCredentials)
         credentials.credentials = "invalid-token"
 
-        with patch('api.auth_middleware.auth_service', auth_service):
+        with patch('api.auth.middleware.auth_service', auth_service):
             from api.auth_middleware import get_current_user
             with pytest.raises(HTTPException) as exc_info:
                 await get_current_user(credentials)
@@ -490,7 +490,7 @@ class TestGetCurrentUserOptional:
         request = MagicMock()
         request.headers = {"Authorization": "Bearer invalid-token"}
 
-        with patch('api.auth_middleware.auth_service', auth_service):
+        with patch('api.auth.middleware.auth_service', auth_service):
             result = await get_current_user_optional(request)
 
         assert result["user_id"] == "anonymous"
@@ -501,7 +501,7 @@ class TestGetCurrentUserOptional:
         request = MagicMock()
         request.headers = {"Authorization": f"Bearer {authenticated_user['token']}"}
 
-        with patch('api.auth_middleware.auth_service', auth_service):
+        with patch('api.auth.middleware.auth_service', auth_service):
             result = await get_current_user_optional(request)
 
         assert result["username"] == authenticated_user["username"]

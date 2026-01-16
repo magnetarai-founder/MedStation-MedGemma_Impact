@@ -96,8 +96,8 @@ def app(auth_service):
 @pytest.fixture
 def client(app, auth_service):
     """Create test client with mocked auth service"""
-    with patch('api.auth_routes.auth_service', auth_service):
-        with patch('api.auth_routes.rate_limiter') as mock_rate_limiter:
+    with patch('api.auth.routes.auth_service', auth_service):
+        with patch('api.auth.routes.rate_limiter') as mock_rate_limiter:
             # Default: allow all requests
             mock_rate_limiter.check_rate_limit.return_value = True
             yield TestClient(app)
@@ -135,7 +135,7 @@ class TestSetupNeeded:
 
     def test_setup_needed_no_users(self, client, temp_db):
         """Test setup needed when no users exist"""
-        with patch('api.auth_routes.auth_service') as mock_service:
+        with patch('api.auth.routes.auth_service') as mock_service:
             mock_service.db_path = temp_db
 
             response = client.get("/api/v1/auth/setup-needed")
@@ -146,7 +146,7 @@ class TestSetupNeeded:
 
     def test_setup_needed_users_exist(self, client, auth_service, test_user, temp_db):
         """Test setup not needed when users exist"""
-        with patch('api.auth_routes.auth_service', auth_service):
+        with patch('api.auth.routes.auth_service', auth_service):
             response = client.get("/api/v1/auth/setup-needed")
 
         assert response.status_code == 200
@@ -155,7 +155,7 @@ class TestSetupNeeded:
 
     def test_setup_needed_db_error(self, client):
         """Test setup needed returns True on database error"""
-        with patch('api.auth_routes.auth_service') as mock_service:
+        with patch('api.auth.routes.auth_service') as mock_service:
             mock_service.db_path = Path("/nonexistent/path.db")
 
             response = client.get("/api/v1/auth/setup-needed")
@@ -171,7 +171,7 @@ class TestRegister:
 
     def test_register_success(self, client, auth_service, temp_db):
         """Test successful user registration"""
-        with patch('api.auth_routes.auth_service', auth_service):
+        with patch('api.auth.routes.auth_service', auth_service):
             response = client.post(
                 "/api/v1/auth/register",
                 json={
@@ -188,7 +188,7 @@ class TestRegister:
 
     def test_register_duplicate_username(self, client, auth_service, test_user):
         """Test registration with duplicate username"""
-        with patch('api.auth_routes.auth_service', auth_service):
+        with patch('api.auth.routes.auth_service', auth_service):
             response = client.post(
                 "/api/v1/auth/register",
                 json={
@@ -203,7 +203,7 @@ class TestRegister:
 
     def test_register_short_username(self, client, auth_service):
         """Test registration with too short username"""
-        with patch('api.auth_routes.auth_service', auth_service):
+        with patch('api.auth.routes.auth_service', auth_service):
             response = client.post(
                 "/api/v1/auth/register",
                 json={
@@ -217,7 +217,7 @@ class TestRegister:
 
     def test_register_short_password(self, client, auth_service):
         """Test registration with too short password"""
-        with patch('api.auth_routes.auth_service', auth_service):
+        with patch('api.auth.routes.auth_service', auth_service):
             response = client.post(
                 "/api/v1/auth/register",
                 json={
@@ -231,8 +231,8 @@ class TestRegister:
 
     def test_register_rate_limited(self, app, auth_service):
         """Test registration rate limiting"""
-        with patch('api.auth_routes.auth_service', auth_service):
-            with patch('api.auth_routes.rate_limiter') as mock_limiter:
+        with patch('api.auth.routes.auth_service', auth_service):
+            with patch('api.auth.routes.rate_limiter') as mock_limiter:
                 mock_limiter.check_rate_limit.return_value = False
 
                 client = TestClient(app)
@@ -255,7 +255,7 @@ class TestLogin:
 
     def test_login_success(self, client, auth_service, test_user):
         """Test successful login"""
-        with patch('api.auth_routes.auth_service', auth_service):
+        with patch('api.auth.routes.auth_service', auth_service):
             response = client.post(
                 "/api/v1/auth/login",
                 json={
@@ -272,7 +272,7 @@ class TestLogin:
 
     def test_login_wrong_password(self, client, auth_service, test_user):
         """Test login with wrong password"""
-        with patch('api.auth_routes.auth_service', auth_service):
+        with patch('api.auth.routes.auth_service', auth_service):
             response = client.post(
                 "/api/v1/auth/login",
                 json={
@@ -285,7 +285,7 @@ class TestLogin:
 
     def test_login_nonexistent_user(self, client, auth_service):
         """Test login with nonexistent user"""
-        with patch('api.auth_routes.auth_service', auth_service):
+        with patch('api.auth.routes.auth_service', auth_service):
             response = client.post(
                 "/api/v1/auth/login",
                 json={
@@ -305,7 +305,7 @@ class TestLogin:
         conn.commit()
         conn.close()
 
-        with patch('api.auth_routes.auth_service', auth_service):
+        with patch('api.auth.routes.auth_service', auth_service):
             response = client.post(
                 "/api/v1/auth/login",
                 json={
@@ -318,8 +318,8 @@ class TestLogin:
 
     def test_login_rate_limited(self, app, auth_service, test_user):
         """Test login rate limiting"""
-        with patch('api.auth_routes.auth_service', auth_service):
-            with patch('api.auth_routes.rate_limiter') as mock_limiter:
+        with patch('api.auth.routes.auth_service', auth_service):
+            with patch('api.auth.routes.rate_limiter') as mock_limiter:
                 mock_limiter.check_rate_limit.return_value = False
 
                 client = TestClient(app)
@@ -345,7 +345,7 @@ class TestLogin:
         conn.commit()
         conn.close()
 
-        with patch('api.auth_routes.auth_service', auth_service):
+        with patch('api.auth.routes.auth_service', auth_service):
             response = client.post(
                 "/api/v1/auth/login",
                 json={
@@ -360,7 +360,7 @@ class TestLogin:
 
     def test_login_with_device_fingerprint(self, client, auth_service, test_user):
         """Test login with device fingerprint"""
-        with patch('api.auth_routes.auth_service', auth_service):
+        with patch('api.auth.routes.auth_service', auth_service):
             response = client.post(
                 "/api/v1/auth/login",
                 json={
@@ -390,7 +390,7 @@ class TestChangePasswordFirstLogin:
         conn.commit()
         conn.close()
 
-        with patch('api.auth_routes.auth_service', auth_service):
+        with patch('api.auth.routes.auth_service', auth_service):
             # Patch at source module since import happens inside the function
             with patch('password_breach_checker.check_password_breach', new_callable=AsyncMock) as mock_breach:
                 mock_breach.return_value = (False, 0)  # Not breached
@@ -420,7 +420,7 @@ class TestChangePasswordFirstLogin:
         conn.commit()
         conn.close()
 
-        with patch('api.auth_routes.auth_service', auth_service):
+        with patch('api.auth.routes.auth_service', auth_service):
             response = client.post(
                 "/api/v1/auth/change-password-first-login",
                 json={
@@ -457,7 +457,7 @@ class TestChangePasswordFirstLogin:
         conn.commit()
         conn.close()
 
-        with patch('api.auth_routes.auth_service', auth_service):
+        with patch('api.auth.routes.auth_service', auth_service):
             response = client.post(
                 "/api/v1/auth/change-password-first-login",
                 json={
@@ -483,7 +483,7 @@ class TestChangePasswordFirstLogin:
         conn.commit()
         conn.close()
 
-        with patch('api.auth_routes.auth_service', auth_service):
+        with patch('api.auth.routes.auth_service', auth_service):
             response = client.post(
                 "/api/v1/auth/change-password-first-login",
                 json={
@@ -515,7 +515,7 @@ class TestChangePasswordFirstLogin:
         conn.commit()
         conn.close()
 
-        with patch('api.auth_routes.auth_service', auth_service):
+        with patch('api.auth.routes.auth_service', auth_service):
             response = client.post(
                 "/api/v1/auth/change-password-first-login",
                 json={
@@ -547,7 +547,7 @@ class TestChangePasswordFirstLogin:
         conn.commit()
         conn.close()
 
-        with patch('api.auth_routes.auth_service', auth_service):
+        with patch('api.auth.routes.auth_service', auth_service):
             response = client.post(
                 "/api/v1/auth/change-password-first-login",
                 json={
@@ -579,7 +579,7 @@ class TestChangePasswordFirstLogin:
         conn.commit()
         conn.close()
 
-        with patch('api.auth_routes.auth_service', auth_service):
+        with patch('api.auth.routes.auth_service', auth_service):
             response = client.post(
                 "/api/v1/auth/change-password-first-login",
                 json={
@@ -611,7 +611,7 @@ class TestChangePasswordFirstLogin:
         conn.commit()
         conn.close()
 
-        with patch('api.auth_routes.auth_service', auth_service):
+        with patch('api.auth.routes.auth_service', auth_service):
             response = client.post(
                 "/api/v1/auth/change-password-first-login",
                 json={
@@ -626,7 +626,7 @@ class TestChangePasswordFirstLogin:
 
     def test_change_password_already_changed(self, client, auth_service, test_user):
         """Test password change when flag not set"""
-        with patch('api.auth_routes.auth_service', auth_service):
+        with patch('api.auth.routes.auth_service', auth_service):
             response = client.post(
                 "/api/v1/auth/change-password-first-login",
                 json={
@@ -654,7 +654,7 @@ class TestRefreshToken:
 
     def test_refresh_success(self, client, auth_service, authenticated_user):
         """Test successful token refresh"""
-        with patch('api.auth_routes.auth_service', auth_service):
+        with patch('api.auth.routes.auth_service', auth_service):
             response = client.post(
                 "/api/v1/auth/refresh",
                 json={"refresh_token": authenticated_user["refresh_token"]}
@@ -667,7 +667,7 @@ class TestRefreshToken:
 
     def test_refresh_invalid_token(self, client, auth_service):
         """Test refresh with invalid token"""
-        with patch('api.auth_routes.auth_service', auth_service):
+        with patch('api.auth.routes.auth_service', auth_service):
             response = client.post(
                 "/api/v1/auth/refresh",
                 json={"refresh_token": "invalid-refresh-token"}
@@ -677,8 +677,8 @@ class TestRefreshToken:
 
     def test_refresh_rate_limited(self, app, auth_service, authenticated_user):
         """Test refresh rate limiting"""
-        with patch('api.auth_routes.auth_service', auth_service):
-            with patch('api.auth_routes.rate_limiter') as mock_limiter:
+        with patch('api.auth.routes.auth_service', auth_service):
+            with patch('api.auth.routes.rate_limiter') as mock_limiter:
                 mock_limiter.check_rate_limit.return_value = False
 
                 client = TestClient(app)
@@ -697,7 +697,7 @@ class TestLogout:
 
     def test_logout_success(self, client, auth_service, auth_headers):
         """Test successful logout"""
-        with patch('api.auth_routes.auth_service', auth_service):
+        with patch('api.auth.routes.auth_service', auth_service):
             response = client.post("/api/v1/auth/logout", headers=auth_headers)
 
         assert response.status_code == 200
@@ -705,7 +705,7 @@ class TestLogout:
 
     def test_logout_no_token(self, client, auth_service):
         """Test logout without token"""
-        with patch('api.auth_routes.auth_service', auth_service):
+        with patch('api.auth.routes.auth_service', auth_service):
             response = client.post("/api/v1/auth/logout")
 
         assert response.status_code == 401
@@ -723,7 +723,7 @@ class TestLogout:
         }
         expired_token = jwt.encode(expired_payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
-        with patch('api.auth_routes.auth_service', auth_service):
+        with patch('api.auth.routes.auth_service', auth_service):
             response = client.post(
                 "/api/v1/auth/logout",
                 headers={"Authorization": f"Bearer {expired_token}"}
@@ -740,7 +740,7 @@ class TestLogout:
             algorithm=JWT_ALGORITHM
         )
 
-        with patch('api.auth_routes.auth_service', auth_service):
+        with patch('api.auth.routes.auth_service', auth_service):
             response = client.post(
                 "/api/v1/auth/logout",
                 headers={"Authorization": f"Bearer {fake_token}"}
@@ -769,7 +769,7 @@ class TestCurrentUser:
         app.dependency_overrides[get_current_user] = lambda: mock_user
 
         try:
-            with patch('api.auth_routes.auth_service', auth_service):
+            with patch('api.auth.routes.auth_service', auth_service):
                 client = TestClient(app)
                 response = client.get("/api/v1/auth/me", headers=auth_headers)
 
@@ -781,7 +781,7 @@ class TestCurrentUser:
 
     def test_get_current_user_no_auth(self, client, auth_service):
         """Test getting current user without auth"""
-        with patch('api.auth_routes.auth_service', auth_service):
+        with patch('api.auth.routes.auth_service', auth_service):
             response = client.get("/api/v1/auth/me")
 
         assert response.status_code in [401, 403]
@@ -804,7 +804,7 @@ class TestVerifyToken:
         app.dependency_overrides[get_current_user] = lambda: mock_user
 
         try:
-            with patch('api.auth_routes.auth_service', auth_service):
+            with patch('api.auth.routes.auth_service', auth_service):
                 client = TestClient(app)
                 response = client.get("/api/v1/auth/verify", headers=auth_headers)
 
@@ -816,7 +816,7 @@ class TestVerifyToken:
 
     def test_verify_invalid_token(self, client, auth_service):
         """Test verifying invalid token"""
-        with patch('api.auth_routes.auth_service', auth_service):
+        with patch('api.auth.routes.auth_service', auth_service):
             response = client.get(
                 "/api/v1/auth/verify",
                 headers={"Authorization": "Bearer invalid-token"}
@@ -832,7 +832,7 @@ class TestSessionCleanup:
 
     def test_cleanup_sessions_success(self, client, auth_service):
         """Test session cleanup endpoint"""
-        with patch('api.auth_routes.auth_service', auth_service):
+        with patch('api.auth.routes.auth_service', auth_service):
             response = client.post("/api/v1/auth/cleanup-sessions")
 
         assert response.status_code == 200
@@ -864,13 +864,13 @@ class TestPermissions:
         app.dependency_overrides[get_current_user] = lambda: mock_user
 
         try:
-            with patch('api.auth_routes.auth_service', auth_service):
+            with patch('api.auth.routes.auth_service', auth_service):
                 with patch('permission_engine.get_permission_engine') as mock_engine:
                     engine_instance = Mock()
                     engine_instance.load_user_context.return_value = mock_context
                     mock_engine.return_value = engine_instance
 
-                    with patch('api.auth_routes.cache_query') as mock_cache:
+                    with patch('api.auth.routes.cache_query') as mock_cache:
                         # Execute the fetch function directly
                         mock_cache.side_effect = lambda key, func, ttl: func()
 
@@ -903,13 +903,13 @@ class TestPermissions:
         app.dependency_overrides[get_current_user] = lambda: mock_user
 
         try:
-            with patch('api.auth_routes.auth_service', auth_service):
+            with patch('api.auth.routes.auth_service', auth_service):
                 with patch('permission_engine.get_permission_engine') as mock_engine:
                     engine_instance = Mock()
                     engine_instance.load_user_context.return_value = mock_context
                     mock_engine.return_value = engine_instance
 
-                    with patch('api.auth_routes.cache_query') as mock_cache:
+                    with patch('api.auth.routes.cache_query') as mock_cache:
                         mock_cache.side_effect = lambda key, func, ttl: func()
 
                         client = TestClient(app)
@@ -930,10 +930,10 @@ class TestRateLimiting:
 
     def test_register_rate_limit_key(self, app, auth_service):
         """Test that registration uses correct rate limit key"""
-        with patch('api.auth_routes.auth_service', auth_service):
-            with patch('api.auth_routes.rate_limiter') as mock_limiter:
+        with patch('api.auth.routes.auth_service', auth_service):
+            with patch('api.auth.routes.rate_limiter') as mock_limiter:
                 mock_limiter.check_rate_limit.return_value = True
-                with patch('api.auth_routes.get_client_ip', return_value="192.168.1.100"):
+                with patch('api.auth.routes.get_client_ip', return_value="192.168.1.100"):
                     client = TestClient(app)
                     client.post(
                         "/api/v1/auth/register",
@@ -951,10 +951,10 @@ class TestRateLimiting:
 
     def test_login_rate_limit_key(self, app, auth_service, test_user):
         """Test that login uses correct rate limit key"""
-        with patch('api.auth_routes.auth_service', auth_service):
-            with patch('api.auth_routes.rate_limiter') as mock_limiter:
+        with patch('api.auth.routes.auth_service', auth_service):
+            with patch('api.auth.routes.rate_limiter') as mock_limiter:
                 mock_limiter.check_rate_limit.return_value = True
-                with patch('api.auth_routes.get_client_ip', return_value="192.168.1.100"):
+                with patch('api.auth.routes.get_client_ip', return_value="192.168.1.100"):
                     client = TestClient(app)
                     client.post(
                         "/api/v1/auth/login",
@@ -1053,7 +1053,7 @@ class TestEdgeCases:
             device_id="device-001"
         )
 
-        with patch('api.auth_routes.auth_service', auth_service):
+        with patch('api.auth.routes.auth_service', auth_service):
             response = client.post(
                 "/api/v1/auth/login",
                 json={
@@ -1066,7 +1066,7 @@ class TestEdgeCases:
 
     def test_empty_authorization_header(self, client, auth_service):
         """Test logout with empty authorization header"""
-        with patch('api.auth_routes.auth_service', auth_service):
+        with patch('api.auth.routes.auth_service', auth_service):
             response = client.post(
                 "/api/v1/auth/logout",
                 headers={"Authorization": ""}
@@ -1076,7 +1076,7 @@ class TestEdgeCases:
 
     def test_malformed_bearer_token(self, client, auth_service):
         """Test logout with malformed bearer token"""
-        with patch('api.auth_routes.auth_service', auth_service):
+        with patch('api.auth.routes.auth_service', auth_service):
             response = client.post(
                 "/api/v1/auth/logout",
                 headers={"Authorization": "NotBearer token"}

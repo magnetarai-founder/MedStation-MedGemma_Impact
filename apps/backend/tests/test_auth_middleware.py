@@ -722,7 +722,7 @@ class TestFastAPIDependencies:
         credentials = Mock()
         credentials.credentials = authenticated_user["token"]
 
-        with patch('api.auth_middleware.auth_service', auth_service):
+        with patch('api.auth.middleware.auth_service', auth_service):
             user = await get_current_user(credentials)
 
         assert user["user_id"] == authenticated_user["user_id"]
@@ -733,7 +733,7 @@ class TestFastAPIDependencies:
         credentials = Mock()
         credentials.credentials = "invalid-token"
 
-        with patch('api.auth_middleware.auth_service', auth_service):
+        with patch('api.auth.middleware.auth_service', auth_service):
             with pytest.raises(HTTPException) as exc_info:
                 await get_current_user(credentials)
 
@@ -746,7 +746,7 @@ class TestFastAPIDependencies:
         request = Mock()
         request.headers.get.return_value = f"Bearer {authenticated_user['token']}"
 
-        with patch('api.auth_middleware.auth_service', auth_service):
+        with patch('api.auth.middleware.auth_service', auth_service):
             user = await get_current_user_optional(request)
 
         assert user["user_id"] == authenticated_user["user_id"]
@@ -757,7 +757,7 @@ class TestFastAPIDependencies:
         request = Mock()
         request.headers.get.return_value = None
 
-        with patch('api.auth_middleware.auth_service', auth_service):
+        with patch('api.auth.middleware.auth_service', auth_service):
             user = await get_current_user_optional(request)
 
         assert user["user_id"] == "anonymous"
@@ -769,7 +769,7 @@ class TestFastAPIDependencies:
         request = Mock()
         request.headers.get.return_value = "Bearer invalid-token"
 
-        with patch('api.auth_middleware.auth_service', auth_service):
+        with patch('api.auth.middleware.auth_service', auth_service):
             user = await get_current_user_optional(request)
 
         assert user["user_id"] == "anonymous"
@@ -842,7 +842,7 @@ class TestWebSocketAuth:
         websocket = Mock()
         websocket.headers.get.return_value = f"jwt-{authenticated_user['token']}"
 
-        with patch('api.auth_middleware.auth_service', auth_service):
+        with patch('api.auth.middleware.auth_service', auth_service):
             payload = await verify_websocket_auth(websocket)
 
         assert payload is not None
@@ -854,7 +854,7 @@ class TestWebSocketAuth:
         websocket = Mock()
         websocket.headers.get.return_value = ""
 
-        with patch('api.auth_middleware.auth_service', auth_service):
+        with patch('api.auth.middleware.auth_service', auth_service):
             payload = await verify_websocket_auth(websocket)
 
         assert payload is None
@@ -865,7 +865,7 @@ class TestWebSocketAuth:
         websocket = Mock()
         websocket.headers.get.return_value = "jwt-invalid-token"
 
-        with patch('api.auth_middleware.auth_service', auth_service):
+        with patch('api.auth.middleware.auth_service', auth_service):
             payload = await verify_websocket_auth(websocket)
 
         assert payload is None
@@ -1090,7 +1090,7 @@ class TestJWTSecretFileStorage:
     def test_jwt_secret_legacy_env_var_warns(self):
         """Test legacy env var shows warning"""
         import os
-        import api.auth_middleware as module
+        import api.auth.middleware as module
 
         # Clear primary env var if set
         primary = os.environ.pop('ELOHIMOS_JWT_SECRET_KEY', None)

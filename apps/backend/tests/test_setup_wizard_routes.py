@@ -440,7 +440,7 @@ class TestGetSetupStatus:
 
             # Need to patch auth_middleware inside the function
             with patch.dict('sys.modules', {'api.auth_middleware': MagicMock()}):
-                with patch('api.auth_middleware.auth_service', mock_auth_service):
+                with patch('api.auth.middleware.auth_service', mock_auth_service):
                     response = client.get("/api/v1/setup/status")
 
         # 200 or 429 (rate limited) expected
@@ -455,7 +455,7 @@ class TestGetSetupStatus:
              patch('api.routes.setup_wizard_routes.limiter.limit', lambda x: lambda f: f):
 
             with patch.dict('sys.modules', {'api.auth_middleware': MagicMock()}):
-                with patch('api.auth_middleware.auth_service', mock_auth_service):
+                with patch('api.auth.middleware.auth_service', mock_auth_service):
                     response = client.get("/api/v1/setup/status")
 
         assert response.status_code in [200, 429, 500]

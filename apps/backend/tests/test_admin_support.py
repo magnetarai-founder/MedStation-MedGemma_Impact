@@ -192,7 +192,7 @@ class TestGetAdminDbConnection:
         from api.services.admin_support import get_admin_db_connection
 
         with patch('api.services.admin_account._get_auth_service', return_value=mock_auth_service):
-            with patch('api.auth_middleware.auth_service', mock_auth_service):
+            with patch('api.auth.middleware.auth_service', mock_auth_service):
                 conn = get_admin_db_connection()
 
                 assert conn is not None
@@ -203,7 +203,7 @@ class TestGetAdminDbConnection:
         """Test connection has Row factory set"""
         from api.services.admin_support import get_admin_db_connection
 
-        with patch('api.auth_middleware.auth_service', mock_auth_service):
+        with patch('api.auth.middleware.auth_service', mock_auth_service):
             conn = get_admin_db_connection()
 
             assert conn.row_factory == sqlite3.Row
@@ -220,7 +220,7 @@ class TestListAllUsers:
         """Test listing with no users"""
         from api.services.admin_support import list_all_users
 
-        with patch('api.auth_middleware.auth_service', mock_auth_service):
+        with patch('api.auth.middleware.auth_service', mock_auth_service):
             result = await list_all_users()
 
         assert "users" in result
@@ -233,7 +233,7 @@ class TestListAllUsers:
         """Test listing with existing users"""
         from api.services.admin_support import list_all_users
 
-        with patch('api.auth_middleware.auth_service', mock_auth_service):
+        with patch('api.auth.middleware.auth_service', mock_auth_service):
             result = await list_all_users()
 
         assert result["total"] == 1
@@ -250,7 +250,7 @@ class TestListAllUsers:
         """Test that passwords are not returned"""
         from api.services.admin_support import list_all_users
 
-        with patch('api.auth_middleware.auth_service', mock_auth_service):
+        with patch('api.auth.middleware.auth_service', mock_auth_service):
             result = await list_all_users()
 
         user = result["users"][0]
@@ -274,7 +274,7 @@ class TestListAllUsers:
         conn.commit()
         conn.close()
 
-        with patch('api.auth_middleware.auth_service', mock_auth_service):
+        with patch('api.auth.middleware.auth_service', mock_auth_service):
             result = await list_all_users()
 
         assert result["total"] == 2
@@ -293,7 +293,7 @@ class TestGetUserDetails:
         """Test getting existing user details"""
         from api.services.admin_support import get_user_details
 
-        with patch('api.auth_middleware.auth_service', mock_auth_service):
+        with patch('api.auth.middleware.auth_service', mock_auth_service):
             result = await get_user_details(sample_user["user_id"])
 
         assert result["user_id"] == sample_user["user_id"]
@@ -307,7 +307,7 @@ class TestGetUserDetails:
         from api.services.admin_support import get_user_details
         from fastapi import HTTPException
 
-        with patch('api.auth_middleware.auth_service', mock_auth_service):
+        with patch('api.auth.middleware.auth_service', mock_auth_service):
             with pytest.raises(HTTPException) as exc:
                 await get_user_details("nonexistent-user")
 
@@ -319,7 +319,7 @@ class TestGetUserDetails:
         """Test password is not returned"""
         from api.services.admin_support import get_user_details
 
-        with patch('api.auth_middleware.auth_service', mock_auth_service):
+        with patch('api.auth.middleware.auth_service', mock_auth_service):
             result = await get_user_details(sample_user["user_id"])
 
         assert "password_hash" not in result
@@ -1078,7 +1078,7 @@ class TestHelperFunctions:
         """Test _get_auth_service returns auth service"""
         from api.services.admin_account import _get_auth_service
 
-        with patch('api.auth_middleware.auth_service', mock_auth_service):
+        with patch('api.auth.middleware.auth_service', mock_auth_service):
             result = _get_auth_service()
 
         assert result == mock_auth_service
@@ -1102,7 +1102,7 @@ class TestEdgeCases:
         conn.commit()
         conn.close()
 
-        with patch('api.auth_middleware.auth_service', mock_auth_service):
+        with patch('api.auth.middleware.auth_service', mock_auth_service):
             result = await list_all_users()
 
         assert result["total"] == 1
@@ -1122,7 +1122,7 @@ class TestEdgeCases:
         conn.commit()
         conn.close()
 
-        with patch('api.auth_middleware.auth_service', mock_auth_service):
+        with patch('api.auth.middleware.auth_service', mock_auth_service):
             result = await get_user_details(special_id)
 
         assert result["user_id"] == special_id
