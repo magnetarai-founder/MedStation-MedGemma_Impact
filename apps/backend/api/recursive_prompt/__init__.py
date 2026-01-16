@@ -1,13 +1,12 @@
 """
-Compatibility Shim for Recursive Prompt Constants
+Recursive Prompt Package
 
-The implementation now lives in the `api.recursive_prompt` package:
-- api.recursive_prompt.constants: Constants, enums, and helper functions
-
-This shim maintains backward compatibility.
+Recursive NLP prompt decomposition for Metal 4 + ANE acceleration:
+- Breaks complex prompts into optimized sub-tasks
+- Routes to ANE (simple) or Metal GPU (complex) based on complexity
+- Provides caching and retry logic with safety limits
 """
 
-# Re-export everything from the new package location
 from api.recursive_prompt.constants import (
     # Safety constants
     MAX_RECURSION_DEPTH,
@@ -40,6 +39,15 @@ from api.recursive_prompt.constants import (
     get_pattern_steps,
     get_all_pattern_types,
     get_pattern_keywords,
+)
+from api.recursive_prompt.library import (
+    PromptStep,
+    StepResult,
+    RecursiveExecutionPlan,
+    PromptDecomposer,
+    RecursiveExecutor,
+    RecursivePromptLibrary,
+    get_recursive_library,
 )
 
 __all__ = [
@@ -74,4 +82,12 @@ __all__ = [
     "get_pattern_steps",
     "get_all_pattern_types",
     "get_pattern_keywords",
+    # Library classes
+    "PromptStep",
+    "StepResult",
+    "RecursiveExecutionPlan",
+    "PromptDecomposer",
+    "RecursiveExecutor",
+    "RecursivePromptLibrary",
+    "get_recursive_library",
 ]
