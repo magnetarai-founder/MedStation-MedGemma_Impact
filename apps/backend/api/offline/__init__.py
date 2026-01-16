@@ -29,6 +29,17 @@ from api.offline.db import (
     check_version_conflict,
     update_version_tracking,
 )
+from api.offline.file_share import (
+    SharedFile,
+    FileTransferProgress,
+    OfflineFileShare,
+    get_file_share,
+)
+from api.offline.mesh_discovery import (
+    LocalPeer,
+    OfflineMeshDiscovery,
+    get_mesh_discovery,
+)
 
 __all__ = [
     # Models
@@ -50,4 +61,13 @@ __all__ = [
     "load_sync_state",
     "check_version_conflict",
     "update_version_tracking",
+    # File sharing
+    "SharedFile",
+    "FileTransferProgress",
+    "OfflineFileShare",
+    "get_file_share",
+    # Mesh discovery
+    "LocalPeer",
+    "OfflineMeshDiscovery",
+    "get_mesh_discovery",
 ]

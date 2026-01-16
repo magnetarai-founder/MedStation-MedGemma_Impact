@@ -1,10 +1,11 @@
 """
-Compatibility Shim for Disclaimer Content
+Disclaimers Package
 
-The implementation now lives in the `api.disclaimers` package:
-- api.disclaimers.content: DisclaimerType and text constants
-
-This shim maintains backward compatibility.
+Legal disclaimers for ElohimOS:
+- Medical advice disclaimers
+- AI content warnings
+- Liability limitations
+- Export control notices
 """
 
 from api.disclaimers.content import (
@@ -18,9 +19,12 @@ from api.disclaimers.content import (
     DATA_PRIVACY_NOTICE,
     MEDICAL_TEMPLATE_BANNER,
 )
+from api.disclaimers.service import DisclaimerService
 
 __all__ = [
+    # Types
     "DisclaimerType",
+    # Content
     "MEDICAL_DISCLAIMER_SHORT",
     "MEDICAL_DISCLAIMER_FULL",
     "AI_CONTENT_DISCLAIMER",
@@ -29,4 +33,6 @@ __all__ = [
     "HIPAA_COMPLIANCE_NOTICE",
     "DATA_PRIVACY_NOTICE",
     "MEDICAL_TEMPLATE_BANNER",
+    # Service
+    "DisclaimerService",
 ]
