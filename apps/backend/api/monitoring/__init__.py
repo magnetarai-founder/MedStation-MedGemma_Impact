@@ -1,11 +1,15 @@
 """
 Monitoring Package
 
-Observability and metrics for ElohimOS:
+Comprehensive observability and metrics for ElohimOS:
 - Lightweight operation metrics
 - Prometheus metrics export
 - Health check endpoints
 - Request timing middleware
+- Health diagnostics
+- Performance monitoring
+- Telemetry counters
+- Structured logging
 """
 
 from api.monitoring.metrics import (
@@ -31,6 +35,37 @@ from api.monitoring.middleware import (
     VERY_SLOW_REQUEST_THRESHOLD_MS,
 )
 
+# Health Diagnostics
+from api.monitoring.diagnostics import (
+    HealthDiagnostics,
+    get_health_diagnostics,
+)
+
+# Performance Monitor
+from api.monitoring.performance import (
+    PerformanceSnapshot,
+    PerformanceMonitor,
+    get_performance_monitor,
+)
+
+# Telemetry
+from api.monitoring.telemetry import (
+    TelemetryCounters,
+    TelemetryMetric,
+    get_telemetry,
+    track_metric,
+)
+
+# Structured Logger
+from api.monitoring.logger import (
+    StructuredLogFormatter,
+    get_logger,
+    log_with_context,
+    info_with_context,
+    error_with_context,
+    warning_with_context,
+)
+
 __all__ = [
     # Metrics
     "MetricSnapshot",
@@ -52,4 +87,23 @@ __all__ = [
     "reset_metrics",
     "SLOW_REQUEST_THRESHOLD_MS",
     "VERY_SLOW_REQUEST_THRESHOLD_MS",
+    # Health Diagnostics
+    "HealthDiagnostics",
+    "get_health_diagnostics",
+    # Performance
+    "PerformanceSnapshot",
+    "PerformanceMonitor",
+    "get_performance_monitor",
+    # Telemetry
+    "TelemetryCounters",
+    "TelemetryMetric",
+    "get_telemetry",
+    "track_metric",
+    # Structured Logger
+    "StructuredLogFormatter",
+    "get_logger",
+    "log_with_context",
+    "info_with_context",
+    "error_with_context",
+    "warning_with_context",
 ]
