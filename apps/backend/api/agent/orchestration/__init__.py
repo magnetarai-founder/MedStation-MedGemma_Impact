@@ -15,76 +15,40 @@ Created during Phase 6.3d modularization.
 """
 
 # Models
-try:
-    from .models import (
-        RouteRequest, RouteResponse,
-        PlanRequest, PlanStep, PlanResponse,
-        ContextRequest, ContextResponse,
-        ApplyRequest, FilePatch, ApplyResponse,
-        EngineCapability, CapabilitiesResponse,
-        AgentSession, AgentSessionCreateRequest,  # Phase C
-    )
-except ImportError:
-    from models import (
-        RouteRequest, RouteResponse,
-        PlanRequest, PlanStep, PlanResponse,
-        ContextRequest, ContextResponse,
-        ApplyRequest, FilePatch, ApplyResponse,
-        EngineCapability, CapabilitiesResponse,
-        AgentSession, AgentSessionCreateRequest,  # Phase C
-    )
+from .models import (
+    RouteRequest, RouteResponse,
+    PlanRequest, PlanStep, PlanResponse,
+    ContextRequest, ContextResponse,
+    ApplyRequest, FilePatch, ApplyResponse,
+    EngineCapability, CapabilitiesResponse,
+    AgentSession, AgentSessionCreateRequest,  # Phase C
+)
 
 # Config
-try:
-    from .config import get_agent_config, reload_config, CONFIG_PATH
-except ImportError:
-    from config import get_agent_config, reload_config, CONFIG_PATH
+from .config import get_agent_config, reload_config, CONFIG_PATH
 
 # Capabilities
-try:
-    from .capabilities import get_capabilities_logic
-except ImportError:
-    from capabilities import get_capabilities_logic
+from .capabilities import get_capabilities_logic
 
 # Model Settings
-try:
-    from .model_settings import (
-        get_models_overview,
-        update_model_settings_logic,
-        validate_models_logic,
-        auto_fix_models_logic,
-    )
-except ImportError:
-    from model_settings import (
-        get_models_overview,
-        update_model_settings_logic,
-        validate_models_logic,
-        auto_fix_models_logic,
-    )
+from .model_settings import (
+    get_models_overview,
+    update_model_settings_logic,
+    validate_models_logic,
+    auto_fix_models_logic,
+)
 
 # Routing
-try:
-    from .routing import route_input_logic
-except ImportError:
-    from routing import route_input_logic
+from .routing import route_input_logic
 
 # Planning
-try:
-    from .planning import generate_plan_logic
-except ImportError:
-    from planning import generate_plan_logic
+from .planning import generate_plan_logic
 
 # Context Bundle
-try:
-    from .context_bundle import build_context_bundle
-except ImportError:
-    from context_bundle import build_context_bundle
+from .context_bundle import build_context_bundle
 
 # Apply
-try:
-    from .apply import apply_plan_logic
-except ImportError:
-    from apply import apply_plan_logic
+from .apply import apply_plan_logic
 
 
 __all__ = [

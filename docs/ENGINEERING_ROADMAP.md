@@ -255,7 +255,7 @@ Connection pool implemented in `api/db/pool.py`:
 | Reorganize 141 root-level API files into packages | **COMPLETE** |
 | Increase test coverage gaps | Pending |
 | Update documentation | Pending |
-| Remove try/except import wrappers (200+ files) | Pending |
+| Remove try/except import wrappers (200+ files) | **IN PROGRESS** (125 remaining in 69 files, was 200+) |
 
 ---
 
