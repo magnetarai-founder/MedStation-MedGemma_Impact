@@ -12,20 +12,9 @@ from pathlib import Path
 from typing import Optional, List, Dict, Any
 from datetime import datetime, UTC
 
-try:
-    from api.agent.orchestration.models import AgentSession
-    from api.config_paths import get_config_paths
-    from api.security.sql_safety import quote_identifier
-except ImportError:
-    from .models import AgentSession
-    try:
-        from config_paths import get_config_paths
-    except ImportError:
-        from api.config_paths import get_config_paths
-    try:
-        from api.security.sql_safety import quote_identifier
-    except ImportError:
-        from security.sql_safety import quote_identifier
+from .models import AgentSession
+from api.config_paths import get_config_paths
+from api.security.sql_safety import quote_identifier
 
 logger = logging.getLogger(__name__)
 

@@ -23,10 +23,7 @@ logger = logging.getLogger(__name__)
 
 def _get_memory() -> Any:
     """Get memory (chat) service instance."""
-    try:
-        from api.chat_memory import get_memory
-    except ImportError:
-        from chat_memory import get_memory
+    from api.chat_memory import get_memory
     return get_memory()
 
 
@@ -121,10 +118,7 @@ async def get_device_overview_metrics() -> Dict[str, Any]:
     Returns:
         Dict with device_overview and timestamp
     """
-    try:
-        from api.config_paths import PATHS
-    except ImportError:
-        from config_paths import PATHS
+    from api.config_paths import PATHS
 
     memory = _get_memory()
     overview = {}

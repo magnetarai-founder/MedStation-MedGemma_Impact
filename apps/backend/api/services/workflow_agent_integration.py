@@ -13,29 +13,21 @@ import time
 from typing import Optional, Dict, Any
 from pathlib import Path
 
+from api.workflow_models import WorkItem, Stage, StageType
+from api.workflow_storage import WorkflowStorage
+from api.agent.orchestration.models import ContextRequest, ContextResponse
+from api.agent.orchestration import context_bundle as context_mod
+from api.agent.orchestration import planning as planning_mod
+from api.config_paths import get_config_paths
+
+# Optional audit/metrics - graceful degradation if unavailable
 try:
-    from api.workflow_models import WorkItem, Stage, StageType
-    from api.workflow_storage import WorkflowStorage
-    from api.agent.orchestration.models import ContextRequest, ContextResponse
-    from api.agent.orchestration import context_bundle as context_mod
-    from api.agent.orchestration import planning as planning_mod
-    from api.config_paths import get_config_paths
     from api.audit_logger import AuditAction, audit_log_sync
     from api.metrics import get_metrics
 except ImportError:
-    from workflow_models import WorkItem, Stage, StageType
-    from workflow_storage import WorkflowStorage
-    from agent.orchestration.models import ContextRequest, ContextResponse
-    from agent.orchestration import context_bundle as context_mod
-    from agent.orchestration import planning as planning_mod
-    from config_paths import get_config_paths
-    try:
-        from audit_logger import AuditAction, audit_log_sync
-        from metrics import get_metrics
-    except ImportError:
-        AuditAction = None
-        audit_log_sync = lambda *args, **kwargs: None
-        get_metrics = lambda: None
+    AuditAction = None
+    audit_log_sync = lambda *args, **kwargs: None
+    get_metrics = lambda: None
 
 logger = logging.getLogger(__name__)
 metrics = get_metrics() if get_metrics() else None
@@ -223,12 +215,8 @@ def run_agent_assist_for_stage(
 
             try:
                 # Import apply logic
-                try:
-                    from api.agent.orchestration.apply import apply_plan_logic
-                    from api.agent.orchestration.models import ApplyRequest
-                except ImportError:
-                    from agent.orchestration.apply import apply_plan_logic
-                    from agent.orchestration.models import ApplyRequest
+                from api.agent.orchestration.apply import apply_plan_logic
+                from api.agent.orchestration.models import ApplyRequest
 
                 # Build apply request from plan
                 apply_req = ApplyRequest(

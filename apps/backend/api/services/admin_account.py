@@ -20,21 +20,14 @@ logger = logging.getLogger(__name__)
 
 def _get_memory() -> Any:
     """Get memory (chat) service instance."""
-    try:
-        from api.chat_memory import get_memory
-    except ImportError:
-        from chat_memory import get_memory
+    from api.chat_memory import get_memory
     return get_memory()
 
 
 def _get_auth_service() -> Any:
     """Get auth service instance."""
-    try:
-        from api.auth_middleware import auth_service
-        return auth_service
-    except ImportError:
-        from auth_middleware import auth_service
-        return auth_service
+    from api.auth_middleware import auth_service
+    return auth_service
 
 
 # ===== Account Remediation Functions =====
@@ -55,10 +48,7 @@ async def reset_user_password(target_user_id: str) -> Dict[str, Any]:
     Raises:
         HTTPException: If user not found or inactive
     """
-    try:
-        from api.config_paths import PATHS
-    except ImportError:
-        from config_paths import PATHS
+    from api.config_paths import PATHS
 
     auth_service = _get_auth_service()
 

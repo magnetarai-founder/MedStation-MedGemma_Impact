@@ -10,22 +10,17 @@ import logging
 from datetime import datetime, UTC
 from typing import Optional, Dict, Any, List
 
+from .models import AgentSession
+from . import session_storage
+
+# Optional audit/metrics - graceful degradation if unavailable
 try:
-    from api.agent.orchestration.models import AgentSession
-    from api.agent.orchestration import session_storage
     from api.audit_logger import AuditAction, audit_log_sync
     from api.metrics import get_metrics
 except ImportError:
-    from .models import AgentSession
-    from . import session_storage
-    try:
-        from ...audit_logger import AuditAction, audit_log_sync
-        from ...metrics import get_metrics
-    except ImportError:
-        # Fallback for test environments
-        AuditAction = None
-        audit_log_sync = lambda *args, **kwargs: None
-        get_metrics = lambda: None
+    AuditAction = None
+    audit_log_sync = lambda *args, **kwargs: None
+    get_metrics = lambda: None
 
 logger = logging.getLogger(__name__)
 metrics = get_metrics() if get_metrics() else None

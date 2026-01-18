@@ -66,10 +66,7 @@ async def get_file_tree(
     if absolute_path:
         target_path = Path(absolute_path).resolve()
 
-        try:
-            from api.config_paths import get_config_paths
-        except ImportError:
-            from config_paths import get_config_paths
+        from api.config_paths import get_config_paths
 
         PATHS_LOCAL = get_config_paths()
         user_workspace_root = PATHS_LOCAL.data_dir / "code_workspaces" / user_id
@@ -132,10 +129,7 @@ async def read_file(
     if absolute_path or path.startswith('/'):
         file_path = Path(path).resolve()
 
-        try:
-            from api.config_paths import get_config_paths
-        except ImportError:
-            from config_paths import get_config_paths
+        from api.config_paths import get_config_paths
 
         PATHS_LOCAL = get_config_paths()
         user_workspace_root = PATHS_LOCAL.data_dir / "code_workspaces" / user_id

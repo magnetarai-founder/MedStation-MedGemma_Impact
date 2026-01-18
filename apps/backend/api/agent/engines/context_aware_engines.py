@@ -9,10 +9,7 @@ from pathlib import Path
 from typing import List, Optional
 import logging
 
-try:
-    from ..patchbus import ChangeProposal
-except ImportError:
-    from patchbus import ChangeProposal
+from ..patchbus import ChangeProposal
 
 logger = logging.getLogger(__name__)
 
@@ -21,10 +18,7 @@ class ContextAwareContinueEngine:
     """Continue engine that properly uses context snippets"""
 
     def __init__(self, binary: str = None):
-        try:
-            from .continue_engine import ContinueEngine
-        except ImportError:
-            from engines.continue_engine import ContinueEngine
+        from .continue_engine import ContinueEngine
         self.base_engine = ContinueEngine(binary)
         
     def propose(self, description: str, files: List[str], context_snippets: List[str]) -> ChangeProposal:
@@ -94,10 +88,7 @@ class ContextAwareAiderEngine:
     """Aider engine that properly uses context snippets"""
     
     def __init__(self, model: str, venv_path: Path):
-        try:
-            from .aider_engine import AiderEngine
-        except ImportError:
-            from engines.aider_engine import AiderEngine
+        from .aider_engine import AiderEngine
         self.base_engine = AiderEngine(model, venv_path)
         
     def propose(self, description: str, files: List[str], context_snippets: List[str]) -> ChangeProposal:

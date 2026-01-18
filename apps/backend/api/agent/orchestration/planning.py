@@ -13,15 +13,8 @@ Extracted from orchestrator.py during Phase 6.3d modularization.
 import logging
 from typing import Optional, Dict, Any
 
-try:
-    from ..planner_enhanced import EnhancedPlanner
-except ImportError:
-    from planner_enhanced import EnhancedPlanner
-
-try:
-    from .models import PlanStep, PlanResponse
-except ImportError:
-    from models import PlanStep, PlanResponse
+from ..planner_enhanced import EnhancedPlanner
+from .models import PlanStep, PlanResponse
 
 logger = logging.getLogger(__name__)
 
