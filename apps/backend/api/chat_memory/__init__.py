@@ -25,11 +25,8 @@ This module has been refactored from chat_memory.py (993 lines) into:
 from .models import ConversationEvent
 from .memory import NeutronChatMemory, get_memory
 
-# Backward compatibility: export MEMORY_DIR
-try:
-    from api.config_paths import get_memory_dir
-except ImportError:
-    from config_paths import get_memory_dir
+# Export MEMORY_DIR
+from api.config_paths import get_memory_dir
 
 MEMORY_DIR = get_memory_dir()
 

@@ -13,11 +13,8 @@ from api.routes.schemas.responses import SuccessResponse
 
 logger = logging.getLogger(__name__)
 
-# Import service layer with fallback
-try:
-    from api.services import code_editor as code_service
-except ImportError:
-    from services import code_editor as code_service
+# Import service layer
+from api.services import code_editor as code_service
 
 # Import auth and permissions
 from fastapi import Depends

@@ -10,12 +10,8 @@ from datetime import datetime, UTC
 from pathlib import Path
 from typing import Any, Dict
 
-try:
-    from api.config_paths import get_config_paths
-    from api.security.sql_safety import quote_identifier
-except ImportError:
-    from config_paths import get_config_paths
-    from security.sql_safety import quote_identifier
+from api.config_paths import get_config_paths
+from api.security.sql_safety import quote_identifier
 
 logger = logging.getLogger(__name__)
 

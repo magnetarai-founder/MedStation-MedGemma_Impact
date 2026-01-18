@@ -11,12 +11,8 @@ from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Request, Depends, Body
 
-try:
-    from api.auth_middleware import get_current_user
-    from api.utils import get_user_id
-except ImportError:
-    from auth_middleware import get_current_user
-    from utils import get_user_id
+from api.auth_middleware import get_current_user
+from api.utils import get_user_id
 from api.schemas.insights_models import (
     Template, CreateTemplateRequest, UpdateTemplateRequest, TemplateListResponse,
     TemplateCategory, OutputFormat

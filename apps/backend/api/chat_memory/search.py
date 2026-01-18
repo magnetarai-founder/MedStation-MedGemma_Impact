@@ -22,12 +22,8 @@ class SearchMixin:
         Phase 5: Team-aware - filters by user_id/team_id
         Performance: Uses pre-computed embeddings for 100x faster search + Redis caching
         """
-        try:
-            from api.chat_enhancements import SimpleEmbedding
-            from api.cache_service import get_cache
-        except ImportError:
-            from chat_enhancements import SimpleEmbedding
-            from cache_service import get_cache
+        from api.chat_enhancements import SimpleEmbedding
+        from api.cache_service import get_cache
 
         # Cache key based on query, user, and team context
         cache_key = f"semantic_search:{hashlib.sha256(query.encode()).hexdigest()}:{user_id or 'none'}:{team_id or 'none'}:{limit}"

@@ -38,10 +38,7 @@ class NeutronChatMemory(
 
     def __init__(self, db_path: Path = None):
         # Get memory directory from config
-        try:
-            from api.config_paths import get_memory_dir
-        except ImportError:
-            from config_paths import get_memory_dir
+        from api.config_paths import get_memory_dir
 
         MEMORY_DIR = get_memory_dir()
 

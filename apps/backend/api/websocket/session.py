@@ -14,10 +14,7 @@ from pathlib import Path
 from typing import Dict, Optional, Any, Generator
 import json
 
-try:
-    from api.config_paths import get_config_paths
-except ImportError:
-    from config_paths import get_config_paths
+from api.config_paths import get_config_paths
 
 logger = logging.getLogger(__name__)
 

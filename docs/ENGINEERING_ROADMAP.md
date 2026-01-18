@@ -181,16 +181,16 @@ Files exceeding 1000 lines violate single-responsibility:
 | `redshift_sql_processor.py` | 2,491 → 26 | Decompose into parser, executor, optimizer | **COMPLETE** (now shim + package) |
 | `vault_auth.py` | 1,144 | Split auth flows, token mgmt, sessions | **COMPLETE** (split into vault/) |
 | `workflow_orchestrator.py` | 1,139 → 28 | Extract stage handlers, condition evaluators | **COMPLETE** (workflows/ package) |
-| `vault/sharing.py` | 1,131 | Separate ACL, invitations, share links | Pending |
-| `vault/core.py` | 1,088 | Extract file ops, metadata, encryption | Pending |
+| `vault/sharing.py` | 1,131 → 399 | Separate ACL, invitations, share links | **COMPLETE** (split into vault/) |
+| `vault/core.py` | 1,088 → 454 | Extract file ops, metadata, encryption | **COMPLETE** (split into vault/) |
 | `mesh_relay.py` | 1,078 → 59 | Separate connection pool, routing, handshake | **COMPLETE** (mesh/ package) |
-| `permissions/admin.py` | 1,040 | Extract role mgmt, audit, bulk ops | Pending |
-| `team/storage.py` | 1,005 | Separate CRUD, caching, query builders | Pending |
+| `permissions/admin.py` | 1,040 → <1000 | Extract role mgmt, audit, bulk ops | **COMPLETE** (now in permissions/) |
+| `team/storage.py` | 1,005 → <1000 | Separate CRUD, caching, query builders | **COMPLETE** (split into team/) |
 | `terminal_api.py` | 972 → 104 | Extract WebSocket handlers, rate limiting | **COMPLETE** (terminal/ package) |
 | `workflow_storage.py` | 922 | Separate persistence, caching, migration | **COMPLETE** (in workflows/ package) |
-| `codex_engine.py` | 918 | Extract analysis, suggestions, context | Pending |
-| `metal4_engine.py` | 890 | Separate GPU ops, memory, shaders | Pending |
-| `code_operations.py` | 881 | Extract file tree, workspace, git ops | Pending |
+| `codex_engine.py` | 918 → 750 | Extract analysis, suggestions, context | **COMPLETE** (in agent/engines/) |
+| `metal4_engine.py` | 890 → 662 | Separate GPU ops, memory, shaders | **COMPLETE** (metal4_engine/ package) |
+| `code_operations.py` | 881 | Extract file tree, workspace, git ops | **COMPLETE** (code_operations/ package) |
 | `lan_discovery.py` | 866 | Separate mDNS, heartbeat, retry logic | **COMPLETE** (lan_discovery/ package) |
 
 #### Swift Monolithic Files (>500 lines)

@@ -68,10 +68,7 @@ class DocumentMixin:
             chunk_embedding = json.loads(row["embedding_json"])
 
             # Calculate similarity
-            try:
-                from api.chat_enhancements import SimpleEmbedding
-            except ImportError:
-                from chat_enhancements import SimpleEmbedding
+            from api.chat_enhancements import SimpleEmbedding
             similarity = SimpleEmbedding.cosine_similarity(query_embedding, chunk_embedding)
 
             chunks.append({

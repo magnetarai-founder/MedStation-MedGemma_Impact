@@ -13,10 +13,7 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, HTTPException, Request, Depends, Body
 
-try:
-    from api.auth_middleware import get_current_user
-except ImportError:
-    from auth_middleware import get_current_user
+from api.auth_middleware import get_current_user
 from api.schemas.insights_models import (
     FormattedOutput, ApplyTemplateRequest, ApplyTemplateResponse,
     BatchApplyRequest, BatchApplyResponse, OutputFormat

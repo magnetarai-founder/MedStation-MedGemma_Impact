@@ -22,10 +22,7 @@ except ImportError:
     async def log_action(**kwargs: Any) -> None:
         pass
 
-try:
-    from api.services import code_editor as code_service
-except ImportError:
-    from services import code_editor as code_service
+from api.services import code_editor as code_service
 
 logger = logging.getLogger(__name__)
 
