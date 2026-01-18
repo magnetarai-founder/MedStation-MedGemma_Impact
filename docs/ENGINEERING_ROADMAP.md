@@ -101,20 +101,20 @@ Critical bugs that can cause runtime crashes or security issues.
 
 | Issue | File | Line(s) | Fix | Status |
 |-------|------|---------|-----|--------|
-| `AUTH_ERROR` doesn't exist | `routes/user_models.py` | 144, 213, 279, 401, 459 | Use `UNAUTHORIZED` | Pending |
-| `RATE_LIMIT` doesn't exist | `routes/team/invitations.py` | 268 | Use `RATE_LIMITED` | Pending |
-| `RATE_LIMIT` doesn't exist | `routes/vault/files/download.py` | 210 | Use `RATE_LIMITED` | Pending |
-| `RATE_LIMIT` doesn't exist | `routes/vault/files/search.py` | 143, 225, 350, 487 | Use `RATE_LIMITED` | Pending |
+| `AUTH_ERROR` doesn't exist | `routes/user_models.py` | 144, 213, 279, 401, 459 | Use `UNAUTHORIZED` | **COMPLETE** |
+| `RATE_LIMIT` doesn't exist | `routes/team/invitations.py` | 268 | Use `RATE_LIMITED` | **COMPLETE** |
+| `RATE_LIMIT` doesn't exist | `routes/vault/files/download.py` | 210 | Use `RATE_LIMITED` | **COMPLETE** |
+| `RATE_LIMIT` doesn't exist | `routes/vault/files/search.py` | 143, 225, 350, 487 | Use `RATE_LIMITED` | **COMPLETE** |
 
 #### Security & Stability
 
 | Issue | Files | Fix | Status |
 |-------|-------|-----|--------|
 | Thread-unsafe global state | `core/state.py` | Add `threading.RLock` wrappers | Pending |
-| Sessions router missing auth | `routes/sessions.py` | Add `Depends(get_current_user)` | Pending |
+| Sessions router missing auth | `routes/sessions.py` | Add `Depends(get_current_user)` | **COMPLETE** |
 | Silent audit failures | `audit_logger.py` | Add fallback queue | Pending |
 | Setup wizard admin bypass | `setup_wizard_routes.py` | Add users-exist check | Pending |
-| WebSocket token in query params | `auth_middleware.py` | Remove query param fallback | Pending |
+| WebSocket token in query params | `websocket/collab.py` | Remove query param fallback | Pending |
 
 ---
 
