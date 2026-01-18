@@ -110,11 +110,11 @@ Critical bugs that can cause runtime crashes or security issues.
 
 | Issue | Files | Fix | Status |
 |-------|-------|-----|--------|
-| Thread-unsafe global state | `core/state.py` | Add `threading.RLock` wrappers | Pending |
+| Thread-unsafe global state | `core/state.py` | Add `threading.RLock` wrappers | **COMPLETE** |
 | Sessions router missing auth | `routes/sessions.py` | Add `Depends(get_current_user)` | **COMPLETE** |
-| Silent audit failures | `audit_logger.py` | Add fallback queue | Pending |
-| Setup wizard admin bypass | `setup_wizard_routes.py` | Add users-exist check | Pending |
-| WebSocket token in query params | `websocket/collab.py` | Remove query param fallback | Pending |
+| Silent audit failures | `audit/logger.py` | Add fallback queue | **COMPLETE** |
+| Setup wizard admin bypass | `setup_wizard_routes.py` | Add users-exist check | **COMPLETE** |
+| WebSocket token in query params | `websocket/collab.py` | Remove query param fallback | **COMPLETE** |
 
 ---
 

@@ -351,12 +351,12 @@ async def collab_websocket(
     - Grid docs (Tables) via Y.Array<Y.Map>
 
     Authentication:
-    - JWT token via query param: ?token=xxx
-    - OR via Sec-WebSocket-Protocol header
+    - JWT token via Sec-WebSocket-Protocol header (format: "jwt-<token>" or "bearer.<token>")
+    - Query param is accepted for backwards compatibility but IGNORED for security
 
     Rate limiting: 10 connections per IP per minute
     """
-    # SECURITY: Extract token from header (preferred) or query param (deprecated fallback)
+    # SECURITY: Extract token from header only (query param ignored)
     auth_token = extract_websocket_token(websocket, token)
 
     # Verify authentication
