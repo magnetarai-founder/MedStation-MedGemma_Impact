@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 def get_e2e_service() -> Any:
     """Get the E2E encryption service singleton."""
     try:
-        from api.e2e_encryption_service import get_e2e_service
+        from api.security.e2e_encryption import get_e2e_service
         return get_e2e_service()
     except ImportError:
         # E2E encryption service not yet implemented - return None for graceful degradation

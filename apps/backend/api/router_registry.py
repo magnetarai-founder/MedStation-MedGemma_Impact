@@ -127,7 +127,7 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
 
     # LAN Discovery
     try:
-        from api.lan_service import router as lan_router
+        from api.lan_discovery import router as lan_router
         app.include_router(lan_router)
         services_loaded.append("LAN Discovery")
     except Exception as e:
@@ -163,7 +163,7 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
 
     # Documents API
     try:
-        from api.docs_service import router as docs_router
+        from api.docs.service import router as docs_router
         app.include_router(docs_router)
         services_loaded.append("Documents API")
     except Exception as e:
@@ -172,7 +172,7 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
 
     # Insights API
     try:
-        from api.insights_service import router as insights_router
+        from api.insights import router as insights_router
         app.include_router(insights_router)
         services_loaded.append("Insights API")
     except Exception as e:
@@ -208,7 +208,7 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
 
     # Workflow
     try:
-        from api.workflow_service import router as workflow_router
+        from api.workflows import router as workflow_router
         app.include_router(workflow_router)
         services_loaded.append("Workflow")
     except Exception as e:
@@ -217,7 +217,7 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
 
     # Secure Enclave
     try:
-        from api.secure_enclave_service import router as secure_enclave_router
+        from api.secure_enclave.service import router as secure_enclave_router
         app.include_router(secure_enclave_router)
         services_loaded.append("Secure Enclave")
     except Exception as e:

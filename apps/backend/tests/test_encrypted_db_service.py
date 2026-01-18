@@ -27,7 +27,7 @@ from unittest.mock import Mock, patch
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from api.encrypted_db_service import (
+from api.security.encrypted_db import (
     EncryptedDatabase,
     BackupCodesService,
     get_encrypted_database,
@@ -609,7 +609,7 @@ class TestGlobalFunction:
                 get_config_paths=Mock(return_value=Mock(data_dir=temp_db_dir))
             )
         }):
-            from api.encrypted_db_service import _encrypted_databases
+            from api.security.encrypted_db import _encrypted_databases
             _encrypted_databases.clear()
 
             db = get_encrypted_database("test.db", "passphrase")
@@ -623,7 +623,7 @@ class TestGlobalFunction:
                 get_config_paths=Mock(return_value=Mock(data_dir=temp_db_dir))
             )
         }):
-            from api.encrypted_db_service import _encrypted_databases
+            from api.security.encrypted_db import _encrypted_databases
             _encrypted_databases.clear()
 
             db1 = get_encrypted_database("test.db", "passphrase")
@@ -638,7 +638,7 @@ class TestGlobalFunction:
                 get_config_paths=Mock(return_value=Mock(data_dir=temp_db_dir))
             )
         }):
-            from api.encrypted_db_service import _encrypted_databases
+            from api.security.encrypted_db import _encrypted_databases
             _encrypted_databases.clear()
 
             db1 = get_encrypted_database("test.db", "passphrase1")

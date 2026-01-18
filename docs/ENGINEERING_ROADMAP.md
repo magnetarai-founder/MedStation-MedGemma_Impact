@@ -178,20 +178,20 @@ Files exceeding 1000 lines violate single-responsibility:
 
 | File | Lines | Recommendation | Status |
 |------|-------|----------------|--------|
-| `redshift_sql_processor.py` | 2,491 | Decompose into parser, executor, optimizer | Pending |
-| `vault_auth.py` | 1,144 | Split auth flows, token mgmt, sessions | Pending |
-| `workflow_orchestrator.py` | 1,139 | Extract stage handlers, condition evaluators | Pending |
+| `redshift_sql_processor.py` | 2,491 → 26 | Decompose into parser, executor, optimizer | **COMPLETE** (now shim + package) |
+| `vault_auth.py` | 1,144 | Split auth flows, token mgmt, sessions | **COMPLETE** (split into vault/) |
+| `workflow_orchestrator.py` | 1,139 → 28 | Extract stage handlers, condition evaluators | **COMPLETE** (workflows/ package) |
 | `vault/sharing.py` | 1,131 | Separate ACL, invitations, share links | Pending |
 | `vault/core.py` | 1,088 | Extract file ops, metadata, encryption | Pending |
-| `mesh_relay.py` | 1,078 | Separate connection pool, routing, handshake | Pending |
+| `mesh_relay.py` | 1,078 → 59 | Separate connection pool, routing, handshake | **COMPLETE** (mesh/ package) |
 | `permissions/admin.py` | 1,040 | Extract role mgmt, audit, bulk ops | Pending |
 | `team/storage.py` | 1,005 | Separate CRUD, caching, query builders | Pending |
-| `terminal_api.py` | 972 | Extract WebSocket handlers, rate limiting | Pending |
-| `workflow_storage.py` | 922 | Separate persistence, caching, migration | Pending |
+| `terminal_api.py` | 972 → 104 | Extract WebSocket handlers, rate limiting | **COMPLETE** (terminal/ package) |
+| `workflow_storage.py` | 922 | Separate persistence, caching, migration | **COMPLETE** (in workflows/ package) |
 | `codex_engine.py` | 918 | Extract analysis, suggestions, context | Pending |
 | `metal4_engine.py` | 890 | Separate GPU ops, memory, shaders | Pending |
 | `code_operations.py` | 881 | Extract file tree, workspace, git ops | Pending |
-| `lan_discovery.py` | 866 | Separate mDNS, heartbeat, retry logic | Pending |
+| `lan_discovery.py` | 866 | Separate mDNS, heartbeat, retry logic | **COMPLETE** (lan_discovery/ package) |
 
 #### Swift Monolithic Files (>500 lines)
 
@@ -206,28 +206,45 @@ Files exceeding 1000 lines violate single-responsibility:
 
 #### Database Connection Consolidation
 
-**365 direct SQLite connections** found. Consolidate through:
+**Status: PARTIALLY COMPLETE**
 
-```python
-# Target: apps/backend/api/db/registry.py
-class DatabaseRegistry:
-    """Single source of truth for all database connections"""
-    _pools: dict[str, SQLiteConnectionPool] = {}
+Connection pool implemented in `api/db/pool.py`:
+- `SQLiteConnectionPool` class with WAL mode, health checks, auto-recycling
+- `get_connection_pool()` singleton factory
+- `close_all_pools()` cleanup function
 
-    @classmethod
-    def get_connection(cls, db_name: str) -> ContextManager[sqlite3.Connection]:
-        """All files should use this instead of sqlite3.connect()"""
-```
+**Current state:**
+- Pool adopted by 5 files (security/session, docs/db, db/__init__, db_pool)
+- 81 direct `.connect()` calls remain (down from 365)
+- Migration files (30+) legitimately need direct connections
 
-#### Deprecated Facades to Remove
+**Remaining work:**
+- [ ] Migrate auth critical paths to use pool
+- [ ] Migrate remaining service files to use pool
+- [ ] Add connection pool metrics to observability
+
+#### Deprecated Facades Removed
 
 | Facade | Migration Target | Status |
 |--------|------------------|--------|
-| `chat_service.py` | `api.services.chat` | Pending |
-| `vault_service.py` | `api.services.vault.core` | Pending |
-| `team_service.py` | `api.services.team` | Pending |
-| `workflow_service.py` | `api.services.workflow_orchestrator` | Pending |
-| `p2p_chat_service.py` | `api.services.p2p_chat` | Pending |
+| `chat_service.py` | `api.services.chat` | **COMPLETE** (already removed) |
+| `vault_service.py` | `api.services.vault.core` | **COMPLETE** (already removed) |
+| `team_service.py` | `api.services.team` | **COMPLETE** (already removed) |
+| `workflow_service.py` | `api.workflows` | **COMPLETE** (removed Jan 18) |
+| `p2p_chat_service.py` | `api.services.p2p_chat` | **COMPLETE** (already removed) |
+| `backup_service.py` | `api.backup` | **COMPLETE** (removed Jan 18) |
+| `trash_service.py` | `api.trash` | **COMPLETE** (removed Jan 18) |
+| `focus_mode_service.py` | `api.focus_mode` | **COMPLETE** (removed Jan 18) |
+| `accessibility_service.py` | `api.accessibility` | **COMPLETE** (removed Jan 18) |
+| `undo_service.py` | `api.undo` | **COMPLETE** (removed Jan 18) |
+| `e2e_encryption_service.py` | `api.security.e2e_encryption` | **COMPLETE** (removed Jan 18) |
+| `encrypted_db_service.py` | `api.security.encrypted_db` | **COMPLETE** (removed Jan 18) |
+| `lan_service.py` | `api.lan_discovery` | **COMPLETE** (removed Jan 18) |
+| `docs_service.py` | `api.docs` | **COMPLETE** (removed Jan 18) |
+| `insights_service.py` | `api.insights` | **COMPLETE** (removed Jan 18) |
+| `secure_enclave_service.py` | `api.secure_enclave` | **COMPLETE** (removed Jan 18) |
+
+*Note: `cache_service.py` retained as shim due to 20+ imports - migrate gradually.*
 
 ---
 

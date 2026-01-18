@@ -25,7 +25,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
 # Import the module components
-from api.docs_service import (
+from api.docs.service import (
     router,
     init_db,
     get_db,

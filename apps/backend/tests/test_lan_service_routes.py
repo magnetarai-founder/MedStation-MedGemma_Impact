@@ -45,7 +45,7 @@ class TestStartDiscoveryEndpoint:
             "discovered_devices_count": 0
         }
 
-        from api.lan_service import start_discovery
+        from api.lan_discovery.router import start_discovery
 
         class MockRequest:
             pass
@@ -65,7 +65,7 @@ class TestStopDiscoveryEndpoint:
         """Test stopping discovery successfully"""
         mock_lan_service.stop_discovery = AsyncMock()
 
-        from api.lan_service import stop_discovery
+        from api.lan_discovery.router import stop_discovery
 
         class MockRequest:
             pass
@@ -84,7 +84,7 @@ class TestGetDevicesEndpoint:
         """Test getting devices when none discovered"""
         mock_lan_service.get_discovered_devices.return_value = []
 
-        from api.lan_service import get_discovered_devices
+        from api.lan_discovery.router import get_discovered_devices
 
         result = await get_discovered_devices()
 
@@ -100,7 +100,7 @@ class TestGetDevicesEndpoint:
             {"id": "device_002", "name": "Device 2", "ip": "192.168.1.102"}
         ]
 
-        from api.lan_service import get_discovered_devices
+        from api.lan_discovery.router import get_discovered_devices
 
         result = await get_discovered_devices()
 
@@ -117,7 +117,8 @@ class TestStartHubEndpoint:
         """Test starting hub successfully"""
         mock_lan_service.start_hub = AsyncMock()
 
-        from api.lan_service import start_hub, StartHubRequest
+        from api.lan_discovery.router import start_hub
+        from api.lan_discovery.types import StartHubRequest
 
         class MockRequest:
             pass
@@ -137,7 +138,7 @@ class TestStopHubEndpoint:
         """Test stopping hub successfully"""
         mock_lan_service.stop_hub = AsyncMock()
 
-        from api.lan_service import stop_hub
+        from api.lan_discovery.router import stop_hub
 
         class MockRequest:
             pass
@@ -159,7 +160,8 @@ class TestConnectEndpoint:
             "hub": {"name": "HubDevice", "ip": "192.168.1.1"}
         })
 
-        from api.lan_service import connect_to_device, JoinDeviceRequest
+        from api.lan_discovery.router import connect_to_device
+        from api.lan_discovery.types import JoinDeviceRequest
 
         class MockRequest:
             pass
@@ -183,7 +185,7 @@ class TestDisconnectEndpoint:
             "hub": {"name": "HubDevice"}
         })
 
-        from api.lan_service import disconnect_from_hub
+        from api.lan_discovery.router import disconnect_from_hub
 
         class MockRequest:
             pass
@@ -200,7 +202,7 @@ class TestDisconnectEndpoint:
             "status": "not_connected"
         })
 
-        from api.lan_service import disconnect_from_hub
+        from api.lan_discovery.router import disconnect_from_hub
 
         class MockRequest:
             pass
@@ -225,7 +227,7 @@ class TestStatusEndpoint:
         }
         mock_lan_service.get_discovered_devices.return_value = []
 
-        from api.lan_service import get_lan_status
+        from api.lan_discovery.router import get_lan_status
 
         result = await get_lan_status()
 
@@ -250,7 +252,8 @@ class TestRegisterClientEndpoint:
         )
         mock_lan_service.register_client.return_value = mock_client
 
-        from api.lan_service import register_client, RegisterClientRequest
+        from api.lan_discovery.router import register_client
+        from api.lan_discovery.types import RegisterClientRequest
 
         class MockRequest:
             pass
@@ -270,7 +273,8 @@ class TestRegisterClientEndpoint:
         """Test registering client when not running as hub"""
         mock_lan_service.register_client.side_effect = ValueError("not running as hub")
 
-        from api.lan_service import register_client, RegisterClientRequest
+        from api.lan_discovery.router import register_client
+        from api.lan_discovery.types import RegisterClientRequest
         from fastapi import HTTPException
 
         class MockRequest:
@@ -296,7 +300,8 @@ class TestUnregisterClientEndpoint:
         """Test unregistering a client"""
         mock_lan_service.unregister_client.return_value = True
 
-        from api.lan_service import unregister_client, UnregisterClientRequest
+        from api.lan_discovery.router import unregister_client
+        from api.lan_discovery.types import UnregisterClientRequest
 
         class MockRequest:
             pass
@@ -312,7 +317,8 @@ class TestUnregisterClientEndpoint:
         """Test unregistering a client that wasn't registered"""
         mock_lan_service.unregister_client.return_value = False
 
-        from api.lan_service import unregister_client, UnregisterClientRequest
+        from api.lan_discovery.router import unregister_client
+        from api.lan_discovery.types import UnregisterClientRequest
 
         class MockRequest:
             pass
@@ -336,7 +342,7 @@ class TestGetClientsEndpoint:
             {"id": "client_002", "name": "Client 2"}
         ]
 
-        from api.lan_service import get_connected_clients
+        from api.lan_discovery.router import get_connected_clients
 
         result = await get_connected_clients()
 
@@ -348,7 +354,7 @@ class TestGetClientsEndpoint:
         """Test getting clients when not running as hub"""
         mock_lan_service.is_hub = False
 
-        from api.lan_service import get_connected_clients
+        from api.lan_discovery.router import get_connected_clients
         from fastapi import HTTPException
 
         with pytest.raises(HTTPException) as exc_info:

@@ -11,7 +11,8 @@ from pathlib import Path
 from datetime import datetime, timedelta, UTC
 from unittest.mock import patch
 
-from api.trash_service import TrashService, TrashItem, TrashStats
+from api.trash.service import TrashService
+from api.trash.types import TrashItem, TrashStats
 
 
 @pytest.fixture

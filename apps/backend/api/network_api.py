@@ -33,7 +33,7 @@ app.add_middleware(
 
 # Load LAN Discovery Service
 try:
-    from api.lan_service import router as lan_router
+    from api.lan_discovery import router as lan_router
     app.include_router(lan_router)
     logger.info("✓ LAN Discovery service loaded")
 except Exception as e:

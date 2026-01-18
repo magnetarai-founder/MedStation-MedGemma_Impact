@@ -339,7 +339,7 @@ if "api.e2e_encryption_service" in sys.modules:
 import nacl.public
 import nacl.signing
 
-from api.e2e_encryption_service import (
+from api.security.e2e_encryption import (
     E2EEncryptionService,
     get_e2e_service,
 )

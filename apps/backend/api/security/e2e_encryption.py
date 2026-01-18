@@ -415,7 +415,7 @@ def get_e2e_service() -> E2EEncryptionService:
     global _e2e_service
 
     if _e2e_service is None:
-        from api.secure_enclave_service import get_secure_enclave_service
+        from api.secure_enclave.service import get_secure_enclave_service
         secure_enclave = get_secure_enclave_service()
         _e2e_service = E2EEncryptionService(secure_enclave)
 

@@ -10,12 +10,8 @@ from pathlib import Path
 from datetime import datetime, timedelta, UTC
 from unittest.mock import AsyncMock, patch
 
-from api.undo_service import (
-    UndoService,
-    UndoAction,
-    UndoResult,
-    ActionType,
-)
+from api.undo.service import UndoService
+from api.undo.types import UndoAction, UndoResult, ActionType
 
 
 @pytest.fixture
