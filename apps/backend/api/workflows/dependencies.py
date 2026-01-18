@@ -10,44 +10,22 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 # Import core dependencies
-try:
-    from api.permission_engine import require_perm, require_perm_team
-    from api.auth_middleware import get_current_user
-    from api.services.team import is_team_member
-    from api.rate_limiter import rate_limiter, get_client_ip
-    from api.utils import get_user_id
-except ImportError:
-    from permission_engine import require_perm, require_perm_team
-    from auth_middleware import get_current_user
-    from api.services.team import is_team_member
-    from rate_limiter import rate_limiter, get_client_ip
-    from utils import get_user_id
+from api.permission_engine import require_perm, require_perm_team
+from api.auth_middleware import get_current_user
+from api.services.team import is_team_member
+from api.rate_limiter import rate_limiter, get_client_ip
+from api.utils import get_user_id
 
-try:
-    from api.workflow_models import (
-        Workflow, WorkItem, Stage, WorkItemStatus, WorkItemPriority,
-        StageType, AssignmentType, WorkflowTriggerType, WorkflowType,
-        CreateWorkItemRequest, ClaimWorkItemRequest, CompleteStageRequest,
-        CreateWorkflowRequest, StageTransition,
-    )
-    from api.workflow_orchestrator import WorkflowOrchestrator
-    from api.workflow_storage import WorkflowStorage
-    from api.services.workflow_analytics import WorkflowAnalytics
-except ImportError:
-    from workflow_models import (
-        Workflow, WorkItem, Stage, WorkItemStatus, WorkItemPriority,
-        StageType, AssignmentType, WorkflowTriggerType, WorkflowType,
-        CreateWorkItemRequest, ClaimWorkItemRequest, CompleteStageRequest,
-        CreateWorkflowRequest, StageTransition,
-    )
-    from workflow_orchestrator import WorkflowOrchestrator
-    from workflow_storage import WorkflowStorage
-    from services.workflow_analytics import WorkflowAnalytics
-
-try:
-    from api.workflow_p2p_sync import init_workflow_sync, get_workflow_sync
-except ImportError:
-    from workflow_p2p_sync import init_workflow_sync, get_workflow_sync
+from .models import (
+    Workflow, WorkItem, Stage, WorkItemStatus, WorkItemPriority,
+    StageType, AssignmentType, WorkflowTriggerType, WorkflowType,
+    CreateWorkItemRequest, ClaimWorkItemRequest, CompleteStageRequest,
+    CreateWorkflowRequest, StageTransition,
+)
+from api.workflow_orchestrator import WorkflowOrchestrator
+from api.workflow_storage import WorkflowStorage
+from api.services.workflow_analytics import WorkflowAnalytics
+from api.workflow_p2p_sync import init_workflow_sync, get_workflow_sync
 
 # Initialize storage and orchestrator (singletons)
 storage = WorkflowStorage()
@@ -73,10 +51,7 @@ def get_user_team_id(user_id: str) -> Optional[str]:
     Returns first team if user has multiple teams.
     Most users are in one team, so this is a reasonable default.
     """
-    try:
-        from api.services.team.members import get_user_teams
-    except ImportError:
-        from services.team.members import get_user_teams
+    from api.services.team.members import get_user_teams
 
     user_teams = get_user_teams(user_id)
     return user_teams[0]['id'] if user_teams else None

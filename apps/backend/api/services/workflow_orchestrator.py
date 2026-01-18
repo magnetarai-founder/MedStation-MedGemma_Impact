@@ -28,54 +28,29 @@ import logging
 from api.services.workflow_automation import execute_automation_stage
 
 # Import from extracted modules (P2 decomposition)
-try:
-    from api.services.workflow_orchestrator_routing import evaluate_conditions
-    from api.services.workflow_orchestrator_utils import (
-        priority_score,
-        find_stage,
-        find_first_stage,
-        apply_auto_assignment,
-    )
-except ImportError:
-    from workflow_orchestrator_routing import evaluate_conditions
-    from workflow_orchestrator_utils import (
-        priority_score,
-        find_stage,
-        find_first_stage,
-        apply_auto_assignment,
-    )
+from api.services.workflow_orchestrator_routing import evaluate_conditions
+from api.services.workflow_orchestrator_utils import (
+    priority_score,
+    find_stage,
+    find_first_stage,
+    apply_auto_assignment,
+)
 
 # Import from parent api directory
-try:
-    from api.workflow_models import (
-        WorkItem,
-        Workflow,
-        Stage,
-        StageTransition,
-        WorkItemStatus,
-        WorkItemPriority,
-        StageType,
-        AssignmentType,
-        ConditionOperator,
-        RoutingCondition,
-        ConditionalRoute,
-    )
-    from api.services.workflow_agent_integration import run_agent_assist_for_stage
-except ImportError:
-    from workflow_models import (
-        WorkItem,
-        Workflow,
-        Stage,
-        StageTransition,
-        WorkItemStatus,
-        WorkItemPriority,
-        StageType,
-        AssignmentType,
-        ConditionOperator,
-        RoutingCondition,
-        ConditionalRoute,
-    )
-    from services.workflow_agent_integration import run_agent_assist_for_stage
+from api.workflow_models import (
+    WorkItem,
+    Workflow,
+    Stage,
+    StageTransition,
+    WorkItemStatus,
+    WorkItemPriority,
+    StageType,
+    AssignmentType,
+    ConditionOperator,
+    RoutingCondition,
+    ConditionalRoute,
+)
+from api.services.workflow_agent_integration import run_agent_assist_for_stage
 
 logger = logging.getLogger(__name__)
 
@@ -127,10 +102,7 @@ class WorkflowOrchestrator:
             return
 
         # Load non-completed work items
-        try:
-            from api.workflow_models import WorkItemStatus as WIS
-        except ImportError:
-            from workflow_models import WorkItemStatus as WIS
+        from api.workflow_models import WorkItemStatus as WIS
         work_items = self.storage.list_work_items(user_id=user_id, limit=1000)
 
         active_items = [
@@ -236,10 +208,7 @@ class WorkflowOrchestrator:
         if enabled_only:
             workflows = [w for w in workflows if w.enabled]
         if workflow_type:
-            try:
-                from api.workflow_models import WorkflowType
-            except ImportError:
-                from workflow_models import WorkflowType
+            from api.workflow_models import WorkflowType
             workflow_type_enum = WorkflowType.LOCAL_AUTOMATION if workflow_type == 'local' else WorkflowType.TEAM_WORKFLOW
             workflows = [w for w in workflows if w.workflow_type == workflow_type_enum]
 

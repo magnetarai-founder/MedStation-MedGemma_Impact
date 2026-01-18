@@ -43,24 +43,17 @@ except ModuleNotFoundError:
     terminal_bridge = terminal_bridge_module.terminal_bridge
     TerminalSession = terminal_bridge_module.TerminalSession
 
-try:
-    from api.auth_middleware import get_current_user
-except ImportError:
-    from auth_middleware import get_current_user
+from api.auth_middleware import get_current_user
+from api.utils import get_user_id
+from api.permission_engine import require_perm
 
+# Audit logging - graceful fallback if audit_log_sync unavailable
 try:
-    from api.utils import get_user_id
-except ImportError:
-    from utils import get_user_id
+    from api.audit_logger import audit_log_sync
 
-try:
-    from api.permission_engine import require_perm
-except ImportError:
-    from permission_engine import require_perm
-
-# Audit logging
-try:
-    from api.audit_logger import log_action
+    async def log_action(user_id: str, action: str, details) -> None:
+        """Wrap sync audit_log_sync for async context"""
+        audit_log_sync(user_id, action, details=details)
 except ImportError:
     async def log_action(user_id: str, action: str, details) -> None:
         logger.info(f"[AUDIT] {user_id} - {action} - {details}")

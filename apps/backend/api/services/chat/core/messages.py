@@ -133,10 +133,7 @@ async def send_message_stream(
     This is the core chat logic with Metal4, ANE, adaptive routing, etc.
     """
     from api.chat_enhancements import ChatTitleGenerator, SimpleEmbedding, DocumentChunker
-    try:
-        from api.utils import sanitize_for_log
-    except ImportError:
-        from utils import sanitize_for_log
+    from api.utils import sanitize_for_log
 
     # Import sessions module for delegation
     from .. import sessions as sessions_mod
@@ -155,15 +152,8 @@ async def send_message_stream(
 
     # Add to unified context for cross-component persistence
     try:
-        try:
-            from api.unified_context import get_unified_context
-        except ImportError:
-            from unified_context import get_unified_context
-
-        try:
-            from api.workspace_session import get_workspace_session_manager
-        except ImportError:
-            from workspace_session import get_workspace_session_manager
+        from api.unified_context import get_unified_context
+        from api.workspace_session import get_workspace_session_manager
 
         unified_ctx = get_unified_context()
         ws_mgr = get_workspace_session_manager()

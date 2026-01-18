@@ -14,16 +14,10 @@ import logging
 from typing import Dict, List, Any
 
 # Import condition types
-try:
-    from api.workflow_models import (
-        ConditionOperator,
-        RoutingCondition,
-    )
-except ImportError:
-    from workflow_models import (
-        ConditionOperator,
-        RoutingCondition,
-    )
+from api.workflow_models import (
+    ConditionOperator,
+    RoutingCondition,
+)
 
 logger = logging.getLogger(__name__)
 

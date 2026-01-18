@@ -16,24 +16,14 @@ from datetime import datetime, UTC
 from typing import Optional
 
 # Import workflow types
-try:
-    from api.workflow_models import (
-        Workflow,
-        Stage,
-        WorkItem,
-        WorkItemStatus,
-        WorkItemPriority,
-        AssignmentType,
-    )
-except ImportError:
-    from workflow_models import (
-        Workflow,
-        Stage,
-        WorkItem,
-        WorkItemStatus,
-        WorkItemPriority,
-        AssignmentType,
-    )
+from api.workflow_models import (
+    Workflow,
+    Stage,
+    WorkItem,
+    WorkItemStatus,
+    WorkItemPriority,
+    AssignmentType,
+)
 
 logger = logging.getLogger(__name__)
 
