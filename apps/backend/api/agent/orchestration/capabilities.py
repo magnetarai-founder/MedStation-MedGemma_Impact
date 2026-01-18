@@ -18,10 +18,7 @@ import sys
 from pathlib import Path
 from typing import List, Dict
 
-try:
-    from .models import EngineCapability, CapabilitiesResponse
-except ImportError:
-    from models import EngineCapability, CapabilitiesResponse
+from .models import EngineCapability, CapabilitiesResponse
 
 
 def get_capabilities_logic() -> CapabilitiesResponse:

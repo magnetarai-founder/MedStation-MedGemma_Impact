@@ -10,28 +10,16 @@ from typing import Optional
 from datetime import datetime, UTC
 import uuid
 
-try:
-    from api.workflows.models import (
-        Workflow,
-        Stage,
-        WorkflowTrigger,
-        StageType,
-        AssignmentType,
-        WorkflowType,
-        WorkflowTriggerType,
-    )
-    from api.workflow_storage import WorkflowStorage
-except ImportError:
-    from api.workflows.models import (
-        Workflow,
-        Stage,
-        WorkflowTrigger,
-        StageType,
-        AssignmentType,
-        WorkflowType,
-        WorkflowTriggerType,
-    )
-    from workflow_storage import WorkflowStorage
+from api.workflows.models import (
+    Workflow,
+    Stage,
+    WorkflowTrigger,
+    StageType,
+    AssignmentType,
+    WorkflowType,
+    WorkflowTriggerType,
+)
+from api.workflow_storage import WorkflowStorage
 
 logger = logging.getLogger(__name__)
 

@@ -8,10 +8,7 @@ import shutil
 import subprocess
 from typing import List
 
-try:
-    from ..patchbus import ChangeProposal
-except ImportError:
-    from patchbus import ChangeProposal
+from ..patchbus import ChangeProposal
 
 
 # Stub for tooling_integrations

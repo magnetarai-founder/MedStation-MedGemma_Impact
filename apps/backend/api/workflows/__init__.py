@@ -17,10 +17,7 @@ This module has been refactored from workflow_service.py (1,021 lines) into:
 
 from fastapi import APIRouter, Depends
 
-try:
-    from api.auth_middleware import get_current_user
-except ImportError:
-    from auth_middleware import get_current_user
+from api.auth_middleware import get_current_user
 
 from .dependencies import (
     storage,

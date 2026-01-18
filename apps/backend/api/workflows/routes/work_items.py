@@ -17,10 +17,7 @@ from ..dependencies import (
     CreateWorkItemRequest, CompleteStageRequest, StageTransition,
 )
 
-try:
-    from utils import sanitize_for_log, get_user_id
-except ImportError:
-    from api.utils import sanitize_for_log, get_user_id
+from api.utils import sanitize_for_log, get_user_id
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

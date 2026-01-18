@@ -26,89 +26,48 @@ from fastapi import APIRouter, HTTPException, Depends, Request
 from typing import Dict, Any
 
 # ElohimOS imports
-try:
-    from ..auth_middleware import get_current_user
-    from ..rate_limiter import rate_limiter, get_client_ip
-    from ..permission_engine import require_perm
-    from ..audit_logger import get_audit_logger, AuditAction
-    from ..config_paths import get_config_paths
-    from ..metrics import get_metrics
-    from ..utils import get_user_id, get_username
-except ImportError:
-    from auth_middleware import get_current_user
-    from rate_limiter import rate_limiter, get_client_ip
-    from permission_engine import require_perm
-    from audit_logger import get_audit_logger, AuditAction
-    from config_paths import get_config_paths
-    from metrics import get_metrics
-    from utils import get_user_id, get_username
+from ..auth_middleware import get_current_user
+from ..rate_limiter import rate_limiter, get_client_ip
+from ..permission_engine import require_perm
+from ..audit_logger import get_audit_logger, AuditAction
+from ..config_paths import get_config_paths
+from ..metrics import get_metrics
+from ..utils import get_user_id, get_username
 
 PATHS = get_config_paths()
 metrics = get_metrics()
 
 # Import all orchestration components
-try:
-    from .orchestration import (
-        # Models
-        RouteRequest, RouteResponse,
-        PlanRequest, PlanResponse,
-        ContextRequest, ContextResponse,
-        ApplyRequest, ApplyResponse,
-        CapabilitiesResponse,
-        AgentSession, AgentSessionCreateRequest,  # Phase C
-        # Logic functions
-        get_capabilities_logic,
-        get_agent_config,
-        reload_config,
-        get_models_overview,
-        update_model_settings_logic,
-        validate_models_logic,
-        auto_fix_models_logic,
-        route_input_logic,
-        generate_plan_logic,
-        build_context_bundle,
-        apply_plan_logic,
-    )
-    # Phase C: Session management
-    from .orchestration.sessions import (
-        create_agent_session,
-        get_agent_session,
-        list_agent_sessions_for_user,
-        close_session,
-        touch_session,
-        update_session_plan,
-    )
-except ImportError:
-    from orchestration import (
-        # Models
-        RouteRequest, RouteResponse,
-        PlanRequest, PlanResponse,
-        ContextRequest, ContextResponse,
-        ApplyRequest, ApplyResponse,
-        CapabilitiesResponse,
-        AgentSession, AgentSessionCreateRequest,  # Phase C
-        # Logic functions
-        get_capabilities_logic,
-        get_agent_config,
-        reload_config,
-        get_models_overview,
-        update_model_settings_logic,
-        validate_models_logic,
-        auto_fix_models_logic,
-        route_input_logic,
-        generate_plan_logic,
-        build_context_bundle,
-        apply_plan_logic,
-    )
-    # Phase C: Session management
-    from orchestration.sessions import (
-        create_agent_session,
-        get_agent_session,
-        list_agent_sessions_for_user,
-        close_session,
-        touch_session,
-        update_session_plan,
-    )
+from .orchestration import (
+    # Models
+    RouteRequest, RouteResponse,
+    PlanRequest, PlanResponse,
+    ContextRequest, ContextResponse,
+    ApplyRequest, ApplyResponse,
+    CapabilitiesResponse,
+    AgentSession, AgentSessionCreateRequest,  # Phase C
+    # Logic functions
+    get_capabilities_logic,
+    get_agent_config,
+    reload_config,
+    get_models_overview,
+    update_model_settings_logic,
+    validate_models_logic,
+    auto_fix_models_logic,
+    route_input_logic,
+    generate_plan_logic,
+    build_context_bundle,
+    apply_plan_logic,
+)
+# Phase C: Session management
+from .orchestration.sessions import (
+    create_agent_session,
+    get_agent_session,
+    list_agent_sessions_for_user,
+    close_session,
+    touch_session,
+    update_session_plan,
+)
 
 logger = logging.getLogger(__name__)
 

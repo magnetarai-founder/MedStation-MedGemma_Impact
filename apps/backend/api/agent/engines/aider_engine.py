@@ -9,10 +9,7 @@ import subprocess
 from pathlib import Path
 from typing import List
 
-try:
-    from ..patchbus import ChangeProposal
-except ImportError:
-    from patchbus import ChangeProposal
+from ..patchbus import ChangeProposal
 
 # Stub for tooling_integrations
 def build_context_block(snippets) -> str:
