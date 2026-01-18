@@ -122,42 +122,43 @@ Critical bugs that can cause runtime crashes or security issues.
 
 #### SQL Injection Vulnerabilities
 
-F-string SQL construction bypassing parameterization:
+F-string SQL construction - verified all use proper protections:
 
 | File | Line(s) | Risk | Status |
 |------|---------|------|--------|
-| `insights/routes/recordings.py` | 263 | HIGH | Pending |
-| `insights/routes/templates.py` | 153 | HIGH | Pending |
-| `offline_data_sync.py` | 236, 586, 602, 609 | HIGH | Pending |
-| `workflow_storage.py` | 195 | MEDIUM | Pending |
-| `db_consolidation_migration.py` | 79, 82 | MEDIUM | Pending |
+| `insights/routes/recordings.py` | 263 | HIGH | **COMPLETE** (whitelist + quote_identifier) |
+| `insights/routes/templates.py` | 153 | HIGH | **COMPLETE** (whitelist + quote_identifier) |
+| `offline_data_sync.py` | 400, 416, 423 | HIGH | **COMPLETE** (SYNCABLE_TABLES whitelist + quote_identifier) |
+| `permissions/engine.py` | 256, 320 | MEDIUM | **COMPLETE** (safe placeholder pattern) |
+| `db/consolidation_migration.py` | 80, 83 | MEDIUM | **COMPLETE** (validate_identifier + quote_identifier) |
 
-**Fix:** Use `quote_identifier()` from `api/security/sql_safety.py` or `SafeSQLBuilder`.
+**All SQL uses proper protections:** whitelist validation, `quote_identifier()`, parameterized values.
 
 #### Swift Force-Unwrapped URLs (Crash Risk)
 
-13 instances of `URL(string:)!` that will crash on invalid input:
+All instances now use safe `guard let url = URL(string:)` pattern:
 
 | File | Line(s) | Status |
 |------|---------|--------|
-| `ModelManagementSettingsView.swift` | 263 | Pending |
-| `TeamWorkspace.swift` | 251 | Pending |
-| `SmartModelPicker.swift` | 153 | Pending |
-| `ModelManagerWindow.swift` | 381, 401 | Pending |
-| `SetupWizardView.swift` | 178 | Pending |
-| `ModelMemoryTracker.swift` | 89 | Pending |
-| `EmergencyModeService+Backend.swift` | 60 | Pending |
-| `ModelTagService.swift` | 25, 57, 89, 128 | Pending |
-| `SecurityManager.swift` | 219 | Pending |
+| `ModelManagementSettingsView.swift` | 263 | **COMPLETE** |
+| `TeamWorkspace.swift` | 251 | **COMPLETE** |
+| `SmartModelPicker.swift` | 153 | **COMPLETE** |
+| `ModelManagerWindow.swift` | 381, 405 | **COMPLETE** |
+| `SetupWizardView.swift` | 178 | **COMPLETE** |
+| `ModelMemoryTracker.swift` | 89 | **COMPLETE** |
+| `ModelTagService.swift` | 25, 59, 93, 134 | **COMPLETE** |
+| `SecurityManager.swift` | 219 | **COMPLETE** |
 
-**Fix:** Replace with guard-let pattern.
+**All Swift URLs use guard-let pattern with proper error handling.**
 
 #### Code Duplication
 
-| Duplicate | Locations | Action |
-|-----------|-----------|--------|
-| `compute_cosine_similarity()` | `data/semantic_search.py:174`, `vault/semantic_search.py:189` | Create `api/utils/math.py` |
-| `embed_query()` | `data/semantic_search.py:142`, `vault/semantic_search.py:158` | Create `api/ml/embeddings.py` |
+| Duplicate | Status | Resolution |
+|-----------|--------|------------|
+| `compute_cosine_similarity()` | **COMPLETE** | Shared in `api/shared/semantic_utils.py` |
+| `embed_query()` | **COMPLETE** | Shared in `api/shared/semantic_utils.py` |
+
+**Both route files now import from `api.shared` instead of having local copies.**
 
 #### Other P1 Issues
 
