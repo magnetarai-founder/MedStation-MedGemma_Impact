@@ -26,34 +26,12 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
 
-try:
-    from .auth_middleware import get_current_user
-    from .utils import get_user_id, get_username
-except ImportError:
-    from auth_middleware import get_current_user
-    from utils import get_user_id, get_username
-
-try:
-    from .audit_logger import AuditAction, get_audit_logger
-except ImportError:
-    from audit_logger import AuditAction, get_audit_logger
-
-try:
-    from .rate_limiter import get_client_ip, rate_limiter
-except ImportError:
-    from rate_limiter import get_client_ip, rate_limiter
-
-# Phase 2: Import permission decorator
-try:
-    from .permission_engine import require_perm
-except ImportError:
-    from permission_engine import require_perm
-
-# Import admin support service
-try:
-    from api.services import admin_support
-except ImportError:
-    import services.admin_support as admin_support
+from .auth_middleware import get_current_user
+from .utils import get_user_id, get_username
+from .audit_logger import AuditAction, get_audit_logger
+from .rate_limiter import get_client_ip, rate_limiter
+from .permission_engine import require_perm
+from api.services import admin_support
 
 logger = logging.getLogger(__name__)
 audit_logger = get_audit_logger()

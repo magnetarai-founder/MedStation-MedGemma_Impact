@@ -17,10 +17,7 @@ from pathlib import Path
 from typing import List
 from threading import Lock
 
-try:
-    from .models import ProjectContext
-except ImportError:
-    from models import ProjectContext
+from .models import ProjectContext
 
 
 def detect_project_context(

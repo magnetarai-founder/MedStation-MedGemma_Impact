@@ -16,15 +16,8 @@ import subprocess
 from pathlib import Path
 from typing import Dict, List, Any
 
-try:
-    from .models import ContextRequest, ContextResponse
-except ImportError:
-    from models import ContextRequest, ContextResponse
-
-try:
-    from api.utils import get_user_id
-except ImportError:
-    from utils import get_user_id
+from .models import ContextRequest, ContextResponse
+from api.utils import get_user_id
 
 logger = logging.getLogger(__name__)
 
@@ -158,15 +151,8 @@ def build_context_bundle(
                 search_query = " ".join(search_terms)
 
                 # Get recent context entries and rank by semantic similarity
-                try:
-                    from api.unified_context import get_unified_context
-                except ImportError:
-                    from unified_context import get_unified_context
-
-                try:
-                    from api.unified_embedder import get_unified_embedder
-                except ImportError:
-                    from unified_embedder import get_unified_embedder
+                from api.unified_context import get_unified_context
+                from api.unified_embedder import get_unified_embedder
 
                 context_mgr = get_unified_context()
                 embedder = get_unified_embedder()
@@ -215,10 +201,7 @@ def build_context_bundle(
     if body.session_id:
         try:
             # Import from parent api directory (two levels up from orchestration/)
-            try:
-                from api.unified_context import get_unified_context
-            except ImportError:
-                from unified_context import get_unified_context
+            from api.unified_context import get_unified_context
 
             context_mgr = get_unified_context()
             recent_entries = context_mgr.get_recent_context(

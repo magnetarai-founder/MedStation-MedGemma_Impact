@@ -15,10 +15,7 @@ import subprocess
 from typing import Dict, Any
 from pathlib import Path
 
-try:
-    from .config import get_agent_config, update_config, reload_config, CONFIG_PATH
-except ImportError:
-    from config import get_agent_config, update_config, reload_config, CONFIG_PATH
+from .config import get_agent_config, reload_config, CONFIG_PATH
 
 logger = logging.getLogger(__name__)
 
@@ -133,11 +130,7 @@ def validate_models_logic(cfg: Dict[str, Any]) -> Dict[str, Any]:
         Dict with validation status, errors, warnings, setup_instructions
     """
     try:
-        # Try to import model_validator from agent module
-        try:
-            from ..model_validator import validate_config, get_setup_instructions
-        except ImportError:
-            from model_validator import validate_config, get_setup_instructions
+        from ..model_validator import validate_config, get_setup_instructions
     except ImportError:
         # Model validator not available, return basic validation
         return {
@@ -178,11 +171,7 @@ def auto_fix_models_logic(current_user: Dict) -> Dict[str, Any]:
         Exception if update fails
     """
     try:
-        # Try to import model_validator from agent module
-        try:
-            from ..model_validator import validate_config, auto_select_model, get_installed_models
-        except ImportError:
-            from model_validator import validate_config, auto_select_model, get_installed_models
+        from ..model_validator import validate_config, auto_select_model, get_installed_models
     except ImportError:
         raise ImportError("Model validator module not available for auto-fix")
 

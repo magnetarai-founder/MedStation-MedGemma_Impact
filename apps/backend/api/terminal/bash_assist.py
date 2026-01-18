@@ -13,23 +13,10 @@ from api.terminal.models import BashAssistRequest, BashAssistResponse
 
 logger = logging.getLogger(__name__)
 
-# Imports with fallbacks
-try:
-    from api.auth_middleware import get_current_user
-except ImportError:
-    from auth_middleware import get_current_user
-
-try:
-    from api.utils import get_user_id
-except ImportError:
-    from utils import get_user_id
-
-try:
-    from api.bash_intelligence import get_bash_intelligence
-    from api.unified_context import get_unified_context
-except ImportError:
-    from bash_intelligence import get_bash_intelligence
-    from unified_context import get_unified_context
+from api.auth_middleware import get_current_user
+from api.utils import get_user_id
+from api.bash_intelligence import get_bash_intelligence
+from api.unified_context import get_unified_context
 
 
 async def bash_assist(
@@ -51,10 +38,7 @@ async def bash_assist(
     user_id = get_user_id(current_user)
 
     # Rate limiting
-    try:
-        from api.rate_limiter import rate_limiter
-    except ImportError:
-        from rate_limiter import rate_limiter
+    from api.rate_limiter import rate_limiter
 
     if not rate_limiter.check_rate_limit(
         f"terminal:assist:{user_id}",

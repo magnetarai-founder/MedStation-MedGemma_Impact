@@ -14,29 +14,15 @@ Extracted from orchestrator.py during Phase 6.3d modularization.
 import logging
 from typing import Optional, Dict
 
-try:
-    from ..intent_classifier import Phi3IntentClassifier as IntentClassifier
-except ImportError:
-    from intent_classifier import Phi3IntentClassifier as IntentClassifier
+from ..intent_classifier import Phi3IntentClassifier as IntentClassifier
+from .models import RouteResponse
+from .config import get_agent_config
 
-try:
-    from .models import RouteResponse
-except ImportError:
-    from models import RouteResponse
-
-try:
-    from .config import get_agent_config
-except ImportError:
-    from config import get_agent_config
-
-# Learning system import with fallback
+# Learning system import - graceful degradation if unavailable
 try:
     from api.learning_system import LearningSystem
 except ImportError:
-    try:
-        from learning_system import LearningSystem
-    except ImportError:
-        LearningSystem = None  # Graceful degradation if learning system unavailable
+    LearningSystem = None
 
 logger = logging.getLogger(__name__)
 

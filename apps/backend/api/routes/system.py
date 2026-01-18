@@ -203,10 +203,7 @@ async def _fallback_admin_device_overview(request: Request, current_user: dict =
 
     # Try to forward to admin_service implementation if available
     try:
-        try:
-            from api.admin_service import get_device_overview as _real_overview  # type: ignore
-        except ImportError:
-            from admin_service import get_device_overview as _real_overview  # type: ignore
+        from api.admin_service import get_device_overview as _real_overview  # type: ignore
         return await _real_overview(request, current_user)
     except Exception:
         # Graceful minimal overview if admin_service is unavailable
@@ -236,10 +233,7 @@ async def _fallback_spawn_system_terminal(current_user: dict = Depends(get_curre
 
     # Try to forward to terminal_api implementation if available
     try:
-        try:
-            from api.terminal_api import spawn_system_terminal as _real_spawn  # type: ignore
-        except ImportError:
-            from terminal_api import spawn_system_terminal as _real_spawn  # type: ignore
+        from api.terminal_api import spawn_system_terminal as _real_spawn  # type: ignore
         return await _real_spawn(current_user=current_user)
     except HTTPException:
         raise

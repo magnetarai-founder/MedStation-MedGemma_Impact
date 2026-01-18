@@ -19,22 +19,10 @@ import os
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 
-try:
-    from ..patchbus import PatchBus
-except ImportError:
-    from patchbus import PatchBus
-
-try:
-    from .models import ApplyRequest, FilePatch
-    from .config import get_agent_config
-except ImportError:
-    from models import ApplyRequest, FilePatch
-    from config import get_agent_config
-
-try:
-    from api.utils import get_user_id
-except ImportError:
-    from utils import get_user_id
+from ..patchbus import PatchBus
+from .models import ApplyRequest, FilePatch
+from .config import get_agent_config
+from api.utils import get_user_id
 
 logger = logging.getLogger(__name__)
 
@@ -90,10 +78,7 @@ def apply_plan_logic(
             logger.info(f"Trying engine: {engine_name}")
 
             if engine_name == "aider":
-                try:
-                    from ..engines.aider_engine import AiderEngine
-                except ImportError:
-                    from engines.aider_engine import AiderEngine
+                from ..engines.aider_engine import AiderEngine
 
                 engine = AiderEngine(
                     model=coder_model,
@@ -103,10 +88,7 @@ def apply_plan_logic(
                 proposal = engine.propose(body.input, files, context_snippets)
 
             elif engine_name == "continue":
-                try:
-                    from ..engines.continue_engine import ContinueEngine
-                except ImportError:
-                    from engines.continue_engine import ContinueEngine
+                from ..engines.continue_engine import ContinueEngine
 
                 engine = ContinueEngine(model=coder_model)
                 proposal = engine.propose(body.input, files, context_snippets)
@@ -180,13 +162,8 @@ def apply_plan_logic(
 
         # Add to unified context for persistence
         try:
-            # Import from parent api directory (two levels up from orchestration/)
-            try:
-                from api.unified_context import get_unified_context
-                from api.workspace_session import get_workspace_session_manager
-            except ImportError:
-                from unified_context import get_unified_context
-                from workspace_session import get_workspace_session_manager
+            from api.unified_context import get_unified_context
+            from api.workspace_session import get_workspace_session_manager
 
             context_mgr = get_unified_context()
             ws_mgr = get_workspace_session_manager()
@@ -220,12 +197,8 @@ def apply_plan_logic(
 
         # Phase E: Trigger workflow events for successful agent apply
         try:
-            try:
-                from api.services.workflow_triggers import handle_agent_event
-                from api.workflow_storage import WorkflowStorage
-            except ImportError:
-                from services.workflow_triggers import handle_agent_event
-                from workflow_storage import WorkflowStorage
+            from api.services.workflow_triggers import handle_agent_event
+            from api.workflow_storage import WorkflowStorage
 
             # Build agent event
             agent_event = {

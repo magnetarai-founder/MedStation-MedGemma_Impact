@@ -14,25 +14,10 @@ import json
 import sqlite3
 from typing import Dict, List, Optional
 
-try:
-    from .models import Recommendation
-except ImportError:
-    from models import Recommendation
-
-try:
-    from .success import get_success_rate
-except ImportError:
-    from success import get_success_rate
-
-try:
-    from .preferences import get_preferences
-except ImportError:
-    from preferences import get_preferences
-
-try:
-    from .style import _detect_language
-except ImportError:
-    from style import _detect_language
+from .models import Recommendation
+from .success import get_success_rate
+from .preferences import get_preferences
+from .style import _detect_language
 
 
 def get_recommendations(

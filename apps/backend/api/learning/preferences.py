@@ -13,10 +13,7 @@ import sqlite3
 from typing import List, Optional
 from threading import Lock
 
-try:
-    from .models import UserPreference
-except ImportError:
-    from models import UserPreference
+from .models import UserPreference
 
 
 def learn_from_execution(

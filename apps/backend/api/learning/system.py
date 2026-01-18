@@ -21,24 +21,14 @@ from threading import Lock
 from typing import Any, Dict, List, Optional
 
 # Import all modular components
-try:
-    from .storage import get_default_db_path, create_connection, setup_database
-    from .models import UserPreference, CodingStyle, ProjectContext, Recommendation
-    from .patterns import initialize_pattern_rules
-    from .success import track_execution as _track_execution, get_success_rate as _get_success_rate
-    from .preferences import learn_from_execution, get_preferences as _get_preferences, record_preference as _record_preference
-    from .style import detect_coding_style as _detect_coding_style
-    from .context import detect_project_context as _detect_project_context, switch_context as _switch_context, get_active_projects as _get_active_projects
-    from .recommendations import get_recommendations as _get_recommendations
-except ImportError:
-    from storage import get_default_db_path, create_connection, setup_database
-    from models import UserPreference, CodingStyle, ProjectContext, Recommendation
-    from patterns import initialize_pattern_rules
-    from success import track_execution as _track_execution, get_success_rate as _get_success_rate
-    from preferences import learn_from_execution, get_preferences as _get_preferences, record_preference as _record_preference
-    from style import detect_coding_style as _detect_coding_style
-    from context import detect_project_context as _detect_project_context, switch_context as _switch_context, get_active_projects as _get_active_projects
-    from recommendations import get_recommendations as _get_recommendations
+from .storage import get_default_db_path, create_connection, setup_database
+from .models import UserPreference, CodingStyle, ProjectContext, Recommendation
+from .patterns import initialize_pattern_rules
+from .success import track_execution as _track_execution, get_success_rate as _get_success_rate
+from .preferences import learn_from_execution, get_preferences as _get_preferences, record_preference as _record_preference
+from .style import detect_coding_style as _detect_coding_style
+from .context import detect_project_context as _detect_project_context, switch_context as _switch_context, get_active_projects as _get_active_projects
+from .recommendations import get_recommendations as _get_recommendations
 
 logger = logging.getLogger(__name__)
 

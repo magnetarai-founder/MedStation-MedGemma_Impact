@@ -18,28 +18,16 @@ Created during Phase 6.3c modularization.
 """
 
 # Main system class
-try:
-    from .system import LearningSystem
-except ImportError:
-    from system import LearningSystem
+from .system import LearningSystem
 
 # Data models
-try:
-    from .models import UserPreference, CodingStyle, ProjectContext, Recommendation
-except ImportError:
-    from models import UserPreference, CodingStyle, ProjectContext, Recommendation
+from .models import UserPreference, CodingStyle, ProjectContext, Recommendation
 
 # Storage utilities (for advanced usage)
-try:
-    from .storage import get_default_db_path, create_connection, setup_database
-except ImportError:
-    from storage import get_default_db_path, create_connection, setup_database
+from .storage import get_default_db_path, create_connection, setup_database
 
 # Learning engine (model usage tracking)
-try:
-    from .engine import LearningEngine, get_learning_engine
-except ImportError:
-    from engine import LearningEngine, get_learning_engine
+from .engine import LearningEngine, get_learning_engine
 
 
 __all__ = [

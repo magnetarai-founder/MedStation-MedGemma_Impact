@@ -17,10 +17,7 @@ from pathlib import Path
 from typing import Dict
 from threading import Lock
 
-try:
-    from .models import CodingStyle
-except ImportError:
-    from models import CodingStyle
+from .models import CodingStyle
 
 
 def detect_coding_style(

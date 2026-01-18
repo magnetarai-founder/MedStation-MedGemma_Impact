@@ -18,10 +18,7 @@ logger = logging.getLogger(__name__)
 
 def get_default_db_path() -> Path:
     """Get the default database path for the learning system."""
-    try:
-        from api.config_paths import get_config_paths
-    except ImportError:
-        from config_paths import get_config_paths
+    from api.config_paths import get_config_paths
 
     paths = get_config_paths()
     return paths.data_dir / "learning.db"

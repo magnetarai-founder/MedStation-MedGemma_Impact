@@ -17,10 +17,7 @@ logger = logging.getLogger(__name__)
 
 async def get_learning_patterns(days: int = 30) -> Dict[str, Any]:
     """Get usage patterns and learning insights"""
-    try:
-        from api.learning_engine import get_learning_engine
-    except ImportError:
-        from learning_engine import get_learning_engine
+    from api.learning_engine import get_learning_engine
 
     learning_engine = get_learning_engine()
     patterns = learning_engine.analyze_patterns(days=days)
@@ -29,10 +26,7 @@ async def get_learning_patterns(days: int = 30) -> Dict[str, Any]:
 
 async def get_recommendations() -> Dict[str, Any]:
     """Get current classification recommendations"""
-    try:
-        from api.learning_engine import get_learning_engine
-    except ImportError:
-        from learning_engine import get_learning_engine
+    from api.learning_engine import get_learning_engine
 
     learning_engine = get_learning_engine()
     recommendations = learning_engine.get_recommendations()
@@ -41,10 +35,7 @@ async def get_recommendations() -> Dict[str, Any]:
 
 async def accept_recommendation(recommendation_id: int, feedback: Optional[str] = None) -> bool:
     """Accept a classification recommendation"""
-    try:
-        from api.learning_engine import get_learning_engine
-    except ImportError:
-        from learning_engine import get_learning_engine
+    from api.learning_engine import get_learning_engine
 
     learning_engine = get_learning_engine()
     return learning_engine.accept_recommendation(recommendation_id, feedback)
@@ -52,10 +43,7 @@ async def accept_recommendation(recommendation_id: int, feedback: Optional[str] 
 
 async def reject_recommendation(recommendation_id: int, feedback: Optional[str] = None) -> bool:
     """Reject a classification recommendation"""
-    try:
-        from api.learning_engine import get_learning_engine
-    except ImportError:
-        from learning_engine import get_learning_engine
+    from api.learning_engine import get_learning_engine
 
     learning_engine = get_learning_engine()
     return learning_engine.reject_recommendation(recommendation_id, feedback)
@@ -63,10 +51,7 @@ async def reject_recommendation(recommendation_id: int, feedback: Optional[str] 
 
 async def get_optimal_model_for_task(task_type: str, top_n: int = 3) -> Dict[str, Any]:
     """Get the optimal models for a specific task type"""
-    try:
-        from api.learning_engine import get_learning_engine
-    except ImportError:
-        from learning_engine import get_learning_engine
+    from api.learning_engine import get_learning_engine
 
     learning_engine = get_learning_engine()
     models = learning_engine.get_optimal_model_for_task(task_type, top_n)
@@ -89,10 +74,7 @@ async def track_usage_manually(
     task_detected: Optional[str] = None
 ):
     """Manually track model usage"""
-    try:
-        from api.learning_engine import get_learning_engine
-    except ImportError:
-        from learning_engine import get_learning_engine
+    from api.learning_engine import get_learning_engine
 
     learning_engine = get_learning_engine()
     learning_engine.track_usage(
