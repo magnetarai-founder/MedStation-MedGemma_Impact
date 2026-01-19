@@ -104,10 +104,11 @@ def _p2p_overview() -> Dict[str, Any]:
 
 
 def _database_overview() -> Dict[str, Any]:
-    """Get database health metrics"""
+    """Get database health metrics including connection pool status"""
     try:
         import sqlite3
         from api.config_paths import get_config_paths
+        from api.db.pool import get_all_pool_stats
 
         paths = get_config_paths()
         db_path = paths.data_dir / "elohimos.db"
@@ -125,11 +126,15 @@ def _database_overview() -> Dict[str, Any]:
             cursor.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table'")
             table_count = cursor.fetchone()[0]
 
+        # Get connection pool stats
+        pool_stats = get_all_pool_stats()
+
         return {
             "status": "healthy",
             "size_mb": size_mb,
             "table_count": table_count,
-            "path": str(db_path)
+            "path": str(db_path),
+            "connection_pool": pool_stats
         }
     except Exception as e:
         return {"status": "error", "error": str(e)}

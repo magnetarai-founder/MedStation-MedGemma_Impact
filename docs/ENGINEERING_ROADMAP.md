@@ -206,7 +206,7 @@ Files exceeding 1000 lines violate single-responsibility:
 
 #### Database Connection Consolidation
 
-**Status: SUBSTANTIALLY COMPLETE** (Jan 18, 2026)
+**Status: COMPLETE** (Jan 18, 2026)
 
 Connection pool implemented in `api/db/pool.py`:
 - `SQLiteConnectionPool` class with WAL mode, health checks, auto-recycling
@@ -226,7 +226,11 @@ Connection pool implemented in `api/db/pool.py`:
 **Remaining work:**
 - [x] Migrate auth critical paths to use pool
 - [x] Migrate remaining high-traffic service files to use pool
-- [ ] Add connection pool metrics to observability
+- [x] Add connection pool metrics to observability (Jan 18, 2026)
+  - `get_all_pool_stats()` for aggregate pool statistics
+  - `enable_pool_metrics()` integrates with MetricsCollector
+  - Tracks: checkout latency, connection creation, connection recycling
+  - Exposed via `/api/v1/diagnostics` endpoint
 
 #### Deprecated Facades Removed
 

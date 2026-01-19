@@ -20,12 +20,18 @@ import threading
 import time
 import logging
 from pathlib import Path
-from typing import Generator, Union, Optional, Any
+from typing import Generator, Union, Optional, Any, TYPE_CHECKING
 from contextlib import contextmanager
 from queue import Queue, Empty
 from dataclasses import dataclass, field
 
+if TYPE_CHECKING:
+    from api.monitoring.metrics import MetricsCollector
+
 logger = logging.getLogger(__name__)
+
+# Optional metrics collector (lazy-loaded to avoid circular imports)
+_metrics: Optional["MetricsCollector"] = None
 
 
 @dataclass
@@ -170,6 +176,8 @@ class SQLiteConnectionPool:
             raise RuntimeError("Connection pool is closed")
 
         start_time = time.time()
+        connection_created = False
+        connection_recycled = False
 
         while True:
             # Try to get an available connection from pool
@@ -181,12 +189,14 @@ class SQLiteConnectionPool:
                     logger.debug("Connection expired, creating new one")
                     self._close_connection(pooled_conn)
                     pooled_conn = self._create_connection()
+                    connection_recycled = True
                     with self._lock:
                         self._all_connections.append(pooled_conn)
                 elif not pooled_conn.is_healthy():
                     logger.warning("Unhealthy connection detected, creating new one")
                     self._close_connection(pooled_conn)
                     pooled_conn = self._create_connection()
+                    connection_recycled = True
                     with self._lock:
                         self._all_connections.append(pooled_conn)
 
@@ -196,6 +206,12 @@ class SQLiteConnectionPool:
 
                 with self._lock:
                     self._active_count += 1
+
+                # Record metrics
+                checkout_ms = (time.time() - start_time) * 1000
+                _record_metric("db.pool.checkout", checkout_ms)
+                if connection_recycled:
+                    _record_metric("db.pool.connection_recycled", 0)
 
                 return pooled_conn.connection
 
@@ -211,10 +227,18 @@ class SQLiteConnectionPool:
                         pooled_conn.last_used = time.time()
                         pooled_conn.checkout_count += 1
                         self._active_count += 1
+                        connection_created = True
+
+                        # Record metrics
+                        checkout_ms = (time.time() - start_time) * 1000
+                        _record_metric("db.pool.checkout", checkout_ms)
+                        _record_metric("db.pool.connection_created", 0)
+
                         return pooled_conn.connection
 
             # Check timeout
             if time.time() - start_time > self.timeout:
+                _record_metric("db.pool.checkout", self.timeout * 1000, error=True)
                 raise RuntimeError(
                     f"Timeout acquiring connection from pool after {self.timeout}s"
                 )
@@ -401,3 +425,65 @@ def close_all_pools() -> None:
         _connection_pools.clear()
 
     logger.info("All connection pools closed")
+
+
+def get_all_pool_stats() -> dict[str, Any]:
+    """
+    Get aggregate statistics for all connection pools.
+
+    Returns:
+        Dictionary with summary and per-pool stats:
+        - total_pools: Number of active pools
+        - total_connections: Sum of all connections across pools
+        - total_active: Sum of active (checked out) connections
+        - pools: Dict of individual pool stats keyed by database path
+    """
+    with _pool_lock:
+        pools_stats = {
+            db_path: pool.stats()
+            for db_path, pool in _connection_pools.items()
+        }
+
+        total_connections = sum(s["total_connections"] for s in pools_stats.values())
+        total_active = sum(s["active_connections"] for s in pools_stats.values())
+
+        return {
+            "total_pools": len(_connection_pools),
+            "total_connections": total_connections,
+            "total_active": total_active,
+            "total_available": total_connections - total_active,
+            "pools": pools_stats
+        }
+
+
+def enable_pool_metrics() -> None:
+    """
+    Enable metrics collection for connection pools.
+
+    This lazily imports the MetricsCollector to avoid circular imports.
+    Call this during application startup after all modules are loaded.
+
+    Usage:
+        from api.db.pool import enable_pool_metrics
+        enable_pool_metrics()
+
+    Once enabled, the following metrics are tracked:
+        - db.pool.checkout: Latency of checkout operations
+        - db.pool.checkout_timeout: Count of checkout timeouts
+        - db.pool.connection_created: Count of new connections created
+        - db.pool.connection_recycled: Count of expired connections replaced
+    """
+    global _metrics
+    if _metrics is None:
+        try:
+            from api.monitoring.metrics import get_metrics
+            _metrics = get_metrics()
+            logger.info("Connection pool metrics collection enabled")
+        except ImportError:
+            logger.warning("Could not enable pool metrics: monitoring module not available")
+
+
+def _record_metric(operation: str, duration_ms: float, error: bool = False) -> None:
+    """Record a metric if metrics collection is enabled."""
+    if _metrics is not None:
+        _metrics.record(operation, duration_ms, error=error)

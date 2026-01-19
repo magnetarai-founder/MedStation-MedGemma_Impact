@@ -172,6 +172,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     initialize_metal4()
     await run_health_checks()
 
+    # Enable connection pool metrics (Phase 5: Observability)
+    try:
+        from api.db.pool import enable_pool_metrics
+        enable_pool_metrics()
+        logger.info("✅ Connection pool metrics enabled")
+    except Exception as e:
+        logger.warning(f"⚠️  Could not enable pool metrics: {e}")
+
     # Register routers
     from api.router_registry import register_routers
     services_loaded, services_failed = register_routers(app)
