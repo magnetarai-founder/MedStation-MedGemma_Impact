@@ -9,6 +9,8 @@ import os
 import time
 import psutil
 from fastapi import APIRouter, HTTPException, Request, Depends
+
+from api.errors import http_429, http_500, http_503
 from typing import Dict, Any, Optional
 from datetime import datetime, UTC
 
@@ -34,7 +36,7 @@ async def get_system_health(request: Request) -> Dict[str, Any]:
     # Rate limit: 60 health checks per minute
     client_ip = get_client_ip(request)
     if not rate_limiter.check_rate_limit(f"monitoring:health:{client_ip}", max_requests=60, window_seconds=60):
-        raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 60 requests per minute.")
+        raise http_429("Max 60 requests per minute")
 
     start_time = time.time()
 
@@ -234,10 +236,7 @@ async def get_metal4_stats(request: Request) -> Dict[str, Any]:
         diagnostics = get_diagnostics()
 
         if not diagnostics:
-            raise HTTPException(
-                status_code=503,
-                detail="Metal 4 diagnostics not available - GPU may not be initialized"
-            )
+            raise http_503("Metal 4 diagnostics not available - GPU may not be initialized")
 
         stats = diagnostics.get_realtime_stats()
 
@@ -247,10 +246,7 @@ async def get_metal4_stats(request: Request) -> Dict[str, Any]:
         raise
     except Exception as e:
         logger.error(f"Metal4 stats failed: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to get Metal 4 stats: {str(e)}"
-        )
+        raise http_500(f"Failed to get Metal 4 stats: {str(e)}")
 
 
 @router.get("/metal4/bottlenecks")
@@ -266,10 +262,7 @@ async def detect_bottlenecks() -> Dict[str, Any]:
         diagnostics = get_diagnostics()
 
         if not diagnostics:
-            raise HTTPException(
-                status_code=503,
-                detail="Metal 4 diagnostics not available"
-            )
+            raise http_503("Metal 4 diagnostics not available")
 
         issues = diagnostics.detect_bottlenecks()
 
@@ -283,10 +276,7 @@ async def detect_bottlenecks() -> Dict[str, Any]:
         raise
     except Exception as e:
         logger.error(f"Bottleneck detection failed: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to detect bottlenecks: {str(e)}"
-        )
+        raise http_500(f"Failed to detect bottlenecks: {str(e)}")
 
 
 @router.get("/services/status")
@@ -353,7 +343,4 @@ async def get_system_resources() -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"System resources failed: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to get system resources: {str(e)}"
-        )
+        raise http_500(f"Failed to get system resources: {str(e)}")

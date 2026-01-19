@@ -5,6 +5,8 @@ Create, list, get, and delete workflow definitions.
 """
 
 from fastapi import APIRouter, HTTPException, Request, Depends
+
+from api.errors import http_400, http_403, http_404, http_429
 from typing import List, Dict, Optional
 from datetime import datetime, UTC
 import logging
@@ -47,14 +49,14 @@ async def create_workflow(
     # Rate limit: 5 workflow creations per minute per user
     user_id = current_user.get("user_id", "unknown")
     if not rate_limiter.check_rate_limit(f"create_workflow:{user_id}", max_requests=5, window_seconds=60):
-        raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 5 workflow creations per minute.")
+        raise http_429("Max 5 workflow creations per minute")
     try:
         user_id = get_user_id(current_user)
 
         # Phase 3: Check team membership if creating team workflow
         if team_id:
             if not is_team_member(team_id, user_id):
-                raise HTTPException(status_code=403, detail="Not a member of this team")
+                raise http_403("Not a member of this team")
 
         # Build workflow from request
         workflow = Workflow(
@@ -78,7 +80,7 @@ async def create_workflow(
 
     except Exception as e:
         logger.error(f"Failed to create workflow: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise http_400(str(e))
 
 
 @router.get("/workflows", response_model=List[Workflow])
@@ -117,7 +119,7 @@ async def list_workflows(
     # Check team membership if team_id is specified
     if team_id:
         if not is_team_member(team_id, user_id):
-            raise HTTPException(status_code=403, detail="Not a member of this team")
+            raise http_403("Not a member of this team")
 
     # Use orchestrator method with visibility-aware filtering
     workflows = orchestrator.list_workflows(
@@ -155,7 +157,7 @@ async def get_workflow(
 
     workflow = orchestrator.get_workflow(workflow_id, user_id=user_id, team_id=team_id)
     if not workflow:
-        raise HTTPException(status_code=404, detail=f"Workflow not found or access denied: {workflow_id}")
+        raise http_404(f"Workflow not found or access denied: {workflow_id}", resource="workflow")
 
     return workflow
 
@@ -182,7 +184,7 @@ async def delete_workflow(
 
     workflow = orchestrator.get_workflow(workflow_id, user_id=user_id, team_id=team_id)
     if not workflow:
-        raise HTTPException(status_code=404, detail=f"Workflow not found or access denied: {workflow_id}")
+        raise http_404(f"Workflow not found or access denied: {workflow_id}", resource="workflow")
 
     workflow.enabled = False
     workflow.updated_at = datetime.now(UTC)

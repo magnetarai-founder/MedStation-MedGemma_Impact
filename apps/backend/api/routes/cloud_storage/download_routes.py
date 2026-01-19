@@ -14,6 +14,7 @@ from datetime import datetime, timedelta, UTC
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from api.auth_middleware import get_current_user
+from api.errors import http_400, http_401, http_403, http_404
 from api.utils import get_user_id
 
 from api.routes.cloud_storage.models import (
@@ -44,20 +45,14 @@ async def init_download(
     file_meta_path = cloud_files_dir / f"{request.file_id}.json"
 
     if not file_meta_path.exists():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"error": "file_not_found", "message": "File not found"}
-        )
+        raise http_404("File not found", resource="file")
 
     with open(file_meta_path, 'r') as f:
         file_metadata = json.load(f)
 
     # Verify ownership (or implement sharing logic)
     if file_metadata["user_id"] != get_user_id(current_user):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={"error": "forbidden", "message": "Not authorized to access this file"}
-        )
+        raise http_403("Not authorized to access this file")
 
     expires_at = datetime.now(UTC) + timedelta(minutes=request.expires_minutes)
     expires_seconds = request.expires_minutes * 60
@@ -133,10 +128,7 @@ async def download_file(
     # Validate token
     download_token_path = cloud_files_dir / f"download_{token}.json"
     if not download_token_path.exists():
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": "invalid_token", "message": "Invalid or expired download token"}
-        )
+        raise http_401("Invalid or expired download token")
 
     with open(download_token_path, 'r') as f:
         download_meta = json.load(f)
@@ -152,28 +144,19 @@ async def download_file(
 
     # Verify file ID matches
     if download_meta["file_id"] != file_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"error": "file_mismatch", "message": "Token does not match file"}
-        )
+        raise http_400("Token does not match file")
 
     # Get file metadata
     file_meta_path = cloud_files_dir / f"{file_id}.json"
     if not file_meta_path.exists():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"error": "file_not_found", "message": "File not found"}
-        )
+        raise http_404("File not found", resource="file")
 
     with open(file_meta_path, 'r') as f:
         file_metadata = json.load(f)
 
     file_path = cloud_files_dir / file_id
     if not file_path.exists():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"error": "file_missing", "message": "File data not found"}
-        )
+        raise http_404("File data not found", resource="file")
 
     # Cleanup token (single use)
     download_token_path.unlink()
