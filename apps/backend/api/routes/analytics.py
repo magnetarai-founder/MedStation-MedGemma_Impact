@@ -11,16 +11,9 @@ from typing import Optional, Literal, Dict, Any
 from fastapi import APIRouter, Depends, Request, HTTPException, status
 from fastapi.responses import Response
 
-try:
-    from api.auth_middleware import get_current_user
-    from api.permission_engine import require_perm
-except ImportError:
-    from api.auth_middleware import get_current_user
-    from permission_engine import require_perm
-try:
-    from api.utils import get_user_id
-except ImportError:
-    from api.utils import get_user_id
+from api.auth_middleware import get_current_user
+from api.permission_engine import require_perm
+from api.utils import get_user_id
 
 from api.services.analytics import get_analytics_service
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode

@@ -14,10 +14,7 @@ from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-try:
-    from api.auth_middleware import get_current_user
-except ImportError:
-    from api.auth_middleware import get_current_user
+from api.auth_middleware import get_current_user
 from api.services import kanban_service as kb
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 

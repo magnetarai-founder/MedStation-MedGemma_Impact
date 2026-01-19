@@ -11,15 +11,9 @@ import logging
 from fastapi import APIRouter, HTTPException, Request, Depends, Query, status
 from typing import List, Optional, Dict, Any
 
-# Module-level safe imports
-try:
-    from api.auth_middleware import get_current_user
-except ImportError:
-    from api.auth_middleware import get_current_user
-try:
-    from api.utils import get_user_id
-except ImportError:
-    from api.utils import get_user_id
+# Module-level imports
+from api.auth_middleware import get_current_user
+from api.utils import get_user_id
 
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 from api.core.exceptions import handle_exceptions
