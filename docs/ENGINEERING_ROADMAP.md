@@ -255,7 +255,7 @@ Connection pool implemented in `api/db/pool.py`:
 | Reorganize 141 root-level API files into packages | **COMPLETE** |
 | Increase test coverage gaps | Pending |
 | Update documentation | Pending |
-| Remove try/except import wrappers (200+ files) | **IN PROGRESS** (229 remaining in 163 files, down from 284 - 55 removed Jan 18) |
+| Remove try/except import wrappers (200+ files) | **IN PROGRESS** (170 remaining in 121 files, down from 284 - 114 removed Jan 18) |
 
 ---
 
@@ -503,4 +503,4 @@ guard let url = URL(string: urlString) else {
 ---
 
 *Generated from CODE_QUALITY_REVIEW.md + REFACTOR_ROADMAP.md*
-*Last Updated: January 16, 2026*
+*Last Updated: January 18, 2026*
