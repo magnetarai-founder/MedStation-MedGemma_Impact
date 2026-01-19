@@ -255,7 +255,7 @@ Connection pool implemented in `api/db/pool.py`:
 | Reorganize 141 root-level API files into packages | **COMPLETE** |
 | Increase test coverage gaps | Pending |
 | Update documentation | Pending |
-| Remove try/except import wrappers (200+ files) | **IN PROGRESS** (145 remaining in 101 files, down from 284 - 139 removed Jan 18) |
+| Remove try/except import wrappers (200+ files) | **COMPLETE** (70 remaining are legitimate optional deps: nacl, redis, webauthn, keyring, zeroconf, libp2p, audit/metrics graceful fallbacks - 214 removed Jan 18) |
 
 ---
 
