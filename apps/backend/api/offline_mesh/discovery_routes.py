@@ -5,6 +5,7 @@ mDNS peer discovery endpoints for local network.
 """
 
 from fastapi import APIRouter, HTTPException, Request, Depends
+from api.errors import http_500
 from typing import Dict, Any
 import logging
 
@@ -60,11 +61,11 @@ async def start_discovery(request: Request, display_name: str, device_name: str)
                 "device_name": device_name
             }
         else:
-            raise HTTPException(status_code=500, detail="Failed to start discovery")
+            raise http_500("Failed to start discovery")
 
     except Exception as e:
         logger.error(f"Failed to start discovery: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.get("/discovery/peers", response_model=PeersListResponse)
@@ -93,7 +94,7 @@ async def get_discovered_peers() -> PeersListResponse:
 
     except Exception as e:
         logger.error(f"Failed to get peers: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.get("/discovery/stats")
@@ -105,7 +106,7 @@ async def get_discovery_stats() -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Failed to get discovery stats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/discovery/stop", response_model=StatusResponse)
@@ -119,4 +120,4 @@ async def stop_discovery(request: Request) -> StatusResponse:
 
     except Exception as e:
         logger.error(f"Failed to stop discovery: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))

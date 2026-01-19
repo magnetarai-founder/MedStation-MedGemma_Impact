@@ -5,6 +5,7 @@ Message relay and routing endpoints for mesh network.
 """
 
 from fastapi import APIRouter, HTTPException, Request
+from api.errors import http_404, http_500
 from typing import Dict, Any
 import logging
 
@@ -34,7 +35,7 @@ async def add_relay_peer(request: Request, peer_id: str, latency_ms: float = 10.
 
     except Exception as e:
         logger.error(f"Failed to add peer: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.delete("/relay/peer/{peer_id}")
@@ -48,7 +49,7 @@ async def remove_relay_peer(request: Request, peer_id: str) -> Dict[str, str]:
 
     except Exception as e:
         logger.error(f"Failed to remove peer: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/relay/send")
@@ -70,7 +71,7 @@ async def send_relay_message(request: Request, body: SendMessageRequest) -> Dict
 
     except Exception as e:
         logger.error(f"Failed to send message: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.get("/relay/route/{peer_id}")
@@ -87,13 +88,13 @@ async def get_route_to_peer(peer_id: str) -> Dict[str, Any]:
                 "hop_count": len(route) - 1
             }
         else:
-            raise HTTPException(status_code=404, detail="No route found")
+            raise http_404("No route found", resource="route")
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to get route: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.get("/relay/stats")
@@ -105,7 +106,7 @@ async def get_relay_stats() -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Failed to get relay stats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.get("/relay/routing-table")
@@ -117,4 +118,4 @@ async def get_routing_table() -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Failed to get routing table: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))

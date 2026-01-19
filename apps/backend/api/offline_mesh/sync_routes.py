@@ -114,7 +114,7 @@ async def get_sync_state(peer_id: str) -> Dict[str, Any]:
         raise
     except Exception as e:
         logger.error(f"Failed to get sync state: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.get("/sync/states")
@@ -141,7 +141,7 @@ async def get_all_sync_states() -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Failed to get sync states: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.get("/sync/stats")
@@ -153,7 +153,7 @@ async def get_sync_stats() -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Failed to get sync stats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/sync/exchange")
@@ -211,4 +211,4 @@ async def exchange_sync_operations(request: Request, body: SyncExchangeRequest) 
 
     except Exception as e:
         logger.error(f"Failed to exchange sync operations: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))

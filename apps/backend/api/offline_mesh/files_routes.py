@@ -5,6 +5,7 @@ P2P file sharing endpoints for mesh network.
 """
 
 from fastapi import APIRouter, HTTPException, Request
+from api.errors import http_404
 from typing import Dict, Any, Optional
 from pathlib import Path
 import logging
@@ -59,7 +60,7 @@ async def share_file(request: Request, body: ShareFileRequest) -> FileShareRespo
 
     file_path = Path(body.file_path)
     if not file_path.exists():
-        raise HTTPException(status_code=404, detail="File not found")
+        raise http_404("File not found", resource="file")
 
     shared_file = await file_share.share_file(
         file_path=file_path,
@@ -161,7 +162,7 @@ async def delete_shared_file(request: Request, file_id: str) -> Dict[str, str]:
     success = await file_share.delete_shared_file(file_id)
 
     if not success:
-        raise HTTPException(status_code=404, detail="File not found")
+        raise http_404("File not found", resource="file")
 
     return {"status": "deleted", "file_id": file_id}
 
