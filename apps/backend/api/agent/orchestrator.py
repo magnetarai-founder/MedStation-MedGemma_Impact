@@ -22,8 +22,10 @@ All existing imports and /api/v1/agent/* endpoints continue to work unchanged.
 
 import logging
 import time
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, Depends, Request
 from typing import Dict, Any
+
+from api.errors import http_400, http_403, http_404, http_429, http_500
 
 # ElohimOS imports
 from ..auth_middleware import get_current_user
@@ -131,10 +133,10 @@ async def update_model_settings(
         logger.info(f"Model settings updated by {get_username(current_user)}")
         return result
     except FileNotFoundError as e:
-        raise HTTPException(404, str(e))
+        raise http_404(str(e))
     except Exception as e:
         logger.error(f"Failed to update model settings: {e}")
-        raise HTTPException(500, f"Failed to update settings: {str(e)}")
+        raise http_500(f"Failed to update settings: {str(e)}")
 
 
 @router.post("/route", response_model=RouteResponse)
@@ -159,14 +161,14 @@ async def route_input(
         max_requests=60,
         window_seconds=60
     ):
-        raise HTTPException(status_code=429, detail="Too many route requests")
+        raise http_429("Too many route requests")
 
     try:
         # T3-1: Validate session ownership if provided
         if body.session_id:
             session = get_agent_session(body.session_id)
             if not session or session.user_id != user_id:
-                raise HTTPException(status_code=404, detail="Session not found")
+                raise http_404("Session not found", resource="session")
 
         # Pass user_id for learning-aware routing
         resp = route_input_logic(body.input, user_id=user_id)
@@ -198,7 +200,7 @@ async def route_input(
     except Exception as e:
         logger.error(f"Routing failed: {e}", exc_info=True)
         metrics.record("agent.route.calls", (time.perf_counter() - start_time) * 1000, error=True)
-        raise HTTPException(status_code=500, detail="Failed to route input")
+        raise http_500("Failed to route input")
 
 
 @router.post("/plan", response_model=PlanResponse)
@@ -223,14 +225,14 @@ async def generate_plan(
         max_requests=30,
         window_seconds=60
     ):
-        raise HTTPException(status_code=429, detail="Too many plan requests")
+        raise http_429("Too many plan requests")
 
     try:
         # T3-1: Validate session ownership if provided
         if body.session_id:
             session = get_agent_session(body.session_id)
             if not session or session.user_id != user_id:
-                raise HTTPException(status_code=404, detail="Session not found")
+                raise http_404("Session not found", resource="session")
 
         resp = generate_plan_logic(body.input, body.context_bundle)
 
@@ -262,7 +264,7 @@ async def generate_plan(
         # Log full error server-side, return generic message to client
         logger.error(f"Planning failed: {e}", exc_info=True)
         metrics.record("agent.plan.calls", (time.perf_counter() - start_time) * 1000, error=True)
-        raise HTTPException(status_code=500, detail="Failed to generate plan. Please try again.")
+        raise http_500("Failed to generate plan. Please try again.")
 
 
 @router.post("/context", response_model=ContextResponse)
@@ -287,14 +289,14 @@ async def get_context_bundle(
         max_requests=60,
         window_seconds=60
     ):
-        raise HTTPException(status_code=429, detail="Too many context requests")
+        raise http_429("Too many context requests")
 
     try:
         # T3-1: Validate session ownership if provided
         if body.session_id:
             session = get_agent_session(body.session_id)
             if not session or session.user_id != user_id:
-                raise HTTPException(status_code=404, detail="Session not found")
+                raise http_404("Session not found", resource="session")
 
         resp = build_context_bundle(body, current_user, PATHS)
 
@@ -325,12 +327,12 @@ async def get_context_bundle(
         return resp
     except PermissionError as e:
         metrics.record("agent.context.calls", (time.perf_counter() - start_time) * 1000, error=True)
-        raise HTTPException(status_code=403, detail=str(e))
+        raise http_403(str(e))
     except Exception as e:
         # Log full error server-side, return generic message to client
         logger.error(f"Context building failed: {e}", exc_info=True)
         metrics.record("agent.context.calls", (time.perf_counter() - start_time) * 1000, error=True)
-        raise HTTPException(status_code=500, detail="Failed to build context. Please check repository path.")
+        raise http_500("Failed to build context. Please check repository path.")
 
 
 @router.post("/apply", response_model=ApplyResponse)
@@ -356,14 +358,14 @@ async def apply_plan(
         max_requests=10,
         window_seconds=60
     ):
-        raise HTTPException(status_code=429, detail="Too many apply requests")
+        raise http_429("Too many apply requests")
 
     try:
         # T3-1: Validate session ownership if provided
         if body.session_id:
             session = get_agent_session(body.session_id)
             if not session or session.user_id != user_id:
-                raise HTTPException(status_code=404, detail="Session not found")
+                raise http_404("Session not found", resource="session")
 
         patches, patch_id, engine_used = apply_plan_logic(body, current_user)
 
@@ -425,7 +427,7 @@ async def apply_plan(
         metrics.record("agent.apply.calls", (time.perf_counter() - start_time) * 1000, error=True)
         metrics.record("agent.apply.failures", 0, error=True)
 
-        raise HTTPException(status_code=500, detail="Failed to apply changes. Please check logs for details.")
+        raise http_500("Failed to apply changes. Please check logs for details.")
 
 
 @router.get("/models/validate")
@@ -457,12 +459,12 @@ async def auto_fix_models(
         result = auto_fix_models_logic(current_user)
         return result
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise http_400(str(e))
     except ImportError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
     except Exception as e:
         logger.error(f"Auto-fix failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Failed to auto-fix models")
+        raise http_500("Failed to auto-fix models")
 
 
 # ==================== Agent Sessions (Phase C) ====================
@@ -500,7 +502,7 @@ async def create_agent_session_endpoint(
         return session
     except Exception as e:
         logger.error(f"Failed to create agent session: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.get("/sessions", response_model=list[AgentSession])
@@ -526,7 +528,7 @@ async def list_agent_sessions_endpoint(
         return sessions
     except Exception as e:
         logger.error(f"Failed to list agent sessions: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.get("/sessions/{session_id}", response_model=AgentSession)
@@ -554,14 +556,14 @@ async def get_agent_session_endpoint(
         session = get_agent_session(session_id)
 
         if not session or session.user_id != user_id:
-            raise HTTPException(status_code=404, detail="Session not found")
+            raise http_404("Session not found", resource="session")
 
         return session
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to get agent session {session_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/sessions/{session_id}/close", response_model=AgentSession)
@@ -591,7 +593,7 @@ async def close_agent_session_endpoint(
         # Verify ownership
         session = get_agent_session(session_id)
         if not session or session.user_id != user_id:
-            raise HTTPException(status_code=404, detail="Session not found")
+            raise http_404("Session not found", resource="session")
 
         # Close the session
         close_session(session_id)
@@ -604,4 +606,4 @@ async def close_agent_session_endpoint(
         raise
     except Exception as e:
         logger.error(f"Failed to close agent session {session_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
