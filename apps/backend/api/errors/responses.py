@@ -284,3 +284,111 @@ def handle_rate_limit(exceeded: bool, retry_after: int = 60) -> None:
     """
     if exceeded:
         raise too_many_requests(ErrorCode.AUTH_RATE_LIMIT_EXCEEDED, retry_after=retry_after)
+
+
+# ============================================================================
+# Quick Helpers (Drop-in replacements for raw HTTPException)
+# ============================================================================
+# These functions make migration from raw HTTPException easy.
+# They auto-select appropriate error codes and provide structured responses.
+#
+# Migration example:
+#   Before: raise HTTPException(status_code=404, detail="User not found")
+#   After:  raise http_404("User not found")
+#
+# For more specific errors, use the typed helpers above (not_found, bad_request, etc.)
+# with specific ErrorCode values for better client-side handling.
+
+
+def http_400(message: str, details: Optional[Dict[str, Any]] = None) -> AppException:
+    """Quick 400 Bad Request - use bad_request() for specific error codes"""
+    return AppException(
+        400,
+        ErrorCode.CONFIG_VALIDATION_FAILED,  # Generic validation
+        context={"message": message, **(details or {})},
+        technical_detail=message,
+        log_error=True
+    )
+
+
+def http_401(message: str = "Authentication required") -> AppException:
+    """Quick 401 Unauthorized - use unauthorized() for specific error codes"""
+    return AppException(
+        401,
+        ErrorCode.AUTH_INVALID_TOKEN,
+        context={"message": message},
+        technical_detail=message,
+        log_error=True
+    )
+
+
+def http_403(message: str = "Access denied") -> AppException:
+    """Quick 403 Forbidden - use forbidden() for specific error codes"""
+    return AppException(
+        403,
+        ErrorCode.AUTH_INSUFFICIENT_PERMISSIONS,
+        context={"message": message},
+        technical_detail=message,
+        log_error=True
+    )
+
+
+def http_404(message: str, resource: Optional[str] = None) -> AppException:
+    """Quick 404 Not Found - use not_found() for specific error codes"""
+    ctx = {"message": message}
+    if resource:
+        ctx["resource"] = resource
+    return AppException(
+        404,
+        ErrorCode.DB_RECORD_NOT_FOUND,  # Generic not found
+        context=ctx,
+        technical_detail=message,
+        log_error=True
+    )
+
+
+def http_409(message: str) -> AppException:
+    """Quick 409 Conflict - use conflict() for specific error codes"""
+    return AppException(
+        409,
+        ErrorCode.DB_DUPLICATE_ENTRY,
+        context={"message": message},
+        technical_detail=message,
+        log_error=True
+    )
+
+
+def http_429(message: str = "Rate limit exceeded", retry_after: int = 60) -> AppException:
+    """Quick 429 Too Many Requests - use too_many_requests() for specific error codes"""
+    return AppException(
+        429,
+        ErrorCode.AUTH_RATE_LIMIT_EXCEEDED,
+        context={"message": message, "retry_after": retry_after},
+        technical_detail=message,
+        log_error=True
+    )
+
+
+def http_500(message: str = "Internal server error") -> AppException:
+    """Quick 500 Internal Server Error - use internal_error() for specific error codes"""
+    return AppException(
+        500,
+        ErrorCode.SYSTEM_INTERNAL_ERROR,
+        context={"message": message},
+        technical_detail=message,
+        log_error=True
+    )
+
+
+def http_503(message: str, service: Optional[str] = None) -> AppException:
+    """Quick 503 Service Unavailable - use service_unavailable() for specific error codes"""
+    ctx = {"message": message}
+    if service:
+        ctx["service"] = service
+    return AppException(
+        503,
+        ErrorCode.NETWORK_UNREACHABLE,
+        context=ctx,
+        technical_detail=message,
+        log_error=True
+    )

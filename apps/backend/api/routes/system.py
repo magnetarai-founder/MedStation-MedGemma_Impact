@@ -9,10 +9,11 @@ import subprocess
 from datetime import UTC, datetime
 
 from typing import Any, Dict
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import PlainTextResponse
 
 from api.auth_middleware import get_current_user
+from api.errors import http_403, http_500, http_503
 
 router = APIRouter(tags=["System"])
 logger = logging.getLogger(__name__)
@@ -98,10 +99,10 @@ async def prometheus_metrics(current_user: dict = Depends(get_current_user)) -> 
         from prometheus_metrics import get_prometheus_exporter
         prometheus_exporter = get_prometheus_exporter()
     except ImportError:
-        raise HTTPException(status_code=503, detail="Prometheus metrics not available")
+        raise http_503("Prometheus metrics not available", service="prometheus")
 
     if not prometheus_exporter:
-        raise HTTPException(status_code=503, detail="Prometheus metrics not available")
+        raise http_503("Prometheus metrics not available", service="prometheus")
 
     try:
         metrics_text = prometheus_exporter.collect_metrics()
@@ -112,7 +113,7 @@ async def prometheus_metrics(current_user: dict = Depends(get_current_user)) -> 
         )
     except Exception as e:
         logger.error(f"Failed to collect Prometheus metrics: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to collect metrics: {str(e)}")
+        raise http_500(f"Failed to collect metrics: {str(e)}")
 
 
 @router.get("/health")
@@ -134,10 +135,10 @@ async def health_check() -> dict:
         from health_diagnostics import get_health_diagnostics
         health_diagnostics = get_health_diagnostics()
     except ImportError:
-        raise HTTPException(status_code=503, detail="Health diagnostics not available")
+        raise http_503("Health diagnostics not available", service="health_diagnostics")
 
     if not health_diagnostics:
-        raise HTTPException(status_code=503, detail="Health diagnostics not available")
+        raise http_503("Health diagnostics not available", service="health_diagnostics")
 
     try:
         health = health_diagnostics.check_health()
@@ -145,7 +146,7 @@ async def health_check() -> dict:
         return health
     except Exception as e:
         logger.error(f"Health check failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
+        raise http_500(f"Health check failed: {str(e)}")
 
 
 @router.get("/diagnostics")
@@ -176,17 +177,17 @@ async def system_diagnostics(
         from health_diagnostics import get_health_diagnostics
         health_diagnostics = get_health_diagnostics()
     except ImportError:
-        raise HTTPException(status_code=503, detail="Health diagnostics not available")
+        raise http_503("Health diagnostics not available", service="health_diagnostics")
 
     if not health_diagnostics:
-        raise HTTPException(status_code=503, detail="Health diagnostics not available")
+        raise http_503("Health diagnostics not available", service="health_diagnostics")
 
     try:
         diagnostics = health_diagnostics.get_diagnostics(force_refresh=force_refresh)
         return diagnostics
     except Exception as e:
         logger.error(f"Diagnostics failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Diagnostics failed: {str(e)}")
+        raise http_500(f"Diagnostics failed: {str(e)}")
 
 
 # ============================================================================
@@ -199,7 +200,7 @@ async def _fallback_admin_device_overview(request: Request, current_user: dict =
     """Fallback Admin device overview endpoint to avoid 404 if admin router fails to load"""
     # Require Founder Rights (Founder Admin)
     if current_user.get("role") != "founder_rights":
-        raise HTTPException(status_code=403, detail="Founder Rights (Founder Admin) access required")
+        raise http_403("Founder Rights (Founder Admin) access required")
 
     # Try to forward to admin_service implementation if available
     try:
@@ -229,18 +230,17 @@ async def _fallback_spawn_system_terminal(current_user: dict = Depends(get_curre
     # Allow only founder_rights or super_admin by default
     role = current_user.get("role")
     if role not in ("founder_rights", "super_admin"):
-        raise HTTPException(status_code=403, detail="Insufficient permissions to spawn terminal")
+        raise http_403("Insufficient permissions to spawn terminal")
 
     # Try to forward to terminal_api implementation if available
     try:
         from api.terminal_api import spawn_system_terminal as _real_spawn  # type: ignore
         return await _real_spawn(current_user=current_user)
-    except HTTPException:
-        raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=(
-                f"Failed to spawn system terminal: {e}. Ensure Terminal/iTerm/Warp are installed and grant Automation/Accessibility permissions."
-            )
+        # Re-raise AppException (our structured errors)
+        from api.errors import AppException
+        if isinstance(e, AppException):
+            raise
+        raise http_500(
+            f"Failed to spawn system terminal: {e}. Ensure Terminal/iTerm/Warp are installed and grant Automation/Accessibility permissions."
         )

@@ -32,6 +32,7 @@ from api.errors.responses import (
     AppException,
     app_exception_handler,
     generic_exception_handler,
+    # Typed helpers (use with specific ErrorCode for best client handling)
     bad_request,
     unauthorized,
     forbidden,
@@ -42,6 +43,16 @@ from api.errors.responses import (
     internal_error,
     service_unavailable,
     gateway_timeout,
+    # Quick helpers (drop-in replacements for raw HTTPException)
+    http_400,
+    http_401,
+    http_403,
+    http_404,
+    http_409,
+    http_429,
+    http_500,
+    http_503,
+    # Validation utilities
     validate_model_name,
     validate_file_size,
     validate_file_format,
@@ -69,6 +80,7 @@ __all__ = [
     "AppException",
     "app_exception_handler",
     "generic_exception_handler",
+    # Typed helpers
     "bad_request",
     "unauthorized",
     "forbidden",
@@ -79,6 +91,16 @@ __all__ = [
     "internal_error",
     "service_unavailable",
     "gateway_timeout",
+    # Quick helpers (drop-in for HTTPException)
+    "http_400",
+    "http_401",
+    "http_403",
+    "http_404",
+    "http_409",
+    "http_429",
+    "http_500",
+    "http_503",
+    # Validation utilities
     "validate_model_name",
     "validate_file_size",
     "validate_file_format",

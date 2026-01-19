@@ -166,7 +166,24 @@ All instances now use safe `guard let url = URL(string:)` pattern:
 |-------|--------|--------|
 | Broad exception handlers | 50+ files with `except Exception` | **IMPROVED** (silent handlers reduced 27→12, added debug logging Jan 18) |
 | Missing type hints | Heavy `Any` usage | Pending |
-| Inconsistent error handling | 4+ different patterns | Pending |
+| Inconsistent error handling | 4+ different patterns | **IN PROGRESS** (infrastructure ready Jan 18) |
+
+**Error Handling Consolidation (Jan 18, 2026):**
+
+Infrastructure added to `api/errors/`:
+- `AppException` with error IDs, user messages, suggestions, technical details
+- Quick helpers (`http_400`, `http_404`, `http_500`, `http_503`) for easy migration
+- Full exports from `api.errors` module
+
+Migration scope: 1035 HTTPException calls across 148 files. Sample migration completed in `routes/system.py` (12 calls). Remaining files can be migrated incrementally using:
+```python
+# Before
+raise HTTPException(status_code=404, detail="Not found")
+
+# After
+from api.errors import http_404
+raise http_404("Not found")
+```
 
 ---
 
