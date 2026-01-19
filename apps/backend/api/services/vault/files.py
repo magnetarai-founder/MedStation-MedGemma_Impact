@@ -9,7 +9,6 @@ Handles all file-related operations for vault service including:
 - Tags, favorites, and metadata
 """
 
-import sqlite3
 import logging
 import hashlib
 import uuid
@@ -19,6 +18,7 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime, UTC
 from cryptography.fernet import Fernet
 
+from api.db.pool import get_connection_pool
 from .schemas import VaultFile
 from . import storage, encryption
 
@@ -209,51 +209,50 @@ def create_file_version(
     Returns:
         Dictionary with version metadata
     """
-    conn = sqlite3.connect(str(service.db_path))
-    cursor = conn.cursor()
+    pool = get_connection_pool(service.db_path)
+    with pool.get_connection() as conn:
+        cursor = conn.cursor()
 
-    try:
-        # Get current version count
-        cursor.execute("""
-            SELECT COALESCE(MAX(version_number), 0)
-            FROM vault_file_versions
-            WHERE file_id = ?
-        """, (file_id,))
+        try:
+            # Get current version count
+            cursor.execute("""
+                SELECT COALESCE(MAX(version_number), 0)
+                FROM vault_file_versions
+                WHERE file_id = ?
+            """, (file_id,))
 
-        current_version = cursor.fetchone()[0]
-        new_version = current_version + 1
+            current_version = cursor.fetchone()[0]
+            new_version = current_version + 1
 
-        # Create version record
-        version_id = str(uuid.uuid4())
-        now = datetime.now(UTC).isoformat()
+            # Create version record
+            version_id = str(uuid.uuid4())
+            now = datetime.now(UTC).isoformat()
 
-        cursor.execute("""
-            INSERT INTO vault_file_versions (
-                id, file_id, user_id, vault_type, version_number,
-                encrypted_path, file_size, mime_type, created_at,
-                created_by, comment
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (version_id, file_id, user_id, vault_type, new_version,
-              encrypted_path, file_size, mime_type, now, user_id, comment))
+            cursor.execute("""
+                INSERT INTO vault_file_versions (
+                    id, file_id, user_id, vault_type, version_number,
+                    encrypted_path, file_size, mime_type, created_at,
+                    created_by, comment
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (version_id, file_id, user_id, vault_type, new_version,
+                  encrypted_path, file_size, mime_type, now, user_id, comment))
 
-        conn.commit()
+            conn.commit()
 
-        return {
-            "id": version_id,
-            "file_id": file_id,
-            "version_number": new_version,
-            "file_size": file_size,
-            "mime_type": mime_type,
-            "created_at": now,
-            "comment": comment
-        }
+            return {
+                "id": version_id,
+                "file_id": file_id,
+                "version_number": new_version,
+                "file_size": file_size,
+                "mime_type": mime_type,
+                "created_at": now,
+                "comment": comment
+            }
 
-    except Exception as e:
-        conn.rollback()
-        logger.error(f"Failed to create file version: {e}")
-        raise
-    finally:
-        conn.close()
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"Failed to create file version: {e}")
+            raise
 
 
 def get_file_versions(
@@ -274,10 +273,9 @@ def get_file_versions(
     Returns:
         List of version dictionaries
     """
-    conn = sqlite3.connect(str(service.db_path))
-    cursor = conn.cursor()
-
-    try:
+    pool = get_connection_pool(service.db_path)
+    with pool.get_connection() as conn:
+        cursor = conn.cursor()
         cursor.execute("""
             SELECT id, version_number, file_size, mime_type,
                    created_at, created_by, comment
@@ -299,9 +297,6 @@ def get_file_versions(
             })
 
         return versions
-
-    finally:
-        conn.close()
 
 
 def restore_file_version(
@@ -328,66 +323,65 @@ def restore_file_version(
         ValueError: If version or file not found
     """
     import shutil
-    conn = sqlite3.connect(str(service.db_path))
-    cursor = conn.cursor()
+    pool = get_connection_pool(service.db_path)
+    with pool.get_connection() as conn:
+        cursor = conn.cursor()
 
-    try:
-        # Get version details
-        cursor.execute("""
-            SELECT encrypted_path, file_size, mime_type, version_number
-            FROM vault_file_versions
-            WHERE id = ? AND file_id = ? AND user_id = ? AND vault_type = ?
-        """, (version_id, file_id, user_id, vault_type))
+        try:
+            # Get version details
+            cursor.execute("""
+                SELECT encrypted_path, file_size, mime_type, version_number
+                FROM vault_file_versions
+                WHERE id = ? AND file_id = ? AND user_id = ? AND vault_type = ?
+            """, (version_id, file_id, user_id, vault_type))
 
-        version_data = cursor.fetchone()
-        if not version_data:
-            raise ValueError("Version not found")
+            version_data = cursor.fetchone()
+            if not version_data:
+                raise ValueError("Version not found")
 
-        version_encrypted_path, version_size, version_mime, version_number = version_data
+            version_encrypted_path, version_size, version_mime, version_number = version_data
 
-        # Get current file details
-        cursor.execute("""
-            SELECT encrypted_path
-            FROM vault_files
-            WHERE id = ? AND user_id = ? AND vault_type = ?
-        """, (file_id, user_id, vault_type))
+            # Get current file details
+            cursor.execute("""
+                SELECT encrypted_path
+                FROM vault_files
+                WHERE id = ? AND user_id = ? AND vault_type = ?
+            """, (file_id, user_id, vault_type))
 
-        current_data = cursor.fetchone()
-        if not current_data:
-            raise ValueError("File not found")
+            current_data = cursor.fetchone()
+            if not current_data:
+                raise ValueError("File not found")
 
-        current_encrypted_path = current_data[0]
+            current_encrypted_path = current_data[0]
 
-        # Copy version file to current file location
-        version_path = service.files_path / version_encrypted_path
-        current_path = service.files_path / current_encrypted_path
+            # Copy version file to current file location
+            version_path = service.files_path / version_encrypted_path
+            current_path = service.files_path / current_encrypted_path
 
-        if version_path.exists():
-            shutil.copy2(version_path, current_path)
+            if version_path.exists():
+                shutil.copy2(version_path, current_path)
 
-        # Update file record
-        now = datetime.now(UTC).isoformat()
-        cursor.execute("""
-            UPDATE vault_files
-            SET file_size = ?, mime_type = ?, updated_at = ?
-            WHERE id = ? AND user_id = ? AND vault_type = ?
-        """, (version_size, version_mime, now, file_id, user_id, vault_type))
+            # Update file record
+            now = datetime.now(UTC).isoformat()
+            cursor.execute("""
+                UPDATE vault_files
+                SET file_size = ?, mime_type = ?, updated_at = ?
+                WHERE id = ? AND user_id = ? AND vault_type = ?
+            """, (version_size, version_mime, now, file_id, user_id, vault_type))
 
-        conn.commit()
+            conn.commit()
 
-        return {
-            "id": file_id,
-            "restored_version": version_number,
-            "file_size": version_size,
-            "updated_at": now
-        }
+            return {
+                "id": file_id,
+                "restored_version": version_number,
+                "file_size": version_size,
+                "updated_at": now
+            }
 
-    except Exception as e:
-        conn.rollback()
-        logger.error(f"Failed to restore file version: {e}")
-        raise
-    finally:
-        conn.close()
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"Failed to restore file version: {e}")
+            raise
 
 
 def delete_file_version(
@@ -408,43 +402,42 @@ def delete_file_version(
     Returns:
         True if version was deleted, False otherwise
     """
-    conn = sqlite3.connect(str(service.db_path))
-    cursor = conn.cursor()
+    pool = get_connection_pool(service.db_path)
+    with pool.get_connection() as conn:
+        cursor = conn.cursor()
 
-    try:
-        # Get version file path
-        cursor.execute("""
-            SELECT encrypted_path
-            FROM vault_file_versions
-            WHERE id = ? AND user_id = ? AND vault_type = ?
-        """, (version_id, user_id, vault_type))
+        try:
+            # Get version file path
+            cursor.execute("""
+                SELECT encrypted_path
+                FROM vault_file_versions
+                WHERE id = ? AND user_id = ? AND vault_type = ?
+            """, (version_id, user_id, vault_type))
 
-        result = cursor.fetchone()
-        if not result:
-            return False
+            result = cursor.fetchone()
+            if not result:
+                return False
 
-        encrypted_path = result[0]
+            encrypted_path = result[0]
 
-        # Delete physical file
-        file_path = service.files_path / encrypted_path
-        if file_path.exists():
-            os.remove(file_path)
+            # Delete physical file
+            file_path = service.files_path / encrypted_path
+            if file_path.exists():
+                os.remove(file_path)
 
-        # Delete version record
-        cursor.execute("""
-            DELETE FROM vault_file_versions
-            WHERE id = ? AND user_id = ? AND vault_type = ?
-        """, (version_id, user_id, vault_type))
+            # Delete version record
+            cursor.execute("""
+                DELETE FROM vault_file_versions
+                WHERE id = ? AND user_id = ? AND vault_type = ?
+            """, (version_id, user_id, vault_type))
 
-        conn.commit()
-        return True
+            conn.commit()
+            return True
 
-    except Exception as e:
-        conn.rollback()
-        logger.error(f"Failed to delete file version: {e}")
-        raise
-    finally:
-        conn.close()
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"Failed to delete file version: {e}")
+            raise
 
 
 # ========================================================================
@@ -472,35 +465,34 @@ def move_to_trash(
     Raises:
         ValueError: If file not found or already deleted
     """
-    conn = sqlite3.connect(str(service.db_path))
-    cursor = conn.cursor()
+    pool = get_connection_pool(service.db_path)
+    with pool.get_connection() as conn:
+        cursor = conn.cursor()
 
-    try:
-        now = datetime.now(UTC).isoformat()
+        try:
+            now = datetime.now(UTC).isoformat()
 
-        cursor.execute("""
-            UPDATE vault_files
-            SET is_deleted = 1, deleted_at = ?
-            WHERE id = ? AND user_id = ? AND vault_type = ? AND is_deleted = 0
-        """, (now, file_id, user_id, vault_type))
+            cursor.execute("""
+                UPDATE vault_files
+                SET is_deleted = 1, deleted_at = ?
+                WHERE id = ? AND user_id = ? AND vault_type = ? AND is_deleted = 0
+            """, (now, file_id, user_id, vault_type))
 
-        if cursor.rowcount == 0:
-            raise ValueError("File not found or already deleted")
+            if cursor.rowcount == 0:
+                raise ValueError("File not found or already deleted")
 
-        conn.commit()
+            conn.commit()
 
-        return {
-            "id": file_id,
-            "deleted_at": now,
-            "status": "moved to trash"
-        }
+            return {
+                "id": file_id,
+                "deleted_at": now,
+                "status": "moved to trash"
+            }
 
-    except Exception as e:
-        conn.rollback()
-        logger.error(f"Failed to move file to trash: {e}")
-        raise
-    finally:
-        conn.close()
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"Failed to move file to trash: {e}")
+            raise
 
 
 def restore_from_trash(
@@ -524,32 +516,31 @@ def restore_from_trash(
     Raises:
         ValueError: If file not found in trash
     """
-    conn = sqlite3.connect(str(service.db_path))
-    cursor = conn.cursor()
+    pool = get_connection_pool(service.db_path)
+    with pool.get_connection() as conn:
+        cursor = conn.cursor()
 
-    try:
-        cursor.execute("""
-            UPDATE vault_files
-            SET is_deleted = 0, deleted_at = NULL
-            WHERE id = ? AND user_id = ? AND vault_type = ? AND is_deleted = 1
-        """, (file_id, user_id, vault_type))
+        try:
+            cursor.execute("""
+                UPDATE vault_files
+                SET is_deleted = 0, deleted_at = NULL
+                WHERE id = ? AND user_id = ? AND vault_type = ? AND is_deleted = 1
+            """, (file_id, user_id, vault_type))
 
-        if cursor.rowcount == 0:
-            raise ValueError("File not found in trash")
+            if cursor.rowcount == 0:
+                raise ValueError("File not found in trash")
 
-        conn.commit()
+            conn.commit()
 
-        return {
-            "id": file_id,
-            "status": "restored from trash"
-        }
+            return {
+                "id": file_id,
+                "status": "restored from trash"
+            }
 
-    except Exception as e:
-        conn.rollback()
-        logger.error(f"Failed to restore file from trash: {e}")
-        raise
-    finally:
-        conn.close()
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"Failed to restore file from trash: {e}")
+            raise
 
 
 def get_trash_files(
@@ -568,10 +559,9 @@ def get_trash_files(
     Returns:
         List of trash file dictionaries
     """
-    conn = sqlite3.connect(str(service.db_path))
-    cursor = conn.cursor()
-
-    try:
+    pool = get_connection_pool(service.db_path)
+    with pool.get_connection() as conn:
+        cursor = conn.cursor()
         cursor.execute("""
             SELECT id, filename, file_size, mime_type, folder_path,
                    deleted_at,
@@ -602,9 +592,6 @@ def get_trash_files(
 
         return trash_files
 
-    finally:
-        conn.close()
-
 
 def empty_trash(
     service,
@@ -622,46 +609,45 @@ def empty_trash(
     Returns:
         Dictionary with deletion count
     """
-    conn = sqlite3.connect(str(service.db_path))
-    cursor = conn.cursor()
+    pool = get_connection_pool(service.db_path)
+    with pool.get_connection() as conn:
+        cursor = conn.cursor()
 
-    try:
-        # Get all trashed files
-        cursor.execute("""
-            SELECT id, encrypted_path
-            FROM vault_files
-            WHERE user_id = ? AND vault_type = ? AND is_deleted = 1
-        """, (user_id, vault_type))
+        try:
+            # Get all trashed files
+            cursor.execute("""
+                SELECT id, encrypted_path
+                FROM vault_files
+                WHERE user_id = ? AND vault_type = ? AND is_deleted = 1
+            """, (user_id, vault_type))
 
-        trashed_files = cursor.fetchall()
-        deleted_count = 0
+            trashed_files = cursor.fetchall()
+            deleted_count = 0
 
-        # Delete physical files
-        for file_id, encrypted_path in trashed_files:
-            file_path = service.files_path / encrypted_path
-            if file_path.exists():
-                os.remove(file_path)
-            deleted_count += 1
+            # Delete physical files
+            for file_id, encrypted_path in trashed_files:
+                file_path = service.files_path / encrypted_path
+                if file_path.exists():
+                    os.remove(file_path)
+                deleted_count += 1
 
-        # Delete from database
-        cursor.execute("""
-            DELETE FROM vault_files
-            WHERE user_id = ? AND vault_type = ? AND is_deleted = 1
-        """, (user_id, vault_type))
+            # Delete from database
+            cursor.execute("""
+                DELETE FROM vault_files
+                WHERE user_id = ? AND vault_type = ? AND is_deleted = 1
+            """, (user_id, vault_type))
 
-        conn.commit()
+            conn.commit()
 
-        return {
-            "deleted_count": deleted_count,
-            "status": "trash emptied"
-        }
+            return {
+                "deleted_count": deleted_count,
+                "status": "trash emptied"
+            }
 
-    except Exception as e:
-        conn.rollback()
-        logger.error(f"Failed to empty trash: {e}")
-        raise
-    finally:
-        conn.close()
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"Failed to empty trash: {e}")
+            raise
 
 
 # ========================================================================
@@ -686,51 +672,50 @@ def secure_delete_file(
     Returns:
         True if file was securely deleted, False otherwise
     """
-    conn = sqlite3.connect(str(service.db_path))
-    cursor = conn.cursor()
+    pool = get_connection_pool(service.db_path)
+    with pool.get_connection() as conn:
+        cursor = conn.cursor()
 
-    try:
-        # Get file path
-        cursor.execute("""
-            SELECT encrypted_path
-            FROM vault_files
-            WHERE id = ? AND user_id = ? AND vault_type = ? AND is_deleted = 0
-        """, (file_id, user_id, vault_type))
+        try:
+            # Get file path
+            cursor.execute("""
+                SELECT encrypted_path
+                FROM vault_files
+                WHERE id = ? AND user_id = ? AND vault_type = ? AND is_deleted = 0
+            """, (file_id, user_id, vault_type))
 
-        result = cursor.fetchone()
-        if not result:
-            return False
+            result = cursor.fetchone()
+            if not result:
+                return False
 
-        encrypted_path = result[0]
-        file_path = service.files_path / encrypted_path
+            encrypted_path = result[0]
+            file_path = service.files_path / encrypted_path
 
-        # Securely overwrite file with random data (3 passes)
-        if file_path.exists():
-            file_size = file_path.stat().st_size
-            with open(file_path, 'wb') as f:
-                for _ in range(3):
-                    f.seek(0)
-                    f.write(os.urandom(file_size))
-                    f.flush()
-                    os.fsync(f.fileno())
+            # Securely overwrite file with random data (3 passes)
+            if file_path.exists():
+                file_size = file_path.stat().st_size
+                with open(file_path, 'wb') as f:
+                    for _ in range(3):
+                        f.seek(0)
+                        f.write(os.urandom(file_size))
+                        f.flush()
+                        os.fsync(f.fileno())
 
-            # Delete the file
-            os.remove(file_path)
+                # Delete the file
+                os.remove(file_path)
 
-        # Mark as deleted in database
-        now = datetime.now(UTC).isoformat()
-        cursor.execute("""
-            UPDATE vault_files
-            SET is_deleted = 1, deleted_at = ?
-            WHERE id = ? AND user_id = ? AND vault_type = ?
-        """, (now, file_id, user_id, vault_type))
+            # Mark as deleted in database
+            now = datetime.now(UTC).isoformat()
+            cursor.execute("""
+                UPDATE vault_files
+                SET is_deleted = 1, deleted_at = ?
+                WHERE id = ? AND user_id = ? AND vault_type = ?
+            """, (now, file_id, user_id, vault_type))
 
-        conn.commit()
-        return True
+            conn.commit()
+            return True
 
-    except Exception as e:
-        conn.rollback()
-        logger.error(f"Failed to securely delete file: {e}")
-        raise
-    finally:
-        conn.close()
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"Failed to securely delete file: {e}")
+            raise

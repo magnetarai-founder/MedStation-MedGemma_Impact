@@ -11,7 +11,6 @@ Extracted from cloud_sync.py during P2 decomposition.
 
 from __future__ import annotations
 
-import sqlite3
 import json
 import logging
 import secrets
@@ -20,6 +19,7 @@ from typing import Optional, Dict, Any, List, Tuple
 from datetime import datetime, UTC
 
 from api.config_paths import get_config_paths
+from api.db.pool import get_connection_pool
 
 from .cloud_sync_models import ConflictInfo, ChangeLogEntry
 
@@ -32,13 +32,18 @@ PATHS = get_config_paths()
 SYNC_DB_PATH = PATHS.data_dir / "cloud_sync.db"
 
 
+def _get_pool():
+    """Get the connection pool for cloud sync database."""
+    return get_connection_pool(SYNC_DB_PATH)
+
+
 # ===== Database Initialization =====
 
 def init_sync_db() -> None:
     """Initialize sync database tables"""
     SYNC_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-    with sqlite3.connect(str(SYNC_DB_PATH)) as conn:
+    with _get_pool().get_connection() as conn:
         cursor = conn.cursor()
 
         # Sync state - tracks last sync for each resource
@@ -129,7 +134,7 @@ def get_sync_counts(user_id: str) -> Dict[str, Any]:
     - conflicts: count of unresolved conflicts
     - last_sync_at: timestamp of last sync
     """
-    with sqlite3.connect(str(SYNC_DB_PATH)) as conn:
+    with _get_pool().get_connection() as conn:
         cursor = conn.cursor()
 
         # Count pending uploads
@@ -179,7 +184,7 @@ def log_sync_operation(
     started_at: datetime
 ) -> None:
     """Log a sync operation to the sync_log table."""
-    with sqlite3.connect(str(SYNC_DB_PATH)) as conn:
+    with _get_pool().get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO sync_log
@@ -191,7 +196,7 @@ def log_sync_operation(
 
 def complete_sync_operation(log_id: str, status: str = "completed") -> None:
     """Mark a sync operation as completed."""
-    with sqlite3.connect(str(SYNC_DB_PATH)) as conn:
+    with _get_pool().get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
             UPDATE sync_log
@@ -212,7 +217,7 @@ def check_for_conflict(
 
     Returns remote_version if conflict detected, None otherwise.
     """
-    with sqlite3.connect(str(SYNC_DB_PATH)) as conn:
+    with _get_pool().get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
             SELECT remote_version FROM sync_state
@@ -236,7 +241,7 @@ def record_conflict(
     """Record a sync conflict in the database."""
     detected_at = datetime.now(UTC).isoformat()
 
-    with sqlite3.connect(str(SYNC_DB_PATH)) as conn:
+    with _get_pool().get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO sync_conflicts
@@ -271,7 +276,7 @@ def update_sync_state(
     version: int
 ) -> None:
     """Update sync state for a resource after successful sync."""
-    with sqlite3.connect(str(SYNC_DB_PATH)) as conn:
+    with _get_pool().get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
             INSERT OR REPLACE INTO sync_state
@@ -291,7 +296,7 @@ def update_sync_state(
 
 def get_remote_changes(user_id: str, since_version: int) -> List[ChangeLogEntry]:
     """Get remote changes since a given version."""
-    with sqlite3.connect(str(SYNC_DB_PATH)) as conn:
+    with _get_pool().get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
             SELECT resource_type, resource_id, remote_version
@@ -317,7 +322,7 @@ def get_remote_changes(user_id: str, since_version: int) -> List[ChangeLogEntry]
 
 def list_unresolved_conflicts(user_id: str) -> List[ConflictInfo]:
     """List all unresolved conflicts for a user."""
-    with sqlite3.connect(str(SYNC_DB_PATH)) as conn:
+    with _get_pool().get_connection() as conn:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
@@ -350,7 +355,7 @@ def get_conflict(user_id: str, conflict_id: str) -> Optional[Tuple[str, str]]:
 
     Returns (resource_type, resource_id) if found, None otherwise.
     """
-    with sqlite3.connect(str(SYNC_DB_PATH)) as conn:
+    with _get_pool().get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
             SELECT resource_type, resource_id FROM sync_conflicts
@@ -375,7 +380,7 @@ def resolve_conflict_in_db(
     If bump_local_version is True, also increments the local_version
     for the affected resource (for LOCAL_WINS or MANUAL resolution).
     """
-    with sqlite3.connect(str(SYNC_DB_PATH)) as conn:
+    with _get_pool().get_connection() as conn:
         cursor = conn.cursor()
 
         # Get resource info for version bump
