@@ -11,14 +11,8 @@ from typing import Dict, Any
 import logging
 
 # Auth
-try:
-    from api.auth_middleware import get_current_user
-except ImportError:
-    from ..auth_middleware import get_current_user
-try:
-    from api.utils import get_user_id
-except ImportError:
-    from ..utils import get_user_id
+from api.auth_middleware import get_current_user
+from api.utils import get_user_id
 from api.services.recommendations import get_recommendations_service, TaskType
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 

@@ -12,10 +12,7 @@ from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
 
-try:
-    from api.auth_middleware import get_current_user, User
-except ImportError:
-    from api.auth_middleware import get_current_user, User
+from api.auth_middleware import get_current_user, User
 from api.utils import get_user_id, get_user_role
 from api.audit_logger import get_audit_logger, AuditEntry, AuditAction
 from api.telemetry import track_metric, TelemetryMetric

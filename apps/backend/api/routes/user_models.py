@@ -11,18 +11,11 @@ from typing import Dict, List, Optional, Any
 from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel, Field
 
-try:
-    from ..services.model_preferences_storage import get_model_preferences_storage
-    from ..services.hot_slots_storage import get_hot_slots_storage
-    from ..services.model_catalog import get_model_catalog
-    from ..auth_middleware import get_current_user
-    from ..permission_engine import require_perm
-except ImportError:
-    from api.services.model_preferences_storage import get_model_preferences_storage
-    from api.services.hot_slots_storage import get_hot_slots_storage
-    from api.services.model_catalog import get_model_catalog
-    from api.auth_middleware import get_current_user
-    from api.permission_engine import require_perm
+from api.services.model_preferences_storage import get_model_preferences_storage
+from api.services.hot_slots_storage import get_hot_slots_storage
+from api.services.model_catalog import get_model_catalog
+from api.auth_middleware import get_current_user
+from api.permission_engine import require_perm
 
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 from datetime import UTC

@@ -24,12 +24,8 @@ from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-try:
-    from ..services.setup_wizard import get_setup_wizard
-    from ..founder_setup_wizard import get_founder_wizard
-except ImportError:
-    from api.services.setup_wizard import get_setup_wizard
-    from api.founder_setup_wizard import get_founder_wizard
+from api.services.setup_wizard import get_setup_wizard
+from api.founder_setup_wizard import get_founder_wizard
 
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 from api.middleware.rate_limit import limiter, RATE_LIMITS
