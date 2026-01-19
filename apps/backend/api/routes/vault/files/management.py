@@ -17,6 +17,7 @@ from api.utils import get_user_id
 from api.services.vault.core import get_vault_service
 from api.services.vault.schemas import VaultFile
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.errors import http_400, http_404, http_500
 
 logger = logging.getLogger(__name__)
 
@@ -91,13 +92,7 @@ async def list_vault_files(
         user_id = get_user_id(current_user)
 
         if vault_type not in ('real', 'decoy'):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="vault_type must be 'real' or 'decoy'"
-                ).model_dump()
-            )
+            raise http_400("vault_type must be 'real' or 'decoy'")
 
         service = get_vault_service()
         files = service.list_files(user_id, vault_type, folder_path)
@@ -112,13 +107,7 @@ async def list_vault_files(
 
     except Exception as e:
         logger.error(f"Failed to list vault files", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to list files"
-            ).model_dump()
-        )
+        raise http_500("Failed to list files")
 
 
 @router.get(
@@ -155,31 +144,13 @@ async def get_vault_files_paginated(
         service = get_vault_service()
 
         if vault_type not in ('real', 'decoy'):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="vault_type must be 'real' or 'decoy'"
-                ).model_dump()
-            )
+            raise http_400("vault_type must be 'real' or 'decoy'")
 
         if page < 1:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="page must be >= 1"
-                ).model_dump()
-            )
+            raise http_400("page must be >= 1")
 
         if page_size < 1 or page_size > 100:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="page_size must be between 1 and 100"
-                ).model_dump()
-            )
+            raise http_400("page_size must be between 1 and 100")
 
         # Calculate offset
         offset = (page - 1) * page_size
@@ -255,13 +226,7 @@ async def get_vault_files_paginated(
 
     except Exception as e:
         logger.error(f"Failed to get paginated vault files", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve paginated files"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve paginated files")
 
 
 @router.delete(
@@ -291,25 +256,13 @@ async def delete_vault_file(
         user_id = get_user_id(current_user)
 
         if vault_type not in ('real', 'decoy'):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="vault_type must be 'real' or 'decoy'"
-                ).model_dump()
-            )
+            raise http_400("vault_type must be 'real' or 'decoy'")
 
         service = get_vault_service()
         success = service.delete_file(user_id, vault_type, file_id)
 
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="File not found"
-                ).model_dump()
-            )
+            raise http_404("File not found", resource="file")
 
         # Broadcast file deletion event
         if manager:
@@ -334,13 +287,7 @@ async def delete_vault_file(
 
     except Exception as e:
         logger.error(f"Failed to delete vault file {file_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to delete file"
-            ).model_dump()
-        )
+        raise http_500("Failed to delete file")
 
 
 @router.put(
@@ -372,34 +319,16 @@ async def rename_vault_file(
         user_id = get_user_id(current_user)
 
         if vault_type not in ('real', 'decoy'):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="vault_type must be 'real' or 'decoy'"
-                ).model_dump()
-            )
+            raise http_400("vault_type must be 'real' or 'decoy'")
 
         if not new_filename or not new_filename.strip():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="new_filename is required"
-                ).model_dump()
-            )
+            raise http_400("new_filename is required")
 
         service = get_vault_service()
         success = service.rename_file(user_id, vault_type, file_id, new_filename.strip())
 
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="File not found"
-                ).model_dump()
-            )
+            raise http_404("File not found", resource="file")
 
         # Broadcast file rename event
         if manager:
@@ -425,13 +354,7 @@ async def rename_vault_file(
 
     except Exception as e:
         logger.error(f"Failed to rename vault file {file_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to rename file"
-            ).model_dump()
-        )
+        raise http_500("Failed to rename file")
 
 
 @router.put(
@@ -463,25 +386,13 @@ async def move_vault_file(
         user_id = get_user_id(current_user)
 
         if vault_type not in ('real', 'decoy'):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="vault_type must be 'real' or 'decoy'"
-                ).model_dump()
-            )
+            raise http_400("vault_type must be 'real' or 'decoy'")
 
         service = get_vault_service()
         success = service.move_file(user_id, vault_type, file_id, new_folder_path)
 
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="File not found"
-                ).model_dump()
-            )
+            raise http_404("File not found", resource="file")
 
         # Broadcast file move event
         if manager:
@@ -507,10 +418,4 @@ async def move_vault_file(
 
     except Exception as e:
         logger.error(f"Failed to move vault file {file_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to move file"
-            ).model_dump()
-        )
+        raise http_500("Failed to move file")

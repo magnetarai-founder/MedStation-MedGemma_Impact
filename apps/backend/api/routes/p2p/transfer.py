@@ -38,6 +38,7 @@ from pydantic import BaseModel, Field
 from api.auth_middleware import get_current_user, User
 from api.config_paths import get_config_paths
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.errors import http_400, http_403, http_404, http_500
 from api.utils import get_user_id
 
 logger = logging.getLogger(__name__)
@@ -170,13 +171,7 @@ async def init_transfer(
     try:
         # Validate file size
         if body.size_bytes > MAX_FILE_SIZE:
-            raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=f"File size exceeds maximum allowed ({MAX_FILE_SIZE / (1024**3):.1f} GB)"
-                ).model_dump()
-            )
+            raise http_400(f"File size exceeds maximum allowed ({MAX_FILE_SIZE / (1024**3):.1f} GB)")
 
         # Generate transfer ID
         transfer_id = secrets.token_urlsafe(16)
@@ -228,13 +223,7 @@ async def init_transfer(
 
     except Exception as e:
         logger.error(f"Failed to initialize transfer", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to initialize transfer"
-            ).model_dump()
-        )
+        raise http_500("Failed to initialize transfer")
 
 
 @router.post(
@@ -274,33 +263,15 @@ async def upload_chunk(
         # Load metadata
         metadata = _load_metadata(transfer_id)
         if not metadata:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Transfer not found"
-                ).model_dump()
-            )
+            raise http_404("Transfer not found", resource="transfer")
 
         # Verify ownership
         if metadata["user_id"] != user_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.FORBIDDEN,
-                    message="Transfer belongs to another user"
-                ).model_dump()
-            )
+            raise http_403("Transfer belongs to another user")
 
         # Validate chunk index
         if index < 0 or index >= metadata["total_chunks"]:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=f"Invalid chunk index (expected 0-{metadata['total_chunks']-1})"
-                ).model_dump()
-            )
+            raise http_400(f"Invalid chunk index (expected 0-{metadata['total_chunks']-1})")
 
         # Check if chunk already uploaded (resume support)
         if index in metadata["uploaded_chunks"]:
@@ -324,13 +295,7 @@ async def upload_chunk(
         # Verify checksum
         actual_checksum = hashlib.sha256(chunk_data).hexdigest()
         if actual_checksum != checksum:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=f"Checksum mismatch (expected: {checksum}, got: {actual_checksum})"
-                ).model_dump()
-            )
+            raise http_400(f"Checksum mismatch (expected: {checksum}, got: {actual_checksum})")
 
         # Write to disk
         with open(chunk_path, 'wb') as f:
@@ -378,13 +343,7 @@ async def upload_chunk(
         chunk_path = _get_transfer_dir(transfer_id) / f"chunk_{index:06d}"
         if chunk_path.exists():
             chunk_path.unlink()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Chunk upload failed"
-            ).model_dump()
-        )
+        raise http_500("Chunk upload failed")
 
 
 class CommitRequest(BaseModel):
@@ -422,34 +381,16 @@ async def commit_transfer(
         # Load metadata
         metadata = _load_metadata(body.transfer_id)
         if not metadata:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Transfer not found"
-                ).model_dump()
-            )
+            raise http_404("Transfer not found", resource="transfer")
 
         # Verify ownership
         if metadata["user_id"] != user_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.FORBIDDEN,
-                    message="Transfer belongs to another user"
-                ).model_dump()
-            )
+            raise http_403("Transfer belongs to another user")
 
         # Verify all chunks uploaded
         if len(metadata["uploaded_chunks"]) != metadata["total_chunks"]:
             missing_chunks = set(range(metadata["total_chunks"])) - set(metadata["uploaded_chunks"])
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=f"Transfer incomplete: {len(missing_chunks)} chunks missing"
-                ).model_dump()
-            )
+            raise http_400(f"Transfer incomplete: {len(missing_chunks)} chunks missing")
 
         # Merge chunks into final file
         transfer_dir = _get_transfer_dir(body.transfer_id)
@@ -462,13 +403,7 @@ async def commit_transfer(
                 chunk_path = transfer_dir / f"chunk_{chunk_index:06d}"
 
                 if not chunk_path.exists():
-                    raise HTTPException(
-                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail=ErrorResponse(
-                            error_code=ErrorCode.INTERNAL_ERROR,
-                            message=f"Chunk {chunk_index} missing from disk"
-                        ).model_dump()
-                    )
+                    raise http_500(f"Chunk {chunk_index} missing from disk")
 
                 with open(chunk_path, 'rb') as chunk_file:
                     output.write(chunk_file.read())
@@ -480,13 +415,7 @@ async def commit_transfer(
         if body.expected_sha256 and final_hash != body.expected_sha256:
             # Clean up invalid file
             final_file_path.unlink()
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=f"Final hash mismatch (expected: {body.expected_sha256}, got: {final_hash})"
-                ).model_dump()
-            )
+            raise http_400(f"Final hash mismatch (expected: {body.expected_sha256}, got: {final_hash})")
 
         # Update metadata
         metadata["status"] = "completed"
@@ -540,13 +469,7 @@ async def commit_transfer(
         except Exception:
             pass
 
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Transfer commit failed"
-            ).model_dump()
-        )
+        raise http_500("Transfer commit failed")
 
 
 @router.get(
@@ -579,23 +502,11 @@ async def get_status(
         # Load metadata
         metadata = _load_metadata(transfer_id)
         if not metadata:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Transfer not found"
-                ).model_dump()
-            )
+            raise http_404("Transfer not found", resource="transfer")
 
         # Verify ownership
         if metadata["user_id"] != user_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.FORBIDDEN,
-                    message="Transfer belongs to another user"
-                ).model_dump()
-            )
+            raise http_403("Transfer belongs to another user")
 
         # Calculate missing chunks
         all_chunks = set(range(metadata["total_chunks"]))
@@ -636,11 +547,5 @@ async def get_status(
 
     except Exception as e:
         logger.error(f"Failed to get transfer status for {transfer_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve transfer status"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve transfer status")
 

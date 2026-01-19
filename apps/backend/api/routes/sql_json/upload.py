@@ -17,6 +17,7 @@ from api.schemas.api_models import (
     SheetNamesResponse
 )
 from api.routes.schemas import ErrorResponse, ErrorCode
+from api.errors import http_400, http_404, http_429, http_500
 from api.routes.sql_json.utils import (
     get_logger,
     get_sessions,
@@ -53,14 +54,7 @@ async def upload_file_router(
         validate_session_exists(session_id, sessions)
 
         if not file.filename.lower().endswith(('.xlsx', '.xls', '.xlsm', '.csv')):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="Only Excel (.xlsx, .xls, .xlsm) and CSV files are supported",
-                    details={"filename": file.filename}
-                ).model_dump()
-            )
+            raise http_400("Only Excel (.xlsx, .xls, .xlsm) and CSV files are supported")
 
         # Save file (streamed) and enforce max size
         save_upload = get_save_upload()
@@ -73,14 +67,7 @@ async def upload_file_router(
                 file_path.unlink()
             except Exception:
                 pass
-            raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=f"File too large: {size_mb:.1f} MB (limit {int(max_mb)} MB)",
-                    details={"size_mb": size_mb, "max_mb": max_mb}
-                ).model_dump()
-            )
+            raise http_400(f"File too large: {size_mb:.1f} MB (limit {int(max_mb)} MB)")
 
         engine = sessions[session_id]['engine']
 
@@ -96,43 +83,19 @@ async def upload_file_router(
 
         # Defensive checks in case engine returns unexpected value
         if result is None or not isinstance(result, QueryResult):
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.INTERNAL_ERROR,
-                    message="Internal error: invalid engine result during load"
-                ).model_dump()
-            )
+            raise http_500("Internal error: invalid engine result during load")
 
         if result.error:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=result.error
-                ).model_dump()
-            )
+            raise http_400(result.error)
 
         # Get preview data
         preview_result = engine.execute_sql("SELECT * FROM excel_file LIMIT 20")
 
         if preview_result is None or not isinstance(preview_result, QueryResult):
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.INTERNAL_ERROR,
-                    message="Internal error: invalid engine result during preview"
-                ).model_dump()
-            )
+            raise http_500("Internal error: invalid engine result during preview")
 
         if preview_result.error:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.INTERNAL_ERROR,
-                    message=preview_result.error
-                ).model_dump()
-            )
+            raise http_500(preview_result.error)
 
         # Store file info
         file_info = {
@@ -167,13 +130,7 @@ async def upload_file_router(
         # Clean up file on error
         if 'file_path' in locals() and file_path.exists():
             file_path.unlink()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to upload and process file"
-            ).model_dump()
-        )
+        raise http_500("Failed to upload and process file")
 
 
 @router.post(
@@ -199,25 +156,12 @@ async def upload_json_router(
         # Rate limit: 10 uploads per minute
         client_ip = get_client_ip_func(req)
         if not rate_limiter.check_rate_limit(f"upload:{client_ip}", max_requests=10, window_seconds=60):
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.RATE_LIMITED,
-                    message="Rate limit exceeded. Max 10 uploads per minute."
-                ).model_dump()
-            )
+            raise http_429("Rate limit exceeded. Max 10 uploads per minute.")
 
         validate_session_exists(session_id, sessions)
 
         if not file.filename.endswith('.json'):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="Only JSON files are supported",
-                    details={"filename": file.filename}
-                ).model_dump()
-            )
+            raise http_400("Only JSON files are supported")
 
         # Security: Limit JSON file size to prevent OOM (100MB max)
         MAX_JSON_SIZE = 100 * 1024 * 1024  # 100MB
@@ -226,14 +170,7 @@ async def upload_json_router(
         file.file.seek(0)  # Reset to beginning
 
         if file_size > MAX_JSON_SIZE:
-            raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=f"JSON file too large ({file_size / 1024 / 1024:.1f}MB). Maximum size is {MAX_JSON_SIZE / 1024 / 1024}MB",
-                    details={"size_mb": file_size / 1024 / 1024, "max_mb": MAX_JSON_SIZE / 1024 / 1024}
-                ).model_dump()
-            )
+            raise http_400(f"JSON file too large ({file_size / 1024 / 1024:.1f}MB). Maximum size is {MAX_JSON_SIZE / 1024 / 1024}MB")
 
         # Save uploaded file temporarily
         api_dir = Path(__file__).parent.parent.parent
@@ -260,13 +197,7 @@ async def upload_json_router(
         load_result = engine.load_json(str(file_path))
 
         if not load_result['success']:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=load_result.get('error', 'Failed to load JSON')
-                ).model_dump()
-            )
+            raise http_400(load_result.get('error', 'Failed to load JSON'))
 
         # Get column paths
         columns = load_result.get('columns', [])
@@ -329,13 +260,7 @@ async def upload_json_router(
         logger.error(f"JSON upload failed for session {session_id}", exc_info=True)
         if 'file_path' in locals() and file_path.exists():
             file_path.unlink()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to upload and analyze JSON file"
-            ).model_dump()
-        )
+        raise http_500("Failed to upload and analyze JSON file")
 
 
 @router.get(
@@ -359,13 +284,7 @@ async def sheet_names_router(
             from neutron_utils.excel_ops import ExcelReader
         except Exception as e:
             logger.error("Excel utilities unavailable", exc_info=True)
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.INTERNAL_ERROR,
-                    message="Excel utilities unavailable"
-                ).model_dump()
-            )
+            raise http_500("Excel utilities unavailable")
 
         files = sessions[session_id].get('files', {})
         file_info = None
@@ -379,25 +298,11 @@ async def sheet_names_router(
                     break
 
         if not file_info:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="No Excel file found in session",
-                    details={"session_id": session_id}
-                ).model_dump()
-            )
+            raise http_404("No Excel file found in session", resource="file")
 
         path = Path(file_info['path'])
         if not path.exists():
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="File not found on server",
-                    details={"filename": file_info.get('filename')}
-                ).model_dump()
-            )
+            raise http_404("File not found on server", resource="file")
 
         sheets = ExcelReader.get_sheet_names(str(path))
         return SheetNamesResponse(
@@ -409,10 +314,4 @@ async def sheet_names_router(
         raise
     except Exception as e:
         logger.error(f"Failed to get sheet names for session {session_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve sheet names"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve sheet names")

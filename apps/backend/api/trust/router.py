@@ -31,6 +31,7 @@ from api.trust.models import (
 )
 from api.trust.storage import get_trust_storage
 from api.auth.middleware import get_current_user
+from api.errors import http_400, http_401, http_404, http_409
 
 logger = logging.getLogger(__name__)
 
@@ -89,35 +90,23 @@ def verify_registration_signature(request: RegisterNodeRequest) -> bool:
         public_key_bytes = base64.b64decode(request.public_key)
 
         if len(public_key_bytes) != 32:
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid public key: must be 32 bytes (Ed25519)"
-            )
+            raise http_400("Invalid public key: must be 32 bytes (Ed25519)")
 
         # Validate timestamp is within tolerance (replay protection)
         try:
             request_time = datetime.fromisoformat(request.timestamp.replace('Z', '+00:00'))
         except ValueError:
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid timestamp format. Use ISO 8601 (e.g., 2025-12-23T12:00:00Z)"
-            )
+            raise http_400("Invalid timestamp format. Use ISO 8601 (e.g., 2025-12-23T12:00:00Z)")
 
         now = datetime.now(UTC)
         time_diff = abs((now - request_time).total_seconds())
 
         if time_diff > REGISTRATION_TIMESTAMP_TOLERANCE_SECONDS:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Registration timestamp expired. Must be within {REGISTRATION_TIMESTAMP_TOLERANCE_SECONDS} seconds."
-            )
+            raise http_400(f"Registration timestamp expired. Must be within {REGISTRATION_TIMESTAMP_TOLERANCE_SECONDS} seconds.")
 
         # Check nonce for replay protection (prevents replay within timestamp window)
         if request.nonce and not _check_and_record_nonce(request.nonce):
-            raise HTTPException(
-                status_code=400,
-                detail="Replay attack detected: nonce already used. Each registration requires a unique nonce."
-            )
+            raise http_400("Replay attack detected: nonce already used. Each registration requires a unique nonce.")
 
         # Verify signature
         signature_bytes = base64.b64decode(request.signature)
@@ -130,26 +119,17 @@ def verify_registration_signature(request: RegisterNodeRequest) -> bool:
         logger.info(f"✓ Registration signature verified for key {request.public_key[:16]}...")
         return True
 
-    except HTTPException:
-        # Re-raise HTTPExceptions as-is
+    except (HTTPException, type(http_400(""))):
+        # Re-raise HTTPExceptions and AppExceptions as-is
         raise
     except (nacl.exceptions.BadSignatureError, nacl.exceptions.ValueError):
         logger.warning(f"⚠ Invalid registration signature for key {request.public_key[:16]}...")
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid signature. Registration must be signed by the private key owner."
-        )
+        raise http_401("Invalid signature. Registration must be signed by the private key owner.")
     except base64.binascii.Error:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid base64 encoding in public_key or signature"
-        )
+        raise http_400("Invalid base64 encoding in public_key or signature")
     except Exception as e:
         logger.error(f"Signature verification error: {e}")
-        raise HTTPException(
-            status_code=400,
-            detail=f"Signature verification failed: {str(e)}"
-        )
+        raise http_400(f"Signature verification failed: {str(e)}")
 
 router = APIRouter(
     prefix="/api/v1/trust",
@@ -182,7 +162,7 @@ async def register_node(request: RegisterNodeRequest, current_user: dict = Depen
     # Check if node with this public key already exists
     existing = storage.get_node_by_public_key(request.public_key)
     if existing:
-        raise HTTPException(status_code=409, detail="Node with this public key already exists")
+        raise http_409("Node with this public key already exists")
 
     # Create node
     node = TrustNode(
@@ -208,7 +188,7 @@ async def get_node(node_id: str):
     node = storage.get_node(node_id)
 
     if not node:
-        raise HTTPException(status_code=404, detail="Node not found")
+        raise http_404("Node not found", resource="node")
 
     return node
 
@@ -236,7 +216,7 @@ async def update_node(node_id: str, request: RegisterNodeRequest, current_user: 
     node = storage.get_node(node_id)
 
     if not node:
-        raise HTTPException(status_code=404, detail="Node not found")
+        raise http_404("Node not found", resource="node")
 
     # Update fields
     node.public_name = request.public_name
@@ -267,17 +247,17 @@ async def vouch_for_node(request: VouchRequest, current_user: dict = Depends(get
     # Get current user's node
     user_node = storage.get_node_by_public_key(current_user.get("public_key"))
     if not user_node:
-        raise HTTPException(status_code=404, detail="Your node not found. Please register first.")
+        raise http_404("Your node not found. Please register first.", resource="node")
 
     # Verify target node exists
     target_node = storage.get_node(request.target_node_id)
     if not target_node:
-        raise HTTPException(status_code=404, detail="Target node not found")
+        raise http_404("Target node not found", resource="node")
 
     # Check if relationship already exists
     existing_rels = storage.get_relationships(user_node.id)
     if any(rel.to_node == request.target_node_id for rel in existing_rels):
-        raise HTTPException(status_code=409, detail="You already trust this node")
+        raise http_409("You already trust this node")
 
     # Create trust relationship
     relationship = TrustRelationship(
@@ -311,7 +291,7 @@ async def get_trust_network(max_degrees: int = 3, current_user: dict = Depends(g
     # Get current user's node
     user_node = storage.get_node_by_public_key(current_user.get("public_key"))
     if not user_node:
-        raise HTTPException(status_code=404, detail="Your node not found. Please register first.")
+        raise http_404("Your node not found. Please register first.", resource="node")
 
     # Get trusted nodes
     trusted = storage.get_trusted_nodes(user_node.id, max_degrees)
@@ -339,7 +319,7 @@ async def get_relationships(level: Optional[TrustLevel] = None, current_user: di
     # Get current user's node
     user_node = storage.get_node_by_public_key(current_user.get("public_key"))
     if not user_node:
-        raise HTTPException(status_code=404, detail="Your node not found. Please register first.")
+        raise http_404("Your node not found. Please register first.", resource="node")
 
     relationships = storage.get_relationships(user_node.id, level)
 
