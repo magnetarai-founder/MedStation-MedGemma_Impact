@@ -14,6 +14,7 @@ from typing import Dict
 from fastapi import APIRouter, HTTPException, Form, status
 
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.errors import http_400, http_404, http_500
 from api.services.vault.core import get_vault_service
 
 logger = logging.getLogger(__name__)
@@ -42,22 +43,10 @@ async def create_sharing_invitation(
         service = get_vault_service()
 
         if resource_type not in ['file', 'folder']:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="Invalid resource type"
-                ).model_dump()
-            )
+            raise http_400("Invalid resource type")
 
         if permission not in ['read', 'write', 'delete', 'share']:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="Invalid permission"
-                ).model_dump()
-            )
+            raise http_400("Invalid permission")
 
         invitation_id = str(uuid.uuid4())
         invitation_token = secrets.token_urlsafe(32)
@@ -102,13 +91,7 @@ async def create_sharing_invitation(
         raise
     except Exception as e:
         logger.error("Failed to create sharing invitation", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to create sharing invitation"
-            ).model_dump()
-        )
+        raise http_500("Failed to create sharing invitation")
 
 
 @router.post(
@@ -142,13 +125,7 @@ async def accept_sharing_invitation(
             invitation = cursor.fetchone()
 
             if not invitation:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=ErrorResponse(
-                        error_code=ErrorCode.NOT_FOUND,
-                        message="Invalid or expired invitation"
-                    ).model_dump()
-                )
+                raise http_404("Invalid or expired invitation", resource="invitation")
 
             # Create ACL entry
             acl_id = str(uuid.uuid4())
@@ -189,13 +166,7 @@ async def accept_sharing_invitation(
         raise
     except Exception as e:
         logger.error("Failed to accept sharing invitation", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to accept sharing invitation"
-            ).model_dump()
-        )
+        raise http_500("Failed to accept sharing invitation")
 
 
 @router.post(
@@ -224,13 +195,7 @@ async def decline_sharing_invitation(invitation_token: str) -> SuccessResponse[D
             conn.commit()
 
             if cursor.rowcount == 0:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=ErrorResponse(
-                        error_code=ErrorCode.NOT_FOUND,
-                        message="Invitation not found"
-                    ).model_dump()
-                )
+                raise http_404("Invitation not found", resource="invitation")
 
             return SuccessResponse(
                 data={"success": True},
@@ -244,13 +209,7 @@ async def decline_sharing_invitation(invitation_token: str) -> SuccessResponse[D
         raise
     except Exception as e:
         logger.error("Failed to decline sharing invitation", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to decline sharing invitation"
-            ).model_dump()
-        )
+        raise http_500("Failed to decline sharing invitation")
 
 
 @router.get(
@@ -307,10 +266,4 @@ async def get_my_invitations(user_email: str) -> SuccessResponse[Dict]:
         raise
     except Exception as e:
         logger.error("Failed to get invitations", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to get invitations"
-            ).model_dump()
-        )
+        raise http_500("Failed to get invitations")

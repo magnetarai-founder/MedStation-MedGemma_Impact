@@ -12,6 +12,7 @@ from typing import Dict, Any
 from datetime import datetime, UTC
 import logging
 
+from api.errors import http_400, http_404, http_500
 from api.automation.n8n.integration import (
     N8NIntegrationService,
     init_n8n_service,
@@ -40,10 +41,7 @@ def require_n8n_enabled() -> N8NIntegrationService:
     """Dependency that raises 404 if n8n is not configured/enabled"""
     service = get_n8n_service()
     if not service or not service.config.enabled:
-        raise HTTPException(
-            status_code=404,
-            detail="n8n integration not configured or disabled"
-        )
+        raise http_404("n8n integration not configured or disabled", resource="n8n")
     return service
 
 router = APIRouter(
@@ -83,10 +81,7 @@ async def configure_n8n(config: N8NConfigRequest) -> Dict[str, Any]:
             logger.info("✅ n8n connection test successful")
         except Exception as e:
             logger.error(f"n8n connection test failed: {e}")
-            raise HTTPException(
-                status_code=400,
-                detail=f"Failed to connect to n8n: {str(e)}"
-            )
+            raise http_400(f"Failed to connect to n8n: {str(e)}")
 
         return {
             "status": "configured",
@@ -96,7 +91,7 @@ async def configure_n8n(config: N8NConfigRequest) -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Failed to configure n8n: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.get("/config")
@@ -129,7 +124,7 @@ async def list_n8n_workflows(service: N8NIntegrationService = Depends(require_n8
         return {"workflows": workflows}
     except Exception as e:
         logger.error(f"Failed to list n8n workflows: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/export-stage")
@@ -159,18 +154,12 @@ async def export_stage_to_n8n(
         )
 
         if not workflow:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Workflow not found: {request.workflow_id}"
-            )
+            raise http_404(f"Workflow not found: {request.workflow_id}", resource="workflow")
 
         # Verify the requested stage exists in this workflow
         stage_ids = [stage.id for stage in workflow.stages]
         if request.stage_id not in stage_ids:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Stage '{request.stage_id}' not found in workflow '{workflow.name}'"
-            )
+            raise http_404(f"Stage '{request.stage_id}' not found in workflow '{workflow.name}'", resource="stage")
 
         # Convert Pydantic model to dict for n8n export
         workflow_data = workflow.model_dump()
@@ -199,7 +188,7 @@ async def export_stage_to_n8n(
         raise  # Re-raise HTTP exceptions as-is
     except Exception as e:
         logger.error(f"Failed to export stage to n8n: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 # ============================================
@@ -299,7 +288,7 @@ async def handle_n8n_webhook(webhook_data: N8NWebhookRequest) -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Failed to process n8n webhook: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 # ============================================
@@ -332,7 +321,7 @@ async def execute_n8n_workflow(
 
     except Exception as e:
         logger.error(f"Failed to execute n8n workflow: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 # ============================================

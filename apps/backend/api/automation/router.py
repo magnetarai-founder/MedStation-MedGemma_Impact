@@ -14,6 +14,7 @@ import logging
 from datetime import datetime
 
 from api.auth_middleware import get_current_user
+from api.errors import http_400, http_404, http_500
 from api.utils import sanitize_for_log
 
 # Import from automation types module
@@ -72,7 +73,7 @@ async def run_workflow(
     trigger_nodes = [node for node in body.nodes if node.id not in incoming]
 
     if not trigger_nodes:
-        raise HTTPException(status_code=400, detail="No trigger node found in workflow")
+        raise http_400("No trigger node found in workflow")
 
     # Execute nodes in order (simplified BFS)
     executed = set()
@@ -168,7 +169,7 @@ async def save_workflow(
         )
     except Exception as e:
         logger.error(f"❌ Failed to save workflow: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to save workflow: {str(e)}")
+        raise http_500(f"Failed to save workflow: {str(e)}")
 
 
 @router.get("/workflows")
@@ -198,7 +199,7 @@ async def list_workflows(
         }
     except Exception as e:
         logger.error(f"❌ Failed to list workflows: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to list workflows: {str(e)}")
+        raise http_500(f"Failed to list workflows: {str(e)}")
 
 
 @router.get("/workflows/{workflow_id}")
@@ -216,14 +217,14 @@ async def get_workflow(
         workflow = storage.get_workflow(workflow_id=workflow_id, user_id=user_id)
 
         if not workflow:
-            raise HTTPException(status_code=404, detail="Workflow not found")
+            raise http_404("Workflow not found", resource="workflow")
 
         return workflow
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"❌ Failed to get workflow: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get workflow: {str(e)}")
+        raise http_500(f"Failed to get workflow: {str(e)}")
 
 
 @router.delete("/workflows/{workflow_id}")
@@ -242,7 +243,7 @@ async def delete_workflow(
         deleted = storage.delete_workflow(workflow_id=workflow_id, user_id=user_id)
 
         if not deleted:
-            raise HTTPException(status_code=404, detail="Workflow not found")
+            raise http_404("Workflow not found", resource="workflow")
 
         logger.info(f"🗑️ Deleted workflow {workflow_id} for user {user_id}")
         return {"status": "deleted", "workflow_id": workflow_id}
@@ -250,7 +251,7 @@ async def delete_workflow(
         raise
     except Exception as e:
         logger.error(f"❌ Failed to delete workflow: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to delete workflow: {str(e)}")
+        raise http_500(f"Failed to delete workflow: {str(e)}")
 
 
 @router.get("/workflows/{workflow_id}/executions")
@@ -279,7 +280,7 @@ async def get_workflow_executions(
         }
     except Exception as e:
         logger.error(f"❌ Failed to get executions: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get executions: {str(e)}")
+        raise http_500(f"Failed to get executions: {str(e)}")
 
 
 # MARK: - Semantic Search
@@ -350,7 +351,7 @@ async def semantic_search_workflows(
 
     except Exception as e:
         logger.error(f"❌ Workflow semantic search failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Workflow semantic search failed: {str(e)}")
+        raise http_500(f"Workflow semantic search failed: {str(e)}")
 
 
 # MARK: - Helper Functions for Semantic Search

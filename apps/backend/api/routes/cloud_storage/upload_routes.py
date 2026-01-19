@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, UTC
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 
 from api.auth_middleware import get_current_user
+from api.errors import http_400, http_403, http_404, http_500
 from api.utils import file_lock, get_user_id
 
 from api.routes.cloud_storage.models import (
@@ -107,17 +108,11 @@ async def upload_chunk(
     """
     metadata = load_metadata(upload_id)
     if not metadata:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"error": "upload_not_found", "message": "Upload session not found or expired"}
-        )
+        raise http_404("Upload session not found or expired", resource="upload")
 
     # Verify ownership
     if metadata["user_id"] != get_user_id(current_user):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={"error": "forbidden", "message": "Not authorized for this upload"}
-        )
+        raise http_403("Not authorized for this upload")
 
     # Check expiry
     expires_at = datetime.fromisoformat(metadata["expires_at"])
@@ -131,25 +126,14 @@ async def upload_chunk(
 
     # Validate chunk index
     if chunk_index >= metadata["total_chunks"]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"error": "invalid_chunk", "message": f"Chunk index {chunk_index} exceeds total chunks"}
-        )
+        raise http_400(f"Chunk index {chunk_index} exceeds total chunks")
 
     # Read and verify chunk
     chunk_bytes = await chunk_data.read()
     computed_hash = compute_chunk_hash(chunk_bytes)
 
     if computed_hash != chunk_hash.lower():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "error": "hash_mismatch",
-                "message": "Chunk hash verification failed",
-                "expected": chunk_hash.lower(),
-                "received": computed_hash
-            }
-        )
+        raise http_400(f"Chunk hash verification failed: expected {chunk_hash.lower()}, got {computed_hash}")
 
     # SECURITY: Use file lock to prevent TOCTOU race conditions
     # This ensures concurrent chunk uploads don't corrupt the upload state
@@ -158,10 +142,7 @@ async def upload_chunk(
         # Re-load metadata inside lock to get latest state
         metadata = load_metadata(upload_id)
         if not metadata:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={"error": "upload_not_found", "message": "Upload session not found"}
-            )
+            raise http_404("Upload session not found", resource="upload")
 
         # Save chunk
         chunk_path = upload_dir / f"chunk_{chunk_index:06d}"
@@ -214,10 +195,7 @@ async def commit_upload(
 
     # Verify ownership
     if metadata["user_id"] != get_user_id(current_user):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={"error": "forbidden", "message": "Not authorized for this upload"}
-        )
+        raise http_403("Not authorized for this upload")
 
     # Verify all chunks uploaded
     uploaded = set(metadata["uploaded_chunks"])
@@ -225,13 +203,7 @@ async def commit_upload(
     missing = expected - uploaded
 
     if missing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "error": "incomplete_upload",
-                "message": f"Missing chunks: {sorted(missing)[:10]}{'...' if len(missing) > 10 else ''}"
-            }
-        )
+        raise http_400(f"Missing chunks: {sorted(missing)[:10]}{'...' if len(missing) > 10 else ''}")
 
     # SECURITY: Use file lock to prevent concurrent commit attempts
     upload_dir = get_upload_dir(upload_id)
@@ -240,17 +212,11 @@ async def commit_upload(
         # Re-load metadata inside lock
         metadata = load_metadata(upload_id)
         if not metadata:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={"error": "upload_not_found", "message": "Upload session not found"}
-            )
+            raise http_404("Upload session not found", resource="upload")
 
         # Check if already committed
         if metadata["status"] == UploadStatus.COMPLETED.value:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"error": "already_committed", "message": "Upload already committed"}
-            )
+            raise http_400("Upload already committed")
 
         metadata["status"] = UploadStatus.PROCESSING.value
         save_metadata(upload_id, metadata)
@@ -268,15 +234,7 @@ async def commit_upload(
             # Verify final hash
             computed_hash = compute_file_hash(assembled_path)
             if computed_hash != final_hash.lower():
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail={
-                        "error": "final_hash_mismatch",
-                        "message": "Final file hash verification failed",
-                        "expected": final_hash.lower(),
-                        "computed": computed_hash
-                    }
-                )
+                raise http_400(f"Final file hash verification failed: expected {final_hash.lower()}, got {computed_hash}")
 
             file_id = generate_file_id()
             cloud_files_dir = get_cloud_files_dir()
@@ -370,10 +328,7 @@ async def commit_upload(
             logger.error(f"Failed to commit upload {upload_id}: {e}")
             metadata["status"] = UploadStatus.FAILED.value
             save_metadata(upload_id, metadata)
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail={"error": "commit_failed", "message": str(e)}
-            )
+            raise http_500(f"Upload commit failed: {str(e)}")
 
 
 @router.get("/upload/status/{upload_id}", response_model=UploadStatusResponse)
@@ -391,10 +346,7 @@ async def get_upload_status(
 
     # Verify ownership
     if metadata["user_id"] != get_user_id(current_user):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={"error": "forbidden", "message": "Not authorized for this upload"}
-        )
+        raise http_403("Not authorized for this upload")
 
     chunks_uploaded = len(metadata["uploaded_chunks"])
     total_chunks = metadata["total_chunks"]
