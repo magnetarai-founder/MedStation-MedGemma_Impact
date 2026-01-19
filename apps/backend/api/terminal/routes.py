@@ -15,6 +15,7 @@ from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
+from api.errors import http_400, http_403, http_404, http_429, http_500
 from api.routes.schemas.responses import SuccessResponse
 from api.terminal.models import SpawnTerminalResponseData
 
@@ -85,10 +86,7 @@ async def spawn_terminal(
     active_count = len([s for s in active_sessions if s.active])
 
     if active_count >= 3:
-        raise HTTPException(
-            status_code=429,
-            detail="Maximum terminal limit reached (3/3). Please close a terminal before opening a new one."
-        )
+        raise http_429("Maximum terminal limit reached (3/3). Please close a terminal before opening a new one.")
 
     try:
         session = await terminal_bridge.spawn_terminal(
@@ -111,7 +109,7 @@ async def spawn_terminal(
         }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to spawn terminal: {str(e)}")
+        raise http_500(f"Failed to spawn terminal: {str(e)}")
 
 
 @router.post("/spawn-system", response_model=SuccessResponse[SpawnTerminalResponseData])
@@ -137,10 +135,7 @@ async def spawn_system_terminal(current_user: dict = Depends(get_current_user)):
         active_count = len([s for s in active_sessions if s.get('active', False)])
 
         if active_count >= 3:
-            raise HTTPException(
-                status_code=400,
-                detail="Maximum terminal limit reached (3/3). Please close a terminal before opening a new one."
-            )
+            raise http_400("Maximum terminal limit reached (3/3). Please close a terminal before opening a new one.")
 
         # Detect terminal application (Warp > iTerm2 > Terminal.app)
         terminal_app = None
@@ -263,12 +258,9 @@ exec $SHELL
             spawned = False
 
         if not spawned:
-            raise HTTPException(
-                status_code=500,
-                detail=(
-                    "Failed to spawn system terminal. Ensure Terminal/iTerm/Warp are installed and that this app "
-                    "has permission to control your computer (System Settings → Privacy & Security → Automation/Accessibility)."
-                )
+            raise http_500(
+                "Failed to spawn system terminal. Ensure Terminal/iTerm/Warp are installed and that this app "
+                "has permission to control your computer (System Settings → Privacy & Security → Automation/Accessibility)."
             )
 
         # Update active count
@@ -297,7 +289,7 @@ exec $SHELL
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to spawn system terminal: {str(e)}")
+        raise http_500(f"Failed to spawn system terminal: {str(e)}")
 
 
 @router.post("/socket/start")
@@ -339,7 +331,7 @@ async def start_terminal_socket(
 
         # Validate socket path is inside data_dir (security check)
         if not str(socket_path).startswith(str(PATHS.data_dir)):
-            raise HTTPException(status_code=400, detail="Invalid socket path")
+            raise http_400("Invalid socket path")
 
         # Start socket listener in background (non-blocking)
         asyncio.create_task(terminal_bridge.start_socket_listener(str(socket_path), terminal_id))
@@ -354,7 +346,7 @@ async def start_terminal_socket(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to start socket listener: {str(e)}")
+        raise http_500(f"Failed to start socket listener: {str(e)}")
 
 
 @router.get("/sessions")
@@ -389,11 +381,11 @@ async def get_terminal_session(terminal_id: str, current_user: dict = Depends(ge
     session = terminal_bridge.get_session(terminal_id)
 
     if not session:
-        raise HTTPException(status_code=404, detail="Terminal not found")
+        raise http_404("Terminal not found", resource="terminal")
 
     # Check ownership
     if session.user_id != user_id:
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise http_403("Access denied")
 
     return {
         'id': session.id,
@@ -419,11 +411,11 @@ async def close_terminal_session(terminal_id: str, current_user: dict = Depends(
     session = terminal_bridge.get_session(terminal_id)
 
     if not session:
-        raise HTTPException(status_code=404, detail="Terminal not found")
+        raise http_404("Terminal not found", resource="terminal")
 
     # Check ownership
     if session.user_id != user_id:
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise http_403("Access denied")
 
     await terminal_bridge.close_terminal(terminal_id)
 
@@ -459,11 +451,11 @@ async def get_terminal_context(
     session = terminal_bridge.get_session(terminal_id)
 
     if not session:
-        raise HTTPException(status_code=404, detail="Terminal not found")
+        raise http_404("Terminal not found", resource="terminal")
 
     # Check ownership
     if session.user_id != user_id:
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise http_403("Access denied")
 
     context = terminal_bridge.get_context(terminal_id, lines=lines)
 
@@ -496,11 +488,11 @@ async def resize_terminal(
     session = terminal_bridge.get_session(terminal_id)
 
     if not session:
-        raise HTTPException(status_code=404, detail="Terminal not found")
+        raise http_404("Terminal not found", resource="terminal")
 
     # Check ownership
     if session.user_id != user_id:
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise http_403("Access denied")
 
     await terminal_bridge.resize_terminal(terminal_id, rows, cols)
 

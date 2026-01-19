@@ -17,6 +17,7 @@ from datetime import datetime, UTC
 
 from fastapi import APIRouter, HTTPException, Request, Depends
 
+from api.errors import http_403, http_404, http_500
 from api.routes.schemas import SuccessResponse
 from api.docs.models import (
     Document,
@@ -66,7 +67,7 @@ async def create_document(
     # Phase 3: Check team membership if creating team document
     if team_id:
         if not is_team_member(team_id, user_id):
-            raise HTTPException(status_code=403, detail="Not a member of this team")
+            raise http_403("Not a member of this team")
 
     doc_id = f"doc_{datetime.now(UTC).timestamp()}_{os.urandom(4).hex()}"
     now = datetime.now(UTC).isoformat()
@@ -120,7 +121,7 @@ async def create_document(
 
     except Exception as e:
         logger.error(f"Failed to create document: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
     finally:
         conn.close()
 
@@ -143,7 +144,7 @@ async def list_documents(
     # Phase 3: Check team membership if listing team documents
     if team_id:
         if not is_team_member(team_id, user_id):
-            raise HTTPException(status_code=403, detail="Not a member of this team")
+            raise http_403("Not a member of this team")
 
     conn = get_db()
     cursor = conn.cursor()
@@ -203,7 +204,7 @@ async def list_documents(
 
     except Exception as e:
         logger.error(f"Failed to list documents: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
     finally:
         conn.close()
 
@@ -229,7 +230,7 @@ async def get_document(
         # Phase 3: Check team membership if accessing team document
         if team_id:
             if not is_team_member(team_id, user_id):
-                raise HTTPException(status_code=403, detail="Not a member of this team")
+                raise http_403("Not a member of this team")
 
             # Team document: verify team_id matches
             cursor.execute("""
@@ -246,7 +247,7 @@ async def get_document(
         row = cursor.fetchone()
 
         if not row:
-            raise HTTPException(status_code=404, detail="Document not found or access denied")
+            raise http_404("Document not found or access denied", resource="document")
 
         return Document(
             id=row["id"],
@@ -266,7 +267,7 @@ async def get_document(
         raise
     except Exception as e:
         logger.error(f"Failed to get document: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
     finally:
         conn.close()
 
@@ -289,7 +290,7 @@ async def update_document(
     # Phase 3: Check team membership if updating team document
     if team_id:
         if not is_team_member(team_id, user_id):
-            raise HTTPException(status_code=403, detail="Not a member of this team")
+            raise http_403("Not a member of this team")
 
     conn = get_db()
     cursor = conn.cursor()
@@ -312,7 +313,7 @@ async def update_document(
         row = cursor.fetchone()
 
         if not row:
-            raise HTTPException(status_code=404, detail="Document not found or access denied")
+            raise http_404("Document not found or access denied", resource="document")
 
         # Build update dict with whitelisted columns only
         updates_dict = {}
@@ -382,7 +383,7 @@ async def update_document(
         raise
     except Exception as e:
         logger.error(f"Failed to update document: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
     finally:
         conn.close()
 
@@ -405,7 +406,7 @@ async def delete_document(
     # Phase 3: Check team membership if deleting team document
     if team_id:
         if not is_team_member(team_id, user_id):
-            raise HTTPException(status_code=403, detail="Not a member of this team")
+            raise http_403("Not a member of this team")
 
     conn = get_db()
     cursor = conn.cursor()
@@ -425,7 +426,7 @@ async def delete_document(
             """, (doc_id, user_id))
 
         if cursor.rowcount == 0:
-            raise HTTPException(status_code=404, detail="Document not found or access denied")
+            raise http_404("Document not found or access denied", resource="document")
 
         conn.commit()
 
@@ -435,7 +436,7 @@ async def delete_document(
         raise
     except Exception as e:
         logger.error(f"Failed to delete document: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
     finally:
         conn.close()
 
@@ -564,7 +565,7 @@ async def sync_documents(
 
     except Exception as e:
         logger.error(f"Sync failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
     finally:
         conn.close()
 

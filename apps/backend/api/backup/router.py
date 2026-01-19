@@ -16,6 +16,7 @@ from typing import Any, Dict
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse
 
+from api.errors import http_400, http_404, http_500
 from api.audit.logger import get_audit_logger
 from api.audit.actions import AuditAction
 from api.auth.middleware import get_current_user
@@ -49,7 +50,7 @@ def get_backup_service(passphrase: str) -> BackupService:
         BackupService instance configured with the passphrase
     """
     if not passphrase:
-        raise HTTPException(status_code=400, detail="Passphrase is required for backup operations")
+        raise http_400("Passphrase is required for backup operations")
 
     return BackupService(passphrase)
 
@@ -81,7 +82,7 @@ async def create_backup(
         backup_path = backup_service.create_backup()
 
         if not backup_path:
-            raise HTTPException(status_code=500, detail="Failed to create backup")
+            raise http_500("Failed to create backup")
 
         # Get backup info
         stat = backup_path.stat()
@@ -145,7 +146,7 @@ async def list_backups(
 
     except Exception as e:
         logger.error(f"Failed to list backups: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to list backups: {str(e)}")
+        raise http_500(f"Failed to list backups: {str(e)}")
 
 
 @router.post("/verify")
@@ -175,10 +176,10 @@ async def verify_backup(
         elif payload.backup_name:
             backup_path = backup_service.backup_dir / payload.backup_name
         else:
-            raise HTTPException(status_code=400, detail="Must provide backup_path or backup_name")
+            raise http_400("Must provide backup_path or backup_name")
 
         if not backup_path.exists():
-            raise HTTPException(status_code=404, detail="Backup file not found")
+            raise http_404("Backup file not found", resource="backup")
 
         # Verify backup
         is_valid = backup_service.verify_backup(backup_path)
@@ -208,7 +209,7 @@ async def verify_backup(
         raise
     except Exception as e:
         logger.error(f"Failed to verify backup: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to verify backup: {str(e)}")
+        raise http_500(f"Failed to verify backup: {str(e)}")
 
 
 @router.post("/restore")
@@ -238,10 +239,10 @@ async def restore_backup(
         elif payload.backup_name:
             backup_path = backup_service.backup_dir / payload.backup_name
         else:
-            raise HTTPException(status_code=400, detail="Must provide backup_path or backup_name")
+            raise http_400("Must provide backup_path or backup_name")
 
         if not backup_path.exists():
-            raise HTTPException(status_code=404, detail="Backup file not found")
+            raise http_404("Backup file not found", resource="backup")
 
         # Restore backup
         success = backup_service.restore_backup(backup_path)
@@ -271,7 +272,7 @@ async def restore_backup(
         raise
     except Exception as e:
         logger.error(f"Failed to restore backup: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to restore backup: {str(e)}")
+        raise http_500(f"Failed to restore backup: {str(e)}")
 
 
 @router.post("/cleanup")
@@ -315,7 +316,7 @@ async def cleanup_old_backups(
 
     except Exception as e:
         logger.error(f"Failed to cleanup backups: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to cleanup backups: {str(e)}")
+        raise http_500(f"Failed to cleanup backups: {str(e)}")
 
 
 @router.get("/download")
@@ -337,17 +338,17 @@ async def download_backup(
     try:
         # Strict validation: no path separators allowed
         if '/' in backup_name or '\\' in backup_name or '..' in backup_name:
-            raise HTTPException(status_code=400, detail="Invalid backup name - path traversal not allowed")
+            raise http_400("Invalid backup name - path traversal not allowed")
 
         # Use temporary service to get backup directory
         backup_service = BackupService("temp_for_download")
         backup_path = backup_service.backup_dir / backup_name
 
         if not backup_path.exists():
-            raise HTTPException(status_code=404, detail="Backup file not found")
+            raise http_404("Backup file not found", resource="backup")
 
         if not backup_path.is_file():
-            raise HTTPException(status_code=400, detail="Invalid backup file")
+            raise http_400("Invalid backup file")
 
         # Audit log
         audit_logger.log(
@@ -374,7 +375,7 @@ async def download_backup(
         raise
     except Exception as e:
         logger.error(f"Failed to download backup: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to download backup: {str(e)}")
+        raise http_500(f"Failed to download backup: {str(e)}")
 
 
 # Re-exports for backwards compatibility (P2 decomposition)

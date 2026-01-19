@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Uplo
 from pydantic import BaseModel
 from typing import Any, Dict
 
+from api.errors import http_400, http_404, http_500, http_503
 from api.auth_middleware import get_current_user
 from api.permission_engine import require_perm
 from api.schemas.api_models import DatasetListResponse
@@ -66,7 +67,7 @@ async def upload_dataset(
     Max file size: 2GB
     """
     if _data_engine is None or _settings is None:
-        raise HTTPException(status_code=503, detail="Data engine not initialized")
+        raise http_503("Data engine not initialized", service="data_engine")
 
     try:
         # Validate file size (2GB max)
@@ -107,14 +108,14 @@ async def upload_dataset(
 
     except Exception as e:
         logger.error(f"Data upload failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.get("/datasets", response_model=DatasetListResponse)
 async def list_datasets(session_id: str | None = None):
     """List all datasets, optionally filtered by session"""
     if _data_engine is None:
-        raise HTTPException(status_code=503, detail="Data engine not initialized")
+        raise http_503("Data engine not initialized", service="data_engine")
 
     try:
         datasets = await asyncio.to_thread(
@@ -123,14 +124,14 @@ async def list_datasets(session_id: str | None = None):
         )
         return DatasetListResponse(datasets=datasets)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.get("/datasets/{dataset_id}")
 async def get_dataset(dataset_id: str) -> Dict[str, Any]:
     """Get dataset metadata"""
     if _data_engine is None:
-        raise HTTPException(status_code=503, detail="Data engine not initialized")
+        raise http_503("Data engine not initialized", service="data_engine")
 
     try:
         metadata = await asyncio.to_thread(
@@ -139,20 +140,20 @@ async def get_dataset(dataset_id: str) -> Dict[str, Any]:
         )
 
         if not metadata:
-            raise HTTPException(status_code=404, detail="Dataset not found")
+            raise http_404("Dataset not found", resource="dataset")
 
         return metadata
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.delete("/datasets/{dataset_id}")
 async def delete_dataset(request: Request, dataset_id: str) -> Dict[str, Any]:
     """Delete a dataset"""
     if _data_engine is None:
-        raise HTTPException(status_code=503, detail="Data engine not initialized")
+        raise http_503("Data engine not initialized", service="data_engine")
 
     try:
         deleted = await asyncio.to_thread(
@@ -161,13 +162,13 @@ async def delete_dataset(request: Request, dataset_id: str) -> Dict[str, Any]:
         )
 
         if not deleted:
-            raise HTTPException(status_code=404, detail="Dataset not found")
+            raise http_404("Dataset not found", resource="dataset")
 
         return {"status": "deleted", "dataset_id": dataset_id}
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/query")
@@ -175,7 +176,7 @@ async def delete_dataset(request: Request, dataset_id: str) -> Dict[str, Any]:
 async def execute_data_query(req: Request, request: QueryRequest, current_user: dict = Depends(get_current_user)) -> Dict[str, Any]:
     """Execute SQL query on loaded datasets"""
     if _data_engine is None:
-        raise HTTPException(status_code=503, detail="Data engine not initialized")
+        raise http_503("Data engine not initialized", service="data_engine")
 
     try:
         result = await asyncio.to_thread(
@@ -185,14 +186,14 @@ async def execute_data_query(req: Request, request: QueryRequest, current_user: 
         return result
     except Exception as e:
         logger.error(f"Query execution failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/discover/{dataset_id}")
 async def rediscover_queries(request: Request, dataset_id: str) -> Dict[str, Any]:
     """Re-run brute-force discovery on a dataset"""
     if _data_engine is None:
-        raise HTTPException(status_code=503, detail="Data engine not initialized")
+        raise http_503("Data engine not initialized", service="data_engine")
 
     try:
         metadata = await asyncio.to_thread(
@@ -201,7 +202,7 @@ async def rediscover_queries(request: Request, dataset_id: str) -> Dict[str, Any
         )
 
         if not metadata:
-            raise HTTPException(status_code=404, detail="Dataset not found")
+            raise http_404("Dataset not found", resource="dataset")
 
         table_name = metadata['table_name']
 
@@ -209,12 +210,12 @@ async def rediscover_queries(request: Request, dataset_id: str) -> Dict[str, Any
         # Step 1: Regex validation (blocks most attacks)
         # MED-02: Use pre-compiled regex
         if not _TABLE_NAME_VALIDATOR.match(table_name):
-            raise HTTPException(status_code=400, detail="Invalid table name")
+            raise http_400("Invalid table name")
 
         # Step 2: Whitelist validation (ensures table exists in our metadata)
         allowed_tables = await asyncio.to_thread(_data_engine.get_all_table_names)
         if table_name not in allowed_tables:
-            raise HTTPException(status_code=400, detail="Table not found in dataset metadata")
+            raise http_400("Table not found in dataset metadata")
 
         # SECURITY NOTE: f-string is safe ONLY because of dual validation above
         # ⚠️  DO NOT REMOVE REGEX OR WHITELIST VALIDATION - SQLite doesn't support parameterized table names
@@ -236,4 +237,4 @@ async def rediscover_queries(request: Request, dataset_id: str) -> Dict[str, Any
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
