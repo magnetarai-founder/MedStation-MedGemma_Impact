@@ -25,10 +25,7 @@ from pathlib import Path
 import ipaddress  # HIGH-02 FIX: For proper IPv4/IPv6 subnet checking
 
 # CRITICAL-03 FIX: Use connection pooling instead of direct SQLite connections
-try:
-    from db_pool import get_connection_pool, SQLiteConnectionPool
-except ImportError:
-    from api.db_pool import get_connection_pool, SQLiteConnectionPool
+from api.db_pool import get_connection_pool, SQLiteConnectionPool
 
 logger = logging.getLogger(__name__)
 

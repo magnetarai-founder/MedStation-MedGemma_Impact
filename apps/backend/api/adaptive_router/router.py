@@ -24,12 +24,8 @@ from api.adaptive_router.patterns import (
 )
 
 # Local imports
-try:
-    from learning_system import LearningSystem, Recommendation
-    from jarvis_memory import JarvisMemory
-except ImportError:
-    from api.learning_system import LearningSystem, Recommendation
-    from api.jarvis_memory import JarvisMemory
+from api.learning_system import LearningSystem, Recommendation
+from api.jarvis_memory import JarvisMemory
 
 
 @dataclass

@@ -19,12 +19,7 @@ import subprocess
 from typing import Dict, List, Optional, Tuple
 from pathlib import Path
 
-try:
-    from config import get_settings
-except ImportError:
-    # Fallback for when config is not available
-    def get_settings():
-        return None
+from api.config import get_settings
 
 # Import from extracted module (P2 decomposition)
 from api.bash.patterns import (
