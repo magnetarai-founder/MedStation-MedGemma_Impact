@@ -164,7 +164,7 @@ All instances now use safe `guard let url = URL(string:)` pattern:
 
 | Issue | Impact | Status |
 |-------|--------|--------|
-| Broad exception handlers | 50+ files with `except Exception` | Pending |
+| Broad exception handlers | 50+ files with `except Exception` | **IMPROVED** (silent handlers reduced 27→12, added debug logging Jan 18) |
 | Missing type hints | Heavy `Any` usage | Pending |
 | Inconsistent error handling | 4+ different patterns | Pending |
 
