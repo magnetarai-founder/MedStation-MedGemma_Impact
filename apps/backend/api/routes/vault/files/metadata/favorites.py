@@ -16,6 +16,7 @@ import logging
 from typing import Dict
 from fastapi import APIRouter, HTTPException, Form, Depends, status
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.errors import http_404, http_500
 
 from api.auth_middleware import get_current_user
 from api.utils import get_user_id
@@ -55,13 +56,7 @@ async def add_favorite_file(
         raise
     except Exception as e:
         logger.error(f"Failed to add favorite for file {file_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to add file to favorites"
-            ).model_dump()
-        )
+        raise http_500("Failed to add file to favorites")
 
 
 @router.delete(
@@ -89,25 +84,13 @@ async def remove_favorite_file(
     try:
         success = service.remove_favorite(user_id, vault_type, file_id)
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Favorite not found"
-                ).model_dump()
-            )
+            raise http_404("Favorite not found", resource="favorite")
         return SuccessResponse(data={"success": True}, message="File removed from favorites successfully")
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to remove favorite for file {file_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to remove file from favorites"
-            ).model_dump()
-        )
+        raise http_500("Failed to remove file from favorites")
 
 
 @router.get(
@@ -138,13 +121,7 @@ async def get_favorite_files(
         raise
     except Exception as e:
         logger.error(f"Failed to get favorites for user {user_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to get favorite files"
-            ).model_dump()
-        )
+        raise http_500("Failed to get favorite files")
 
 
 @router.post(
@@ -177,13 +154,7 @@ async def pin_file_endpoint(
         raise
     except Exception as e:
         logger.error(f"Failed to pin file {file_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to pin file"
-            ).model_dump()
-        )
+        raise http_500("Failed to pin file")
 
 
 @router.delete(
@@ -211,25 +182,13 @@ async def unpin_file_endpoint(
     try:
         success = service.unpin_file(user_id, vault_type, file_id)
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="File not pinned"
-                ).model_dump()
-            )
+            raise http_404("File not pinned", resource="pin")
         return SuccessResponse(data={"success": True}, message="File unpinned")
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to unpin file {file_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to unpin file"
-            ).model_dump()
-        )
+        raise http_500("Failed to unpin file")
 
 
 @router.get(
@@ -260,10 +219,4 @@ async def get_pinned_files_endpoint(
         raise
     except Exception as e:
         logger.error(f"Failed to get pinned files for user {user_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to get pinned files"
-            ).model_dump()
-        )
+        raise http_500("Failed to get pinned files")

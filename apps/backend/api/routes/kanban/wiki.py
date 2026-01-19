@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 from api.auth_middleware import get_current_user
 from api.services import kanban_service as kb
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.errors import http_400, http_404, http_500
 
 logger = logging.getLogger(__name__)
 
@@ -68,13 +69,7 @@ async def list_wiki(
 
     except Exception as e:
         logger.error(f"Failed to list wiki pages for project {project_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve wiki pages"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve wiki pages")
 
 
 @router.post(
@@ -99,33 +94,15 @@ async def create_wiki(
 
     except ValueError as e:
         if "not found" in str(e).lower():
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message=str(e)
-                ).model_dump()
-            )
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=ErrorResponse(
-                error_code=ErrorCode.VALIDATION_ERROR,
-                message=str(e)
-            ).model_dump()
-        )
+            raise http_404(str(e), resource="project")
+        raise http_400(str(e))
 
     except HTTPException:
         raise
 
     except Exception as e:
         logger.error(f"Failed to create wiki page", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to create wiki page"
-            ).model_dump()
-        )
+        raise http_500("Failed to create wiki page")
 
 
 @router.patch(
@@ -150,26 +127,14 @@ async def update_wiki(
         )
 
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=ErrorResponse(
-                error_code=ErrorCode.NOT_FOUND,
-                message=str(e)
-            ).model_dump()
-        )
+        raise http_404(str(e), resource="wiki_page")
 
     except HTTPException:
         raise
 
     except Exception as e:
         logger.error(f"Failed to update wiki page {page_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to update wiki page"
-            ).model_dump()
-        )
+        raise http_500("Failed to update wiki page")
 
 
 @router.delete(
@@ -193,24 +158,12 @@ async def delete_wiki(
         )
 
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=ErrorResponse(
-                error_code=ErrorCode.NOT_FOUND,
-                message=str(e)
-            ).model_dump()
-        )
+        raise http_404(str(e), resource="wiki_page")
 
     except HTTPException:
         raise
 
     except Exception as e:
         logger.error(f"Failed to delete wiki page {page_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to delete wiki page"
-            ).model_dump()
-        )
+        raise http_500("Failed to delete wiki page")
 

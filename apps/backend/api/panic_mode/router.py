@@ -19,6 +19,7 @@ from api.panic_mode.service import get_panic_mode
 from api.rate_limiter import rate_limiter, get_client_ip
 from api.utils import sanitize_for_log
 from api.auth.middleware import get_current_user
+from api.errors import http_400, http_403, http_429, http_500
 
 # Import from extracted module (P2 decomposition)
 from api.panic_mode.types import (
@@ -68,14 +69,11 @@ async def trigger_panic_mode(request: Request, body: PanicTriggerRequest):
     # Rate limit: 5 panic triggers per hour (prevent abuse)
     client_ip = get_client_ip(request)
     if not rate_limiter.check_rate_limit(f"panic:trigger:{client_ip}", max_requests=5, window_seconds=3600):
-        raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 5 panic triggers per hour.")
+        raise http_429("Rate limit exceeded. Max 5 panic triggers per hour.")
 
     # Require explicit confirmation
     if body.confirmation != "CONFIRM":
-        raise HTTPException(
-            status_code=400,
-            detail="Must provide confirmation='CONFIRM' to trigger panic mode"
-        )
+        raise http_400("Must provide confirmation='CONFIRM' to trigger panic mode")
 
     # Sanitize reason for logging (may contain sensitive context)
     safe_reason = sanitize_for_log(body.reason)
@@ -86,10 +84,7 @@ async def trigger_panic_mode(request: Request, body: PanicTriggerRequest):
         return PanicTriggerResponse(**result)
     except Exception as e:
         logger.error(f"Panic mode execution failed: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Panic mode failed: {str(e)}"
-        )
+        raise http_500(f"Panic mode failed: {str(e)}")
 
 
 @router.get("/status", response_model=PanicStatusResponse)
@@ -117,10 +112,7 @@ async def reset_panic_mode(request: Request) -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Failed to reset panic mode: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Reset failed: {str(e)}"
-        )
+        raise http_500(f"Reset failed: {str(e)}")
 
 
 @router.get("/health")
@@ -173,25 +165,16 @@ async def trigger_emergency_mode(
     # Safety check: Emergency mode must be explicitly enabled
     if not ALLOW_EMERGENCY_WIPE:
         logger.error("🚫 Emergency mode attempt BLOCKED (ELOHIM_ALLOW_EMERGENCY_WIPE=false)")
-        raise HTTPException(
-            status_code=403,
-            detail="Emergency mode is disabled. Set ELOHIM_ALLOW_EMERGENCY_WIPE=true to enable."
-        )
+        raise http_403("Emergency mode is disabled. Set ELOHIM_ALLOW_EMERGENCY_WIPE=true to enable.")
 
     # Rate limiting (5 emergency triggers per hour)
     client_ip = get_client_ip(request)
     if not rate_limiter.check_rate_limit(f"emergency:trigger:{client_ip}", max_requests=5, window_seconds=3600):
-        raise HTTPException(
-            status_code=429,
-            detail="Rate limit exceeded. Max 5 emergency triggers per hour."
-        )
+        raise http_429("Rate limit exceeded. Max 5 emergency triggers per hour.")
 
     # Verify confirmation
     if body.confirmation != "CONFIRM":
-        raise HTTPException(
-            status_code=400,
-            detail="Confirmation required. Must send confirmation='CONFIRM' to proceed."
-        )
+        raise http_400("Confirmation required. Must send confirmation='CONFIRM' to proceed.")
 
     # Sanitize reason for logging
     safe_reason = sanitize_for_log(body.reason) if body.reason else "User-initiated emergency"
@@ -251,10 +234,7 @@ async def trigger_emergency_mode(
 
     except Exception as e:
         logger.error(f"❌ Emergency mode execution failed: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Emergency mode failed: {str(e)}"
-        )
+        raise http_500(f"Emergency mode failed: {str(e)}")
 
 
 # DoD wipe functions moved to emergency_wipe.py for independent testing

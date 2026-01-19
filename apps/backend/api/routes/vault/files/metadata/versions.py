@@ -13,6 +13,7 @@ import logging
 from typing import Dict
 from fastapi import APIRouter, HTTPException, Request, Form, Depends, status
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.errors import http_404, http_429, http_500
 
 from api.auth_middleware import get_current_user
 from api.utils import get_user_id
@@ -52,13 +53,7 @@ async def get_file_versions_endpoint(
     ip = get_client_ip(request)
     key = f"vault:versions:list:{get_user_id(current_user)}:{ip}"
     if not rate_limiter.check_rate_limit(key, max_requests=60, window_seconds=60):
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=ErrorResponse(
-                error_code=ErrorCode.RATE_LIMITED,
-                message="Rate limit exceeded for vault.versions.list"
-            ).model_dump()
-        )
+        raise http_429("Rate limit exceeded for vault.versions.list")
 
     service = get_vault_service()
     user_id = get_user_id(current_user)
@@ -84,13 +79,7 @@ async def get_file_versions_endpoint(
         raise
     except Exception as e:
         logger.error(f"Failed to get file versions for file {file_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to get file versions"
-            ).model_dump()
-        )
+        raise http_500("Failed to get file versions")
 
 
 @router.post(
@@ -118,13 +107,7 @@ async def restore_file_version_endpoint(
     ip = get_client_ip(request)
     key = f"vault:version:restore:{get_user_id(current_user)}:{ip}"
     if not rate_limiter.check_rate_limit(key, max_requests=20, window_seconds=60):
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=ErrorResponse(
-                error_code=ErrorCode.RATE_LIMITED,
-                message="Rate limit exceeded for vault.version.restored"
-            ).model_dump()
-        )
+        raise http_429("Rate limit exceeded for vault.version.restored")
 
     service = get_vault_service()
     user_id = get_user_id(current_user)
@@ -143,24 +126,12 @@ async def restore_file_version_endpoint(
 
         return SuccessResponse(data=result, message="File version restored successfully")
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=ErrorResponse(
-                error_code=ErrorCode.NOT_FOUND,
-                message=str(e)
-            ).model_dump()
-        )
+        raise http_404(str(e), resource="version")
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to restore file version for file {file_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to restore file version"
-            ).model_dump()
-        )
+        raise http_500("Failed to restore file version")
 
 
 @router.delete(
@@ -188,13 +159,7 @@ async def delete_file_version_endpoint(
     ip = get_client_ip(request)
     key = f"vault:version:delete:{get_user_id(current_user)}:{ip}"
     if not rate_limiter.check_rate_limit(key, max_requests=20, window_seconds=60):
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=ErrorResponse(
-                error_code=ErrorCode.RATE_LIMITED,
-                message="Rate limit exceeded for vault.version.deleted"
-            ).model_dump()
-        )
+        raise http_429("Rate limit exceeded for vault.version.deleted")
 
     service = get_vault_service()
     user_id = get_user_id(current_user)
@@ -202,13 +167,7 @@ async def delete_file_version_endpoint(
     try:
         success = service.delete_file_version(user_id, vault_type, version_id)
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Version not found"
-                ).model_dump()
-            )
+            raise http_404("Version not found", resource="version")
 
         # Audit logging after success
         audit_logger.log(
@@ -224,10 +183,4 @@ async def delete_file_version_endpoint(
         raise
     except Exception as e:
         logger.error(f"Failed to delete file version {version_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to delete file version"
-            ).model_dump()
-        )
+        raise http_500("Failed to delete file version")
