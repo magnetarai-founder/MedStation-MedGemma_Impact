@@ -1,7 +1,7 @@
 # MagnetarStudio Engineering Roadmap
 
 > **Target:** Post-iPad launch + Kaggle submission (Feb-March 2026)
-> **Last Updated:** January 16, 2026
+> **Last Updated:** January 19, 2026
 
 ---
 
@@ -166,24 +166,16 @@ All instances now use safe `guard let url = URL(string:)` pattern:
 |-------|--------|--------|
 | Broad exception handlers | 50+ files with `except Exception` | **IMPROVED** (silent handlers reduced 27→12, added debug logging Jan 18) |
 | Missing type hints | Heavy `Any` usage | Pending |
-| Inconsistent error handling | 4+ different patterns | **IN PROGRESS** (infrastructure ready Jan 18) |
+| Inconsistent error handling | 4+ different patterns | **COMPLETE** (Jan 19, 2026) |
 
-**Error Handling Consolidation (Jan 18, 2026):**
+**Error Handling Consolidation (Completed Jan 19, 2026):**
 
-Infrastructure added to `api/errors/`:
+Infrastructure in `api/errors/`:
 - `AppException` with error IDs, user messages, suggestions, technical details
-- Quick helpers (`http_400`, `http_404`, `http_500`, `http_503`) for easy migration
+- Quick helpers (`http_400`, `http_401`, `http_403`, `http_404`, `http_409`, `http_429`, `http_500`, `http_503`)
 - Full exports from `api.errors` module
 
-Migration scope: 1035 HTTPException calls across 148 files. Sample migration completed in `routes/system.py` (12 calls). Remaining files can be migrated incrementally using:
-```python
-# Before
-raise HTTPException(status_code=404, detail="Not found")
-
-# After
-from api.errors import http_404
-raise http_404("Not found")
-```
+**Migration completed:** 21 batches, ~346 patterns migrated across 80+ files. Remaining patterns use status codes without helpers (408, 410, 413, 502, 504) or are intentional (schema definitions, utility converters).
 
 ---
 
@@ -529,4 +521,4 @@ guard let url = URL(string: urlString) else {
 ---
 
 *Generated from CODE_QUALITY_REVIEW.md + REFACTOR_ROADMAP.md*
-*Last Updated: January 18, 2026*
+*Last Updated: January 19, 2026*
