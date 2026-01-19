@@ -18,6 +18,8 @@ from datetime import datetime, UTC
 from pathlib import Path
 from fastapi import HTTPException
 
+from api.errors import http_404, http_500, http_503
+
 logger = logging.getLogger(__name__)
 
 
@@ -63,7 +65,7 @@ async def get_vault_status(target_user_id: str) -> Dict[str, Any]:
         ).fetchone()
 
         if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise http_404("User not found", resource="user")
 
         # Get document count for real vault
         doc_count_real = conn.execute("""
@@ -100,7 +102,7 @@ async def get_vault_status(target_user_id: str) -> Dict[str, Any]:
         raise
     except Exception as e:
         logger.error(f"Failed to get vault status for {target_user_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get vault status: {str(e)}")
+        raise http_500(f"Failed to get vault status: {str(e)}")
 
 
 # ===== Device Overview Functions =====
@@ -230,10 +232,7 @@ async def get_user_workflows(target_user_id: str) -> Dict[str, Any]:
         pass
 
     if not workflow_db.exists():
-        raise HTTPException(
-            status_code=503,
-            detail="Workflow database not available"
-        )
+        raise http_503("Workflow database not available")
 
     try:
         wf_conn = sqlite3.connect(str(workflow_db))
@@ -291,10 +290,7 @@ async def get_user_workflows(target_user_id: str) -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Failed to get workflows for user {target_user_id}: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to retrieve user workflows: {str(e)}"
-        )
+        raise http_500(f"Failed to retrieve user workflows: {str(e)}")
 
 
 __all__ = [

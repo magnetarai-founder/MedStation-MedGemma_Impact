@@ -22,6 +22,7 @@ Module structure (P2 decomposition):
 import logging
 from fastapi import APIRouter, HTTPException, Request
 
+from api.errors import http_400, http_403, http_500
 # Import from sibling and external modules (P3 decomposition)
 from api.founder_setup.wizard import get_founder_wizard
 from api.audit.logger import audit_log_sync
@@ -61,7 +62,7 @@ async def get_setup_status():
 
     except Exception as e:
         logger.error(f"Failed to get setup status: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get setup status")
+        raise http_500("Failed to get setup status")
 
 
 @router.post("/initialize", response_model=InitializeSetupResponse)
@@ -96,10 +97,7 @@ async def initialize_founder_setup(
                 details={"reason": "already_setup"}
             )
 
-            raise HTTPException(
-                status_code=403,
-                detail="Founder password already setup. Cannot re-initialize."
-            )
+            raise http_403("Founder password already setup. Cannot re-initialize.")
 
         # Validate password confirmation
         if body.password != body.confirm_password:
@@ -134,7 +132,7 @@ async def initialize_founder_setup(
         raise
     except Exception as e:
         logger.error(f"Failed to initialize founder setup: {e}")
-        raise HTTPException(status_code=500, detail="Failed to initialize setup")
+        raise http_500("Failed to initialize setup")
 
 
 @router.post("/verify", response_model=VerifyPasswordResponse)
@@ -163,10 +161,7 @@ async def verify_founder_password(
                 details={"reason": "setup_not_complete"}
             )
 
-            raise HTTPException(
-                status_code=400,
-                detail="Founder password not setup yet"
-            )
+            raise http_400("Founder password not setup yet")
 
         # Verify password
         is_valid = wizard.verify_founder_password(body.password)
@@ -192,7 +187,7 @@ async def verify_founder_password(
         raise
     except Exception as e:
         logger.error(f"Failed to verify founder password: {e}")
-        raise HTTPException(status_code=500, detail="Failed to verify password")
+        raise http_500("Failed to verify password")
 
 
 # Re-exports for backwards compatibility (P2 decomposition)
