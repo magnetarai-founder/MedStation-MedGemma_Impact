@@ -14,6 +14,7 @@ from uuid import uuid4
 
 import aiofiles
 from fastapi import APIRouter, HTTPException, UploadFile, File, Request, Form, Depends
+from api.errors import http_400, http_404, http_500
 
 from api.auth_middleware import get_current_user
 from api.utils import sanitize_filename, get_user_id
@@ -54,10 +55,7 @@ async def create_recording(
     file_ext = Path(safe_filename).suffix.lower()
 
     if file_ext not in valid_extensions:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported audio format. Supported: {', '.join(valid_extensions)}"
-        )
+        raise http_400(f"Unsupported audio format. Supported: {', '.join(valid_extensions)}")
 
     # Generate recording ID and path
     recording_id = f"rec_{uuid4().hex[:12]}"
@@ -114,7 +112,7 @@ async def create_recording(
         if audio_path.exists():
             audio_path.unlink()
         logger.error(f"Recording creation failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.get("/recordings", response_model=RecordingListResponse)
@@ -191,7 +189,7 @@ async def get_recording(
 
     if not row:
         conn.close()
-        raise HTTPException(status_code=404, detail="Recording not found")
+        raise http_404("Recording not found", resource="recording")
 
     recording = Recording(
         id=row["id"],
@@ -241,7 +239,7 @@ async def update_recording(
     cursor.execute("SELECT id FROM recordings WHERE id = ?", (recording_id,))
     if not cursor.fetchone():
         conn.close()
-        raise HTTPException(status_code=404, detail="Recording not found")
+        raise http_404("Recording not found", resource="recording")
 
     # Build updates dict with whitelisted columns only
     updates_dict = {}
@@ -279,7 +277,7 @@ async def delete_recording(
 
     if not row:
         conn.close()
-        raise HTTPException(status_code=404, detail="Recording not found")
+        raise http_404("Recording not found", resource="recording")
 
     # Delete audio file
     file_path = Path(row["file_path"])

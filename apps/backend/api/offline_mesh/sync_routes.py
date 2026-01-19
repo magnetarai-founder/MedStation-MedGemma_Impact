@@ -5,6 +5,7 @@ CRDT-based data synchronization endpoints.
 """
 
 from fastapi import APIRouter, HTTPException, Request
+from api.errors import http_404, http_500
 from typing import Dict, Any
 import logging
 
@@ -87,7 +88,7 @@ async def start_sync(request: Request, body: SyncRequest) -> SyncResponse:
         except Exception as e:
             logger.error(f"Failed to sync: {e}")
             metrics.increment_error("p2p_sync")
-            raise HTTPException(status_code=500, detail=str(e))
+            raise http_500(str(e))
 
 
 @router.get("/sync/state/{peer_id}")
@@ -98,7 +99,7 @@ async def get_sync_state(peer_id: str) -> Dict[str, Any]:
         state = sync.get_sync_state(peer_id)
 
         if not state:
-            raise HTTPException(status_code=404, detail="No sync state found")
+            raise http_404("No sync state found", resource="sync_state")
 
         return {
             "peer_id": state.peer_id,

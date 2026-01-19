@@ -5,6 +5,7 @@ MLX distributed computing endpoints for mesh network.
 """
 
 from fastapi import APIRouter, HTTPException, Request
+from api.errors import http_404, http_500
 from typing import Dict, Any
 import logging
 
@@ -32,11 +33,11 @@ async def start_compute_server(request: Request, port: int = 8766) -> Dict[str, 
                 "port": distributed.port
             }
         else:
-            raise HTTPException(status_code=500, detail="Failed to start compute server")
+            raise http_500("Failed to start compute server")
 
     except Exception as e:
         logger.error(f"Failed to start compute server: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.get("/compute/nodes")
@@ -67,7 +68,7 @@ async def get_compute_nodes() -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Failed to get compute nodes: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/compute/job/submit")
@@ -92,7 +93,7 @@ async def submit_compute_job(request: Request, body: SubmitJobRequest) -> Dict[s
 
     except Exception as e:
         logger.error(f"Failed to submit job: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.get("/compute/job/{job_id}")
@@ -103,7 +104,7 @@ async def get_job_status(job_id: str) -> Dict[str, Any]:
         job = distributed.get_job(job_id)
 
         if not job:
-            raise HTTPException(status_code=404, detail="Job not found")
+            raise http_404("Job not found", resource="job")
 
         return {
             "job_id": job.job_id,
@@ -119,7 +120,7 @@ async def get_job_status(job_id: str) -> Dict[str, Any]:
         raise
     except Exception as e:
         logger.error(f"Failed to get job: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.get("/compute/stats")
@@ -131,4 +132,4 @@ async def get_compute_stats() -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Failed to get compute stats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))

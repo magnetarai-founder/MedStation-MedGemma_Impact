@@ -10,6 +10,7 @@ from datetime import datetime, UTC
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Request, Depends, Body
+from api.errors import http_403, http_404
 
 from api.auth_middleware import get_current_user
 from api.utils import get_user_id
@@ -123,11 +124,11 @@ async def update_template(
 
     if not row:
         conn.close()
-        raise HTTPException(status_code=404, detail="Template not found")
+        raise http_404("Template not found", resource="template")
 
     if row["is_builtin"]:
         conn.close()
-        raise HTTPException(status_code=403, detail="Cannot modify built-in templates")
+        raise http_403("Cannot modify built-in templates")
 
     # Build updates dict with whitelisted columns only
     updates_dict = {}
@@ -169,11 +170,11 @@ async def delete_template(
 
     if not row:
         conn.close()
-        raise HTTPException(status_code=404, detail="Template not found")
+        raise http_404("Template not found", resource="template")
 
     if row["is_builtin"]:
         conn.close()
-        raise HTTPException(status_code=403, detail="Cannot delete built-in templates")
+        raise http_403("Cannot delete built-in templates")
 
     cursor.execute("DELETE FROM templates WHERE id = ?", (template_id,))
     conn.commit()
