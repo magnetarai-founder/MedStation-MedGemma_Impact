@@ -16,7 +16,8 @@ from fastapi import APIRouter, HTTPException, Depends, Request, Query, status
 from api.auth_middleware import get_current_user, User
 from api.config import get_settings
 from api.rate_limiter import get_client_ip
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
+from api.errors import http_400, http_401, http_404, http_429, http_500
 from api.services.webauthn_verify import verify_assertion
 from api.utils import sanitize_for_log, get_user_id
 
@@ -169,13 +170,7 @@ async def setup_biometric(
         raise
     except Exception as e:
         logger.error("Biometric setup failed", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to setup biometric unlock"
-            ).model_dump()
-        )
+        raise http_500("Failed to setup biometric unlock")
 
 
 @router.post(
@@ -248,13 +243,7 @@ async def unlock_biometric(
     pkg = _get_pkg()
     if not pkg._check_rate_limit(user_id, req.vault_id, client_ip):
         pkg._record_unlock_attempt(user_id, req.vault_id, False, 'biometric')
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=ErrorResponse(
-                error_code=ErrorCode.RATE_LIMITED,
-                message="Too many unlock attempts. Please wait 5 minutes."
-            ).model_dump()
-        )
+        raise http_429("Too many unlock attempts. Please wait 5 minutes.")
 
     try:
         logger.info(
@@ -275,13 +264,7 @@ async def unlock_biometric(
 
             if not row:
                 pkg._record_unlock_attempt(user_id, req.vault_id, False, 'biometric')
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=ErrorResponse(
-                        error_code=ErrorCode.NOT_FOUND,
-                        message="Biometric unlock not configured for this vault"
-                    ).model_dump()
-                )
+                raise http_404("Biometric unlock not configured for this vault", resource="vault")
 
             credential_id, public_key, wrapped_kek_hex, salt_hex, wrap_method, stored_sign_count = row
             wrap_method = wrap_method or "xor_legacy"
@@ -291,13 +274,7 @@ async def unlock_biometric(
         challenge = consume_challenge(user_id, req.vault_id)
         if not challenge:
             pkg._record_unlock_attempt(user_id, req.vault_id, False, 'biometric')
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="No valid challenge found. Please request a new challenge."
-                ).model_dump()
-            )
+            raise http_400("No valid challenge found. Please request a new challenge.")
 
         try:
             # Verify the WebAuthn assertion cryptographically
@@ -333,13 +310,7 @@ async def unlock_biometric(
         except Exception as e:
             pkg._record_unlock_attempt(user_id, req.vault_id, False, 'biometric')
             logger.warning(f"WebAuthn verification failed: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.UNAUTHORIZED,
-                    message="Biometric verification failed"
-                ).model_dump()
-            )
+            raise http_401("Biometric verification failed")
 
         # Unwrap KEK using the stored wrap method
         wrap_key = hashlib.sha256(credential_id.encode()).digest()
@@ -377,10 +348,4 @@ async def unlock_biometric(
     except Exception as e:
         pkg._record_unlock_attempt(user_id, req.vault_id, False, 'biometric')
         logger.error("Biometric unlock failed", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to unlock vault"
-            ).model_dump()
-        )
+        raise http_500("Failed to unlock vault")

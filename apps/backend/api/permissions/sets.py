@@ -15,6 +15,7 @@ from typing import Dict, List, Optional
 from datetime import datetime, UTC
 
 from .storage import get_db_connection
+from api.errors import http_404
 
 logger = logging.getLogger(__name__)
 
@@ -129,7 +130,6 @@ async def assign_permission_set_to_user(
     Raises:
         HTTPException: If permission set or user not found
     """
-    from fastapi import HTTPException  # Lazy import
     from audit_logger import audit_log_sync, AuditAction  # Lazy import
     from permission_engine import get_permission_engine  # Lazy import
 
@@ -140,13 +140,13 @@ async def assign_permission_set_to_user(
     cur.execute("SELECT * FROM permission_sets WHERE permission_set_id = ?", (set_id,))
     if not cur.fetchone():
         conn.close()
-        raise HTTPException(status_code=404, detail="Permission set not found")
+        raise http_404("Permission set not found", resource="permission_set")
 
     # Check if user exists
     cur.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
     if not cur.fetchone():
         conn.close()
-        raise HTTPException(status_code=404, detail="User not found")
+        raise http_404("User not found", resource="user")
 
     now = datetime.now(UTC).isoformat()
 
@@ -202,7 +202,6 @@ async def unassign_permission_set_from_user(
     Raises:
         HTTPException: If assignment not found
     """
-    from fastapi import HTTPException  # Lazy import
     from audit_logger import audit_log_sync, AuditAction  # Lazy import
     from permission_engine import get_permission_engine  # Lazy import
 
@@ -219,7 +218,7 @@ async def unassign_permission_set_from_user(
     conn.close()
 
     if deleted == 0:
-        raise HTTPException(status_code=404, detail="Assignment not found")
+        raise http_404("Assignment not found", resource="assignment")
 
     # Audit log - Permission set revoked from user
     audit_log_sync(
@@ -259,7 +258,6 @@ async def update_permission_set_grants(
     Raises:
         HTTPException: If permission set not found
     """
-    from fastapi import HTTPException  # Lazy import
     from audit_logger import audit_log_sync, AuditAction  # Lazy import
     from permission_engine import get_permission_engine  # Lazy import
 
@@ -270,7 +268,7 @@ async def update_permission_set_grants(
     cur.execute("SELECT permission_set_id FROM permission_sets WHERE permission_set_id = ?", (set_id,))
     if not cur.fetchone():
         conn.close()
-        raise HTTPException(status_code=404, detail="Permission set not found")
+        raise http_404("Permission set not found", resource="permission_set")
 
     # Upsert grants
     now = datetime.now(UTC).isoformat()
@@ -334,8 +332,6 @@ async def get_permission_set_grants(set_id: str) -> Dict:
     Raises:
         HTTPException: If permission set not found
     """
-    from fastapi import HTTPException  # Lazy import
-
     conn = get_db_connection()
     cur = conn.cursor()
 
@@ -343,7 +339,7 @@ async def get_permission_set_grants(set_id: str) -> Dict:
     cur.execute("SELECT permission_set_id FROM permission_sets WHERE permission_set_id = ?", (set_id,))
     if not cur.fetchone():
         conn.close()
-        raise HTTPException(status_code=404, detail="Permission set not found")
+        raise http_404("Permission set not found", resource="permission_set")
 
     # Get grants
     cur.execute("""
@@ -390,7 +386,6 @@ async def delete_permission_set_grant(
     Raises:
         HTTPException: If grant not found
     """
-    from fastapi import HTTPException  # Lazy import
     from audit_logger import audit_log_sync, AuditAction  # Lazy import
     from permission_engine import get_permission_engine  # Lazy import
 
@@ -407,7 +402,7 @@ async def delete_permission_set_grant(
 
     if deleted == 0:
         conn.close()
-        raise HTTPException(status_code=404, detail="Grant not found")
+        raise http_404("Grant not found", resource="grant")
 
     # Invalidate cache for users with this set (before closing connection)
     engine = get_permission_engine()

@@ -32,6 +32,7 @@ from .audit_logger import AuditAction, get_audit_logger
 from .rate_limiter import get_client_ip, rate_limiter
 from .permission_engine import require_perm
 from api.services import admin_support
+from api.errors import http_400, http_403, http_429
 
 logger = logging.getLogger(__name__)
 audit_logger = get_audit_logger()
@@ -42,10 +43,7 @@ router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 def require_founder_rights(current_user: dict = Depends(get_current_user)) -> dict:
     """Dependency to require Founder Rights (Founder Admin) role"""
     if current_user.get("role") != "founder_rights":
-        raise HTTPException(
-            status_code=403,
-            detail="Founder Rights (Founder Admin) access required"
-        )
+        raise http_403("Founder Rights (Founder Admin) access required")
     return current_user
 
 
@@ -304,7 +302,7 @@ async def get_device_overview(
         client_ip = get_client_ip(request)
         max_per_min = 300 if is_dev_mode(request) else 20
         if not rate_limiter.check_rate_limit(f"device_overview:{client_ip}", max_requests=max_per_min, window_seconds=60):
-            raise HTTPException(status_code=429, detail=f"Rate limit exceeded. Max {max_per_min} requests per minute.")
+            raise http_429(f"Rate limit exceeded. Max {max_per_min} requests per minute.")
     except Exception as e:
         logger.warning(f"Rate limiting error (continuing anyway): {e}")
 
@@ -402,14 +400,14 @@ async def get_audit_logs(
         try:
             datetime.fromisoformat(start_date)
         except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid start_date format. Use YYYY-MM-DD")
+            raise http_400("Invalid start_date format. Use YYYY-MM-DD")
 
     if end_date:
         from datetime import datetime
         try:
             datetime.fromisoformat(end_date)
         except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid end_date format. Use YYYY-MM-DD")
+            raise http_400("Invalid end_date format. Use YYYY-MM-DD")
 
     result = await admin_support.get_audit_logs(
         limit=limit,
@@ -449,14 +447,14 @@ async def export_audit_logs(
         try:
             datetime.fromisoformat(start_date)
         except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid start_date format. Use YYYY-MM-DD")
+            raise http_400("Invalid start_date format. Use YYYY-MM-DD")
 
     if end_date:
         from datetime import datetime
         try:
             datetime.fromisoformat(end_date)
         except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid end_date format. Use YYYY-MM-DD")
+            raise http_400("Invalid end_date format. Use YYYY-MM-DD")
 
     csv_content = await admin_support.export_audit_logs(
         user_id=user_id,

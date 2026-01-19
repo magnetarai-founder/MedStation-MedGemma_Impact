@@ -14,7 +14,8 @@ from fastapi import APIRouter, HTTPException, Depends, Request, Query, status
 
 from api.auth_middleware import get_current_user, User
 from api.rate_limiter import get_client_ip
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
+from api.errors import http_400, http_404, http_429, http_500
 from api.utils import sanitize_for_log, get_user_id
 
 from api.routes.vault_auth_utils import (
@@ -68,13 +69,7 @@ async def setup_dual_password(
     """
     try:
         if request.password_sensitive == request.password_unsensitive:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="Sensitive and decoy passwords must differ"
-                ).model_dump()
-            )
+            raise http_400("Sensitive and decoy passwords must differ")
 
         user_id = get_user_id(current_user)
 
@@ -173,13 +168,7 @@ async def setup_dual_password(
         raise
     except Exception as e:
         logger.error("Dual-password setup failed", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to setup dual-password mode"
-            ).model_dump()
-        )
+        raise http_500("Failed to setup dual-password mode")
 
 
 # Backward compatibility alias
@@ -221,13 +210,7 @@ async def unlock_passphrase(
     pkg = _get_pkg()
     if not pkg._check_rate_limit(user_id, vault_id, client_ip):
         pkg._record_unlock_attempt(user_id, vault_id, False, 'passphrase')
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=ErrorResponse(
-                error_code=ErrorCode.RATE_LIMITED,
-                message="Too many unlock attempts. Please wait 5 minutes."
-            ).model_dump()
-        )
+        raise http_429("Too many unlock attempts. Please wait 5 minutes.")
 
     try:
         logger.info(
@@ -248,13 +231,7 @@ async def unlock_passphrase(
 
             if not row:
                 pkg._record_unlock_attempt(user_id, vault_id, False, 'passphrase')
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=ErrorResponse(
-                        error_code=ErrorCode.NOT_FOUND,
-                        message="Vault not configured"
-                    ).model_dump()
-                )
+                raise http_404("Vault not configured", resource="vault")
 
             salt_real_hex, wrapped_kek_real_hex, salt_decoy_hex, wrapped_kek_decoy_hex, decoy_enabled, wrap_method = row
             wrap_method = wrap_method or "xor_legacy"
@@ -264,13 +241,7 @@ async def unlock_passphrase(
 
         if not salt_real:
             pkg._record_unlock_attempt(user_id, vault_id, False, 'passphrase')
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="Vault not properly configured"
-                ).model_dump()
-            )
+            raise http_400("Vault not properly configured")
 
         # Try real vault first
         kek_attempt = derive_kek_from_passphrase(passphrase, salt_real)
@@ -324,10 +295,4 @@ async def unlock_passphrase(
     except Exception as e:
         pkg._record_unlock_attempt(user_id, vault_id, False, 'passphrase')
         logger.error("Passphrase unlock failed", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to unlock vault"
-            ).model_dump()
-        )
+        raise http_500("Failed to unlock vault")
