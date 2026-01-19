@@ -188,10 +188,7 @@ async def commit_upload(
 
     metadata = load_metadata(upload_id)
     if not metadata:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"error": "upload_not_found", "message": "Upload session not found"}
-        )
+        raise http_404("Upload session not found", resource="upload")
 
     # Verify ownership
     if metadata["user_id"] != get_user_id(current_user):
@@ -339,10 +336,7 @@ async def get_upload_status(
     """Get current status of an upload session."""
     metadata = load_metadata(upload_id)
     if not metadata:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"error": "upload_not_found", "message": "Upload session not found"}
-        )
+        raise http_404("Upload session not found", resource="upload")
 
     # Verify ownership
     if metadata["user_id"] != get_user_id(current_user):

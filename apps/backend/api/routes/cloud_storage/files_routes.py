@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from api.auth_middleware import get_current_user
 from api.routes.schemas import SuccessResponse
+from api.errors import http_403, http_404
 from api.utils import get_user_id
 
 from api.routes.cloud_storage.models import FileListResponse
@@ -73,20 +74,14 @@ async def delete_file(
     file_meta_path = cloud_files_dir / f"{file_id}.json"
 
     if not file_meta_path.exists():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"error": "file_not_found", "message": "File not found"}
-        )
+        raise http_404("File not found", resource="file")
 
     with open(file_meta_path, 'r') as f:
         file_metadata = json.load(f)
 
     # Verify ownership
     if file_metadata["user_id"] != get_user_id(current_user):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={"error": "forbidden", "message": "Not authorized to delete this file"}
-        )
+        raise http_403("Not authorized to delete this file")
 
     # Delete from S3 if applicable
     if file_metadata.get("storage_backend") == "s3" and file_metadata.get("s3_key"):
