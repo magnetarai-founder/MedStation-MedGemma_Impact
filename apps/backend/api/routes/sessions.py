@@ -18,9 +18,11 @@ from pathlib import Path
 from typing import Dict
 from fastapi import APIRouter, HTTPException, status, Depends
 
+from pydantic import BaseModel
 from neutron_core.engine import NeutronEngine
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
 from api.auth_middleware import get_current_user
+from api.errors import http_400, http_404, http_503
 
 router = APIRouter(
     prefix="/api/v1/sessions",
@@ -68,21 +70,9 @@ async def create_session() -> SuccessResponse[SessionResponse]:
 
     except (MemoryError, OSError) as e:
         # Specific exceptions for resource issues
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Insufficient resources to create session"
-            ).model_dump()
-        )
+        raise http_503("Insufficient resources to create session")
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=ErrorResponse(
-                error_code=ErrorCode.VALIDATION_ERROR,
-                message=str(e)
-            ).model_dump()
-        )
+        raise http_400(str(e))
 
 @router.delete(
     "/{session_id}",
@@ -97,13 +87,7 @@ async def delete_session_route(session_id: str) -> SuccessResponse[Dict]:
     session = get_session(session_id)
 
     if session is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=ErrorResponse(
-                error_code=ErrorCode.NOT_FOUND,
-                message="Session not found"
-            ).model_dump()
-        )
+        raise http_404("Session not found", resource="session")
 
     try:
         # Close engine

@@ -16,7 +16,8 @@ from pydantic import BaseModel, Field
 
 from api.auth_middleware import get_current_user
 from api.services import kanban_service as kb
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
+from api.errors import http_400, http_500
 
 logger = logging.getLogger(__name__)
 
@@ -59,13 +60,7 @@ async def list_projects(
 
     except Exception as e:
         logger.error(f"Failed to list projects", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve projects"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve projects")
 
 
 @router.post(
@@ -89,24 +84,12 @@ async def create_project(
         )
 
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=ErrorResponse(
-                error_code=ErrorCode.VALIDATION_ERROR,
-                message=str(e)
-            ).model_dump()
-        )
+        raise http_400(str(e))
 
     except HTTPException:
         raise
 
     except Exception as e:
         logger.error(f"Failed to create project", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to create project"
-            ).model_dump()
-        )
+        raise http_500("Failed to create project")
 

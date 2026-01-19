@@ -13,9 +13,10 @@ Follows MagnetarStudio API standards (see API_STANDARDS.md).
 import logging
 from typing import Dict
 from fastapi import APIRouter, HTTPException, Form, Depends, status
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
 
 from api.auth_middleware import get_current_user
+from api.errors import http_500
 from api.utils import get_user_id
 from api.services.vault.core import get_vault_service
 
@@ -87,13 +88,7 @@ async def get_recent_files_endpoint(
         raise
     except Exception as e:
         logger.error(f"Failed to get recent files for user {user_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to get recent files"
-            ).model_dump()
-        )
+        raise http_500("Failed to get recent files")
 
 
 @router.get(
@@ -124,13 +119,7 @@ async def get_storage_statistics(
         raise
     except Exception as e:
         logger.error(f"Failed to get storage stats for user {user_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to get storage statistics"
-            ).model_dump()
-        )
+        raise http_500("Failed to get storage statistics")
 
 
 @router.get(
@@ -186,10 +175,4 @@ async def get_audit_logs_endpoint(
         raise
     except Exception as e:
         logger.error(f"Failed to get audit logs for user {user_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to get audit logs"
-            ).model_dump()
-        )
+        raise http_500("Failed to get audit logs")

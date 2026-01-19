@@ -11,9 +11,10 @@ from typing import Dict, Any
 from fastapi import APIRouter, Request, HTTPException, Depends, status
 from pydantic import BaseModel
 
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
 
 from api.auth_middleware import get_current_user, User
+from api.errors import http_500
 
 logger = logging.getLogger(__name__)
 
@@ -114,13 +115,7 @@ async def get_settings(
 
     except Exception as e:
         logger.error(f"Failed to get settings", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve settings"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve settings")
 
 @router.post(
     "",
@@ -151,13 +146,7 @@ async def update_settings(
 
     except Exception as e:
         logger.error(f"Failed to update settings", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to update settings"
-            ).model_dump()
-        )
+        raise http_500("Failed to update settings")
 
 @router.get(
     "/memory-status",
@@ -214,10 +203,4 @@ async def get_memory_status(
 
     except Exception as e:
         logger.error(f"Failed to get memory status", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve memory status"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve memory status")
