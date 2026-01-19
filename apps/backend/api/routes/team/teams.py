@@ -8,7 +8,8 @@ Follows MagnetarStudio API standards (see API_STANDARDS.md).
 
 from fastapi import APIRouter, HTTPException, Request, status
 
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
+from api.errors import http_404, http_500
 
 router = APIRouter(prefix="/api/v1/team", tags=["teams"])
 
@@ -61,13 +62,7 @@ async def create_team_endpoint(request: Request) -> SuccessResponse:
 
     except Exception as e:
         logger.error(f"Failed to create team", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to create team"
-            ).model_dump()
-        )
+        raise http_500("Failed to create team")
 
 
 @router.post(
@@ -103,13 +98,7 @@ async def create_team_v2_endpoint(request: Request) -> SuccessResponse:
 
     except Exception as e:
         logger.error(f"Failed to create team (v2)", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to create team"
-            ).model_dump()
-        )
+        raise http_500("Failed to create team")
 
 
 @router.get(
@@ -133,13 +122,7 @@ async def get_team_endpoint(request: Request, team_id: str) -> SuccessResponse:
         team = await tm.get_team(team_id)
 
         if not team:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Team not found"
-                ).model_dump()
-            )
+            raise http_404("Team not found", resource="team")
 
         return SuccessResponse(
             data=team,
@@ -151,13 +134,7 @@ async def get_team_endpoint(request: Request, team_id: str) -> SuccessResponse:
 
     except Exception as e:
         logger.error(f"Failed to get team {team_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve team"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve team")
 
 
 @router.get(
@@ -191,10 +168,4 @@ async def get_user_teams_endpoint(request: Request, user_id: str) -> SuccessResp
 
     except Exception as e:
         logger.error(f"Failed to get teams for user {user_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve user teams"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve user teams")

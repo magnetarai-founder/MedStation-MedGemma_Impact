@@ -27,7 +27,8 @@ from pydantic import BaseModel, Field
 from api.services.setup_wizard import get_setup_wizard
 from api.founder_setup_wizard import get_founder_wizard
 
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
+from api.errors import http_400, http_403, http_500
 from api.middleware.rate_limit import limiter, RATE_LIMITS
 from api.auth_middleware import auth_service
 from api.core.exceptions import handle_exceptions
@@ -304,13 +305,7 @@ async def download_model(request: Request, body: DownloadModelRequest) -> Succes
             message=f"Model '{body.model_name}' downloaded successfully"
         )
     else:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message=f"Failed to download model '{body.model_name}'"
-            ).model_dump(mode='json')
-        )
+        raise http_500(f"Failed to download model '{body.model_name}'")
 
 
 @router.get(
@@ -443,13 +438,7 @@ async def configure_hot_slots(request: Request, body: ConfigureHotSlotsRequest) 
     # Validate slot numbers
     for slot_num in body.slots.keys():
         if slot_num not in [1, 2, 3, 4]:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=f"Invalid slot number: {slot_num} (must be 1-4)"
-                ).model_dump(mode='json')
-            )
+            raise http_400(f"Invalid slot number: {slot_num} (must be 1-4)")
 
     # Configure hot slots
     success = await wizard.configure_hot_slots(body.slots)
@@ -465,13 +454,7 @@ async def configure_hot_slots(request: Request, body: ConfigureHotSlotsRequest) 
             message="Hot slots configured successfully"
         )
     else:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to configure hot slots"
-            ).model_dump(mode='json')
-        )
+        raise http_500("Failed to configure hot slots")
 
 
 @router.post(
@@ -498,13 +481,7 @@ async def create_account(request: Request, body: CreateAccountRequest) -> Succes
             f"SECURITY: Attempted account creation after setup complete. "
             f"IP: {request.client.host if request.client else 'unknown'}"
         )
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=ErrorResponse(
-                error_code=ErrorCode.FORBIDDEN,
-                message="Setup already completed. Cannot create accounts via setup wizard."
-            ).model_dump(mode='json')
-        )
+        raise http_403("Setup already completed. Cannot create accounts via setup wizard.")
 
     # Validate password confirmation
     if body.password != body.confirm_password:
@@ -561,13 +538,7 @@ async def complete_setup(request: Request) -> SuccessResponse[CompleteSetupRespo
             message="Setup wizard completed successfully"
         )
     else:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to complete setup"
-            ).model_dump(mode='json')
-        )
+        raise http_500("Failed to complete setup")
 
 
 # Export router

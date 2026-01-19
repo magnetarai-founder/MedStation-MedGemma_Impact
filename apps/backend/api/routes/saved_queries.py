@@ -12,8 +12,8 @@ from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, Request, Query, Depends, status
 from pydantic import BaseModel
 
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
-
+from api.routes.schemas import SuccessResponse
+from api.errors import http_404, http_500
 from api.auth_middleware import get_current_user, User
 
 logger = logging.getLogger(__name__)
@@ -79,13 +79,7 @@ async def save_query(
 
     except Exception as e:
         logger.error(f"Failed to save query", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to save query"
-            ).model_dump()
-        )
+        raise http_500("Failed to save query")
 
 @router.get(
     "",
@@ -117,13 +111,7 @@ async def get_saved_queries(
 
     except Exception as e:
         logger.error(f"Failed to get saved queries", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve saved queries"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve saved queries")
 
 @router.put(
     "/{query_id}",
@@ -147,13 +135,7 @@ async def update_saved_query(
         existing = next((q for q in all_queries if q['id'] == query_id), None)
 
         if not existing:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Query not found"
-                ).model_dump()
-            )
+            raise http_404("Query not found", resource="query")
 
         # Merge updates with existing data
         elohimos_memory.update_saved_query(
@@ -176,13 +158,7 @@ async def update_saved_query(
 
     except Exception as e:
         logger.error(f"Failed to update query {query_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to update query"
-            ).model_dump()
-        )
+        raise http_500("Failed to update query")
 
 @router.delete(
     "/{query_id}",
@@ -211,10 +187,4 @@ async def delete_saved_query(
 
     except Exception as e:
         logger.error(f"Failed to delete query {query_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to delete query"
-            ).model_dump()
-        )
+        raise http_500("Failed to delete query")

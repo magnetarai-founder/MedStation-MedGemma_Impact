@@ -15,7 +15,8 @@ from api.auth_middleware import get_current_user
 from api.utils import sanitize_filename, file_lock, get_user_id
 from api.services.vault.core import get_vault_service
 from api.services.vault.schemas import VaultFile
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
+from api.errors import http_400, http_500
 
 logger = logging.getLogger(__name__)
 
@@ -61,25 +62,13 @@ async def upload_vault_file(
         user_id = get_user_id(current_user)
 
         if vault_type not in ('real', 'decoy'):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="vault_type must be 'real' or 'decoy'"
-                ).model_dump()
-            )
+            raise http_400("vault_type must be 'real' or 'decoy'")
 
         # Read file data
         file_data = await file.read()
 
         if not file_data:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="Empty file"
-                ).model_dump()
-            )
+            raise http_400("Empty file")
 
         # Get MIME type
         mime_type = file.content_type or "application/octet-stream"
@@ -117,13 +106,7 @@ async def upload_vault_file(
 
     except Exception as e:
         logger.error(f"File upload failed", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to upload file"
-            ).model_dump()
-        )
+        raise http_500("Failed to upload file")
 
 
 class ChunkUploadResponse(BaseModel):
@@ -207,13 +190,7 @@ async def upload_chunk(
                 for i in range(total_chunks):
                     chunk_file = temp_dir / f"chunk_{i}"
                     if not chunk_file.exists():
-                        raise HTTPException(
-                            status_code=status.HTTP_400_BAD_REQUEST,
-                            detail=ErrorResponse(
-                                error_code=ErrorCode.VALIDATION_ERROR,
-                                message=f"Missing chunk {i}"
-                            ).model_dump()
-                        )
+                        raise http_400(f"Missing chunk {i}")
                     with open(chunk_file, 'rb') as f:
                         complete_file += f.read()
 
@@ -264,10 +241,4 @@ async def upload_chunk(
 
     except Exception as e:
         logger.error(f"Chunked upload failed", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to upload chunk"
-            ).model_dump()
-        )
+        raise http_500("Failed to upload chunk")
