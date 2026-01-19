@@ -7,8 +7,8 @@ Split from models.py for maintainability.
 import logging
 from fastapi import APIRouter, HTTPException, Request, Depends, status
 
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
-
+from api.routes.schemas import SuccessResponse
+from api.errors import http_500
 from api.auth_middleware import get_current_user
 
 logger = logging.getLogger(__name__)
@@ -31,13 +31,7 @@ async def get_system_memory_endpoint():
         return SuccessResponse(data=memory_stats, message="System memory retrieved")
     except Exception as e:
         logger.error(f"Failed to get system memory: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to get system memory"
-            ).model_dump()
-        )
+        raise http_500("Failed to get system memory")
 
 
 @router.get(
@@ -78,13 +72,7 @@ async def shutdown_ollama_server_endpoint(
         return SuccessResponse(data=result, message="Ollama server shutdown initiated")
     except Exception as e:
         logger.error(f"Failed to shutdown Ollama: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to shutdown Ollama server"
-            ).model_dump()
-        )
+        raise http_500("Failed to shutdown Ollama server")
 
 
 @router.post(
@@ -105,13 +93,7 @@ async def start_ollama_server_endpoint(
         return SuccessResponse(data=result, message="Ollama server start initiated")
     except Exception as e:
         logger.error(f"Failed to start Ollama: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to start Ollama server"
-            ).model_dump()
-        )
+        raise http_500("Failed to start Ollama server")
 
 
 @router.post(
@@ -141,10 +123,4 @@ async def restart_ollama_server_endpoint(
         return SuccessResponse(data=result, message="Ollama server restart initiated")
     except Exception as e:
         logger.error(f"Failed to restart Ollama: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to restart Ollama server"
-            ).model_dump()
-        )
+        raise http_500("Failed to restart Ollama server")

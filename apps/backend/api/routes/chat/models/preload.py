@@ -7,8 +7,8 @@ Split from models.py for maintainability.
 import logging
 from fastapi import APIRouter, HTTPException, Request, Depends, status
 
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
-
+from api.routes.schemas import SuccessResponse
+from api.errors import http_500
 from api.auth_middleware import get_current_user
 
 logger = logging.getLogger(__name__)
@@ -47,24 +47,12 @@ async def preload_model_endpoint(
                 message=f"Model '{model}' pre-loaded successfully"
             )
         else:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.INTERNAL_ERROR,
-                    message=f"Failed to pre-load model '{model}'"
-                ).model_dump()
-            )
+            raise http_500(f"Failed to pre-load model '{model}'")
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to preload model: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to preload model"
-            ).model_dump()
-        )
+        raise http_500("Failed to preload model")
 
 
 @router.post(
@@ -94,21 +82,9 @@ async def unload_model_endpoint(
                 message=f"Model '{model_name}' unloaded successfully"
             )
         else:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.INTERNAL_ERROR,
-                    message=f"Failed to unload model '{model_name}'"
-                ).model_dump()
-            )
+            raise http_500(f"Failed to unload model '{model_name}'")
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to unload model: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to unload model"
-            ).model_dump()
-        )
+        raise http_500("Failed to unload model")

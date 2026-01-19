@@ -15,7 +15,8 @@ from pydantic import BaseModel, Field
 
 # Auth imports
 from api.auth_middleware import get_current_user
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
+from api.errors import http_500
 
 logger = logging.getLogger(__name__)
 
@@ -74,22 +75,10 @@ def load_curated_models() -> Dict[str, Any]:
             return json.load(f)
     except FileNotFoundError:
         logger.error(f"Curated models file not found: {data_path}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Model recommendations data not found"
-            ).model_dump()
-        )
+        raise http_500("Model recommendations data not found")
     except json.JSONDecodeError as e:
         logger.error(f"Invalid JSON in curated models", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Invalid model recommendations data"
-            ).model_dump()
-        )
+        raise http_500("Invalid model recommendations data")
 
 
 # ===== Compatibility Logic =====
@@ -275,13 +264,7 @@ async def get_recommended_models(
 
     except Exception as e:
         logger.error(f"Failed to get model recommendations", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve model recommendations"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve model recommendations")
 
 
 # ===== Health Check =====
@@ -331,13 +314,7 @@ async def recommendations_health() -> SuccessResponse[RecommendationsHealthRespo
 
     except Exception as e:
         logger.error(f"Health check failed", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to check recommendations health"
-            ).model_dump()
-        )
+        raise http_500("Failed to check recommendations health")
 
 
 # ===== Model Enrichment Endpoint =====

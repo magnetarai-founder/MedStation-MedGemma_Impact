@@ -15,7 +15,6 @@ from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 
 from api.schemas.api_models import JsonConvertRequest, JsonConvertResponse
-from api.routes.schemas import ErrorResponse, ErrorCode
 from api.errors import http_400, http_404, http_500
 from api.routes.sql_json.utils import (
     get_sessions,
@@ -51,13 +50,10 @@ async def convert_json_router(
         json_size = len(body.json_data.encode('utf-8'))
 
         if json_size > MAX_JSON_SIZE:
+            # Note: Using 413 Request Entity Too Large - no structured helper available
             raise HTTPException(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=f"JSON payload too large ({json_size / 1024 / 1024:.1f}MB). Maximum size is {MAX_JSON_SIZE / 1024 / 1024}MB",
-                    details={"size_mb": json_size / 1024 / 1024, "max_mb": MAX_JSON_SIZE / 1024 / 1024}
-                ).model_dump()
+                detail=f"JSON payload too large ({json_size / 1024 / 1024:.1f}MB). Maximum size is {MAX_JSON_SIZE / 1024 / 1024}MB"
             )
 
         api_dir = Path(__file__).parent.parent.parent
@@ -247,12 +243,10 @@ async def download_json_result_router(
         if not excel_path.exists():
             # Clean up stale session data
             del sessions[session_id]['json_result']
+            # Note: Using 410 Gone for expired files - no structured helper available
             raise HTTPException(
                 status_code=status.HTTP_410_GONE,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Result file expired or was cleaned up. Please run the conversion again."
-                ).model_dump()
+                detail="Result file expired or was cleaned up. Please run the conversion again."
             )
 
         # Check file age (auto-cleanup after 24 hours)
@@ -261,24 +255,16 @@ async def download_json_result_router(
             if file_age_seconds > 86400:  # 24 hours
                 excel_path.unlink(missing_ok=True)
                 del sessions[session_id]['json_result']
+                # Note: Using 410 Gone for expired files - no structured helper available
                 raise HTTPException(
                     status_code=status.HTTP_410_GONE,
-                    detail=ErrorResponse(
-                        error_code=ErrorCode.NOT_FOUND,
-                        message="Result file expired (24-hour limit). Please run the conversion again."
-                    ).model_dump()
+                    detail="Result file expired (24-hour limit). Please run the conversion again."
                 )
         except OSError as e:
             # File stat failed, file probably doesn't exist
             logger.error(f"File stat failed for {excel_path}", exc_info=True)
             del sessions[session_id]['json_result']
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Result file not accessible. Please run the conversion again."
-                ).model_dump()
-            )
+            raise http_404("Result file not accessible. Please run the conversion again.", resource="excel_file")
 
         if format == "excel":
             return FileResponse(
