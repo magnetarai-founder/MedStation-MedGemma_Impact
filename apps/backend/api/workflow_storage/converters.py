@@ -8,30 +8,17 @@ import json
 import sqlite3
 from datetime import datetime
 
-try:
-    from api.workflow_models import (
-        Workflow,
-        WorkItem,
-        Stage,
-        WorkflowTrigger,
-        StageTransition,
-        WorkItemAttachment,
-        WorkItemStatus,
-        WorkItemPriority,
-        WorkflowType,
-    )
-except ImportError:
-    from workflow_models import (
-        Workflow,
-        WorkItem,
-        Stage,
-        WorkflowTrigger,
-        StageTransition,
-        WorkItemAttachment,
-        WorkItemStatus,
-        WorkItemPriority,
-        WorkflowType,
-    )
+from api.workflow_models import (
+    Workflow,
+    WorkItem,
+    Stage,
+    WorkflowTrigger,
+    StageTransition,
+    WorkItemAttachment,
+    WorkItemStatus,
+    WorkItemPriority,
+    WorkflowType,
+)
 
 
 def row_to_workflow(row: sqlite3.Row) -> Workflow:

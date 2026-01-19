@@ -33,10 +33,7 @@ except ImportError as e:
 if TYPE_CHECKING:
     from .service import P2PChatService
 
-try:
-    from api.p2p_chat_models import Message, MessageType, PeerStatus
-except ImportError:
-    from p2p_chat_models import Message, MessageType, PeerStatus
+from api.p2p_chat_models import Message, MessageType, PeerStatus
 
 from .types import PROTOCOL_ID, FILE_PROTOCOL_ID
 from . import storage

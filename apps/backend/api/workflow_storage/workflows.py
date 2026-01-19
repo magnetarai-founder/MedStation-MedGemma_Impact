@@ -11,10 +11,7 @@ from datetime import datetime, UTC
 from pathlib import Path
 from typing import List, Optional
 
-try:
-    from api.workflow_models import Workflow
-except ImportError:
-    from workflow_models import Workflow
+from api.workflow_models import Workflow
 
 from api.workflow_storage.converters import row_to_workflow
 

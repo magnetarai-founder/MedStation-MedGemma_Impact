@@ -16,10 +16,7 @@ from typing import List, Optional, Dict, TYPE_CHECKING
 if TYPE_CHECKING:
     from .service import P2PChatService
 
-try:
-    from api.p2p_chat_models import Channel, ChannelType, CreateChannelRequest
-except ImportError:
-    from p2p_chat_models import Channel, ChannelType, CreateChannelRequest
+from api.p2p_chat_models import Channel, ChannelType, CreateChannelRequest
 
 from . import storage
 

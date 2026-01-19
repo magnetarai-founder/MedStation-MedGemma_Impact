@@ -12,10 +12,7 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 import json
 
-try:
-    from .config_paths import PATHS
-except ImportError:
-    from config_paths import PATHS
+from .config_paths import PATHS
 
 logger = logging.getLogger(__name__)
 

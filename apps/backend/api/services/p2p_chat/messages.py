@@ -25,10 +25,7 @@ except ImportError:
 if TYPE_CHECKING:
     from .service import P2PChatService
 
-try:
-    from api.p2p_chat_models import Message, MessageType, SendMessageRequest
-except ImportError:
-    from p2p_chat_models import Message, MessageType, SendMessageRequest
+from api.p2p_chat_models import Message, MessageType, SendMessageRequest
 
 from .types import PROTOCOL_ID
 from . import storage

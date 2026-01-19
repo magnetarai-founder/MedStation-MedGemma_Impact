@@ -10,10 +10,7 @@ import logging
 from pathlib import Path
 from typing import List, Optional
 
-try:
-    from api.workflow_models import WorkItem, WorkItemStatus
-except ImportError:
-    from workflow_models import WorkItem, WorkItemStatus
+from api.workflow_models import WorkItem, WorkItemStatus
 
 from api.workflow_storage.converters import (
     row_to_work_item,

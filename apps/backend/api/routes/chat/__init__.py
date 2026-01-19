@@ -5,10 +5,7 @@ Chat routes package - Aggregates all chat sub-routers
 __all__ = ["router", "public_router"]
 
 from fastapi import APIRouter, Depends
-try:
-    from api.auth_middleware import get_current_user
-except ImportError:
-    from api.auth_middleware import get_current_user
+from api.auth_middleware import get_current_user
 
 from . import sessions, messages, files, model_tags
 from .models import router as models_router  # Refactored package

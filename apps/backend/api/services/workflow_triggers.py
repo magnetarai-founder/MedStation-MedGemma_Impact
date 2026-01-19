@@ -7,31 +7,22 @@ import logging
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 
+from ..workflow_models import (
+    WorkflowTriggerType,
+    WorkItem,
+    WorkItemStatus,
+    WorkItemPriority,
+)
+from ..workflow_storage import WorkflowStorage
+
+# Optional audit/metrics - graceful degradation if unavailable
 try:
-    from ..workflow_models import (
-        WorkflowTriggerType,
-        WorkItem,
-        WorkItemStatus,
-        WorkItemPriority,
-    )
-    from ..workflow_storage import WorkflowStorage
     from ..audit_logger import AuditAction, audit_log_sync
     from ..metrics import get_metrics
 except ImportError:
-    from workflow_models import (
-        WorkflowTriggerType,
-        WorkItem,
-        WorkItemStatus,
-        WorkItemPriority,
-    )
-    from workflow_storage import WorkflowStorage
-    try:
-        from audit_logger import AuditAction, audit_log_sync
-        from metrics import get_metrics
-    except ImportError:
-        AuditAction = None
-        audit_log_sync = lambda *args, **kwargs: None
-        get_metrics = lambda: None
+    AuditAction = None
+    audit_log_sync = lambda *args, **kwargs: None
+    get_metrics = lambda: None
 
 logger = logging.getLogger(__name__)
 metrics = get_metrics() if get_metrics() else None

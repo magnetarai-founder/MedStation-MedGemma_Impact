@@ -63,10 +63,7 @@ def trigger_n8n_automation(
     """
     import asyncio
 
-    try:
-        from api.n8n_integration import get_n8n_service
-    except ImportError:
-        from n8n_integration import get_n8n_service
+    from api.n8n_integration import get_n8n_service
 
     service = get_n8n_service()
     if not service or not service.config.enabled:

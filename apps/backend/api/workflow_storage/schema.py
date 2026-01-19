@@ -8,10 +8,7 @@ import sqlite3
 import logging
 from pathlib import Path
 
-try:
-    from api.security.sql_safety import quote_identifier
-except ImportError:
-    from security.sql_safety import quote_identifier
+from api.security.sql_safety import quote_identifier
 
 logger = logging.getLogger(__name__)
 

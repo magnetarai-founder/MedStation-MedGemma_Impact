@@ -25,10 +25,7 @@ def get_db_path(db_path: Optional[str] = None) -> Path:
     if db_path is not None:
         return Path(db_path)
 
-    try:
-        from api.config_paths import get_config_paths
-    except ImportError:
-        from config_paths import get_config_paths
+    from api.config_paths import get_config_paths
 
     paths = get_config_paths()
     return Path(paths.data_dir) / "workflows.db"

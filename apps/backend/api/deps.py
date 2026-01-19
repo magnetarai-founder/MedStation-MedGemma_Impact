@@ -8,10 +8,7 @@ and help prevent circular imports during refactors.
 Mechanical scaffold only — no behavior changes.
 """
 
-try:
-    from .auth_middleware import get_current_user, get_current_user_optional  # re-export
-except ImportError:
-    from auth_middleware import get_current_user, get_current_user_optional  # re-export
+from .auth_middleware import get_current_user, get_current_user_optional  # re-export
 
 __all__ = [
     "get_current_user",

@@ -14,10 +14,7 @@ import logging
 from typing import Optional, Dict, List
 from fastapi import APIRouter, HTTPException, Request, Depends, Query, status, Body
 
-try:
-    from api.auth_middleware import get_current_user, User
-except ImportError:
-    from api.auth_middleware import get_current_user, User
+from api.auth_middleware import get_current_user, User
 from api.utils import get_user_id, get_user_role
 from api.permission_engine import require_perm_team
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode

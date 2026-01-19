@@ -14,14 +14,9 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Callable
 
-try:
-    from api.p2p_chat_models import (
-        Peer, Channel, Message, SendMessageRequest, CreateChannelRequest, PeerStatus
-    )
-except ImportError:
-    from p2p_chat_models import (
-        Peer, Channel, Message, SendMessageRequest, CreateChannelRequest, PeerStatus
-    )
+from api.p2p_chat_models import (
+    Peer, Channel, Message, SendMessageRequest, CreateChannelRequest, PeerStatus
+)
 
 from .types import DB_PATH
 from . import storage
