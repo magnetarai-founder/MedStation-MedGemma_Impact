@@ -6,7 +6,6 @@ Offline-first, device-based authentication with JWT tokens
 
 import os
 import jwt
-import sqlite3
 import hashlib
 import secrets
 import logging
@@ -19,6 +18,7 @@ from pydantic import BaseModel
 from api.utils import sanitize_for_log
 from api.audit.logger import get_audit_logger
 from api.audit.actions import AuditAction
+from api.db.pool import get_connection_pool
 
 logger = logging.getLogger(__name__)
 
@@ -134,6 +134,8 @@ class AuthService:
             db_path = get_config_paths().auth_db
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        # Use connection pool for better performance
+        self._pool = get_connection_pool(self.db_path, min_size=2, max_size=10)
         self._init_db()
 
     def _init_db(self) -> None:
@@ -144,7 +146,7 @@ class AuthService:
         Migrations run at startup via startup_migrations.py before this method is called.
         This method now only sets SQLite pragmas for performance optimization.
         """
-        with sqlite3.connect(str(self.db_path)) as conn:
+        with self._pool.get_connection() as conn:
             cursor = conn.cursor()
 
             # Enable WAL mode for better concurrent read/write performance
@@ -204,7 +206,7 @@ class AuthService:
 
     def create_user(self, username: str, password: str, device_id: str) -> User:
         """Create a new user"""
-        with sqlite3.connect(str(self.db_path)) as conn:
+        with self._pool.get_connection() as conn:
             cursor = conn.cursor()
 
             # Check if username already exists
@@ -238,7 +240,7 @@ class AuthService:
         Returns:
             List of User objects (without passwords)
         """
-        with sqlite3.connect(str(self.db_path)) as conn:
+        with self._pool.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT user_id, username, device_id, created_at
@@ -266,7 +268,7 @@ class AuthService:
         """
 
         # AUTH-P2: All users (including Founder) authenticate via DB
-        with sqlite3.connect(str(self.db_path)) as conn:
+        with self._pool.get_connection() as conn:
             cursor = conn.cursor()
 
             cursor.execute("""
@@ -379,7 +381,7 @@ class AuthService:
                 return None
 
             # Check if session exists and is valid
-            with sqlite3.connect(str(self.db_path)) as conn:
+            with self._pool.get_connection() as conn:
                 cursor = conn.cursor()
 
                 token_hash = hashlib.sha256(token.encode()).hexdigest()
@@ -447,7 +449,7 @@ class AuthService:
         try:
             refresh_token_hash = hashlib.sha256(refresh_token.encode()).hexdigest()
 
-            with sqlite3.connect(str(self.db_path)) as conn:
+            with self._pool.get_connection() as conn:
                 cursor = conn.cursor()
 
                 # Find session with matching refresh token
@@ -527,7 +529,7 @@ class AuthService:
         try:
             payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
 
-            with sqlite3.connect(str(self.db_path)) as conn:
+            with self._pool.get_connection() as conn:
                 cursor = conn.cursor()
 
                 token_hash = hashlib.sha256(token.encode()).hexdigest()
@@ -547,7 +549,7 @@ class AuthService:
 
     def cleanup_expired_sessions(self) -> None:
         """Remove expired sessions"""
-        with sqlite3.connect(str(self.db_path)) as conn:
+        with self._pool.get_connection() as conn:
             cursor = conn.cursor()
 
             cursor.execute("""
