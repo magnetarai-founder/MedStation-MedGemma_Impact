@@ -16,7 +16,8 @@ from api.permission_engine import require_perm
 from api.utils import get_user_id
 
 from api.services.analytics import get_analytics_service
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
+from api.errors import http_500
 
 logger = logging.getLogger(__name__)
 
@@ -87,13 +88,7 @@ async def get_usage_analytics(
 
     except Exception as e:
         logger.error(f"Failed to get usage analytics", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve usage analytics"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve usage analytics")
 
 
 @router.get(
@@ -157,10 +152,4 @@ async def export_analytics(
 
     except Exception as e:
         logger.error(f"Failed to export analytics", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to export analytics data"
-            ).model_dump()
-        )
+        raise http_500("Failed to export analytics data")

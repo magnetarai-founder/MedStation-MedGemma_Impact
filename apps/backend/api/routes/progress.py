@@ -10,10 +10,11 @@ import logging
 from datetime import UTC, datetime
 
 from typing import Any, Dict
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 
 from api.auth_middleware import get_current_user
+from api.errors import http_404, http_500
 from api.main import (
     delete_progress_stream,
     get_progress_stream,
@@ -137,7 +138,7 @@ async def update_progress(
 
     except Exception as e:
         logger.error(f"Failed to update progress for task {task_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500("Failed to update progress")
 
 
 @router.delete("/{task_id}")
@@ -149,7 +150,7 @@ async def clear_progress(task_id: str) -> Dict[str, Any]:
         logger.info(f"Cleared progress tracking for task {task_id}")
         return {"task_id": task_id, "cleared": True}
 
-    raise HTTPException(status_code=404, detail="Task not found")
+    raise http_404("Task not found", resource="task")
 
 
 @router.get("")

@@ -17,7 +17,8 @@ from api.auth_middleware import get_current_user, User
 from api.services.nlq_service import get_nlq_service
 from api.utils import sanitize_for_log, get_user_id
 from api.config_paths import PATHS
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
+from api.errors import http_500
 
 logger = logging.getLogger(__name__)
 
@@ -137,13 +138,7 @@ async def natural_language_query(
 
     except Exception as e:
         logger.error(f"NLQ processing error", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to process natural language query"
-            ).model_dump()
-        )
+        raise http_500("Failed to process natural language query")
 
 
 class NLQHistoryItem(BaseModel):
@@ -212,10 +207,4 @@ async def nlq_recent(
 
     except Exception as e:
         logger.error(f"Failed to fetch NLQ history", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve NLQ history"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve NLQ history")

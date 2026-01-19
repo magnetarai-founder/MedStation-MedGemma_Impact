@@ -6,7 +6,7 @@ Handles viewing and deleting query history for sessions.
 
 from fastapi import APIRouter, HTTPException, status
 from api.schemas.api_models import QueryHistoryResponse, SuccessResponse
-from api.routes.schemas import ErrorResponse, ErrorCode
+from api.errors import http_404, http_500
 from api.routes.sql_json.utils import (
     get_logger,
     get_sessions,
@@ -56,13 +56,7 @@ async def get_query_history_router(session_id: str) -> QueryHistoryResponse:
         raise
     except Exception as e:
         logger.error(f"Failed to get query history for session {session_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve query history"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve query history")
 
 
 @router.delete(
@@ -87,14 +81,7 @@ async def delete_query_from_history_router(
 
         queries = sessions[session_id].get('queries', {})
         if query_id not in queries:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message=f"Query '{query_id}' not found",
-                    details={"query_id": query_id, "session_id": session_id}
-                ).model_dump()
-            )
+            raise http_404(f"Query '{query_id}' not found", resource="query")
 
         del queries[query_id]
 
@@ -112,10 +99,4 @@ async def delete_query_from_history_router(
         raise
     except Exception as e:
         logger.error(f"Failed to delete query {query_id} from session {session_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to delete query from history"
-            ).model_dump()
-        )
+        raise http_500("Failed to delete query from history")
