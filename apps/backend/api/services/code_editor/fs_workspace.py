@@ -97,8 +97,9 @@ def walk_directory(
                         stat = entry.stat()
                         item['size'] = stat.st_size
                         item['modified'] = stat.st_mtime
-                    except Exception:
-                        pass
+                    except Exception as stat_err:
+                        # File may have been deleted between listing and stat
+                        logger.debug(f"Failed to stat {entry.name}: {stat_err}")
                     items.append(item)
 
     except PermissionError:

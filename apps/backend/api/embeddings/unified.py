@@ -40,9 +40,9 @@ class UnifiedEmbedder:
                 backend = data.get('embedding_backend', 'mlx').lower()
                 if backend in ['mlx', 'ollama', 'sentence-transformers', 'hash']:
                     return backend
-        except Exception:
-            pass
-            
+        except Exception as e:
+            logger.debug(f"Failed to read embedding config: {e}")
+
         return 'mlx'  # Default
     
     def is_available(self) -> bool:
@@ -83,8 +83,8 @@ class UnifiedEmbedder:
                     self.model_name = "MLX Sentence Transformer"
                     logger.info("MLX sentence transformer initialized")
                     return True
-            except Exception:
-                pass  # Silently fail
+            except Exception as e:
+                logger.debug(f"MLX sentence transformer unavailable: {e}")
 
             try:
                 # Fall back to MLX embedder
@@ -96,8 +96,8 @@ class UnifiedEmbedder:
                     self.model_name = "MLX Embedder"
                     logger.info("MLX embedder initialized")
                     return True
-            except Exception:
-                pass  # Silently fail
+            except Exception as e:
+                logger.debug(f"MLX embedder unavailable: {e}")
 
         elif self.backend == 'sentence-transformers':
             try:

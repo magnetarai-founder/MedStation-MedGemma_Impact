@@ -39,7 +39,7 @@ def _run_ollama(model: str, prompt: str, timeout: int = 20) -> Optional[str]:
         if p.returncode == 0 and p.stdout:
             return p.stdout.strip()
     except Exception:
-        pass
+        pass  # Ollama not available or timed out - fallback to heuristics
     return None
 
 
@@ -100,7 +100,7 @@ class Phi3IntentClassifier:
                     conf = float(data.get("confidence", 0.6))
                     return {"type": intent_type, "confidence": conf}
                 except Exception:
-                    pass
+                    pass  # JSON parsing failed - fallback to heuristics
 
         # Fallback
         return _heuristic(command)
