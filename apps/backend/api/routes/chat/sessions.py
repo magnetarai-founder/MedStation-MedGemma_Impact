@@ -14,6 +14,7 @@ import logging
 from typing import Optional, Dict, List
 from fastapi import APIRouter, HTTPException, Request, Depends, Query, status, Body
 
+from api.errors import http_400, http_403, http_404, http_500
 from api.auth_middleware import get_current_user, User
 from api.utils import get_user_id, get_user_role
 from api.permission_engine import require_perm_team
@@ -67,13 +68,7 @@ async def create_chat_session(
 
     except Exception as e:
         logger.error(f"Failed to create chat session", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to create chat session"
-            ).model_dump()
-        )
+        raise http_500("Failed to create chat session")
 
 
 @router.get(
@@ -116,13 +111,7 @@ async def list_chat_sessions(
 
     except Exception as e:
         logger.error(f"Failed to list chat sessions", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve chat sessions"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve chat sessions")
 
 
 @router.get(
@@ -156,13 +145,7 @@ async def get_chat_session(
         )
 
         if not session:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Chat session not found or access denied"
-                ).model_dump()
-            )
+            raise http_404("Chat session not found or access denied", resource="session")
 
         messages = await chat.get_messages(chat_id, limit=limit)
 
@@ -179,13 +162,7 @@ async def get_chat_session(
 
     except Exception as e:
         logger.error(f"Failed to get chat session", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve chat session"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve chat session")
 
 
 @router.delete(
@@ -214,13 +191,7 @@ async def delete_chat_session(
         )
 
         if not deleted:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Chat session not found or access denied"
-                ).model_dump()
-            )
+            raise http_404("Chat session not found or access denied", resource="session")
 
         return SuccessResponse(
             data={"status": "deleted", "chat_id": chat_id},
@@ -232,13 +203,7 @@ async def delete_chat_session(
 
     except Exception as e:
         logger.error(f"Failed to delete chat session", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to delete chat session"
-            ).model_dump()
-        )
+        raise http_500("Failed to delete chat session")
 
 
 @router.patch(
@@ -267,13 +232,7 @@ async def update_session_model(
         # Verify session exists and user has access
         session = await chat.get_session(chat_id, user_id=user_id)
         if not session:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Chat session not found"
-                ).model_dump()
-            )
+            raise http_404("Chat session not found", resource="session")
 
         # Enforce team model policy
         team_id = session.get("team_id")
@@ -292,14 +251,7 @@ async def update_session_model(
                 except Exception as audit_error:
                     logger.warning(f"Audit logging failed: {audit_error}")
 
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail=ErrorResponse(
-                        error_code=ErrorCode.FORBIDDEN,
-                        message=f"Model '{model}' is not allowed by team policy",
-                        details={"model": model, "team_id": team_id}
-                    ).model_dump()
-                )
+                raise http_403(f"Model '{model}' is not allowed by team policy")
 
         # Update model
         updated_session = await chat.update_session_model(chat_id, model)
@@ -330,23 +282,11 @@ async def update_session_model(
 
     except ValueError as e:
         logger.error(f"ValueError updating session model", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=ErrorResponse(
-                error_code=ErrorCode.NOT_FOUND,
-                message="Chat session not found"
-            ).model_dump()
-        )
+        raise http_404("Chat session not found", resource="session")
 
     except Exception as e:
         logger.error(f"Failed to update session model", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to update session model"
-            ).model_dump()
-        )
+        raise http_500("Failed to update session model")
 
 
 @router.patch(
@@ -371,13 +311,7 @@ async def rename_session(
 
         session = await chat.get_session(chat_id, user_id=user_id)
         if not session:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Chat session not found"
-                ).model_dump()
-            )
+            raise http_404("Chat session not found", resource="session")
 
         updated_session = await chat.update_session_title(chat_id, title)
         return SuccessResponse(
@@ -390,23 +324,11 @@ async def rename_session(
 
     except ValueError as e:
         logger.error(f"ValueError renaming session", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=ErrorResponse(
-                error_code=ErrorCode.NOT_FOUND,
-                message="Chat session not found"
-            ).model_dump()
-        )
+        raise http_404("Chat session not found", resource="session")
 
     except Exception as e:
         logger.error(f"Failed to rename session", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to rename session"
-            ).model_dump()
-        )
+        raise http_500("Failed to rename session")
 
 
 @router.patch(
@@ -431,13 +353,7 @@ async def archive_session(
 
         session = await chat.get_session(chat_id, user_id=user_id)
         if not session:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Chat session not found"
-                ).model_dump()
-            )
+            raise http_404("Chat session not found", resource="session")
 
         updated_session = await chat.set_session_archived(chat_id, archived)
         return SuccessResponse(
@@ -450,23 +366,11 @@ async def archive_session(
 
     except ValueError as e:
         logger.error(f"ValueError archiving session", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=ErrorResponse(
-                error_code=ErrorCode.NOT_FOUND,
-                message="Chat session not found"
-            ).model_dump()
-        )
+        raise http_404("Chat session not found", resource="session")
 
     except Exception as e:
         logger.error(f"Failed to archive session", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to archive session"
-            ).model_dump()
-        )
+        raise http_500("Failed to archive session")
 
 
 @router.post(
@@ -489,13 +393,7 @@ async def get_token_count(
 
         session = await chat.get_session(chat_id, user_id=user_id)
         if not session:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Chat session not found"
-                ).model_dump()
-            )
+            raise http_404("Chat session not found", resource="session")
 
         result = await chat.get_token_count(chat_id)
         return SuccessResponse(
@@ -508,13 +406,7 @@ async def get_token_count(
 
     except Exception as e:
         logger.error(f"Failed to get token count", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve token count"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve token count")
 
 
 @router.get(
@@ -541,13 +433,7 @@ async def get_token_count_cached(
 
         session = await chat.get_session(chat_id, user_id=user_id)
         if not session:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Chat session not found"
-                ).model_dump()
-            )
+            raise http_404("Chat session not found", resource="session")
 
         # Check cache
         now = time.time()
@@ -586,13 +472,7 @@ async def get_token_count_cached(
 
     except Exception as e:
         logger.error(f"Failed to get token count", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve token count"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve token count")
 
 
 # MARK: - Model Preferences (Phase 2: Intelligent Routing)
@@ -619,13 +499,7 @@ async def get_model_preferences(
         memory = get_memory()
         session = memory.get_session(chat_id, user_id=user_id)
         if not session:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Chat session not found"
-                ).model_dump()
-            )
+            raise http_404("Chat session not found", resource="session")
 
         # Get model preferences
         prefs = memory.get_model_preferences(chat_id)
@@ -643,13 +517,7 @@ async def get_model_preferences(
 
     except Exception as e:
         logger.error(f"Failed to get model preferences", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve model preferences"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve model preferences")
 
 
 # Pydantic model for model preferences update
@@ -683,24 +551,11 @@ async def update_model_preferences(
         memory = get_memory()
         session = memory.get_session(chat_id, user_id=user_id)
         if not session:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Chat session not found"
-                ).model_dump()
-            )
+            raise http_404("Chat session not found", resource="session")
 
         # Validate selected_mode
         if body.selected_mode not in ["intelligent", "manual"]:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="selected_mode must be 'intelligent' or 'manual'",
-                    details={"field": "selected_mode", "value": body.selected_mode}
-                ).model_dump()
-            )
+            raise http_400("selected_mode must be 'intelligent' or 'manual'")
 
         # Update preferences
         memory.update_model_preferences(
@@ -724,10 +579,4 @@ async def update_model_preferences(
 
     except Exception as e:
         logger.error(f"Failed to update model preferences", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to update model preferences"
-            ).model_dump()
-        )
+        raise http_500("Failed to update model preferences")

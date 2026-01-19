@@ -11,6 +11,7 @@ from typing import Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel
 
+from api.errors import http_400, http_403, http_404, http_500
 from api.auth_middleware import get_current_user
 from api.utils import get_user_id
 from api.permission_engine import require_perm_team, require_perm
@@ -60,51 +61,21 @@ async def create_vault_document(
 
         # Phase 3: Support team vault type
         if vault_type not in ('personal', 'decoy', 'team'):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="vault_type must be 'personal', 'decoy', or 'team'"
-                ).model_dump()
-            )
+            raise http_400("vault_type must be 'personal', 'decoy', or 'team'")
 
         # Phase 3: Team vault requires team_id and membership
         if vault_type == 'team':
             if not team_id:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=ErrorResponse(
-                        error_code=ErrorCode.VALIDATION_ERROR,
-                        message="team_id required for team vault"
-                    ).model_dump()
-                )
+                raise http_400("team_id required for team vault")
             if not is_team_member(team_id, user_id):
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail=ErrorResponse(
-                        error_code=ErrorCode.FORBIDDEN,
-                        message="Not a member of this team"
-                    ).model_dump()
-                )
+                raise http_403("Not a member of this team")
 
         # Map API vault_type to DB vault_type for payload validation
         db_vault_type = 'real' if vault_type in ('personal', 'team') else 'decoy'
         if document.vault_type not in ('real', 'decoy'):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="document.vault_type must be 'real' or 'decoy'"
-                ).model_dump()
-            )
+            raise http_400("document.vault_type must be 'real' or 'decoy'")
         if document.vault_type != db_vault_type:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="Vault type mismatch between route and payload"
-                ).model_dump()
-            )
+            raise http_400("Vault type mismatch between route and payload")
 
         service = get_vault_service()
         doc = service.store_document(user_id, document, team_id=team_id)
@@ -119,13 +90,7 @@ async def create_vault_document(
 
     except Exception as e:
         logger.error(f"Failed to create vault document", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to create document"
-            ).model_dump()
-        )
+        raise http_500("Failed to create document")
 
 
 @router.get(
@@ -157,32 +122,14 @@ async def list_vault_documents(
 
         # Phase 3: Support team vault type
         if vault_type not in ('personal', 'decoy', 'team'):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="vault_type must be 'personal', 'decoy', or 'team'"
-                ).model_dump()
-            )
+            raise http_400("vault_type must be 'personal', 'decoy', or 'team'")
 
         # Phase 3: Team vault requires team_id and membership
         if vault_type == 'team':
             if not team_id:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=ErrorResponse(
-                        error_code=ErrorCode.VALIDATION_ERROR,
-                        message="team_id required for team vault"
-                    ).model_dump()
-                )
+                raise http_400("team_id required for team vault")
             if not is_team_member(team_id, user_id):
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail=ErrorResponse(
-                        error_code=ErrorCode.FORBIDDEN,
-                        message="Not a member of this team"
-                    ).model_dump()
-                )
+                raise http_403("Not a member of this team")
 
         # Legacy compatibility: 'real' -> 'personal'
         if vault_type == 'real':
@@ -201,13 +148,7 @@ async def list_vault_documents(
 
     except Exception as e:
         logger.error(f"Failed to list vault documents", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve documents"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve documents")
 
 
 @router.get(
@@ -238,32 +179,14 @@ async def get_vault_document(
 
         # Phase 3: Support team vault type
         if vault_type not in ('personal', 'decoy', 'team'):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="vault_type must be 'personal', 'decoy', or 'team'"
-                ).model_dump()
-            )
+            raise http_400("vault_type must be 'personal', 'decoy', or 'team'")
 
         # Phase 3: Team vault requires team_id and membership
         if vault_type == 'team':
             if not team_id:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=ErrorResponse(
-                        error_code=ErrorCode.VALIDATION_ERROR,
-                        message="team_id required for team vault"
-                    ).model_dump()
-                )
+                raise http_400("team_id required for team vault")
             if not is_team_member(team_id, user_id):
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail=ErrorResponse(
-                        error_code=ErrorCode.FORBIDDEN,
-                        message="Not a member of this team"
-                    ).model_dump()
-                )
+                raise http_403("Not a member of this team")
 
         # Legacy compatibility: 'real' -> 'personal'
         db_vault_type = 'real' if vault_type in ('personal', 'team') else 'decoy'
@@ -272,13 +195,7 @@ async def get_vault_document(
         doc = service.get_document(user_id, doc_id, db_vault_type, team_id=team_id)
 
         if not doc:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Document not found"
-                ).model_dump()
-            )
+            raise http_404("Document not found", resource="document")
 
         return SuccessResponse(
             data=doc,
@@ -290,13 +207,7 @@ async def get_vault_document(
 
     except Exception as e:
         logger.error(f"Failed to get vault document {doc_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve document"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve document")
 
 
 @router.put(
@@ -328,32 +239,14 @@ async def update_vault_document(
 
         # Phase 3: Support team vault type
         if vault_type not in ('personal', 'decoy', 'team'):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="vault_type must be 'personal', 'decoy', or 'team'"
-                ).model_dump()
-            )
+            raise http_400("vault_type must be 'personal', 'decoy', or 'team'")
 
         # Phase 3: Team vault requires team_id and membership
         if vault_type == 'team':
             if not team_id:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=ErrorResponse(
-                        error_code=ErrorCode.VALIDATION_ERROR,
-                        message="team_id required for team vault"
-                    ).model_dump()
-                )
+                raise http_400("team_id required for team vault")
             if not is_team_member(team_id, user_id):
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail=ErrorResponse(
-                        error_code=ErrorCode.FORBIDDEN,
-                        message="Not a member of this team"
-                    ).model_dump()
-                )
+                raise http_403("Not a member of this team")
 
         # Legacy compatibility: 'real' -> 'personal'
         db_vault_type = 'real' if vault_type in ('personal', 'team') else 'decoy'
@@ -371,13 +264,7 @@ async def update_vault_document(
 
     except Exception as e:
         logger.error(f"Failed to update vault document {doc_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to update document"
-            ).model_dump()
-        )
+        raise http_500("Failed to update document")
 
 
 class DeleteDocumentResponse(BaseModel):
@@ -413,32 +300,14 @@ async def delete_vault_document(
 
         # Phase 3: Support team vault type
         if vault_type not in ('personal', 'decoy', 'team'):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="vault_type must be 'personal', 'decoy', or 'team'"
-                ).model_dump()
-            )
+            raise http_400("vault_type must be 'personal', 'decoy', or 'team'")
 
         # Phase 3: Team vault requires team_id and membership
         if vault_type == 'team':
             if not team_id:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=ErrorResponse(
-                        error_code=ErrorCode.VALIDATION_ERROR,
-                        message="team_id required for team vault"
-                    ).model_dump()
-                )
+                raise http_400("team_id required for team vault")
             if not is_team_member(team_id, user_id):
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail=ErrorResponse(
-                        error_code=ErrorCode.FORBIDDEN,
-                        message="Not a member of this team"
-                    ).model_dump()
-                )
+                raise http_403("Not a member of this team")
 
         # Legacy compatibility: 'real' -> 'personal'
         db_vault_type = 'real' if vault_type in ('personal', 'team') else 'decoy'
@@ -447,13 +316,7 @@ async def delete_vault_document(
         success = service.delete_document(user_id, doc_id, db_vault_type, team_id=team_id)
 
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Document not found"
-                ).model_dump()
-            )
+            raise http_404("Document not found", resource="document")
 
         return SuccessResponse(
             data=DeleteDocumentResponse(success=True, doc_id=doc_id),
@@ -465,13 +328,7 @@ async def delete_vault_document(
 
     except Exception as e:
         logger.error(f"Failed to delete vault document {doc_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to delete document"
-            ).model_dump()
-        )
+        raise http_500("Failed to delete document")
 
 
 @router.get(
@@ -492,13 +349,7 @@ async def get_vault_stats(
         user_id = get_user_id(current_user)
 
         if vault_type not in ('real', 'decoy'):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="vault_type must be 'real' or 'decoy'"
-                ).model_dump()
-            )
+            raise http_400("vault_type must be 'real' or 'decoy'")
 
         service = get_vault_service()
         stats = service.get_vault_stats(user_id, vault_type)
@@ -513,10 +364,4 @@ async def get_vault_stats(
 
     except Exception as e:
         logger.error(f"Failed to get vault stats", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve vault statistics"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve vault statistics")
