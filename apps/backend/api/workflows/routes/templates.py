@@ -6,6 +6,8 @@ List, get, and instantiate workflow templates.
 
 from fastapi import APIRouter, HTTPException, Request, Depends
 from pydantic import BaseModel
+
+from api.errors import http_400, http_403, http_404
 from typing import List, Dict, Optional
 import logging
 
@@ -58,7 +60,7 @@ async def list_workflow_templates(
     # Check team membership if team_id is specified
     if team_id:
         if not is_team_member(team_id, user_id):
-            raise HTTPException(status_code=403, detail="Not a member of this team")
+            raise http_403("Not a member of this team")
 
     # T3-1: List all visible workflows, then filter for templates
     all_workflows = storage.list_workflows(
@@ -99,10 +101,10 @@ async def get_workflow_template(
     workflow = storage.get_workflow(template_id, user_id=user_id, team_id=team_id)
 
     if not workflow:
-        raise HTTPException(status_code=404, detail="Template not found or access denied")
+        raise http_404("Template not found or access denied", resource="template")
 
     if not workflow.is_template:
-        raise HTTPException(status_code=400, detail="Workflow is not a template")
+        raise http_400("Workflow is not a template")
 
     return workflow
 
@@ -135,15 +137,15 @@ async def instantiate_template(
     # T3-1: Get template with visibility check
     template = storage.get_workflow(template_id, user_id=user_id, team_id=user_team_id)
     if not template:
-        raise HTTPException(status_code=404, detail="Template not found or access denied")
+        raise http_404("Template not found or access denied", resource="template")
 
     if not template.is_template:
-        raise HTTPException(status_code=400, detail="Workflow is not a template")
+        raise http_400("Workflow is not a template")
 
     # Check team membership if creating team workflow
     if body.team_id:
         if not is_team_member(body.team_id, user_id):
-            raise HTTPException(status_code=403, detail="Not a member of this team")
+            raise http_403("Not a member of this team")
 
     # Create new workflow from template
     new_workflow = Workflow(

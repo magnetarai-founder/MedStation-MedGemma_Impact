@@ -12,7 +12,8 @@ from typing import Optional, Dict, Any
 import logging
 
 from api.cache_service import get_cache
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
+from api.errors import http_403, http_404, http_500
 from api.auth_middleware import get_current_user, User
 
 logger = logging.getLogger(__name__)
@@ -29,13 +30,7 @@ def _require_admin(current_user: User) -> None:
         logger.warning(
             f"Unauthorized cache operation attempt by user {getattr(current_user, 'user_id', 'unknown')} with role {role}"
         )
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=ErrorResponse(
-                error_code=ErrorCode.FORBIDDEN,
-                message="Admin privileges required for cache operations"
-            ).model_dump()
-        )
+        raise http_403("Admin privileges required for cache operations")
 
 
 class CacheStatsResponse(BaseModel):
@@ -94,13 +89,7 @@ async def get_cache_stats() -> SuccessResponse[CacheStatsResponse]:
 
     except Exception as e:
         logger.error(f"Failed to get cache stats", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve cache statistics"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve cache statistics")
 
 
 class FlushResponse(BaseModel):
@@ -152,13 +141,7 @@ async def flush_cache(
 
     except Exception as e:
         logger.error(f"Failed to flush cache", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to flush cache"
-            ).model_dump()
-        )
+        raise http_500("Failed to flush cache")
 
 
 class InvalidateResponse(BaseModel):
@@ -223,13 +206,7 @@ async def invalidate_cache_pattern(
 
     except Exception as e:
         logger.error(f"Failed to invalidate cache pattern", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to invalidate cache"
-            ).model_dump()
-        )
+        raise http_500("Failed to invalidate cache")
 
 
 class DeleteKeyResponse(BaseModel):
@@ -277,26 +254,14 @@ async def delete_cache_key(
                 message=f"Cache key '{key}' deleted successfully"
             )
         else:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Cache key not found"
-                ).model_dump()
-            )
+            raise http_404("Cache key not found", resource="cache_key")
 
     except HTTPException:
         raise
 
     except Exception as e:
         logger.error(f"Failed to delete cache key '{key}'", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to delete cache key"
-            ).model_dump()
-        )
+        raise http_500("Failed to delete cache key")
 
 
 class CacheHealthResponse(BaseModel):

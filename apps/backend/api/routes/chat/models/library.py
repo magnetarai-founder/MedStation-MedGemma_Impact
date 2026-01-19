@@ -11,6 +11,7 @@ from fastapi import APIRouter, HTTPException, Depends, status
 from fastapi.responses import StreamingResponse
 
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.errors import http_500
 
 from api.auth_middleware import get_current_user
 
@@ -87,25 +88,13 @@ async def remove_model_endpoint(
                 message=f"Model '{model_name}' removed successfully"
             )
         else:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.INTERNAL_ERROR,
-                    message=result["message"]
-                ).model_dump()
-            )
+            raise http_500(result["message"])
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to remove model: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to remove model"
-            ).model_dump()
-        )
+        raise http_500("Failed to remove model")
 
 
 @router.get(
@@ -123,13 +112,7 @@ async def get_ollama_version_endpoint():
         return SuccessResponse(data=version_info, message="Ollama version retrieved")
     except Exception as e:
         logger.error(f"Failed to check Ollama version: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to check Ollama version"
-            ).model_dump()
-        )
+        raise http_500("Failed to check Ollama version")
 
 
 @router.get(
@@ -215,10 +198,4 @@ async def browse_ollama_library_endpoint(
         raise
     except Exception as e:
         logger.error(f"Failed to browse Ollama library: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to browse Ollama library"
-            ).model_dump()
-        )
+        raise http_500("Failed to browse Ollama library")
