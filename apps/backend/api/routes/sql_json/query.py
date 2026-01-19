@@ -12,6 +12,7 @@ from typing import Any, Optional
 from fastapi import APIRouter, HTTPException, Request, Header, Body, status
 from api.schemas.api_models import QueryResponse
 from api.routes.schemas import ErrorResponse, ErrorCode
+from api.errors import http_400, http_409, http_429, http_500
 from api.routes.sql_json.utils import (
     get_sessions,
     get_rate_limiter,
@@ -57,25 +58,12 @@ async def execute_query_router(
         if idempotency_key:
             if is_duplicate_request(f"query:{idempotency_key}"):
                 logger.warning(f"Duplicate query request detected: {idempotency_key}")
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail=ErrorResponse(
-                        error_code=ErrorCode.CONFLICT,
-                        message="Duplicate request detected. This query was already executed recently. Please wait 60 seconds or use a different idempotency key.",
-                        details={"idempotency_key": idempotency_key}
-                    ).model_dump()
-                )
+                raise http_409("Duplicate request detected. This query was already executed recently. Please wait 60 seconds or use a different idempotency key.")
 
         # Rate limit: 60 queries per minute
         client_ip = get_client_ip_func(req)
         if not rate_limiter.check_rate_limit(f"query:{client_ip}", max_requests=60, window_seconds=60):
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.RATE_LIMITED,
-                    message="Rate limit exceeded. Max 60 queries per minute."
-                ).model_dump()
-            )
+            raise http_429("Max 60 queries per minute")
 
         # Sanitize SQL for logging (redact potential sensitive data)
         sql_text = body.get('sql', '')
@@ -122,13 +110,7 @@ async def execute_query_router(
             )
 
         if result.error:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=result.error
-                ).model_dump()
-            )
+            raise http_400(result.error)
 
         # Store full result for export (with size limits)
         query_id = str(uuid.uuid4())
@@ -168,13 +150,7 @@ async def execute_query_router(
         raise
     except Exception as e:
         logger.error(f"Query execution failed for session {session_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to execute query"
-            ).model_dump()
-        )
+        raise http_500("Failed to execute query")
 
 
 @router.get(
@@ -212,10 +188,4 @@ async def list_tables_router(session_id: str) -> Any:
         raise
     except Exception as e:
         logger.error(f"Failed to list tables for session {session_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to list tables"
-            ).model_dump()
-        )
+        raise http_500("Failed to list tables")

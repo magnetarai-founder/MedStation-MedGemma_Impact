@@ -14,7 +14,8 @@ from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 
 from api.schemas.api_models import ExportRequest
-from api.routes.schemas import ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
+from api.errors import http_400, http_403, http_404, http_500
 from api.routes.sql_json.utils import (
     get_sessions,
     get_query_results,
@@ -50,14 +51,7 @@ async def export_results_router(
         # Apply permission check
         from api.main import has_permission
         if not has_permission(current_user, "data.export"):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.FORBIDDEN,
-                    message="Insufficient permissions to export data",
-                    details={"required_permission": "data.export"}
-                ).model_dump()
-            )
+            raise http_403("Insufficient permissions to export data")
 
         validate_session_exists(session_id, sessions)
 
@@ -65,27 +59,14 @@ async def export_results_router(
         if request.query_id.startswith('json_'):
             # JSON conversion result
             if 'json_result' not in sessions[session_id]:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=ErrorResponse(
-                        error_code=ErrorCode.NOT_FOUND,
-                        message="JSON conversion result not found. Please run the conversion first.",
-                        details={"query_id": request.query_id}
-                    ).model_dump()
-                )
+                raise http_404("JSON conversion result not found. Please run the conversion first.", resource="json_result")
 
             # Load the Excel file that was created during conversion
             json_result = sessions[session_id]['json_result']
             excel_path = json_result.get('excel_path')
 
             if not excel_path or not Path(excel_path).exists():
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=ErrorResponse(
-                        error_code=ErrorCode.NOT_FOUND,
-                        message="JSON conversion output file not found. Please run the conversion again."
-                    ).model_dump()
-                )
+                raise http_404("JSON conversion output file not found. Please run the conversion again.", resource="file")
 
             # Read the Excel file into a DataFrame for export
             logger.info(f"Exporting JSON conversion result from {excel_path}")
@@ -93,14 +74,7 @@ async def export_results_router(
         else:
             # SQL query result
             if request.query_id not in query_results:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=ErrorResponse(
-                        error_code=ErrorCode.NOT_FOUND,
-                        message="Query results not found. Please run the query again.",
-                        details={"query_id": request.query_id}
-                    ).model_dump()
-                )
+                raise http_404("Query results not found. Please run the query again.", resource="query_results")
 
             df = query_results[request.query_id]
 
@@ -136,14 +110,7 @@ async def export_results_router(
                 json.dump(json_records, f, indent=2, ensure_ascii=False)
             media_type = "application/json"
         else:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=f"Invalid export format: {request.format}",
-                    details={"format": request.format, "allowed_formats": ["excel", "csv", "tsv", "parquet", "json"]}
-                ).model_dump()
-            )
+            raise http_400(f"Invalid export format: {request.format}")
 
         return FileResponse(
             path=file_path,
@@ -156,10 +123,4 @@ async def export_results_router(
         raise
     except Exception as e:
         logger.error(f"Export failed for session {session_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to export results"
-            ).model_dump()
-        )
+        raise http_500("Failed to export results")

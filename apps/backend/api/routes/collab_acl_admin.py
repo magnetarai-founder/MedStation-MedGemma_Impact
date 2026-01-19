@@ -23,7 +23,8 @@ from api.services.collab_acl import (
     upsert_acl,
     ROLES,
 )
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
+from api.errors import http_400, http_401, http_403, http_500
 
 logger = logging.getLogger(__name__)
 
@@ -40,30 +41,12 @@ class AclRow(BaseModel):
 def _require_owner(current_user: dict, doc_id: str) -> None:
     """Require owner role for document (raises HTTPException if not)"""
     if not SAFE_ID.match(doc_id):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=ErrorResponse(
-                error_code=ErrorCode.VALIDATION_ERROR,
-                message="Invalid doc_id format"
-            ).model_dump()
-        )
+        raise http_400("Invalid doc_id format")
     uid = current_user.get("user_id")
     if not uid:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=ErrorResponse(
-                error_code=ErrorCode.UNAUTHORIZED,
-                message="User not authenticated"
-            ).model_dump()
-        )
+        raise http_401("User not authenticated")
     if not user_can_access_doc(uid, doc_id, min_role="owner"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=ErrorResponse(
-                error_code=ErrorCode.FORBIDDEN,
-                message="Owner role required"
-            ).model_dump()
-        )
+        raise http_403("Owner role required")
 
 
 @router.get(
@@ -99,13 +82,7 @@ async def get_acl(
 
     except Exception as e:
         logger.error(f"Failed to get ACL for doc {doc_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve document ACL"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve document ACL")
 
 
 @router.post(
@@ -132,13 +109,7 @@ async def upsert_acl_entry(
         _require_owner(current_user, doc_id)
 
         if body.role not in ROLES:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=f"Invalid role. Must be one of: {', '.join(ROLES)}"
-                ).model_dump()
-            )
+            raise http_400(f"Invalid role. Must be one of: {', '.join(ROLES)}")
 
         # Prevent privilege lockout: owner cannot demote the last owner (naive safeguard omitted for brevity)
         upsert_acl(doc_id, body.user_id, body.role)
@@ -153,11 +124,5 @@ async def upsert_acl_entry(
 
     except Exception as e:
         logger.error(f"Failed to upsert ACL for doc {doc_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to update document ACL"
-            ).model_dump()
-        )
+        raise http_500("Failed to update document ACL")
 

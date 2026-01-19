@@ -13,6 +13,7 @@ from fastapi import APIRouter, HTTPException, Depends, status
 from api.auth_middleware import get_current_user, User
 from api.utils import get_user_id, get_username
 from api.routes.schemas import SuccessResponse
+from api.errors import http_401, http_404, http_500
 
 from api.routes.cloud_auth.models import (
     CLOUD_TOKEN_EXPIRY_DAYS,
@@ -60,36 +61,24 @@ async def refresh_cloud_token(
             row = cursor.fetchone()
 
             if not row:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Device not found or not paired"
-                )
+                raise http_404("Device not found or not paired", resource="device")
 
             record_id, stored_hash, refresh_expires, is_active = row
 
             # Verify device is active
             if not is_active:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Device has been unpaired. Please re-pair."
-                )
+                raise http_401("Device has been unpaired. Please re-pair.")
 
             # Verify refresh token
             if helpers.hash_token(request.refresh_token) != stored_hash:
                 helpers.log_sync_operation(request.cloud_device_id, "token_refresh", False, "Invalid refresh token")
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid refresh token"
-                )
+                raise http_401("Invalid refresh token")
 
             # Check refresh token expiry
             if refresh_expires:
                 refresh_expires_dt = datetime.fromisoformat(refresh_expires)
                 if datetime.now(UTC) > refresh_expires_dt:
-                    raise HTTPException(
-                        status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="Refresh token expired. Please re-pair device."
-                    )
+                    raise http_401("Refresh token expired. Please re-pair device.")
 
             # Generate new cloud token
             new_cloud_token = helpers.generate_cloud_token()
@@ -124,10 +113,7 @@ async def refresh_cloud_token(
 
     except Exception as e:
         logger.error("Cloud token refresh failed", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to refresh cloud token"
-        )
+        raise http_500("Failed to refresh cloud token")
 
 
 @router.get(
@@ -209,7 +195,4 @@ async def get_cloud_status(
 
     except Exception as e:
         logger.error("Failed to get cloud status", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get cloud status"
-        )
+        raise http_500("Failed to get cloud status")
