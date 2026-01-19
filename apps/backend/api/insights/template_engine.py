@@ -8,7 +8,7 @@ import logging
 from datetime import datetime, UTC
 from uuid import uuid4
 
-from fastapi import HTTPException
+from api.errors import http_500
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ async def apply_template_with_ollama(transcript: str, system_prompt: str) -> str
 
     except Exception as e:
         logger.error(f"Ollama template application failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Template application failed: {str(e)}")
+        raise http_500("Template application failed")
 
 
 async def auto_apply_default_templates(recording_id: str, transcript: str, user_id: str) -> None:

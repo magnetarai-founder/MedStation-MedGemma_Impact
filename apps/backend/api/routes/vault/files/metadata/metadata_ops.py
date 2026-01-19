@@ -11,9 +11,10 @@ Follows MagnetarStudio API standards (see API_STANDARDS.md).
 import logging
 from typing import Dict
 from fastapi import APIRouter, HTTPException, Form, Depends, status
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
 
 from api.auth_middleware import get_current_user
+from api.errors import http_500
 from api.utils import get_user_id
 from api.services.vault.core import get_vault_service
 from api.audit_logger import get_audit_logger
@@ -65,13 +66,7 @@ async def set_file_metadata_endpoint(
         raise
     except Exception as e:
         logger.error(f"Failed to set metadata for file {file_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to set file metadata"
-            ).model_dump()
-        )
+        raise http_500("Failed to set file metadata")
 
 
 @router.get(
@@ -103,10 +98,4 @@ async def get_file_metadata_endpoint(
         raise
     except Exception as e:
         logger.error(f"Failed to get metadata for file {file_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to get file metadata"
-            ).model_dump()
-        )
+        raise http_500("Failed to get file metadata")

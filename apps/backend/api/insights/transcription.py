@@ -8,7 +8,7 @@ import logging
 import subprocess
 from pathlib import Path
 
-from fastapi import HTTPException
+from api.errors import http_503
 
 logger = logging.getLogger(__name__)
 
@@ -88,10 +88,7 @@ def transcribe_audio_with_whisper(audio_path: Path) -> dict:
     except Exception as e:
         logger.error(f"Whisper transcription failed: {e}", exc_info=True)
 
-    raise HTTPException(
-        status_code=503,
-        detail="Whisper transcription not available. Please install whisper.cpp or Python whisper library."
-    )
+    raise http_503("Whisper transcription not available. Please install whisper.cpp or Python whisper library.")
 
 
 def get_audio_duration(audio_path: str) -> float:
