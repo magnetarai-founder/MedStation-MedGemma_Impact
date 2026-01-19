@@ -8,12 +8,13 @@ Module structure (P2 decomposition):
 - context_router.py: API endpoints (this file)
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends
 from typing import Dict, Any
 import logging
 
 from api.ane_context_engine import get_ane_engine
 from api.auth_middleware import get_current_user
+from api.errors import http_500
 
 # Import from extracted module (P2 decomposition)
 from api.context.types import (
@@ -82,7 +83,7 @@ async def search_context(
 
     except Exception as e:
         logger.error(f"Context search failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Context search failed: {str(e)}")
+        raise http_500("Context search failed")
 
 
 @router.post("/store")
@@ -114,7 +115,7 @@ async def store_context(
 
     except Exception as e:
         logger.error(f"Store context failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Store context failed: {str(e)}")
+        raise http_500("Store context failed")
 
 
 @router.get("/status")

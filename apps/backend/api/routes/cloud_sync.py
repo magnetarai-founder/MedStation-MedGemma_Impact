@@ -30,6 +30,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query, status
 
 from api.config import is_airgap_mode
 from api.routes.schemas import SuccessResponse
+from api.errors import http_404
 
 # Import from extracted modules (P2 decomposition)
 from .cloud_sync_models import (
@@ -289,10 +290,7 @@ async def resolve_conflict(
     conflict = get_conflict(user_id, conflict_id)
 
     if not conflict:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Conflict not found or already resolved"
-        )
+        raise http_404("Conflict not found or already resolved", resource="conflict")
 
     # Bump local version for LOCAL_WINS or MANUAL
     bump_version = request.resolution in [ConflictResolution.LOCAL_WINS, ConflictResolution.MANUAL]

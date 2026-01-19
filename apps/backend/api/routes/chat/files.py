@@ -12,7 +12,8 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Depends, status
 
 from api.auth_middleware import get_current_user, User
 from api.utils import get_user_id
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
+from api.errors import http_404, http_500
 
 logger = logging.getLogger(__name__)
 
@@ -43,13 +44,7 @@ async def upload_file_to_chat(
         # Verify session exists
         session = await chat.get_session(chat_id, user_id=user_id)
         if not session:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Chat session not found"
-                ).model_dump()
-            )
+            raise http_404("Chat session not found", resource="chat_session")
 
         # Read file content
         content = await file.read()
@@ -72,10 +67,4 @@ async def upload_file_to_chat(
 
     except Exception as e:
         logger.error(f"Failed to upload file", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to upload file"
-            ).model_dump()
-        )
+        raise http_500("Failed to upload file")

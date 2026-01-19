@@ -17,7 +17,8 @@ from api.auth_middleware import get_current_user, User
 from api.utils import get_user_id, get_user_role, get_user_team_id
 from api.permission_engine import require_perm_team
 
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
+from api.errors import http_500
 
 logger = logging.getLogger(__name__)
 
@@ -90,13 +91,7 @@ async def submit_message_feedback(
 
     except Exception as e:
         logger.error(f"Failed to record message feedback", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to record feedback"
-            ).model_dump()
-        )
+        raise http_500("Failed to record feedback")
 
 
 @router.get(
@@ -154,10 +149,4 @@ async def get_message_feedback(
 
     except Exception as e:
         logger.error(f"Failed to get message feedback", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve feedback"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve feedback")
