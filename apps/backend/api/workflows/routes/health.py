@@ -30,8 +30,8 @@ async def health_check() -> Dict[str, Any]:
     db_readable = False
     try:
         db_readable = storage.db_path.exists() and storage.db_path.is_file()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Failed to check database readability: {e}")
 
     return {
         "status": "healthy",

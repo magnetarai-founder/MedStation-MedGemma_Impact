@@ -8,11 +8,14 @@ Provides intelligent model recommendations based on:
 - Installation status
 """
 
+import logging
 import sqlite3
 from typing import List, Dict, Any, Optional, Literal
 from datetime import datetime, timedelta, UTC
 
 from api.config_paths import PATHS
+
+logger = logging.getLogger(__name__)
 
 TaskType = Literal["code", "chat", "analysis", "general"]
 
@@ -173,7 +176,7 @@ class RecommendationsService:
                 import json
                 return json.loads(row["allowed_models"])
         except Exception:
-            # Table might not exist yet
+            # Table might not exist yet - this is expected during initial setup
             pass
 
         return None

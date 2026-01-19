@@ -13,12 +13,15 @@ Module structure (P2 decomposition):
 
 from typing import Dict, Optional, Tuple
 import hashlib
+import logging
 import time
 import re
 from pathlib import Path
 import os
 import io
 from contextlib import redirect_stdout, redirect_stderr
+
+logger = logging.getLogger(__name__)
 
 # Import from extracted module (P2 decomposition)
 from api.agent.patchbus_types import ChangeProposal
@@ -178,8 +181,8 @@ class PatchBus:
                 }
                 with open(hist_file, 'a') as f:
                     f.write(_json.dumps(entry) + "\n")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Failed to write patch history (non-critical): {e}")
 
         return {
             "success": True,

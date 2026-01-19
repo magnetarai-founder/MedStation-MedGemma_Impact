@@ -11,6 +11,7 @@ Module structure (P2 decomposition):
 - codex_engine.py: Main CodexEngine class (this file)
 """
 
+import logging
 import os
 import re
 import shutil
@@ -21,6 +22,9 @@ import sys
 from pathlib import Path
 from typing import Tuple, List, Dict, Any, Optional
 import difflib
+
+logger = logging.getLogger(__name__)
+
 from .codex_deterministic_ops import DeterministicOps
 from .codex_codemods import CodemodOperations
 
@@ -89,8 +93,8 @@ class CodexEngine:
             backup_dir = self._patch_log_dir / patch_id
             try:
                 backup_dir.mkdir(parents=True, exist_ok=True)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Failed to create backup dir (non-critical): {e}")
 
             # Backup target files mentioned in diff (best-effort)
             targets = extract_targets(diff_text)
@@ -101,7 +105,8 @@ class CodexEngine:
                         bd = backup_dir / t
                         bd.parent.mkdir(parents=True, exist_ok=True)
                         bd.write_text(tp.read_text())
-                    except Exception:
+                    except Exception as e:
+                        logger.debug(f"Failed to backup file {t}: {e}")
                         continue
 
             # Detect patch strip level (-p0 vs -p1)
@@ -156,8 +161,8 @@ class CodexEngine:
                             continue
                         p = self.repo_root / f
                         p.parent.mkdir(parents=True, exist_ok=True)
-                except Exception:
-                    pass
+                except Exception as dir_err:
+                    logger.debug(f"Failed to create parent dirs during retry: {dir_err}")
 
                 # Fallback 1: per-file application using system patch
                 ok, msg = self._apply_per_file(diff_text)
@@ -184,8 +189,8 @@ class CodexEngine:
                         import msvcrt
                         msvcrt.locking(lock_fd.fileno(), msvcrt.LK_UNLCK, 1)
                     lock_fd.close()
-                except Exception:
-                    pass
+                except Exception as unlock_err:
+                    logger.debug(f"Failed to release lock (non-critical): {unlock_err}")
 
     def rollback(self, patch_id: str) -> Tuple[bool, str]:
         # Prefer exact backup restore if available
@@ -200,7 +205,8 @@ class CodexEngine:
                         dest.parent.mkdir(parents=True, exist_ok=True)
                         dest.write_text(bd.read_text())
                         restored_any = True
-                    except Exception:
+                    except Exception as restore_err:
+                        logger.debug(f"Failed to restore {rel}: {restore_err}")
                         continue
             return (True, "Rolled back from backups") if restored_any else (False, "No backups to restore")
 
@@ -383,8 +389,8 @@ class CodexEngine:
             finally:
                 try:
                     os.unlink(tmp.name)
-                except Exception:
-                    pass
+                except Exception as cleanup_err:
+                    logger.debug(f"Failed to cleanup temp file: {cleanup_err}")
         return True, 'per-file apply ok'
 
     # --- Added search and codemod helpers ---
