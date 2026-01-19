@@ -11,14 +11,8 @@ from typing import List, Dict, Any
 from fastapi import APIRouter, HTTPException, Form, Depends, status
 from pydantic import BaseModel
 
-try:
-    from api.auth_middleware import get_current_user
-except ImportError:
-    from api.auth_middleware import get_current_user
-try:
-    from api.utils import get_user_id
-except ImportError:
-    from api.utils import get_user_id
+from api.auth_middleware import get_current_user
+from api.utils import get_user_id
 from api.services.vault.core import get_vault_service
 from api.services.vault.schemas import VaultFolder
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode

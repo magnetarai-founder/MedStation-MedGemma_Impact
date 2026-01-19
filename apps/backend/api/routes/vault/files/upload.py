@@ -11,10 +11,7 @@ from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Request, Depends, status
 from pydantic import BaseModel
 
-try:
-    from api.auth_middleware import get_current_user
-except ImportError:
-    from api.auth_middleware import get_current_user
+from api.auth_middleware import get_current_user
 from api.utils import sanitize_filename, file_lock, get_user_id
 from api.services.vault.core import get_vault_service
 from api.services.vault.schemas import VaultFile
