@@ -9,6 +9,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Request, Depends
 
+from api.errors import http_400, http_404, http_409, http_500
 from api.routes.schemas.responses import SuccessResponse
 
 logger = logging.getLogger(__name__)
@@ -47,7 +48,7 @@ async def create_workspace(
     """Create a new database workspace"""
     try:
         if workspace.source_type != 'database':
-            raise HTTPException(status_code=400, detail="Only database workspaces can be created this way")
+            raise http_400("Only database workspaces can be created this way")
 
         # Delegate to service
         result = code_service.create_workspace(workspace.name, workspace.source_type)
@@ -71,7 +72,7 @@ async def create_workspace(
         raise
     except Exception as e:
         logger.error(f"Failed to create workspace: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/workspaces/open-disk", response_model=SuccessResponse[code_service.WorkspaceResponse])
@@ -89,7 +90,7 @@ async def open_disk_workspace(
         # Validate path exists
         path = Path(disk_path)
         if not path.exists() or not path.is_dir():
-            raise HTTPException(status_code=400, detail="Invalid directory path")
+            raise http_400("Invalid directory path")
 
         # Scan and import files
         files = code_service.scan_disk_directory(str(path))
@@ -127,7 +128,7 @@ async def open_disk_workspace(
         raise
     except Exception as e:
         logger.error(f"Failed to open disk workspace: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/workspaces/open-database", response_model=SuccessResponse[code_service.WorkspaceResponse])
@@ -143,14 +144,14 @@ async def open_database_workspace(
         workspace = code_service.get_workspace(workspace_id)
 
         if not workspace:
-            raise HTTPException(status_code=404, detail="Workspace not found")
+            raise http_404("Workspace not found", resource="workspace")
 
         return SuccessResponse(data=workspace)
 
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.get("/workspaces", response_model=SuccessResponse[code_service.WorkspacesListResponse])
@@ -166,7 +167,7 @@ async def list_workspaces(current_user: dict = Depends(get_current_user)):
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.get("/workspaces/{workspace_id}/files", response_model=SuccessResponse[code_service.FilesListResponse])
@@ -181,7 +182,7 @@ async def get_workspace_files(workspace_id: str, current_user: dict = Depends(ge
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/workspaces/{workspace_id}/sync")
@@ -197,13 +198,13 @@ async def sync_workspace(
         workspace = code_service.get_workspace(workspace_id)
 
         if not workspace:
-            raise HTTPException(status_code=404, detail="Workspace not found")
+            raise http_404("Workspace not found", resource="workspace")
 
         if workspace.source_type != 'disk':
-            raise HTTPException(status_code=400, detail="Only disk workspaces can be synced")
+            raise http_400("Only disk workspaces can be synced")
 
         if not workspace.disk_path:
-            raise HTTPException(status_code=400, detail="No disk path configured")
+            raise http_400("No disk path configured")
 
         # Rescan directory
         files = code_service.scan_disk_directory(workspace.disk_path)
@@ -241,7 +242,7 @@ async def sync_workspace(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 # ============================================================================
@@ -257,14 +258,14 @@ async def get_file(file_id: str, current_user: dict = Depends(get_current_user))
         file = code_service.get_file(file_id)
 
         if not file:
-            raise HTTPException(status_code=404, detail="File not found")
+            raise http_404("File not found", resource="file")
 
         return SuccessResponse(data=file)
 
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/files/{file_id}/diff", response_model=SuccessResponse[code_service.FileDiffResponse])
@@ -293,7 +294,7 @@ async def get_file_diff(
         raise
     except Exception as e:
         logger.error(f"Failed to generate diff: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/files", response_model=SuccessResponse[code_service.FileResponse])
@@ -348,7 +349,7 @@ async def create_file(
 
     except Exception as e:
         logger.error(f"Failed to create file: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.put("/files/{file_id}", response_model=SuccessResponse[code_service.FileResponse])
@@ -367,18 +368,11 @@ async def update_file(
         current = code_service.get_file_current_state(file_id)
 
         if not current:
-            raise HTTPException(status_code=404, detail="File not found")
+            raise http_404("File not found", resource="file")
 
         # Optimistic concurrency check
         if file_update.base_updated_at and file_update.base_updated_at != current['updated_at']:
-            raise HTTPException(
-                status_code=409,
-                detail={
-                    "error": "Conflict: File has been modified by another user",
-                    "current_updated_at": current['updated_at'],
-                    "your_base_updated_at": file_update.base_updated_at
-                }
-            )
+            raise http_409("File has been modified by another user")
 
         # Update file
         result = code_service.update_file(
@@ -433,7 +427,7 @@ async def update_file(
         raise
     except Exception as e:
         logger.error(f"Failed to update file: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.delete("/files/{file_id}")
@@ -451,7 +445,7 @@ async def delete_file(
         file_info = code_service.get_file_info_before_delete(file_id)
 
         if not file_info:
-            raise HTTPException(status_code=404, detail="File not found")
+            raise http_404("File not found", resource="file")
 
         workspace_id, file_path = file_info
 
@@ -491,7 +485,7 @@ async def delete_file(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/files/import")
@@ -552,4 +546,4 @@ async def import_file(
 
     except Exception as e:
         logger.error(f"Failed to import file: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))

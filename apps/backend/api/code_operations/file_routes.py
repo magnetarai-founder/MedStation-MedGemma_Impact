@@ -9,6 +9,7 @@ from typing import Dict, Any
 from pathlib import Path
 import logging
 
+from api.errors import http_400, http_403, http_404, http_429
 from api.auth_middleware import get_current_user
 from api.utils import get_user_id
 from api.permission_layer import PermissionLayer, RiskLevel
@@ -74,23 +75,20 @@ async def get_file_tree(
         try:
             target_path.relative_to(user_workspace_root)
         except ValueError:
-            raise HTTPException(
-                status_code=403,
-                detail=f"Access denied: absolute_path must be within workspace ({user_workspace_root})"
-            )
+            raise http_403(f"Access denied: absolute_path must be within workspace ({user_workspace_root})")
 
         if not target_path.exists():
-            raise HTTPException(404, "Path not found")
+            raise http_404("Path not found", resource="path")
         if not target_path.is_dir():
-            raise HTTPException(400, "Path is not a directory")
+            raise http_400("Path is not a directory")
     else:
         target_path = user_workspace if path == "." else user_workspace / path
 
         if not code_service.is_safe_path(target_path, user_workspace):
-            raise HTTPException(400, "Invalid path")
+            raise http_400("Invalid path")
 
     if not target_path.exists():
-        raise HTTPException(404, "Path not found")
+        raise http_404("Path not found", resource="path")
 
     tree = code_service.walk_directory(
         target_path,
@@ -137,21 +135,18 @@ async def read_file(
         try:
             file_path.relative_to(user_workspace_root)
         except ValueError:
-            raise HTTPException(
-                status_code=403,
-                detail=f"Access denied: file must be within workspace ({user_workspace_root})"
-            )
+            raise http_403(f"Access denied: file must be within workspace ({user_workspace_root})")
     else:
         file_path = user_workspace / path
 
         if not code_service.is_safe_path(file_path, user_workspace):
-            raise HTTPException(400, "Invalid path")
+            raise http_400("Invalid path")
 
     if not file_path.exists():
-        raise HTTPException(404, "File not found")
+        raise http_404("File not found", resource="file")
 
     if not file_path.is_file():
-        raise HTTPException(400, "Not a file")
+        raise http_400("Not a file")
 
     risk_level, risk_reason = permission_layer.assess_risk(
         f"read {file_path}",
@@ -159,7 +154,7 @@ async def read_file(
     )
 
     if risk_level == RiskLevel.CRITICAL:
-        raise HTTPException(403, f"File access denied: {risk_reason}")
+        raise http_403(f"File access denied: {risk_reason}")
 
     lines = []
     try:
@@ -171,7 +166,7 @@ async def read_file(
                     break
                 lines.append(f"L{line_num}: {line.rstrip()}")
     except UnicodeDecodeError:
-        raise HTTPException(400, "Cannot read binary file")
+        raise http_400("Cannot read binary file")
 
     await log_action(
         user_id=user_id,
@@ -241,7 +236,7 @@ async def preview_diff(
     file_path = user_workspace / request.path
 
     if not code_service.is_safe_path(file_path, user_workspace):
-        raise HTTPException(400, "Invalid path")
+        raise http_400("Invalid path")
 
     if file_path.exists():
         with open(file_path, 'r', encoding='utf-8') as f:
@@ -285,18 +280,18 @@ async def write_file(
         max_requests=30,
         window_seconds=60
     ):
-        raise HTTPException(status_code=429, detail="Too many write requests. Please slow down.")
+        raise http_429("Too many write requests. Please slow down.")
 
     user_workspace = code_service.get_user_workspace(user_id)
     file_path = user_workspace / request.path
 
     if not code_service.is_safe_path(file_path, user_workspace):
-        raise HTTPException(400, "Invalid path")
+        raise http_400("Invalid path")
 
     is_new_file = not file_path.exists()
 
     if is_new_file and not request.create_if_missing:
-        raise HTTPException(404, "File does not exist. Set create_if_missing=true to create.")
+        raise http_404("File does not exist. Set create_if_missing=true to create.", resource="file")
 
     operation = "create file" if is_new_file else "modify file"
     risk_level, risk_reason = permission_layer.assess_risk(
@@ -305,7 +300,7 @@ async def write_file(
     )
 
     if risk_level == RiskLevel.CRITICAL:
-        raise HTTPException(403, f"Write operation denied: {risk_reason}")
+        raise http_403(f"Write operation denied: {risk_reason}")
 
     if risk_level in [RiskLevel.HIGH, RiskLevel.MEDIUM]:
         logger.warning(f"High/medium risk write operation: {file_path} - {risk_reason}")
@@ -350,16 +345,16 @@ async def delete_file(
         max_requests=20,
         window_seconds=60
     ):
-        raise HTTPException(status_code=429, detail="Too many delete requests. Please slow down.")
+        raise http_429("Too many delete requests. Please slow down.")
 
     user_workspace = code_service.get_user_workspace(user_id)
     file_path = user_workspace / path
 
     if not code_service.is_safe_path(file_path, user_workspace):
-        raise HTTPException(400, "Invalid path")
+        raise http_400("Invalid path")
 
     if not file_path.exists():
-        raise HTTPException(404, "File not found")
+        raise http_404("File not found", resource="file")
 
     risk_level, risk_reason = permission_layer.assess_risk(
         f"rm {file_path}",
@@ -367,12 +362,12 @@ async def delete_file(
     )
 
     if risk_level == RiskLevel.CRITICAL:
-        raise HTTPException(403, f"Delete operation denied: {risk_reason}")
+        raise http_403(f"Delete operation denied: {risk_reason}")
 
     if file_path.is_file():
         code_service.delete_file_from_disk(file_path)
     else:
-        raise HTTPException(400, "Path is not a file")
+        raise http_400("Path is not a file")
 
     await log_action(
         user_id=user_id,

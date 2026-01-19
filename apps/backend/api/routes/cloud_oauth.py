@@ -41,6 +41,7 @@ from api.config_paths import get_config_paths
 from api.utils import get_user_id
 from api.config import is_airgap_mode, get_settings
 from api.routes.schemas import SuccessResponse
+from api.errors import http_400, http_401, http_503
 
 logger = logging.getLogger(__name__)
 
@@ -50,10 +51,7 @@ logger = logging.getLogger(__name__)
 async def check_cloud_available():
     """Dependency that checks if cloud features are available."""
     if is_airgap_mode():
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail={"error": "cloud_unavailable", "message": "Cloud features disabled in air-gap mode"}
-        )
+        raise http_503("Cloud features disabled in air-gap mode")
 
 
 router = APIRouter(
@@ -258,10 +256,7 @@ async def register_oauth_client(
     for uri in request.redirect_uris:
         parsed = urlparse(uri)
         if not parsed.scheme or not parsed.netloc:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid redirect URI: {uri}"
-            )
+            raise http_400(f"Invalid redirect URI: {uri}")
 
     # Validate scopes
     valid_scopes = [s for s in request.allowed_scopes if s in VALID_SCOPES]
@@ -364,10 +359,7 @@ async def oauth_authorize(
     user_id = get_user_id(current_user)
 
     if response_type != "code":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only response_type=code is supported"
-        )
+        raise http_400("Only response_type=code is supported")
 
     # Validate client
     with sqlite3.connect(str(OAUTH_DB_PATH)) as conn:
@@ -381,19 +373,16 @@ async def oauth_authorize(
         client = cursor.fetchone()
 
     if not client:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid client_id")
+        raise http_400("Invalid client_id")
 
     # Validate redirect_uri
     allowed_uris = json.loads(client["redirect_uris"])
     if redirect_uri not in allowed_uris:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid redirect_uri")
+        raise http_400("Invalid redirect_uri")
 
     # PKCE required for public clients
     if client["client_type"] == "public" and not code_challenge:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="PKCE code_challenge required for public clients"
-        )
+        raise http_400("PKCE code_challenge required for public clients")
 
     # Parse and validate scopes
     requested_scopes = scope.split() if scope else []
@@ -478,10 +467,7 @@ async def oauth_token(
             scope=scope
         )
     else:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unsupported grant_type: {grant_type}"
-        )
+        raise http_400(f"Unsupported grant_type: {grant_type}")
 
 
 async def _handle_authorization_code_grant(
@@ -493,10 +479,7 @@ async def _handle_authorization_code_grant(
 ) -> TokenResponse:
     """Handle authorization_code grant type"""
     if not code or not redirect_uri:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="code and redirect_uri required for authorization_code grant"
-        )
+        raise http_400("code and redirect_uri required for authorization_code grant")
 
     with sqlite3.connect(str(OAUTH_DB_PATH)) as conn:
         conn.row_factory = sqlite3.Row
@@ -512,31 +495,31 @@ async def _handle_authorization_code_grant(
         auth_code = cursor.fetchone()
 
         if not auth_code:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired code")
+            raise http_400("Invalid or expired code")
 
         # Check expiry
         expires_at = datetime.fromisoformat(auth_code["expires_at"])
         if datetime.now(UTC) > expires_at:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Authorization code expired")
+            raise http_400("Authorization code expired")
 
         # Validate client
         if auth_code["client_id"] != client_id:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Client mismatch")
+            raise http_400("Client mismatch")
 
         if auth_code["redirect_uri"] != redirect_uri:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Redirect URI mismatch")
+            raise http_400("Redirect URI mismatch")
 
         # Validate client authentication
         if auth_code["client_type"] == "confidential":
             if not client_secret or _hash_secret(client_secret) != auth_code["client_secret_hash"]:
-                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid client credentials")
+                raise http_401("Invalid client credentials")
 
         # Validate PKCE
         if auth_code["code_challenge"]:
             if not code_verifier:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="code_verifier required")
+                raise http_400("code_verifier required")
             if not _verify_pkce(code_verifier, auth_code["code_challenge"], auth_code["code_challenge_method"] or "S256"):
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="PKCE verification failed")
+                raise http_400("PKCE verification failed")
 
         # Mark code as used
         cursor.execute("UPDATE oauth_auth_codes SET used = 1 WHERE code = ?", (code,))
@@ -602,10 +585,7 @@ async def _handle_refresh_token_grant(
 ) -> TokenResponse:
     """Handle refresh_token grant type"""
     if not refresh_token:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="refresh_token required"
-        )
+        raise http_400("refresh_token required")
 
     with sqlite3.connect(str(OAUTH_DB_PATH)) as conn:
         conn.row_factory = sqlite3.Row
@@ -621,21 +601,21 @@ async def _handle_refresh_token_grant(
         token = cursor.fetchone()
 
         if not token:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid refresh token")
+            raise http_400("Invalid refresh token")
 
         # Check expiry
         expires_at = datetime.fromisoformat(token["expires_at"])
         if datetime.now(UTC) > expires_at:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Refresh token expired")
+            raise http_400("Refresh token expired")
 
         # Validate client
         if token["client_id"] != client_id:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Client mismatch")
+            raise http_400("Client mismatch")
 
         # Validate client authentication for confidential clients
         if token["client_type"] == "confidential":
             if not client_secret or _hash_secret(client_secret) != token["client_secret_hash"]:
-                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid client credentials")
+                raise http_401("Invalid client credentials")
 
         # Generate new access token
         access_token = _generate_token()

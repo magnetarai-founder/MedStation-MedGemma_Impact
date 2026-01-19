@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException, Request, Depends
 from typing import Any, Dict, List
 import logging
 
+from api.errors import http_400, http_500
 from api.lan_discovery.service import lan_service
 from api.auth_middleware import get_current_user
 
@@ -50,7 +51,7 @@ async def start_discovery(request: Request) -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Failed to start discovery: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/discovery/stop")
@@ -69,7 +70,7 @@ async def stop_discovery(request: Request) -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Failed to stop discovery: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.get("/devices")
@@ -89,7 +90,7 @@ async def get_discovered_devices() -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Failed to get devices: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/hub/start")
@@ -123,7 +124,7 @@ async def start_hub(request: Request, body: StartHubRequest) -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Failed to start hub: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/hub/stop")
@@ -142,7 +143,7 @@ async def stop_hub(request: Request) -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Failed to stop hub: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/connect")
@@ -166,10 +167,10 @@ async def connect_to_device(request: Request, body: JoinDeviceRequest) -> Dict[s
         }
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise http_400(str(e))
     except Exception as e:
         logger.error(f"Failed to connect to device: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/disconnect")
@@ -197,7 +198,7 @@ async def disconnect_from_hub(request: Request) -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Failed to disconnect: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.get("/status")
@@ -219,7 +220,7 @@ async def get_lan_status() -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Failed to get status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 # ========== Hub-side endpoints (for receiving client connections) ==========
@@ -256,10 +257,10 @@ async def register_client(request: Request, body: RegisterClientRequest) -> Dict
         }
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise http_400(str(e))
     except Exception as e:
         logger.error(f"Failed to register client: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/unregister-client")
@@ -289,7 +290,7 @@ async def unregister_client(request: Request, body: UnregisterClientRequest) -> 
 
     except Exception as e:
         logger.error(f"Failed to unregister client: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.get("/clients")
@@ -302,7 +303,7 @@ async def get_connected_clients() -> Dict[str, Any]:
     """
     try:
         if not lan_service.is_hub:
-            raise HTTPException(status_code=400, detail="Not running as hub")
+            raise http_400("Not running as hub")
 
         clients = lan_service.get_connected_clients()
 
@@ -316,7 +317,7 @@ async def get_connected_clients() -> Dict[str, Any]:
         raise
     except Exception as e:
         logger.error(f"Failed to get clients: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 # ========== Connection Health & Resilience Endpoints ==========
@@ -343,7 +344,7 @@ async def get_connection_health() -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Failed to get health: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/heartbeat")
@@ -371,7 +372,7 @@ async def send_heartbeat() -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Heartbeat error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/heartbeat/configure")
@@ -405,7 +406,7 @@ async def configure_heartbeat(
         }
     except Exception as e:
         logger.error(f"Failed to configure heartbeat: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/reconnect")
@@ -418,10 +419,7 @@ async def manual_reconnect(request: Request) -> Dict[str, Any]:
     """
     try:
         if not lan_service.connected_hub:
-            raise HTTPException(
-                status_code=400,
-                detail="No hub to reconnect to - discover and connect first"
-            )
+            raise http_400("No hub to reconnect to - discover and connect first")
 
         hub_id = lan_service.connected_hub.id
 
@@ -441,10 +439,10 @@ async def manual_reconnect(request: Request) -> Dict[str, Any]:
         }
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise http_400(str(e))
     except Exception as e:
         logger.error(f"Reconnect failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 # Re-exports for backwards compatibility (P2 decomposition)
