@@ -15,6 +15,7 @@ from typing import Any
 import logging
 
 from api.auth_middleware import get_current_user
+from api.errors import http_400, http_500
 
 # Import from extracted module (P2 decomposition)
 from api.hot_slots.types import (
@@ -74,7 +75,7 @@ async def get_hot_slots(current_user = Depends(get_current_user)):
 
     except Exception as e:
         logger.error(f"Failed to get hot slots: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get hot slots: {str(e)}")
+        raise http_500(f"Failed to get hot slots: {str(e)}")
 
 
 @router.post("/hot-slots/{slot_number}/load", response_model=SlotOperationResponse)
@@ -91,7 +92,7 @@ async def load_model_to_slot(
     """
     # Validate slot number
     if slot_number < 1 or slot_number > 4:
-        raise HTTPException(status_code=400, detail="Slot number must be between 1 and 4")
+        raise http_400("Slot number must be between 1 and 4")
 
     try:
         from api.services.chat.hot_slots import assign_to_hot_slot
@@ -121,10 +122,7 @@ async def load_model_to_slot(
 
     except Exception as e:
         logger.error(f"Failed to load model to slot {slot_number}: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to load model to slot: {str(e)}"
-        )
+        raise http_500(f"Failed to load model to slot: {str(e)}")
 
 
 @router.post("/hot-slots/{slot_number}/unload", response_model=SlotOperationResponse)
@@ -140,7 +138,7 @@ async def unload_model_from_slot(
     """
     # Validate slot number
     if slot_number < 1 or slot_number > 4:
-        raise HTTPException(status_code=400, detail="Slot number must be between 1 and 4")
+        raise http_400("Slot number must be between 1 and 4")
 
     try:
         from api.services.chat.hot_slots import remove_from_hot_slot
@@ -152,10 +150,7 @@ async def unload_model_from_slot(
 
         slot_meta = storage.get_slot_metadata(user_id, slot_number)
         if slot_meta and slot_meta.is_pinned:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Cannot unload slot {slot_number}: model is pinned"
-            )
+            raise http_400(f"Cannot unload slot {slot_number}: model is pinned")
 
         # Remove model from slot
         result = await remove_from_hot_slot(slot_number)
@@ -175,10 +170,7 @@ async def unload_model_from_slot(
         raise
     except Exception as e:
         logger.error(f"Failed to unload model from slot {slot_number}: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to unload model from slot: {str(e)}"
-        )
+        raise http_500(f"Failed to unload model from slot: {str(e)}")
 
 
 @router.patch("/hot-slots/{slot_number}/pin", response_model=SlotOperationResponse)
@@ -194,7 +186,7 @@ async def toggle_slot_pin(
     """
     # Validate slot number
     if slot_number < 1 or slot_number > 4:
-        raise HTTPException(status_code=400, detail="Slot number must be between 1 and 4")
+        raise http_400("Slot number must be between 1 and 4")
 
     try:
         from api.services.chat.hot_slots import get_hot_slots
@@ -207,7 +199,7 @@ async def toggle_slot_pin(
         new_pin_status = storage.toggle_pin(user_id, slot_number)
 
         if new_pin_status is None:
-            raise HTTPException(status_code=400, detail=f"Slot {slot_number} is empty")
+            raise http_400(f"Slot {slot_number} is empty")
 
         # Get current slots
         hot_slots_dict = await get_hot_slots()
@@ -225,10 +217,7 @@ async def toggle_slot_pin(
         raise
     except Exception as e:
         logger.error(f"Failed to toggle pin for slot {slot_number}: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to toggle pin status: {str(e)}"
-        )
+        raise http_500(f"Failed to toggle pin status: {str(e)}")
 
 
 @router.post("/hot-slots/load-all")
@@ -255,7 +244,4 @@ async def load_all_hot_slot_models(
 
     except Exception as e:
         logger.error(f"Failed to load all hot slot models: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to load models: {str(e)}"
-        )
+        raise http_500(f"Failed to load models: {str(e)}")

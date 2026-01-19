@@ -14,6 +14,7 @@ import logging
 from typing import Dict
 from fastapi import APIRouter, HTTPException, Request, Form, Depends, status
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.errors import http_404, http_429, http_500
 
 from api.auth_middleware import get_current_user
 from api.utils import get_user_id
@@ -52,13 +53,7 @@ async def add_file_comment_endpoint(
     ip = get_client_ip(request)
     key = f"vault:comment:add:{get_user_id(current_user)}:{ip}"
     if not rate_limiter.check_rate_limit(key, max_requests=60, window_seconds=60):
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=ErrorResponse(
-                error_code=ErrorCode.RATE_LIMITED,
-                message="Rate limit exceeded for vault.comment.added"
-            ).model_dump()
-        )
+        raise http_429("Rate limit exceeded for vault.comment.added")
 
     service = get_vault_service()
     user_id = get_user_id(current_user)
@@ -80,13 +75,7 @@ async def add_file_comment_endpoint(
         raise
     except Exception as e:
         logger.error(f"Failed to add comment to file {file_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to add comment"
-            ).model_dump()
-        )
+        raise http_500("Failed to add comment")
 
 
 @router.get(
@@ -115,13 +104,7 @@ async def get_file_comments_endpoint(
     ip = get_client_ip(request)
     key = f"vault:comment:list:{get_user_id(current_user)}:{ip}"
     if not rate_limiter.check_rate_limit(key, max_requests=60, window_seconds=60):
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=ErrorResponse(
-                error_code=ErrorCode.RATE_LIMITED,
-                message="Rate limit exceeded for vault.comment.list"
-            ).model_dump()
-        )
+        raise http_429("Rate limit exceeded for vault.comment.list")
 
     service = get_vault_service()
     user_id = get_user_id(current_user)
@@ -147,13 +130,7 @@ async def get_file_comments_endpoint(
         raise
     except Exception as e:
         logger.error(f"Failed to get comments for file {file_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to get file comments"
-            ).model_dump()
-        )
+        raise http_500("Failed to get file comments")
 
 
 @router.put(
@@ -181,13 +158,7 @@ async def update_file_comment_endpoint(
     ip = get_client_ip(request)
     key = f"vault:comment:update:{get_user_id(current_user)}:{ip}"
     if not rate_limiter.check_rate_limit(key, max_requests=60, window_seconds=60):
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=ErrorResponse(
-                error_code=ErrorCode.RATE_LIMITED,
-                message="Rate limit exceeded for vault.comment.updated"
-            ).model_dump()
-        )
+        raise http_429("Rate limit exceeded for vault.comment.updated")
 
     service = get_vault_service()
     user_id = get_user_id(current_user)
@@ -206,24 +177,12 @@ async def update_file_comment_endpoint(
 
         return SuccessResponse(data=result, message="Comment updated successfully")
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=ErrorResponse(
-                error_code=ErrorCode.NOT_FOUND,
-                message=str(e)
-            ).model_dump()
-        )
+        raise http_404(str(e), resource="comment")
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to update comment {comment_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to update comment"
-            ).model_dump()
-        )
+        raise http_500("Failed to update comment")
 
 
 @router.delete(
@@ -250,13 +209,7 @@ async def delete_file_comment_endpoint(
     ip = get_client_ip(request)
     key = f"vault:comment:delete:{get_user_id(current_user)}:{ip}"
     if not rate_limiter.check_rate_limit(key, max_requests=60, window_seconds=60):
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=ErrorResponse(
-                error_code=ErrorCode.RATE_LIMITED,
-                message="Rate limit exceeded for vault.comment.deleted"
-            ).model_dump()
-        )
+        raise http_429("Rate limit exceeded for vault.comment.deleted")
 
     service = get_vault_service()
     user_id = get_user_id(current_user)
@@ -264,13 +217,7 @@ async def delete_file_comment_endpoint(
     try:
         success = service.delete_file_comment(user_id, vault_type, comment_id)
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Comment not found"
-                ).model_dump()
-            )
+            raise http_404("Comment not found", resource="comment")
 
         # Audit logging after success
         audit_logger.log(
@@ -286,10 +233,4 @@ async def delete_file_comment_endpoint(
         raise
     except Exception as e:
         logger.error(f"Failed to delete comment {comment_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to delete comment"
-            ).model_dump()
-        )
+        raise http_500("Failed to delete comment")

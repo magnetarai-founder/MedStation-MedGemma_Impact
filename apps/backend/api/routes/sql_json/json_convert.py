@@ -16,6 +16,7 @@ from starlette.background import BackgroundTask
 
 from api.schemas.api_models import JsonConvertRequest, JsonConvertResponse
 from api.routes.schemas import ErrorResponse, ErrorCode
+from api.errors import http_400, http_404, http_500
 from api.routes.sql_json.utils import (
     get_sessions,
     get_df_to_jsonsafe_records,
@@ -88,13 +89,7 @@ async def convert_json_router(
 
             load_result = engine.load_json(str(temp_json))
             if not load_result['success']:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=ErrorResponse(
-                        error_code=ErrorCode.VALIDATION_ERROR,
-                        message=load_result.get('error', 'Failed to analyze JSON')
-                    ).model_dump()
-                )
+                raise http_400(load_result.get('error', 'Failed to analyze JSON'))
 
             # Return lightweight preview data with configurable limit
             preview_data = []
@@ -135,13 +130,7 @@ async def convert_json_router(
             logger.info(f"Conversion completed with result: {result.get('success', False)}")
 
         if not result['success']:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=result.get('error', 'Conversion failed')
-                ).model_dump()
-            )
+            raise http_400(result.get('error', 'Conversion failed'))
 
         # Store result in session (only if Excel file was actually created)
         if not preview_only:
@@ -218,13 +207,7 @@ async def convert_json_router(
             temp_json.unlink()
         if 'temp_excel' in locals() and temp_excel.exists():
             temp_excel.unlink()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to convert JSON to Excel"
-            ).model_dump()
-        )
+        raise http_500("Failed to convert JSON to Excel")
     finally:
         # Always cleanup input JSON
         if 'temp_json' in locals() and temp_json.exists():
@@ -248,13 +231,7 @@ async def download_json_result_router(
         validate_session_exists(session_id, sessions)
 
         if 'json_result' not in sessions[session_id]:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="No conversion result found"
-                ).model_dump()
-            )
+            raise http_404("No conversion result found", resource="json_result")
 
         json_result = sessions[session_id]['json_result']
         excel_path_str = json_result.get('excel_path')
@@ -262,13 +239,7 @@ async def download_json_result_router(
         if not excel_path_str:
             # Clean up stale session data
             del sessions[session_id]['json_result']
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Result file path not found. Please convert again."
-                ).model_dump()
-            )
+            raise http_404("Result file path not found. Please convert again.", resource="excel_path")
 
         excel_path = Path(excel_path_str)
 
@@ -335,14 +306,7 @@ async def download_json_result_router(
                 media_type = "application/octet-stream"
                 extension = ".parquet"
             else:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=ErrorResponse(
-                        error_code=ErrorCode.VALIDATION_ERROR,
-                        message=f"Invalid format: {format}",
-                        details={"format": format, "allowed_formats": ["excel", "csv", "tsv", "parquet"]}
-                    ).model_dump()
-                )
+                raise http_400(f"Invalid format: {format}. Allowed: excel, csv, tsv, parquet")
 
             return FileResponse(
                 output_path,
@@ -355,10 +319,4 @@ async def download_json_result_router(
         raise
     except Exception as e:
         logger.error(f"JSON download failed for session {session_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to download conversion result"
-            ).model_dump()
-        )
+        raise http_500("Failed to download conversion result")

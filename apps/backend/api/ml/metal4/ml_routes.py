@@ -17,6 +17,7 @@ Module structure (P2 decomposition):
 
 import logging
 from fastapi import APIRouter, HTTPException, Depends
+from api.errors import http_404, http_500
 from typing import Any
 
 from api.auth_middleware import get_current_user
@@ -60,7 +61,7 @@ async def get_capabilities(user: dict = Depends(get_current_user)):
 
     except Exception as e:
         logger.exception("Failed to get capabilities")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.get("/stats", response_model=StatsResponse)
@@ -81,7 +82,7 @@ async def get_stats(user: dict = Depends(get_current_user)):
 
     except Exception as e:
         logger.exception("Failed to get stats")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/embed", response_model=EmbedResponse)
@@ -118,7 +119,7 @@ async def embed_text(
 
     except Exception as e:
         logger.exception("Embedding failed")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/embed_batch", response_model=EmbedBatchResponse)
@@ -154,7 +155,7 @@ async def embed_batch(
 
     except Exception as e:
         logger.exception("Batch embedding failed")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/search", response_model=SearchResponse)
@@ -192,7 +193,7 @@ async def vector_search(
 
     except Exception as e:
         logger.exception("Vector search failed")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/load_database")
@@ -228,7 +229,7 @@ async def load_database(
 
     except Exception as e:
         logger.exception("Failed to load database")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/store_embedding")
@@ -260,7 +261,7 @@ async def store_embedding(
 
     except Exception as e:
         logger.exception("Failed to store embedding")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.get("/retrieve_embedding/{vector_id}")
@@ -281,7 +282,7 @@ async def retrieve_embedding(
         embedding = pipeline.retrieve_embedding(vector_id)
 
         if embedding is None:
-            raise HTTPException(status_code=404, detail="Vector not found")
+            raise http_404("Vector not found", resource="vector")
 
         return {
             "vector_id": vector_id,
@@ -293,7 +294,7 @@ async def retrieve_embedding(
         raise
     except Exception as e:
         logger.exception("Failed to retrieve embedding")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/validate")
@@ -324,7 +325,7 @@ async def validate_setup(user: dict = Depends(get_current_user)) -> dict[str, An
 
     except Exception as e:
         logger.exception("Validation failed")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/benchmark")
@@ -356,7 +357,7 @@ async def run_benchmark(user: dict = Depends(get_current_user)) -> dict[str, Any
 
     except Exception as e:
         logger.exception("Benchmark failed")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 # Re-exports for backwards compatibility (P2 decomposition)
