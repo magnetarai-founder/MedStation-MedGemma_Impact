@@ -4,11 +4,12 @@ Code Operations - Library Routes
 CRUD endpoints for project library documents.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from typing import Dict, Any, List
 import logging
 
 from api.auth_middleware import get_current_user
+from api.errors import http_500
 from api.utils import get_user_id
 from api.code_operations.models import ProjectLibraryDocument, UpdateDocumentRequest
 from api.code_operations import library_db
@@ -35,7 +36,7 @@ async def get_library_documents(
 
     except Exception as e:
         logger.error(f"Error getting library documents: {e}")
-        raise HTTPException(500, f"Failed to get library documents: {str(e)}")
+        raise http_500("Failed to get library documents")
 
 
 @router.post("/library")
@@ -66,7 +67,7 @@ async def create_library_document(
 
     except Exception as e:
         logger.error(f"Error creating library document: {e}")
-        raise HTTPException(500, f"Failed to create library document: {str(e)}")
+        raise http_500("Failed to create library document")
 
 
 @router.patch("/library/{doc_id}")
@@ -98,7 +99,7 @@ async def update_library_document(
 
     except Exception as e:
         logger.error(f"Error updating library document: {e}")
-        raise HTTPException(500, f"Failed to update library document: {str(e)}")
+        raise http_500("Failed to update library document")
 
 
 @router.delete("/library/{doc_id}")
@@ -122,4 +123,4 @@ async def delete_library_document(
 
     except Exception as e:
         logger.error(f"Error deleting library document: {e}")
-        raise HTTPException(500, f"Failed to delete library document: {str(e)}")
+        raise http_500("Failed to delete library document")

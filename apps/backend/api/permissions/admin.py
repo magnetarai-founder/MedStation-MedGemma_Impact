@@ -14,6 +14,7 @@ from typing import Dict, List, Optional
 from datetime import datetime, UTC
 
 from .storage import get_db_connection
+from api.errors import http_404
 
 # Import and re-export from submodules for backward compatibility
 from .profiles import (
@@ -105,7 +106,6 @@ async def assign_profile_to_user(
     Raises:
         HTTPException: If profile or user not found
     """
-    from fastapi import HTTPException  # Lazy import
     from audit_logger import audit_log_sync, AuditAction  # Lazy import
     from permission_engine import get_permission_engine  # Lazy import
 
@@ -116,13 +116,13 @@ async def assign_profile_to_user(
     cur.execute("SELECT * FROM permission_profiles WHERE profile_id = ?", (profile_id,))
     if not cur.fetchone():
         conn.close()
-        raise HTTPException(status_code=404, detail="Profile not found")
+        raise http_404("Profile not found", resource="profile")
 
     # Check if user exists
     cur.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
     if not cur.fetchone():
         conn.close()
-        raise HTTPException(status_code=404, detail="User not found")
+        raise http_404("User not found", resource="user")
 
     now = datetime.now(UTC).isoformat()
 
@@ -176,7 +176,6 @@ async def unassign_profile_from_user(
     Raises:
         HTTPException: If assignment not found
     """
-    from fastapi import HTTPException  # Lazy import
     from audit_logger import audit_log_sync, AuditAction  # Lazy import
     from permission_engine import get_permission_engine  # Lazy import
 
@@ -193,7 +192,7 @@ async def unassign_profile_from_user(
     conn.close()
 
     if deleted == 0:
-        raise HTTPException(status_code=404, detail="Assignment not found")
+        raise http_404("Assignment not found", resource="user_permission_profile")
 
     # Audit log - Profile revoked from user
     audit_log_sync(

@@ -12,9 +12,10 @@ Follows MagnetarStudio API standards (see API_STANDARDS.md).
 import logging
 from typing import Dict
 from fastapi import APIRouter, HTTPException, Form, Depends, status
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
 
 from api.auth_middleware import get_current_user
+from api.errors import http_404, http_500
 from api.utils import get_user_id
 from api.services.vault.core import get_vault_service
 
@@ -54,13 +55,7 @@ async def add_file_tag(
         raise
     except Exception as e:
         logger.error(f"Failed to add tag to file {file_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to add tag to file"
-            ).model_dump()
-        )
+        raise http_500("Failed to add tag to file")
 
 
 @router.delete(
@@ -89,25 +84,13 @@ async def remove_file_tag(
     try:
         success = service.remove_tag_from_file(user_id, vault_type, file_id, tag_name)
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message=f"Tag '{tag_name}' not found on file"
-                ).model_dump()
-            )
+            raise http_404(f"Tag '{tag_name}' not found on file", resource="tag")
         return SuccessResponse(data={"success": True}, message="Tag removed from file successfully")
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to remove tag from file {file_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to remove tag from file"
-            ).model_dump()
-        )
+        raise http_500("Failed to remove tag from file")
 
 
 @router.get(
@@ -139,10 +122,4 @@ async def get_file_tags(
         raise
     except Exception as e:
         logger.error(f"Failed to get tags for file {file_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to get file tags"
-            ).model_dump()
-        )
+        raise http_500("Failed to get file tags")

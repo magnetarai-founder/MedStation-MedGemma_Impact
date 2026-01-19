@@ -11,6 +11,7 @@ import subprocess
 import logging
 
 from api.auth_middleware import get_current_user
+from api.errors import http_400, http_500
 from api.utils import get_user_id
 from api.config_paths import PATHS
 from api.code_operations.models import WorkspaceRootRequest
@@ -30,10 +31,10 @@ async def set_workspace_root(request: WorkspaceRootRequest) -> Dict[str, Any]:
         workspace_path = Path(request.workspace_root)
 
         if not workspace_path.exists():
-            raise HTTPException(400, "Workspace path does not exist")
+            raise http_400("Workspace path does not exist")
 
         if not workspace_path.is_dir():
-            raise HTTPException(400, "Workspace path must be a directory")
+            raise http_400("Workspace path must be a directory")
 
         marker_file = PATHS.data_dir / "current_workspace.txt"
         marker_file.write_text(str(workspace_path.resolve()))
@@ -47,7 +48,7 @@ async def set_workspace_root(request: WorkspaceRootRequest) -> Dict[str, Any]:
         raise
     except Exception as e:
         logger.error(f"Error setting workspace root: {e}")
-        raise HTTPException(500, f"Failed to set workspace root: {str(e)}")
+        raise http_500("Failed to set workspace root")
 
 
 @router.get("/git/log")
@@ -133,7 +134,7 @@ async def get_git_log(
 
     except subprocess.TimeoutExpired:
         logger.error("Git command timed out")
-        raise HTTPException(500, "Git operation timed out")
+        raise http_500("Git operation timed out")
     except Exception as e:
         logger.error(f"Error getting git log: {e}")
         return {
