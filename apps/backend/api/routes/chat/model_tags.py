@@ -16,7 +16,8 @@ from api.auth_middleware import get_current_user, User
 
 from api.services.model_tags import detect_tags_from_name, get_all_tags, get_tag_description, get_tag_icon
 from api.services.model_tag_overrides import get_manual_tags, set_manual_tags, delete_manual_tags, get_merged_tags
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
+from api.errors import http_400, http_500
 
 logger = logging.getLogger(__name__)
 
@@ -78,13 +79,7 @@ async def get_available_tags() -> SuccessResponse[List[TagDefinition]]:
 
     except Exception as e:
         logger.error(f"Failed to get available tags", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve available tags"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve available tags")
 
 
 @router.get(
@@ -133,13 +128,7 @@ async def get_model_tags(
 
     except Exception as e:
         logger.error(f"Failed to get tags for model {model_name}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message=f"Failed to retrieve tags for model"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve tags for model")
 
 
 @router.put(
@@ -173,14 +162,7 @@ async def update_model_tags(
         invalid_tags = [tag for tag in request.tags if tag not in available_tag_ids]
 
         if invalid_tags:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=f"Invalid tags: {', '.join(invalid_tags)}",
-                    details={"invalid_tags": invalid_tags}
-                ).model_dump()
-            )
+            raise http_400(f"Invalid tags: {', '.join(invalid_tags)}")
 
         # Save manual overrides
         set_manual_tags(model_name, request.tags)
@@ -193,13 +175,7 @@ async def update_model_tags(
 
     except Exception as e:
         logger.error(f"Failed to update tags for model {model_name}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to update model tags"
-            ).model_dump()
-        )
+        raise http_500("Failed to update model tags")
 
 
 @router.delete(
@@ -238,10 +214,4 @@ async def delete_model_tag_overrides(
 
     except Exception as e:
         logger.error(f"Failed to delete tag overrides for model {model_name}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to delete tag overrides"
-            ).model_dump()
-        )
+        raise http_500("Failed to delete tag overrides")

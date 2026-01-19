@@ -12,7 +12,8 @@ from typing import List, Dict, Any
 
 from api.auth_middleware import get_current_user
 from api.services.model_download_queue import get_download_queue
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
+from api.errors import http_404, http_500
 
 logger = logging.getLogger(__name__)
 
@@ -66,13 +67,7 @@ async def enqueue_downloads(
 
     except Exception as e:
         logger.error(f"Failed to enqueue models", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to enqueue model downloads"
-            ).model_dump()
-        )
+        raise http_500("Failed to enqueue model downloads")
 
 
 @router.get(
@@ -113,13 +108,7 @@ async def get_download_status(
 
     except Exception as e:
         logger.error(f"Failed to get download status", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve download status"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve download status")
 
 
 @router.post(
@@ -141,13 +130,7 @@ async def cancel_download(
         success = await queue.cancel(model_name)
 
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message=f"Download for '{model_name}' not found or already completed"
-                ).model_dump()
-            )
+            raise http_404(f"Download for '{model_name}' not found or already completed", resource="download")
 
         return SuccessResponse(
             data={"model_name": model_name},
@@ -159,13 +142,7 @@ async def cancel_download(
 
     except Exception as e:
         logger.error(f"Failed to cancel download for {model_name}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to cancel download"
-            ).model_dump()
-        )
+        raise http_500("Failed to cancel download")
 
 
 @router.delete(
@@ -195,10 +172,4 @@ async def clear_completed_downloads(
 
     except Exception as e:
         logger.error(f"Failed to clear completed downloads", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to clear completed downloads"
-            ).model_dump()
-        )
+        raise http_500("Failed to clear completed downloads")

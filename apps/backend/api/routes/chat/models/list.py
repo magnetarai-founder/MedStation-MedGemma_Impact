@@ -9,7 +9,8 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime, UTC
 from fastapi import APIRouter, HTTPException, status
 
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
+from api.errors import http_500
 
 logger = logging.getLogger(__name__)
 
@@ -119,13 +120,7 @@ async def list_ollama_models_endpoint():
 
         # No cache available - return error
         logger.error(f"Failed to list models (no cache): {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to list models"
-            ).model_dump()
-        )
+        raise http_500("Failed to list models")
 
 
 @router.get(
@@ -171,13 +166,7 @@ async def list_ollama_models_with_tags_endpoint():
         )
     except Exception as e:
         logger.error(f"Failed to list models with tags: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to list models with tags"
-            ).model_dump()
-        )
+        raise http_500("Failed to list models with tags")
 
 
 @router.get(
@@ -195,13 +184,7 @@ async def get_all_tags_endpoint():
         return SuccessResponse(data=tags, message=f"Found {len(tags)} tags")
     except Exception as e:
         logger.error(f"Failed to get tags: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to get tags"
-            ).model_dump()
-        )
+        raise http_500("Failed to get tags")
 
 
 @router.get(
@@ -219,13 +202,7 @@ async def check_health_endpoint():
         return SuccessResponse(data=health, message="Health check completed")
     except Exception as e:
         logger.error(f"Failed to check health: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to check health"
-            ).model_dump()
-        )
+        raise http_500("Failed to check health")
 
 
 @router.get(
@@ -243,10 +220,4 @@ async def get_models_status_endpoint():
         return SuccessResponse(data=models_status, message="Models status retrieved")
     except Exception as e:
         logger.error(f"Failed to get models status: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to get models status"
-            ).model_dump()
-        )
+        raise http_500("Failed to get models status")

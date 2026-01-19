@@ -8,6 +8,7 @@ from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, Request
 import logging
 
+from api.errors import http_404, http_500, http_503
 from api.p2p_chat_models import (
     Peer,
     PeerListResponse,
@@ -39,7 +40,7 @@ async def initialize_p2p_service(request: Request, display_name: str, device_nam
 
     except Exception as e:
         logger.error(f"Failed to initialize P2P service: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.get("/status", response_model=P2PStatusResponse)
@@ -48,7 +49,7 @@ async def get_p2p_status() -> P2PStatusResponse:
     service = get_p2p_chat_service()
 
     if not service or not service.is_running:
-        raise HTTPException(status_code=503, detail="P2P service not running")
+        raise http_503("P2P service not running")
 
     peers = await service.list_peers()
     online_peers = [p for p in peers if p.status == "online" and p.peer_id != service.peer_id]
@@ -75,7 +76,7 @@ async def list_peers() -> PeerListResponse:
     service = get_p2p_chat_service()
 
     if not service:
-        raise HTTPException(status_code=503, detail="P2P service not initialized")
+        raise http_503("P2P service not initialized")
 
     peers = await service.list_peers()
 
@@ -91,12 +92,12 @@ async def get_peer(peer_id: str) -> Peer:
     service = get_p2p_chat_service()
 
     if not service:
-        raise HTTPException(status_code=503, detail="P2P service not initialized")
+        raise http_503("P2P service not initialized")
 
     peers = await service.list_peers()
     peer = next((p for p in peers if p.peer_id == peer_id), None)
 
     if not peer:
-        raise HTTPException(status_code=404, detail="Peer not found")
+        raise http_404("Peer not found", resource="peer")
 
     return peer
