@@ -16,7 +16,8 @@ from api.auth_middleware import get_current_user, User
 from api.utils import get_user_id, get_user_role
 from api.audit_logger import get_audit_logger, AuditEntry, AuditAction
 from api.telemetry import track_metric, TelemetryMetric
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
+from api.errors import http_500
 
 logger = logging.getLogger(__name__)
 
@@ -138,10 +139,4 @@ async def get_session_audit_logs(
 
     except Exception as e:
         logger.error(f"Failed to fetch session audit logs", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve audit logs"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve audit logs")

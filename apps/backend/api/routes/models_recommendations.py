@@ -14,7 +14,8 @@ import logging
 from api.auth_middleware import get_current_user
 from api.utils import get_user_id
 from api.services.recommendations import get_recommendations_service, TaskType
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
+from api.errors import http_500
 
 logger = logging.getLogger(__name__)
 
@@ -73,10 +74,4 @@ async def get_model_recommendations(
 
     except Exception as e:
         logger.error(f"Failed to get model recommendations", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to generate model recommendations"
-            ).model_dump()
-        )
+        raise http_500("Failed to generate model recommendations")

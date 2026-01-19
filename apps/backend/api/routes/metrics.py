@@ -22,7 +22,8 @@ from api.observability_middleware import (
 )
 from api.db_profiler import get_query_stats, reset_query_stats
 from api.cache_service import get_cache
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
+from api.errors import http_404
 from api.core.exceptions import handle_exceptions
 
 logger = logging.getLogger(__name__)
@@ -385,13 +386,7 @@ async def get_operation_metrics_detail(operation: str) -> SuccessResponse[Dict]:
     snapshot = metrics_collector.get_snapshot(operation)
 
     if not snapshot:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=ErrorResponse(
-                error_code=ErrorCode.NOT_FOUND,
-                message=f"No metrics found for operation: {operation}"
-            ).model_dump()
-        )
+        raise http_404(f"No metrics found for operation: {operation}", resource="operation")
 
     return SuccessResponse(
         data=snapshot,
