@@ -14,6 +14,7 @@ from api.auth_middleware import get_current_user
 from api.audit_logger import get_audit_logger
 from api.rate_limiter import get_client_ip, rate_limiter
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.errors import http_401, http_404, http_429, http_500
 from api.services.vault.core import get_vault_service
 from api.utils import get_user_id
 
@@ -53,13 +54,7 @@ async def create_share_link_endpoint(
     ip = get_client_ip(request)
     key = f"vault:share:create:{get_user_id(current_user)}:{ip}"
     if not rate_limiter.check_rate_limit(key, max_requests=10, window_seconds=60):
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=ErrorResponse(
-                error_code=ErrorCode.RATE_LIMITED,
-                message="Rate limit exceeded for vault.share.created"
-            ).model_dump()
-        )
+        raise http_429("Rate limit exceeded for vault.share.created")
 
     try:
         service = get_vault_service()
@@ -104,13 +99,7 @@ async def create_share_link_endpoint(
         raise
     except Exception as e:
         logger.error("Failed to create share link", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to create share link"
-            ).model_dump()
-        )
+        raise http_500("Failed to create share link")
 
 
 @router.get(
@@ -132,13 +121,7 @@ async def get_file_shares_endpoint(
     ip = get_client_ip(request)
     key = f"vault:share:list:{get_user_id(current_user)}:{ip}"
     if not rate_limiter.check_rate_limit(key, max_requests=60, window_seconds=60):
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=ErrorResponse(
-                error_code=ErrorCode.RATE_LIMITED,
-                message="Rate limit exceeded for vault.share.list"
-            ).model_dump()
-        )
+        raise http_429("Rate limit exceeded for vault.share.list")
 
     try:
         service = get_vault_service()
@@ -156,13 +139,7 @@ async def get_file_shares_endpoint(
         raise
     except Exception as e:
         logger.error("Failed to get file shares", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve file shares"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve file shares")
 
 
 @router.delete(
@@ -184,13 +161,7 @@ async def revoke_share_link_endpoint(
     ip = get_client_ip(request)
     key = f"vault:share:revoke:{get_user_id(current_user)}:{ip}"
     if not rate_limiter.check_rate_limit(key, max_requests=30, window_seconds=60):
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=ErrorResponse(
-                error_code=ErrorCode.RATE_LIMITED,
-                message="Rate limit exceeded for vault.share.revoked"
-            ).model_dump()
-        )
+        raise http_429("Rate limit exceeded for vault.share.revoked")
 
     try:
         service = get_vault_service()
@@ -198,13 +169,7 @@ async def revoke_share_link_endpoint(
 
         success = service.revoke_share_link(user_id, vault_type, share_id)
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Share link not found"
-                ).model_dump()
-            )
+            raise http_404("Share link not found", resource="share_link")
 
         # Audit logging after success
         audit_logger.log(
@@ -224,13 +189,7 @@ async def revoke_share_link_endpoint(
         raise
     except Exception as e:
         logger.error("Failed to revoke share link", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to revoke share link"
-            ).model_dump()
-        )
+        raise http_500("Failed to revoke share link")
 
 
 @router.get(
@@ -259,24 +218,10 @@ async def access_share_link_endpoint(
     key_day = f"vault:share.download.day:{share_token[:8]}:{ip}"
 
     if not rate_limiter.check_rate_limit(key_min, max_requests=5, window_seconds=60):
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail={
-                "code": "rate_limited",
-                "message": "Too many downloads for this link from your IP (1 min)",
-                "retry_after": 60
-            }
-        )
+        raise http_429("Too many downloads for this link from your IP (1 min)")
 
     if not rate_limiter.check_rate_limit(key_day, max_requests=50, window_seconds=86400):
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail={
-                "code": "rate_limited",
-                "message": "Too many downloads for this link from your IP (24h)",
-                "retry_after": 3600
-            }
-        )
+        raise http_429("Too many downloads for this link from your IP (24h)")
 
     try:
         service = get_vault_service()
@@ -287,15 +232,9 @@ async def access_share_link_endpoint(
         # Verify password if required
         if share_info["requires_password"]:
             if not password:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail={"code": "password_required", "message": "Password required"}
-                )
+                raise http_401("Password required")
             if not service.verify_share_password(share_token, password):
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail={"code": "password_incorrect", "message": "Incorrect password"}
-                )
+                raise http_401("Incorrect password")
 
         return SuccessResponse(
             data=share_info,
@@ -325,10 +264,4 @@ async def access_share_link_endpoint(
         raise
     except Exception as e:
         logger.error(f"Failed to access share link (token: {share_token[:6]}...)", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to access share link"
-            ).model_dump()
-        )
+        raise http_500("Failed to access share link")

@@ -21,7 +21,7 @@ from api.utils import get_user_id
 from api.services.vault.core import get_vault_service
 from api.rate_limiter import get_client_ip, rate_limiter
 from api.audit_logger import get_audit_logger
-from api.routes.schemas import ErrorResponse, ErrorCode
+from api.errors import http_400, http_403, http_404, http_429, http_500
 
 logger = logging.getLogger(__name__)
 audit_logger = get_audit_logger()
@@ -59,22 +59,10 @@ async def get_file_thumbnail(
         service = get_vault_service()
 
         if vault_type not in ('real', 'decoy'):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="vault_type must be 'real' or 'decoy'"
-                ).model_dump()
-            )
+            raise http_400("vault_type must be 'real' or 'decoy'")
 
         if not vault_passphrase:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="vault_passphrase is required"
-                ).model_dump()
-            )
+            raise http_400("vault_passphrase is required")
 
         # Get file metadata
         conn = sqlite3.connect(service.db_path)
@@ -90,36 +78,18 @@ async def get_file_thumbnail(
         conn.close()
 
         if not file_row:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="File not found"
-                ).model_dump()
-            )
+            raise http_404("File not found", resource="file")
 
         # Check if file is an image
         if not file_row['mime_type'].startswith('image/'):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="File is not an image"
-                ).model_dump()
-            )
+            raise http_400("File is not an image")
 
         # Read and decrypt file
         encrypted_path = file_row['encrypted_path']
         file_path = service.files_path / encrypted_path
 
         if not file_path.exists():
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="File data not found"
-                ).model_dump()
-            )
+            raise http_404("File data not found", resource="file")
 
         with open(file_path, 'rb') as f:
             encrypted_data = f.read()
@@ -132,25 +102,13 @@ async def get_file_thumbnail(
             decrypted_data = fernet.decrypt(encrypted_data)
         except Exception as e:
             logger.error(f"Decryption failed for file {file_id}", exc_info=True)
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="Decryption failed - invalid passphrase"
-                ).model_dump()
-            )
+            raise http_400("Decryption failed - invalid passphrase")
 
         # Generate thumbnail
         thumbnail = service.generate_thumbnail(decrypted_data, max_size=(200, 200))
 
         if not thumbnail:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.INTERNAL_ERROR,
-                    message="Thumbnail generation failed"
-                ).model_dump()
-            )
+            raise http_500("Thumbnail generation failed")
 
         return Response(content=thumbnail, media_type="image/jpeg")
 
@@ -159,13 +117,7 @@ async def get_file_thumbnail(
 
     except Exception as e:
         logger.error(f"Failed to generate thumbnail for file {file_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to generate thumbnail"
-            ).model_dump()
-        )
+        raise http_500("Failed to generate thumbnail")
 
 
 @router.get(
@@ -201,33 +153,15 @@ async def download_vault_file(
         ip = get_client_ip(request)
         key = f"vault:file:download:{get_user_id(current_user)}:{ip}"
         if not rate_limiter.check_rate_limit(key, max_requests=120, window_seconds=60):
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.RATE_LIMITED,
-                    message="Rate limit exceeded. Max 120 downloads per minute"
-                ).model_dump()
-            )
+            raise http_429("Rate limit exceeded. Max 120 downloads per minute")
 
         user_id = get_user_id(current_user)
 
         if vault_type not in ('real', 'decoy'):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="vault_type must be 'real' or 'decoy'"
-                ).model_dump()
-            )
+            raise http_400("vault_type must be 'real' or 'decoy'")
 
         if not vault_passphrase:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="vault_passphrase is required"
-                ).model_dump()
-            )
+            raise http_400("vault_passphrase is required")
 
         service = get_vault_service()
 
@@ -245,13 +179,7 @@ async def download_vault_file(
         conn.close()
 
         if not file_row:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="File not found"
-                ).model_dump()
-            )
+            raise http_404("File not found", resource="file")
 
         # SECURITY: Path containment check - ensure file is within vault directory
         vault_files_dir = service.files_path.resolve()
@@ -259,22 +187,10 @@ async def download_vault_file(
 
         if not str(encrypted_file_path).startswith(str(vault_files_dir)):
             logger.error(f"SECURITY: Path traversal attempt: {file_row['encrypted_path']}")
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.FORBIDDEN,
-                    message="Invalid file path"
-                ).model_dump()
-            )
+            raise http_403("Invalid file path")
 
         if not encrypted_file_path.exists():
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Encrypted file not found on disk"
-                ).model_dump()
-            )
+            raise http_404("Encrypted file not found on disk", resource="file")
 
         with open(encrypted_file_path, 'rb') as f:
             encrypted_data = f.read()
@@ -315,10 +231,4 @@ async def download_vault_file(
 
     except Exception as e:
         logger.error(f"Failed to download file {file_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to decrypt and download file"
-            ).model_dump()
-        )
+        raise http_500("Failed to decrypt and download file")
