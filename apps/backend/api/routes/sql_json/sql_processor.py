@@ -45,24 +45,13 @@ def validate_table_access(referenced_tables: list, allowed_tables: Set[str]) -> 
         allowed_tables: Set of allowed table names
 
     Raises:
-        HTTPException: If query references unauthorized tables
+        AppException: If query references unauthorized tables
     """
-    from fastapi import HTTPException, status
-    from api.routes.schemas import ErrorResponse, ErrorCode
+    from api.errors import http_403
 
     unauthorized_tables = set(referenced_tables) - allowed_tables
     if unauthorized_tables:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=ErrorResponse(
-                error_code=ErrorCode.FORBIDDEN,
-                message=f"Query references unauthorized tables: {', '.join(unauthorized_tables)}. Only 'excel_file' is allowed.",
-                details={
-                    "unauthorized_tables": list(unauthorized_tables),
-                    "allowed_tables": list(allowed_tables)
-                }
-            ).model_dump()
-        )
+        raise http_403(f"Query references unauthorized tables: {', '.join(unauthorized_tables)}. Only 'excel_file' is allowed.")
 
 
 def validate_sql_syntax(sql_text: str, expected_table: str = "excel_file") -> tuple:

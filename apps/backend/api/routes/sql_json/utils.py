@@ -132,17 +132,9 @@ def validate_session_exists(session_id: str, sessions: dict) -> None:
         sessions: Sessions dictionary
 
     Raises:
-        HTTPException: If session not found
+        AppException: If session not found
     """
-    from fastapi import HTTPException, status
-    from api.routes.schemas import ErrorResponse, ErrorCode
+    from api.errors import http_404
 
     if session_id not in sessions:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=ErrorResponse(
-                error_code=ErrorCode.NOT_FOUND,
-                message=f"Session '{session_id}' not found",
-                details={"session_id": session_id}
-            ).model_dump()
-        )
+        raise http_404(f"Session '{session_id}' not found", resource="session")

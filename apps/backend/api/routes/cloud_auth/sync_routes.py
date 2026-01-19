@@ -15,6 +15,7 @@ from fastapi import APIRouter, HTTPException, Depends, status
 from api.auth_middleware import get_current_user, User
 from api.utils import get_user_id
 from api.routes.schemas import SuccessResponse
+from api.errors import http_500
 
 from api.routes.cloud_auth.models import (
     CloudSyncAuthRequest,
@@ -121,10 +122,7 @@ async def authorize_sync(
 
     except Exception as e:
         logger.error("Sync authorization failed", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to authorize sync"
-        )
+        raise http_500("Failed to authorize sync")
 
 
 @router.delete(
@@ -188,7 +186,4 @@ async def revoke_all_sessions(
 
     except Exception as e:
         logger.error("Failed to revoke cloud sessions", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to revoke cloud sessions"
-        )
+        raise http_500("Failed to revoke cloud sessions")
