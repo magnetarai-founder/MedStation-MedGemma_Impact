@@ -20,7 +20,8 @@ from api.auth_middleware import get_current_user, User
 from api.config_paths import PATHS
 from api.services.collab_state import apply_snapshot
 from api.services.collab_acl import upsert_acl, list_acl
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
+from api.errors import http_400, http_404, http_500
 
 logger = logging.getLogger(__name__)
 
@@ -57,13 +58,7 @@ async def list_snapshots(
     """List all snapshots for a document"""
     try:
         if not SAFE_ID.match(doc_id):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="Invalid doc_id format"
-                ).model_dump()
-            )
+            raise http_400("Invalid doc_id format")
 
         d = _snap_dir(doc_id)
         items: List[SnapshotItem] = []
@@ -84,13 +79,7 @@ async def list_snapshots(
 
     except Exception as e:
         logger.error(f"Failed to list snapshots for doc {doc_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve snapshots"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve snapshots")
 
 
 class RestoreRequest(BaseModel):
@@ -113,35 +102,17 @@ async def restore_snapshot(
     """Restore a document from a snapshot"""
     try:
         if not SAFE_ID.match(doc_id) or not SAFE_ID.match(body.snapshot_id):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="Invalid doc_id or snapshot_id format"
-                ).model_dump()
-            )
+            raise http_400("Invalid doc_id or snapshot_id format")
 
         snap_path = _snap_dir(doc_id) / body.snapshot_id
         if not snap_path.exists() or not snap_path.is_file():
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Snapshot not found"
-                ).model_dump()
-            )
+            raise http_404("Snapshot not found", resource="snapshot")
 
         data = snap_path.read_bytes()
         ok = apply_snapshot(doc_id, data)
 
         if not ok:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.INTERNAL_ERROR,
-                    message="Restore failed"
-                ).model_dump()
-            )
+            raise http_500("Restore failed")
 
         return SuccessResponse(
             data={"doc_id": doc_id, "snapshot_id": body.snapshot_id, "status": "restored"},
@@ -151,10 +122,7 @@ async def restore_snapshot(
     except NotImplementedError as e:
         raise HTTPException(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message=str(e)
-            ).model_dump()
+            detail={"error": "not_implemented", "message": str(e)}
         )
 
     except HTTPException:
@@ -162,13 +130,7 @@ async def restore_snapshot(
 
     except Exception as e:
         logger.error(f"Failed to restore snapshot {body.snapshot_id} for doc {doc_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to restore snapshot"
-            ).model_dump()
-        )
+        raise http_500("Failed to restore snapshot")
 
 
 # ===== ACL Management Endpoints =====
@@ -198,13 +160,7 @@ async def get_doc_acl(
     """Get ACL entries for a document"""
     try:
         if not SAFE_ID.match(doc_id):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="Invalid doc_id format"
-                ).model_dump()
-            )
+            raise http_400("Invalid doc_id format")
 
         acl_entries = list_acl(doc_id)
         acl_list = [{"user_id": user_id, "role": role} for user_id, role in acl_entries]
@@ -219,13 +175,7 @@ async def get_doc_acl(
 
     except Exception as e:
         logger.error(f"Failed to retrieve ACL for doc {doc_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve ACL"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve ACL")
 
 
 @router.post(
@@ -249,23 +199,11 @@ async def set_doc_acl(
     """
     try:
         if not SAFE_ID.match(doc_id):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="Invalid doc_id format"
-                ).model_dump()
-            )
+            raise http_400("Invalid doc_id format")
 
         # Validate role
         if body.role not in ("owner", "edit", "view"):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="Invalid role. Must be: owner, edit, or view"
-                ).model_dump()
-            )
+            raise http_400("Invalid role. Must be: owner, edit, or view")
 
         upsert_acl(doc_id, body.user_id, body.role)
 
@@ -283,10 +221,4 @@ async def set_doc_acl(
 
     except Exception as e:
         logger.error(f"Failed to update ACL for doc {doc_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to update ACL"
-            ).model_dump()
-        )
+        raise http_500("Failed to update ACL")

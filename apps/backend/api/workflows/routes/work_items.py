@@ -5,6 +5,7 @@ Create, list, get work items + claim, start, complete, cancel actions.
 """
 
 from fastapi import APIRouter, HTTPException, Request, Query, Depends
+from api.errors import http_400, http_404, http_429, http_500
 from typing import List, Dict, Optional
 from datetime import datetime, UTC
 import logging
@@ -50,7 +51,7 @@ async def create_work_item(
     # Rate limit: 30 work item creations per minute per user
     user_id = current_user.get("user_id", "unknown")
     if not rate_limiter.check_rate_limit(f"create_work_item:{user_id}", max_requests=30, window_seconds=60):
-        raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 30 work item creations per minute.")
+        raise http_429("Rate limit exceeded. Max 30 work item creations per minute.")
 
     try:
         user_id = get_user_id(current_user)
@@ -77,10 +78,10 @@ async def create_work_item(
         return work_item
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise http_400(str(e))
     except Exception as e:
         logger.error(f"Failed to create work item: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.get("/work-items", response_model=List[WorkItem])
@@ -143,7 +144,7 @@ async def get_work_item(
     # Use storage to ensure user isolation
     work_item = orchestrator.storage.get_work_item(work_item_id, user_id) if orchestrator.storage else None
     if not work_item:
-        raise HTTPException(status_code=404, detail=f"Work item not found or access denied: {work_item_id}")
+        raise http_404(f"Work item not found or access denied: {work_item_id}", resource="work_item")
 
     return work_item
 
@@ -175,7 +176,7 @@ async def claim_work_item(
     # Rate limit: 60 claims per minute per user
     user_id = current_user.get("user_id", "unknown")
     if not rate_limiter.check_rate_limit(f"claim_work_item:{user_id}", max_requests=60, window_seconds=60):
-        raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 60 claims per minute.")
+        raise http_429("Rate limit exceeded. Max 60 claims per minute.")
 
     try:
         user_id = get_user_id(current_user)
@@ -194,7 +195,7 @@ async def claim_work_item(
         return work_item
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise http_400(str(e))
 
 
 @router.post("/work-items/{work_item_id}/start", response_model=WorkItem)
@@ -217,7 +218,7 @@ async def start_work(
     # Rate limit: 60 starts per minute per user
     user_id = current_user.get("user_id", "unknown")
     if not rate_limiter.check_rate_limit(f"start_work_item:{user_id}", max_requests=60, window_seconds=60):
-        raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 60 starts per minute.")
+        raise http_429("Rate limit exceeded. Max 60 starts per minute.")
 
     try:
         user_id = get_user_id(current_user)
@@ -227,7 +228,7 @@ async def start_work(
         return work_item
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise http_400(str(e))
 
 
 @router.post("/work-items/{work_item_id}/complete", response_model=WorkItem)
@@ -277,10 +278,10 @@ async def complete_stage(
         return work_item
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise http_400(str(e))
     except Exception as e:
         logger.error(f"Failed to complete stage: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/work-items/{work_item_id}/cancel", response_model=WorkItem)
@@ -305,7 +306,7 @@ async def cancel_work_item(
     user_id = get_user_id(current_user)
     work_item = orchestrator.active_work_items.get(work_item_id)
     if not work_item:
-        raise HTTPException(status_code=404, detail=f"Work item not found or access denied: {work_item_id}")
+        raise http_404(f"Work item not found or access denied: {work_item_id}", resource="work_item")
 
     work_item.status = WorkItemStatus.CANCELLED
     work_item.updated_at = datetime.now(UTC)

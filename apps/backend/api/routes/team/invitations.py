@@ -8,7 +8,8 @@ Follows MagnetarStudio API standards (see API_STANDARDS.md).
 
 from fastapi import APIRouter, HTTPException, Request, status
 
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
+from api.errors import http_400, http_404, http_429, http_500
 from api.utils import get_user_id
 
 router = APIRouter(prefix="/api/v1/team", tags=["team-invitations"])
@@ -63,13 +64,7 @@ async def create_invite_endpoint(request: Request, team_id: str) -> SuccessRespo
 
     except Exception as e:
         logger.error(f"Failed to create invite for team {team_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to create invite"
-            ).model_dump()
-        )
+        raise http_500("Failed to create invite")
 
 
 @router.post(
@@ -118,13 +113,7 @@ async def accept_invite_endpoint(request: Request, invite_id: str) -> SuccessRes
 
     except Exception as e:
         logger.error(f"Failed to accept invite {invite_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to accept invite"
-            ).model_dump()
-        )
+        raise http_500("Failed to accept invite")
 
 
 @router.get(
@@ -149,24 +138,12 @@ async def get_invite_code_endpoint(request: Request, team_id: str) -> SuccessRes
         team = await tm.get_team(team_id)
 
         if not team:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Team not found"
-                ).model_dump()
-            )
+            raise http_404("Team not found", resource="team")
 
         code = await tm.get_active_invite_code(team_id)
 
         if not code:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="No active invite code found"
-                ).model_dump()
-            )
+            raise http_404("No active invite code found", resource="invite_code")
 
         return SuccessResponse(
             data=InviteCodeResponse(code=code, team_id=team_id, expires_at=None),
@@ -178,13 +155,7 @@ async def get_invite_code_endpoint(request: Request, team_id: str) -> SuccessRes
 
     except Exception as e:
         logger.error(f"Failed to get invite code for team {team_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve invite code"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve invite code")
 
 
 @router.post(
@@ -209,13 +180,7 @@ async def regenerate_invite_code_endpoint(request: Request, team_id: str) -> Suc
         team = await tm.get_team(team_id)
 
         if not team:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Team not found"
-                ).model_dump()
-            )
+            raise http_404("Team not found", resource="team")
 
         code = await tm.regenerate_invite_code(team_id)
 
@@ -229,13 +194,7 @@ async def regenerate_invite_code_endpoint(request: Request, team_id: str) -> Suc
 
     except Exception as e:
         logger.error(f"Failed to regenerate invite code for team {team_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to regenerate invite code"
-            ).model_dump()
-        )
+        raise http_500("Failed to regenerate invite code")
 
 
 @router.post(
@@ -259,13 +218,7 @@ async def join_team_endpoint(request: Request) -> SuccessResponse:
     # Rate limit check
     client_ip = get_client_ip(request)
     if not rate_limiter.check_rate_limit(f"team:join:{client_ip}", max_requests=10, window_seconds=60):
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=ErrorResponse(
-                error_code=ErrorCode.RATE_LIMITED,
-                message="Rate limit exceeded. Max 10 join attempts per minute"
-            ).model_dump()
-        )
+        raise http_429("Rate limit exceeded. Max 10 join attempts per minute")
 
     try:
         body_data = await request.json()
@@ -276,36 +229,18 @@ async def join_team_endpoint(request: Request) -> SuccessResponse:
         team_id = await tm.validate_invite_code(body.invite_code, client_ip)
 
         if not team_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="Invalid, expired, or already used invite code"
-                ).model_dump()
-            )
+            raise http_400("Invalid, expired, or already used invite code")
 
         # Get team details
         team = await tm.get_team(team_id)
         if not team:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Team not found"
-                ).model_dump()
-            )
+            raise http_404("Team not found", resource="team")
 
         # Join team
         success = await tm.join_team(team_id, body.user_id, role='member')
 
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="Failed to join team. You may already be a member"
-                ).model_dump()
-            )
+            raise http_400("Failed to join team. You may already be a member")
 
         join_response = JoinTeamResponse(
             success=True,
@@ -324,10 +259,4 @@ async def join_team_endpoint(request: Request) -> SuccessResponse:
 
     except Exception as e:
         logger.error(f"Failed to join team", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to join team"
-            ).model_dump()
-        )
+        raise http_500("Failed to join team")

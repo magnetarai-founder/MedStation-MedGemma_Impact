@@ -15,7 +15,8 @@ from fastapi import APIRouter, HTTPException, Form, Request, Depends, status
 from api.auth_middleware import get_current_user
 from api.utils import get_user_id
 from api.services.vault.core import get_vault_service
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
+from api.errors import http_400, http_404, http_500
 
 logger = logging.getLogger(__name__)
 
@@ -55,22 +56,10 @@ async def create_organization_rule(
         valid_action_types = ['move_to_folder', 'add_tag', 'set_color']
 
         if rule_type not in valid_rule_types:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=f"Invalid rule_type. Must be one of: {valid_rule_types}"
-                ).model_dump()
-            )
+            raise http_400(f"Invalid rule_type. Must be one of: {valid_rule_types}")
 
         if action_type not in valid_action_types:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=f"Invalid action_type. Must be one of: {valid_action_types}"
-                ).model_dump()
-            )
+            raise http_400(f"Invalid action_type. Must be one of: {valid_action_types}")
 
         rule_id = str(uuid.uuid4())
         now = datetime.now(UTC).isoformat()
@@ -104,13 +93,7 @@ async def create_organization_rule(
             )
 
         except sqlite3.IntegrityError:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="Rule with this name already exists"
-                ).model_dump()
-            )
+            raise http_400("Rule with this name already exists")
         finally:
             conn.close()
 
@@ -119,13 +102,7 @@ async def create_organization_rule(
 
     except Exception as e:
         logger.error(f"Failed to create automation rule", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to create automation rule"
-            ).model_dump()
-        )
+        raise http_500("Failed to create automation rule")
 
 
 @router.get(
@@ -188,13 +165,7 @@ async def get_organization_rules(user_id: str, vault_type: str = "real") -> Succ
 
     except Exception as e:
         logger.error(f"Failed to get automation rules", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve automation rules"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve automation rules")
 
 
 @router.post(
@@ -326,13 +297,7 @@ async def run_organization_rules(
 
     except Exception as e:
         logger.error(f"Failed to run automation rules", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to run automation rules"
-            ).model_dump()
-        )
+        raise http_500("Failed to run automation rules")
 
 
 @router.put(
@@ -370,13 +335,7 @@ async def toggle_rule(rule_id: str, enabled: bool = Form(...)) -> SuccessRespons
             conn.commit()
 
             if cursor.rowcount == 0:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=ErrorResponse(
-                        error_code=ErrorCode.NOT_FOUND,
-                        message="Rule not found"
-                    ).model_dump()
-                )
+                raise http_404("Rule not found", resource="rule")
 
             toggle_data = {
                 "success": True,
@@ -397,13 +356,7 @@ async def toggle_rule(rule_id: str, enabled: bool = Form(...)) -> SuccessRespons
 
     except Exception as e:
         logger.error(f"Failed to toggle automation rule", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to toggle automation rule"
-            ).model_dump()
-        )
+        raise http_500("Failed to toggle automation rule")
 
 
 @router.delete(
@@ -435,13 +388,7 @@ async def delete_rule(rule_id: str) -> SuccessResponse[Dict]:
             conn.commit()
 
             if cursor.rowcount == 0:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=ErrorResponse(
-                        error_code=ErrorCode.NOT_FOUND,
-                        message="Rule not found"
-                    ).model_dump()
-                )
+                raise http_404("Rule not found", resource="rule")
 
             delete_data = {
                 "success": True,
@@ -461,13 +408,7 @@ async def delete_rule(rule_id: str) -> SuccessResponse[Dict]:
 
     except Exception as e:
         logger.error(f"Failed to delete automation rule", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to delete automation rule"
-            ).model_dump()
-        )
+        raise http_500("Failed to delete automation rule")
 
 
 # ===== Decoy Vault Seeding =====
@@ -519,13 +460,7 @@ async def seed_decoy_vault_endpoint(
 
     except Exception as e:
         logger.error(f"Failed to seed decoy vault", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to seed decoy vault"
-            ).model_dump()
-        )
+        raise http_500("Failed to seed decoy vault")
 
 
 @router.delete(
@@ -569,10 +504,4 @@ async def clear_decoy_vault_endpoint(
 
     except Exception as e:
         logger.error(f"Failed to clear decoy vault", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to clear decoy vault"
-            ).model_dump()
-        )
+        raise http_500("Failed to clear decoy vault")
