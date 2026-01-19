@@ -14,7 +14,8 @@ from pydantic import BaseModel, Field
 from api.auth_middleware import get_current_user, User
 from api.services.data_profiler import get_data_profiler
 from api.utils import sanitize_for_log, get_user_id
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
+from api.errors import http_400, http_500
 
 logger = logging.getLogger(__name__)
 
@@ -66,22 +67,10 @@ async def discover_patterns(
 
     # Validate inputs
     if not request.dataset_id and not request.session_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=ErrorResponse(
-                error_code=ErrorCode.VALIDATION_ERROR,
-                message="Either dataset_id or session_id must be provided"
-            ).model_dump()
-        )
+        raise http_400("Either dataset_id or session_id must be provided")
 
     if request.session_id and not request.table_name:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=ErrorResponse(
-                error_code=ErrorCode.VALIDATION_ERROR,
-                message="table_name is required when using session_id"
-            ).model_dump()
-        )
+        raise http_400("table_name is required when using session_id")
 
     # Extract user_id from dict (get_current_user returns Dict, not User object)
     user_id = get_user_id(current_user)
@@ -129,13 +118,7 @@ async def discover_patterns(
     except ValueError as e:
         # User error (dataset not found, etc.)
         logger.warning(f"Pattern discovery validation error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=ErrorResponse(
-                error_code=ErrorCode.VALIDATION_ERROR,
-                message=str(e)
-            ).model_dump()
-        )
+        raise http_400(str(e))
 
     except HTTPException:
         raise
@@ -143,10 +126,4 @@ async def discover_patterns(
     except Exception as e:
         # Internal error
         logger.error(f"Pattern discovery processing error", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to analyze dataset"
-            ).model_dump()
-        )
+        raise http_500("Failed to analyze dataset")

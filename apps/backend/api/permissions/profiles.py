@@ -15,6 +15,7 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime, UTC
 
 from .storage import get_db_connection
+from api.errors import http_400, http_404
 
 logger = logging.getLogger(__name__)
 
@@ -132,8 +133,6 @@ async def get_profile(profile_id: str) -> Dict:
     Raises:
         HTTPException: If profile not found
     """
-    from fastapi import HTTPException  # Lazy import
-
     conn = get_db_connection()
     cur = conn.cursor()
 
@@ -146,7 +145,7 @@ async def get_profile(profile_id: str) -> Dict:
     conn.close()
 
     if not row:
-        raise HTTPException(status_code=404, detail="Profile not found")
+        raise http_404("Profile not found", resource="profile")
 
     return {
         "profile_id": row['profile_id'],
@@ -180,8 +179,6 @@ async def update_profile(
     Raises:
         HTTPException: If profile not found or no fields to update
     """
-    from fastapi import HTTPException  # Lazy import
-
     conn = get_db_connection()
     cur = conn.cursor()
 
@@ -191,7 +188,7 @@ async def update_profile(
 
     if not existing:
         conn.close()
-        raise HTTPException(status_code=404, detail="Profile not found")
+        raise http_404("Profile not found", resource="profile")
 
     # Build update statement
     update_parts = []
@@ -211,7 +208,7 @@ async def update_profile(
 
     if not update_parts:
         conn.close()
-        raise HTTPException(status_code=400, detail="No fields to update")
+        raise http_400("No fields to update")
 
     update_parts.append("modified_at = ?")
     params.append(datetime.now(UTC).isoformat())
@@ -263,7 +260,6 @@ async def update_profile_grants(
     Raises:
         HTTPException: If profile not found
     """
-    from fastapi import HTTPException  # Lazy import
     from audit_logger import audit_log_sync, AuditAction  # Lazy import
     from permission_engine import get_permission_engine  # Lazy import
 
@@ -274,7 +270,7 @@ async def update_profile_grants(
     cur.execute("SELECT * FROM permission_profiles WHERE profile_id = ?", (profile_id,))
     if not cur.fetchone():
         conn.close()
-        raise HTTPException(status_code=404, detail="Profile not found")
+        raise http_404("Profile not found", resource="profile")
 
     for grant in grants:
         # Convert scope dict to JSON if present

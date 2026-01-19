@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, UTC
 
 from fastapi import APIRouter, HTTPException, Depends, Request, Query, status
 
+from api.errors import http_404, http_429, http_500
 from api.auth_middleware import get_current_user, User
 from api.utils import sanitize_for_log, get_user_id, get_username
 from api.rate_limiter import get_client_ip
@@ -68,10 +69,7 @@ async def pair_device(
     # Import at runtime to allow test mocking via api.routes.cloud_auth._check_pairing_rate_limit
     from api.routes import cloud_auth as cloud_auth_pkg
     if not cloud_auth_pkg._check_pairing_rate_limit(user_id, client_ip):
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many pairing attempts. Please wait 1 hour."
-        )
+        raise http_429("Too many pairing attempts. Please wait 1 hour.")
 
     try:
         logger.info(
@@ -170,10 +168,7 @@ async def pair_device(
 
     except Exception as e:
         logger.error("Cloud pairing failed", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to pair device with cloud"
-        )
+        raise http_500("Failed to pair device with cloud")
 
 
 @router.post(
@@ -208,10 +203,7 @@ async def unpair_device(
             row = cursor.fetchone()
 
             if not row:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Device not found or not owned by you"
-                )
+                raise http_404("Device not found or not owned by you", resource="device")
 
             # Deactivate device (soft delete)
             cursor.execute("""
@@ -243,7 +235,4 @@ async def unpair_device(
 
     except Exception as e:
         logger.error("Failed to unpair device", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to unpair device"
-        )
+        raise http_500("Failed to unpair device")

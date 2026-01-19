@@ -9,6 +9,8 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
+from api.errors import http_400, http_503
+
 router = APIRouter(prefix="/api/v1/metal", tags=["Metal 4 GPU"])
 logger = logging.getLogger(__name__)
 
@@ -31,10 +33,7 @@ async def get_metal_capabilities() -> dict[str, Any]:
         Metal version, device name, feature support flags
     """
     if _metal4_engine is None:
-        raise HTTPException(
-            status_code=503,
-            detail="Metal 4 engine not available on this system"
-        )
+        raise http_503("Metal 4 engine not available on this system")
 
     return _metal4_engine.get_capabilities_dict()
 
@@ -48,10 +47,7 @@ async def get_metal_stats() -> dict[str, Any]:
         GPU utilization, memory usage, operation counts
     """
     if _metal4_engine is None:
-        raise HTTPException(
-            status_code=503,
-            detail="Metal 4 engine not available on this system"
-        )
+        raise http_503("Metal 4 engine not available on this system")
 
     return _metal4_engine.get_stats()
 
@@ -102,16 +98,10 @@ async def get_optimization_settings(operation_type: str) -> dict[str, Any]:
         Optimized settings dict for the operation
     """
     if _metal4_engine is None:
-        raise HTTPException(
-            status_code=503,
-            detail="Metal 4 engine not available on this system"
-        )
+        raise http_503("Metal 4 engine not available on this system")
 
     valid_types = ['embedding', 'inference', 'sql', 'render']
     if operation_type not in valid_types:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid operation_type. Must be one of: {', '.join(valid_types)}"
-        )
+        raise http_400(f"Invalid operation_type. Must be one of: {', '.join(valid_types)}")
 
     return _metal4_engine.optimize_for_operation(operation_type)
