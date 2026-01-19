@@ -8,6 +8,7 @@ import logging
 from fastapi import APIRouter, HTTPException, Request, Depends, status
 
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.errors import http_400, http_500
 
 from api.auth_middleware import get_current_user
 
@@ -32,13 +33,7 @@ async def get_hot_slots_endpoint():
         return SuccessResponse(data=data, message="Hot slots retrieved")
     except Exception as e:
         logger.error(f"Failed to get hot slots: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to get hot slots"
-            ).model_dump()
-        )
+        raise http_500("Failed to get hot slots")
 
 
 @router.post(
@@ -57,26 +52,12 @@ async def assign_to_hot_slot_endpoint(
     from api.services import chat
 
     if slot_number not in [1, 2, 3, 4]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=ErrorResponse(
-                error_code=ErrorCode.BAD_REQUEST,
-                message="Slot number must be between 1 and 4",
-                details={"slot_number": slot_number}
-            ).model_dump()
-        )
+        raise http_400("Slot number must be between 1 and 4")
 
     try:
         current_slots = await chat.get_hot_slots()
         if current_slots[slot_number] is not None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.CONFLICT,
-                    message=f"Slot {slot_number} is already occupied by {current_slots[slot_number]}",
-                    details={"slot_number": slot_number, "current_model": current_slots[slot_number]}
-                ).model_dump()
-            )
+            raise http_400(f"Slot {slot_number} is already occupied by {current_slots[slot_number]}")
 
         result = await chat.assign_to_hot_slot(slot_number, model_name)
         return SuccessResponse(
@@ -87,13 +68,7 @@ async def assign_to_hot_slot_endpoint(
         raise
     except Exception as e:
         logger.error(f"Failed to assign to hot slot: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to assign to hot slot"
-            ).model_dump()
-        )
+        raise http_500("Failed to assign to hot slot")
 
 
 @router.delete(
@@ -111,26 +86,12 @@ async def remove_from_hot_slot_endpoint(
     from api.services import chat
 
     if slot_number not in [1, 2, 3, 4]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=ErrorResponse(
-                error_code=ErrorCode.BAD_REQUEST,
-                message="Slot number must be between 1 and 4",
-                details={"slot_number": slot_number}
-            ).model_dump()
-        )
+        raise http_400("Slot number must be between 1 and 4")
 
     try:
         current_slots = await chat.get_hot_slots()
         if current_slots[slot_number] is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.BAD_REQUEST,
-                    message=f"Slot {slot_number} is already empty",
-                    details={"slot_number": slot_number}
-                ).model_dump()
-            )
+            raise http_400(f"Slot {slot_number} is already empty")
 
         result = await chat.remove_from_hot_slot(slot_number)
         return SuccessResponse(
@@ -141,13 +102,7 @@ async def remove_from_hot_slot_endpoint(
         raise
     except Exception as e:
         logger.error(f"Failed to remove from hot slot: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to remove from hot slot"
-            ).model_dump()
-        )
+        raise http_500("Failed to remove from hot slot")
 
 
 @router.post(
@@ -169,10 +124,4 @@ async def load_hot_slot_models_endpoint(
         return SuccessResponse(data=result, message="Hot slot models loaded")
     except Exception as e:
         logger.error(f"Failed to load hot slots: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to load hot slots"
-            ).model_dump()
-        )
+        raise http_500("Failed to load hot slots")

@@ -19,6 +19,7 @@ from api.auth_middleware import get_current_user, User
 from api.utils import get_user_id, get_user_role
 from api.permission_engine import require_perm_team
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.errors import http_404, http_500
 from api.schemas.chat_models import SendMessageRequest
 
 logger = logging.getLogger(__name__)
@@ -61,13 +62,7 @@ async def get_messages(
         )
 
         if not session:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Chat session not found or access denied"
-                ).model_dump()
-            )
+            raise http_404("Chat session not found or access denied", resource="session")
 
         # Load messages with pagination
         messages = await chat_service.get_messages(chat_id, limit=limit, offset=offset)
@@ -93,13 +88,7 @@ async def get_messages(
 
     except Exception as e:
         logger.error(f"Failed to load messages", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve messages"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve messages")
 
 
 @router.post(
@@ -132,13 +121,7 @@ async def send_message(
         )
 
         if not session:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Chat session not found or access denied"
-                ).model_dump()
-            )
+            raise http_404("Chat session not found or access denied", resource="session")
 
         # Use model from body or session default
         model = body.model or session.get("model", "qwen2.5-coder:7b-instruct")
@@ -171,13 +154,7 @@ async def send_message(
 
     except Exception as e:
         logger.error(f"Failed to send message", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to send message"
-            ).model_dump()
-        )
+        raise http_500("Failed to send message")
 
 
 @router.get(
@@ -212,13 +189,7 @@ async def semantic_search(
 
     except Exception as e:
         logger.error(f"Failed to search", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to perform semantic search"
-            ).model_dump()
-        )
+        raise http_500("Failed to perform semantic search")
 
 
 @router.get(
@@ -252,13 +223,7 @@ async def get_analytics(
 
     except Exception as e:
         logger.error(f"Failed to get analytics", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve analytics"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve analytics")
 
 
 @router.get(
@@ -285,13 +250,7 @@ async def get_session_analytics(
         # Verify session access
         session = await chat.get_session(chat_id, user_id, role, team_id)
         if not session:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Chat session not found or access denied"
-                ).model_dump()
-            )
+            raise http_404("Chat session not found or access denied", resource="session")
 
         # Get analytics
         analytics = await chat.get_session_analytics(chat_id)
@@ -312,10 +271,4 @@ async def get_session_analytics(
 
     except Exception as e:
         logger.error(f"Failed to get session analytics", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve session analytics"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve session analytics")

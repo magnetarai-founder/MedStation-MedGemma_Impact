@@ -7,8 +7,7 @@ FastAPI decorators for requiring specific permissions on route handlers.
 import logging
 from typing import Optional, Callable
 from functools import wraps
-from fastapi import HTTPException
-
+from api.errors import http_401, http_403
 from .engine import get_permission_engine
 
 logger = logging.getLogger(__name__)
@@ -40,17 +39,11 @@ def require_perm(permission_key: str, level: Optional[str] = None) -> Callable:
             current_user = kwargs.get('current_user')
 
             if not current_user:
-                raise HTTPException(
-                    status_code=401,
-                    detail="Authentication required"
-                )
+                raise http_401("Authentication required")
 
             user_id = current_user.get('user_id')
             if not user_id:
-                raise HTTPException(
-                    status_code=401,
-                    detail="Invalid authentication: user_id missing"
-                )
+                raise http_401("Invalid authentication: user_id missing")
 
             # Founder Rights bypass: founder_rights users always allowed
             if current_user.get('role') == 'founder_rights':
@@ -63,10 +56,7 @@ def require_perm(permission_key: str, level: Optional[str] = None) -> Callable:
                 user_ctx = engine.load_user_context(user_id)
             except ValueError as e:
                 logger.error(f"Failed to load user context: {e}")
-                raise HTTPException(
-                    status_code=403,
-                    detail="User context not found"
-                )
+                raise http_403("User context not found")
 
             # Check permission
             if not engine.has_permission(user_ctx, permission_key, required_level=level):
@@ -74,11 +64,8 @@ def require_perm(permission_key: str, level: Optional[str] = None) -> Callable:
                     f"Permission denied: {user_ctx.username} ({user_ctx.role}) "
                     f"attempted {permission_key} (level={level})"
                 )
-                raise HTTPException(
-                    status_code=403,
-                    detail=f"Missing required permission: {permission_key}" +
-                           (f" (level: {level})" if level else "")
-                )
+                raise http_403(f"Missing required permission: {permission_key}" +
+                           (f" (level: {level})" if level else ""))
 
             # Permission granted: proceed
             return await func(*args, **kwargs)
@@ -120,17 +107,11 @@ def require_perm_team(permission_key: str, level: Optional[str] = None, team_kw:
             current_user = kwargs.get('current_user')
 
             if not current_user:
-                raise HTTPException(
-                    status_code=401,
-                    detail="Authentication required"
-                )
+                raise http_401("Authentication required")
 
             user_id = current_user.get('user_id')
             if not user_id:
-                raise HTTPException(
-                    status_code=401,
-                    detail="Invalid authentication: user_id missing"
-                )
+                raise http_401("Invalid authentication: user_id missing")
 
             # Founder Rights bypass: founder_rights users always allowed
             if current_user.get('role') == 'founder_rights':
@@ -146,10 +127,7 @@ def require_perm_team(permission_key: str, level: Optional[str] = None, team_kw:
                 user_ctx = engine.load_user_context(user_id, team_id=team_id)
             except ValueError as e:
                 logger.error(f"Failed to load user context: {e}")
-                raise HTTPException(
-                    status_code=403,
-                    detail="User context not found"
-                )
+                raise http_403("User context not found")
 
             # Check permission
             if not engine.has_permission(user_ctx, permission_key, required_level=level):
@@ -157,11 +135,8 @@ def require_perm_team(permission_key: str, level: Optional[str] = None, team_kw:
                     f"Permission denied: {user_ctx.username} ({user_ctx.role}) "
                     f"attempted {permission_key} (level={level}) in team={team_id}"
                 )
-                raise HTTPException(
-                    status_code=403,
-                    detail=f"Missing required permission: {permission_key}" +
-                           (f" (level: {level})" if level else "")
-                )
+                raise http_403(f"Missing required permission: {permission_key}" +
+                           (f" (level: {level})" if level else ""))
 
             # Permission granted: proceed
             return await func(*args, **kwargs)

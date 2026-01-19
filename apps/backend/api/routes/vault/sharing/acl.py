@@ -12,7 +12,8 @@ from typing import Dict, Optional
 
 from fastapi import APIRouter, HTTPException, Form, status
 
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
+from api.errors import http_400, http_404, http_500
 from api.services.vault.core import get_vault_service
 
 logger = logging.getLogger(__name__)
@@ -40,13 +41,7 @@ async def grant_file_permission(
         service = get_vault_service()
 
         if permission not in ['read', 'write', 'delete', 'share']:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="Invalid permission type"
-                ).model_dump()
-            )
+            raise http_400("Invalid permission type")
 
         acl_id = str(uuid.uuid4())
         now = datetime.now(UTC).isoformat()
@@ -76,13 +71,7 @@ async def grant_file_permission(
             )
 
         except sqlite3.IntegrityError:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="Permission already exists"
-                ).model_dump()
-            )
+            raise http_400("Permission already exists")
         finally:
             conn.close()
 
@@ -90,13 +79,7 @@ async def grant_file_permission(
         raise
     except Exception as e:
         logger.error("Failed to grant file permission", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to grant file permission"
-            ).model_dump()
-        )
+        raise http_500("Failed to grant file permission")
 
 
 @router.post(
@@ -148,13 +131,7 @@ async def check_file_permission(
         raise
     except Exception as e:
         logger.error("Failed to check file permission", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to check file permission"
-            ).model_dump()
-        )
+        raise http_500("Failed to check file permission")
 
 
 @router.get(
@@ -209,13 +186,7 @@ async def get_file_permissions(file_id: str) -> SuccessResponse[Dict]:
         raise
     except Exception as e:
         logger.error("Failed to get file permissions", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to get file permissions"
-            ).model_dump()
-        )
+        raise http_500("Failed to get file permissions")
 
 
 @router.delete(
@@ -239,13 +210,7 @@ async def revoke_permission(acl_id: str) -> SuccessResponse[Dict]:
             conn.commit()
 
             if cursor.rowcount == 0:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=ErrorResponse(
-                        error_code=ErrorCode.NOT_FOUND,
-                        message="Permission not found"
-                    ).model_dump()
-                )
+                raise http_404("Permission not found", resource="permission")
 
             return SuccessResponse(
                 data={"success": True, "acl_id": acl_id},
@@ -259,10 +224,4 @@ async def revoke_permission(acl_id: str) -> SuccessResponse[Dict]:
         raise
     except Exception as e:
         logger.error("Failed to revoke permission", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to revoke permission"
-            ).model_dump()
-        )
+        raise http_500("Failed to revoke permission")
