@@ -9,10 +9,7 @@ Follows MagnetarStudio API standards (see API_STANDARDS.md).
 from fastapi import APIRouter, HTTPException, Request, status
 
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
-try:
-    from api.utils import get_user_id
-except ImportError:
-    from api.utils import get_user_id
+from api.utils import get_user_id
 
 router = APIRouter(prefix="/api/v1/team", tags=["team-invitations"])
 

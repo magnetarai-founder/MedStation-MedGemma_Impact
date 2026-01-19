@@ -37,10 +37,7 @@ from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime
 import httpx
 
-try:
-    from api.config import get_settings
-except ImportError:
-    from config import get_settings
+from api.config import get_settings
 
 logger = logging.getLogger(__name__)
 

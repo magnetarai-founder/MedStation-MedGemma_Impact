@@ -13,10 +13,7 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-try:
-    from api.auth_middleware import get_current_user, User
-except ImportError:
-    from api.auth_middleware import get_current_user, User
+from api.auth_middleware import get_current_user, User
 from api.services.nlq_service import get_nlq_service
 from api.utils import sanitize_for_log, get_user_id
 from api.config_paths import PATHS

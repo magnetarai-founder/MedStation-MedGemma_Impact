@@ -13,10 +13,7 @@ This package contains modularized team-related endpoints:
 
 from fastapi import APIRouter, Depends
 
-try:
-    from api.auth_middleware import get_current_user
-except ImportError:
-    from api.auth_middleware import get_current_user
+from api.auth_middleware import get_current_user
 
 # Create aggregated router with prefix
 router = APIRouter(

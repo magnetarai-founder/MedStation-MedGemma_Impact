@@ -11,12 +11,8 @@ from typing import Dict, List, Any, Optional, Tuple
 import numpy as np
 import pandas as pd
 
-try:
-    from api.config import get_settings
-    from api.security.sql_safety import quote_identifier
-except ImportError:
-    from config import get_settings
-    from security.sql_safety import quote_identifier
+from api.config import get_settings
+from api.security.sql_safety import quote_identifier
 
 logger = logging.getLogger(__name__)
 

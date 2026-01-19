@@ -14,20 +14,15 @@ from pathlib import Path
 
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 
+from api.config_paths import PATHS
+from api.admin_service import require_founder_rights
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/api/v1/system",
     tags=["system"]
 )
-
-try:
-    from api.config_paths import PATHS
-    # Use founder rights dependency from admin_service
-    from api.admin_service import require_founder_rights
-except ImportError:
-    from api.config_paths import PATHS
-    from admin_service import require_founder_rights
 
 
 @router.get(

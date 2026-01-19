@@ -11,12 +11,9 @@ from datetime import datetime, timedelta, UTC
 from typing import Optional, Dict, Any, List
 from uuid import uuid4
 
-logger = logging.getLogger(__name__)
+from api.config_paths import PATHS
 
-try:
-    from config_paths import PATHS
-except ImportError:
-    from ..config_paths import PATHS
+logger = logging.getLogger(__name__)
 
 DB_PATH = str(PATHS.app_db)
 

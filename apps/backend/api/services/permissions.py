@@ -14,10 +14,7 @@ Refactored into thin façade during Phase 6.1 modularization.
 from typing import Dict, List, Optional, Any
 
 # Import admin functions from permissions package
-try:
-    from api.permissions import admin as perm_admin
-except ImportError:
-    from permissions import admin as perm_admin
+from api.permissions import admin as perm_admin
 
 
 # ===== Permission Registry Functions =====
