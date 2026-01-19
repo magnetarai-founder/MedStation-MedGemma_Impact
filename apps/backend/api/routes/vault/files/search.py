@@ -20,7 +20,8 @@ from api.auth_middleware import get_current_user
 from api.utils import get_user_id
 from api.services.vault.core import get_vault_service
 from api.rate_limiter import get_client_ip, rate_limiter
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
+from api.errors import http_400, http_429, http_500
 
 logger = logging.getLogger(__name__)
 
@@ -134,13 +135,7 @@ async def search_files_endpoint(
         ip = get_client_ip(request)
         key = f"vault:search:{get_user_id(current_user)}:{ip}"
         if not rate_limiter.check_rate_limit(key, max_requests=60, window_seconds=60):
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.RATE_LIMITED,
-                    message="Rate limit exceeded. Max 60 searches per minute"
-                ).model_dump()
-            )
+            raise http_429("Rate limit exceeded. Max 60 searches per minute")
 
         service = get_vault_service()
         user_id = get_user_id(current_user)
@@ -176,13 +171,7 @@ async def search_files_endpoint(
 
     except Exception as e:
         logger.error(f"Failed to search files", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to search files"
-            ).model_dump()
-        )
+        raise http_500("Failed to search files")
 
 
 @router.get(
@@ -216,34 +205,16 @@ async def get_storage_trends(
         ip = get_client_ip(request)
         key = f"vault:analytics:storage:{get_user_id(current_user)}:{ip}"
         if not rate_limiter.check_rate_limit(key, max_requests=120, window_seconds=60):
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.RATE_LIMITED,
-                    message="Rate limit exceeded. Max 120 requests per minute"
-                ).model_dump()
-            )
+            raise http_429("Rate limit exceeded. Max 120 requests per minute")
 
         user_id = get_user_id(current_user)
         service = get_vault_service()
 
         if vault_type not in ('real', 'decoy'):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="vault_type must be 'real' or 'decoy'"
-                ).model_dump()
-            )
+            raise http_400("vault_type must be 'real' or 'decoy'")
 
         if days < 1 or days > 365:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="days must be between 1 and 365"
-                ).model_dump()
-            )
+            raise http_400("days must be between 1 and 365")
 
         conn = sqlite3.connect(str(service.db_path))
         cursor = conn.cursor()
@@ -301,13 +272,7 @@ async def get_storage_trends(
 
     except Exception as e:
         logger.error(f"Failed to get storage trends", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve storage trends"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve storage trends")
 
 
 @router.get(
@@ -341,25 +306,13 @@ async def get_access_patterns(
         ip = get_client_ip(request)
         key = f"vault:analytics:access:{get_user_id(current_user)}:{ip}"
         if not rate_limiter.check_rate_limit(key, max_requests=120, window_seconds=60):
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.RATE_LIMITED,
-                    message="Rate limit exceeded. Max 120 requests per minute"
-                ).model_dump()
-            )
+            raise http_429("Rate limit exceeded. Max 120 requests per minute")
 
         user_id = get_user_id(current_user)
         service = get_vault_service()
 
         if vault_type not in ('real', 'decoy'):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="vault_type must be 'real' or 'decoy'"
-                ).model_dump()
-            )
+            raise http_400("vault_type must be 'real' or 'decoy'")
 
         conn = sqlite3.connect(str(service.db_path))
         cursor = conn.cursor()
@@ -436,13 +389,7 @@ async def get_access_patterns(
 
     except Exception as e:
         logger.error(f"Failed to get access patterns", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve access patterns"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve access patterns")
 
 
 @router.get(
@@ -478,25 +425,13 @@ async def get_activity_timeline(
         ip = get_client_ip(request)
         key = f"vault:analytics:activity:{get_user_id(current_user)}:{ip}"
         if not rate_limiter.check_rate_limit(key, max_requests=120, window_seconds=60):
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.RATE_LIMITED,
-                    message="Rate limit exceeded. Max 120 requests per minute"
-                ).model_dump()
-            )
+            raise http_429("Rate limit exceeded. Max 120 requests per minute")
 
         user_id = get_user_id(current_user)
         service = get_vault_service()
 
         if vault_type not in ('real', 'decoy'):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="vault_type must be 'real' or 'decoy'"
-                ).model_dump()
-            )
+            raise http_400("vault_type must be 'real' or 'decoy'")
 
         conn = sqlite3.connect(str(service.db_path))
         cursor = conn.cursor()
@@ -562,10 +497,4 @@ async def get_activity_timeline(
 
     except Exception as e:
         logger.error(f"Failed to get activity timeline", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve activity timeline"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve activity timeline")

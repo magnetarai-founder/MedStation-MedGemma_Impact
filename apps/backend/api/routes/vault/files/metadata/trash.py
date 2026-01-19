@@ -14,7 +14,8 @@ Follows MagnetarStudio API standards (see API_STANDARDS.md).
 import logging
 from typing import Dict
 from fastapi import APIRouter, HTTPException, Request, Form, Depends, status
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
+from api.errors import http_404, http_429, http_500
 
 from api.auth_middleware import get_current_user
 from api.utils import get_user_id
@@ -52,13 +53,7 @@ async def move_to_trash_endpoint(
     ip = get_client_ip(request)
     key = f"vault:file:trash:{get_user_id(current_user)}:{ip}"
     if not rate_limiter.check_rate_limit(key, max_requests=60, window_seconds=60):
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=ErrorResponse(
-                error_code=ErrorCode.RATE_LIMITED,
-                message="Rate limit exceeded for vault.file.trashed"
-            ).model_dump()
-        )
+        raise http_429("Rate limit exceeded for vault.file.trashed")
 
     service = get_vault_service()
     user_id = get_user_id(current_user)
@@ -77,24 +72,12 @@ async def move_to_trash_endpoint(
 
         return SuccessResponse(data=result, message="File moved to trash successfully")
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=ErrorResponse(
-                error_code=ErrorCode.NOT_FOUND,
-                message=str(e)
-            ).model_dump()
-        )
+        raise http_404(str(e), resource="file")
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to move file {file_id} to trash", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to move file to trash"
-            ).model_dump()
-        )
+        raise http_500("Failed to move file to trash")
 
 
 @router.post(
@@ -121,13 +104,7 @@ async def restore_from_trash_endpoint(
     ip = get_client_ip(request)
     key = f"vault:file:restore:{get_user_id(current_user)}:{ip}"
     if not rate_limiter.check_rate_limit(key, max_requests=30, window_seconds=60):
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=ErrorResponse(
-                error_code=ErrorCode.RATE_LIMITED,
-                message="Rate limit exceeded for vault.file.restored"
-            ).model_dump()
-        )
+        raise http_429("Rate limit exceeded for vault.file.restored")
 
     service = get_vault_service()
     user_id = get_user_id(current_user)
@@ -146,24 +123,12 @@ async def restore_from_trash_endpoint(
 
         return SuccessResponse(data=result, message="File restored from trash successfully")
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=ErrorResponse(
-                error_code=ErrorCode.NOT_FOUND,
-                message=str(e)
-            ).model_dump()
-        )
+        raise http_404(str(e), resource="file")
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to restore file {file_id} from trash", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to restore file from trash"
-            ).model_dump()
-        )
+        raise http_500("Failed to restore file from trash")
 
 
 @router.get(
@@ -191,13 +156,7 @@ async def get_trash_files_endpoint(
     ip = get_client_ip(request)
     key = f"vault:trash:list:{get_user_id(current_user)}:{ip}"
     if not rate_limiter.check_rate_limit(key, max_requests=60, window_seconds=60):
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=ErrorResponse(
-                error_code=ErrorCode.RATE_LIMITED,
-                message="Rate limit exceeded for vault.trash.list"
-            ).model_dump()
-        )
+        raise http_429("Rate limit exceeded for vault.trash.list")
 
     service = get_vault_service()
     user_id = get_user_id(current_user)
@@ -223,13 +182,7 @@ async def get_trash_files_endpoint(
         raise
     except Exception as e:
         logger.error(f"Failed to get trash files for user {user_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to get trash files"
-            ).model_dump()
-        )
+        raise http_500("Failed to get trash files")
 
 
 @router.delete(
@@ -255,13 +208,7 @@ async def empty_trash_endpoint(
     ip = get_client_ip(request)
     key = f"vault:trash:empty:{get_user_id(current_user)}:{ip}"
     if not rate_limiter.check_rate_limit(key, max_requests=5, window_seconds=60):
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=ErrorResponse(
-                error_code=ErrorCode.RATE_LIMITED,
-                message="Rate limit exceeded for vault.trash.emptied"
-            ).model_dump()
-        )
+        raise http_429("Rate limit exceeded for vault.trash.emptied")
 
     service = get_vault_service()
     user_id = get_user_id(current_user)
@@ -284,13 +231,7 @@ async def empty_trash_endpoint(
         raise
     except Exception as e:
         logger.error(f"Failed to empty trash for user {user_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to empty trash"
-            ).model_dump()
-        )
+        raise http_500("Failed to empty trash")
 
 
 @router.delete(
@@ -318,22 +259,10 @@ async def secure_delete_file_endpoint(
     try:
         success = service.secure_delete_file(user_id, vault_type, file_id)
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="File not found"
-                ).model_dump()
-            )
+            raise http_404("File not found", resource="file")
         return SuccessResponse(data={"success": True}, message="File securely deleted")
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to securely delete file {file_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to securely delete file"
-            ).model_dump()
-        )
+        raise http_500("Failed to securely delete file")

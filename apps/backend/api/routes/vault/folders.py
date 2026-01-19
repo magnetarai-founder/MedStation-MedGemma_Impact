@@ -15,7 +15,8 @@ from api.auth_middleware import get_current_user
 from api.utils import get_user_id
 from api.services.vault.core import get_vault_service
 from api.services.vault.schemas import VaultFolder
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
+from api.errors import http_400, http_404, http_500
 
 logger = logging.getLogger(__name__)
 
@@ -41,13 +42,7 @@ async def create_vault_folder(
         user_id = get_user_id(current_user)
 
         if vault_type not in ('real', 'decoy'):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="vault_type must be 'real' or 'decoy'"
-                ).model_dump()
-            )
+            raise http_400("vault_type must be 'real' or 'decoy'")
 
         service = get_vault_service()
         folder = service.create_folder(user_id, vault_type, folder_name, parent_path)
@@ -62,13 +57,7 @@ async def create_vault_folder(
 
     except Exception as e:
         logger.error(f"Failed to create folder '{folder_name}'", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to create folder"
-            ).model_dump()
-        )
+        raise http_500("Failed to create folder")
 
 
 @router.get(
@@ -89,13 +78,7 @@ async def list_vault_folders(
         user_id = get_user_id(current_user)
 
         if vault_type not in ('real', 'decoy'):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="vault_type must be 'real' or 'decoy'"
-                ).model_dump()
-            )
+            raise http_400("vault_type must be 'real' or 'decoy'")
 
         service = get_vault_service()
         folders = service.list_folders(user_id, vault_type, parent_path)
@@ -110,13 +93,7 @@ async def list_vault_folders(
 
     except Exception as e:
         logger.error(f"Failed to list folders", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve folders"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve folders")
 
 
 class DeleteFolderResponse(BaseModel):
@@ -142,25 +119,13 @@ async def delete_vault_folder(
         user_id = get_user_id(current_user)
 
         if vault_type not in ('real', 'decoy'):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="vault_type must be 'real' or 'decoy'"
-                ).model_dump()
-            )
+            raise http_400("vault_type must be 'real' or 'decoy'")
 
         service = get_vault_service()
         success = service.delete_folder(user_id, vault_type, folder_path)
 
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Folder not found"
-                ).model_dump()
-            )
+            raise http_404("Folder not found", resource="folder")
 
         return SuccessResponse(
             data=DeleteFolderResponse(success=True, folder_path=folder_path),
@@ -172,13 +137,7 @@ async def delete_vault_folder(
 
     except Exception as e:
         logger.error(f"Failed to delete folder '{folder_path}'", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to delete folder"
-            ).model_dump()
-        )
+        raise http_500("Failed to delete folder")
 
 
 class RenameFolderResponse(BaseModel):
@@ -206,34 +165,16 @@ async def rename_vault_folder(
         user_id = get_user_id(current_user)
 
         if vault_type not in ('real', 'decoy'):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="vault_type must be 'real' or 'decoy'"
-                ).model_dump()
-            )
+            raise http_400("vault_type must be 'real' or 'decoy'")
 
         if not new_name or not new_name.strip():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message="new_name is required"
-                ).model_dump()
-            )
+            raise http_400("new_name is required")
 
         service = get_vault_service()
         success = service.rename_folder(user_id, vault_type, old_path, new_name.strip())
 
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Folder not found"
-                ).model_dump()
-            )
+            raise http_404("Folder not found", resource="folder")
 
         # Calculate new path for response
         parent_path = old_path.rsplit('/', 1)[0] if old_path.count('/') > 0 else '/'
@@ -249,13 +190,7 @@ async def rename_vault_folder(
 
     except Exception as e:
         logger.error(f"Failed to rename folder '{old_path}'", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to rename folder"
-            ).model_dump()
-        )
+        raise http_500("Failed to rename folder")
 
 
 class VaultHealthResponse(BaseModel):
@@ -290,13 +225,7 @@ async def vault_health() -> SuccessResponse[VaultHealthResponse]:
 
     except Exception as e:
         logger.error(f"Vault health check failed", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve vault health"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve vault health")
 
 
 class FolderColorResponse(BaseModel):
@@ -335,13 +264,7 @@ async def set_folder_color_endpoint(
 
     except Exception as e:
         logger.error(f"Failed to set folder color for '{folder_id}'", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to set folder color"
-            ).model_dump()
-        )
+        raise http_500("Failed to set folder color")
 
 
 class FolderColorsResponse(BaseModel):
@@ -377,10 +300,4 @@ async def get_folder_colors_endpoint(
 
     except Exception as e:
         logger.error(f"Failed to get folder colors", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve folder colors"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve folder colors")
