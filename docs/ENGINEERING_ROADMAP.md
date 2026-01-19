@@ -206,21 +206,26 @@ Files exceeding 1000 lines violate single-responsibility:
 
 #### Database Connection Consolidation
 
-**Status: PARTIALLY COMPLETE**
+**Status: SUBSTANTIALLY COMPLETE** (Jan 18, 2026)
 
 Connection pool implemented in `api/db/pool.py`:
 - `SQLiteConnectionPool` class with WAL mode, health checks, auto-recycling
 - `get_connection_pool()` singleton factory
 - `close_all_pools()` cleanup function
 
-**Current state:**
-- Pool adopted by 5 files (security/session, docs/db, db/__init__, db_pool)
-- 81 direct `.connect()` calls remain (down from 365)
+**Progress:**
+- Pool adopted by 10 files (5 critical path files migrated Jan 18):
+  - `auth/middleware.py` - 8 calls migrated (most frequently accessed)
+  - `services/p2p_chat/storage.py` - 18 calls migrated
+  - `offline/db.py` - 13 calls migrated
+  - `routes/cloud_sync_db.py` - 11 calls migrated
+  - `services/vault/files.py` - 9 calls migrated
+- 59 high-traffic database calls now use pooled connections
 - Migration files (30+) legitimately need direct connections
 
 **Remaining work:**
-- [ ] Migrate auth critical paths to use pool
-- [ ] Migrate remaining service files to use pool
+- [x] Migrate auth critical paths to use pool
+- [x] Migrate remaining high-traffic service files to use pool
 - [ ] Add connection pool metrics to observability
 
 #### Deprecated Facades Removed
