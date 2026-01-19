@@ -16,12 +16,12 @@ is derived from their main database path.
 from __future__ import annotations
 
 import json
-import sqlite3
 import logging
 from pathlib import Path
 from typing import List, Optional
 from datetime import datetime, UTC
 
+from api.db.pool import get_connection_pool
 from api.offline.models import (
     SyncOperation,
     SyncState,
@@ -63,16 +63,14 @@ def init_sync_db(sync_db_path: Path) -> None:
     """
     sync_db_path.parent.mkdir(parents=True, exist_ok=True)
 
-    conn = sqlite3.connect(str(sync_db_path))
-    cursor = conn.cursor()
-
-    # Create tables using schema definitions from models
-    cursor.execute(SYNC_OPERATIONS_SCHEMA)
-    cursor.execute(PEER_SYNC_STATE_SCHEMA)
-    cursor.execute(VERSION_TRACKING_SCHEMA)
-
-    conn.commit()
-    conn.close()
+    pool = get_connection_pool(sync_db_path)
+    with pool.get_connection() as conn:
+        cursor = conn.cursor()
+        # Create tables using schema definitions from models
+        cursor.execute(SYNC_OPERATIONS_SCHEMA)
+        cursor.execute(PEER_SYNC_STATE_SCHEMA)
+        cursor.execute(VERSION_TRACKING_SCHEMA)
+        conn.commit()
 
     logger.info(f"Sync database initialized: {sync_db_path}")
 
@@ -87,28 +85,26 @@ def save_sync_operation(sync_db_path: Path, op: SyncOperation) -> None:
         sync_db_path: Path to the sync database
         op: SyncOperation to persist
     """
-    conn = sqlite3.connect(str(sync_db_path))
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        INSERT INTO sync_operations
-        (op_id, table_name, operation, row_id, data, timestamp, peer_id, version, team_id, signature)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (
-        op.op_id,
-        op.table_name,
-        op.operation,
-        op.row_id,
-        json.dumps(op.data) if op.data else None,
-        op.timestamp,
-        op.peer_id,
-        op.version,
-        op.team_id,
-        op.signature
-    ))
-
-    conn.commit()
-    conn.close()
+    pool = get_connection_pool(sync_db_path)
+    with pool.get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO sync_operations
+            (op_id, table_name, operation, row_id, data, timestamp, peer_id, version, team_id, signature)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            op.op_id,
+            op.table_name,
+            op.operation,
+            op.row_id,
+            json.dumps(op.data) if op.data else None,
+            op.timestamp,
+            op.peer_id,
+            op.version,
+            op.team_id,
+            op.signature
+        ))
+        conn.commit()
 
 
 def load_pending_operations(sync_db_path: Path, local_peer_id: str) -> List[SyncOperation]:
@@ -124,20 +120,20 @@ def load_pending_operations(sync_db_path: Path, local_peer_id: str) -> List[Sync
     Returns:
         List of pending SyncOperation objects ordered by version
     """
-    conn = sqlite3.connect(str(sync_db_path))
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT op_id, table_name, operation, row_id, data, timestamp,
-               peer_id, version, team_id, signature
-        FROM sync_operations
-        WHERE synced = 0 AND peer_id = ?
-        ORDER BY version ASC
-    """, (local_peer_id,))
+    pool = get_connection_pool(sync_db_path)
+    with pool.get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT op_id, table_name, operation, row_id, data, timestamp,
+                   peer_id, version, team_id, signature
+            FROM sync_operations
+            WHERE synced = 0 AND peer_id = ?
+            ORDER BY version ASC
+        """, (local_peer_id,))
+        rows = cursor.fetchall()
 
     operations = []
-    for row in cursor.fetchall():
+    for row in rows:
         op = SyncOperation(
             op_id=row['op_id'],
             table_name=row['table_name'],
@@ -152,7 +148,6 @@ def load_pending_operations(sync_db_path: Path, local_peer_id: str) -> List[Sync
         )
         operations.append(op)
 
-    conn.close()
     return operations
 
 
@@ -170,18 +165,16 @@ def mark_operations_synced(sync_db_path: Path, op_ids: List[str]) -> None:
     if not op_ids:
         return
 
-    conn = sqlite3.connect(str(sync_db_path))
-    cursor = conn.cursor()
-
-    placeholders = ','.join('?' for _ in op_ids)
-    cursor.execute(f"""
-        UPDATE sync_operations
-        SET synced = 1
-        WHERE op_id IN ({placeholders})
-    """, op_ids)
-
-    conn.commit()
-    conn.close()
+    pool = get_connection_pool(sync_db_path)
+    with pool.get_connection() as conn:
+        cursor = conn.cursor()
+        placeholders = ','.join('?' for _ in op_ids)
+        cursor.execute(f"""
+            UPDATE sync_operations
+            SET synced = 1
+            WHERE op_id IN ({placeholders})
+        """, op_ids)
+        conn.commit()
 
     logger.debug(f"Marked {len(op_ids)} operations as synced")
 
@@ -197,15 +190,13 @@ def get_max_version(sync_db_path: Path, local_peer_id: str) -> int:
     Returns:
         Highest version number, or 0 if no operations
     """
-    conn = sqlite3.connect(str(sync_db_path))
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT MAX(version) FROM sync_operations WHERE peer_id = ?
-    """, (local_peer_id,))
-
-    row = cursor.fetchone()
-    conn.close()
+    pool = get_connection_pool(sync_db_path)
+    with pool.get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT MAX(version) FROM sync_operations WHERE peer_id = ?
+        """, (local_peer_id,))
+        row = cursor.fetchone()
 
     return row[0] if row[0] else 0
 
@@ -223,15 +214,13 @@ def get_peer_last_sync(sync_db_path: Path, peer_id: str) -> Optional[str]:
     Returns:
         ISO8601 timestamp of last sync, or None if never synced
     """
-    conn = sqlite3.connect(str(sync_db_path))
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT last_sync FROM peer_sync_state WHERE peer_id = ?
-    """, (peer_id,))
-
-    row = cursor.fetchone()
-    conn.close()
+    pool = get_connection_pool(sync_db_path)
+    with pool.get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT last_sync FROM peer_sync_state WHERE peer_id = ?
+        """, (peer_id,))
+        row = cursor.fetchone()
 
     return row[0] if row else None
 
@@ -244,24 +233,22 @@ def save_sync_state(sync_db_path: Path, state: SyncState) -> None:
         sync_db_path: Path to the sync database
         state: SyncState to persist
     """
-    conn = sqlite3.connect(str(sync_db_path))
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        INSERT OR REPLACE INTO peer_sync_state
-        (peer_id, last_sync, operations_sent, operations_received, conflicts_resolved, status, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
-    """, (
-        state.peer_id,
-        state.last_sync,
-        state.operations_sent,
-        state.operations_received,
-        state.conflicts_resolved,
-        state.status
-    ))
-
-    conn.commit()
-    conn.close()
+    pool = get_connection_pool(sync_db_path)
+    with pool.get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT OR REPLACE INTO peer_sync_state
+            (peer_id, last_sync, operations_sent, operations_received, conflicts_resolved, status, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+        """, (
+            state.peer_id,
+            state.last_sync,
+            state.operations_sent,
+            state.operations_received,
+            state.conflicts_resolved,
+            state.status
+        ))
+        conn.commit()
 
 
 def load_sync_state(sync_db_path: Path, peer_id: str) -> Optional[SyncState]:
@@ -275,19 +262,16 @@ def load_sync_state(sync_db_path: Path, peer_id: str) -> Optional[SyncState]:
     Returns:
         SyncState if found, None otherwise
     """
-    conn = sqlite3.connect(str(sync_db_path))
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT peer_id, last_sync, operations_sent, operations_received,
-               conflicts_resolved, status
-        FROM peer_sync_state
-        WHERE peer_id = ?
-    """, (peer_id,))
-
-    row = cursor.fetchone()
-    conn.close()
+    pool = get_connection_pool(sync_db_path)
+    with pool.get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT peer_id, last_sync, operations_sent, operations_received,
+                   conflicts_resolved, status
+            FROM peer_sync_state
+            WHERE peer_id = ?
+        """, (peer_id,))
+        row = cursor.fetchone()
 
     if not row:
         return None
@@ -312,16 +296,16 @@ def load_all_sync_states(sync_db_path: Path) -> List[SyncState]:
     Returns:
         List of SyncState objects
     """
-    conn = sqlite3.connect(str(sync_db_path))
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT peer_id, last_sync, operations_sent, operations_received,
-               conflicts_resolved, status
-        FROM peer_sync_state
-        ORDER BY last_sync DESC
-    """)
+    pool = get_connection_pool(sync_db_path)
+    with pool.get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT peer_id, last_sync, operations_sent, operations_received,
+                   conflicts_resolved, status
+            FROM peer_sync_state
+            ORDER BY last_sync DESC
+        """)
+        rows = cursor.fetchall()
 
     states = [
         SyncState(
@@ -332,10 +316,9 @@ def load_all_sync_states(sync_db_path: Path) -> List[SyncState]:
             conflicts_resolved=row['conflicts_resolved'],
             status=row['status']
         )
-        for row in cursor.fetchall()
+        for row in rows
     ]
 
-    conn.close()
     return states
 
 
@@ -353,17 +336,15 @@ def get_version_info(sync_db_path: Path, table_name: str, row_id: str) -> Option
     Returns:
         Tuple of (version, timestamp) if found, None otherwise
     """
-    conn = sqlite3.connect(str(sync_db_path))
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT version, timestamp FROM version_tracking
-        WHERE table_name = ? AND row_id = ?
-        ORDER BY version DESC LIMIT 1
-    """, (table_name, row_id))
-
-    row = cursor.fetchone()
-    conn.close()
+    pool = get_connection_pool(sync_db_path)
+    with pool.get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT version, timestamp FROM version_tracking
+            WHERE table_name = ? AND row_id = ?
+            ORDER BY version DESC LIMIT 1
+        """, (table_name, row_id))
+        row = cursor.fetchone()
 
     return (row[0], row[1]) if row else None
 
@@ -386,16 +367,14 @@ def check_version_conflict(
     Returns:
         True if conflict exists, False otherwise
     """
-    conn = sqlite3.connect(str(sync_db_path))
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT COUNT(*) FROM version_tracking
-        WHERE table_name = ? AND row_id = ? AND peer_id != ?
-    """, (table_name, row_id, peer_id))
-
-    count = cursor.fetchone()[0]
-    conn.close()
+    pool = get_connection_pool(sync_db_path)
+    with pool.get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT COUNT(*) FROM version_tracking
+            WHERE table_name = ? AND row_id = ? AND peer_id != ?
+        """, (table_name, row_id, peer_id))
+        count = cursor.fetchone()[0]
 
     return count > 0
 
@@ -408,17 +387,15 @@ def update_version_tracking(sync_db_path: Path, op: SyncOperation) -> None:
         sync_db_path: Path to the sync database
         op: SyncOperation to track
     """
-    conn = sqlite3.connect(str(sync_db_path))
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        INSERT OR REPLACE INTO version_tracking
-        (table_name, row_id, peer_id, version, timestamp)
-        VALUES (?, ?, ?, ?, ?)
-    """, (op.table_name, op.row_id, op.peer_id, op.version, op.timestamp))
-
-    conn.commit()
-    conn.close()
+    pool = get_connection_pool(sync_db_path)
+    with pool.get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT OR REPLACE INTO version_tracking
+            (table_name, row_id, peer_id, version, timestamp)
+            VALUES (?, ?, ?, ?, ?)
+        """, (op.table_name, op.row_id, op.peer_id, op.version, op.timestamp))
+        conn.commit()
 
 
 # ===== Operations Query =====
@@ -441,32 +418,34 @@ def get_operations_since(
     Returns:
         List of SyncOperation objects ordered by version
     """
-    conn = sqlite3.connect(str(sync_db_path))
-    cursor = conn.cursor()
+    pool = get_connection_pool(sync_db_path)
+    with pool.get_connection() as conn:
+        cursor = conn.cursor()
 
-    # Build query
-    query = """
-        SELECT op_id, table_name, operation, row_id, data, timestamp, peer_id, version, team_id, signature
-        FROM sync_operations
-        WHERE peer_id = ?
-    """
-    params = [local_peer_id]
+        # Build query
+        query = """
+            SELECT op_id, table_name, operation, row_id, data, timestamp, peer_id, version, team_id, signature
+            FROM sync_operations
+            WHERE peer_id = ?
+        """
+        params = [local_peer_id]
 
-    if last_sync:
-        query += " AND timestamp > ?"
-        params.append(last_sync)
+        if last_sync:
+            query += " AND timestamp > ?"
+            params.append(last_sync)
 
-    if tables:
-        placeholders = ','.join('?' * len(tables))
-        query += f" AND table_name IN ({placeholders})"
-        params.extend(tables)
+        if tables:
+            placeholders = ','.join('?' * len(tables))
+            query += f" AND table_name IN ({placeholders})"
+            params.extend(tables)
 
-    query += " ORDER BY version ASC"
+        query += " ORDER BY version ASC"
 
-    cursor.execute(query, params)
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
 
     operations = []
-    for row in cursor.fetchall():
+    for row in rows:
         op = SyncOperation(
             op_id=row[0],
             table_name=row[1],
@@ -481,7 +460,6 @@ def get_operations_since(
         )
         operations.append(op)
 
-    conn.close()
     return operations
 
 
