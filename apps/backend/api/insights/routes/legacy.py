@@ -10,10 +10,11 @@ from pathlib import Path
 from uuid import uuid4
 
 import aiofiles
-from fastapi import APIRouter, HTTPException, UploadFile, File, Request
+from fastapi import APIRouter, UploadFile, File, Request
 from pydantic import BaseModel
 
 from api.utils import sanitize_filename
+from api.errors import http_400, http_500
 from ..database import INSIGHTS_DIR
 from ..transcription import transcribe_audio_with_whisper
 
@@ -50,10 +51,7 @@ async def transcribe_audio(request: Request, audio_file: UploadFile = File(...))
     file_ext = Path(safe_filename).suffix.lower()
 
     if file_ext not in valid_extensions:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported audio format. Supported: {', '.join(valid_extensions)}"
-        )
+        raise http_400(f"Unsupported audio format. Supported: {', '.join(valid_extensions)}")
 
     file_id = uuid4().hex[:12]
     audio_path = INSIGHTS_DIR / "audio" / f"{file_id}{file_ext}"
@@ -85,10 +83,7 @@ async def analyze_transcript(req: Request, request: AnalyzeRequest):
     Use POST /recordings/{id}/apply-template with tmpl_sermon_outline for similar results.
     """
     if not request.transcript or len(request.transcript.strip()) < 10:
-        raise HTTPException(
-            status_code=400,
-            detail="Transcript is too short (minimum 10 characters)"
-        )
+        raise http_400("Transcript is too short (minimum 10 characters)")
 
     system_prompt = """You are a thoughtful theological reflection assistant.
 Organize scattered thoughts, surface key insights, connect ideas to Scripture,
@@ -138,7 +133,7 @@ Provide a thoughtful analysis that helps organize these thoughts and surface the
 
     except Exception as e:
         logger.error(f"Analysis failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500("Analysis failed")
 
 
 __all__ = ["router"]

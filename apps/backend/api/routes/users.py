@@ -9,8 +9,9 @@ import logging
 from fastapi import APIRouter, HTTPException, Depends, status
 from api.auth_middleware import get_current_user, User
 from api.permissions import require_perm
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
 from api.schemas.user_models import UserProfile, UserProfileUpdate
+from api.errors import http_500
 
 logger = logging.getLogger(__name__)
 
@@ -51,13 +52,7 @@ async def get_current_user_profile(
 
     except Exception as e:
         logger.error(f"Failed to get user profile", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve user profile"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve user profile")
 
 
 @router.put(
@@ -94,13 +89,7 @@ async def update_current_user_profile(
 
     except Exception as e:
         logger.error(f"Failed to update user profile", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to update user profile"
-            ).model_dump()
-        )
+        raise http_500("Failed to update user profile")
 
 
 @router.post(
@@ -137,10 +126,4 @@ async def reset_user_profile(
 
     except Exception as e:
         logger.error(f"Failed to reset user profile", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to reset user profile"
-            ).model_dump()
-        )
+        raise http_500("Failed to reset user profile")

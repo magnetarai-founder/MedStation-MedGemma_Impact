@@ -11,7 +11,8 @@ Extracted from admin_support.py during P2 decomposition.
 import sqlite3
 import logging
 from typing import Dict, Optional, Any
-from fastapi import HTTPException
+
+from api.errors import http_404, http_500
 
 logger = logging.getLogger(__name__)
 
@@ -107,10 +108,7 @@ async def get_audit_logs(
 
     except Exception as e:
         logger.error(f"Failed to query audit logs: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to retrieve audit logs: {str(e)}"
-        )
+        raise http_500("Failed to retrieve audit logs")
 
 
 async def export_audit_logs(
@@ -139,10 +137,7 @@ async def export_audit_logs(
 
     audit_db_path = PATHS.data_dir / "audit_log.db"
     if not audit_db_path.exists():
-        raise HTTPException(
-            status_code=404,
-            detail="Audit log database not found"
-        )
+        raise http_404("Audit log database not found", resource="audit_log_db")
 
     try:
         import csv
@@ -186,10 +181,7 @@ async def export_audit_logs(
 
     except Exception as e:
         logger.error(f"Failed to export audit logs: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to export audit logs: {str(e)}"
-        )
+        raise http_500("Failed to export audit logs")
 
 
 __all__ = [

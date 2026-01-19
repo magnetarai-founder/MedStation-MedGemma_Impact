@@ -11,9 +11,10 @@ from uuid import uuid4
 
 from typing import Any, Dict
 
-from fastapi import APIRouter, HTTPException, Request, Depends, Body
+from fastapi import APIRouter, Request, Depends, Body
 
 from api.auth_middleware import get_current_user
+from api.errors import http_404
 from api.schemas.insights_models import (
     FormattedOutput, ApplyTemplateRequest, ApplyTemplateResponse,
     BatchApplyRequest, BatchApplyResponse, OutputFormat
@@ -42,7 +43,7 @@ async def apply_template(
     rec_row = cursor.fetchone()
     if not rec_row:
         conn.close()
-        raise HTTPException(status_code=404, detail="Recording not found")
+        raise http_404("Recording not found", resource="recording")
     transcript = rec_row["transcript"]
 
     # Get template
@@ -50,7 +51,7 @@ async def apply_template(
     tmpl_row = cursor.fetchone()
     if not tmpl_row:
         conn.close()
-        raise HTTPException(status_code=404, detail="Template not found")
+        raise http_404("Template not found", resource="template")
 
     # Apply template
     content = await apply_template_with_ollama(transcript, tmpl_row["system_prompt"])
@@ -193,7 +194,7 @@ async def delete_output(
 
     if cursor.rowcount == 0:
         conn.close()
-        raise HTTPException(status_code=404, detail="Output not found")
+        raise http_404("Output not found", resource="output")
 
     conn.commit()
     conn.close()
