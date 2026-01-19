@@ -6,9 +6,10 @@ Channel CRUD and invitation management endpoints.
 
 from typing import Dict, Any, Optional
 from datetime import datetime, UTC
-from fastapi import APIRouter, HTTPException, Request, Depends
+from fastapi import APIRouter, Request, Depends
 import logging
 
+from api.errors import http_403, http_404, http_500, http_503
 from api.p2p_chat_models import (
     Channel,
     CreateChannelRequest,
@@ -33,7 +34,7 @@ async def create_channel(request: Request, body: CreateChannelRequest) -> Channe
     service = get_p2p_chat_service()
 
     if not service or not service.is_running:
-        raise HTTPException(status_code=503, detail="P2P service not running")
+        raise http_503("P2P service not running", service="p2p_chat")
 
     try:
         channel = await service.create_channel(body)
@@ -48,7 +49,7 @@ async def create_channel(request: Request, body: CreateChannelRequest) -> Channe
 
     except Exception as e:
         logger.error(f"Failed to create channel: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/dm", response_model=Channel)
@@ -57,7 +58,7 @@ async def create_direct_message(request: Request, body: CreateDMRequest) -> Chan
     service = get_p2p_chat_service()
 
     if not service or not service.is_running:
-        raise HTTPException(status_code=503, detail="P2P service not running")
+        raise http_503("P2P service not running", service="p2p_chat")
 
     try:
         # Check if DM already exists
@@ -77,7 +78,7 @@ async def create_direct_message(request: Request, body: CreateDMRequest) -> Chan
         peer = next((p for p in peers if p.peer_id == body.peer_id), None)
 
         if not peer:
-            raise HTTPException(status_code=404, detail="Peer not found")
+            raise http_404("Peer not found", resource="peer")
 
         # Create DM channel
         dm_request = CreateChannelRequest(
@@ -95,7 +96,7 @@ async def create_direct_message(request: Request, body: CreateDMRequest) -> Chan
         raise
     except Exception as e:
         logger.error(f"Failed to create DM: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.get("/channels", response_model=ChannelListResponse)
@@ -104,7 +105,7 @@ async def list_channels() -> ChannelListResponse:
     service = get_p2p_chat_service()
 
     if not service:
-        raise HTTPException(status_code=503, detail="P2P service not initialized")
+        raise http_503("P2P service not initialized", service="p2p_chat")
 
     channels = await service.list_channels()
 
@@ -120,12 +121,12 @@ async def get_channel(channel_id: str) -> Channel:
     service = get_p2p_chat_service()
 
     if not service:
-        raise HTTPException(status_code=503, detail="P2P service not initialized")
+        raise http_503("P2P service not initialized", service="p2p_chat")
 
     channel = await service.get_channel(channel_id)
 
     if not channel:
-        raise HTTPException(status_code=404, detail="Channel not found")
+        raise http_404("Channel not found", resource="channel")
 
     return channel
 
@@ -141,12 +142,12 @@ async def invite_to_channel(
     service = get_p2p_chat_service()
 
     if not service or not service.is_running:
-        raise HTTPException(status_code=503, detail="P2P service not running")
+        raise http_503("P2P service not running", service="p2p_chat")
 
     channel = await service.get_channel(channel_id)
 
     if not channel:
-        raise HTTPException(status_code=404, detail="Channel not found")
+        raise http_404("Channel not found", resource="channel")
 
     # Create invitations
     invitations_list = get_channel_invitations(channel_id)
@@ -197,7 +198,7 @@ async def list_channel_invitations(
     service = get_p2p_chat_service()
 
     if not service:
-        raise HTTPException(status_code=503, detail="P2P service not initialized")
+        raise http_503("P2P service not initialized", service="p2p_chat")
 
     invitations = get_channel_invitations(channel_id).copy()
 
@@ -233,12 +234,12 @@ async def accept_channel_invitation(
     service = get_p2p_chat_service()
 
     if not service or not service.is_running:
-        raise HTTPException(status_code=503, detail="P2P service not running")
+        raise http_503("P2P service not running", service="p2p_chat")
 
     # Verify current user matches peer_id
     user_id = current_user.get("user_id")
     if peer_id != user_id:
-        raise HTTPException(status_code=403, detail="Cannot accept invitation for another user")
+        raise http_403("Cannot accept invitation for another user")
 
     # Find invitation
     invitations = get_channel_invitations(channel_id)
@@ -248,7 +249,7 @@ async def accept_channel_invitation(
     )
 
     if not invitation:
-        raise HTTPException(status_code=404, detail="Invitation not found or already processed")
+        raise http_404("Invitation not found or already processed", resource="invitation")
 
     # Update invitation status
     invitation["status"] = "accepted"
@@ -273,7 +274,7 @@ async def decline_channel_invitation(
     """Decline a channel invitation"""
     user_id = current_user.get("user_id")
     if peer_id != user_id:
-        raise HTTPException(status_code=403, detail="Cannot decline invitation for another user")
+        raise http_403("Cannot decline invitation for another user")
 
     # Find invitation
     invitations = get_channel_invitations(channel_id)
@@ -283,7 +284,7 @@ async def decline_channel_invitation(
     )
 
     if not invitation:
-        raise HTTPException(status_code=404, detail="Invitation not found or already processed")
+        raise http_404("Invitation not found or already processed", resource="invitation")
 
     # Update invitation status
     invitation["status"] = "declined"

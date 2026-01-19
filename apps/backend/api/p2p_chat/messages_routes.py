@@ -6,9 +6,10 @@ Message sending and read receipt endpoints.
 
 from typing import Dict, Any
 from datetime import datetime, UTC
-from fastapi import APIRouter, HTTPException, Request, Depends
+from fastapi import APIRouter, Request, Depends
 import logging
 
+from api.errors import http_404, http_500, http_503
 from api.p2p_chat_models import (
     Message,
     SendMessageRequest,
@@ -30,7 +31,7 @@ async def send_message(request: Request, channel_id: str, body: SendMessageReque
     service = get_p2p_chat_service()
 
     if not service or not service.is_running:
-        raise HTTPException(status_code=503, detail="P2P service not running")
+        raise http_503("P2P service not running", service="p2p_chat")
 
     # Ensure channel_id matches
     body.channel_id = channel_id
@@ -48,7 +49,7 @@ async def send_message(request: Request, channel_id: str, body: SendMessageReque
 
     except Exception as e:
         logger.error(f"Failed to send message: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.get("/channels/{channel_id}/messages", response_model=MessageListResponse)
@@ -57,12 +58,12 @@ async def get_messages(channel_id: str, limit: int = 50) -> MessageListResponse:
     service = get_p2p_chat_service()
 
     if not service:
-        raise HTTPException(status_code=503, detail="P2P service not initialized")
+        raise http_503("P2P service not initialized", service="p2p_chat")
 
     channel = await service.get_channel(channel_id)
 
     if not channel:
-        raise HTTPException(status_code=404, detail="Channel not found")
+        raise http_404("Channel not found", resource="channel")
 
     messages = await service.get_messages(channel_id, limit=limit)
 
@@ -85,7 +86,7 @@ async def mark_message_as_read(
     service = get_p2p_chat_service()
 
     if not service or not service.is_running:
-        raise HTTPException(status_code=503, detail="P2P service not running")
+        raise http_503("P2P service not running", service="p2p_chat")
 
     user_id = current_user.get("user_id", "anonymous")
 
@@ -134,7 +135,7 @@ async def get_message_receipts(
     service = get_p2p_chat_service()
 
     if not service:
-        raise HTTPException(status_code=503, detail="P2P service not initialized")
+        raise http_503("P2P service not initialized", service="p2p_chat")
 
     receipts = get_read_receipts(message_id)
 
@@ -156,7 +157,7 @@ async def get_channel_receipts(
     service = get_p2p_chat_service()
 
     if not service:
-        raise HTTPException(status_code=503, detail="P2P service not initialized")
+        raise http_503("P2P service not initialized", service="p2p_chat")
 
     # Filter receipts by channel
     all_receipts = get_all_read_receipts()

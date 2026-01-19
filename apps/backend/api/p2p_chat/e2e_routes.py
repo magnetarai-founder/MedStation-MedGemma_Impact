@@ -5,9 +5,10 @@ End-to-end encryption key management and device linking endpoints.
 """
 
 from typing import Dict, Any
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 import logging
 
+from api.errors import http_400, http_500, http_503
 from api.services.p2p_chat import get_p2p_chat_service
 
 logger = logging.getLogger(__name__)
@@ -30,14 +31,14 @@ async def initialize_e2e_keys(request: Request, device_id: str, passphrase: str)
     service = get_p2p_chat_service()
 
     if not service:
-        raise HTTPException(status_code=503, detail="P2P service not initialized")
+        raise http_503("P2P service not initialized", service="p2p_chat")
 
     try:
         result = service.init_device_keys(device_id, passphrase)
         return result
     except Exception as e:
         logger.error(f"Failed to initialize E2E keys: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/e2e/peers/{peer_id}/keys")
@@ -56,7 +57,7 @@ async def store_peer_public_key(request: Request, peer_id: str, public_key_hex: 
     service = get_p2p_chat_service()
 
     if not service:
-        raise HTTPException(status_code=503, detail="P2P service not initialized")
+        raise http_503("P2P service not initialized", service="p2p_chat")
 
     try:
         public_key = bytes.fromhex(public_key_hex)
@@ -64,10 +65,10 @@ async def store_peer_public_key(request: Request, peer_id: str, public_key_hex: 
         result = service.store_peer_key(peer_id, public_key, verify_key)
         return result
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid key format: {e}")
+        raise http_400(f"Invalid key format: {e}")
     except Exception as e:
         logger.error(f"Failed to store peer key: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/e2e/peers/{peer_id}/verify")
@@ -84,14 +85,14 @@ async def verify_peer(request: Request, peer_id: str) -> Dict[str, str]:
     service = get_p2p_chat_service()
 
     if not service:
-        raise HTTPException(status_code=503, detail="P2P service not initialized")
+        raise http_503("P2P service not initialized", service="p2p_chat")
 
     try:
         result = service.verify_peer_fingerprint(peer_id)
         return {"status": "verified", "peer_id": peer_id}
     except Exception as e:
         logger.error(f"Failed to verify peer: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.get("/e2e/safety-changes")
@@ -105,14 +106,14 @@ async def get_safety_changes() -> Dict[str, Any]:
     service = get_p2p_chat_service()
 
     if not service:
-        raise HTTPException(status_code=503, detail="P2P service not initialized")
+        raise http_503("P2P service not initialized", service="p2p_chat")
 
     try:
         changes = service.get_unacknowledged_safety_changes()
         return {"changes": changes, "total": len(changes)}
     except Exception as e:
         logger.error(f"Failed to get safety changes: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/e2e/safety-changes/{change_id}/acknowledge")
@@ -129,14 +130,14 @@ async def acknowledge_safety_change(request: Request, change_id: int) -> Dict[st
     service = get_p2p_chat_service()
 
     if not service:
-        raise HTTPException(status_code=503, detail="P2P service not initialized")
+        raise http_503("P2P service not initialized", service="p2p_chat")
 
     try:
         result = service.acknowledge_safety_change(change_id)
         return {"status": "acknowledged", "change_id": change_id}
     except Exception as e:
         logger.error(f"Failed to acknowledge safety change: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/e2e/export")
@@ -153,14 +154,14 @@ async def export_identity(request: Request, passphrase: str) -> Dict[str, Any]:
     service = get_p2p_chat_service()
 
     if not service:
-        raise HTTPException(status_code=503, detail="P2P service not initialized")
+        raise http_503("P2P service not initialized", service="p2p_chat")
 
     try:
         bundle = service.e2e_service.export_identity_for_linking(passphrase)
         return bundle
     except Exception as e:
         logger.error(f"Failed to export identity: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/e2e/import")
@@ -188,7 +189,7 @@ async def import_identity(
     service = get_p2p_chat_service()
 
     if not service:
-        raise HTTPException(status_code=503, detail="P2P service not initialized")
+        raise http_503("P2P service not initialized", service="p2p_chat")
 
     try:
         encrypted_data = {
@@ -210,4 +211,4 @@ async def import_identity(
         }
     except Exception as e:
         logger.error(f"Failed to import identity: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))

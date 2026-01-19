@@ -16,9 +16,10 @@ Extracted modules (P2 decomposition):
 from __future__ import annotations
 
 from typing import Dict, Any
-from fastapi import APIRouter, HTTPException, Request, Depends
+from fastapi import APIRouter, Request, Depends
 import logging
 
+from api.errors import http_400, http_404, http_429, http_500, http_503
 from api.services.p2p_chat import get_p2p_chat_service, init_p2p_chat_service
 from api.rate_limiter import connection_code_limiter, get_client_ip
 from api.auth.middleware import get_current_user
@@ -102,7 +103,7 @@ async def start_p2p_mesh(request: Request, display_name: str = "ElohimOS User", 
 
     except Exception as e:
         logger.error(f"Failed to start P2P mesh: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/stop")
@@ -126,7 +127,7 @@ async def stop_p2p_mesh(request: Request) -> Dict[str, str]:
 
     except Exception as e:
         logger.error(f"Failed to stop P2P mesh: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.get("/peers")
@@ -169,7 +170,7 @@ async def get_p2p_peers() -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Failed to get P2P peers: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/connection-code")
@@ -185,7 +186,7 @@ async def generate_connection_code_endpoint(request: Request) -> Dict[str, Any]:
         service = get_p2p_chat_service()
 
         if not service or not service.is_running:
-            raise HTTPException(status_code=503, detail="P2P service not running")
+            raise http_503("P2P service not running", service="p2p_mesh")
 
         # Generate code
         code = generate_connection_code()
@@ -215,7 +216,7 @@ async def generate_connection_code_endpoint(request: Request) -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Failed to generate connection code: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/connect")
@@ -238,19 +239,19 @@ async def connect_to_peer(request: Request, body: AddPeerRequest) -> Dict[str, A
     client_ip = get_client_ip(request)
     allowed, error_message = connection_code_limiter.check_attempt(client_ip)
     if not allowed:
-        raise HTTPException(status_code=429, detail=error_message)
+        raise http_429(error_message)
 
     try:
         service = get_p2p_chat_service()
 
         if not service or not service.is_running:
-            raise HTTPException(status_code=503, detail="P2P service not running")
+            raise http_503("P2P service not running", service="p2p_mesh")
 
         # Look up connection code
         if body.code not in connection_codes:
             # Record failure for rate limiting
             connection_code_limiter.record_failure(client_ip)
-            raise HTTPException(status_code=404, detail="Invalid connection code")
+            raise http_404("Invalid connection code", resource="connection_code")
 
         connection_info = connection_codes[body.code]
 
@@ -258,7 +259,7 @@ async def connect_to_peer(request: Request, body: AddPeerRequest) -> Dict[str, A
         try:
             # Get the p2p service
             if not service.host:
-                raise HTTPException(status_code=503, detail="P2P host not initialized")
+                raise http_503("P2P host not initialized", service="p2p_mesh")
 
             # Parse multiaddrs and connect to peer
             from multiaddr import Multiaddr
@@ -266,7 +267,7 @@ async def connect_to_peer(request: Request, body: AddPeerRequest) -> Dict[str, A
             peer_multiaddrs = [Multiaddr(addr) for addr in connection_info.multiaddrs]
 
             if not peer_multiaddrs:
-                raise HTTPException(status_code=400, detail="No valid multiaddrs found in connection code")
+                raise http_400("No valid multiaddrs found in connection code")
 
             # Connect to peer using first valid multiaddr
             # In production, should try all multiaddrs until one succeeds
@@ -286,21 +287,21 @@ async def connect_to_peer(request: Request, body: AddPeerRequest) -> Dict[str, A
 
         except ImportError as e:
             logger.error(f"libp2p/multiaddr not available: {e}")
-            raise HTTPException(
-                status_code=503,
-                detail="P2P networking libraries not installed. Install with: pip install libp2p"
+            raise http_503(
+                "P2P networking libraries not installed. Install with: pip install libp2p",
+                service="libp2p"
             )
         except Exception as e:
             logger.error(f"Failed to connect to peer {connection_info.peer_id}: {e}")
             # Connection attempt failed (valid code but connection error)
             # Don't count as failure for rate limiting (code was valid)
-            raise HTTPException(status_code=500, detail=f"Connection failed: {str(e)}")
+            raise http_500(f"Connection failed: {str(e)}")
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to connect to peer: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.get("/status")
@@ -347,7 +348,7 @@ async def get_p2p_mesh_status() -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Failed to get P2P mesh status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 # ===== Diagnostics Endpoints =====
