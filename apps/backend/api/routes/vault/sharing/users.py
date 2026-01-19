@@ -15,7 +15,8 @@ from typing import Dict
 
 from fastapi import APIRouter, HTTPException, Form, status
 
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
+from api.errors import http_400, http_401, http_500
 from api.services.vault.core import get_vault_service
 
 logger = logging.getLogger(__name__)
@@ -80,13 +81,7 @@ async def register_user(
             )
 
         except sqlite3.IntegrityError as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=f"User already exists: {str(e)}"
-                ).model_dump()
-            )
+            raise http_400(f"User already exists: {str(e)}")
         finally:
             conn.close()
 
@@ -94,13 +89,7 @@ async def register_user(
         raise
     except Exception as e:
         logger.error("Failed to register user", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to register user"
-            ).model_dump()
-        )
+        raise http_500("Failed to register user")
 
 
 @router.post(
@@ -131,13 +120,7 @@ async def login_user(
             user = cursor.fetchone()
 
             if not user:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail=ErrorResponse(
-                        error_code=ErrorCode.UNAUTHORIZED,
-                        message="Invalid credentials"
-                    ).model_dump()
-                )
+                raise http_401("Invalid credentials")
 
             # Verify password with PBKDF2
             stored_salt = base64.b64decode(user['salt'])
@@ -151,13 +134,7 @@ async def login_user(
             password_hash = base64.b64encode(password_key).decode('utf-8')
 
             if password_hash != user['password_hash']:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail=ErrorResponse(
-                        error_code=ErrorCode.UNAUTHORIZED,
-                        message="Invalid credentials"
-                    ).model_dump()
-                )
+                raise http_401("Invalid credentials")
 
             # Update last login
             now = datetime.now(UTC).isoformat()
@@ -185,10 +162,4 @@ async def login_user(
         raise
     except Exception as e:
         logger.error("Failed to login user", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to login user"
-            ).model_dump()
-        )
+        raise http_500("Failed to login user")

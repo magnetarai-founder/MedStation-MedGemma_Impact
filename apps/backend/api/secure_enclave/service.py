@@ -23,6 +23,7 @@ from typing import Optional, Tuple, Dict, Any
 
 # Import from extracted module (P2 decomposition)
 from api.secure_enclave.types import StoreKeyRequest, RetrieveKeyRequest, KeyResponse
+from api.errors import http_404, http_500
 
 # Graceful degradation for optional dependencies
 try:
@@ -294,7 +295,7 @@ async def generate_and_store_key(request: Request, body: StoreKeyRequest):
         success = store_key_in_keychain(body.key_id, key_data, body.passphrase)
 
         if not success:
-            raise HTTPException(status_code=500, detail="Failed to store key in Keychain")
+            raise http_500("Failed to store key in Keychain")
 
         return KeyResponse(
             success=True,
@@ -304,7 +305,7 @@ async def generate_and_store_key(request: Request, body: StoreKeyRequest):
 
     except Exception as e:
         logger.error(f"Failed to generate key: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.post("/retrieve-key", response_model=KeyResponse)
@@ -338,7 +339,7 @@ async def retrieve_key(request: Request, body: RetrieveKeyRequest):
 
     except Exception as e:
         logger.error(f"Failed to retrieve key: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.delete("/delete-key/{key_id}")
@@ -346,12 +347,12 @@ async def delete_key(request: Request, key_id: str) -> Dict[str, Any]:
     """Delete encryption key from macOS Keychain"""
     try:
         if not key_exists_in_keychain(key_id):
-            raise HTTPException(status_code=404, detail=f"Key '{key_id}' not found")
+            raise http_404(f"Key '{key_id}' not found", resource="key")
 
         success = delete_key_from_keychain(key_id)
 
         if not success:
-            raise HTTPException(status_code=500, detail="Failed to delete key")
+            raise http_500("Failed to delete key")
 
         return {
             "success": True,
@@ -362,7 +363,7 @@ async def delete_key(request: Request, key_id: str) -> Dict[str, Any]:
         raise
     except Exception as e:
         logger.error(f"Failed to delete key: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise http_500(str(e))
 
 
 @router.get("/check-key/{key_id}")

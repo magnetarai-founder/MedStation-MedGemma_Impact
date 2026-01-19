@@ -15,6 +15,8 @@ import string
 from typing import Dict, Any
 from fastapi import HTTPException
 
+from api.errors import http_400, http_404, http_500
+
 logger = logging.getLogger(__name__)
 
 
@@ -65,16 +67,13 @@ async def reset_user_password(target_user_id: str) -> Dict[str, Any]:
 
         if not row:
             conn.close()
-            raise HTTPException(status_code=404, detail="User not found")
+            raise http_404("User not found", resource="user")
 
         target_username, is_active = row
 
         if not is_active:
             conn.close()
-            raise HTTPException(
-                status_code=400,
-                detail="Cannot reset password for inactive user"
-            )
+            raise http_400("Cannot reset password for inactive user")
 
         # Generate secure temporary password (16 characters)
         alphabet = string.ascii_letters + string.digits + "!@#$%^&*()"
@@ -109,10 +108,7 @@ async def reset_user_password(target_user_id: str) -> Dict[str, Any]:
         raise
     except Exception as e:
         logger.error(f"Failed to reset password for user {target_user_id}: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to reset password: {str(e)}"
-        )
+        raise http_500(f"Failed to reset password: {str(e)}")
 
 
 async def unlock_user_account(target_user_id: str) -> Dict[str, Any]:
@@ -141,7 +137,7 @@ async def unlock_user_account(target_user_id: str) -> Dict[str, Any]:
         ).fetchone()
 
         if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise http_404("User not found", resource="user")
 
         # Clear failed login counter and re-enable account
         conn.execute("""
@@ -165,7 +161,7 @@ async def unlock_user_account(target_user_id: str) -> Dict[str, Any]:
         raise
     except Exception as e:
         logger.error(f"Failed to unlock user {target_user_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to unlock user: {str(e)}")
+        raise http_500(f"Failed to unlock user: {str(e)}")
 
 
 __all__ = [
