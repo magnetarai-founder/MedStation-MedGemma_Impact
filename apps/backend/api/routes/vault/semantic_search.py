@@ -13,7 +13,8 @@ from pydantic import BaseModel
 
 from api.auth_middleware import get_current_user
 from api.services.vault.core import VaultService
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
+from api.errors import http_500
 from api.utils import get_user_id
 from api.shared import embed_query, compute_cosine_similarity
 
@@ -142,13 +143,7 @@ async def semantic_search_files(
 
     except Exception as e:
         logger.error(f"Semantic search failed", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to perform semantic search"
-            ).model_dump()
-        )
+        raise http_500("Failed to perform semantic search")
 
 
 # MARK: - Helper Functions

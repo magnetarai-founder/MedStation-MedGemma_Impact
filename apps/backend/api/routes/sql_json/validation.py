@@ -6,7 +6,7 @@ Handles SQL syntax validation before execution.
 
 from fastapi import APIRouter, HTTPException, status
 from api.schemas.api_models import ValidationRequest, ValidationResponse
-from api.routes.schemas import ErrorResponse, ErrorCode
+from api.errors import http_500
 from api.routes.sql_json.utils import get_logger, get_sessions, validate_session_exists
 from api.routes.sql_json.sql_processor import validate_sql_syntax
 
@@ -46,10 +46,4 @@ async def validate_sql_router(
         raise
     except Exception as e:
         logger.error(f"SQL validation failed for session {session_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to validate SQL"
-            ).model_dump()
-        )
+        raise http_500("Failed to validate SQL")

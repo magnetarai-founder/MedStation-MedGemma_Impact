@@ -10,7 +10,8 @@ Follows MagnetarStudio API standards (see API_STANDARDS.md).
 import logging
 from typing import Dict
 from fastapi import APIRouter, HTTPException, Depends, status
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
+from api.errors import http_500
 
 from api.auth_middleware import get_current_user
 from api.utils import get_user_id
@@ -49,10 +50,4 @@ async def export_vault_data_endpoint(
         raise
     except Exception as e:
         logger.error(f"Failed to export vault data for user {user_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to export vault data"
-            ).model_dump()
-        )
+        raise http_500("Failed to export vault data")

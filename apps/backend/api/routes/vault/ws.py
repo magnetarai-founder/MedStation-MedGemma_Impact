@@ -12,7 +12,8 @@ from datetime import datetime, UTC
 from typing import Optional, Dict, Any
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Depends, status
 
-from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
+from api.routes.schemas import SuccessResponse
+from api.errors import http_500
 from api.auth_middleware import get_current_user, extract_websocket_token
 
 logger = logging.getLogger(__name__)
@@ -156,10 +157,4 @@ async def get_online_users(
 
     except Exception as e:
         logger.error(f"Failed to get online users", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve online users"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve online users")
