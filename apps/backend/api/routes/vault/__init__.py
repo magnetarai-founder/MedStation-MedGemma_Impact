@@ -5,10 +5,7 @@ Vault routes package - Aggregates all vault sub-routers
 __all__ = ["router"]
 
 from fastapi import APIRouter, Depends
-try:
-    from api.auth_middleware import get_current_user
-except ImportError:
-    from api.auth_middleware import get_current_user
+from api.auth_middleware import get_current_user
 
 from . import documents, files, folders, sharing, ws, automation, semantic_search
 

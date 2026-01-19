@@ -11,14 +11,8 @@ from typing import Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel
 
-try:
-    from api.auth_middleware import get_current_user
-except ImportError:
-    from api.auth_middleware import get_current_user
-try:
-    from api.utils import get_user_id
-except ImportError:
-    from api.utils import get_user_id
+from api.auth_middleware import get_current_user
+from api.utils import get_user_id
 from api.permission_engine import require_perm_team, require_perm
 from api.services.team import is_team_member
 from api.services.vault.core import get_vault_service

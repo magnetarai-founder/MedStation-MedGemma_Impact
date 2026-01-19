@@ -13,16 +13,9 @@ from typing import Literal, Dict, Optional
 import logging
 
 # Auth and permissions
-try:
-    from api.auth_middleware import get_current_user, User
-except ImportError:
-    from ..auth_middleware import get_current_user, User
+from api.auth_middleware import get_current_user, User
 from api.utils import get_user_id, get_user_role, get_user_team_id
-
-try:
-    from permission_engine import require_perm_team
-except ImportError:
-    from ..permission_engine import require_perm_team
+from api.permission_engine import require_perm_team
 
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 

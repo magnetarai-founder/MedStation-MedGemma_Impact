@@ -11,10 +11,7 @@ This package contains modularized file-related endpoints:
 
 from fastapi import APIRouter, Depends
 
-try:
-    from api.auth_middleware import get_current_user
-except ImportError:
-    from api.auth_middleware import get_current_user
+from api.auth_middleware import get_current_user
 
 # Create aggregated router with no prefix
 # (prefix is already applied at vault level: /api/v1/vault)

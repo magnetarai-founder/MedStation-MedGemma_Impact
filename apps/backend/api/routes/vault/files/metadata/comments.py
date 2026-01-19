@@ -15,10 +15,7 @@ from typing import Dict
 from fastapi import APIRouter, HTTPException, Request, Form, Depends, status
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 
-try:
-    from api.auth_middleware import get_current_user
-except ImportError:
-    from api.auth_middleware import get_current_user
+from api.auth_middleware import get_current_user
 from api.utils import get_user_id
 from api.services.vault.core import get_vault_service
 from api.rate_limiter import get_client_ip, rate_limiter
