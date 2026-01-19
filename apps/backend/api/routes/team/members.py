@@ -7,6 +7,8 @@ Follows MagnetarStudio API standards (see API_STANDARDS.md).
 """
 
 from fastapi import APIRouter, HTTPException, Request, status
+
+from api.errors import http_400, http_403, http_404, http_500
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 from api.utils import get_user_id
 import logging
@@ -44,13 +46,7 @@ async def get_members_endpoint(request: Request, team_id: str) -> SuccessRespons
         raise
     except Exception as e:
         logger.error(f"Failed to get team members for team {team_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve team members"
-            ).model_dump()
-        )
+        raise http_500("Failed to retrieve team members")
 
 
 @router.put(
@@ -74,13 +70,7 @@ async def change_role_endpoint(request: Request, team_id: str, user_id: str) -> 
     if current_user.get("role") != "founder_rights":
         caller_role = is_team_member(team_id, get_user_id(current_user))
         if caller_role != "super_admin":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.FORBIDDEN,
-                    message="Team super_admin required"
-                ).model_dump()
-            )
+            raise http_403("Team super_admin required")
 
     try:
         body_data = await request.json()
@@ -105,13 +95,7 @@ async def change_role_endpoint(request: Request, team_id: str, user_id: str) -> 
         raise
     except Exception as e:
         logger.error(f"Failed to change role for user {user_id} in team {team_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to change member role"
-            ).model_dump()
-        )
+        raise http_500("Failed to change member role")
 
 
 @router.delete(
@@ -134,13 +118,7 @@ async def remove_member_endpoint(request: Request, team_id: str, user_id: str) -
     if current_user.get("role") != "founder_rights":
         caller_role = is_team_member(team_id, get_user_id(current_user))
         if caller_role != "super_admin":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.FORBIDDEN,
-                    message="Team super_admin required"
-                ).model_dump()
-            )
+            raise http_403("Team super_admin required")
 
     try:
         tm = get_team_manager()
@@ -163,13 +141,7 @@ async def remove_member_endpoint(request: Request, team_id: str, user_id: str) -
         raise
     except Exception as e:
         logger.error(f"Failed to remove user {user_id} from team {team_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to remove team member"
-            ).model_dump()
-        )
+        raise http_500("Failed to remove team member")
 
 
 @router.post(
@@ -192,24 +164,12 @@ async def update_role_endpoint(request: Request, team_id: str, user_id: str) -> 
         # Verify team exists
         team = await tm.get_team(team_id)
         if not team:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Team not found"
-                ).model_dump()
-            )
+            raise http_404("Team not found", resource="team")
 
         # Validate role
         valid_roles = ['god_rights', 'super_admin', 'admin', 'member', 'guest']
         if body.new_role not in valid_roles:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=f"Invalid role. Must be one of: {', '.join(valid_roles)}"
-                ).model_dump()
-            )
+            raise http_400(f"Invalid role. Must be one of: {', '.join(valid_roles)}")
 
         # Update role
         success, message = await tm.update_member_role(
@@ -221,13 +181,7 @@ async def update_role_endpoint(request: Request, team_id: str, user_id: str) -> 
         )
 
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=message
-                ).model_dump()
-            )
+            raise http_400(message)
 
         result = UpdateRoleResponse(
             success=True,
@@ -241,13 +195,7 @@ async def update_role_endpoint(request: Request, team_id: str, user_id: str) -> 
         raise
     except Exception as e:
         logger.error(f"Failed to update role for user {user_id} in team {team_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to update member role"
-            ).model_dump()
-        )
+        raise http_500("Failed to update member role")
 
 
 @router.post(
@@ -267,13 +215,7 @@ async def auto_promote_endpoint(request: Request, team_id: str, required_days: i
         team = await tm.get_team(team_id)
 
         if not team:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Team not found"
-                ).model_dump()
-            )
+            raise http_404("Team not found", resource="team")
 
         results = await tm.auto_promote_guests(team_id, required_days)
         promoted_count = sum(1 for r in results if r['promoted'])
@@ -287,13 +229,7 @@ async def auto_promote_endpoint(request: Request, team_id: str, required_days: i
         raise
     except Exception as e:
         logger.error(f"Failed to auto-promote members in team {team_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to auto-promote members"
-            ).model_dump()
-        )
+        raise http_500("Failed to auto-promote members")
 
 
 @router.post(
@@ -321,13 +257,7 @@ async def instant_promote_endpoint(request: Request, team_id: str, user_id: str)
         )
 
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=message
-                ).model_dump()
-            )
+            raise http_400(message)
 
         result = InstantPromoteResponse(success=True, message=message, user_id=user_id, team_id=team_id)
         return SuccessResponse(data=result.model_dump(), message="Member promoted instantly")
@@ -335,13 +265,7 @@ async def instant_promote_endpoint(request: Request, team_id: str, user_id: str)
         raise
     except Exception as e:
         logger.error(f"Failed to instant promote user {user_id} in team {team_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to instant promote member"
-            ).model_dump()
-        )
+        raise http_500("Failed to instant promote member")
 
 
 @router.post(
@@ -370,13 +294,7 @@ async def delayed_promote_endpoint(request: Request, team_id: str, user_id: str)
         )
 
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=message
-                ).model_dump()
-            )
+            raise http_400(message)
 
         result = DelayedPromoteResponse(success=True, message=message, user_id=user_id, team_id=team_id)
         return SuccessResponse(data=result.model_dump(), message="Delayed promotion scheduled")
@@ -384,13 +302,7 @@ async def delayed_promote_endpoint(request: Request, team_id: str, user_id: str)
         raise
     except Exception as e:
         logger.error(f"Failed to schedule delayed promotion for user {user_id} in team {team_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to schedule delayed promotion"
-            ).model_dump()
-        )
+        raise http_500("Failed to schedule delayed promotion")
 
 
 @router.post(
@@ -418,13 +330,7 @@ async def execute_delayed_endpoint(request: Request) -> SuccessResponse[dict]:
         raise
     except Exception as e:
         logger.error(f"Failed to execute delayed promotions", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to execute delayed promotions"
-            ).model_dump()
-        )
+        raise http_500("Failed to execute delayed promotions")
 
 
 @router.post(
@@ -452,13 +358,7 @@ async def heartbeat_endpoint(request: Request, team_id: str) -> SuccessResponse[
         raise
     except Exception as e:
         logger.error(f"Failed to record heartbeat for team {team_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to record heartbeat"
-            ).model_dump()
-        )
+        raise http_500("Failed to record heartbeat")
 
 
 @router.get(
@@ -486,13 +386,7 @@ async def offline_status_endpoint(request: Request, team_id: str) -> SuccessResp
         raise
     except Exception as e:
         logger.error(f"Failed to get offline super admins for team {team_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to get offline super admins"
-            ).model_dump()
-        )
+        raise http_500("Failed to get offline super admins")
 
 
 @router.post(
@@ -519,13 +413,7 @@ async def promote_temp_admin_endpoint(request: Request, team_id: str) -> Success
         )
 
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=message
-                ).model_dump()
-            )
+            raise http_400(message)
 
         result = PromoteTempAdminResponse(success=True, message=message)
         return SuccessResponse(data=result.model_dump(), message="Temporary admin promoted successfully")
@@ -533,13 +421,7 @@ async def promote_temp_admin_endpoint(request: Request, team_id: str) -> Success
         raise
     except Exception as e:
         logger.error(f"Failed to promote temp admin in team {team_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to promote temporary admin"
-            ).model_dump()
-        )
+        raise http_500("Failed to promote temporary admin")
 
 
 @router.get(
@@ -567,13 +449,7 @@ async def get_temp_promotions_endpoint(request: Request, team_id: str) -> Succes
         raise
     except Exception as e:
         logger.error(f"Failed to get temp promotions for team {team_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to get temporary promotions"
-            ).model_dump()
-        )
+        raise http_500("Failed to get temporary promotions")
 
 
 @router.post(
@@ -600,13 +476,7 @@ async def approve_temp_endpoint(request: Request, team_id: str, temp_promotion_i
         )
 
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=message
-                ).model_dump()
-            )
+            raise http_400(message)
 
         result = ApproveTempPromotionResponse(success=True, message=message)
         return SuccessResponse(data=result.model_dump(), message="Temporary promotion approved")
@@ -614,13 +484,7 @@ async def approve_temp_endpoint(request: Request, team_id: str, temp_promotion_i
         raise
     except Exception as e:
         logger.error(f"Failed to approve temp promotion {temp_promotion_id} in team {team_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to approve temporary promotion"
-            ).model_dump()
-        )
+        raise http_500("Failed to approve temporary promotion")
 
 
 @router.post(
@@ -647,13 +511,7 @@ async def revert_temp_endpoint(request: Request, team_id: str, temp_promotion_id
         )
 
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=message
-                ).model_dump()
-            )
+            raise http_400(message)
 
         result = RevertTempPromotionResponse(success=True, message=message)
         return SuccessResponse(data=result.model_dump(), message="Temporary promotion reverted")
@@ -661,13 +519,7 @@ async def revert_temp_endpoint(request: Request, team_id: str, temp_promotion_id
         raise
     except Exception as e:
         logger.error(f"Failed to revert temp promotion {temp_promotion_id} in team {team_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to revert temporary promotion"
-            ).model_dump()
-        )
+        raise http_500("Failed to revert temporary promotion")
 
 
 @router.post(
@@ -694,13 +546,7 @@ async def update_job_role_endpoint(request: Request, team_id: str, user_id: str)
         )
 
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=message
-                ).model_dump()
-            )
+            raise http_400(message)
 
         result = UpdateJobRoleResponse(success=True, message=message)
         return SuccessResponse(data=result.model_dump(), message="Job role updated successfully")
@@ -708,13 +554,7 @@ async def update_job_role_endpoint(request: Request, team_id: str, user_id: str)
         raise
     except Exception as e:
         logger.error(f"Failed to update job role for user {user_id} in team {team_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to update job role"
-            ).model_dump()
-        )
+        raise http_500("Failed to update job role")
 
 
 @router.get(
@@ -739,10 +579,4 @@ async def get_job_role_endpoint(request: Request, team_id: str, user_id: str) ->
         raise
     except Exception as e:
         logger.error(f"Failed to get job role for user {user_id} in team {team_id}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to get job role"
-            ).model_dump()
-        )
+        raise http_500("Failed to get job role")

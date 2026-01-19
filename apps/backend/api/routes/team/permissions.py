@@ -11,6 +11,7 @@ from typing import Dict
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel
 
+from api.errors import http_400, http_404, http_500
 from api.routes.schemas import SuccessResponse, ErrorResponse, ErrorCode
 
 logger = logging.getLogger(__name__)
@@ -48,13 +49,7 @@ async def get_user_permissions(request: Request) -> SuccessResponse[UserPermissi
         )
     except Exception as e:
         logger.error(f"Failed to get user permissions: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve user permissions"
-            ).model_dump(mode='json')
-        )
+        raise http_500("Failed to retrieve user permissions")
 
 
 # ===== Workflow Permissions =====
@@ -87,13 +82,7 @@ async def add_workflow_perm_endpoint(request: Request, team_id: str, workflow_id
         )
 
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=message
-                ).model_dump(mode='json')
-            )
+            raise http_400(message)
 
         return SuccessResponse(
             data={"success": True},
@@ -103,13 +92,7 @@ async def add_workflow_perm_endpoint(request: Request, team_id: str, workflow_id
         raise
     except Exception as e:
         logger.error(f"Failed to add workflow permission: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to add workflow permission"
-            ).model_dump(mode='json')
-        )
+        raise http_500("Failed to add workflow permission")
 
 
 @router.delete(
@@ -140,13 +123,7 @@ async def remove_workflow_perm_endpoint(request: Request, team_id: str, workflow
         )
 
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=message
-                ).model_dump(mode='json')
-            )
+            raise http_400(message)
 
         return SuccessResponse(
             data={"success": True},
@@ -156,13 +133,7 @@ async def remove_workflow_perm_endpoint(request: Request, team_id: str, workflow
         raise
     except Exception as e:
         logger.error(f"Failed to remove workflow permission: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to remove workflow permission"
-            ).model_dump(mode='json')
-        )
+        raise http_500("Failed to remove workflow permission")
 
 
 @router.get(
@@ -194,13 +165,7 @@ async def get_workflow_perms_endpoint(request: Request, team_id: str, workflow_i
         )
     except Exception as e:
         logger.error(f"Failed to get workflow permissions: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve workflow permissions"
-            ).model_dump(mode='json')
-        )
+        raise http_500("Failed to retrieve workflow permissions")
 
 
 @router.post(
@@ -235,13 +200,7 @@ async def check_workflow_perm_endpoint(request: Request, team_id: str, workflow_
         )
     except Exception as e:
         logger.error(f"Failed to check workflow permission: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to check workflow permission"
-            ).model_dump(mode='json')
-        )
+        raise http_500("Failed to check workflow permission")
 
 
 # ===== Queue CRUD + Permissions =====
@@ -273,13 +232,7 @@ async def create_queue_endpoint(request: Request, team_id: str) -> SuccessRespon
         )
 
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=message
-                ).model_dump(mode='json')
-            )
+            raise http_400(message)
 
         return SuccessResponse(
             data={"success": True, "queue_id": queue_id},
@@ -289,13 +242,7 @@ async def create_queue_endpoint(request: Request, team_id: str) -> SuccessRespon
         raise
     except Exception as e:
         logger.error(f"Failed to create queue: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to create queue"
-            ).model_dump(mode='json')
-        )
+        raise http_500("Failed to create queue")
 
 
 @router.post(
@@ -326,13 +273,7 @@ async def add_queue_perm_endpoint(request: Request, team_id: str, queue_id: str)
         )
 
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=message
-                ).model_dump(mode='json')
-            )
+            raise http_400(message)
 
         return SuccessResponse(
             data={"success": True},
@@ -342,13 +283,7 @@ async def add_queue_perm_endpoint(request: Request, team_id: str, queue_id: str)
         raise
     except Exception as e:
         logger.error(f"Failed to add queue permission: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to add queue permission"
-            ).model_dump(mode='json')
-        )
+        raise http_500("Failed to add queue permission")
 
 
 @router.delete(
@@ -379,13 +314,7 @@ async def remove_queue_perm_endpoint(request: Request, team_id: str, queue_id: s
         )
 
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=message
-                ).model_dump(mode='json')
-            )
+            raise http_400(message)
 
         return SuccessResponse(
             data={"success": True},
@@ -395,13 +324,7 @@ async def remove_queue_perm_endpoint(request: Request, team_id: str, queue_id: s
         raise
     except Exception as e:
         logger.error(f"Failed to remove queue permission: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to remove queue permission"
-            ).model_dump(mode='json')
-        )
+        raise http_500("Failed to remove queue permission")
 
 
 @router.get(
@@ -433,13 +356,7 @@ async def get_queue_perms_endpoint(request: Request, team_id: str, queue_id: str
         )
     except Exception as e:
         logger.error(f"Failed to get queue permissions: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve queue permissions"
-            ).model_dump(mode='json')
-        )
+        raise http_500("Failed to retrieve queue permissions")
 
 
 @router.post(
@@ -474,13 +391,7 @@ async def check_queue_access_endpoint(request: Request, team_id: str, queue_id: 
         )
     except Exception as e:
         logger.error(f"Failed to check queue access: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to check queue access"
-            ).model_dump(mode='json')
-        )
+        raise http_500("Failed to check queue access")
 
 
 @router.get(
@@ -513,13 +424,7 @@ async def get_accessible_queues_endpoint(request: Request, team_id: str, user_id
         )
     except Exception as e:
         logger.error(f"Failed to get accessible queues: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve accessible queues"
-            ).model_dump(mode='json')
-        )
+        raise http_500("Failed to retrieve accessible queues")
 
 
 @router.get(
@@ -541,13 +446,7 @@ async def get_queue_endpoint(request: Request, team_id: str, queue_id: str) -> S
         queue = await tm.get_queue(team_id, queue_id)
 
         if not queue:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.NOT_FOUND,
-                    message="Queue not found"
-                ).model_dump(mode='json')
-            )
+            raise http_404("Queue not found", resource="queue")
 
         return SuccessResponse(
             data=queue,
@@ -557,13 +456,7 @@ async def get_queue_endpoint(request: Request, team_id: str, queue_id: str) -> S
         raise
     except Exception as e:
         logger.error(f"Failed to get queue: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve queue"
-            ).model_dump(mode='json')
-        )
+        raise http_500("Failed to retrieve queue")
 
 
 # ===== God Rights =====
@@ -594,13 +487,7 @@ async def grant_god_rights_endpoint(request: Request) -> SuccessResponse[Dict]:
         )
 
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=message
-                ).model_dump(mode='json')
-            )
+            raise http_400(message)
 
         return SuccessResponse(
             data={"success": True},
@@ -610,13 +497,7 @@ async def grant_god_rights_endpoint(request: Request) -> SuccessResponse[Dict]:
         raise
     except Exception as e:
         logger.error(f"Failed to grant god rights: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to grant god rights"
-            ).model_dump(mode='json')
-        )
+        raise http_500("Failed to grant god rights")
 
 
 @router.post(
@@ -644,13 +525,7 @@ async def revoke_god_rights_endpoint(request: Request) -> SuccessResponse[Dict]:
         )
 
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=message
-                ).model_dump(mode='json')
-            )
+            raise http_400(message)
 
         return SuccessResponse(
             data={"success": True},
@@ -660,13 +535,7 @@ async def revoke_god_rights_endpoint(request: Request) -> SuccessResponse[Dict]:
         raise
     except Exception as e:
         logger.error(f"Failed to revoke god rights: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to revoke god rights"
-            ).model_dump(mode='json')
-        )
+        raise http_500("Failed to revoke god rights")
 
 
 @router.post(
@@ -696,13 +565,7 @@ async def check_god_rights_endpoint(request: Request) -> SuccessResponse[Dict]:
         )
     except Exception as e:
         logger.error(f"Failed to check god rights: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to check god rights"
-            ).model_dump(mode='json')
-        )
+        raise http_500("Failed to check god rights")
 
 
 @router.get(
@@ -729,13 +592,7 @@ async def get_god_rights_users_endpoint(request: Request) -> SuccessResponse[Dic
         )
     except Exception as e:
         logger.error(f"Failed to get god rights users: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve god rights users"
-            ).model_dump(mode='json')
-        )
+        raise http_500("Failed to retrieve god rights users")
 
 
 @router.get(
@@ -762,13 +619,7 @@ async def get_revoked_god_rights_endpoint(request: Request) -> SuccessResponse[D
         )
     except Exception as e:
         logger.error(f"Failed to get revoked god rights: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve revoked god rights"
-            ).model_dump(mode='json')
-        )
+        raise http_500("Failed to retrieve revoked god rights")
 
 
 # ===== Vault Item Permissions =====
@@ -801,13 +652,7 @@ async def add_vault_perm_endpoint(request: Request, team_id: str, item_id: str) 
         )
 
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=message
-                ).model_dump(mode='json')
-            )
+            raise http_400(message)
 
         return SuccessResponse(
             data={"success": True},
@@ -817,13 +662,7 @@ async def add_vault_perm_endpoint(request: Request, team_id: str, item_id: str) 
         raise
     except Exception as e:
         logger.error(f"Failed to add vault permission: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to add vault permission"
-            ).model_dump(mode='json')
-        )
+        raise http_500("Failed to add vault permission")
 
 
 @router.delete(
@@ -854,13 +693,7 @@ async def remove_vault_perm_endpoint(request: Request, team_id: str, item_id: st
         )
 
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=ErrorCode.VALIDATION_ERROR,
-                    message=message
-                ).model_dump(mode='json')
-            )
+            raise http_400(message)
 
         return SuccessResponse(
             data={"success": True},
@@ -870,13 +703,7 @@ async def remove_vault_perm_endpoint(request: Request, team_id: str, item_id: st
         raise
     except Exception as e:
         logger.error(f"Failed to remove vault permission: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to remove vault permission"
-            ).model_dump(mode='json')
-        )
+        raise http_500("Failed to remove vault permission")
 
 
 @router.get(
@@ -908,13 +735,7 @@ async def get_vault_perms_endpoint(request: Request, team_id: str, item_id: str)
         )
     except Exception as e:
         logger.error(f"Failed to get vault permissions: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to retrieve vault permissions"
-            ).model_dump(mode='json')
-        )
+        raise http_500("Failed to retrieve vault permissions")
 
 
 @router.post(
@@ -949,10 +770,4 @@ async def check_vault_perm_endpoint(request: Request, team_id: str, item_id: str
         )
     except Exception as e:
         logger.error(f"Failed to check vault permission: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Failed to check vault permission"
-            ).model_dump(mode='json')
-        )
+        raise http_500("Failed to check vault permission")
