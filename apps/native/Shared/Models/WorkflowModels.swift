@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - Workflow
 
-struct Workflow: Codable, Identifiable {
+struct Workflow: Codable, Identifiable, Sendable {
     let id: String
     let name: String
     let description: String?
@@ -36,7 +36,7 @@ struct Workflow: Codable, Identifiable {
 
 // MARK: - Stage
 
-struct Stage: Codable, Identifiable {
+struct Stage: Codable, Identifiable, Sendable {
     let id: String
     let name: String
     let description: String?
@@ -62,7 +62,7 @@ struct Stage: Codable, Identifiable {
 
 // MARK: - Conditional Route
 
-struct ConditionalRoute: Codable, Identifiable {
+struct ConditionalRoute: Codable, Identifiable, Sendable {
     let id: String?
     let nextStageId: String
     let conditions: [[String: AnyCodable]]?
@@ -81,7 +81,7 @@ struct ConditionalRoute: Codable, Identifiable {
 
 // MARK: - Workflow Trigger
 
-struct WorkflowTrigger: Codable {
+struct WorkflowTrigger: Codable, Sendable {
     let triggerType: String
     let enabled: Bool?
 

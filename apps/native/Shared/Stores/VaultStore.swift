@@ -535,7 +535,7 @@ final class VaultStore {
                     "name": AnyCodable(file.name),
                     "folder_path": AnyCodable(currentFolder),
                     "mime_type": AnyCodable(file.mimeType ?? "application/octet-stream"),
-                    "size": AnyCodable(file.size ?? 0),
+                    "size": AnyCodable(file.size),
                     "vault_type": AnyCodable(vaultType)
                 ],
                 modifiedAt: file.uploadedAt,  // VaultFile.uploadedAt is already ISO8601 string

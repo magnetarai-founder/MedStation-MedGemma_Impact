@@ -1,7 +1,8 @@
 import Foundation
 
 /// Type-erased Codable value for dynamic JSON handling
-public struct AnyCodable: Codable {
+/// @unchecked Sendable because the wrapped value is immutable after initialization
+public struct AnyCodable: Codable, @unchecked Sendable {
     public let value: Any
 
     public init(_ value: Any) {

@@ -90,6 +90,7 @@ class VaultPermissionManager {
 
     // Timer for periodic cleanup (stored to prevent leak)
     // nonisolated(unsafe) allows access from deinit which runs non-isolated
+    // Warning about "no effect" is expected - the attribute is still needed for deinit access
     private nonisolated(unsafe) var cleanupTimer: Timer?
 
     private init() {

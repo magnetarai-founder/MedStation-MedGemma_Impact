@@ -14,7 +14,7 @@ struct SessionResponse: Codable {
 
 // MARK: - File Upload
 
-struct FileColumn: Codable {
+struct FileColumn: Codable, Sendable {
     let originalName: String
     let cleanName: String
     let dtype: String
@@ -30,7 +30,7 @@ struct FileColumn: Codable {
     }
 }
 
-struct FileUploadResponse: Codable {
+struct FileUploadResponse: Codable, Sendable {
     let filename: String
     let sizeMb: Double
     let rowCount: Int
@@ -66,7 +66,7 @@ struct JsonUploadResponse: Codable {
 
 // MARK: - Query
 
-struct QueryResponse: Codable {
+struct QueryResponse: Codable, Sendable {
     let queryId: String
     let rowCount: Int
     let columnCount: Int
