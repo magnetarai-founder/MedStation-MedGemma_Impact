@@ -25,7 +25,11 @@ enum BlockType: String, CaseIterable, Identifiable, Codable {
     case code
     case quote
     case divider
-    case callout
+    case calloutInfo
+    case calloutWarning
+    case calloutSuccess
+    case calloutError
+    case image
 
     var id: String { rawValue }
 
@@ -41,7 +45,11 @@ enum BlockType: String, CaseIterable, Identifiable, Codable {
         case .code: return "chevron.left.forwardslash.chevron.right"
         case .quote: return "text.quote"
         case .divider: return "minus"
-        case .callout: return "exclamationmark.bubble"
+        case .calloutInfo: return "info.circle"
+        case .calloutWarning: return "exclamationmark.triangle"
+        case .calloutSuccess: return "checkmark.circle"
+        case .calloutError: return "xmark.circle"
+        case .image: return "photo"
         }
     }
 
@@ -57,7 +65,11 @@ enum BlockType: String, CaseIterable, Identifiable, Codable {
         case .code: return "Code"
         case .quote: return "Quote"
         case .divider: return "Divider"
-        case .callout: return "Callout"
+        case .calloutInfo: return "Info"
+        case .calloutWarning: return "Warning"
+        case .calloutSuccess: return "Success"
+        case .calloutError: return "Error"
+        case .image: return "Image"
         }
     }
 
@@ -70,10 +82,14 @@ enum BlockType: String, CaseIterable, Identifiable, Codable {
         case .bulletList: return "Simple bullet point"
         case .numberedList: return "Numbered list item"
         case .checkbox: return "Task with checkbox"
-        case .code: return "Code snippet"
+        case .code: return "Code snippet with syntax"
         case .quote: return "Quote or excerpt"
         case .divider: return "Visual separator"
-        case .callout: return "Highlighted info box"
+        case .calloutInfo: return "Informational note"
+        case .calloutWarning: return "Warning message"
+        case .calloutSuccess: return "Success message"
+        case .calloutError: return "Error message"
+        case .image: return "Upload or paste image"
         }
     }
 
@@ -86,12 +102,47 @@ enum BlockType: String, CaseIterable, Identifiable, Codable {
         case .bulletList: return "List item"
         case .numberedList: return "List item"
         case .checkbox: return "To-do"
-        case .code: return "Code"
+        case .code: return "// Code here..."
         case .quote: return "Quote"
         case .divider: return ""
-        case .callout: return "Callout"
+        case .calloutInfo, .calloutWarning, .calloutSuccess, .calloutError: return "Type a note..."
+        case .image: return ""
         }
     }
+
+    var shortcut: String? {
+        switch self {
+        case .heading1: return "# "
+        case .heading2: return "## "
+        case .heading3: return "### "
+        case .bulletList: return "- "
+        case .numberedList: return "1. "
+        case .checkbox: return "[] "
+        case .code: return "```"
+        case .quote: return "> "
+        case .divider: return "---"
+        default: return nil
+        }
+    }
+
+    // Group for slash menu organization
+    var category: BlockCategory {
+        switch self {
+        case .text, .heading1, .heading2, .heading3: return .basic
+        case .bulletList, .numberedList, .checkbox: return .lists
+        case .code, .quote, .divider: return .blocks
+        case .calloutInfo, .calloutWarning, .calloutSuccess, .calloutError: return .callouts
+        case .image: return .media
+        }
+    }
+}
+
+enum BlockCategory: String, CaseIterable {
+    case basic = "Basic"
+    case lists = "Lists"
+    case blocks = "Blocks"
+    case callouts = "Callouts"
+    case media = "Media"
 }
 
 // MARK: - Document Block
@@ -101,12 +152,32 @@ struct DocumentBlock: Identifiable, Equatable, Codable {
     var type: BlockType
     var content: String
     var isChecked: Bool  // For checkbox type
+    var codeLanguage: String?  // For code blocks
+    var imageData: Data?  // For image blocks
 
-    init(id: UUID = UUID(), type: BlockType = .text, content: String = "", isChecked: Bool = false) {
+    init(
+        id: UUID = UUID(),
+        type: BlockType = .text,
+        content: String = "",
+        isChecked: Bool = false,
+        codeLanguage: String? = nil,
+        imageData: Data? = nil
+    ) {
         self.id = id
         self.type = type
         self.content = content
         self.isChecked = isChecked
+        self.codeLanguage = codeLanguage
+        self.imageData = imageData
+    }
+
+    static func == (lhs: DocumentBlock, rhs: DocumentBlock) -> Bool {
+        lhs.id == rhs.id &&
+        lhs.type == rhs.type &&
+        lhs.content == rhs.content &&
+        lhs.isChecked == rhs.isChecked &&
+        lhs.codeLanguage == rhs.codeLanguage &&
+        lhs.imageData == rhs.imageData
     }
 }
 
@@ -355,9 +426,34 @@ struct BlockView: View {
                 .frame(width: 3)
                 .padding(.vertical, 2)
 
-        case .callout:
-            Text("💡")
+        case .calloutInfo:
+            Image(systemName: "info.circle.fill")
                 .font(.system(size: 14))
+                .foregroundColor(.blue)
+                .frame(width: 20)
+
+        case .calloutWarning:
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 14))
+                .foregroundColor(.orange)
+                .frame(width: 20)
+
+        case .calloutSuccess:
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 14))
+                .foregroundColor(.green)
+                .frame(width: 20)
+
+        case .calloutError:
+            Image(systemName: "xmark.circle.fill")
+                .font(.system(size: 14))
+                .foregroundColor(.red)
+                .frame(width: 20)
+
+        case .image:
+            Image(systemName: "photo")
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
                 .frame(width: 20)
 
         default:
@@ -393,7 +489,7 @@ struct BlockView: View {
                     .fill(Color.gray.opacity(0.1))
             )
 
-        case .callout:
+        case .calloutInfo, .calloutWarning, .calloutSuccess, .calloutError:
             BlockTextField(
                 text: $block.content,
                 placeholder: block.type.placeholder,
@@ -409,7 +505,19 @@ struct BlockView: View {
             .padding(12)
             .background(
                 RoundedRectangle(cornerRadius: 6)
-                    .fill(Color.yellow.opacity(0.1))
+                    .fill(calloutColor(for: block.type).opacity(0.1))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(calloutColor(for: block.type).opacity(0.3), lineWidth: 1)
+            )
+
+        case .image:
+            ImageBlockView(
+                block: $block,
+                isFocused: isFocused,
+                onFocus: onFocus,
+                onDelete: onDelete
             )
 
         default:
@@ -450,6 +558,16 @@ struct BlockView: View {
             return .secondaryLabelColor
         default:
             return .labelColor
+        }
+    }
+
+    private func calloutColor(for type: BlockType) -> Color {
+        switch type {
+        case .calloutInfo: return .blue
+        case .calloutWarning: return .orange
+        case .calloutSuccess: return .green
+        case .calloutError: return .red
+        default: return .gray
         }
     }
 
@@ -782,6 +900,166 @@ class UndoableTextView: NSTextView {
     }
 }
 
+// MARK: - Image Block View
+
+struct ImageBlockView: View {
+    @Binding var block: DocumentBlock
+    let isFocused: Bool
+    let onFocus: () -> Void
+    let onDelete: () -> Void
+
+    @State private var isHovered = false
+    @State private var isDragging = false
+
+    var body: some View {
+        Group {
+            if let imageData = block.imageData,
+               let nsImage = NSImage(data: imageData) {
+                // Image display
+                imagePreview(nsImage)
+            } else {
+                // Upload placeholder
+                uploadPlaceholder
+            }
+        }
+        .onTapGesture { onFocus() }
+    }
+
+    private func imagePreview(_ image: NSImage) -> some View {
+        VStack(spacing: 0) {
+            Image(nsImage: image)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(maxWidth: .infinity, maxHeight: 400)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(isFocused ? Color.accentColor : Color.clear, lineWidth: 2)
+                )
+
+            // Caption field
+            if !block.content.isEmpty || isFocused {
+                TextField("Add a caption...", text: $block.content)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, 8)
+            }
+        }
+        .padding(8)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.gray.opacity(0.05))
+        )
+        .overlay(alignment: .topTrailing) {
+            if isHovered {
+                HStack(spacing: 4) {
+                    Button {
+                        selectImage()
+                    } label: {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.system(size: 12))
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button {
+                        block.imageData = nil
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 12))
+                    }
+                    .buttonStyle(.bordered)
+                }
+                .padding(8)
+            }
+        }
+        .onHover { hovering in
+            isHovered = hovering
+        }
+    }
+
+    private var uploadPlaceholder: some View {
+        VStack(spacing: 12) {
+            Image(systemName: isDragging ? "arrow.down.doc.fill" : "photo.badge.plus")
+                .font(.system(size: 32))
+                .foregroundColor(isDragging ? .accentColor : .secondary)
+
+            Text(isDragging ? "Drop image here" : "Click to upload or drag image")
+                .font(.system(size: 13))
+                .foregroundColor(.secondary)
+
+            Text("PNG, JPG, GIF up to 10MB")
+                .font(.system(size: 11))
+                .foregroundColor(.secondary.opacity(0.7))
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 150)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.gray.opacity(isDragging ? 0.15 : 0.08))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(
+                    isDragging ? Color.accentColor : Color.gray.opacity(0.2),
+                    style: StrokeStyle(lineWidth: 2, dash: [6, 3])
+                )
+        )
+        .onTapGesture {
+            selectImage()
+        }
+        .onDrop(of: [.image, .fileURL], isTargeted: $isDragging) { providers in
+            handleDrop(providers)
+        }
+    }
+
+    private func selectImage() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.image]
+        panel.allowsMultipleSelection = false
+
+        if panel.runModal() == .OK, let url = panel.url {
+            loadImage(from: url)
+        }
+    }
+
+    private func loadImage(from url: URL) {
+        guard let data = try? Data(contentsOf: url),
+              NSImage(data: data) != nil else { return }
+        block.imageData = data
+    }
+
+    private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
+        guard let provider = providers.first else { return false }
+
+        if provider.hasItemConformingToTypeIdentifier("public.image") {
+            provider.loadDataRepresentation(forTypeIdentifier: "public.image") { data, _ in
+                if let data = data {
+                    DispatchQueue.main.async {
+                        block.imageData = data
+                    }
+                }
+            }
+            return true
+        }
+
+        if provider.hasItemConformingToTypeIdentifier("public.file-url") {
+            provider.loadItem(forTypeIdentifier: "public.file-url") { item, _ in
+                if let data = item as? Data,
+                   let url = URL(dataRepresentation: data, relativeTo: nil) {
+                    DispatchQueue.main.async {
+                        loadImage(from: url)
+                    }
+                }
+            }
+            return true
+        }
+
+        return false
+    }
+}
+
 // MARK: - Slash Command Menu
 
 struct SlashCommandMenu: View {
@@ -800,8 +1078,22 @@ struct SlashCommandMenu: View {
         }
         return BlockType.allCases.filter {
             $0.title.localizedCaseInsensitiveContains(query) ||
-            $0.rawValue.localizedCaseInsensitiveContains(query)
+            $0.rawValue.localizedCaseInsensitiveContains(query) ||
+            $0.description.localizedCaseInsensitiveContains(query)
         }
+    }
+
+    private var groupedTypes: [(category: BlockCategory, types: [BlockType])] {
+        let grouped = Dictionary(grouping: filteredTypes) { $0.category }
+        return BlockCategory.allCases
+            .compactMap { category -> (category: BlockCategory, types: [BlockType])? in
+                guard let types = grouped[category], !types.isEmpty else { return nil }
+                return (category: category, types: types)
+            }
+    }
+
+    private func flatIndex(for type: BlockType) -> Int {
+        filteredTypes.firstIndex(of: type) ?? 0
     }
 
     var body: some View {
@@ -809,11 +1101,18 @@ struct SlashCommandMenu: View {
             // Header with filter
             HStack {
                 Image(systemName: "slash.circle")
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.accentColor)
                 Text(query.isEmpty ? "Type to filter..." : query)
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
                 Spacer()
+
+                // Keyboard hints
+                HStack(spacing: 4) {
+                    KeyboardHint(keys: ["↑", "↓"])
+                    KeyboardHint(keys: ["↵"])
+                }
+
                 Button {
                     onDismiss()
                 } label: {
@@ -828,39 +1127,82 @@ struct SlashCommandMenu: View {
 
             Divider()
 
-            // Commands list
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    if filteredTypes.isEmpty {
-                        Text("No commands found")
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary)
-                            .padding(12)
-                    } else {
-                        ForEach(Array(filteredTypes.enumerated()), id: \.element.id) { index, type in
-                            SlashCommandRow(
-                                type: type,
-                                isSelected: index == selectedIndex
-                            ) {
-                                onSelect(type)
+            // Commands list grouped by category
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        if filteredTypes.isEmpty {
+                            Text("No commands found")
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
+                                .padding(12)
+                        } else {
+                            ForEach(groupedTypes, id: \.category) { group in
+                                // Category header
+                                Text(group.category.rawValue.uppercased())
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundColor(.secondary)
+                                    .padding(.horizontal, 12)
+                                    .padding(.top, 10)
+                                    .padding(.bottom, 4)
+
+                                // Types in category
+                                ForEach(group.types) { type in
+                                    SlashCommandRow(
+                                        type: type,
+                                        isSelected: flatIndex(for: type) == selectedIndex
+                                    ) {
+                                        onSelect(type)
+                                    }
+                                    .id(type.id)
+                                }
                             }
                         }
                     }
+                    .padding(.vertical, 4)
                 }
-                .padding(.vertical, 4)
+                .frame(maxHeight: 350)
+                .onChange(of: selectedIndex) { _, newIndex in
+                    if let type = filteredTypes[safe: newIndex] {
+                        withAnimation(.easeInOut(duration: 0.1)) {
+                            proxy.scrollTo(type.id, anchor: .center)
+                        }
+                    }
+                }
             }
-            .frame(maxHeight: 300)
         }
-        .frame(width: 260)
+        .frame(width: 280)
         .background(
             RoundedRectangle(cornerRadius: 10)
                 .fill(Color(nsColor: .windowBackgroundColor))
-                .shadow(color: .black.opacity(0.2), radius: 10, y: 4)
+                .shadow(color: .black.opacity(0.25), radius: 12, y: 4)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 10)
                 .stroke(Color.gray.opacity(0.2), lineWidth: 1)
         )
+    }
+}
+
+// MARK: - Keyboard Hint
+
+struct KeyboardHint: View {
+    let keys: [String]
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(keys, id: \.self) { key in
+                Text(key)
+                    .font(.system(size: 9, weight: .medium, design: .rounded))
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 2)
+                    .background(
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(Color.gray.opacity(0.1))
+                    )
+            }
+        }
     }
 }
 
@@ -876,10 +1218,16 @@ struct SlashCommandRow: View {
     var body: some View {
         Button(action: onSelect) {
             HStack(spacing: 10) {
-                Image(systemName: type.icon)
-                    .font(.system(size: 14))
-                    .foregroundColor(isSelected ? .white : .secondary)
-                    .frame(width: 24)
+                // Icon with category-based color
+                ZStack {
+                    RoundedRectangle(cornerRadius: 5)
+                        .fill(iconBackground)
+                        .frame(width: 26, height: 26)
+
+                    Image(systemName: type.icon)
+                        .font(.system(size: 12))
+                        .foregroundColor(isSelected ? .white : iconColor)
+                }
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(type.title)
@@ -889,15 +1237,29 @@ struct SlashCommandRow: View {
                     Text(type.description)
                         .font(.system(size: 10))
                         .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
+                        .lineLimit(1)
                 }
 
                 Spacer()
+
+                // Shortcut hint
+                if let shortcut = type.shortcut {
+                    Text(shortcut)
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(isSelected ? .white.opacity(0.7) : .secondary)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(isSelected ? Color.white.opacity(0.15) : Color.gray.opacity(0.1))
+                        )
+                }
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, 10)
             .padding(.vertical, 6)
             .background(
                 RoundedRectangle(cornerRadius: 6)
-                    .fill(isSelected ? Color.accentColor : (isHovered ? Color.gray.opacity(0.1) : Color.clear))
+                    .fill(isSelected ? Color.accentColor : (isHovered ? Color.gray.opacity(0.08) : Color.clear))
             )
             .contentShape(Rectangle())
         }
@@ -906,6 +1268,33 @@ struct SlashCommandRow: View {
         .onHover { hovering in
             isHovered = hovering
         }
+    }
+
+    private var iconColor: Color {
+        switch type.category {
+        case .basic: return .blue
+        case .lists: return .orange
+        case .blocks: return .purple
+        case .callouts: return calloutIconColor
+        case .media: return .pink
+        }
+    }
+
+    private var calloutIconColor: Color {
+        switch type {
+        case .calloutInfo: return .blue
+        case .calloutWarning: return .orange
+        case .calloutSuccess: return .green
+        case .calloutError: return .red
+        default: return .gray
+        }
+    }
+
+    private var iconBackground: Color {
+        if isSelected {
+            return .white.opacity(0.2)
+        }
+        return iconColor.opacity(0.1)
     }
 }
 
