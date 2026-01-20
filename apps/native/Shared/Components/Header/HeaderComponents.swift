@@ -522,17 +522,13 @@ struct QuickActionButton: View {
             }
 
             // MARK: - Settings
-            if featureFlags.enabledSpawnableWorkspaces.count < Workspace.spawnableWorkspaces.count {
-                Divider()
-                Button {
-                    // Open Settings window
-                    if let url = URL(string: "magnetarstudio://settings") {
-                        NSWorkspace.shared.open(url)
-                    }
-                    logger.info("Opening Settings to enable more features")
-                } label: {
-                    Label("Enable More Features...", systemImage: "gearshape")
-                }
+            Divider()
+            Button {
+                // Open Settings window to Features tab
+                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                logger.info("Opening Settings to enable more features")
+            } label: {
+                Label("Enable More Features...", systemImage: "gearshape")
             }
         } label: {
             Image(systemName: "plus")

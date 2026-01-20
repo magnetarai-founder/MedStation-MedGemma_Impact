@@ -25,6 +25,11 @@ struct SettingsView: View {
                     Label("General", systemImage: "gear")
                 }
 
+            FeaturesSettingsView()
+                .tabItem {
+                    Label("Features", systemImage: "puzzlepiece.extension")
+                }
+
             APISettingsView(apiBaseURL: $apiBaseURL, defaultModel: $defaultModel)
                 .tabItem {
                     Label("API", systemImage: "network")
