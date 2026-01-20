@@ -2,47 +2,39 @@
 //  WorkspaceEditor.swift
 //  MagnetarStudio (macOS)
 //
-//  Notion-style editor with:
-//  - Slash commands (/) for inserting blocks
-//  - Right-click context menu for formatting
-//  - No toolbar - everything via keyboard or context menu
+//  Block-based rich text editor (Notion-style)
+//  - Each line is a "block" with a type (heading, text, list, etc.)
+//  - Visual rendering matches the block type automatically
+//  - Slash commands create new blocks with proper styling
+//  - No markdown syntax visible - just clean formatted text
 //
 
 import SwiftUI
 import AppKit
 
-// MARK: - Slash Command Types
+// MARK: - Block Types
 
-enum SlashCommand: String, CaseIterable, Identifiable {
-    // Text
-    case heading1 = "heading1"
-    case heading2 = "heading2"
-    case heading3 = "heading3"
-    case text = "text"
-
-    // Lists
-    case bulletList = "bullet"
-    case numberedList = "numbered"
-    case checkbox = "checkbox"
-
-    // Media & Code
-    case code = "code"
-    case quote = "quote"
-    case divider = "divider"
-    case callout = "callout"
-
-    // Advanced
-    case table = "table"
-    case toggleList = "toggle"
+enum BlockType: String, CaseIterable, Identifiable, Codable {
+    case text
+    case heading1
+    case heading2
+    case heading3
+    case bulletList
+    case numberedList
+    case checkbox
+    case code
+    case quote
+    case divider
+    case callout
 
     var id: String { rawValue }
 
     var icon: String {
         switch self {
+        case .text: return "text.alignleft"
         case .heading1: return "textformat.size.larger"
         case .heading2: return "textformat.size"
         case .heading3: return "textformat.size.smaller"
-        case .text: return "text.alignleft"
         case .bulletList: return "list.bullet"
         case .numberedList: return "list.number"
         case .checkbox: return "checkmark.square"
@@ -50,90 +42,71 @@ enum SlashCommand: String, CaseIterable, Identifiable {
         case .quote: return "text.quote"
         case .divider: return "minus"
         case .callout: return "exclamationmark.bubble"
-        case .table: return "tablecells"
-        case .toggleList: return "chevron.right"
         }
     }
 
     var title: String {
         switch self {
+        case .text: return "Text"
         case .heading1: return "Heading 1"
         case .heading2: return "Heading 2"
         case .heading3: return "Heading 3"
-        case .text: return "Text"
         case .bulletList: return "Bullet List"
         case .numberedList: return "Numbered List"
         case .checkbox: return "Checkbox"
-        case .code: return "Code Block"
+        case .code: return "Code"
         case .quote: return "Quote"
         case .divider: return "Divider"
         case .callout: return "Callout"
-        case .table: return "Table"
-        case .toggleList: return "Toggle List"
         }
     }
 
     var description: String {
         switch self {
+        case .text: return "Plain text paragraph"
         case .heading1: return "Large section heading"
         case .heading2: return "Medium section heading"
         case .heading3: return "Small section heading"
-        case .text: return "Plain text paragraph"
         case .bulletList: return "Simple bullet point"
         case .numberedList: return "Numbered list item"
         case .checkbox: return "Task with checkbox"
-        case .code: return "Code snippet with syntax highlighting"
+        case .code: return "Code snippet"
         case .quote: return "Quote or excerpt"
-        case .divider: return "Visual divider line"
+        case .divider: return "Visual separator"
         case .callout: return "Highlighted info box"
-        case .table: return "Simple table"
-        case .toggleList: return "Collapsible content"
         }
     }
 
-    var shortcut: String {
+    var placeholder: String {
         switch self {
-        case .heading1: return "# "
-        case .heading2: return "## "
-        case .heading3: return "### "
-        case .text: return ""
-        case .bulletList: return "- "
-        case .numberedList: return "1. "
-        case .checkbox: return "[ ] "
-        case .code: return "```\n"
-        case .quote: return "> "
-        case .divider: return "---\n"
-        case .callout: return "> 💡 "
-        case .table: return "| Column 1 | Column 2 |\n|----------|----------|\n| Cell     | Cell     |\n"
-        case .toggleList: return "▶ "
+        case .text: return "Type something..."
+        case .heading1: return "Heading 1"
+        case .heading2: return "Heading 2"
+        case .heading3: return "Heading 3"
+        case .bulletList: return "List item"
+        case .numberedList: return "List item"
+        case .checkbox: return "To-do"
+        case .code: return "Code"
+        case .quote: return "Quote"
+        case .divider: return ""
+        case .callout: return "Callout"
         }
     }
+}
 
-    var category: CommandCategory {
-        switch self {
-        case .heading1, .heading2, .heading3, .text:
-            return .text
-        case .bulletList, .numberedList, .checkbox, .toggleList:
-            return .lists
-        case .code, .quote, .divider, .callout, .table:
-            return .blocks
-        }
-    }
+// MARK: - Document Block
 
-    enum CommandCategory: String, CaseIterable {
-        case text = "Text"
-        case lists = "Lists"
-        case blocks = "Blocks"
-    }
+struct DocumentBlock: Identifiable, Equatable, Codable {
+    let id: UUID
+    var type: BlockType
+    var content: String
+    var isChecked: Bool  // For checkbox type
 
-    static func filtered(by query: String) -> [SlashCommand] {
-        if query.isEmpty {
-            return allCases
-        }
-        return allCases.filter {
-            $0.title.localizedCaseInsensitiveContains(query) ||
-            $0.rawValue.localizedCaseInsensitiveContains(query)
-        }
+    init(id: UUID = UUID(), type: BlockType = .text, content: String = "", isChecked: Bool = false) {
+        self.id = id
+        self.type = type
+        self.content = content
+        self.isChecked = isChecked
     }
 }
 
@@ -141,65 +114,333 @@ enum SlashCommand: String, CaseIterable, Identifiable {
 
 struct WorkspaceEditor: View {
     @Binding var content: String
+    @State private var blocks: [DocumentBlock] = []
+    @State private var focusedBlockId: UUID?
     @State private var showSlashMenu = false
-    @State private var slashMenuPosition: CGPoint = .zero
+    @State private var slashMenuBlockId: UUID?
     @State private var slashQuery = ""
     @State private var selectedCommandIndex = 0
-    @FocusState private var editorFocused: Bool
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            // Main editor
-            SlashCommandTextEditor(
-                text: $content,
-                onSlashTyped: { position in
-                    slashMenuPosition = position
-                    slashQuery = ""
-                    selectedCommandIndex = 0
-                    showSlashMenu = true
-                },
-                onSlashQueryChanged: { query in
-                    slashQuery = query
-                    selectedCommandIndex = 0
-                },
-                onSlashCancelled: {
-                    showSlashMenu = false
-                    slashQuery = ""
-                },
-                onSlashConfirmed: {
-                    insertSelectedCommand()
-                },
-                onArrowUp: {
-                    moveSelection(by: -1)
-                },
-                onArrowDown: {
-                    moveSelection(by: 1)
-                },
-                showSlashMenu: showSlashMenu
-            )
-            .focused($editorFocused)
-            .contextMenu {
-                contextMenuContent
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 2) {
+                ForEach(Array(blocks.enumerated()), id: \.element.id) { index, block in
+                    BlockView(
+                        block: binding(for: block.id),
+                        index: index,
+                        isFocused: focusedBlockId == block.id,
+                        onFocus: { focusedBlockId = block.id },
+                        onSlashTyped: {
+                            slashMenuBlockId = block.id
+                            slashQuery = ""
+                            selectedCommandIndex = 0
+                            showSlashMenu = true
+                        },
+                        onEnter: { insertBlockAfter(block.id) },
+                        onDelete: { deleteBlockIfEmpty(block.id) },
+                        onArrowUp: { focusPreviousBlock(from: block.id) },
+                        onArrowDown: { focusNextBlock(from: block.id) }
+                    )
+                    .id(block.id)
+                }
             }
-
-            // Slash command menu
+            .padding(16)
+        }
+        .overlay(alignment: .topLeading) {
             if showSlashMenu {
                 SlashCommandMenu(
                     query: slashQuery,
                     selectedIndex: selectedCommandIndex,
-                    onSelect: { command in
-                        insertCommand(command)
+                    onSelect: { blockType in
+                        convertBlock(slashMenuBlockId, to: blockType)
+                        showSlashMenu = false
                     },
                     onDismiss: {
                         showSlashMenu = false
-                        slashQuery = ""
+                    },
+                    onQueryChanged: { query in
+                        slashQuery = query
+                        selectedCommandIndex = 0
+                    },
+                    onArrowUp: {
+                        let count = filteredBlockTypes.count
+                        if count > 0 {
+                            selectedCommandIndex = (selectedCommandIndex - 1 + count) % count
+                        }
+                    },
+                    onArrowDown: {
+                        let count = filteredBlockTypes.count
+                        if count > 0 {
+                            selectedCommandIndex = (selectedCommandIndex + 1) % count
+                        }
+                    },
+                    onConfirm: {
+                        if selectedCommandIndex < filteredBlockTypes.count {
+                            convertBlock(slashMenuBlockId, to: filteredBlockTypes[selectedCommandIndex])
+                        }
+                        showSlashMenu = false
                     }
                 )
-                .offset(x: 20, y: 60)
+                .padding(.leading, 40)
+                .padding(.top, 60)
             }
         }
         .onAppear {
-            editorFocused = true
+            loadFromContent()
+        }
+        .onChange(of: blocks) { _, _ in
+            saveToContent()
+        }
+    }
+
+    private var filteredBlockTypes: [BlockType] {
+        if slashQuery.isEmpty {
+            return BlockType.allCases
+        }
+        return BlockType.allCases.filter {
+            $0.title.localizedCaseInsensitiveContains(slashQuery) ||
+            $0.rawValue.localizedCaseInsensitiveContains(slashQuery)
+        }
+    }
+
+    // MARK: - Block Operations
+
+    private func binding(for id: UUID) -> Binding<DocumentBlock> {
+        Binding(
+            get: { blocks.first { $0.id == id } ?? DocumentBlock() },
+            set: { newValue in
+                if let index = blocks.firstIndex(where: { $0.id == id }) {
+                    blocks[index] = newValue
+                }
+            }
+        )
+    }
+
+    private func insertBlockAfter(_ id: UUID) {
+        guard let index = blocks.firstIndex(where: { $0.id == id }) else { return }
+        let newBlock = DocumentBlock()
+        blocks.insert(newBlock, at: index + 1)
+        focusedBlockId = newBlock.id
+    }
+
+    private func deleteBlockIfEmpty(_ id: UUID) {
+        guard let index = blocks.firstIndex(where: { $0.id == id }),
+              blocks[index].content.isEmpty,
+              blocks.count > 1 else { return }
+
+        let previousIndex = max(0, index - 1)
+        blocks.remove(at: index)
+        focusedBlockId = blocks[previousIndex].id
+    }
+
+    private func convertBlock(_ id: UUID?, to type: BlockType) {
+        guard let id = id,
+              let index = blocks.firstIndex(where: { $0.id == id }) else { return }
+
+        // Clear the "/" if it was typed
+        if blocks[index].content == "/" {
+            blocks[index].content = ""
+        }
+        blocks[index].type = type
+    }
+
+    private func focusPreviousBlock(from id: UUID) {
+        guard let index = blocks.firstIndex(where: { $0.id == id }),
+              index > 0 else { return }
+        focusedBlockId = blocks[index - 1].id
+    }
+
+    private func focusNextBlock(from id: UUID) {
+        guard let index = blocks.firstIndex(where: { $0.id == id }),
+              index < blocks.count - 1 else { return }
+        focusedBlockId = blocks[index + 1].id
+    }
+
+    // MARK: - Serialization
+
+    private func loadFromContent() {
+        // Parse content into blocks (simple: one block per line for now)
+        let lines = content.components(separatedBy: "\n")
+        if lines.isEmpty || (lines.count == 1 && lines[0].isEmpty) {
+            blocks = [DocumentBlock(type: .text, content: "")]
+        } else {
+            blocks = lines.map { DocumentBlock(type: .text, content: $0) }
+        }
+        focusedBlockId = blocks.first?.id
+    }
+
+    private func saveToContent() {
+        content = blocks.map { $0.content }.joined(separator: "\n")
+    }
+}
+
+// MARK: - Block View
+
+struct BlockView: View {
+    @Binding var block: DocumentBlock
+    let index: Int
+    let isFocused: Bool
+    let onFocus: () -> Void
+    let onSlashTyped: () -> Void
+    let onEnter: () -> Void
+    let onDelete: () -> Void
+    let onArrowUp: () -> Void
+    let onArrowDown: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            // Block prefix/indicator
+            blockPrefix
+
+            // Content
+            blockContent
+        }
+        .padding(.vertical, verticalPadding)
+        .contentShape(Rectangle())
+        .onTapGesture { onFocus() }
+        .contextMenu { contextMenuContent }
+    }
+
+    private var verticalPadding: CGFloat {
+        switch block.type {
+        case .heading1: return 12
+        case .heading2: return 8
+        case .heading3: return 6
+        case .divider: return 8
+        default: return 2
+        }
+    }
+
+    // MARK: - Block Prefix
+
+    @ViewBuilder
+    private var blockPrefix: some View {
+        switch block.type {
+        case .bulletList:
+            Circle()
+                .fill(Color.primary.opacity(0.6))
+                .frame(width: 6, height: 6)
+                .padding(.top, 7)
+                .frame(width: 20)
+
+        case .numberedList:
+            Text("\(index + 1).")
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+                .frame(width: 20, alignment: .trailing)
+
+        case .checkbox:
+            Button {
+                block.isChecked.toggle()
+            } label: {
+                Image(systemName: block.isChecked ? "checkmark.square.fill" : "square")
+                    .font(.system(size: 16))
+                    .foregroundColor(block.isChecked ? .accentColor : .secondary)
+            }
+            .buttonStyle(.plain)
+            .frame(width: 20)
+
+        case .quote:
+            Rectangle()
+                .fill(Color.accentColor.opacity(0.6))
+                .frame(width: 3)
+                .padding(.vertical, 2)
+
+        case .callout:
+            Text("💡")
+                .font(.system(size: 14))
+                .frame(width: 20)
+
+        default:
+            Color.clear.frame(width: 20)
+        }
+    }
+
+    // MARK: - Block Content
+
+    @ViewBuilder
+    private var blockContent: some View {
+        switch block.type {
+        case .divider:
+            Divider()
+                .padding(.vertical, 8)
+
+        case .code:
+            BlockTextField(
+                text: $block.content,
+                placeholder: block.type.placeholder,
+                font: .monospacedSystemFont(ofSize: 13, weight: .regular),
+                isFocused: isFocused,
+                onFocus: onFocus,
+                onSlashTyped: onSlashTyped,
+                onEnter: onEnter,
+                onDelete: onDelete,
+                onArrowUp: onArrowUp,
+                onArrowDown: onArrowDown
+            )
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color.gray.opacity(0.1))
+            )
+
+        case .callout:
+            BlockTextField(
+                text: $block.content,
+                placeholder: block.type.placeholder,
+                font: .systemFont(ofSize: 14),
+                isFocused: isFocused,
+                onFocus: onFocus,
+                onSlashTyped: onSlashTyped,
+                onEnter: onEnter,
+                onDelete: onDelete,
+                onArrowUp: onArrowUp,
+                onArrowDown: onArrowDown
+            )
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color.yellow.opacity(0.1))
+            )
+
+        default:
+            BlockTextField(
+                text: $block.content,
+                placeholder: block.type.placeholder,
+                font: fontForType(block.type),
+                textColor: textColorForType(block.type),
+                isFocused: isFocused,
+                onFocus: onFocus,
+                onSlashTyped: onSlashTyped,
+                onEnter: onEnter,
+                onDelete: onDelete,
+                onArrowUp: onArrowUp,
+                onArrowDown: onArrowDown
+            )
+        }
+    }
+
+    private func fontForType(_ type: BlockType) -> NSFont {
+        switch type {
+        case .heading1:
+            return .systemFont(ofSize: 28, weight: .bold)
+        case .heading2:
+            return .systemFont(ofSize: 22, weight: .semibold)
+        case .heading3:
+            return .systemFont(ofSize: 18, weight: .semibold)
+        case .quote:
+            return .systemFont(ofSize: 14, weight: .regular).withTraits(.italic)
+        default:
+            return .systemFont(ofSize: 14)
+        }
+    }
+
+    private func textColorForType(_ type: BlockType) -> NSColor {
+        switch type {
+        case .quote:
+            return .secondaryLabelColor
+        default:
+            return .labelColor
         }
     }
 
@@ -207,156 +448,132 @@ struct WorkspaceEditor: View {
 
     @ViewBuilder
     private var contextMenuContent: some View {
-        Group {
-            Button {
-                wrapSelection(with: "**", and: "**")
-            } label: {
-                Label("Bold", systemImage: "bold")
-            }
-            .keyboardShortcut("b", modifiers: .command)
-
-            Button {
-                wrapSelection(with: "_", and: "_")
-            } label: {
-                Label("Italic", systemImage: "italic")
-            }
-            .keyboardShortcut("i", modifiers: .command)
-
-            Button {
-                wrapSelection(with: "~~", and: "~~")
-            } label: {
-                Label("Strikethrough", systemImage: "strikethrough")
-            }
-
-            Button {
-                wrapSelection(with: "`", and: "`")
-            } label: {
-                Label("Code", systemImage: "chevron.left.forwardslash.chevron.right")
-            }
-            .keyboardShortcut("e", modifiers: .command)
-        }
-
-        Divider()
-
-        Group {
-            Button {
-                wrapSelection(with: "[", and: "](url)")
-            } label: {
-                Label("Link", systemImage: "link")
-            }
-            .keyboardShortcut("k", modifiers: .command)
-        }
-
-        Divider()
-
         Menu("Turn into") {
-            ForEach(SlashCommand.allCases) { command in
+            ForEach(BlockType.allCases) { type in
                 Button {
-                    turnLineInto(command)
+                    block.type = type
                 } label: {
-                    Label(command.title, systemImage: command.icon)
+                    Label(type.title, systemImage: type.icon)
                 }
             }
         }
 
         Divider()
 
-        Group {
-            Button {
-                duplicateLine()
-            } label: {
-                Label("Duplicate", systemImage: "plus.square.on.square")
-            }
-            .keyboardShortcut("d", modifiers: [.command, .shift])
+        Button {
+            // Duplicate would need parent access
+        } label: {
+            Label("Duplicate", systemImage: "plus.square.on.square")
+        }
 
-            Button {
-                deleteLine()
-            } label: {
-                Label("Delete", systemImage: "trash")
+        Button(role: .destructive) {
+            onDelete()
+        } label: {
+            Label("Delete", systemImage: "trash")
+        }
+    }
+}
+
+// MARK: - Block Text Field (NSViewRepresentable)
+
+struct BlockTextField: NSViewRepresentable {
+    @Binding var text: String
+    let placeholder: String
+    let font: NSFont
+    var textColor: NSColor = .labelColor
+    let isFocused: Bool
+    let onFocus: () -> Void
+    let onSlashTyped: () -> Void
+    let onEnter: () -> Void
+    let onDelete: () -> Void
+    let onArrowUp: () -> Void
+    let onArrowDown: () -> Void
+
+    func makeNSView(context: Context) -> NSTextField {
+        let textField = NSTextField()
+        textField.isBordered = false
+        textField.drawsBackground = false
+        textField.font = font
+        textField.textColor = textColor
+        textField.focusRingType = .none
+        textField.lineBreakMode = .byWordWrapping
+        textField.cell?.wraps = true
+        textField.cell?.isScrollable = false
+        textField.placeholderString = placeholder
+        textField.delegate = context.coordinator
+        return textField
+    }
+
+    func updateNSView(_ nsView: NSTextField, context: Context) {
+        if nsView.stringValue != text {
+            nsView.stringValue = text
+        }
+        nsView.font = font
+        nsView.textColor = textColor
+        nsView.placeholderString = placeholder
+
+        if isFocused && nsView.window?.firstResponder != nsView.currentEditor() {
+            DispatchQueue.main.async {
+                nsView.window?.makeFirstResponder(nsView)
             }
         }
     }
 
-    // MARK: - Actions
-
-    private var filteredCommands: [SlashCommand] {
-        SlashCommand.filtered(by: slashQuery)
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
     }
 
-    private func moveSelection(by delta: Int) {
-        let commands = filteredCommands
-        guard !commands.isEmpty else { return }
+    class Coordinator: NSObject, NSTextFieldDelegate {
+        var parent: BlockTextField
+        private var previousText = ""
 
-        selectedCommandIndex = (selectedCommandIndex + delta + commands.count) % commands.count
-    }
-
-    private func insertSelectedCommand() {
-        let commands = filteredCommands
-        guard selectedCommandIndex < commands.count else { return }
-        insertCommand(commands[selectedCommandIndex])
-    }
-
-    private func insertCommand(_ command: SlashCommand) {
-        // Remove the slash and query from content
-        if let slashRange = findSlashRange() {
-            content.removeSubrange(slashRange)
+        init(_ parent: BlockTextField) {
+            self.parent = parent
+            self.previousText = parent.text
         }
 
-        // Insert the command shortcut
-        content += command.shortcut
+        func controlTextDidBeginEditing(_ obj: Notification) {
+            parent.onFocus()
+        }
 
-        showSlashMenu = false
-        slashQuery = ""
-    }
+        func controlTextDidChange(_ obj: Notification) {
+            guard let textField = obj.object as? NSTextField else { return }
+            let newText = textField.stringValue
 
-    private func findSlashRange() -> Range<String.Index>? {
-        // Find the last "/" and everything after it until cursor
-        guard let lastSlash = content.lastIndex(of: "/") else { return nil }
-        return lastSlash..<content.endIndex
-    }
+            // Detect "/" typed at start of empty block
+            if newText == "/" && previousText.isEmpty {
+                parent.onSlashTyped()
+            }
 
-    private func wrapSelection(with prefix: String, and suffix: String) {
-        // For now, just append at cursor position
-        // In a real implementation, we'd wrap the selected text
-        content += prefix + "text" + suffix
-    }
+            parent.text = newText
+            previousText = newText
+        }
 
-    private func turnLineInto(_ command: SlashCommand) {
-        // Simple implementation - prepend to current line
-        let lines = content.components(separatedBy: "\n")
-        guard !lines.isEmpty else { return }
+        func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+            if commandSelector == #selector(NSResponder.insertNewline(_:)) {
+                parent.onEnter()
+                return true
+            }
 
-        var newLines = lines
-        if let lastIndex = newLines.indices.last {
-            // Remove any existing prefix
-            var line = newLines[lastIndex]
-            line = line.trimmingCharacters(in: .whitespaces)
-
-            // Remove common prefixes
-            for prefix in ["# ", "## ", "### ", "- ", "1. ", "[ ] ", "[x] ", "> ", "```"] {
-                if line.hasPrefix(prefix) {
-                    line = String(line.dropFirst(prefix.count))
-                    break
+            if commandSelector == #selector(NSResponder.deleteBackward(_:)) {
+                if parent.text.isEmpty {
+                    parent.onDelete()
+                    return true
                 }
             }
 
-            newLines[lastIndex] = command.shortcut + line
-        }
-        content = newLines.joined(separator: "\n")
-    }
+            if commandSelector == #selector(NSResponder.moveUp(_:)) {
+                parent.onArrowUp()
+                return true
+            }
 
-    private func duplicateLine() {
-        let lines = content.components(separatedBy: "\n")
-        guard let last = lines.last else { return }
-        content += "\n" + last
-    }
+            if commandSelector == #selector(NSResponder.moveDown(_:)) {
+                parent.onArrowDown()
+                return true
+            }
 
-    private func deleteLine() {
-        var lines = content.components(separatedBy: "\n")
-        if !lines.isEmpty {
-            lines.removeLast()
+            return false
         }
-        content = lines.joined(separator: "\n")
     }
 }
 
@@ -365,24 +582,26 @@ struct WorkspaceEditor: View {
 struct SlashCommandMenu: View {
     let query: String
     let selectedIndex: Int
-    let onSelect: (SlashCommand) -> Void
+    let onSelect: (BlockType) -> Void
     let onDismiss: () -> Void
+    let onQueryChanged: (String) -> Void
+    let onArrowUp: () -> Void
+    let onArrowDown: () -> Void
+    let onConfirm: () -> Void
 
-    private var filteredCommands: [SlashCommand] {
-        SlashCommand.filtered(by: query)
-    }
-
-    private var groupedCommands: [(SlashCommand.CommandCategory, [SlashCommand])] {
-        let commands = filteredCommands
-        return SlashCommand.CommandCategory.allCases.compactMap { category in
-            let categoryCommands = commands.filter { $0.category == category }
-            return categoryCommands.isEmpty ? nil : (category, categoryCommands)
+    private var filteredTypes: [BlockType] {
+        if query.isEmpty {
+            return BlockType.allCases
+        }
+        return BlockType.allCases.filter {
+            $0.title.localizedCaseInsensitiveContains(query) ||
+            $0.rawValue.localizedCaseInsensitiveContains(query)
         }
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Header
+            // Header with filter
             HStack {
                 Image(systemName: "slash.circle")
                     .foregroundColor(.secondary)
@@ -407,29 +626,18 @@ struct SlashCommandMenu: View {
             // Commands list
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    if filteredCommands.isEmpty {
+                    if filteredTypes.isEmpty {
                         Text("No commands found")
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
                             .padding(12)
                     } else {
-                        ForEach(groupedCommands, id: \.0) { category, commands in
-                            // Category header
-                            Text(category.rawValue.uppercased())
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundColor(.secondary)
-                                .padding(.horizontal, 12)
-                                .padding(.top, 8)
-                                .padding(.bottom, 4)
-
-                            // Commands in category
-                            ForEach(Array(commands.enumerated()), id: \.element.id) { _, command in
-                                SlashCommandRow(
-                                    command: command,
-                                    isSelected: calculateIndex(for: command) == selectedIndex
-                                ) {
-                                    onSelect(command)
-                                }
+                        ForEach(Array(filteredTypes.enumerated()), id: \.element.id) { index, type in
+                            SlashCommandRow(
+                                type: type,
+                                isSelected: index == selectedIndex
+                            ) {
+                                onSelect(type)
                             }
                         }
                     }
@@ -438,7 +646,7 @@ struct SlashCommandMenu: View {
             }
             .frame(maxHeight: 300)
         }
-        .frame(width: 280)
+        .frame(width: 260)
         .background(
             RoundedRectangle(cornerRadius: 10)
                 .fill(Color(nsColor: .windowBackgroundColor))
@@ -449,16 +657,12 @@ struct SlashCommandMenu: View {
                 .stroke(Color.gray.opacity(0.2), lineWidth: 1)
         )
     }
-
-    private func calculateIndex(for command: SlashCommand) -> Int {
-        filteredCommands.firstIndex(of: command) ?? 0
-    }
 }
 
 // MARK: - Slash Command Row
 
 struct SlashCommandRow: View {
-    let command: SlashCommand
+    let type: BlockType
     let isSelected: Bool
     let onSelect: () -> Void
 
@@ -467,17 +671,17 @@ struct SlashCommandRow: View {
     var body: some View {
         Button(action: onSelect) {
             HStack(spacing: 10) {
-                Image(systemName: command.icon)
+                Image(systemName: type.icon)
                     .font(.system(size: 14))
                     .foregroundColor(isSelected ? .white : .secondary)
                     .frame(width: 24)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(command.title)
+                    Text(type.title)
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(isSelected ? .white : .primary)
 
-                    Text(command.description)
+                    Text(type.description)
                         .font(.system(size: 10))
                         .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
                 }
@@ -500,142 +704,18 @@ struct SlashCommandRow: View {
     }
 }
 
-// MARK: - Custom Text Editor with Slash Detection
+// MARK: - NSFont Extension
 
-struct SlashCommandTextEditor: NSViewRepresentable {
-    @Binding var text: String
-    var onSlashTyped: (CGPoint) -> Void
-    var onSlashQueryChanged: (String) -> Void
-    var onSlashCancelled: () -> Void
-    var onSlashConfirmed: () -> Void
-    var onArrowUp: () -> Void
-    var onArrowDown: () -> Void
-    var showSlashMenu: Bool
-
-    func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = NSTextView.scrollableTextView()
-        let textView = scrollView.documentView as! NSTextView
-
-        textView.delegate = context.coordinator
-        textView.font = NSFont.systemFont(ofSize: 14)
-        textView.isRichText = false
-        textView.allowsUndo = true
-        textView.isAutomaticQuoteSubstitutionEnabled = false
-        textView.isAutomaticDashSubstitutionEnabled = false
-        textView.isAutomaticTextReplacementEnabled = false
-        textView.backgroundColor = .clear
-        textView.drawsBackground = false
-        textView.textContainerInset = NSSize(width: 16, height: 16)
-
-        context.coordinator.textView = textView
-
-        return scrollView
-    }
-
-    func updateNSView(_ nsView: NSScrollView, context: Context) {
-        let textView = nsView.documentView as! NSTextView
-
-        if textView.string != text {
-            let selectedRange = textView.selectedRange()
-            textView.string = text
-            textView.setSelectedRange(selectedRange)
-        }
-
-        context.coordinator.showSlashMenu = showSlashMenu
-    }
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-
-    class Coordinator: NSObject, NSTextViewDelegate {
-        var parent: SlashCommandTextEditor
-        weak var textView: NSTextView?
-        var slashPosition: Int?
-        var showSlashMenu = false
-
-        init(_ parent: SlashCommandTextEditor) {
-            self.parent = parent
-        }
-
-        func textDidChange(_ notification: Notification) {
-            guard let textView = textView else { return }
-            parent.text = textView.string
-
-            // Check for slash command trigger
-            let cursorPosition = textView.selectedRange().location
-            let text = textView.string
-
-            if cursorPosition > 0 {
-                let index = text.index(text.startIndex, offsetBy: cursorPosition - 1)
-                let char = text[index]
-
-                // Check if "/" was just typed at start of line or after whitespace
-                if char == "/" {
-                    let isAtStart = cursorPosition == 1
-                    let isAfterWhitespace = cursorPosition >= 2 && {
-                        let prevIndex = text.index(text.startIndex, offsetBy: cursorPosition - 2)
-                        return text[prevIndex].isWhitespace || text[prevIndex].isNewline
-                    }()
-
-                    if isAtStart || isAfterWhitespace {
-                        slashPosition = cursorPosition - 1
-                        let rect = textView.firstRect(forCharacterRange: NSRange(location: cursorPosition - 1, length: 1), actualRange: nil)
-                        parent.onSlashTyped(CGPoint(x: rect.origin.x, y: rect.origin.y))
-                        return
-                    }
-                }
-            }
-
-            // Update slash query if menu is showing
-            if let slashPos = slashPosition, showSlashMenu {
-                if cursorPosition > slashPos {
-                    let queryStart = text.index(text.startIndex, offsetBy: slashPos + 1)
-                    let queryEnd = text.index(text.startIndex, offsetBy: cursorPosition)
-                    let query = String(text[queryStart..<queryEnd])
-
-                    // Cancel if query contains space or newline
-                    if query.contains(" ") || query.contains("\n") {
-                        slashPosition = nil
-                        parent.onSlashCancelled()
-                    } else {
-                        parent.onSlashQueryChanged(query)
-                    }
-                } else {
-                    slashPosition = nil
-                    parent.onSlashCancelled()
-                }
-            }
-        }
-
-        func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
-            if showSlashMenu {
-                if commandSelector == #selector(NSResponder.moveUp(_:)) {
-                    parent.onArrowUp()
-                    return true
-                }
-                if commandSelector == #selector(NSResponder.moveDown(_:)) {
-                    parent.onArrowDown()
-                    return true
-                }
-                if commandSelector == #selector(NSResponder.insertNewline(_:)) {
-                    parent.onSlashConfirmed()
-                    return true
-                }
-                if commandSelector == #selector(NSResponder.cancelOperation(_:)) {
-                    slashPosition = nil
-                    parent.onSlashCancelled()
-                    return true
-                }
-            }
-            return false
-        }
+extension NSFont {
+    func withTraits(_ traits: NSFontDescriptor.SymbolicTraits) -> NSFont {
+        let descriptor = fontDescriptor.withSymbolicTraits(traits)
+        return NSFont(descriptor: descriptor, size: pointSize) ?? self
     }
 }
 
 // MARK: - Preview
 
 #Preview {
-    WorkspaceEditor(content: .constant("# Welcome\n\nType / to see commands"))
+    WorkspaceEditor(content: .constant("Welcome to the editor\n\nType / to see commands"))
         .frame(width: 600, height: 400)
 }
