@@ -14,25 +14,35 @@ struct VaultToolbar: View {
     @Binding var isCreatingFolder: Bool
     @Binding var isUploading: Bool
 
+    let onNavigateToPath: (Int) -> Void  // Navigate to path at index
     let onNewFolder: () -> Void
     let onUpload: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
-            // Breadcrumbs
-            HStack(spacing: 6) {
-                ForEach(Array(currentPath.enumerated()), id: \.offset) { index, folder in
-                    if index > 0 {
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 10))
-                            .foregroundColor(.secondary)
-                    }
-
-                    Text(folder)
-                        .font(.system(size: 14))
-                        .foregroundColor(index == currentPath.count - 1 ? .primary : .secondary)
+            // Back button (if not at root)
+            if currentPath.count > 1 {
+                Button {
+                    onNavigateToPath(currentPath.count - 2)
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .frame(width: 28, height: 28)
+                        .background(
+                            Circle()
+                                .fill(Color.gray.opacity(0.1))
+                        )
                 }
+                .buttonStyle(.plain)
+                .help("Go back")
             }
+
+            // Breadcrumbs - clickable
+            BreadcrumbView(
+                path: currentPath,
+                onNavigate: onNavigateToPath
+            )
 
             Spacer()
 
@@ -133,5 +143,88 @@ struct VaultToolbar: View {
             RoundedRectangle(cornerRadius: 6)
                 .fill(viewMode == mode ? Color.magnetarPrimary.opacity(0.15) : Color.clear)
         )
+    }
+}
+
+// MARK: - Breadcrumb View
+
+struct BreadcrumbView: View {
+    let path: [String]
+    let onNavigate: (Int) -> Void
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(Array(path.enumerated()), id: \.offset) { index, folder in
+                if index > 0 {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundColor(.secondary.opacity(0.5))
+                        .padding(.horizontal, 6)
+                }
+
+                BreadcrumbItem(
+                    name: displayName(for: folder, at: index),
+                    icon: iconName(for: folder, at: index),
+                    isLast: index == path.count - 1,
+                    onTap: {
+                        if index < path.count - 1 {
+                            onNavigate(index)
+                        }
+                    }
+                )
+            }
+        }
+    }
+
+    private func displayName(for folder: String, at index: Int) -> String {
+        if index == 0 && folder == "/" {
+            return "Vault"
+        }
+        return folder
+    }
+
+    private func iconName(for folder: String, at index: Int) -> String? {
+        if index == 0 {
+            return "lock.shield"
+        }
+        return nil
+    }
+}
+
+// MARK: - Breadcrumb Item
+
+struct BreadcrumbItem: View {
+    let name: String
+    let icon: String?
+    let isLast: Bool
+    let onTap: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 5) {
+                if let icon = icon {
+                    Image(systemName: icon)
+                        .font(.system(size: 12))
+                        .foregroundColor(isLast ? .primary : .secondary)
+                }
+
+                Text(name)
+                    .font(.system(size: 13, weight: isLast ? .semibold : .regular))
+                    .foregroundColor(isLast ? .primary : .secondary)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(isHovered && !isLast ? Color.gray.opacity(0.1) : Color.clear)
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(isLast)
+        .onHover { hovering in
+            isHovered = hovering
+        }
     }
 }

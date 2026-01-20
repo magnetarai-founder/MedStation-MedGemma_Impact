@@ -118,6 +118,7 @@ struct VaultWorkspace: View {
                 searchText: $searchText,
                 isCreatingFolder: $isCreatingFolder,
                 isUploading: $isUploading,
+                onNavigateToPath: navigateToPathIndex,
                 onNewFolder: { showNewFolderDialog = true },
                 onUpload: uploadFile
             )
@@ -156,7 +157,8 @@ struct VaultWorkspace: View {
                         onDelete: { file in
                             fileToDelete = file
                             showDeleteConfirmation = true
-                        }
+                        },
+                        onFilesDropped: handleDroppedFiles
                     )
                 } else {
                     VaultListView(
@@ -171,7 +173,8 @@ struct VaultWorkspace: View {
                         onDelete: { file in
                             fileToDelete = file
                             showDeleteConfirmation = true
-                        }
+                        },
+                        onFilesDropped: handleDroppedFiles
                     )
                 }
             }
@@ -383,6 +386,25 @@ struct VaultWorkspace: View {
 
         Task {
             await loadFiles()
+        }
+    }
+
+    private func navigateToPathIndex(_ index: Int) {
+        guard index >= 0 && index < currentPath.count else { return }
+
+        // Trim path to the selected index
+        currentPath = Array(currentPath.prefix(index + 1))
+
+        Task {
+            await loadFiles()
+        }
+    }
+
+    private func handleDroppedFiles(_ urls: [URL]) {
+        Task {
+            for url in urls {
+                await performUpload(fileURL: url)
+            }
         }
     }
 }
