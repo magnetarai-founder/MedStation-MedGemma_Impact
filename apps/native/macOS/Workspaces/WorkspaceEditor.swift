@@ -124,24 +124,25 @@ struct WorkspaceEditor: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 2) {
-                ForEach(Array(blocks.enumerated()), id: \.element.id) { index, block in
+                ForEach(blocks.indices, id: \.self) { index in
+                    let blockId = blocks[index].id
                     BlockView(
-                        block: binding(for: block.id),
+                        block: $blocks[index],
                         index: index,
-                        isFocused: focusedBlockId == block.id,
-                        onFocus: { focusedBlockId = block.id },
+                        isFocused: focusedBlockId == blockId,
+                        onFocus: { focusedBlockId = blockId },
                         onSlashTyped: {
-                            slashMenuBlockId = block.id
+                            slashMenuBlockId = blockId
                             slashQuery = ""
                             selectedCommandIndex = 0
                             showSlashMenu = true
                         },
-                        onEnter: { insertBlockAfter(block.id) },
-                        onDelete: { deleteBlockIfEmpty(block.id) },
-                        onArrowUp: { focusPreviousBlock(from: block.id) },
-                        onArrowDown: { focusNextBlock(from: block.id) }
+                        onEnter: { insertBlockAfter(blockId) },
+                        onDelete: { deleteBlockIfEmpty(blockId) },
+                        onArrowUp: { focusPreviousBlock(from: blockId) },
+                        onArrowDown: { focusNextBlock(from: blockId) }
                     )
-                    .id(block.id)
+                    .id(blockId)
                 }
             }
             .padding(16)
@@ -204,17 +205,6 @@ struct WorkspaceEditor: View {
     }
 
     // MARK: - Block Operations
-
-    private func binding(for id: UUID) -> Binding<DocumentBlock> {
-        Binding(
-            get: { blocks.first { $0.id == id } ?? DocumentBlock() },
-            set: { newValue in
-                if let index = blocks.firstIndex(where: { $0.id == id }) {
-                    blocks[index] = newValue
-                }
-            }
-        )
-    }
 
     private func insertBlockAfter(_ id: UUID) {
         guard let index = blocks.firstIndex(where: { $0.id == id }) else { return }
