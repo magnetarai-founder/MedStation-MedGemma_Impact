@@ -135,12 +135,28 @@ struct InsightsWorkspace: View {
                         ForEach(filteredRecordings) { recording in
                             RecordingRow(
                                 recording: recording,
-                                isSelected: selectedRecording?.id == recording.id
+                                isSelected: selectedRecording?.id == recording.id,
+                                onPlay: {
+                                    playRecording(recording)
+                                },
+                                onShare: {
+                                    shareRecording(recording)
+                                },
+                                onDelete: {
+                                    Task { await deleteRecording(recording) }
+                                }
                             )
                             .onTapGesture {
                                 selectRecording(recording)
                             }
                             .contextMenu {
+                                Button("Play") {
+                                    playRecording(recording)
+                                }
+                                Button("Share...") {
+                                    shareRecording(recording)
+                                }
+                                Divider()
                                 Button("Delete", role: .destructive) {
                                     Task { await deleteRecording(recording) }
                                 }
@@ -300,6 +316,27 @@ struct InsightsWorkspace: View {
             selectedOutputs.removeAll { $0.id == outputId }
         } catch {
             self.error = "Delete output failed: \(error.localizedDescription)"
+        }
+    }
+
+    private func playRecording(_ recording: InsightsRecording) {
+        // Open the audio file with the default system player
+        let fileURL = URL(fileURLWithPath: recording.filePath)
+        NSWorkspace.shared.open(fileURL)
+    }
+
+    private func shareRecording(_ recording: InsightsRecording) {
+        // Create share picker with file and transcript
+        let fileURL = URL(fileURLWithPath: recording.filePath)
+        let items: [Any] = [fileURL, recording.transcript]
+
+        let picker = NSSharingServicePicker(items: items)
+
+        // Get the key window and show the picker
+        if let window = NSApp.keyWindow,
+           let contentView = window.contentView {
+            let rect = NSRect(x: contentView.bounds.midX, y: contentView.bounds.midY, width: 1, height: 1)
+            picker.show(relativeTo: rect, of: contentView, preferredEdge: .minY)
         }
     }
 }

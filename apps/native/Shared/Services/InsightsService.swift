@@ -111,6 +111,53 @@ struct InsightsRecording: Codable, Identifiable, Hashable {
         }
         return createdAt
     }
+
+    /// Parse createdAt to Date
+    var createdDate: Date? {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.date(from: createdAt)
+    }
+
+    /// Relative time string ("2 hours ago", "yesterday", etc.)
+    var relativeDate: String {
+        guard let date = createdDate else { return formattedDate }
+
+        let now = Date()
+        let diff = now.timeIntervalSince(date)
+
+        if diff < 60 {
+            return "just now"
+        } else if diff < 3600 {
+            let mins = Int(diff / 60)
+            return "\(mins)m ago"
+        } else if diff < 86400 {
+            let hours = Int(diff / 3600)
+            return "\(hours)h ago"
+        } else if diff < 172800 {
+            return "yesterday"
+        } else if diff < 604800 {
+            let days = Int(diff / 86400)
+            return "\(days) days ago"
+        } else {
+            let displayFormatter = DateFormatter()
+            displayFormatter.dateStyle = .medium
+            return displayFormatter.string(from: date)
+        }
+    }
+
+    /// Word count of transcript
+    var wordCount: Int {
+        transcript.split { $0.isWhitespace || $0.isNewline }.count
+    }
+
+    /// Formatted word count string
+    var formattedWordCount: String {
+        if wordCount >= 1000 {
+            return String(format: "%.1fk words", Double(wordCount) / 1000)
+        }
+        return "\(wordCount) words"
+    }
 }
 
 struct RecordingListResponse: Codable {
@@ -214,6 +261,53 @@ struct FormattedOutput: Codable, Identifiable, Hashable {
             return displayFormatter.string(from: date)
         }
         return generatedAt
+    }
+
+    /// Parse generatedAt to Date
+    var generatedDate: Date? {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.date(from: generatedAt)
+    }
+
+    /// Relative time string ("2 hours ago", "yesterday", etc.)
+    var relativeDate: String {
+        guard let date = generatedDate else { return formattedDate }
+
+        let now = Date()
+        let diff = now.timeIntervalSince(date)
+
+        if diff < 60 {
+            return "just now"
+        } else if diff < 3600 {
+            let mins = Int(diff / 60)
+            return "\(mins)m ago"
+        } else if diff < 86400 {
+            let hours = Int(diff / 3600)
+            return "\(hours)h ago"
+        } else if diff < 172800 {
+            return "yesterday"
+        } else if diff < 604800 {
+            let days = Int(diff / 86400)
+            return "\(days) days ago"
+        } else {
+            let displayFormatter = DateFormatter()
+            displayFormatter.dateStyle = .medium
+            return displayFormatter.string(from: date)
+        }
+    }
+
+    /// Word count of content
+    var wordCount: Int {
+        content.split { $0.isWhitespace || $0.isNewline }.count
+    }
+
+    /// Formatted word count string
+    var formattedWordCount: String {
+        if wordCount >= 1000 {
+            return String(format: "%.1fk words", Double(wordCount) / 1000)
+        }
+        return "\(wordCount) words"
     }
 }
 
