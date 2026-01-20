@@ -637,9 +637,10 @@ struct BlockTextFieldRepresentable: NSViewRepresentable {
 
         func textDidEndEditing(_ notification: Notification) {
             isEditing = false
-            // Sync final text to binding
+            // Sync text to binding when done editing - this is the only sync point
             if let textView = notification.object as? NSTextView {
                 parent.text = textView.string
+                previousText = textView.string
             }
         }
 
@@ -652,16 +653,19 @@ struct BlockTextFieldRepresentable: NSViewRepresentable {
                 parent.onSlashTyped()
             }
 
-            // Update binding (this preserves undo because NSTextView manages its own undo stack)
-            parent.text = newText
             previousText = newText
 
             // Update height after text change
             updateHeight()
+
+            // DON'T update binding here - it breaks native undo/redo
+            // Text syncs to parent when editing ends (focus lost, Enter pressed, etc.)
         }
 
         func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
             if commandSelector == #selector(NSResponder.insertNewline(_:)) {
+                // Sync text before creating new block
+                syncTextToBinding()
                 parent.onEnter()
                 return true
             }
@@ -676,6 +680,7 @@ struct BlockTextFieldRepresentable: NSViewRepresentable {
             if commandSelector == #selector(NSResponder.moveUp(_:)) {
                 // Only intercept if at first line
                 if isAtFirstLine(textView) {
+                    syncTextToBinding()
                     parent.onArrowUp()
                     return true
                 }
@@ -684,12 +689,18 @@ struct BlockTextFieldRepresentable: NSViewRepresentable {
             if commandSelector == #selector(NSResponder.moveDown(_:)) {
                 // Only intercept if at last line
                 if isAtLastLine(textView) {
+                    syncTextToBinding()
                     parent.onArrowDown()
                     return true
                 }
             }
 
             return false
+        }
+
+        private func syncTextToBinding() {
+            guard let textView = textView else { return }
+            parent.text = textView.string
         }
 
         private func isAtFirstLine(_ textView: NSTextView) -> Bool {
