@@ -7,6 +7,8 @@ Refactored from monolithic models.py (886 lines) into focused submodules:
 - hot_slots.py: Hot slot management (~170 lines)
 - server.py: Ollama server management (~130 lines)
 - library.py: Pull, remove, version, library browsing (~200 lines)
+- huggingface.py: HuggingFace GGUF model management (~350 lines)
+- llamacpp.py: llama.cpp server management (~300 lines)
 """
 
 from fastapi import APIRouter
@@ -16,6 +18,9 @@ from . import preload
 from . import hot_slots
 from . import server
 from . import library
+from . import huggingface
+from . import llamacpp
+from . import unified
 
 # Combined router for all model-related endpoints
 router = APIRouter()
@@ -26,6 +31,9 @@ router.include_router(preload.router)
 router.include_router(hot_slots.router)
 router.include_router(server.router)
 router.include_router(library.router)
+router.include_router(huggingface.router)
+router.include_router(llamacpp.router)
+router.include_router(unified.router)
 
 # Re-export ModelListCache for external use (e.g., tests)
 from .list import ModelListCache, _model_cache

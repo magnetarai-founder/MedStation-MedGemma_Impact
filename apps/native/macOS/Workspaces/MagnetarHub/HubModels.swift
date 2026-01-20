@@ -15,6 +15,7 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "HubMode
 enum HubCategory: String, CaseIterable, Identifiable {
     case myModels = "my_models"
     case discover = "discover"
+    case huggingface = "huggingface"
     case cloud = "cloud"
 
     var id: String { rawValue }
@@ -23,6 +24,7 @@ enum HubCategory: String, CaseIterable, Identifiable {
         switch self {
         case .myModels: return "My Models"
         case .discover: return "Discover"
+        case .huggingface: return "HuggingFace"
         case .cloud: return "Cloud Models"
         }
     }
@@ -31,6 +33,7 @@ enum HubCategory: String, CaseIterable, Identifiable {
         switch self {
         case .myModels: return "Installed local models"
         case .discover: return "Browse Ollama library"
+        case .huggingface: return "GGUF models for llama.cpp"
         case .cloud: return "MagnetarCloud models"
         }
     }
@@ -39,6 +42,7 @@ enum HubCategory: String, CaseIterable, Identifiable {
         switch self {
         case .myModels: return "cube.box"
         case .discover: return "magnifyingglass"
+        case .huggingface: return "face.smiling"
         case .cloud: return "cloud"
         }
     }
@@ -47,6 +51,7 @@ enum HubCategory: String, CaseIterable, Identifiable {
         switch self {
         case .myModels: return "cube.box"
         case .discover: return "magnifyingglass.circle"
+        case .huggingface: return "face.smiling"
         case .cloud: return "cloud"
         }
     }
@@ -55,6 +60,7 @@ enum HubCategory: String, CaseIterable, Identifiable {
         switch self {
         case .myModels: return "No Models Installed"
         case .discover: return "No Models Found"
+        case .huggingface: return "No GGUF Models"
         case .cloud: return "Not Connected"
         }
     }
@@ -63,6 +69,7 @@ enum HubCategory: String, CaseIterable, Identifiable {
         switch self {
         case .myModels: return "Download models from Discover tab"
         case .discover: return "Try a different search"
+        case .huggingface: return "Download GGUF models for llama.cpp"
         case .cloud: return "Sign in to MagnetarCloud"
         }
     }
@@ -73,12 +80,14 @@ enum HubCategory: String, CaseIterable, Identifiable {
 enum AnyModelItem: Identifiable {
     case local(OllamaModel)
     case backendRecommended(BackendRecommendedModel)
+    case huggingface(HuggingFaceModel)
     case cloud(OllamaModel)
 
     var id: String {
         switch self {
         case .local(let model): return "local-\(model.id)"
         case .backendRecommended(let model): return "recommended-\(model.id)"
+        case .huggingface(let model): return "hf-\(model.id)"
         case .cloud(let model): return "cloud-\(model.id)"
         }
     }
@@ -87,6 +96,7 @@ enum AnyModelItem: Identifiable {
         switch self {
         case .local(let model): return model.name
         case .backendRecommended(let model): return model.modelName
+        case .huggingface(let model): return model.name
         case .cloud(let model): return model.name
         }
     }
@@ -95,6 +105,7 @@ enum AnyModelItem: Identifiable {
         switch self {
         case .local(let model): return model.name
         case .backendRecommended(let model): return model.displayName
+        case .huggingface(let model): return model.name
         case .cloud(let model): return model.name
         }
     }
@@ -128,6 +139,7 @@ enum AnyModelItem: Identifiable {
                 return "Locally installed language model"
             }
         case .backendRecommended(let model): return model.description
+        case .huggingface(let model): return model.description
         case .cloud: return nil
         }
     }
@@ -136,6 +148,7 @@ enum AnyModelItem: Identifiable {
         switch self {
         case .local: return "cube.box.fill"
         case .backendRecommended: return "star.circle.fill"
+        case .huggingface: return "face.smiling.fill"
         case .cloud: return "cloud.fill"
         }
     }
@@ -145,6 +158,8 @@ enum AnyModelItem: Identifiable {
         case .local: return LinearGradient.magnetarGradient
         case .backendRecommended:
             return LinearGradient(colors: [.blue, .cyan], startPoint: .topLeading, endPoint: .bottomTrailing)
+        case .huggingface:
+            return LinearGradient(colors: [.yellow, .orange], startPoint: .topLeading, endPoint: .bottomTrailing)
         case .cloud: return LinearGradient(colors: [.purple, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
         }
     }
@@ -162,6 +177,13 @@ enum AnyModelItem: Identifiable {
                 result.insert("installed", at: 0)
             }
             return result
+        case .huggingface(let model):
+            var badges = model.capabilities
+            if model.isDownloaded {
+                badges.insert("installed", at: 0)
+            }
+            badges.append(model.quantization)
+            return badges
         case .cloud: return ["cloud"]
         }
     }
@@ -173,6 +195,9 @@ enum AnyModelItem: Identifiable {
         case "experimental": return .orange
         case "local": return .green
         case "cloud": return .purple
+        case "medical": return .red
+        case "code": return .cyan
+        case "vision": return .indigo
         default: return .gray
         }
     }
@@ -185,6 +210,7 @@ enum AnyModelItem: Identifiable {
             }
             return model.details?.parameterSize
         case .backendRecommended(let model): return model.parameterSize
+        case .huggingface(let model): return model.parameterCount
         case .cloud: return nil
         }
     }
@@ -197,6 +223,7 @@ enum AnyModelItem: Identifiable {
             }
             return false
         case .backendRecommended(let model): return model.isMultiPurpose
+        case .huggingface(let model): return model.capabilities.count > 1
         case .cloud: return false
         }
     }
@@ -209,6 +236,7 @@ enum AnyModelItem: Identifiable {
             }
             return []
         case .backendRecommended(let model): return model.primaryUseCases
+        case .huggingface(let model): return model.capabilities
         case .cloud: return []
         }
     }
@@ -219,6 +247,8 @@ enum AnyModelItem: Identifiable {
             return ("internaldrive", model.sizeFormatted)
         case .backendRecommended(let model):
             return ("tag", model.parameterSize)
+        case .huggingface(let model):
+            return ("internaldrive", model.sizeFormatted)
         case .cloud(let model):
             return ("internaldrive", model.sizeFormatted)
         }
@@ -243,6 +273,14 @@ enum AnyModelItem: Identifiable {
                 return ("star.circle", "Multi-purpose")
             } else {
                 return ("sparkles", model.capability.capitalized)
+            }
+        case .huggingface(let model):
+            if model.capabilities.contains("medical") {
+                return ("cross.case.fill", "Medical")
+            } else if model.capabilities.contains("code") {
+                return ("chevron.left.forwardslash.chevron.right", "Code")
+            } else {
+                return ("cpu", "llama.cpp")
             }
         case .cloud: return nil
         }
@@ -324,6 +362,84 @@ enum AnyModelItem: Identifiable {
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.borderedProminent)
+                    }
+                }
+
+            case .huggingface(let model):
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(model.isDownloaded ? "Actions" : "Download")
+                        .font(.headline)
+
+                    if model.isDownloaded {
+                        HStack(spacing: 12) {
+                            Button {
+                                onDelete(model.id)
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(.red)
+
+                            Button {
+                                // Start llama.cpp with this model
+                                Task {
+                                    try? await LlamaCppService.shared.startServer(modelId: model.id)
+                                }
+                            } label: {
+                                Label("Run", systemImage: "play.fill")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+                    } else {
+                        if let progress = activeDownloads.wrappedValue[model.id] {
+                            // Show progress
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Text(progress.status)
+                                        .font(.caption)
+                                        .foregroundColor(progress.error != nil ? .red : .secondary)
+                                    Spacer()
+                                    if progress.error == nil {
+                                        Text("\(Int(progress.progress * 100))%")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                                ProgressView(value: progress.progress)
+                                    .tint(progress.error != nil ? .red : .magnetarPrimary)
+                            }
+                            .padding()
+                            .background(Color.surfaceTertiary.opacity(0.3))
+                            .cornerRadius(8)
+                        } else {
+                            Button {
+                                onDownload(model.id)
+                            } label: {
+                                Label("Download \(model.name)", systemImage: "arrow.down.circle")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+                    }
+
+                    // Hardware requirements
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Image(systemName: "memorychip")
+                                .foregroundColor(.secondary)
+                            Text("Min VRAM: \(String(format: "%.1f", model.minVramGb)) GB")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        HStack {
+                            Image(systemName: "cpu")
+                                .foregroundColor(.secondary)
+                            Text("Quantization: \(model.quantization)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
 
@@ -483,6 +599,77 @@ enum AnyModelItem: Identifiable {
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
+            }
+
+        case .huggingface(let model):
+            VStack(alignment: .leading, spacing: 8) {
+                Text("About")
+                    .font(.headline)
+
+                // Capabilities
+                HStack(spacing: 6) {
+                    Image(systemName: "sparkles")
+                        .font(.caption)
+                        .foregroundColor(.magnetarPrimary)
+                    Text("Capabilities: \(model.capabilities.joined(separator: ", "))")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                // Parameter size
+                HStack(spacing: 6) {
+                    Image(systemName: "tag")
+                        .font(.caption)
+                        .foregroundColor(.magnetarPrimary)
+                    Text("Parameters: \(model.parameterCount)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                // Quantization
+                HStack(spacing: 6) {
+                    Image(systemName: "square.stack.3d.up")
+                        .font(.caption)
+                        .foregroundColor(.magnetarPrimary)
+                    Text("Quantization: \(model.quantization)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                // Context length
+                HStack(spacing: 6) {
+                    Image(systemName: "text.alignleft")
+                        .font(.caption)
+                        .foregroundColor(.magnetarPrimary)
+                    Text("Context: \(model.contextLength) tokens")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                // Hardware requirements
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Hardware Requirements:")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(.secondary)
+                    HStack(spacing: 4) {
+                        Image(systemName: "memorychip")
+                            .font(.caption2)
+                            .foregroundColor(.orange)
+                        Text("Min VRAM: \(String(format: "%.1f", model.minVramGb)) GB")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    HStack(spacing: 4) {
+                        Image(systemName: "memorychip.fill")
+                            .font(.caption2)
+                            .foregroundColor(.green)
+                        Text("Recommended: \(String(format: "%.1f", model.recommendedVramGb)) GB")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding(.top, 4)
             }
 
         case .cloud:

@@ -27,6 +27,20 @@ from .lazy_init import (
 
 logger = logging.getLogger(__name__)
 
+# Backend detection prefix
+HUGGINGFACE_MODEL_PREFIX = "hf:"
+
+
+def _is_huggingface_model(model: Optional[str]) -> bool:
+    """Check if model ID indicates a HuggingFace/llama.cpp model"""
+    return model is not None and model.startswith(HUGGINGFACE_MODEL_PREFIX)
+
+
+def _get_llamacpp_inference():
+    """Lazy import llama.cpp inference to avoid circular imports"""
+    from api.services.llamacpp.inference import get_llamacpp_inference
+    return get_llamacpp_inference()
+
 # Router mode: 'adaptive' (GPU, learns) or 'ane' (ultra-low power)
 current_router_mode = 'ane'  # Default to ANE for battery life
 
@@ -327,16 +341,48 @@ async def send_message_stream(
         # Send SSE header
         yield "data: [START]\n\n"
 
-        async for chunk in ollama_client.chat(
-            model,
-            ollama_messages,
-            temperature=temperature,
-            top_p=top_p,
-            top_k=top_k,
-            repeat_penalty=repeat_penalty
-        ):
-            full_response += chunk
-            yield f"data: {json.dumps({'content': chunk})}\n\n"
+        # Route to appropriate backend based on model source
+        if _is_huggingface_model(model):
+            # HuggingFace model → llama.cpp backend
+            from api.services.llamacpp.inference import ChatMessage as LlamaCppMessage
+
+            llamacpp = _get_llamacpp_inference()
+
+            # Convert messages to llama.cpp format
+            llamacpp_messages = [
+                LlamaCppMessage(role=msg["role"], content=msg["content"])
+                for msg in ollama_messages
+            ]
+
+            logger.info(f"🦙 Routing to llama.cpp backend for model: {model}")
+
+            async for chunk in llamacpp.chat(
+                llamacpp_messages,
+                temperature=temperature,
+                top_p=top_p,
+                top_k=top_k,
+                repeat_penalty=repeat_penalty,
+                stream=True
+            ):
+                if chunk.content:
+                    full_response += chunk.content
+                    yield f"data: {json.dumps({'content': chunk.content})}\n\n"
+
+                if chunk.finish_reason == "stop":
+                    break
+
+        else:
+            # Ollama backend (default)
+            async for chunk in ollama_client.chat(
+                model,
+                ollama_messages,
+                temperature=temperature,
+                top_p=top_p,
+                top_k=top_k,
+                repeat_penalty=repeat_penalty
+            ):
+                full_response += chunk
+                yield f"data: {json.dumps({'content': chunk})}\n\n"
 
         # Save assistant message
         assistant_timestamp = datetime.now(UTC).isoformat()
