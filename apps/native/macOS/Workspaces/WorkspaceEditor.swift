@@ -124,25 +124,31 @@ struct WorkspaceEditor: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 2) {
-                ForEach(blocks.indices, id: \.self) { index in
-                    let blockId = blocks[index].id
+                ForEach(Array(blocks.enumerated()), id: \.element.id) { index, block in
                     BlockView(
-                        block: $blocks[index],
+                        block: Binding(
+                            get: { blocks.indices.contains(index) ? blocks[index] : block },
+                            set: { newValue in
+                                if blocks.indices.contains(index) {
+                                    blocks[index] = newValue
+                                }
+                            }
+                        ),
                         index: index,
-                        isFocused: focusedBlockId == blockId,
-                        onFocus: { focusedBlockId = blockId },
+                        isFocused: focusedBlockId == block.id,
+                        onFocus: { focusedBlockId = block.id },
                         onSlashTyped: {
-                            slashMenuBlockId = blockId
+                            slashMenuBlockId = block.id
                             slashQuery = ""
                             selectedCommandIndex = 0
                             showSlashMenu = true
                         },
-                        onEnter: { insertBlockAfter(blockId) },
-                        onDelete: { deleteBlockIfEmpty(blockId) },
-                        onArrowUp: { focusPreviousBlock(from: blockId) },
-                        onArrowDown: { focusNextBlock(from: blockId) }
+                        onEnter: { insertBlockAfter(block.id) },
+                        onDelete: { deleteBlockIfEmpty(block.id) },
+                        onArrowUp: { focusPreviousBlock(from: block.id) },
+                        onArrowDown: { focusNextBlock(from: block.id) }
                     )
-                    .id(blockId)
+                    .id(block.id)
                 }
             }
             .padding(16)
@@ -189,15 +195,21 @@ struct WorkspaceEditor: View {
         .onAppear {
             loadFromContent()
         }
-        .onChange(of: content) { _, newValue in
+        .onChange(of: content) { oldValue, newValue in
             // Reload blocks when content changes externally (switching notes)
-            let currentContent = blocks.map { $0.content }.joined(separator: "\n")
-            if newValue != currentContent {
+            // Only reload if this isn't from our own save (compare with what blocks would produce)
+            let blocksContent = blocks.map { $0.content }.joined(separator: "\n")
+            if newValue != blocksContent && oldValue != newValue {
                 loadFromContent()
             }
         }
-        .onChange(of: blocks) { _, _ in
-            saveToContent()
+        .onChange(of: blocks) { oldBlocks, newBlocks in
+            // Only save if blocks actually changed content
+            let oldContent = oldBlocks.map { $0.content }.joined(separator: "\n")
+            let newContent = newBlocks.map { $0.content }.joined(separator: "\n")
+            if oldContent != newContent {
+                saveToContent()
+            }
         }
     }
 
