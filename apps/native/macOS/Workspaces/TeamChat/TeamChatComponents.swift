@@ -3,10 +3,12 @@
 //  MagnetarStudio (macOS)
 //
 //  Team chat UI components - Extracted from TeamWorkspace.swift
+//  Enhanced with hover actions, copy feedback, and visual polish
 //
 
 import SwiftUI
 import Foundation
+import AppKit
 import os
 
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "TeamChatComponents")
@@ -379,9 +381,16 @@ struct TeamChatWindow: View {
 
 struct TeamMessageRow: View {
     let message: TeamMessage
+    var onReply: (() -> Void)? = nil
+    var onReact: (() -> Void)? = nil
+    var onCopy: (() -> Void)? = nil
+
+    @State private var isHovered = false
+    @State private var showCopied = false
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
+            // Avatar
             Circle()
                 .fill(LinearGradient.magnetarGradient)
                 .frame(width: 36, height: 36)
@@ -392,6 +401,7 @@ struct TeamMessageRow: View {
                 )
 
             VStack(alignment: .leading, spacing: 4) {
+                // Header: name, timestamp, encryption badge
                 HStack(spacing: 8) {
                     Text(message.senderName)
                         .font(.system(size: 14, weight: .semibold))
@@ -401,16 +411,45 @@ struct TeamMessageRow: View {
                         .foregroundColor(.secondary)
 
                     if message.encrypted {
-                        Image(systemName: "lock.fill")
-                            .font(.system(size: 10))
-                            .foregroundColor(.green.opacity(0.7))
+                        HStack(spacing: 2) {
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 9))
+                            Text("E2E")
+                                .font(.system(size: 9, weight: .medium))
+                        }
+                        .foregroundColor(.green)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(Color.green.opacity(0.1))
+                        .clipShape(Capsule())
+                    }
+
+                    Spacer()
+
+                    // Hover actions
+                    if isHovered {
+                        HStack(spacing: 4) {
+                            MessageActionButton(icon: "face.smiling", help: "Add reaction") {
+                                onReact?()
+                            }
+                            MessageActionButton(icon: "arrowshape.turn.up.left", help: "Reply") {
+                                onReply?()
+                            }
+                            MessageActionButton(icon: showCopied ? "checkmark" : "doc.on.doc", help: "Copy", isSuccess: showCopied) {
+                                copyMessage()
+                            }
+                        }
+                        .transition(.opacity.combined(with: .scale(scale: 0.95)))
                     }
                 }
 
+                // Message content
                 Text(message.content)
                     .font(.system(size: 14))
                     .foregroundColor(.primary)
+                    .textSelection(.enabled)
 
+                // Edited indicator
                 if message.editedAt != nil {
                     Text("(edited)")
                         .font(.system(size: 11))
@@ -418,8 +457,29 @@ struct TeamMessageRow: View {
                         .italic()
                 }
             }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(isHovered ? Color.gray.opacity(0.05) : Color.clear)
+        )
+        .contentShape(Rectangle())
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.1)) {
+                isHovered = hovering
+            }
+        }
+    }
 
-            Spacer()
+    private func copyMessage() {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(message.content, forType: .string)
+        onCopy?()
+
+        withAnimation { showCopied = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            withAnimation { showCopied = false }
         }
     }
 
@@ -432,6 +492,35 @@ struct TeamMessageRow: View {
         let relativeFormatter = RelativeDateTimeFormatter()
         relativeFormatter.unitsStyle = .short
         return relativeFormatter.localizedString(for: date, relativeTo: Date())
+    }
+}
+
+// MARK: - Message Action Button
+
+private struct MessageActionButton: View {
+    let icon: String
+    let help: String
+    var isSuccess: Bool = false
+    let action: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 12))
+                .foregroundColor(isSuccess ? .green : (isHovered ? .primary : .secondary))
+                .frame(width: 26, height: 26)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(isSuccess ? Color.green.opacity(0.1) : (isHovered ? Color.gray.opacity(0.15) : Color.gray.opacity(0.08)))
+                )
+        }
+        .buttonStyle(.plain)
+        .help(help)
+        .onHover { hovering in
+            isHovered = hovering
+        }
     }
 }
 
