@@ -3,6 +3,7 @@
 //  MagnetarStudio (macOS)
 //
 //  MagnetarCloud connection status with controls - Extracted from MagnetarHubWorkspace.swift (Phase 6.12)
+//  Enhanced with hover effects and improved status indicators
 //
 
 import SwiftUI
@@ -20,6 +21,8 @@ struct HubCloudStatus: View {
     var pendingChanges: Int = 0
     var activeConflicts: Int = 0
     var onSync: (() -> Void)? = nil
+
+    @State private var isHovered = false
 
     var body: some View {
         if isAuthenticated {
@@ -47,44 +50,38 @@ struct HubCloudStatus: View {
 
                 Spacer()
 
-                // Control buttons
-                HStack(spacing: 6) {
+                // Control buttons with hover effects
+                HStack(spacing: 4) {
                     // Sync button
-                    if let onSync = onSync {
-                        Button {
-                            onSync()
-                        } label: {
-                            Image(systemName: isSyncing ? "arrow.triangle.2.circlepath" : "arrow.triangle.2.circlepath")
-                                .font(.system(size: 11))
-                                .foregroundColor(.magnetarPrimary)
-                                .rotationEffect(.degrees(isSyncing ? 360 : 0))
-                                .animation(isSyncing ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, value: isSyncing)
+                    if onSync != nil {
+                        StatusActionButton(
+                            icon: "arrow.triangle.2.circlepath",
+                            color: .magnetarPrimary,
+                            help: "Sync now",
+                            disabled: isActionInProgress || isSyncing,
+                            isAnimating: isSyncing
+                        ) {
+                            onSync?()
                         }
-                        .buttonStyle(.plain)
-                        .disabled(isActionInProgress || isSyncing)
                     }
 
                     // Disconnect button
-                    Button {
-                        onDisconnect()
-                    } label: {
-                        Image(systemName: "power")
-                            .font(.system(size: 11))
-                            .foregroundColor(.green)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(isActionInProgress)
+                    StatusActionButton(
+                        icon: "power",
+                        color: .green,
+                        help: "Disconnect",
+                        disabled: isActionInProgress,
+                        action: onDisconnect
+                    )
 
                     // Refresh button
-                    Button {
-                        onReconnect()
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 11))
-                            .foregroundColor(.magnetarPrimary)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(isActionInProgress)
+                    StatusActionButton(
+                        icon: "arrow.clockwise",
+                        color: .magnetarPrimary,
+                        help: "Reconnect",
+                        disabled: isActionInProgress,
+                        action: onReconnect
+                    )
 
                     if isActionInProgress {
                         ProgressView()
@@ -123,8 +120,15 @@ struct HubCloudStatus: View {
             }
         }
         .padding(8)
-        .background(Color.surfaceTertiary.opacity(0.3))
-        .cornerRadius(6)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isHovered ? Color.surfaceTertiary.opacity(0.5) : Color.surfaceTertiary.opacity(0.3))
+        )
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
+        }
     }
 
     private var statusIndicator: some View {
@@ -181,7 +185,14 @@ struct HubCloudStatus: View {
             }
         }
         .padding(8)
-        .background(Color.surfaceTertiary.opacity(0.3))
-        .cornerRadius(6)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isHovered ? Color.surfaceTertiary.opacity(0.5) : Color.surfaceTertiary.opacity(0.3))
+        )
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
+        }
     }
 }
