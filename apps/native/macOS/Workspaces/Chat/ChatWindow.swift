@@ -106,7 +106,11 @@ struct ChatWindow: View {
             } else {
                 ChatMessageList(
                     messages: chatStore.messages,
+                    isStreaming: chatStore.isStreaming,
                     onRetryIncomplete: {
+                        await chatStore.regenerateLastResponse()
+                    },
+                    onRegenerate: {
                         await chatStore.regenerateLastResponse()
                     }
                 )
@@ -212,20 +216,30 @@ struct ChatEmptyMessagesView: View {
 
 struct ChatMessageList: View {
     let messages: [ChatMessage]
+    var isStreaming: Bool = false  // True when AI is generating a response
     var onRetryIncomplete: (() async -> Void)?  // Callback to retry incomplete messages
+    var onRegenerate: (() async -> Void)?  // Callback to regenerate last response
 
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 16) {
-                    ForEach(messages) { message in
+                    ForEach(Array(messages.enumerated()), id: \.element.id) { index, message in
+                        let isLastMessage = index == messages.count - 1
+                        let isLastAssistant = message.role == .assistant && isLastMessage
+
                         ChatMessageRow(
                             message: message,
                             onRetry: message.isIncomplete ? {
                                 Task {
                                     await onRetryIncomplete?()
                                 }
-                            } : nil
+                            } : (isLastAssistant && !isStreaming ? {
+                                Task {
+                                    await onRegenerate?()
+                                }
+                            } : nil),
+                            isStreaming: isLastMessage && isStreaming && message.role == .assistant
                         )
                         .id(message.id)
                     }
@@ -237,6 +251,12 @@ struct ChatMessageList: View {
                     withAnimation {
                         proxy.scrollTo(lastMessage.id, anchor: .bottom)
                     }
+                }
+            }
+            // Also scroll when content changes (streaming)
+            .onChange(of: messages.last?.content) { _, _ in
+                if let lastMessage = messages.last {
+                    proxy.scrollTo(lastMessage.id, anchor: .bottom)
                 }
             }
         }
