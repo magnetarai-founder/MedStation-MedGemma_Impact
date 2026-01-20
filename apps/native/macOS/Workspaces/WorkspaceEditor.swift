@@ -474,7 +474,12 @@ struct BlockView: View {
     }
 }
 
-// MARK: - Block Text View (NSViewRepresentable with proper undo support)
+// MARK: - Block Text View (NSViewRepresentable with native undo support)
+//
+// Key insight: Notion uses Electron/web tech. For native macOS, we must let
+// NSTextView manage its own undo stack without SwiftUI interference.
+// Based on: https://github.com/shufflingB/swiftui-macos-undoable-texteditor
+//
 
 struct BlockTextField: View {
     @Binding var text: String
@@ -543,13 +548,8 @@ struct BlockTextFieldRepresentable: NSViewRepresentable {
         textView.placeholderString = placeholder
         textView.translatesAutoresizingMaskIntoConstraints = false
 
-        // Custom callbacks
-        textView.onFocus = onFocus
-        textView.onSlashTyped = onSlashTyped
-        textView.onEnter = onEnter
-        textView.onDelete = onDelete
-        textView.onArrowUp = onArrowUp
-        textView.onArrowDown = onArrowDown
+        // Set initial text
+        textView.string = text
 
         containerView.addSubview(textView)
 
@@ -562,6 +562,7 @@ struct BlockTextFieldRepresentable: NSViewRepresentable {
 
         context.coordinator.textView = textView
         context.coordinator.containerView = containerView
+        context.coordinator.lastSyncedText = text
 
         return containerView
     }
@@ -569,23 +570,25 @@ struct BlockTextFieldRepresentable: NSViewRepresentable {
     func updateNSView(_ nsView: NSView, context: Context) {
         guard let textView = context.coordinator.textView else { return }
 
-        // Only update if text actually changed from external source
-        if textView.string != text && !context.coordinator.isEditing {
+        // CRITICAL: Only update text if it changed externally AND we're not editing
+        // This preserves the native undo stack
+        let externalChange = text != context.coordinator.lastSyncedText
+        let notEditing = !context.coordinator.isEditing
+
+        if externalChange && notEditing {
+            // External change (e.g., switching notes) - reset text and undo
             textView.string = text
+            textView.undoManager?.removeAllActions()
+            context.coordinator.lastSyncedText = text
+            context.coordinator.previousText = text
         }
 
+        // Always update appearance
         textView.font = font
         textView.textColor = textColor
         textView.placeholderString = placeholder
 
-        // Update callbacks
-        textView.onFocus = onFocus
-        textView.onSlashTyped = onSlashTyped
-        textView.onEnter = onEnter
-        textView.onDelete = onDelete
-        textView.onArrowUp = onArrowUp
-        textView.onArrowDown = onArrowDown
-
+        // Focus handling
         if isFocused && nsView.window?.firstResponder != textView {
             DispatchQueue.main.async {
                 nsView.window?.makeFirstResponder(textView)
@@ -607,17 +610,18 @@ struct BlockTextFieldRepresentable: NSViewRepresentable {
         weak var textView: UndoableTextView?
         weak var containerView: NSView?
         var isEditing = false
-        private var previousText = ""
+        var previousText = ""
+        var lastSyncedText = ""  // Track what SwiftUI binding last knew about
 
         init(_ parent: BlockTextFieldRepresentable) {
             self.parent = parent
             self.previousText = parent.text
+            self.lastSyncedText = parent.text
         }
 
         func updateHeight() {
             guard let textView = textView else { return }
 
-            // Calculate required height for text
             let layoutManager = textView.layoutManager!
             let textContainer = textView.textContainer!
 
@@ -637,11 +641,7 @@ struct BlockTextFieldRepresentable: NSViewRepresentable {
 
         func textDidEndEditing(_ notification: Notification) {
             isEditing = false
-            // Sync text to binding when done editing - this is the only sync point
-            if let textView = notification.object as? NSTextView {
-                parent.text = textView.string
-                previousText = textView.string
-            }
+            syncTextToBinding()
         }
 
         func textDidChange(_ notification: Notification) {
@@ -654,17 +654,14 @@ struct BlockTextFieldRepresentable: NSViewRepresentable {
             }
 
             previousText = newText
-
-            // Update height after text change
             updateHeight()
 
-            // DON'T update binding here - it breaks native undo/redo
-            // Text syncs to parent when editing ends (focus lost, Enter pressed, etc.)
+            // NO binding update here - NSTextView manages its own undo stack
+            // Undo/redo will work natively with Cmd+Z / Cmd+Shift+Z
         }
 
         func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
             if commandSelector == #selector(NSResponder.insertNewline(_:)) {
-                // Sync text before creating new block
                 syncTextToBinding()
                 parent.onEnter()
                 return true
@@ -678,7 +675,6 @@ struct BlockTextFieldRepresentable: NSViewRepresentable {
             }
 
             if commandSelector == #selector(NSResponder.moveUp(_:)) {
-                // Only intercept if at first line
                 if isAtFirstLine(textView) {
                     syncTextToBinding()
                     parent.onArrowUp()
@@ -687,7 +683,6 @@ struct BlockTextFieldRepresentable: NSViewRepresentable {
             }
 
             if commandSelector == #selector(NSResponder.moveDown(_:)) {
-                // Only intercept if at last line
                 if isAtLastLine(textView) {
                     syncTextToBinding()
                     parent.onArrowDown()
@@ -698,9 +693,11 @@ struct BlockTextFieldRepresentable: NSViewRepresentable {
             return false
         }
 
-        private func syncTextToBinding() {
+        func syncTextToBinding() {
             guard let textView = textView else { return }
-            parent.text = textView.string
+            let currentText = textView.string
+            parent.text = currentText
+            lastSyncedText = currentText
         }
 
         private func isAtFirstLine(_ textView: NSTextView) -> Bool {
