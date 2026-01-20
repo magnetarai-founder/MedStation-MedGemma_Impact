@@ -18,8 +18,9 @@ from api.p2p_chat.models import (
     ChannelListResponse,
     ChannelType,
 )
-from api.services.p2p_chat import get_p2p_chat_service
 from api.auth_middleware import get_current_user
+
+# NOTE: Import get_p2p_chat_service lazily inside functions to avoid circular import
 from api.p2p_chat.state import get_channel_invitations
 from api.p2p_chat.websocket_routes import broadcast_event
 
@@ -31,6 +32,8 @@ router = APIRouter()
 @router.post("/channels", response_model=Channel)
 async def create_channel(request: Request, body: CreateChannelRequest) -> Channel:
     """Create a new channel"""
+    from api.services.p2p_chat import get_p2p_chat_service
+
     service = get_p2p_chat_service()
 
     if not service or not service.is_running:
@@ -55,6 +58,8 @@ async def create_channel(request: Request, body: CreateChannelRequest) -> Channe
 @router.post("/dm", response_model=Channel)
 async def create_direct_message(request: Request, body: CreateDMRequest) -> Channel:
     """Create a direct message channel with another peer"""
+    from api.services.p2p_chat import get_p2p_chat_service
+
     service = get_p2p_chat_service()
 
     if not service or not service.is_running:
@@ -102,6 +107,8 @@ async def create_direct_message(request: Request, body: CreateDMRequest) -> Chan
 @router.get("/channels", response_model=ChannelListResponse)
 async def list_channels() -> ChannelListResponse:
     """List all channels (public, private, and DMs)"""
+    from api.services.p2p_chat import get_p2p_chat_service
+
     service = get_p2p_chat_service()
 
     if not service:
@@ -118,6 +125,8 @@ async def list_channels() -> ChannelListResponse:
 @router.get("/channels/{channel_id}", response_model=Channel)
 async def get_channel(channel_id: str) -> Channel:
     """Get a specific channel"""
+    from api.services.p2p_chat import get_p2p_chat_service
+
     service = get_p2p_chat_service()
 
     if not service:
@@ -139,6 +148,8 @@ async def invite_to_channel(
     current_user: Dict[str, Any] = Depends(get_current_user)
 ) -> Dict[str, Any]:
     """Invite peers to a channel"""
+    from api.services.p2p_chat import get_p2p_chat_service
+
     service = get_p2p_chat_service()
 
     if not service or not service.is_running:
@@ -195,6 +206,8 @@ async def list_channel_invitations(
     current_user: Dict[str, Any] = Depends(get_current_user)
 ) -> Dict[str, Any]:
     """List invitations for a channel"""
+    from api.services.p2p_chat import get_p2p_chat_service
+
     service = get_p2p_chat_service()
 
     if not service:
@@ -231,6 +244,8 @@ async def accept_channel_invitation(
     current_user: Dict[str, Any] = Depends(get_current_user)
 ) -> Dict[str, Any]:
     """Accept a channel invitation"""
+    from api.services.p2p_chat import get_p2p_chat_service
+
     service = get_p2p_chat_service()
 
     if not service or not service.is_running:

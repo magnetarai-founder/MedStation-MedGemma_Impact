@@ -15,8 +15,9 @@ from api.p2p_chat.models import (
     SendMessageRequest,
     MessageListResponse,
 )
-from api.services.p2p_chat import get_p2p_chat_service
 from api.auth_middleware import get_current_user
+
+# NOTE: Import get_p2p_chat_service lazily inside functions to avoid circular import
 from api.p2p_chat.state import get_read_receipts, get_all_read_receipts
 from api.p2p_chat.websocket_routes import broadcast_event
 
@@ -28,6 +29,8 @@ router = APIRouter()
 @router.post("/channels/{channel_id}/messages", response_model=Message)
 async def send_message(request: Request, channel_id: str, body: SendMessageRequest) -> Message:
     """Send a message to a channel"""
+    from api.services.p2p_chat import get_p2p_chat_service
+
     service = get_p2p_chat_service()
 
     if not service or not service.is_running:
@@ -55,6 +58,8 @@ async def send_message(request: Request, channel_id: str, body: SendMessageReque
 @router.get("/channels/{channel_id}/messages", response_model=MessageListResponse)
 async def get_messages(channel_id: str, limit: int = 50) -> MessageListResponse:
     """Get messages for a channel"""
+    from api.services.p2p_chat import get_p2p_chat_service
+
     service = get_p2p_chat_service()
 
     if not service:
@@ -83,6 +88,8 @@ async def mark_message_as_read(
     current_user: Dict[str, Any] = Depends(get_current_user)
 ) -> Dict[str, Any]:
     """Mark a message as read"""
+    from api.services.p2p_chat import get_p2p_chat_service
+
     service = get_p2p_chat_service()
 
     if not service or not service.is_running:
@@ -132,6 +139,8 @@ async def get_message_receipts(
     current_user: Dict[str, Any] = Depends(get_current_user)
 ) -> Dict[str, Any]:
     """Get read receipts for a message"""
+    from api.services.p2p_chat import get_p2p_chat_service
+
     service = get_p2p_chat_service()
 
     if not service:
@@ -154,6 +163,8 @@ async def get_channel_receipts(
     current_user: Dict[str, Any] = Depends(get_current_user)
 ) -> Dict[str, Any]:
     """Get all read receipts for messages in a channel"""
+    from api.services.p2p_chat import get_p2p_chat_service
+
     service = get_p2p_chat_service()
 
     if not service:

@@ -19,10 +19,13 @@ from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, Request, Depends
 import logging
 
-from api.services.p2p_chat import get_p2p_chat_service, init_p2p_chat_service
 from api.rate_limiter import connection_code_limiter, get_client_ip
 from api.auth_middleware import get_current_user
 from api.errors import http_400, http_404, http_429, http_500, http_503
+
+# NOTE: Import p2p_chat services lazily inside functions to avoid circular import
+# api.services.p2p_chat imports api.p2p_chat.models, and the import chain
+# can cause circular dependencies when modules are loaded simultaneously.
 
 # Re-export models for backward compatibility
 from .p2p_mesh_models import (
@@ -74,6 +77,8 @@ async def start_p2p_mesh(request: Request, display_name: str = "ElohimOS User", 
     Returns:
         P2P service status
     """
+    from api.services.p2p_chat import get_p2p_chat_service, init_p2p_chat_service
+
     try:
         # Initialize or get existing service
         service = get_p2p_chat_service()
@@ -114,6 +119,8 @@ async def stop_p2p_mesh(request: Request) -> Dict[str, str]:
     Returns:
         Status message
     """
+    from api.services.p2p_chat import get_p2p_chat_service
+
     try:
         service = get_p2p_chat_service()
 
@@ -138,6 +145,8 @@ async def get_p2p_peers() -> Dict[str, Any]:
     Returns:
         List of peers for NetworkSelector UI
     """
+    from api.services.p2p_chat import get_p2p_chat_service
+
     try:
         service = get_p2p_chat_service()
 
@@ -182,6 +191,8 @@ async def generate_connection_code_endpoint(request: Request) -> Dict[str, Any]:
     Returns:
         Connection code and peer information
     """
+    from api.services.p2p_chat import get_p2p_chat_service
+
     try:
         service = get_p2p_chat_service()
 
@@ -235,6 +246,8 @@ async def connect_to_peer(request: Request, body: AddPeerRequest) -> Dict[str, A
     Returns:
         Connection status
     """
+    from api.services.p2p_chat import get_p2p_chat_service
+
     # Rate limit check (prevents brute force attacks)
     client_ip = get_client_ip(request)
     allowed, error_message = connection_code_limiter.check_attempt(client_ip)
@@ -309,6 +322,8 @@ async def get_p2p_mesh_status() -> Dict[str, Any]:
     Returns:
         Status including connected peers, multiaddrs, etc.
     """
+    from api.services.p2p_chat import get_p2p_chat_service
+
     try:
         service = get_p2p_chat_service()
 
@@ -364,6 +379,7 @@ async def get_diagnostics(request: Request):
     """
     import socket
     import platform
+    from api.services.p2p_chat import get_p2p_chat_service
 
     service = get_p2p_chat_service()
 
@@ -437,6 +453,7 @@ async def run_diagnostic_checks(request: Request):
     import socket
     import platform
     import subprocess
+    from api.services.p2p_chat import get_p2p_chat_service
 
     checks = []
     service = get_p2p_chat_service()

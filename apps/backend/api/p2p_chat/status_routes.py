@@ -14,7 +14,10 @@ from api.p2p_chat.models import (
     PeerListResponse,
     P2PStatusResponse,
 )
-from api.services.p2p_chat import get_p2p_chat_service, init_p2p_chat_service
+
+# NOTE: Import services lazily inside functions to avoid circular import
+# api.services.p2p_chat imports api.p2p_chat.models, and api.p2p_chat/__init__.py
+# imports this file, creating a circular dependency if imported at module level.
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +30,8 @@ async def initialize_p2p_service(request: Request, display_name: str, device_nam
     Initialize the P2P chat service
     Called once when the app starts
     """
+    from api.services.p2p_chat import init_p2p_chat_service
+
     try:
         service = init_p2p_chat_service(display_name, device_name)
         await service.start()
@@ -46,6 +51,8 @@ async def initialize_p2p_service(request: Request, display_name: str, device_nam
 @router.get("/status", response_model=P2PStatusResponse)
 async def get_p2p_status() -> P2PStatusResponse:
     """Get current P2P network status"""
+    from api.services.p2p_chat import get_p2p_chat_service
+
     service = get_p2p_chat_service()
 
     if not service or not service.is_running:
@@ -73,6 +80,8 @@ async def get_p2p_status() -> P2PStatusResponse:
 @router.get("/peers", response_model=PeerListResponse)
 async def list_peers() -> PeerListResponse:
     """List all discovered peers"""
+    from api.services.p2p_chat import get_p2p_chat_service
+
     service = get_p2p_chat_service()
 
     if not service:
@@ -89,6 +98,8 @@ async def list_peers() -> PeerListResponse:
 @router.get("/peers/{peer_id}", response_model=Peer)
 async def get_peer(peer_id: str) -> Peer:
     """Get details about a specific peer"""
+    from api.services.p2p_chat import get_p2p_chat_service
+
     service = get_p2p_chat_service()
 
     if not service:
