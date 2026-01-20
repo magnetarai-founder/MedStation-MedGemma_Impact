@@ -133,48 +133,91 @@ struct DropOverlayView: View {
 struct VaultFileCard: View {
     let file: VaultFile
 
+    @State private var isHovered = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Icon chip
-            ZStack {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color(file.mimeColor).opacity(0.15))
-                    .frame(height: 80)
+            // Icon chip with encrypted badge
+            ZStack(alignment: .topTrailing) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color(file.mimeColor).opacity(isHovered ? 0.25 : 0.15))
+                        .frame(height: 80)
 
-                Image(systemName: file.mimeIcon)
-                    .font(.system(size: 32))
-                    .foregroundColor(Color(file.mimeColor))
+                    Image(systemName: file.mimeIcon)
+                        .font(.system(size: 32))
+                        .foregroundColor(Color(file.mimeColor))
+                }
+
+                // Encrypted badge (all vault files are encrypted)
+                if !file.isFolder {
+                    HStack(spacing: 2) {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 8))
+                    }
+                    .foregroundColor(.green)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 3)
+                    .background(Color.green.opacity(0.15))
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                    .padding(6)
+                }
             }
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(file.name)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 13, weight: isHovered ? .semibold : .medium))
                     .lineLimit(1)
                     .truncationMode(.middle)
 
-                HStack(spacing: 8) {
-                    Text(file.sizeFormatted)
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
+                HStack(spacing: 6) {
+                    // File size
+                    HStack(spacing: 3) {
+                        Image(systemName: "doc")
+                            .font(.system(size: 9))
+                        Text(file.sizeFormatted)
+                            .font(.system(size: 10))
+                    }
+                    .foregroundColor(.secondary)
 
-                    Text("•")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-
-                    Text(file.modifiedFormatted)
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
+                    // Modified date
+                    HStack(spacing: 3) {
+                        Image(systemName: "clock")
+                            .font(.system(size: 9))
+                        Text(file.modifiedFormatted)
+                            .font(.system(size: 10))
+                    }
+                    .foregroundColor(.secondary)
                 }
+            }
+
+            // Hover action hint
+            if isHovered && !file.isFolder {
+                HStack(spacing: 4) {
+                    Image(systemName: "eye")
+                        .font(.system(size: 9))
+                    Text("Click to preview")
+                        .font(.system(size: 9))
+                }
+                .foregroundStyle(.tertiary)
+                .transition(.opacity)
             }
         }
         .padding(12)
         .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color(.controlBackgroundColor))
+            RoundedRectangle(cornerRadius: 10)
+                .fill(isHovered ? Color(file.mimeColor).opacity(0.08) : Color(.controlBackgroundColor))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .strokeBorder(Color.gray.opacity(0.2), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 10)
+                .strokeBorder(isHovered ? Color(file.mimeColor).opacity(0.4) : Color.gray.opacity(0.2), lineWidth: 1)
         )
+        .scaleEffect(isHovered ? 1.02 : 1.0)
+        .contentShape(Rectangle())
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
+        }
     }
 }

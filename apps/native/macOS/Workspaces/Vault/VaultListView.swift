@@ -125,37 +125,78 @@ struct VaultListView: View {
 struct VaultFileRow: View {
     let file: VaultFile
 
+    @State private var isHovered = false
+
     var body: some View {
         HStack(spacing: 16) {
             HStack(spacing: 10) {
-                Image(systemName: file.mimeIcon)
-                    .font(.system(size: 16))
-                    .foregroundColor(Color(file.mimeColor))
+                // Icon with background
+                ZStack {
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color(file.mimeColor).opacity(isHovered ? 0.2 : 0.1))
+                        .frame(width: 28, height: 28)
 
-                Text(file.name)
-                    .font(.system(size: 14))
-                    .lineLimit(1)
+                    Image(systemName: file.mimeIcon)
+                        .font(.system(size: 14))
+                        .foregroundColor(Color(file.mimeColor))
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(file.name)
+                        .font(.system(size: 14, weight: isHovered ? .medium : .regular))
+                        .lineLimit(1)
+
+                    // Show encrypted status on hover (all vault files are encrypted)
+                    if isHovered && !file.isFolder {
+                        HStack(spacing: 3) {
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 8))
+                            Text("Encrypted")
+                                .font(.system(size: 9))
+                        }
+                        .foregroundColor(.green)
+                        .transition(.opacity)
+                    }
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
             Text(file.sizeFormatted)
-                .font(.system(size: 14))
+                .font(.system(size: 13))
                 .foregroundColor(.secondary)
                 .frame(width: 100, alignment: .trailing)
 
             Text(file.modifiedFormatted)
-                .font(.system(size: 14))
+                .font(.system(size: 13))
                 .foregroundColor(.secondary)
                 .frame(width: 120, alignment: .trailing)
+
+            // Hover actions
+            if isHovered && !file.isFolder {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+                    .transition(.opacity)
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .background(Color.clear)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isHovered ? Color(file.mimeColor).opacity(0.08) : Color.clear)
+                .padding(.horizontal, 4)
+        )
         .overlay(
             Rectangle()
                 .fill(Color.gray.opacity(0.1))
                 .frame(height: 1),
             alignment: .bottom
         )
+        .contentShape(Rectangle())
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
+        }
     }
 }
