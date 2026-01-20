@@ -28,6 +28,9 @@ redis>=5.0.0
 # Cloud storage (S3-compatible)
 boto3>=1.35.0
 
+# HuggingFace model downloads (GGUF)
+huggingface_hub>=0.20.0
+
 # Offline mesh networking & distributed computing
 zeroconf>=0.132.0
 websockets>=12.0

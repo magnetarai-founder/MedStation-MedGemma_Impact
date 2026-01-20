@@ -21,6 +21,7 @@
 		0E38E6FD1933BBDA3CFA4B7D /* HotSlotModelPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCA1081C0811F4592D1C0CA6 /* HotSlotModelPicker.swift */; };
 		109D246960B1A759BFD6F7E7 /* NetworkFirewallModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = A602C84A80EBCA075A2804CE /* NetworkFirewallModifier.swift */; };
 		12335C3DECED144718B5B8E9 /* SmartModelPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEEBC936A480A54E9AF67EC0 /* SmartModelPicker.swift */; };
+		13F6C8B044F4B4F10FDA24F3 /* UnifiedModelsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ADD5B4E46ABA5D383102760 /* UnifiedModelsStore.swift */; };
 		16710185EB2D4F5BCBE3361B /* NetworkFirewallProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA521D593363B31DCEA57E75 /* NetworkFirewallProtocol.swift */; };
 		16B997D82CB724EA2CB8D572 /* TeamWorkspaceModelsV2.swift in Sources */ = {isa = PBXBuildFile; fileRef = E97624361C2B23EB714D7A15 /* TeamWorkspaceModelsV2.swift */; };
 		17570CDCD12DCB7A61F30E40 /* VaultWorkspaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B11F7216FF72AFCDF5C1FF5B /* VaultWorkspaceView.swift */; };
@@ -152,6 +153,7 @@
 		9478D1D249E85E0ACA692F4D /* EmptyState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69505A6D37140AE40A44FD1E /* EmptyState.swift */; };
 		9567EB5AF9A8C73D29DD0EA6 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F77D79421B014D8C65EC2CF /* APIClient.swift */; };
 		95F134813544641BDADCA4A7 /* CloudStorageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15F6326D57ED41A20446E9CD /* CloudStorageService.swift */; };
+		9677D2C2AB876659C2D6B453 /* LlamaCppService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 457600E4C48BE9F55A077AF3 /* LlamaCppService.swift */; };
 		988714691A13F8E5B18FC426 /* SettingsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 425ABB43E57B31BA42813082 /* SettingsService.swift */; };
 		9A357732106527637F8F9FED /* RecordingRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 969022054A1AAD53D62AFE47 /* RecordingRow.swift */; };
 		9B9DDB03B00B37D37CF20881 /* ResultsTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC55BEE6E237A6DAF5BBAF46 /* ResultsTable.swift */; };
@@ -186,6 +188,7 @@
 		BFE7239F6C41875C962C8754 /* DetachedChatWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = CECF4B3E6956EE6BB3671F01 /* DetachedChatWindow.swift */; };
 		C39387A4041537956C59BAFC /* LiquidGlassPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 842DAEC1F81C99999F03FF53 /* LiquidGlassPanel.swift */; };
 		C452A97AB912684D90FC49A1 /* SystemCapabilityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE4B483D4F2FD8302464C091 /* SystemCapabilityService.swift */; };
+		C6DBE5B6387133D5838DF5DA /* HuggingFaceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C59E5DB04F9E3F036DF7A2A /* HuggingFaceService.swift */; };
 		C92F82DF611333970E01F4F9 /* VaultGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35BE7C613BFFFD66E5046F64 /* VaultGridView.swift */; };
 		C932837E1E66D83CE37B2CBE /* EmergencyModeModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B219C3E20B76B5299C4D4C6F /* EmergencyModeModels.swift */; };
 		C94882DDBC38AC16458225FE /* EditQueryDialog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39663DEBD42623EFE4CC113C /* EditQueryDialog.swift */; };
@@ -258,6 +261,8 @@
 		055A4449AF267F81C2ECD1F5 /* LibraryModelRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryModelRow.swift; sourceTree = "<group>"; };
 		09F678BF915F91509EA758B6 /* QueryHistoryModal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueryHistoryModal.swift; sourceTree = "<group>"; };
 		0AAEDEDDD485252DA8E19C4D /* DocsWorkspaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocsWorkspaceView.swift; sourceTree = "<group>"; };
+		0ADD5B4E46ABA5D383102760 /* UnifiedModelsStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = UnifiedModelsStore.swift; path = apps/native/Shared/Stores/UnifiedModelsStore.swift; sourceTree = "<group>"; };
+		0C59E5DB04F9E3F036DF7A2A /* HuggingFaceService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HuggingFaceService.swift; path = apps/native/Shared/Services/HuggingFaceService.swift; sourceTree = "<group>"; };
 		0DE77C93F16A443863D97E0F /* SettingsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsModels.swift; sourceTree = "<group>"; };
 		0E214C822D7BAF8E67336727 /* ThreePaneLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreePaneLayout.swift; sourceTree = "<group>"; };
 		0EB4725DB923C8415778B646 /* TeamWorkspaceToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamWorkspaceToolbar.swift; sourceTree = "<group>"; };
@@ -316,6 +321,7 @@
 		43DB6371422D1C3A10CCB715 /* DatabaseComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseComponents.swift; sourceTree = "<group>"; };
 		451A66AAE392348B878436AC /* ModelCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCard.swift; sourceTree = "<group>"; };
 		4525A729742B9939741E100E /* AutomationWorkspaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutomationWorkspaceView.swift; sourceTree = "<group>"; };
+		457600E4C48BE9F55A077AF3 /* LlamaCppService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LlamaCppService.swift; path = apps/native/Shared/Services/LlamaCppService.swift; sourceTree = "<group>"; };
 		45D761DB19ECDB8C76F1D854 /* AppearanceSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppearanceSettingsView.swift; sourceTree = "<group>"; };
 		4A1A161ECFE46B67A8D29CC0 /* TeamChatMessageInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamChatMessageInput.swift; sourceTree = "<group>"; };
 		4A25E14FF110DE632A039D76 /* ModelTagService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelTagService.swift; sourceTree = "<group>"; };
@@ -979,6 +985,7 @@
 				50DB38FFB9089E6ED7986033 /* TeamStore.swift */,
 				ECCDA547C7A34660324A9F82 /* VaultStore.swift */,
 				C26E0420CCEB479665F17DFA /* WorkflowStore.swift */,
+				0ADD5B4E46ABA5D383102760 /* UnifiedModelsStore.swift */,
 			);
 			path = Stores;
 			sourceTree = "<group>";
@@ -1023,6 +1030,8 @@
 				D8A02C2158C163211BDF2A96 /* VaultService.swift */,
 				31982E5E50E81F3365DA8EFF /* WindowOpener.swift */,
 				A94C87674636D11D305C06E8 /* WorkflowService.swift */,
+				0C59E5DB04F9E3F036DF7A2A /* HuggingFaceService.swift */,
+				457600E4C48BE9F55A077AF3 /* LlamaCppService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -1152,8 +1161,6 @@
 			dependencies = (
 			);
 			name = MagnetarStudio;
-			packageProductDependencies = (
-			);
 			productName = MagnetarStudio;
 			productReference = 2C969A3D6C92097E6DF1F837 /* MagnetarStudio.app */;
 			productType = "com.apple.product-type.application";
@@ -1182,6 +1189,7 @@
 			);
 			mainGroup = 0CBF91A9C082C90D7E79AF46;
 			minimizedProjectReferenceProxies = 1;
+			productRefGroup = 734503D79C8E69B6DEAEC3C5 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -1443,6 +1451,9 @@
 				42C2F6958259917DD6643027 /* WorkspaceEditor.swift in Sources */,
 				8E1FF8000D26DBD1EF602249 /* WorkspaceSettingsWindow.swift in Sources */,
 				EDA7F4CF39A669E3E84755F3 /* WorkspaceView.swift in Sources */,
+				C6DBE5B6387133D5838DF5DA /* HuggingFaceService.swift in Sources */,
+				9677D2C2AB876659C2D6B453 /* LlamaCppService.swift in Sources */,
+				13F6C8B044F4B4F10FDA24F3 /* UnifiedModelsStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
