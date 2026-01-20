@@ -53,6 +53,7 @@
 		2DEB0A78B4199E8C5068021E /* ContextService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D209157977BC7A7F38DE1AD6 /* ContextService.swift */; };
 		2F436490506EC9F0E75628D6 /* KanbanStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5142C6C69CBE269D040BEA38 /* KanbanStore.swift */; };
 		2F44E60BC04B7CA9368CF0BB /* KanbanModals.swift in Sources */ = {isa = PBXBuildFile; fileRef = B173070099FE389D8A72A2C0 /* KanbanModals.swift */; };
+		30E6B090620F723E11A7B080 /* WindowOpener.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31982E5E50E81F3365DA8EFF /* WindowOpener.swift */; };
 		311286F505ACCA18869ECC9B /* FileAccessPermissionModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60FE2AEB42BDC3B5833B4175 /* FileAccessPermissionModal.swift */; };
 		314B422ABBCD81E205613B8A /* TeamChatComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21D079105DB0D10E5088D7EF /* TeamChatComponents.swift */; };
 		33A28A605AE75CD2FDB67907 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0555CDE5ACABDDEA3DA1834D /* SettingsView.swift */; };
@@ -295,6 +296,7 @@
 		2C6D18ADE59DFC811C4F0A6D /* NewDocumentModal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewDocumentModal.swift; sourceTree = "<group>"; };
 		2C969A3D6C92097E6DF1F837 /* MagnetarStudio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MagnetarStudio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2D684EFED023D2A6542AAB1F /* KanbanWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KanbanWorkspace.swift; sourceTree = "<group>"; };
+		31982E5E50E81F3365DA8EFF /* WindowOpener.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowOpener.swift; sourceTree = "<group>"; };
 		34971DD3BC58DDBE4BA4514A /* HubEmptyState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HubEmptyState.swift; sourceTree = "<group>"; };
 		35274F6042C71F0C46FAC1B0 /* WorkspaceSettingsWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceSettingsWindow.swift; sourceTree = "<group>"; };
 		354E4437D249910758AB145C /* DocsDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocsDataManager.swift; sourceTree = "<group>"; };
@@ -1019,6 +1021,7 @@
 				AFF9D234BA19170B8C4FC296 /* TrustService.swift */,
 				AE98E1963B4A90F9BD5DD464 /* VaultPermissionManager.swift */,
 				D8A02C2158C163211BDF2A96 /* VaultService.swift */,
+				31982E5E50E81F3365DA8EFF /* WindowOpener.swift */,
 				A94C87674636D11D305C06E8 /* WorkflowService.swift */,
 			);
 			path = Services;
@@ -1423,6 +1426,7 @@
 				17570CDCD12DCB7A61F30E40 /* VaultWorkspaceView.swift in Sources */,
 				42B474E143714E973C2FDA8A /* VouchNodeModal.swift in Sources */,
 				50809FB4E77FE462E56CB89E /* WelcomeView.swift in Sources */,
+				30E6B090620F723E11A7B080 /* WindowOpener.swift in Sources */,
 				6180EFF2064EB535012C065D /* WorkflowAnalyticsModels.swift in Sources */,
 				A57913DA3F78E283B9BFBE48 /* WorkflowAnalyticsView.swift in Sources */,
 				D7E30BE8F3A0B41299CF6682 /* WorkflowBuilderView.swift in Sources */,

@@ -92,10 +92,54 @@ struct MagnetarMenuCommands: Commands {
             .keyboardShortcut("s", modifiers: [.command, .control])
         }
 
-        // Window menu additions
-        // Note: Model Manager (⌘M) and Control Center (⌘.) can be added here
-        // but require @Environment(\.openWindow) which isn't available in Commands.
-        // For now, use the (+) Quick Action menu in the header to open these.
+        // Window menu - Power workspaces in separate windows
+        CommandMenu("Window") {
+            // Create new documents
+            Section("Create") {
+                Button("New Note") {
+                    WindowOpener.shared.openNewNote()
+                }
+                .keyboardShortcut("n", modifiers: [.command, .shift])
+
+                Button("New Chat Window") {
+                    WindowOpener.shared.openNewChat()
+                }
+                .keyboardShortcut("c", modifiers: [.command, .shift])
+            }
+
+            Divider()
+
+            // Power workspaces
+            Section("Power Workspaces") {
+                Button("Code") {
+                    WindowOpener.shared.openCodeWorkspace()
+                }
+                .keyboardShortcut("c", modifiers: [.command, .option])
+
+                Button("Database") {
+                    WindowOpener.shared.openDatabaseWorkspace()
+                }
+                .keyboardShortcut("d", modifiers: [.command, .shift])
+
+                Button("Kanban") {
+                    WindowOpener.shared.openKanbanWorkspace()
+                }
+                .keyboardShortcut("k", modifiers: [.command, .shift])
+
+                Button("Insights") {
+                    WindowOpener.shared.openInsightsWorkspace()
+                }
+                .keyboardShortcut("i", modifiers: [.command, .shift])
+            }
+
+            Divider()
+
+            // Utilities
+            Button("Model Manager") {
+                WindowOpener.shared.openModelManager()
+            }
+            .keyboardShortcut("m", modifiers: .command)
+        }
 
         // Tools menu
         CommandMenu("Tools") {

@@ -44,6 +44,7 @@ struct MagnetarStudioApp: App {
                         databaseStore: databaseStore
                     )
                 }
+                .windowOpenerConfigurator()
         }
         .windowStyle(.hiddenTitleBar)
         .windowToolbarStyle(.unified)
