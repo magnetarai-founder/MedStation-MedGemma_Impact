@@ -476,7 +476,7 @@ struct BlockView: View {
 
 // MARK: - Block Text View (NSViewRepresentable with proper undo support)
 
-struct BlockTextField: NSViewRepresentable {
+struct BlockTextField: View {
     @Binding var text: String
     let placeholder: String
     let font: NSFont
@@ -489,13 +489,43 @@ struct BlockTextField: NSViewRepresentable {
     let onArrowUp: () -> Void
     let onArrowDown: () -> Void
 
-    func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = NSScrollView()
-        scrollView.hasVerticalScroller = false
-        scrollView.hasHorizontalScroller = false
-        scrollView.autohidesScrollers = true
-        scrollView.borderType = .noBorder
-        scrollView.drawsBackground = false
+    @State private var textHeight: CGFloat = 24
+
+    var body: some View {
+        BlockTextFieldRepresentable(
+            text: $text,
+            placeholder: placeholder,
+            font: font,
+            textColor: textColor,
+            isFocused: isFocused,
+            textHeight: $textHeight,
+            onFocus: onFocus,
+            onSlashTyped: onSlashTyped,
+            onEnter: onEnter,
+            onDelete: onDelete,
+            onArrowUp: onArrowUp,
+            onArrowDown: onArrowDown
+        )
+        .frame(height: max(textHeight, font.pointSize + 10))
+    }
+}
+
+struct BlockTextFieldRepresentable: NSViewRepresentable {
+    @Binding var text: String
+    let placeholder: String
+    let font: NSFont
+    var textColor: NSColor = .labelColor
+    let isFocused: Bool
+    @Binding var textHeight: CGFloat
+    let onFocus: () -> Void
+    let onSlashTyped: () -> Void
+    let onEnter: () -> Void
+    let onDelete: () -> Void
+    let onArrowUp: () -> Void
+    let onArrowDown: () -> Void
+
+    func makeNSView(context: Context) -> NSView {
+        let containerView = NSView()
 
         let textView = UndoableTextView()
         textView.isRichText = false
@@ -503,14 +533,15 @@ struct BlockTextField: NSViewRepresentable {
         textView.textColor = textColor
         textView.backgroundColor = .clear
         textView.drawsBackground = false
-        textView.isVerticallyResizable = true
+        textView.isVerticallyResizable = false
         textView.isHorizontallyResizable = false
-        textView.textContainer?.containerSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        textView.textContainer?.containerSize = NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude)
         textView.textContainer?.widthTracksTextView = true
         textView.textContainer?.lineFragmentPadding = 0
         textView.allowsUndo = true
         textView.delegate = context.coordinator
         textView.placeholderString = placeholder
+        textView.translatesAutoresizingMaskIntoConstraints = false
 
         // Custom callbacks
         textView.onFocus = onFocus
@@ -520,14 +551,23 @@ struct BlockTextField: NSViewRepresentable {
         textView.onArrowUp = onArrowUp
         textView.onArrowDown = onArrowDown
 
-        scrollView.documentView = textView
-        context.coordinator.textView = textView
+        containerView.addSubview(textView)
 
-        return scrollView
+        NSLayoutConstraint.activate([
+            textView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            textView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            textView.topAnchor.constraint(equalTo: containerView.topAnchor),
+            textView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor)
+        ])
+
+        context.coordinator.textView = textView
+        context.coordinator.containerView = containerView
+
+        return containerView
     }
 
-    func updateNSView(_ nsView: NSScrollView, context: Context) {
-        guard let textView = nsView.documentView as? UndoableTextView else { return }
+    func updateNSView(_ nsView: NSView, context: Context) {
+        guard let textView = context.coordinator.textView else { return }
 
         // Only update if text actually changed from external source
         if textView.string != text && !context.coordinator.isEditing {
@@ -551,6 +591,11 @@ struct BlockTextField: NSViewRepresentable {
                 nsView.window?.makeFirstResponder(textView)
             }
         }
+
+        // Update height
+        DispatchQueue.main.async {
+            context.coordinator.updateHeight()
+        }
     }
 
     func makeCoordinator() -> Coordinator {
@@ -558,14 +603,31 @@ struct BlockTextField: NSViewRepresentable {
     }
 
     class Coordinator: NSObject, NSTextViewDelegate {
-        var parent: BlockTextField
+        var parent: BlockTextFieldRepresentable
         weak var textView: UndoableTextView?
+        weak var containerView: NSView?
         var isEditing = false
         private var previousText = ""
 
-        init(_ parent: BlockTextField) {
+        init(_ parent: BlockTextFieldRepresentable) {
             self.parent = parent
             self.previousText = parent.text
+        }
+
+        func updateHeight() {
+            guard let textView = textView else { return }
+
+            // Calculate required height for text
+            let layoutManager = textView.layoutManager!
+            let textContainer = textView.textContainer!
+
+            layoutManager.ensureLayout(for: textContainer)
+            let usedRect = layoutManager.usedRect(for: textContainer)
+            let newHeight = max(usedRect.height + 4, parent.font.pointSize + 10)
+
+            if abs(parent.textHeight - newHeight) > 1 {
+                parent.textHeight = newHeight
+            }
         }
 
         func textDidBeginEditing(_ notification: Notification) {
@@ -593,6 +655,9 @@ struct BlockTextField: NSViewRepresentable {
             // Update binding (this preserves undo because NSTextView manages its own undo stack)
             parent.text = newText
             previousText = newText
+
+            // Update height after text change
+            updateHeight()
         }
 
         func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
@@ -631,6 +696,7 @@ struct BlockTextField: NSViewRepresentable {
             guard let layoutManager = textView.layoutManager,
                   textView.textContainer != nil else { return true }
             let cursorPosition = textView.selectedRange().location
+            if layoutManager.numberOfGlyphs == 0 { return true }
             var glyphRange = NSRange()
             layoutManager.lineFragmentRect(forGlyphAt: min(cursorPosition, layoutManager.numberOfGlyphs - 1), effectiveRange: &glyphRange)
             return glyphRange.location == 0
