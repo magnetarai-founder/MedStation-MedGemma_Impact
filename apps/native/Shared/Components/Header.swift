@@ -2,10 +2,10 @@
 //  Header.swift
 //  MagnetarStudio
 //
-//  Global header bar with a lighter, Xcode-like toolbar aesthetic
-//  - Soft glass gradient background with subtle chroma
-//  - Left: App glyph + title (no star/pill noise)
-//  - Right: Condensed controls (terminal, activity, panic)
+//  Simplified header: [+] [Chat | Files] [Panic]
+//  - Left: Quick action menu (+) for spawnable windows
+//  - Center: Core workspace tabs
+//  - Right: Panic button only (safety feature)
 //
 
 import SwiftUI
@@ -14,10 +14,8 @@ import os
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "Header")
 
 struct Header: View {
-    @State private var showActivity = false
     @State private var showPanicMode = false
     @State private var showEmergencyMode = false
-    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         ZStack(alignment: .center) {
@@ -47,23 +45,26 @@ struct Header: View {
             .headerGlass()  // Applies @AppStorage("glassOpacity") controlled material
             .ignoresSafeArea(edges: .top)
 
-            // Content
+            // Content - Simplified: [Tab Switcher] centered, [+] on right
             HStack(alignment: .center, spacing: 16) {
-                ControlCluster(
-                    showActivity: $showActivity,
-                    showPanicMode: $showPanicMode,
-                    showEmergencyMode: $showEmergencyMode
-                )
+                // Left: Just the + button for spawnable windows
+                QuickActionButton()
 
                 Spacer()
 
-                BrandCluster()
+                // Center: Tab switcher for core workspaces
+                WorkspaceTabs()
+
+                Spacer()
+
+                // Right: Panic only (safety feature stays visible)
+                PanicButton(
+                    showPanicMode: $showPanicMode,
+                    showEmergencyMode: $showEmergencyMode
+                )
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 10)
-            .sheet(isPresented: $showActivity) {
-                ControlCenterSheet()
-            }
             .sheet(isPresented: $showPanicMode) {
                 PanicModeSheet()
             }

@@ -119,33 +119,25 @@ struct MainAppView: View {
 
     var body: some View {
         ZStack {
-            // Main content
+            // Main content - Phase 2B: Simplified layout without NavigationRail
             VStack(spacing: 0) {
-                // Top: Header bar
+                // Top: Header bar with integrated tab switcher
                 Header()
 
-                // Body: HStack with Navigation Rail + Tab Content
-                HStack(spacing: 0) {
-                    // Left: Navigation Rail (56pt wide)
-                    NavigationRail()
-
-                    Divider()
-
-                    // Right: Tab content with error boundary
-                    Group {
-                        if let error = workspaceError {
-                            WorkspaceErrorView(
-                                error: error,
-                                workspace: navigationStore.activeWorkspace,
-                                onRetry: { workspaceError = nil }
-                            )
-                        } else {
-                            activeWorkspaceView
-                        }
+                // Body: Full-width workspace content (no NavigationRail)
+                Group {
+                    if let error = workspaceError {
+                        WorkspaceErrorView(
+                            error: error,
+                            workspace: navigationStore.activeWorkspace,
+                            onRetry: { workspaceError = nil }
+                        )
+                    } else {
+                        activeWorkspaceView
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .transition(.magnetarFade)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .transition(.magnetarFade)
             }
             .onChange(of: navigationStore.activeWorkspace) { _, _ in
                 // Clear error when switching workspaces
@@ -185,10 +177,15 @@ struct MainAppView: View {
     @ViewBuilder
     private var activeWorkspaceView: some View {
         switch navigationStore.activeWorkspace {
+        // Core workspaces (3 main tabs)
         case .chat:
             ChatWorkspace()
-        case .team:
-            TeamWorkspace()
+        case .files:
+            VaultWorkspace()
+        case .workspace:
+            WorkspaceView()
+
+        // Spawnable workspaces (open as separate windows)
         case .code:
             CodeWorkspace()
         case .kanban:
@@ -201,6 +198,10 @@ struct MainAppView: View {
             TrustWorkspace()
         case .magnetarHub:
             MagnetarHubWorkspace()
+
+        // Legacy - redirects to workspace
+        case .team:
+            TeamWorkspace()
         }
     }
 }

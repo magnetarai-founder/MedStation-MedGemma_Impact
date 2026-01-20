@@ -100,9 +100,19 @@ final class NavigationStore {
 
 // MARK: - Workspace Enum
 
+// MARK: - Workspace Enum
+//
+// Phase 2B: Simplified to core workspaces (Chat, Files) with others as spawnable windows
+// Core tabs (always visible): chat, files
+// Spawnable windows (via menu/shortcuts): code, kanban, team, database, insights, trust, magnetarHub
+
 enum Workspace: String, CaseIterable, Identifiable, Hashable {
-    case team
+    // Core workspaces (3 tabs in header)
     case chat
+    case files
+    case workspace  // Personal notes (individual) or Team collab (team mode)
+
+    // Spawnable workspaces (open as separate windows via + menu)
     case code
     case database
     case kanban
@@ -110,71 +120,92 @@ enum Workspace: String, CaseIterable, Identifiable, Hashable {
     case trust
     case magnetarHub
 
+    // Legacy - keeping for transition, redirects to workspace tab
+    case team
+
     var id: String { rawValue }
 
     var displayName: String {
         switch self {
-        case .team: return "Team"
         case .chat: return "Chat"
+        case .files: return "Files"
+        case .workspace: return "Workspace"
         case .code: return "Code"
         case .database: return "Database"
         case .kanban: return "Kanban"
         case .insights: return "Insights"
         case .trust: return "MagnetarTrust"
         case .magnetarHub: return "MagnetarHub"
+        case .team: return "Team"  // Legacy
         }
     }
 
     var icon: String {
         switch self {
-        case .team: return "person.2"
         case .chat: return "bubble.left"
+        case .files: return "folder"
+        case .workspace: return "square.grid.2x2"
         case .code: return "chevron.left.forwardslash.chevron.right"
         case .database: return "cylinder"
-        case .kanban: return "square.grid.2x2"
+        case .kanban: return "square.grid.3x3"
         case .insights: return "waveform"
         case .trust: return "network"
         case .magnetarHub: return "cube.box"
+        case .team: return "person.2"  // Legacy
         }
     }
 
     var keyboardShortcut: String {
         switch self {
-        case .team: return "1"
-        case .chat: return "2"
-        case .code: return "3"
-        case .database: return "4"
-        case .kanban: return "5"
-        case .insights: return "6"
-        case .trust: return "7"
-        case .magnetarHub: return "8"
+        case .chat: return "1"
+        case .files: return "2"
+        case .workspace: return "3"
+        case .code: return "4"
+        case .database: return "5"
+        case .kanban: return "6"
+        case .insights: return "7"
+        case .trust: return "8"
+        case .magnetarHub: return "9"
+        case .team: return ""  // Legacy - no shortcut
         }
     }
 
     var shortName: String {
         switch self {
-        case .team: return "Team"
         case .chat: return "Chat"
+        case .files: return "Files"
+        case .workspace: return "Workspace"
         case .code: return "Code"
         case .database: return "Data"
         case .kanban: return "Board"
         case .insights: return "Voice"
         case .trust: return "Trust"
         case .magnetarHub: return "Hub"
+        case .team: return "Team"  // Legacy
         }
     }
 
-    /// Icon used in NavigationRail (may differ from generic icon for visual design)
+    /// Icon used in NavigationRail/Tab switcher
     var railIcon: String {
         switch self {
-        case .team: return "briefcase"
         case .chat: return "message"
+        case .files: return "folder.fill"
+        case .workspace: return "square.grid.2x2"
         case .code: return "chevron.left.forwardslash.chevron.right"
         case .database: return "cylinder"
         case .kanban: return "square.grid.3x2"
         case .insights: return "waveform"
         case .trust: return "checkmark.shield"
         case .magnetarHub: return "crown"
+        case .team: return "briefcase"  // Legacy
+        }
+    }
+
+    /// Whether this is a core workspace (shown in tab switcher) or spawnable (opens in separate window)
+    var isCore: Bool {
+        switch self {
+        case .chat, .files, .workspace: return true
+        default: return false
         }
     }
 
@@ -191,12 +222,22 @@ enum Workspace: String, CaseIterable, Identifiable, Hashable {
         }
     }
 
-    /// Workspaces in top rail cluster (ordered)
+    /// Core workspaces shown in main tab switcher (3 tabs)
+    static var coreWorkspaces: [Workspace] {
+        [.chat, .files, .workspace]
+    }
+
+    /// Spawnable workspaces that open as separate windows (Phase 2C)
+    static var spawnableWorkspaces: [Workspace] {
+        allCases.filter { !$0.isCore }
+    }
+
+    /// Workspaces in top rail cluster (ordered) - legacy, keeping for transition
     static var topRailWorkspaces: [Workspace] {
         allCases.filter { $0.railPosition == .top }
     }
 
-    /// Workspaces in bottom rail cluster (ordered)
+    /// Workspaces in bottom rail cluster (ordered) - legacy, keeping for transition
     static var bottomRailWorkspaces: [Workspace] {
         allCases.filter { $0.railPosition == .bottom }
     }

@@ -73,7 +73,67 @@ struct MagnetarStudioApp: App {
             ModelManagerWindow()
         }
         .windowStyle(.hiddenTitleBar)
-        .windowResizability(.contentMinSize)  // Resizable but respects minimum size
-        .defaultSize(width: 520, height: 580)  // Default matches ModelManagerWindow frame
+        .windowResizability(.contentMinSize)
+        .defaultSize(width: 520, height: 580)
+
+        // Workspace Settings window (opened from workspace popover)
+        WindowGroup("Workspace Settings", id: "workspace-settings") {
+            WorkspaceSettingsWindow()
+        }
+        .windowStyle(.titleBar)
+        .windowResizability(.contentSize)
+        .defaultSize(width: 400, height: 500)
+
+        // MARK: - Phase 2C: Spawnable Workspaces
+        //
+        // Non-core workspaces open as separate windows via Quick Action menu
+
+        WindowGroup("Code", id: "workspace-code") {
+            CodeWorkspace()
+                .environment(navigationStore)
+                .environment(chatStore)
+        }
+        .windowStyle(.hiddenTitleBar)
+        .defaultSize(width: 1200, height: 800)
+
+        WindowGroup("Team", id: "workspace-team") {
+            TeamWorkspace()
+                .environment(navigationStore)
+                .environment(chatStore)
+        }
+        .windowStyle(.hiddenTitleBar)
+        .defaultSize(width: 1100, height: 750)
+
+        WindowGroup("Kanban", id: "workspace-kanban") {
+            KanbanWorkspace()
+                .environment(navigationStore)
+        }
+        .windowStyle(.hiddenTitleBar)
+        .defaultSize(width: 1200, height: 800)
+
+        WindowGroup("Database", id: "workspace-database") {
+            DatabaseWorkspace()
+                .environment(databaseStore)
+        }
+        .windowStyle(.hiddenTitleBar)
+        .defaultSize(width: 1100, height: 750)
+
+        WindowGroup("Insights", id: "workspace-insights") {
+            InsightsWorkspace()
+        }
+        .windowStyle(.hiddenTitleBar)
+        .defaultSize(width: 900, height: 700)
+
+        WindowGroup("MagnetarTrust", id: "workspace-trust") {
+            TrustWorkspace()
+        }
+        .windowStyle(.hiddenTitleBar)
+        .defaultSize(width: 1000, height: 750)
+
+        WindowGroup("MagnetarHub", id: "workspace-hub") {
+            MagnetarHubWorkspace()
+        }
+        .windowStyle(.hiddenTitleBar)
+        .defaultSize(width: 1100, height: 800)
     }
 }

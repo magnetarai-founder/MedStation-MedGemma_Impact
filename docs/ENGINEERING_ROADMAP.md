@@ -17,6 +17,11 @@
 
 ## Vision & Philosophy
 
+### Mission Statement
+
+> **Local-first productivity suite that makes cloud computing and cloud AI obsolete.**
+> Simple enough for anyone, powerful enough to replace Excel, Adobe, and Word/Notion.
+
 ### iPad Design Philosophy = "Local-First Simplicity"
 
 The iPad app demonstrates the target architecture:
@@ -38,12 +43,74 @@ The iPad app demonstrates the target architecture:
 | **Progressive disclosure** | Show features as needed |
 | **Offline-first** | Always works, always fast |
 
+### UI Hierarchy (The Law)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     MAGNETARSTUDIO HIERARCHY                    │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  MAIN WINDOW (3 tabs only)                                      │
+│  ├── Chat          → AI assistant (separate from human work)    │
+│  ├── Files         → Vault/Finder hybrid                        │
+│  └── Workspace     → Human collaboration (see below)            │
+│                                                                 │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  WORKSPACE TAB (Individual vs Team modes)                       │
+│                                                                 │
+│  Individual Mode (FREE):                                        │
+│  └── Quip-style doc editor for personal notes                   │
+│                                                                 │
+│  Team Mode (PAID UPGRADE):                                      │
+│  ├── Quip-style doc editor (real-time collaborative)            │
+│  ├── Slack-like messaging (DMs, channels)                       │
+│  ├── File sharing in chats                                      │
+│  └── Cloud + WiFi Aware + P2P + LAN connectivity                │
+│                                                                 │
+│  NOT in Workspace (moved to power windows):                     │
+│  ✗ Automations                                                  │
+│  ✗ Team workflows                                               │
+│                                                                 │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  DETACHABLE DOCUMENTS (Double-click to pop out)                 │
+│  ├── Spreadsheet   → Excel killer (local-first, AI-powered)     │
+│  ├── Document      → Word meets Notion                          │
+│  └── PDF           → Preview + Adobe power, zero bloat          │
+│                                                                 │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  POWER WINDOWS (Hidden by default. Menu bar or ⌘+shortcut)      │
+│  ├── Code          → Full IDE, workspace-aware                  │
+│  ├── Data Analysis → Query builder, visualizations              │
+│  ├── Automations   → Workflow builder                           │
+│  └── Project Mgmt  → Kanban/task tracking                       │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Why Quip-style (not Notion)?**
+- Simpler real-time collaboration model
+- No complex blocks/databases to confuse users
+- Easier to implement and maintain
+- Still powerful enough for docs and notes
+
+**Rules:**
+1. Main window shows 3 tabs: Chat, Files, Workspace
+2. Chat = AI only. Workspace = human collaboration only. Never mix.
+3. Code is NEVER in the main tab bar - always spawnable
+4. Documents open inline but can detach with double-click or drag
+5. Power features accessible via menu bar or keyboard shortcuts only
+6. New users see simplicity; power users discover depth
+
 ### What This Eliminates
 
 - Overwhelming main interface
 - Feature discoverability problems
 - "Too much at once" cognitive load
 - Cluttered navigation and header bars
+- Code tab competing with productivity features
 
 ---
 
@@ -353,37 +420,72 @@ session_store = SessionStore()
 
 #### Phase 2B: Main Interface Redesign (Week 9-10)
 
-- Header simplification: `[Logo] [Tab Switcher] [Quick Action Button]`
-- Workspace/Channels (Slack-style)
-- Data section redesign (iPad clean interface)
-- Files tab (Vault → Files): "Finder meets Proton Drive"
+**Goal:** Main window becomes iPad-simple with exactly 3 tabs.
+
+**Header:** `[Logo] [Tab Switcher: Chat | Files | Workspace] [+ Menu]`
+
+**What STAYS in main window:**
+- Chat (AI assistant)
+- Files (Vault/Finder hybrid)
+- Workspace (channels/projects)
+
+**What MOVES OUT:**
+- Code → Power window only (⌘+Shift+C or menu bar)
+- Data Analysis → Power window only
+- Project Management → Power window only
+- Automations → Power window only
 
 #### Phase 2C: Spawnable Windows Architecture (Week 11)
 
-| Window | Default | Pop-out Behavior |
-|--------|---------|------------------|
-| Documents | Main window | Pages aesthetic + AI chat specific to doc |
-| Spreadsheets | Main window | Numbers aesthetic + AI chat specific to sheet |
-| PDF Editor | Main window | Preview + Adobe power |
-| Code | Spawned | Always connected to workspace context |
-| Project Mgmt | OFF (toggleable) | Kanban/Confluence style |
-| Automations | OFF (toggleable) | Workflow builder |
+**Detachable Documents (inline by default, pop-out capable):**
+
+| Document Type | Inline Behavior | Pop-out Trigger | Pop-out Aesthetic |
+|---------------|-----------------|-----------------|-------------------|
+| Spreadsheet | Opens in Files tab | Double-click / drag to edge | Numbers + AI sidebar |
+| Document | Opens in Files tab | Double-click / drag to edge | Pages/Notion hybrid |
+| PDF | Opens in Files tab | Double-click / drag to edge | Preview power, zero bloat |
+
+**Power Windows (hidden by default):**
+
+| Window | Access Method | Behavior |
+|--------|---------------|----------|
+| Code | ⌘+Shift+C / Menu: Window → Code | Always workspace-aware, full IDE |
+| Data Analysis | ⌘+Shift+D / Menu: Window → Data | Query builder + visualizations |
+| Project Mgmt | ⌘+Shift+P / Menu: Window → Projects | Kanban/task tracking |
+| Automations | ⌘+Shift+A / Menu: Window → Automations | Workflow builder |
+
+**Key Principle:** A new user should NEVER see Code, Data, Projects, or Automations unless they go looking for them.
 
 #### Phase 2D: Feature Toggles & Settings (Week 12)
 
 ```python
 class FeatureFlags(BaseModel):
-    # Core features (always ON)
-    workspace: bool = True
+    # Core features (always ON, always visible)
     chat: bool = True
     files: bool = True
+    workspace: bool = True
 
-    # Optional features (OFF by default)
-    project_management: bool = False
-    automations: bool = False
-    data_analysis: bool = False
+    # Document features (ON, but documents are detachable)
+    spreadsheets: bool = True
+    documents: bool = True
+    pdf_editor: bool = True
+
+    # Power features (ON but HIDDEN - accessible via menu/shortcuts only)
+    code_workspace: bool = True      # ⌘+Shift+C
+    data_analysis: bool = True       # ⌘+Shift+D
+    project_management: bool = False # ⌘+Shift+P (OFF by default)
+    automations: bool = False        # ⌘+Shift+A (OFF by default)
+
+    # Enhancements
     voice_transcription: bool = True  # Key differentiator
+    local_ai: bool = True             # The whole point
 ```
+
+**UI Visibility Rules:**
+- `True` + Core = Always in main tab bar
+- `True` + Document = Available in Files, detachable
+- `True` + Power = Hidden from main UI, accessible via Window menu or shortcut
+- `False` = Completely disabled (not even in menus)
 
 ---
 
@@ -411,10 +513,19 @@ class FeatureFlags(BaseModel):
 - [ ] Zero broad `except Exception` handlers
 - [ ] All ErrorCode enum values valid
 
+### UI Simplicity (The Litmus Test)
+- [ ] Main window has exactly 3 tabs: Chat, Files, Workspace
+- [ ] Code is NOT visible in main tab bar
+- [ ] New user sees zero power features on first launch
+- [ ] Documents open inline, detach on double-click
+- [ ] Power windows accessible only via menu bar or ⌘+Shift shortcuts
+- [ ] Header has max 5 elements visible
+
 ### Design Philosophy
 - [ ] Mac matches iPad's "less is more" clarity
 - [ ] Features hidden by default, progressive disclosure
 - [ ] Spawnable windows reduce cognitive load
+- [ ] "Excel killer, Adobe killer, Word/Notion killer" - but invisible until needed
 
 ### Kaggle
 - [ ] MedGemma 1.5 4B working by Feb 24
@@ -521,4 +632,4 @@ guard let url = URL(string: urlString) else {
 ---
 
 *Generated from CODE_QUALITY_REVIEW.md + REFACTOR_ROADMAP.md*
-*Last Updated: January 19, 2026*
+*Last Updated: January 19, 2026 (UI Hierarchy clarified)*

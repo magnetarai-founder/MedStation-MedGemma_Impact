@@ -20,7 +20,53 @@ struct BrandCluster: View {
     }
 }
 
-// MARK: - Control Cluster
+// MARK: - Panic Button (Simplified from ControlCluster)
+
+struct PanicButton: View {
+    @Binding var showPanicMode: Bool
+    @Binding var showEmergencyMode: Bool
+
+    @State private var clickCount: Int = 0
+    @State private var lastClickTime: Date = Date.distantPast
+
+    var body: some View {
+        HeaderToolbarButton(
+            icon: "exclamationmark.triangle.fill",
+            tint: Color.red.opacity(0.9),
+            background: Color.red.opacity(0.12)
+        ) {
+            handlePanicButtonClick()
+        }
+        .help("Panic Mode (Double-click) / Emergency Mode (Triple-click)")
+    }
+
+    private func handlePanicButtonClick() {
+        let now = Date()
+        let timeSinceLastClick = now.timeIntervalSince(lastClickTime)
+
+        if timeSinceLastClick > 1.0 {
+            clickCount = 1
+        } else {
+            clickCount += 1
+        }
+
+        lastClickTime = now
+
+        logger.debug("Panic button clicked (\(clickCount) clicks)")
+
+        if clickCount == 2 {
+            logger.info("Opening standard panic mode")
+            showPanicMode = true
+            clickCount = 0
+        } else if clickCount >= 3 {
+            logger.warning("Opening EMERGENCY MODE")
+            showEmergencyMode = true
+            clickCount = 0
+        }
+    }
+}
+
+// MARK: - Control Cluster (Legacy - kept for reference, use PanicButton instead)
 
 struct ControlCluster: View {
     @Binding var showActivity: Bool
@@ -340,6 +386,143 @@ struct SecurityActionRow: View {
                 .foregroundColor(.primary)
 
             Spacer()
+        }
+    }
+}
+
+// MARK: - Workspace Tabs (Phase 2B)
+//
+// Simple tab switcher for core workspaces: Chat, Files
+// Replaces the 8-icon NavigationRail with a clean, minimal design
+
+struct WorkspaceTabs: View {
+    @Environment(NavigationStore.self) private var navigationStore
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(Workspace.coreWorkspaces) { workspace in
+                WorkspaceTab(
+                    workspace: workspace,
+                    isActive: navigationStore.activeWorkspace == workspace
+                ) {
+                    navigationStore.activeWorkspace = workspace
+                }
+            }
+        }
+        .padding(4)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.white.opacity(0.08))
+        )
+    }
+}
+
+// MARK: - Single Workspace Tab
+
+struct WorkspaceTab: View {
+    let workspace: Workspace
+    let isActive: Bool
+    let action: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: workspace.railIcon)
+                    .font(.system(size: 14, weight: .medium))
+
+                Text(workspace.shortName)
+                    .font(.system(size: 13, weight: .medium))
+            }
+            .foregroundColor(isActive ? .white : (isHovered ? .primary : .secondary))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(isActive ? Color.magnetarPrimary : (isHovered ? Color.white.opacity(0.12) : Color.clear))
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
+        }
+        .help("\(workspace.displayName) (⌘\(workspace.keyboardShortcut))")
+    }
+}
+
+// MARK: - Quick Action Button (Phase 2B/2C/2D)
+//
+// Opens spawnable workspaces as separate windows
+// Only shows workspaces that are enabled via FeatureFlags
+
+struct QuickActionButton: View {
+    @Environment(\.openWindow) private var openWindow
+    @State private var isHovered = false
+
+    private var featureFlags: FeatureFlags { FeatureFlags.shared }
+
+    var body: some View {
+        Menu {
+            // Only show enabled spawnable workspaces
+            ForEach(featureFlags.enabledSpawnableWorkspaces) { workspace in
+                Button {
+                    openSpawnableWorkspace(workspace)
+                } label: {
+                    Label(workspace.displayName, systemImage: workspace.icon)
+                }
+                .keyboardShortcut(KeyEquivalent(Character(workspace.keyboardShortcut)), modifiers: .command)
+            }
+
+            // Show "Enable more features" if some are disabled
+            if featureFlags.enabledSpawnableWorkspaces.count < Workspace.spawnableWorkspaces.count {
+                Divider()
+                Button {
+                    // TODO: Open Settings to Features tab
+                    logger.info("Opening Settings to enable more features")
+                } label: {
+                    Label("Enable More Features...", systemImage: "gearshape")
+                }
+            }
+        } label: {
+            Image(systemName: "plus")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(isHovered ? .primary : .secondary)
+                .padding(8)
+                .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(isHovered ? Color.white.opacity(0.15) : Color.white.opacity(0.08))
+                )
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
+        }
+        .help("Open workspace in new window")
+    }
+
+    private func openSpawnableWorkspace(_ workspace: Workspace) {
+        let windowId = windowIdForWorkspace(workspace)
+        openWindow(id: windowId)
+        logger.info("Opening spawnable workspace: \(workspace.displayName)")
+    }
+
+    private func windowIdForWorkspace(_ workspace: Workspace) -> String {
+        switch workspace {
+        case .code: return "workspace-code"
+        case .team: return "workspace-team"
+        case .kanban: return "workspace-kanban"
+        case .database: return "workspace-database"
+        case .insights: return "workspace-insights"
+        case .trust: return "workspace-trust"
+        case .magnetarHub: return "workspace-hub"
+        default: return "workspace-\(workspace.rawValue)"
         }
     }
 }

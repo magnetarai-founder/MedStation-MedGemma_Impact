@@ -92,19 +92,13 @@ struct MagnetarMenuCommands: Commands {
             .keyboardShortcut("s", modifiers: [.command, .control])
         }
 
+        // Window menu additions
+        // Note: Model Manager (⌘M) and Control Center (⌘.) can be added here
+        // but require @Environment(\.openWindow) which isn't available in Commands.
+        // For now, use the (+) Quick Action menu in the header to open these.
+
         // Tools menu
         CommandMenu("Tools") {
-            Button("Agent Orchestrator") {
-                openAgentOrchestrator()
-            }
-            .keyboardShortcut("k", modifiers: [.command, .shift])
-
-            Button("Workflow Designer") {
-                openWorkflowDesigner()
-            }
-
-            Divider()
-
             Button("Command Palette...") {
                 toggleCommandPalette()
             }
@@ -172,14 +166,6 @@ struct MagnetarMenuCommands: Commands {
     }
 
     // MARK: - Tools Menu Handlers
-
-    private func openAgentOrchestrator() {
-        navigationStore.navigate(to: .magnetarHub)
-    }
-
-    private func openWorkflowDesigner() {
-        navigationStore.navigate(to: .kanban)
-    }
 
     private func toggleCommandPalette() {
         commandPaletteManager.toggle()
