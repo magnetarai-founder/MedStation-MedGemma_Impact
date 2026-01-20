@@ -456,8 +456,8 @@ struct WorkspaceTab: View {
 
 // MARK: - Quick Action Button (Phase 2B/2C/2D)
 //
-// Opens spawnable workspaces as separate windows
-// Only shows workspaces that are enabled via FeatureFlags
+// CREATE section: Opens new notes/chats in detached windows
+// OPEN WORKSPACE section: Opens power workspaces in separate windows
 
 struct QuickActionButton: View {
     @Environment(\.openWindow) private var openWindow
@@ -467,21 +467,68 @@ struct QuickActionButton: View {
 
     var body: some View {
         Menu {
-            // Only show enabled spawnable workspaces
-            ForEach(featureFlags.enabledSpawnableWorkspaces) { workspace in
+            // MARK: - Create Section
+            Section {
                 Button {
-                    openSpawnableWorkspace(workspace)
+                    openWindow(id: "detached-note")
+                    logger.info("Opening new detached note window")
                 } label: {
-                    Label(workspace.displayName, systemImage: workspace.icon)
+                    Label("New Note", systemImage: "doc.text")
                 }
-                .keyboardShortcut(KeyEquivalent(Character(workspace.keyboardShortcut)), modifiers: .command)
+                .keyboardShortcut("n", modifiers: [.command, .shift])
+
+                Button {
+                    openWindow(id: "detached-chat")
+                    logger.info("Opening new detached chat window")
+                } label: {
+                    Label("New Chat", systemImage: "bubble.left.and.bubble.right")
+                }
+                .keyboardShortcut("c", modifiers: [.command, .shift])
+
+                // Placeholders for future document types
+                Button {
+                    // TODO: Implement document creation
+                    logger.info("Document creation coming soon")
+                } label: {
+                    Label("New Document", systemImage: "doc.richtext")
+                }
+                .disabled(true)
+
+                Button {
+                    // TODO: Implement spreadsheet creation
+                    logger.info("Spreadsheet creation coming soon")
+                } label: {
+                    Label("New Spreadsheet", systemImage: "tablecells")
+                }
+                .disabled(true)
+            } header: {
+                Text("Create")
             }
 
-            // Show "Enable more features" if some are disabled
+            // MARK: - Open Workspace Section
+            if !featureFlags.enabledSpawnableWorkspaces.isEmpty {
+                Section {
+                    ForEach(featureFlags.enabledSpawnableWorkspaces) { workspace in
+                        Button {
+                            openSpawnableWorkspace(workspace)
+                        } label: {
+                            Label(workspace.displayName, systemImage: workspace.icon)
+                        }
+                        .keyboardShortcut(KeyEquivalent(Character(workspace.keyboardShortcut)), modifiers: .command)
+                    }
+                } header: {
+                    Text("Open Workspace")
+                }
+            }
+
+            // MARK: - Settings
             if featureFlags.enabledSpawnableWorkspaces.count < Workspace.spawnableWorkspaces.count {
                 Divider()
                 Button {
-                    // TODO: Open Settings to Features tab
+                    // Open Settings window
+                    if let url = URL(string: "magnetarstudio://settings") {
+                        NSWorkspace.shared.open(url)
+                    }
                     logger.info("Opening Settings to enable more features")
                 } label: {
                     Label("Enable More Features...", systemImage: "gearshape")
@@ -504,7 +551,7 @@ struct QuickActionButton: View {
                 isHovered = hovering
             }
         }
-        .help("Open workspace in new window")
+        .help("Create new or open workspace (⇧⌘N)")
     }
 
     private func openSpawnableWorkspace(_ workspace: Workspace) {

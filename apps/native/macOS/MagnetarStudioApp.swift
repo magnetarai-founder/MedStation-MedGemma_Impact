@@ -135,5 +135,24 @@ struct MagnetarStudioApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1100, height: 800)
+
+        // MARK: - Phase 2D: Detached Documents
+        //
+        // New notes and chats opened from Quick Action menu
+
+        WindowGroup("New Note", id: "detached-note") {
+            DetachedNoteWindow()
+        }
+        .windowStyle(.titleBar)
+        .windowResizability(.contentMinSize)
+        .defaultSize(width: 700, height: 550)
+
+        WindowGroup("New Chat", id: "detached-chat") {
+            DetachedChatWindow()
+                .environment(chatStore)
+        }
+        .windowStyle(.titleBar)
+        .windowResizability(.contentMinSize)
+        .defaultSize(width: 700, height: 600)
     }
 }
