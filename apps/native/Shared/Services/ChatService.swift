@@ -46,6 +46,14 @@ final class ChatService {
         ) as EmptyResponse
     }
 
+    func renameSession(sessionId: String, title: String) async throws {
+        _ = try await apiClient.request(
+            path: "/v1/chat/sessions/\(sessionId)",
+            method: .patch,
+            jsonBody: ["title": title]
+        ) as EmptyResponse
+    }
+
     // MARK: - File Upload
 
     func uploadAttachment(sessionId: String, fileURL: URL) async throws -> ChatFile {

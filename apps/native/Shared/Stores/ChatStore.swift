@@ -459,6 +459,37 @@ final class ChatStore {
         }
     }
 
+    func renameSession(_ session: ChatSession, to newTitle: String) async {
+        // Find and update session locally
+        guard let index = sessions.firstIndex(where: { $0.id == session.id }) else {
+            logger.warning("Cannot rename: session not found")
+            return
+        }
+
+        let trimmedTitle = newTitle.trimmingCharacters(in: .whitespaces)
+        guard !trimmedTitle.isEmpty else {
+            logger.warning("Cannot rename: empty title")
+            return
+        }
+
+        // Update locally
+        sessions[index].title = trimmedTitle
+        if currentSession?.id == session.id {
+            currentSession?.title = trimmedTitle
+        }
+
+        // Update on backend if we have a mapping
+        if let backendId = sessionIdMapping[session.id] {
+            do {
+                try await chatService.renameSession(sessionId: backendId, title: trimmedTitle)
+                logger.info("Renamed session \(session.id) to '\(trimmedTitle)'")
+            } catch {
+                logger.error("Failed to rename session on backend: \(error)")
+                // Keep local change anyway - next sync will fix it
+            }
+        }
+    }
+
     // MARK: - Intelligent Routing (Phase 4)
 
     /// Determine which model to use for a query

@@ -9,6 +9,8 @@ import SwiftUI
 
 struct ChatSidebar: View {
     @Bindable var chatStore: ChatStore
+    @State private var sessionToRename: ChatSession?
+    @State private var renameText = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -92,14 +94,33 @@ struct ChatSidebar: View {
                                 session: session,
                                 isSelected: chatStore.currentSession?.id == session.id
                             )
+                            .contentShape(Rectangle())  // Makes entire row clickable
                             .onTapGesture {
                                 Task {
                                     await chatStore.selectSession(session)
                                 }
                             }
                             .contextMenu {
-                                Button("Delete", role: .destructive) {
+                                Button {
+                                    renameText = session.title
+                                    sessionToRename = session
+                                } label: {
+                                    Label("Rename", systemImage: "pencil")
+                                }
+
+                                Button {
+                                    // Archive functionality - placeholder
+                                    // Could move to an "archived" state
+                                } label: {
+                                    Label("Archive", systemImage: "archivebox")
+                                }
+
+                                Divider()
+
+                                Button(role: .destructive) {
                                     chatStore.deleteSession(session)
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
                                 }
                             }
                         }
@@ -108,5 +129,55 @@ struct ChatSidebar: View {
                 }
             }
         }
+        .sheet(item: $sessionToRename) { session in
+            RenameSessionSheet(
+                session: session,
+                renameText: $renameText,
+                onRename: { newTitle in
+                    Task {
+                        await chatStore.renameSession(session, to: newTitle)
+                    }
+                    sessionToRename = nil
+                },
+                onCancel: {
+                    sessionToRename = nil
+                }
+            )
+        }
+    }
+}
+
+// MARK: - Rename Sheet
+
+struct RenameSessionSheet: View {
+    let session: ChatSession
+    @Binding var renameText: String
+    let onRename: (String) -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("Rename Chat")
+                .font(.headline)
+
+            TextField("Chat name", text: $renameText)
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 250)
+
+            HStack(spacing: 12) {
+                Button("Cancel") {
+                    onCancel()
+                }
+                .buttonStyle(.bordered)
+
+                Button("Rename") {
+                    onRename(renameText)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(renameText.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+        }
+        .padding(20)
+        .frame(width: 300)
     }
 }
