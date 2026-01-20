@@ -548,9 +548,6 @@ struct BlockTextFieldRepresentable: NSViewRepresentable {
         textView.placeholderString = placeholder
         textView.translatesAutoresizingMaskIntoConstraints = false
 
-        // Set initial text
-        textView.string = text
-
         containerView.addSubview(textView)
 
         NSLayoutConstraint.activate([
@@ -562,7 +559,11 @@ struct BlockTextFieldRepresentable: NSViewRepresentable {
 
         context.coordinator.textView = textView
         context.coordinator.containerView = containerView
+
+        // Set text AFTER coordinator is connected
+        textView.string = text
         context.coordinator.lastSyncedText = text
+        context.coordinator.previousText = text
 
         return containerView
     }
@@ -570,23 +571,24 @@ struct BlockTextFieldRepresentable: NSViewRepresentable {
     func updateNSView(_ nsView: NSView, context: Context) {
         guard let textView = context.coordinator.textView else { return }
 
-        // CRITICAL: Only update text if it changed externally AND we're not editing
-        // This preserves the native undo stack
-        let externalChange = text != context.coordinator.lastSyncedText
-        let notEditing = !context.coordinator.isEditing
-
-        if externalChange && notEditing {
-            // External change (e.g., switching notes) - reset text and undo
-            textView.string = text
-            textView.undoManager?.removeAllActions()
-            context.coordinator.lastSyncedText = text
-            context.coordinator.previousText = text
-        }
-
-        // Always update appearance
+        // Always update appearance first
         textView.font = font
         textView.textColor = textColor
         textView.placeholderString = placeholder
+
+        // Sync text: update if binding changed externally AND we're not actively editing
+        let bindingText = text
+        let viewText = textView.string
+        let notEditing = !context.coordinator.isEditing
+
+        if notEditing && bindingText != viewText {
+            // Text changed externally (switching notes, initial load, etc.)
+            textView.string = bindingText
+            textView.undoManager?.removeAllActions()
+            context.coordinator.lastSyncedText = bindingText
+            context.coordinator.previousText = bindingText
+            textView.needsDisplay = true
+        }
 
         // Focus handling
         if isFocused && nsView.window?.firstResponder != textView {
@@ -596,9 +598,7 @@ struct BlockTextFieldRepresentable: NSViewRepresentable {
         }
 
         // Update height
-        DispatchQueue.main.async {
-            context.coordinator.updateHeight()
-        }
+        context.coordinator.updateHeight()
     }
 
     func makeCoordinator() -> Coordinator {
