@@ -9,7 +9,7 @@ from fastapi import APIRouter, Request
 import logging
 
 from api.errors import http_400, http_500, http_503
-from api.services.p2p_chat import get_p2p_chat_service
+# NOTE: api.services.p2p_chat import is done lazily inside functions to avoid circular import
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +28,8 @@ async def initialize_e2e_keys(request: Request, device_id: str, passphrase: str)
     Returns:
         Dict with public_key and fingerprint
     """
+    from api.services.p2p_chat import get_p2p_chat_service
+
     service = get_p2p_chat_service()
 
     if not service:
@@ -54,6 +56,8 @@ async def store_peer_public_key(request: Request, peer_id: str, public_key_hex: 
     Returns:
         Dict with safety_number and fingerprint
     """
+    from api.services.p2p_chat import get_p2p_chat_service
+
     service = get_p2p_chat_service()
 
     if not service:
@@ -82,6 +86,8 @@ async def verify_peer(request: Request, peer_id: str) -> Dict[str, str]:
     Returns:
         Success status
     """
+    from api.services.p2p_chat import get_p2p_chat_service
+
     service = get_p2p_chat_service()
 
     if not service:
@@ -103,6 +109,8 @@ async def get_safety_changes() -> Dict[str, Any]:
     Returns:
         List of safety number changes that need user acknowledgment
     """
+    from api.services.p2p_chat import get_p2p_chat_service
+
     service = get_p2p_chat_service()
 
     if not service:
@@ -127,6 +135,8 @@ async def acknowledge_safety_change(request: Request, change_id: int) -> Dict[st
     Returns:
         Success status
     """
+    from api.services.p2p_chat import get_p2p_chat_service
+
     service = get_p2p_chat_service()
 
     if not service:
@@ -151,6 +161,8 @@ async def export_identity(request: Request, passphrase: str) -> Dict[str, Any]:
     Returns:
         Encrypted bundle for QR code scanning
     """
+    from api.services.p2p_chat import get_p2p_chat_service
+
     service = get_p2p_chat_service()
 
     if not service:
@@ -186,6 +198,8 @@ async def import_identity(
     Returns:
         Dict with public_key and fingerprint
     """
+    from api.services.p2p_chat import get_p2p_chat_service
+
     service = get_p2p_chat_service()
 
     if not service:
