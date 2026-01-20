@@ -14,7 +14,7 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Callable
 
-from api.p2p_chat_models import (
+from api.p2p_chat.models import (
     Peer, Channel, Message, SendMessageRequest, CreateChannelRequest, PeerStatus
 )
 

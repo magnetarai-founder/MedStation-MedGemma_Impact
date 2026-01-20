@@ -10,7 +10,7 @@ from fastapi import APIRouter, Request, Depends
 import logging
 
 from api.errors import http_403, http_404, http_500, http_503
-from api.p2p_chat_models import (
+from api.p2p_chat.models import (
     Channel,
     CreateChannelRequest,
     CreateDMRequest,
