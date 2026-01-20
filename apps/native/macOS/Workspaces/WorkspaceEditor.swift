@@ -474,7 +474,7 @@ struct BlockView: View {
     }
 }
 
-// MARK: - Block Text Field (NSViewRepresentable)
+// MARK: - Block Text View (NSViewRepresentable with proper undo support)
 
 struct BlockTextField: NSViewRepresentable {
     @Binding var text: String
@@ -489,32 +489,66 @@ struct BlockTextField: NSViewRepresentable {
     let onArrowUp: () -> Void
     let onArrowDown: () -> Void
 
-    func makeNSView(context: Context) -> NSTextField {
-        let textField = NSTextField()
-        textField.isBordered = false
-        textField.drawsBackground = false
-        textField.font = font
-        textField.textColor = textColor
-        textField.focusRingType = .none
-        textField.lineBreakMode = .byWordWrapping
-        textField.cell?.wraps = true
-        textField.cell?.isScrollable = false
-        textField.placeholderString = placeholder
-        textField.delegate = context.coordinator
-        return textField
+    func makeNSView(context: Context) -> NSScrollView {
+        let scrollView = NSScrollView()
+        scrollView.hasVerticalScroller = false
+        scrollView.hasHorizontalScroller = false
+        scrollView.autohidesScrollers = true
+        scrollView.borderType = .noBorder
+        scrollView.drawsBackground = false
+
+        let textView = UndoableTextView()
+        textView.isRichText = false
+        textView.font = font
+        textView.textColor = textColor
+        textView.backgroundColor = .clear
+        textView.drawsBackground = false
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.textContainer?.containerSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        textView.textContainer?.widthTracksTextView = true
+        textView.textContainer?.lineFragmentPadding = 0
+        textView.allowsUndo = true
+        textView.delegate = context.coordinator
+        textView.placeholderString = placeholder
+
+        // Custom callbacks
+        textView.onFocus = onFocus
+        textView.onSlashTyped = onSlashTyped
+        textView.onEnter = onEnter
+        textView.onDelete = onDelete
+        textView.onArrowUp = onArrowUp
+        textView.onArrowDown = onArrowDown
+
+        scrollView.documentView = textView
+        context.coordinator.textView = textView
+
+        return scrollView
     }
 
-    func updateNSView(_ nsView: NSTextField, context: Context) {
-        if nsView.stringValue != text {
-            nsView.stringValue = text
-        }
-        nsView.font = font
-        nsView.textColor = textColor
-        nsView.placeholderString = placeholder
+    func updateNSView(_ nsView: NSScrollView, context: Context) {
+        guard let textView = nsView.documentView as? UndoableTextView else { return }
 
-        if isFocused && nsView.window?.firstResponder != nsView.currentEditor() {
+        // Only update if text actually changed from external source
+        if textView.string != text && !context.coordinator.isEditing {
+            textView.string = text
+        }
+
+        textView.font = font
+        textView.textColor = textColor
+        textView.placeholderString = placeholder
+
+        // Update callbacks
+        textView.onFocus = onFocus
+        textView.onSlashTyped = onSlashTyped
+        textView.onEnter = onEnter
+        textView.onDelete = onDelete
+        textView.onArrowUp = onArrowUp
+        textView.onArrowDown = onArrowDown
+
+        if isFocused && nsView.window?.firstResponder != textView {
             DispatchQueue.main.async {
-                nsView.window?.makeFirstResponder(nsView)
+                nsView.window?.makeFirstResponder(textView)
             }
         }
     }
@@ -523,8 +557,10 @@ struct BlockTextField: NSViewRepresentable {
         Coordinator(self)
     }
 
-    class Coordinator: NSObject, NSTextFieldDelegate {
+    class Coordinator: NSObject, NSTextViewDelegate {
         var parent: BlockTextField
+        weak var textView: UndoableTextView?
+        var isEditing = false
         private var previousText = ""
 
         init(_ parent: BlockTextField) {
@@ -532,48 +568,133 @@ struct BlockTextField: NSViewRepresentable {
             self.previousText = parent.text
         }
 
-        func controlTextDidBeginEditing(_ obj: Notification) {
+        func textDidBeginEditing(_ notification: Notification) {
+            isEditing = true
             parent.onFocus()
         }
 
-        func controlTextDidChange(_ obj: Notification) {
-            guard let textField = obj.object as? NSTextField else { return }
-            let newText = textField.stringValue
+        func textDidEndEditing(_ notification: Notification) {
+            isEditing = false
+            // Sync final text to binding
+            if let textView = notification.object as? NSTextView {
+                parent.text = textView.string
+            }
+        }
+
+        func textDidChange(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            let newText = textView.string
 
             // Detect "/" typed at start of empty block
             if newText == "/" && previousText.isEmpty {
                 parent.onSlashTyped()
             }
 
+            // Update binding (this preserves undo because NSTextView manages its own undo stack)
             parent.text = newText
             previousText = newText
         }
 
-        func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+        func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
             if commandSelector == #selector(NSResponder.insertNewline(_:)) {
                 parent.onEnter()
                 return true
             }
 
             if commandSelector == #selector(NSResponder.deleteBackward(_:)) {
-                if parent.text.isEmpty {
+                if textView.string.isEmpty {
                     parent.onDelete()
                     return true
                 }
             }
 
             if commandSelector == #selector(NSResponder.moveUp(_:)) {
-                parent.onArrowUp()
-                return true
+                // Only intercept if at first line
+                if isAtFirstLine(textView) {
+                    parent.onArrowUp()
+                    return true
+                }
             }
 
             if commandSelector == #selector(NSResponder.moveDown(_:)) {
-                parent.onArrowDown()
-                return true
+                // Only intercept if at last line
+                if isAtLastLine(textView) {
+                    parent.onArrowDown()
+                    return true
+                }
             }
 
             return false
         }
+
+        private func isAtFirstLine(_ textView: NSTextView) -> Bool {
+            guard let layoutManager = textView.layoutManager,
+                  textView.textContainer != nil else { return true }
+            let cursorPosition = textView.selectedRange().location
+            var glyphRange = NSRange()
+            layoutManager.lineFragmentRect(forGlyphAt: min(cursorPosition, layoutManager.numberOfGlyphs - 1), effectiveRange: &glyphRange)
+            return glyphRange.location == 0
+        }
+
+        private func isAtLastLine(_ textView: NSTextView) -> Bool {
+            guard let layoutManager = textView.layoutManager,
+                  textView.textContainer != nil else { return true }
+            let cursorPosition = textView.selectedRange().location
+            let totalGlyphs = layoutManager.numberOfGlyphs
+            if totalGlyphs == 0 { return true }
+            var glyphRange = NSRange()
+            layoutManager.lineFragmentRect(forGlyphAt: min(cursorPosition, totalGlyphs - 1), effectiveRange: &glyphRange)
+            return NSMaxRange(glyphRange) >= totalGlyphs
+        }
+    }
+}
+
+// MARK: - Custom NSTextView with Undo Support and Placeholder
+
+class UndoableTextView: NSTextView {
+    var placeholderString: String = ""
+    var onFocus: (() -> Void)?
+    var onSlashTyped: (() -> Void)?
+    var onEnter: (() -> Void)?
+    var onDelete: (() -> Void)?
+    var onArrowUp: (() -> Void)?
+    var onArrowDown: (() -> Void)?
+
+    override var string: String {
+        didSet {
+            needsDisplay = true
+        }
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        super.draw(dirtyRect)
+
+        // Draw placeholder if empty
+        if string.isEmpty && !placeholderString.isEmpty {
+            let attributes: [NSAttributedString.Key: Any] = [
+                .foregroundColor: NSColor.placeholderTextColor,
+                .font: font ?? NSFont.systemFont(ofSize: 14)
+            ]
+            let rect = NSRect(x: textContainerInset.width + (textContainer?.lineFragmentPadding ?? 0),
+                              y: textContainerInset.height,
+                              width: bounds.width,
+                              height: bounds.height)
+            placeholderString.draw(in: rect, withAttributes: attributes)
+        }
+    }
+
+    override func becomeFirstResponder() -> Bool {
+        let result = super.becomeFirstResponder()
+        if result {
+            needsDisplay = true
+        }
+        return result
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let result = super.resignFirstResponder()
+        needsDisplay = true
+        return result
     }
 }
 
