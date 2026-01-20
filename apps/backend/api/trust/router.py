@@ -12,11 +12,18 @@ SECURITY (Dec 2025):
 
 import logging
 import base64
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, TYPE_CHECKING
 from fastapi import APIRouter, HTTPException, Depends
 from datetime import UTC, datetime, timedelta
-import nacl.signing
-import nacl.exceptions
+
+# Conditional nacl import - Ed25519 signing requires PyNaCl
+try:
+    import nacl.signing
+    import nacl.exceptions
+    NACL_AVAILABLE = True
+except ImportError:
+    NACL_AVAILABLE = False
+    nacl = None  # type: ignore
 
 from api.trust.models import (
     TrustNode,
@@ -85,6 +92,9 @@ def verify_registration_signature(request: RegisterNodeRequest) -> bool:
     Returns:
         True if signature is valid, raises HTTPException otherwise
     """
+    if not NACL_AVAILABLE:
+        raise http_400("Ed25519 signature verification unavailable. Install PyNaCl: pip install pynacl")
+
     try:
         # Decode public key (Ed25519 verify key is same as public key)
         public_key_bytes = base64.b64decode(request.public_key)
