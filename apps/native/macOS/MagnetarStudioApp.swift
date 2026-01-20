@@ -154,5 +154,18 @@ struct MagnetarStudioApp: App {
         .windowStyle(.titleBar)
         .windowResizability(.contentMinSize)
         .defaultSize(width: 700, height: 600)
+
+        // Detached Document Window - opens vault files in separate windows
+        WindowGroup("Document", for: DetachedDocumentInfo.self) { $documentInfo in
+            if let info = documentInfo {
+                DetachedDocumentWindow(documentInfo: info)
+            } else {
+                Text("No document selected")
+                    .frame(width: 400, height: 300)
+            }
+        }
+        .windowStyle(.titleBar)
+        .windowResizability(.contentMinSize)
+        .defaultSize(width: 800, height: 600)
     }
 }

@@ -30,6 +30,8 @@ struct VaultWorkspace: View {
     @State private var fileToDelete: VaultFile? = nil
     @State private var showDeleteConfirmation: Bool = false
 
+    @Environment(\.openWindow) private var openWindow
+
     private let vaultService = VaultService.shared
 
     var body: some View {
@@ -145,6 +147,7 @@ struct VaultWorkspace: View {
                     VaultGridView(
                         files: filteredFiles,
                         onFileSelect: handleFileSelect,
+                        onFileDetach: handleFileDetach,
                         onDownload: { file in
                             Task {
                                 await downloadFile(file)
@@ -159,6 +162,7 @@ struct VaultWorkspace: View {
                     VaultListView(
                         files: filteredFiles,
                         onFileSelect: handleFileSelect,
+                        onFileDetach: handleFileDetach,
                         onDownload: { file in
                             Task {
                                 await downloadFile(file)
@@ -190,6 +194,18 @@ struct VaultWorkspace: View {
             selectedFile = file
             showPreview = true
         }
+    }
+
+    private func handleFileDetach(_ file: VaultFile) {
+        // Open file in a detached window
+        let documentInfo = DetachedDocumentInfo(
+            fileId: file.id,
+            fileName: file.name,
+            mimeType: file.mimeType,
+            size: file.size,
+            vaultType: "real"
+        )
+        openWindow(value: documentInfo)
     }
 
     // MARK: - Actions

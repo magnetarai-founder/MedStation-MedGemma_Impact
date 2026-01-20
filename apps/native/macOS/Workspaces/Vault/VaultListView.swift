@@ -10,6 +10,7 @@ import SwiftUI
 struct VaultListView: View {
     let files: [VaultFile]
     let onFileSelect: (VaultFile) -> Void
+    let onFileDetach: (VaultFile) -> Void
     let onDownload: (VaultFile) -> Void
     let onDelete: (VaultFile) -> Void
 
@@ -41,11 +42,26 @@ struct VaultListView: View {
             ScrollView {
                 ForEach(files) { file in
                     VaultFileRow(file: file)
-                        .onTapGesture {
+                        .onTapGesture(count: 2) {
+                            // Double-click: detach to separate window
+                            if !file.isFolder {
+                                onFileDetach(file)
+                            }
+                        }
+                        .onTapGesture(count: 1) {
+                            // Single-click: open inline preview
                             onFileSelect(file)
                         }
                         .contextMenu {
                             if !file.isFolder {
+                                Button {
+                                    onFileDetach(file)
+                                } label: {
+                                    Label("Open in New Window", systemImage: "uiwindow.split.2x1")
+                                }
+
+                                Divider()
+
                                 Button("Download") {
                                     onDownload(file)
                                 }
