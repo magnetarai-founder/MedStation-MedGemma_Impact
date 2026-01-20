@@ -5,9 +5,11 @@
 //  Results table with toolbar matching React ResultsTable.tsx specs
 //  - Toolbar: Export dropdown, Download, Analyze with AI, Clear
 //  - Table with sticky header, truncated cells, null values in italic gray
+//  Enhanced with row count display, copy feedback, and visual polish
 //
 
 import SwiftUI
+import AppKit
 import os
 
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "ResultsTable")
@@ -20,6 +22,8 @@ struct ResultsTable: View {
     @State private var isExporting: Bool = false
     @State private var exportFormat: ExportFormat = .excel
     @State private var isAnalyzing: Bool = false
+    @State private var showCopied: Bool = false
+    @State private var copiedText: String = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -53,6 +57,49 @@ struct ResultsTable: View {
 
     private var toolbar: some View {
         HStack(spacing: 12) {
+            // Row count badge
+            if let results = results {
+                HStack(spacing: 6) {
+                    Image(systemName: "tablecells")
+                        .font(.system(size: 12))
+                    Text(results.formattedRowCount)
+                        .font(.system(size: 12, weight: .medium))
+                    Text("×")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
+                    Text("\(results.columns.count) cols")
+                        .font(.system(size: 12))
+                }
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color.blue.opacity(0.1))
+                .clipShape(Capsule())
+            }
+
+            // Copy all button
+            Button(action: copyAllResults) {
+                HStack(spacing: 4) {
+                    Image(systemName: showCopied ? "checkmark" : "doc.on.doc")
+                        .font(.system(size: 12))
+                    Text(showCopied ? "Copied!" : "Copy All")
+                        .font(.system(size: 11, weight: .medium))
+                }
+                .foregroundColor(showCopied ? .green : .secondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule()
+                        .fill(showCopied ? Color.green.opacity(0.1) : Color.gray.opacity(0.1))
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(results == nil)
+            .help("Copy all results to clipboard")
+
+            Divider()
+                .frame(height: 20)
+
             // Analyze with AI - first button
             ToolbarIconButton(
                 icon: "message",
@@ -130,6 +177,26 @@ struct ResultsTable: View {
             }
 
             Spacer()
+        }
+    }
+
+    // MARK: - Copy Results
+
+    private func copyAllResults() {
+        guard let results = results else { return }
+
+        // Build TSV format for easy pasting
+        var text = results.columns.joined(separator: "\t") + "\n"
+        for row in results.rows {
+            text += row.map { $0 ?? "null" }.joined(separator: "\t") + "\n"
+        }
+
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+
+        withAnimation { showCopied = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            withAnimation { showCopied = false }
         }
     }
 
@@ -279,6 +346,15 @@ struct QueryResults {
     let rows: [[String?]]
     let isLimited: Bool
 
+    /// Formatted row count string
+    var formattedRowCount: String {
+        let count = rows.count
+        if count >= 1000 {
+            return String(format: "%.1fk rows", Double(count) / 1000)
+        }
+        return "\(count) rows"
+    }
+
     static let mock = QueryResults(
         columns: ["id", "name", "email", "created_at"],
         rows: [
@@ -295,26 +371,59 @@ struct QueryResults {
 struct TableCell: View {
     let value: String?
 
+    @State private var isHovered = false
+    @State private var showCopied = false
+
     var body: some View {
-        if let value = value {
-            Text(value)
-                .font(.system(size: 12))
-                .foregroundColor(.primary)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .frame(minWidth: 120, alignment: .leading)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-        } else {
-            Text("null")
-                .font(.system(size: 12))
-                .italic()
-                .foregroundColor(.secondary)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .frame(minWidth: 120, alignment: .leading)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
+        HStack(spacing: 4) {
+            if let value = value {
+                Text(value)
+                    .font(.system(size: 12))
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            } else {
+                Text("null")
+                    .font(.system(size: 12))
+                    .italic()
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+
+            Spacer(minLength: 4)
+
+            // Copy button on hover
+            if isHovered && value != nil {
+                Button(action: copyValue) {
+                    Image(systemName: showCopied ? "checkmark" : "doc.on.doc")
+                        .font(.system(size: 10))
+                        .foregroundColor(showCopied ? .green : .secondary)
+                }
+                .buttonStyle(.plain)
+                .transition(.opacity)
+            }
+        }
+        .frame(minWidth: 120, alignment: .leading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(isHovered ? Color.blue.opacity(0.03) : Color.clear)
+        .contentShape(Rectangle())
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.1)) {
+                isHovered = hovering
+            }
+        }
+    }
+
+    private func copyValue() {
+        guard let value = value else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(value, forType: .string)
+
+        withAnimation { showCopied = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            withAnimation { showCopied = false }
         }
     }
 }

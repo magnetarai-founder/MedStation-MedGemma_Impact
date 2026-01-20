@@ -108,6 +108,75 @@ struct QueryHistoryItem: Codable, Identifiable {
         case rowCount
         case status
     }
+
+    /// Parse timestamp to Date
+    var timestampDate: Date? {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = formatter.date(from: timestamp) {
+            return date
+        }
+        // Try without fractional seconds
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.date(from: timestamp)
+    }
+
+    /// Relative time string ("2h ago", "yesterday", etc.)
+    var relativeTimestamp: String {
+        guard let date = timestampDate else { return timestamp }
+
+        let now = Date()
+        let diff = now.timeIntervalSince(date)
+
+        if diff < 60 {
+            return "just now"
+        } else if diff < 3600 {
+            let mins = Int(diff / 60)
+            return "\(mins)m ago"
+        } else if diff < 86400 {
+            let hours = Int(diff / 3600)
+            return "\(hours)h ago"
+        } else if diff < 172800 {
+            return "yesterday"
+        } else if diff < 604800 {
+            let days = Int(diff / 86400)
+            return "\(days) days ago"
+        } else {
+            let displayFormatter = DateFormatter()
+            displayFormatter.dateStyle = .medium
+            displayFormatter.timeStyle = .short
+            return displayFormatter.string(from: date)
+        }
+    }
+
+    /// Formatted execution time
+    var formattedExecutionTime: String? {
+        guard let ms = executionTime else { return nil }
+        if ms < 1000 {
+            return "\(ms)ms"
+        } else {
+            return String(format: "%.1fs", Double(ms) / 1000)
+        }
+    }
+
+    /// Formatted row count
+    var formattedRowCount: String? {
+        guard let count = rowCount else { return nil }
+        if count >= 1000 {
+            return String(format: "%.1fk rows", Double(count) / 1000)
+        }
+        return "\(count) rows"
+    }
+
+    /// Status icon
+    var statusIcon: String {
+        status == "success" ? "checkmark.circle.fill" : "exclamationmark.circle.fill"
+    }
+
+    /// Status color
+    var statusColor: String {
+        status == "success" ? "green" : "red"
+    }
 }
 
 struct QueryHistoryResponse: Codable {
