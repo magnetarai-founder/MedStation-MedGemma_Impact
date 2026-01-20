@@ -88,19 +88,14 @@ class VaultPermissionManager {
     // Callbacks
     private var permissionCallback: ((PermissionResponse) -> Void)?
 
-    // Timer for periodic cleanup (stored to prevent leak)
-    // nonisolated(unsafe) allows access from deinit which runs non-isolated
-    // Warning about "no effect" is expected - the attribute is still needed for deinit access
-    private nonisolated(unsafe) var cleanupTimer: Timer?
+    // Timer for periodic cleanup
+    // Note: Since this is a singleton, deinit is never called - no need to invalidate
+    private var cleanupTimer: Timer?
 
     private init() {
         loadActivePermissions()
         loadAuditLog()
         startCleanupTimer()
-    }
-
-    deinit {
-        cleanupTimer?.invalidate()
     }
 
     /// Start periodic cleanup of expired permissions

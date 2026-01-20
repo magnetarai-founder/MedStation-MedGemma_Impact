@@ -78,9 +78,10 @@ final class VaultStore {
     // SECURITY: Auto-lock timeout (15 minutes of inactivity)
     private static let autoLockTimeoutSeconds: TimeInterval = 15 * 60
 
-    // Auto-lock timer - nonisolated(unsafe) for deinit access
+    // Auto-lock timer
+    // Note: Since this is a singleton, deinit is never called
     @ObservationIgnored
-    private nonisolated(unsafe) var autoLockTimer: Timer?
+    private var autoLockTimer: Timer?
 
     // Keychain service for secure passphrase storage
     @ObservationIgnored
@@ -99,11 +100,8 @@ final class VaultStore {
         }
     }
 
-    deinit {
-        autoLockTimer?.invalidate()
-        // Clear passphrase from Keychain on dealloc
-        try? keychain.deleteToken(forKey: KeychainService.vaultSessionKey)
-    }
+    // Note: Keychain cleanup happens in clear() method called on logout,
+    // not in deinit (singletons never deallocate)
 
     // MARK: - Passphrase Management (Keychain-backed)
 

@@ -51,14 +51,8 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
     services_loaded = []
     services_failed = []
 
-    # Add observability middleware FIRST (before routers)
-    try:
-        from api.observability_middleware import add_observability_middleware
-        add_observability_middleware(app)
-        services_loaded.append("Observability Middleware")
-    except Exception as e:
-        services_failed.append("Observability Middleware")
-        logger.error("Failed to load observability middleware", exc_info=True)
+    # NOTE: Observability middleware is registered in create_app() BEFORE app starts
+    # Middleware cannot be added after the application has started (Starlette limitation)
 
     # Chat API
     try:
@@ -106,21 +100,27 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
         services_failed.append("Cache Metrics API")
         logger.error("Failed to load cache metrics router", exc_info=True)
 
-    # P2P Chat
-    try:
-        from api.p2p_chat_router import router as p2p_chat_router
-        app.include_router(p2p_chat_router)
-        services_loaded.append("P2P Chat")
-    except Exception as e:
-        services_failed.append("P2P Chat")
-        logger.error("Failed to load P2P chat router", exc_info=True)
+    # P2P Chat - TODO: Router not implemented yet, using p2p_mesh_service for now
+    # try:
+    #     from api.p2p_chat_router import router as p2p_chat_router
+    #     app.include_router(p2p_chat_router)
+    #     services_loaded.append("P2P Chat")
+    # except Exception as e:
+    #     services_failed.append("P2P Chat")
+    #     logger.error("Failed to load P2P chat router", exc_info=True)
 
     # MagnetarTrust - Trust Network (MagnetarMission Phase 1)
     try:
         from api.trust_router import router as trust_router, public_router as trust_public_router
-        app.include_router(trust_router)
-        app.include_router(trust_public_router)
-        services_loaded.append("MagnetarTrust")
+        # trust_router can be None if nacl package isn't installed
+        if trust_router is not None:
+            app.include_router(trust_router)
+        if trust_public_router is not None:
+            app.include_router(trust_public_router)
+        if trust_router is not None or trust_public_router is not None:
+            services_loaded.append("MagnetarTrust")
+        else:
+            services_failed.append("MagnetarTrust (nacl unavailable)")
     except Exception as e:
         services_failed.append("MagnetarTrust")
         logger.error("Failed to load trust network router", exc_info=True)

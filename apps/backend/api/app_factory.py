@@ -354,6 +354,14 @@ Global limit: 100 requests/minute. Endpoint-specific limits documented below.
     limiter = configure_rate_limiting(app)
     register_error_handlers(app)
 
+    # Observability middleware - must be added BEFORE app starts (not in lifespan)
+    try:
+        from api.observability_middleware import add_observability_middleware
+        add_observability_middleware(app)
+        logger.info("✅ Observability middleware enabled")
+    except Exception as e:
+        logger.warning(f"⚠️  Could not enable observability middleware: {e}")
+
     # Middleware to add request ID to all requests
     @app.middleware("http")
     async def add_request_id(request: Request, call_next) -> Response:

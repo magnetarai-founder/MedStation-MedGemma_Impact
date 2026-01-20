@@ -156,9 +156,15 @@ struct EvictionSlotCard: View {
             HStack(spacing: 12) {
                 // Slot badge
                 ZStack {
-                    Circle()
-                        .fill(isSelected ? LinearGradient.magnetarGradient : Color.gray.opacity(0.2))
-                        .frame(width: 40, height: 40)
+                    if isSelected {
+                        Circle()
+                            .fill(LinearGradient.magnetarGradient)
+                            .frame(width: 40, height: 40)
+                    } else {
+                        Circle()
+                            .fill(Color.gray.opacity(0.2))
+                            .frame(width: 40, height: 40)
+                    }
 
                     Text("\(slot.slotNumber)")
                         .font(.system(size: 16, weight: .bold))

@@ -149,9 +149,9 @@ struct HotSlotSettingsView: View {
                 ModelPickerSheet(
                     slotNumber: slotNumber,
                     availableModels: modelsStore.models,
-                    onSelect: { modelName in
+                    onSelect: { modelId in
                         Task {
-                            try? await hotSlotManager.assignToSlot(slotNumber: slotNumber, modelName: modelName)
+                            try? await hotSlotManager.assignToSlot(slotNumber: slotNumber, modelId: modelId)
                             showModelPicker = false
                             selectedSlotForAssignment = nil
                         }

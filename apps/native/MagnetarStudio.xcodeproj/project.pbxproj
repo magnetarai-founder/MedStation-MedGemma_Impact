@@ -70,6 +70,7 @@
 		417D836524EB8E0D5E3A779A /* HubDiscoverToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = F66BAE28BD2ECCAAE6552A90 /* HubDiscoverToolbar.swift */; };
 		419431498985644AE22A495A /* MagnetarHubWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2760AE2A83BCE0FEB660A5 /* MagnetarHubWorkspace.swift */; };
 		42B474E143714E973C2FDA8A /* VouchNodeModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0279AD17089C318C0DB08C12 /* VouchNodeModal.swift */; };
+		42C2F6958259917DD6643027 /* WorkspaceEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8E40AB2D37911CB8833CCE0 /* WorkspaceEditor.swift */; };
 		489F7B5279DC075986C56200 /* CodeEditorService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F2EFFDC51E7848B0765684 /* CodeEditorService.swift */; };
 		49D40145EA2453D34EE1C92F /* HotSlotSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52CE1F2E60F79F1F09E83158 /* HotSlotSettingsView.swift */; };
 		4AAA7ABA93BFC54662F202DD /* ModelTagService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A25E14FF110DE632A039D76 /* ModelTagService.swift */; };
@@ -413,6 +414,7 @@
 		C60376A5D97663F9350DE53C /* SecuritySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecuritySettingsView.swift; sourceTree = "<group>"; };
 		C734A475000378714CF75011 /* RecordingDetailPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingDetailPane.swift; sourceTree = "<group>"; };
 		C7858285E5AA8F74D5841D30 /* CodeTerminalPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeTerminalPanel.swift; sourceTree = "<group>"; };
+		C8E40AB2D37911CB8833CCE0 /* WorkspaceEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceEditor.swift; sourceTree = "<group>"; };
 		C904B3FD97D2623F7707932E /* APISettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APISettingsView.swift; sourceTree = "<group>"; };
 		C9259C0A21D9B918C63F43DA /* TeamWorkspaceDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamWorkspaceDataManager.swift; sourceTree = "<group>"; };
 		CA151DC886BC6FFF2A3D5521 /* ModelDiscoveryListPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDiscoveryListPane.swift; sourceTree = "<group>"; };
@@ -793,6 +795,7 @@
 				BB1654E2098C2A66196A2683 /* TemplateEditorSheet.swift */,
 				9DC4F6E138B0D9CADC6934A7 /* TrustWorkspace.swift */,
 				0279AD17089C318C0DB08C12 /* VouchNodeModal.swift */,
+				C8E40AB2D37911CB8833CCE0 /* WorkspaceEditor.swift */,
 				35274F6042C71F0C46FAC1B0 /* WorkspaceSettingsWindow.swift */,
 				DCB2256E06BCB90425FE3E87 /* WorkspaceView.swift */,
 				455D0C5F691682972212683A /* Chat */,
@@ -1409,6 +1412,7 @@
 				2BEA35CD9ADEFA1DD5C61B2A /* WorkflowService.swift in Sources */,
 				403FB1612E8D2FD83819E096 /* WorkflowStore.swift in Sources */,
 				E0396F1BA7A751E69E35259D /* WorkflowTabButton.swift in Sources */,
+				42C2F6958259917DD6643027 /* WorkspaceEditor.swift in Sources */,
 				8E1FF8000D26DBD1EF602249 /* WorkspaceSettingsWindow.swift in Sources */,
 				EDA7F4CF39A669E3E84755F3 /* WorkspaceView.swift in Sources */,
 			);

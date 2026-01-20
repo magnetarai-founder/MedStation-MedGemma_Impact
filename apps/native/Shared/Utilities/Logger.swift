@@ -3,12 +3,13 @@
 //  MagnetarStudio
 //
 //  Centralized logging utility with proper levels and formatting
+//  NOTE: Renamed to AppLogger to avoid shadowing os.Logger
 //
 
 import Foundation
 import OSLog
 
-enum Logger {
+enum AppLogger {
     private static let subsystem = Bundle.main.bundleIdentifier ?? "com.magnetar.studio"
 
     // MARK: - Log Categories
@@ -22,17 +23,17 @@ enum Logger {
 
     // MARK: - Logging Methods
 
-    static func info(_ message: String, category: OSLog = Logger.general, file: String = #file, function: String = #function, line: Int = #line) {
+    static func info(_ message: String, category: OSLog = AppLogger.general, file: String = #file, function: String = #function, line: Int = #line) {
         os_log(.info, log: category, "%{public}@", formatMessage(message, file: file, function: function, line: line))
     }
 
-    static func debug(_ message: String, category: OSLog = Logger.general, file: String = #file, function: String = #function, line: Int = #line) {
+    static func debug(_ message: String, category: OSLog = AppLogger.general, file: String = #file, function: String = #function, line: Int = #line) {
         #if DEBUG
         os_log(.debug, log: category, "%{public}@", formatMessage(message, file: file, function: function, line: line))
         #endif
     }
 
-    static func error(_ message: String, error: Error? = nil, category: OSLog = Logger.general, file: String = #file, function: String = #function, line: Int = #line) {
+    static func error(_ message: String, error: Error? = nil, category: OSLog = AppLogger.general, file: String = #file, function: String = #function, line: Int = #line) {
         let fullMessage: String
         if let error = error {
             fullMessage = "\(message): \(error.localizedDescription)"
@@ -42,7 +43,7 @@ enum Logger {
         os_log(.error, log: category, "%{public}@", formatMessage(fullMessage, file: file, function: function, line: line))
     }
 
-    static func warning(_ message: String, category: OSLog = Logger.general, file: String = #file, function: String = #function, line: Int = #line) {
+    static func warning(_ message: String, category: OSLog = AppLogger.general, file: String = #file, function: String = #function, line: Int = #line) {
         os_log(.default, log: category, "[WARNING] %{public}@", formatMessage(message, file: file, function: function, line: line))
     }
 

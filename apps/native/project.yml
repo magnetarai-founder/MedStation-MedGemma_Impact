@@ -43,6 +43,6 @@ targets:
       path: MagnetarStudio.entitlements
     scheme:
       environmentVariables:
-        - variable: OS_ACTIVITY_MODE
-          value: disable
-          isEnabled: true
+        # Removed OS_ACTIVITY_MODE=disable - it was suppressing all os_log/Logger output
+        # To reduce noise, filter logs in Console.app by subsystem: com.magnetar.studio
+        []
