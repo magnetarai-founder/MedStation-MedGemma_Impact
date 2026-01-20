@@ -37,6 +37,21 @@ struct TrustWorkspace: View {
     @State private var showSafetyNumberModal = false
     @State private var selectedNode: TrustNode? = nil
 
+    // Search
+    @State private var searchText: String = ""
+
+    var filteredNodes: [TrustNode] {
+        if searchText.isEmpty {
+            return nodes
+        }
+        return nodes.filter {
+            $0.publicName.localizedCaseInsensitiveContains(searchText) ||
+            $0.type.rawValue.localizedCaseInsensitiveContains(searchText) ||
+            ($0.alias ?? "").localizedCaseInsensitiveContains(searchText) ||
+            ($0.location ?? "").localizedCaseInsensitiveContains(searchText)
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Toolbar
@@ -139,6 +154,17 @@ struct TrustWorkspace: View {
                 Text("MagnetarTrust")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.primary)
+
+                // Node count badge
+                if !nodes.isEmpty {
+                    Text("\(nodes.count)")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.magnetarPrimary.opacity(0.8))
+                        .clipShape(Capsule())
+                }
             }
 
             Spacer()
@@ -310,11 +336,11 @@ struct TrustWorkspace: View {
             VStack(alignment: .leading, spacing: 24) {
                 if let network = trustNetwork {
                     // Stats
-                    HStack(spacing: 32) {
-                        statCard(title: "Direct Trusts", value: "\(network.directTrusts.count)", icon: "person.2")
-                        statCard(title: "Vouched", value: "\(network.vouchedTrusts.count)", icon: "hand.thumbsup")
-                        statCard(title: "Network", value: "\(network.networkTrusts.count)", icon: "point.3.connected.trianglepath.dotted")
-                        statCard(title: "Total", value: "\(network.totalNetworkSize)", icon: "network")
+                    HStack(spacing: 16) {
+                        statCard(title: "Direct Trusts", value: "\(network.directTrusts.count)", icon: "person.2", color: .green)
+                        statCard(title: "Vouched", value: "\(network.vouchedTrusts.count)", icon: "hand.thumbsup", color: .blue)
+                        statCard(title: "Network", value: "\(network.networkTrusts.count)", icon: "point.3.connected.trianglepath.dotted", color: .purple)
+                        statCard(title: "Total", value: "\(network.totalNetworkSize)", icon: "network", color: .magnetarPrimary)
                     }
                     .padding(.bottom, 8)
 
@@ -334,47 +360,59 @@ struct TrustWorkspace: View {
         }
     }
 
-    private func statCard(title: String, value: String, icon: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                Image(systemName: icon)
-                    .font(.system(size: 14))
-                    .foregroundColor(.secondary)
-                Text(title)
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-            }
-            Text(value)
-                .font(.system(size: 24, weight: .bold))
-                .foregroundColor(.primary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.gray.opacity(0.08))
-        )
+    private func statCard(title: String, value: String, icon: String, color: Color = .magnetarPrimary) -> some View {
+        TrustStatCard(title: title, value: value, icon: icon, color: color)
     }
 
     private func trustLevelSection(title: String, nodes: [TrustNode], color: Color) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(color)
+                    .frame(width: 8, height: 8)
                 Text(title)
                     .font(.system(size: 16, weight: .semibold))
-                Text("(\(nodes.count))")
-                    .font(.system(size: 14))
-                    .foregroundColor(.secondary)
+                Text("\(nodes.count)")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(color)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(color.opacity(0.1))
+                    .clipShape(Capsule())
             }
 
             if nodes.isEmpty {
-                Text("No \(title.lowercased()) yet")
-                    .font(.system(size: 13))
-                    .foregroundColor(.secondary)
-                    .padding(.vertical, 12)
+                HStack(spacing: 8) {
+                    Image(systemName: "person.crop.circle.badge.questionmark")
+                        .font(.system(size: 16))
+                        .foregroundStyle(.tertiary)
+                    Text("No \(title.lowercased()) yet")
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 12)
+                .padding(.horizontal, 8)
             } else {
                 VStack(spacing: 8) {
                     ForEach(nodes) { node in
-                        nodeRow(node: node, accentColor: color)
+                        TrustNodeRow(
+                            node: node,
+                            accentColor: color,
+                            onTap: {
+                                selectedNode = node
+                                showVouchModal = true
+                            },
+                            onVerify: {
+                                selectedNode = node
+                                showSafetyNumberModal = true
+                            },
+                            onCopyKey: {
+                                #if os(macOS)
+                                NSPasteboard.general.clearContents()
+                                NSPasteboard.general.setString(node.publicKey, forType: .string)
+                                #endif
+                            }
+                        )
                     }
                 }
             }
@@ -384,107 +422,95 @@ struct TrustWorkspace: View {
     // MARK: - Nodes View
 
     private var nodesView: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                if nodes.isEmpty {
-                    emptyStateView(
-                        icon: "person.3",
-                        title: "No Nodes",
-                        message: "Be the first to register a node in the trust network."
-                    )
-                } else {
-                    ForEach(nodes) { node in
-                        nodeRow(node: node, accentColor: nodeTypeColor(node.type))
-                            .onTapGesture {
-                                selectedNode = node
-                                showVouchModal = true
-                            }
-                    }
-                }
-            }
-            .padding(24)
-        }
-    }
-
-    private func nodeRow(node: TrustNode, accentColor: Color) -> some View {
-        HStack(spacing: 12) {
-            // Icon
-            Image(systemName: nodeTypeIcon(node.type))
-                .font(.system(size: 20))
-                .foregroundColor(accentColor)
-                .frame(width: 40, height: 40)
-                .background(
-                    Circle()
-                        .fill(accentColor.opacity(0.15))
-                )
-
-            // Info
-            VStack(alignment: .leading, spacing: 4) {
-                Text(node.displayMode == .peacetime ? node.publicName : (node.alias ?? "Anonymous"))
-                    .font(.system(size: 14, weight: .medium))
-                HStack(spacing: 8) {
-                    Text(node.type.rawValue.capitalized)
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                    if let location = node.location, node.displayMode == .peacetime {
-                        Text("•")
-                            .foregroundColor(.secondary)
-                        Text(location)
+        VStack(spacing: 0) {
+            // Search bar
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                TextField("Search nodes...", text: $searchText)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 13))
+                if !searchText.isEmpty {
+                    Button(action: { searchText = "" }) {
+                        Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 12))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.tertiary)
                     }
+                    .buttonStyle(.plain)
                 }
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color.gray.opacity(0.1))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .padding(.horizontal, 24)
+            .padding(.top, 16)
+            .padding(.bottom, 8)
 
-            Spacer()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    if nodes.isEmpty {
+                        emptyStateView(
+                            icon: "person.3",
+                            title: "No Nodes",
+                            message: "Be the first to register a node in the trust network."
+                        )
+                    } else if filteredNodes.isEmpty {
+                        emptyStateView(
+                            icon: "magnifyingglass",
+                            title: "No Matches",
+                            message: "No nodes match your search."
+                        )
+                    } else {
+                        // Node count summary
+                        HStack(spacing: 12) {
+                            Text("\(filteredNodes.count) nodes")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(.secondary)
 
-            // Hub badge
-            if node.isHub {
-                Text("HUB")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(.orange)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(
-                        Capsule()
-                            .fill(Color.orange.opacity(0.2))
-                    )
-            }
-        }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color.gray.opacity(0.06))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(accentColor.opacity(0.2), lineWidth: 1)
-        )
-        .contextMenu {
-            Button {
-                selectedNode = node
-                showSafetyNumberModal = true
-            } label: {
-                Label("Verify Safety Number", systemImage: "checkmark.shield")
-            }
+                            Spacer()
 
-            Button {
-                selectedNode = node
-                showVouchModal = true
-            } label: {
-                Label("Vouch for Node", systemImage: "hand.thumbsup")
-            }
+                            // Hub count
+                            let hubCount = filteredNodes.filter { $0.isHub }.count
+                            if hubCount > 0 {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "star.fill")
+                                        .font(.system(size: 10))
+                                    Text("\(hubCount) hubs")
+                                        .font(.system(size: 10, weight: .medium))
+                                }
+                                .foregroundStyle(.orange)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.orange.opacity(0.1))
+                                .clipShape(Capsule())
+                            }
+                        }
 
-            Divider()
-
-            Button {
-                // Copy public key to clipboard
-                #if os(macOS)
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(node.publicKey, forType: .string)
-                #endif
-            } label: {
-                Label("Copy Public Key", systemImage: "doc.on.doc")
+                        ForEach(filteredNodes) { node in
+                            TrustNodeRow(
+                                node: node,
+                                accentColor: nodeTypeColor(node.type),
+                                onTap: {
+                                    selectedNode = node
+                                    showVouchModal = true
+                                },
+                                onVerify: {
+                                    selectedNode = node
+                                    showSafetyNumberModal = true
+                                },
+                                onCopyKey: {
+                                    #if os(macOS)
+                                    NSPasteboard.general.clearContents()
+                                    NSPasteboard.general.setString(node.publicKey, forType: .string)
+                                    #endif
+                                }
+                            )
+                        }
+                    }
+                }
+                .padding(24)
             }
         }
     }
@@ -563,6 +589,225 @@ struct TrustWorkspace: View {
         case .mission: return .green
         case .family: return .orange
         case .organization: return .cyan
+        }
+    }
+}
+
+// MARK: - Trust Stat Card (with hover effects)
+
+struct TrustStatCard: View {
+    let title: String
+    let value: String
+    let icon: String
+    let color: Color
+
+    @State private var isHovered = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 14))
+                    .foregroundColor(isHovered ? color : .secondary)
+                Text(title)
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+            }
+            Text(value)
+                .font(.system(size: 24, weight: .bold))
+                .foregroundColor(isHovered ? color : .primary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(isHovered ? color.opacity(0.1) : Color.gray.opacity(0.08))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(isHovered ? color.opacity(0.3) : Color.clear, lineWidth: 1)
+        )
+        .scaleEffect(isHovered ? 1.02 : 1.0)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
+        }
+    }
+}
+
+// MARK: - Trust Node Row (with hover effects)
+
+struct TrustNodeRow: View {
+    let node: TrustNode
+    let accentColor: Color
+    var onTap: (() -> Void)? = nil
+    var onVerify: (() -> Void)? = nil
+    var onCopyKey: (() -> Void)? = nil
+
+    @State private var isHovered = false
+    @State private var showCopied = false
+
+    private var displayName: String {
+        if node.displayMode == .peacetime {
+            return node.publicName
+        } else {
+            return node.alias ?? "Anonymous"
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // Icon
+            Image(systemName: nodeTypeIcon(node.type))
+                .font(.system(size: 20))
+                .foregroundColor(accentColor)
+                .frame(width: 40, height: 40)
+                .background(
+                    Circle()
+                        .fill(accentColor.opacity(isHovered ? 0.25 : 0.15))
+                )
+
+            // Info
+            VStack(alignment: .leading, spacing: 4) {
+                Text(displayName)
+                    .font(.system(size: 14, weight: .medium))
+
+                HStack(spacing: 8) {
+                    // Type badge
+                    Text(node.type.rawValue.capitalized)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(accentColor)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(accentColor.opacity(0.1))
+                        .clipShape(Capsule())
+
+                    if let location = node.location, node.displayMode == .peacetime {
+                        HStack(spacing: 4) {
+                            Image(systemName: "location")
+                                .font(.system(size: 9))
+                            Text(location)
+                                .font(.system(size: 11))
+                        }
+                        .foregroundColor(.secondary)
+                    }
+                }
+            }
+
+            Spacer()
+
+            // Hover actions
+            if isHovered {
+                HStack(spacing: 4) {
+                    TrustActionButton(icon: "checkmark.shield", help: "Verify", color: .green) {
+                        onVerify?()
+                    }
+                    TrustActionButton(icon: showCopied ? "checkmark" : "doc.on.doc", help: "Copy Key", color: showCopied ? .green : .blue, isSuccess: showCopied) {
+                        onCopyKey?()
+                        withAnimation { showCopied = true }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                            withAnimation { showCopied = false }
+                        }
+                    }
+                    TrustActionButton(icon: "hand.thumbsup", help: "Vouch", color: .purple) {
+                        onTap?()
+                    }
+                }
+                .transition(.opacity.combined(with: .scale(scale: 0.95)))
+            }
+
+            // Hub badge
+            if node.isHub {
+                Text("HUB")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(.orange)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule()
+                            .fill(Color.orange.opacity(0.2))
+                    )
+            }
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(isHovered ? accentColor.opacity(0.08) : Color.gray.opacity(0.06))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(isHovered ? accentColor.opacity(0.3) : accentColor.opacity(0.15), lineWidth: 1)
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onTap?()
+        }
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
+        }
+        .contextMenu {
+            Button {
+                onVerify?()
+            } label: {
+                Label("Verify Safety Number", systemImage: "checkmark.shield")
+            }
+
+            Button {
+                onTap?()
+            } label: {
+                Label("Vouch for Node", systemImage: "hand.thumbsup")
+            }
+
+            Divider()
+
+            Button {
+                onCopyKey?()
+            } label: {
+                Label("Copy Public Key", systemImage: "doc.on.doc")
+            }
+        }
+    }
+
+    private func nodeTypeIcon(_ type: NodeType) -> String {
+        switch type {
+        case .individual: return "person"
+        case .church: return "building.columns"
+        case .mission: return "globe"
+        case .family: return "person.3"
+        case .organization: return "building.2"
+        }
+    }
+}
+
+// MARK: - Trust Action Button
+
+private struct TrustActionButton: View {
+    let icon: String
+    let help: String
+    let color: Color
+    var isSuccess: Bool = false
+    let action: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 11))
+                .foregroundColor(isSuccess ? .green : (isHovered ? color : .secondary))
+                .frame(width: 26, height: 26)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(isSuccess ? Color.green.opacity(0.1) : (isHovered ? color.opacity(0.15) : Color.gray.opacity(0.08)))
+                )
+        }
+        .buttonStyle(.plain)
+        .help(help)
+        .onHover { hovering in
+            isHovered = hovering
         }
     }
 }
