@@ -35,6 +35,16 @@ struct KanbanWorkspace: View {
                 task: selectedTask,
                 onDelete: {
                     taskToDelete = selectedTask
+                },
+                onStatusChange: { newStatus in
+                    if let task = selectedTask {
+                        updateTaskStatus(task, to: newStatus)
+                    }
+                },
+                onPriorityChange: { newPriority in
+                    if let task = selectedTask {
+                        updateTaskPriority(task, to: newPriority)
+                    }
                 }
             )
         }
@@ -141,6 +151,9 @@ struct KanbanWorkspace: View {
                                 isSelected: selectedTask?.id == task.id,
                                 onDelete: {
                                     taskToDelete = task
+                                },
+                                onStatusChange: { newStatus in
+                                    updateTaskStatus(task, to: newStatus)
                                 }
                             )
                             .onTapGesture {
@@ -222,6 +235,62 @@ struct KanbanWorkspace: View {
             }
             taskToDelete = nil
         }
+    }
+
+    private func updateTaskStatus(_ task: KanbanTask, to newStatus: TaskStatus) {
+        // Update locally for immediate feedback
+        withAnimation(.magnetarQuick) {
+            if let index = dataManager.tasks.firstIndex(where: { $0.id == task.id }) {
+                let updatedTask = KanbanTask(
+                    title: task.title,
+                    description: task.description,
+                    status: newStatus,
+                    priority: task.priority,
+                    assignee: task.assignee,
+                    dueDate: task.dueDate,
+                    labels: task.labels,
+                    taskId: task.taskId,
+                    boardId: task.boardId,
+                    columnId: task.columnId
+                )
+                dataManager.tasks[index] = updatedTask
+
+                // Update selection if needed
+                if selectedTask?.id == task.id {
+                    selectedTask = updatedTask
+                }
+            }
+        }
+
+        // TODO: Sync with backend via crudOperations.updateTask()
+    }
+
+    private func updateTaskPriority(_ task: KanbanTask, to newPriority: TaskPriority) {
+        // Update locally for immediate feedback
+        withAnimation(.magnetarQuick) {
+            if let index = dataManager.tasks.firstIndex(where: { $0.id == task.id }) {
+                let updatedTask = KanbanTask(
+                    title: task.title,
+                    description: task.description,
+                    status: task.status,
+                    priority: newPriority,
+                    assignee: task.assignee,
+                    dueDate: task.dueDate,
+                    labels: task.labels,
+                    taskId: task.taskId,
+                    boardId: task.boardId,
+                    columnId: task.columnId
+                )
+                dataManager.tasks[index] = updatedTask
+
+                // Update selection if needed
+                if selectedTask?.id == task.id {
+                    selectedTask = updatedTask
+                }
+            }
+        }
+
+        // TODO: Sync with backend via crudOperations.updateTask()
     }
 }
 

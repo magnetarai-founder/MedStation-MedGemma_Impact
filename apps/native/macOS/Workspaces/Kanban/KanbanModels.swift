@@ -50,7 +50,7 @@ struct KanbanTask: Identifiable {
 
 // MARK: - Task Status
 
-enum TaskStatus: String {
+enum TaskStatus: String, CaseIterable {
     case todo = "To Do"
     case inProgress = "In Progress"
     case done = "Done"
@@ -63,6 +63,14 @@ enum TaskStatus: String {
         }
     }
 
+    var icon: String {
+        switch self {
+        case .todo: return "circle"
+        case .inProgress: return "circle.lefthalf.filled"
+        case .done: return "checkmark.circle.fill"
+        }
+    }
+
     /// Parse status from backend API string
     init(apiString: String) {
         switch apiString.lowercased() {
@@ -71,11 +79,20 @@ enum TaskStatus: String {
         default: self = .todo
         }
     }
+
+    /// Get the next status in cycle
+    func next() -> TaskStatus {
+        switch self {
+        case .todo: return .inProgress
+        case .inProgress: return .done
+        case .done: return .todo
+        }
+    }
 }
 
 // MARK: - Task Priority
 
-enum TaskPriority: String {
+enum TaskPriority: String, CaseIterable {
     case low = "Low"
     case medium = "Medium"
     case high = "High"
@@ -88,12 +105,132 @@ enum TaskPriority: String {
         }
     }
 
+    var icon: String {
+        switch self {
+        case .low: return "arrow.down"
+        case .medium: return "equal"
+        case .high: return "arrow.up"
+        }
+    }
+
     /// Parse priority from backend API string
     init(apiString: String) {
         switch apiString.lowercased() {
         case "high": self = .high
         case "low": self = .low
         default: self = .medium
+        }
+    }
+
+    /// Get the next priority in cycle
+    func next() -> TaskPriority {
+        switch self {
+        case .low: return .medium
+        case .medium: return .high
+        case .high: return .low
+        }
+    }
+}
+
+// MARK: - Due Date Utilities
+
+enum DueDateUrgency {
+    case overdue
+    case dueToday
+    case dueSoon  // Within 3 days
+    case upcoming
+    case noDueDate
+
+    var color: Color {
+        switch self {
+        case .overdue: return .red
+        case .dueToday: return .orange
+        case .dueSoon: return .yellow
+        case .upcoming: return .secondary
+        case .noDueDate: return .secondary
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .overdue: return "exclamationmark.circle.fill"
+        case .dueToday: return "clock.fill"
+        case .dueSoon: return "calendar.badge.clock"
+        case .upcoming: return "calendar"
+        case .noDueDate: return "calendar"
+        }
+    }
+}
+
+extension KanbanTask {
+    /// Parse the due date string to a Date object
+    var dueDateParsed: Date? {
+        let formatters: [DateFormatter] = {
+            let isoFormatter = DateFormatter()
+            isoFormatter.dateFormat = "yyyy-MM-dd"
+
+            let shortFormatter = DateFormatter()
+            shortFormatter.dateFormat = "MMM d, yyyy"
+
+            let mediumFormatter = DateFormatter()
+            mediumFormatter.dateStyle = .medium
+
+            return [isoFormatter, shortFormatter, mediumFormatter]
+        }()
+
+        for formatter in formatters {
+            if let date = formatter.date(from: dueDate) {
+                return date
+            }
+        }
+        return nil
+    }
+
+    /// Calculate the urgency level based on due date
+    var dueDateUrgency: DueDateUrgency {
+        guard let date = dueDateParsed else { return .noDueDate }
+
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let dueDay = calendar.startOfDay(for: date)
+        let days = calendar.dateComponents([.day], from: today, to: dueDay).day ?? 0
+
+        if days < 0 {
+            return .overdue
+        } else if days == 0 {
+            return .dueToday
+        } else if days <= 3 {
+            return .dueSoon
+        } else {
+            return .upcoming
+        }
+    }
+
+    /// Get a relative string for the due date
+    var relativeDueDate: String {
+        guard let date = dueDateParsed else { return dueDate }
+
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let dueDay = calendar.startOfDay(for: date)
+        let days = calendar.dateComponents([.day], from: today, to: dueDay).day ?? 0
+
+        switch days {
+        case ..<(-1):
+            return "\(abs(days)) days overdue"
+        case -1:
+            return "1 day overdue"
+        case 0:
+            return "Due today"
+        case 1:
+            return "Due tomorrow"
+        case 2...7:
+            return "Due in \(days) days"
+        default:
+            // For dates further out, show the actual date
+            let formatter = DateFormatter()
+            formatter.dateStyle = .medium
+            return formatter.string(from: date)
         }
     }
 }
