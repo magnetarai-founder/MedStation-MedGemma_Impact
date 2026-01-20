@@ -199,11 +199,16 @@ struct WorkspaceView: View {
 
     private func noteEditorView(note: PersonalNote) -> some View {
         VStack(spacing: 0) {
-            // Header
+            // Header - minimal, no toolbar
             HStack {
                 Text(note.title)
                     .font(.headline)
                 Spacer()
+                Text("Type / for commands")
+                    .font(.caption)
+                    .foregroundColor(.secondary.opacity(0.6))
+                Text("•")
+                    .foregroundColor(.secondary.opacity(0.3))
                 Text("Saved")
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -214,11 +219,8 @@ struct WorkspaceView: View {
 
             Divider()
 
-            // Editor
-            TextEditor(text: $editorContent)
-                .font(.system(size: 14))
-                .scrollContentBackground(.hidden)
-                .padding(16)
+            // Notion-style editor with slash commands
+            WorkspaceEditor(content: $editorContent)
                 .onChange(of: editorContent) { _, newValue in
                     saveNote(content: newValue)
                 }
