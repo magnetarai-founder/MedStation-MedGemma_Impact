@@ -189,6 +189,13 @@ struct WorkspaceEditor: View {
         .onAppear {
             loadFromContent()
         }
+        .onChange(of: content) { _, newValue in
+            // Reload blocks when content changes externally (switching notes)
+            let currentContent = blocks.map { $0.content }.joined(separator: "\n")
+            if newValue != currentContent {
+                loadFromContent()
+            }
+        }
         .onChange(of: blocks) { _, _ in
             saveToContent()
         }
@@ -438,7 +445,8 @@ struct BlockView: View {
 
     @ViewBuilder
     private var contextMenuContent: some View {
-        Menu("Turn into") {
+        // Turn into options - flat list since nested Menu can be buggy
+        Section("Turn into") {
             ForEach(BlockType.allCases) { type in
                 Button {
                     block.type = type
@@ -451,7 +459,7 @@ struct BlockView: View {
         Divider()
 
         Button {
-            // Duplicate would need parent access
+            // Duplicate - placeholder for now
         } label: {
             Label("Duplicate", systemImage: "plus.square.on.square")
         }
