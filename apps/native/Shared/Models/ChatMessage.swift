@@ -52,6 +52,31 @@ enum MessageRole: String, Codable {
     }
 }
 
+// MARK: - Conversation State
+
+/// State of a chat session for filtering (matches macOS 26 Messages app)
+enum ConversationState: String, Codable, CaseIterable {
+    case active
+    case archived
+    case deleted
+
+    var displayName: String {
+        switch self {
+        case .active: return "All Messages"
+        case .archived: return "Archived"
+        case .deleted: return "Recently Deleted"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .active: return "bubble.left.and.bubble.right"
+        case .archived: return "archivebox"
+        case .deleted: return "trash"
+        }
+    }
+}
+
 // MARK: - Chat Session
 
 /// Chat session model - in-memory only (no SwiftData persistence)
@@ -62,6 +87,7 @@ final class ChatSession: Identifiable {
     var model: String?  // Sessions are model-agnostic; orchestrator chooses model per query
     var createdAt: Date
     var updatedAt: Date
+    var status: ConversationState
 
     // Note: Messages are loaded separately into ChatStore.messages
     // This property exists for potential future use but is not actively populated
@@ -72,13 +98,15 @@ final class ChatSession: Identifiable {
         title: String = "New Chat",
         model: String? = nil,  // No default model; use orchestrator or manual selection
         createdAt: Date = Date(),
-        updatedAt: Date = Date()
+        updatedAt: Date = Date(),
+        status: ConversationState = .active
     ) {
         self.id = id
         self.title = title
         self.model = model
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.status = status
     }
 }
 
@@ -116,9 +144,10 @@ struct ChatSessionDTO: Codable {
     let model: String?  // Optional - sessions don't require a fixed model
     let createdAt: Date
     let updatedAt: Date
+    let status: ConversationState?
 
     enum CodingKeys: String, CodingKey {
-        case id, title, model
+        case id, title, model, status
         case createdAt = "created_at"
         case updatedAt = "updated_at"
     }
@@ -129,7 +158,8 @@ struct ChatSessionDTO: Codable {
             title: title,
             model: model,
             createdAt: createdAt,
-            updatedAt: updatedAt
+            updatedAt: updatedAt,
+            status: status ?? .active
         )
     }
 }
@@ -153,7 +183,8 @@ extension ChatSession {
             title: title,
             model: model,
             createdAt: createdAt,
-            updatedAt: updatedAt
+            updatedAt: updatedAt,
+            status: status
         )
     }
 }

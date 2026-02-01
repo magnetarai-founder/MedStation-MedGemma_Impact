@@ -59,9 +59,18 @@ final class ChatStore {
     private static let currentSessionIdKey = "chat.currentSessionId"
     private static let selectedModeKey = "chat.selectedMode"
     private static let selectedModelIdKey = "chat.selectedModelId"
+    private static let selectedFilterKey = "chat.selectedFilter"
 
     // Published state
     var sessions: [ChatSession] = []
+    var selectedFilter: ConversationState = .active {
+        didSet { UserDefaults.standard.set(selectedFilter.rawValue, forKey: Self.selectedFilterKey) }
+    }
+
+    /// Sessions filtered by the current filter selection
+    var filteredSessions: [ChatSession] {
+        sessions.filter { $0.status == selectedFilter }
+    }
     var currentSession: ChatSession? {
         didSet {
             if let sessionId = currentSession?.id.uuidString {
@@ -131,6 +140,12 @@ final class ChatStore {
             self.selectedMode = savedMode
         }
         self.selectedModelId = UserDefaults.standard.string(forKey: Self.selectedModelIdKey)
+
+        // Restore filter selection
+        if let savedFilter = UserDefaults.standard.string(forKey: Self.selectedFilterKey),
+           let filter = ConversationState(rawValue: savedFilter) {
+            self.selectedFilter = filter
+        }
 
         // Store session ID to restore after sessions load
         if let savedSessionId = UserDefaults.standard.string(forKey: Self.currentSessionIdKey),
@@ -510,6 +525,89 @@ final class ChatStore {
                 // Keep local change anyway - next sync will fix it
             }
         }
+    }
+
+    // MARK: - Archive & Restore
+
+    /// Archive a session (soft delete - moves to archived state)
+    func archiveSession(_ session: ChatSession) {
+        guard let index = sessions.firstIndex(where: { $0.id == session.id }) else {
+            logger.warning("Cannot archive: session not found")
+            return
+        }
+
+        let wasCurrentSession = currentSession?.id == session.id
+
+        // Update status locally
+        sessions[index].status = .archived
+        sessions[index].updatedAt = Date()
+
+        // If this was the current session, clear selection
+        if wasCurrentSession {
+            currentSession = nil
+            messages = []
+        }
+
+        logger.info("Archived session: \(session.title)")
+
+        // TODO: Sync to backend when API supports status updates
+    }
+
+    /// Restore a session from archived or deleted state
+    func restoreSession(_ session: ChatSession) {
+        guard let index = sessions.firstIndex(where: { $0.id == session.id }) else {
+            logger.warning("Cannot restore: session not found")
+            return
+        }
+
+        // Update status locally
+        sessions[index].status = .active
+        sessions[index].updatedAt = Date()
+
+        logger.info("Restored session: \(session.title)")
+
+        // TODO: Sync to backend when API supports status updates
+    }
+
+    /// Move session to deleted state (can still be restored)
+    func moveToTrash(_ session: ChatSession) {
+        guard let index = sessions.firstIndex(where: { $0.id == session.id }) else {
+            logger.warning("Cannot trash: session not found")
+            return
+        }
+
+        let wasCurrentSession = currentSession?.id == session.id
+
+        // Update status locally
+        sessions[index].status = .deleted
+        sessions[index].updatedAt = Date()
+
+        // If this was the current session, clear selection
+        if wasCurrentSession {
+            currentSession = nil
+            messages = []
+        }
+
+        logger.info("Moved session to trash: \(session.title)")
+
+        // TODO: Sync to backend when API supports status updates
+    }
+
+    /// Permanently delete a session (no recovery)
+    func permanentlyDeleteSession(_ session: ChatSession) {
+        // Use existing deleteSession for permanent deletion
+        deleteSession(session)
+    }
+
+    /// Empty the trash (permanently delete all deleted sessions)
+    func emptyTrash() {
+        let deletedSessions = sessions.filter { $0.status == .deleted }
+
+        for session in deletedSessions {
+            deleteSession(session)
+        }
+
+        logger.info("Emptied trash: \(deletedSessions.count) sessions permanently deleted")
     }
 
     // MARK: - Intelligent Routing (Phase 4)

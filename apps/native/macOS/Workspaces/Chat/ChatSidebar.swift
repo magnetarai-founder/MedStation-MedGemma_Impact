@@ -12,32 +12,132 @@ struct ChatSidebar: View {
     @State private var sessionToRename: ChatSession?
     @State private var renameText = ""
 
+    /// Count of sessions in each filter category for badges
+    private var activeBadge: Int { chatStore.sessions.filter { $0.status == .active }.count }
+    private var archivedBadge: Int { chatStore.sessions.filter { $0.status == .archived }.count }
+    private var deletedBadge: Int { chatStore.sessions.filter { $0.status == .deleted }.count }
+
     var body: some View {
         VStack(spacing: 0) {
-            // Header with New Chat button
-            HStack {
+            // Header - macOS 26 Messages style
+            HStack(spacing: 8) {
+                // Title shows current filter
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Sessions")
+                    Text(chatStore.selectedFilter.displayName)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.textPrimary)
 
-                    Text("\(chatStore.sessions.count) sessions")
-                        .font(.system(size: 11))
-                        .foregroundColor(.textSecondary)
+                    if chatStore.filteredSessions.count > 0 {
+                        Text("\(chatStore.filteredSessions.count) conversation\(chatStore.filteredSessions.count == 1 ? "" : "s")")
+                            .font(.system(size: 11))
+                            .foregroundColor(.textSecondary)
+                    }
                 }
 
                 Spacer()
 
-                Button(action: {
-                    Task {
-                        await chatStore.createSession()
+                // New Chat button (only in active view)
+                if chatStore.selectedFilter == .active {
+                    Button(action: {
+                        Task {
+                            await chatStore.createSession()
+                        }
+                    }) {
+                        Image(systemName: "square.and.pencil")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.textSecondary)
                     }
-                }) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 16))
-                        .foregroundStyle(LinearGradient.magnetarGradient)
+                    .buttonStyle(.plain)
+                    .help("New Chat")
                 }
-                .buttonStyle(.plain)
+
+                // Filter dropdown button - macOS 26 Messages style
+                Menu {
+                    // All Messages / Active
+                    Button {
+                        chatStore.selectedFilter = .active
+                    } label: {
+                        HStack {
+                            Label("All Messages", systemImage: "bubble.left.and.bubble.right")
+                            Spacer()
+                            if activeBadge > 0 {
+                                Text("\(activeBadge)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            if chatStore.selectedFilter == .active {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+
+                    Divider()
+
+                    // Archived
+                    Button {
+                        chatStore.selectedFilter = .archived
+                    } label: {
+                        HStack {
+                            Label("Archived", systemImage: "archivebox")
+                            Spacer()
+                            if archivedBadge > 0 {
+                                Text("\(archivedBadge)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            if chatStore.selectedFilter == .archived {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+
+                    // Recently Deleted
+                    Button {
+                        chatStore.selectedFilter = .deleted
+                    } label: {
+                        HStack {
+                            Label("Recently Deleted", systemImage: "trash")
+                            Spacer()
+                            if deletedBadge > 0 {
+                                Text("\(deletedBadge)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            if chatStore.selectedFilter == .deleted {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+
+                    // Empty Trash option when viewing deleted
+                    if chatStore.selectedFilter == .deleted && deletedBadge > 0 {
+                        Divider()
+
+                        Button(role: .destructive) {
+                            chatStore.emptyTrash()
+                        } label: {
+                            Label("Empty Trash", systemImage: "trash.slash")
+                        }
+                    }
+                } label: {
+                    // Filter button with badge indicator
+                    ZStack(alignment: .topTrailing) {
+                        Image(systemName: "line.3.horizontal.decrease")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.textSecondary)
+
+                        // Show badge if non-active filters have items
+                        if chatStore.selectedFilter == .active && (archivedBadge > 0 || deletedBadge > 0) {
+                            Circle()
+                                .fill(Color.blue)
+                                .frame(width: 6, height: 6)
+                                .offset(x: 2, y: -2)
+                        }
+                    }
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .help("Filter Messages")
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 12)
@@ -57,39 +157,41 @@ struct ChatSidebar: View {
                         .foregroundColor(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if chatStore.sessions.isEmpty {
+            } else if chatStore.filteredSessions.isEmpty {
                 VStack(spacing: 16) {
-                    Image(systemName: "bubble.left.and.bubble.right")
+                    Image(systemName: chatStore.selectedFilter.icon)
                         .font(.system(size: 42))
                         .foregroundColor(.secondary)
 
-                    Text("No chat sessions")
+                    Text(emptyStateMessage)
                         .font(.headline)
                         .foregroundColor(.secondary)
 
-                    Button(action: {
-                        Task {
-                            await chatStore.createSession()
+                    if chatStore.selectedFilter == .active {
+                        Button(action: {
+                            Task {
+                                await chatStore.createSession()
+                            }
+                        }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "plus")
+                                Text("Start New Chat")
+                            }
+                            .font(.system(size: 13, weight: .medium))
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(LinearGradient.magnetarGradient)
+                            .foregroundColor(.white)
+                            .cornerRadius(8)
                         }
-                    }) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "plus")
-                            Text("Start New Chat")
-                        }
-                        .font(.system(size: 13, weight: .medium))
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(LinearGradient.magnetarGradient)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
                     LazyVStack(spacing: 4) {
-                        ForEach(chatStore.sessions) { session in
+                        ForEach(chatStore.filteredSessions) { session in
                             ChatSessionRow(
                                 session: session,
                                 isSelected: chatStore.currentSession?.id == session.id
@@ -101,27 +203,7 @@ struct ChatSidebar: View {
                                 }
                             }
                             .contextMenu {
-                                Button {
-                                    renameText = session.title
-                                    sessionToRename = session
-                                } label: {
-                                    Label("Rename", systemImage: "pencil")
-                                }
-
-                                Button {
-                                    // Archive functionality - placeholder
-                                    // Could move to an "archived" state
-                                } label: {
-                                    Label("Archive", systemImage: "archivebox")
-                                }
-
-                                Divider()
-
-                                Button(role: .destructive) {
-                                    chatStore.deleteSession(session)
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
+                                contextMenuItems(for: session)
                             }
                         }
                     }
@@ -143,6 +225,79 @@ struct ChatSidebar: View {
                     sessionToRename = nil
                 }
             )
+        }
+    }
+
+    // MARK: - Helpers
+
+    private var emptyStateMessage: String {
+        switch chatStore.selectedFilter {
+        case .active:
+            return "No Messages"
+        case .archived:
+            return "No Archived Messages"
+        case .deleted:
+            return "No Recently Deleted Messages"
+        }
+    }
+
+    @ViewBuilder
+    private func contextMenuItems(for session: ChatSession) -> some View {
+        switch chatStore.selectedFilter {
+        case .active:
+            // Active sessions: Rename, Archive, Delete
+            Button {
+                renameText = session.title
+                sessionToRename = session
+            } label: {
+                Label("Rename", systemImage: "pencil")
+            }
+
+            Button {
+                chatStore.archiveSession(session)
+            } label: {
+                Label("Archive", systemImage: "archivebox")
+            }
+
+            Divider()
+
+            Button(role: .destructive) {
+                chatStore.moveToTrash(session)
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+
+        case .archived:
+            // Archived sessions: Restore, Delete
+            Button {
+                chatStore.restoreSession(session)
+            } label: {
+                Label("Restore", systemImage: "arrow.uturn.backward")
+            }
+
+            Divider()
+
+            Button(role: .destructive) {
+                chatStore.moveToTrash(session)
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+
+        case .deleted:
+            // Deleted sessions: Restore, Permanent Delete
+            Button {
+                chatStore.restoreSession(session)
+            } label: {
+                Label("Restore", systemImage: "arrow.uturn.backward")
+            }
+
+            Divider()
+
+            Button(role: .destructive) {
+                chatStore.permanentlyDeleteSession(session)
+            } label: {
+                Label("Delete Permanently", systemImage: "trash.slash")
+            }
         }
     }
 }
