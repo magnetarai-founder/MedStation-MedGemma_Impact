@@ -75,7 +75,8 @@ final class ContextOptimizer: ObservableObject {
         var selected = required
         var usedTokens = requiredTokens
         let reserve = Int(Float(budget.total) * configuration.reservePercent)
-        let availableForOptional = budget.total - requiredTokens - reserve
+        // Budget available for optional items (used for logging/debugging if needed)
+        _ = budget.total - requiredTokens - reserve
 
         for item in scored {
             if usedTokens + item.tokens <= budget.total - reserve {
@@ -150,7 +151,7 @@ final class ContextOptimizer: ObservableObject {
             var score = item.combinedScore
 
             // Boost based on predicted topics
-            if let query = query {
+            if query != nil {
                 for topic in prediction.likelyTopics {
                     if item.content.lowercased().contains(topic.lowercased()) {
                         score += 0.1

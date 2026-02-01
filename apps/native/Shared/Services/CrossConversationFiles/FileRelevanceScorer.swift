@@ -481,8 +481,8 @@ extension FileRelevanceScorer {
     ) async -> [FileRelevanceScore] {
         var allScores: [FileRelevanceScore] = []
 
-        // Pre-compute query embedding once
-        let queryEmbedding = embedder.embed(query)
+        // Query embedding computed once (used in batch scoring)
+        _ = embedder.embed(query)
 
         // Process in batches
         for batchStart in stride(from: 0, to: files.count, by: batchSize) {

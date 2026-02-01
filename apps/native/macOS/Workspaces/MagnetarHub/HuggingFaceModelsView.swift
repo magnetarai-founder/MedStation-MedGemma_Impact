@@ -269,7 +269,7 @@ struct HuggingFaceModelsView: View {
                     }
 
                     if progress.status == "completed" {
-                        await MainActor.run {
+                        _ = await MainActor.run {
                             downloadingModels.removeValue(forKey: model.id)
                         }
                         // Refresh models list to show updated isDownloaded status

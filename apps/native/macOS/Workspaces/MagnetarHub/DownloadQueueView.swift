@@ -249,7 +249,7 @@ class DownloadQueueManager {
         // API call would go here
         logger.info("Pause requested for job: \(jobId)")
         // For now, just update local state (backend support needed)
-        if var progress = downloads[jobId] {
+        if downloads[jobId] != nil {
             // Would need mutable DownloadProgress or a wrapper
             logger.info("Pause not yet implemented in backend")
         }

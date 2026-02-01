@@ -84,7 +84,7 @@ struct VirtualContextDisplay {
     static func forModel(
         _ modelId: String?,
         conversationId: UUID,
-        storageService: ConversationStorageService = .shared
+        storageService: ConversationStorageService
     ) -> VirtualContextDisplay {
         let actualLimit = actualLimitForModel(modelId)
 
@@ -261,7 +261,7 @@ struct ContextStats {
     @MainActor
     static func from(
         conversationId: UUID,
-        storageService: ConversationStorageService = .shared
+        storageService: ConversationStorageService
     ) -> ContextStats {
         let themes = storageService.loadThemes(conversationId)
         let nodes = storageService.loadSemanticNodes(conversationId)

@@ -57,14 +57,10 @@ final class CrossConversationFileIndex: ObservableObject {
 
     /// Load index from persistent storage
     private func loadIndex() async {
-        do {
-            let count = try await storage.getIndexedCount()
-            indexedFileCount = count
-            lastIndexUpdate = try await storage.getLastUpdateTime()
-            logger.info("[FileIndex] Loaded index with \(count) files")
-        } catch {
-            logger.error("[FileIndex] Failed to load index: \(error)")
-        }
+        let count = await storage.getIndexedCount()
+        indexedFileCount = count
+        lastIndexUpdate = await storage.getLastUpdateTime()
+        logger.info("[FileIndex] Loaded index with \(count) files")
     }
 
     /// Index a file reference from a conversation
@@ -91,7 +87,7 @@ final class CrossConversationFileIndex: ObservableObject {
             )
 
             try await storage.upsert(entry)
-            indexedFileCount = try await storage.getIndexedCount()
+            indexedFileCount = await storage.getIndexedCount()
             lastIndexUpdate = Date()
 
             logger.debug("[FileIndex] Indexed file: \(file.filename)")
@@ -125,11 +121,10 @@ final class CrossConversationFileIndex: ObservableObject {
         excludeConversation: UUID? = nil,
         minSimilarity: Float = 0.3
     ) async -> [CrossConversationFileResult] {
-        do {
-            let queryEmbedding = embedder.embed(query)
+        let queryEmbedding = embedder.embed(query)
 
-            // Get all indexed files
-            var entries = try await storage.getAllEntries()
+        // Get all indexed files
+        var entries = await storage.getAllEntries()
 
             // Exclude current conversation if specified
             if let exclude = excludeConversation {
@@ -164,11 +159,6 @@ final class CrossConversationFileIndex: ObservableObject {
                     relevanceBoost: calculateRelevanceBoost(entry)
                 )
             }
-
-        } catch {
-            logger.error("[FileIndex] Failed to find relevant files: \(error)")
-            return []
-        }
     }
 
     /// Get files from related conversations
@@ -177,9 +167,8 @@ final class CrossConversationFileIndex: ObservableObject {
         topics: [String],
         limit: Int = 5
     ) async -> [CrossConversationFileResult] {
-        do {
-            // Get ANE predictions for likely file needs
-            let prediction = predictor.predictContextNeeds(
+        // Get ANE predictions for likely file needs
+        let prediction = predictor.predictContextNeeds(
                 currentWorkspace: .chat,
                 recentQuery: topics.joined(separator: " "),
                 activeFileId: nil
@@ -218,62 +207,51 @@ final class CrossConversationFileIndex: ObservableObject {
                 return true
             }
 
-            return Array(unique.sorted { $0.combinedScore > $1.combinedScore }.prefix(limit))
-
-        } catch {
-            logger.error("[FileIndex] Failed to get related files: \(error)")
-            return []
-        }
+        return Array(unique.sorted { $0.combinedScore > $1.combinedScore }.prefix(limit))
     }
 
     /// Get frequently co-accessed files
     func getCoAccessedFiles(with fileId: UUID, limit: Int = 5) async -> [CrossConversationFileResult] {
-        do {
-            // Get conversations that include this file
-            guard let entry = try await storage.getEntry(fileId: fileId) else {
-                return []
-            }
-
-            let conversationIds = entry.conversationIds
-
-            // Find other files in those conversations
-            var coAccessCounts: [UUID: Int] = [:]
-
-            for convId in conversationIds {
-                let filesInConversation = try await storage.getFilesInConversation(convId)
-                for otherFile in filesInConversation where otherFile.fileId != fileId {
-                    coAccessCounts[otherFile.fileId, default: 0] += 1
-                }
-            }
-
-            // Get full entries for top co-accessed files
-            let topCoAccessed = coAccessCounts.sorted { $0.value > $1.value }.prefix(limit)
-            var results: [CrossConversationFileResult] = []
-
-            for (coFileId, coCount) in topCoAccessed {
-                if let coEntry = try await storage.getEntry(fileId: coFileId) {
-                    let result = CrossConversationFileResult(
-                        fileId: coEntry.fileId,
-                        filename: coEntry.filename,
-                        fileType: coEntry.fileType,
-                        similarity: 0,  // Not similarity-based
-                        conversationCount: coEntry.conversationIds.count,
-                        totalAccessCount: coEntry.accessCount,
-                        lastAccessed: coEntry.lastAccessed,
-                        isVaultProtected: coEntry.isVaultProtected,
-                        relevanceBoost: Float(coCount) / Float(conversationIds.count),
-                        coAccessScore: Float(coCount) / Float(conversationIds.count)
-                    )
-                    results.append(result)
-                }
-            }
-
-            return results
-
-        } catch {
-            logger.error("[FileIndex] Failed to get co-accessed files: \(error)")
+        // Get conversations that include this file
+        guard let entry = await storage.getEntry(fileId: fileId) else {
             return []
         }
+
+        let conversationIds = entry.conversationIds
+
+        // Find other files in those conversations
+        var coAccessCounts: [UUID: Int] = [:]
+
+        for convId in conversationIds {
+            let filesInConversation = await storage.getFilesInConversation(convId)
+            for otherFile in filesInConversation where otherFile.fileId != fileId {
+                coAccessCounts[otherFile.fileId, default: 0] += 1
+            }
+        }
+
+        // Get full entries for top co-accessed files
+        let topCoAccessed = coAccessCounts.sorted { $0.value > $1.value }.prefix(limit)
+        var results: [CrossConversationFileResult] = []
+
+        for (coFileId, coCount) in topCoAccessed {
+            if let coEntry = await storage.getEntry(fileId: coFileId) {
+                let result = CrossConversationFileResult(
+                    fileId: coEntry.fileId,
+                    filename: coEntry.filename,
+                    fileType: coEntry.fileType,
+                    similarity: 0,  // Not similarity-based
+                    conversationCount: coEntry.conversationIds.count,
+                    totalAccessCount: coEntry.accessCount,
+                    lastAccessed: coEntry.lastAccessed,
+                    isVaultProtected: coEntry.isVaultProtected,
+                    relevanceBoost: Float(coCount) / Float(conversationIds.count),
+                    coAccessScore: Float(coCount) / Float(conversationIds.count)
+                )
+                results.append(result)
+            }
+        }
+
+        return results
     }
 
     /// Rebuild the entire index
@@ -287,7 +265,7 @@ final class CrossConversationFileIndex: ObservableObject {
 
         do {
             // Re-embed all entries
-            let entries = try await storage.getAllEntries()
+            let entries = await storage.getAllEntries()
 
             for entry in entries {
                 let textToEmbed = entry.filename
@@ -312,7 +290,7 @@ final class CrossConversationFileIndex: ObservableObject {
         do {
             let pruned = try await storage.pruneOldEntries(keepCount: maxIndexSize)
             if pruned > 0 {
-                indexedFileCount = try await storage.getIndexedCount()
+                indexedFileCount = await storage.getIndexedCount()
                 logger.info("[FileIndex] Pruned \(pruned) old entries")
             }
         } catch {
@@ -484,7 +462,7 @@ actor FileIndexStorage {
             entries[entry.fileId] = entry
         }
 
-        Task { await saveToDisk() }
+        Task { self.saveToDisk() }
     }
 
     func recordAccess(
@@ -519,7 +497,7 @@ actor FileIndexStorage {
             accessLog = Array(accessLog.suffix(5000))
         }
 
-        Task { await saveToDisk() }
+        Task { self.saveToDisk() }
     }
 
     func pruneOldEntries(keepCount: Int) throws -> Int {
@@ -532,7 +510,7 @@ actor FileIndexStorage {
         let pruneCount = entries.count - toKeep.count
         entries = Dictionary(uniqueKeysWithValues: toKeep.map { ($0.fileId, $0) })
 
-        Task { await saveToDisk() }
+        Task { self.saveToDisk() }
         return pruneCount
     }
 

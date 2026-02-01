@@ -161,7 +161,7 @@ struct TokenCounter {
 
         // Estimate characters to keep
         let ratio = Float(budget) / Float(currentCount)
-        var targetChars = Int(Float(text.count) * ratio * 0.95)  // 5% buffer
+        let targetChars = Int(Float(text.count) * ratio * 0.95)  // 5% buffer
 
         // Try to break at sentence boundary
         let truncated = String(text.prefix(targetChars))

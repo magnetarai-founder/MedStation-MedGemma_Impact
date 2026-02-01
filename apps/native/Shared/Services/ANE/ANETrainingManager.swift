@@ -160,7 +160,7 @@ final class ANETrainingManager: ObservableObject {
             lastTrainingAt = Date()
 
             // Notify predictor to reload
-            await ANEPredictor.shared.reloadModel(from: modelURL)
+            ANEPredictor.shared.reloadModel(from: modelURL)
 
             logger.info("[ANETraining] Training complete")
 
@@ -192,7 +192,7 @@ final class ANETrainingManager: ObservableObject {
         trainingProgress = 0.4
 
         // Create batch provider from data
-        guard let batchProvider = createBatchProvider(from: data) else {
+        guard let _ = createBatchProvider(from: data) else {
             throw TrainingError.invalidData
         }
 

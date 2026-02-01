@@ -453,7 +453,7 @@ final class VectorStore: ObservableObject {
     }
 
     func clear() async throws {
-        guard isInitialized, let db = db else {
+        guard isInitialized, db != nil else {
             throw VectorStoreError.notInitialized
         }
 

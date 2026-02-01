@@ -151,7 +151,7 @@ final class ANEPredictor: ObservableObject {
         let weekday = Calendar.current.component(.weekday, from: Date())
 
         // Simple feature dictionary
-        var features: [String: MLFeatureValue] = [
+        let features: [String: MLFeatureValue] = [
             "hour_of_day": MLFeatureValue(double: Double(hour)),
             "day_of_week": MLFeatureValue(double: Double(weekday)),
             "workspace": MLFeatureValue(string: workspace.rawValue),
@@ -165,14 +165,14 @@ final class ANEPredictor: ObservableObject {
 
     private func parseModelOutput(_ output: MLFeatureProvider) -> ContextPrediction {
         // Extract predictions from model output
-        var likelyTopics: [String] = []
-        var likelyFileNeeds: [UUID] = []
+        let likelyTopics: [String] = []
+        let likelyFileNeeds: [UUID] = []
         var compressionAggressiveness: Float = 0.5
-        var preloadSuggestions: [UUID] = []
+        let preloadSuggestions: [UUID] = []
 
         // Parse based on model output schema
-        if let topicsArray = output.featureValue(for: "likely_topics")?.multiArrayValue {
-            // Parse topics from multiarray
+        if output.featureValue(for: "likely_topics")?.multiArrayValue != nil {
+            // Parse topics from multiarray - currently a placeholder
         }
 
         if let compression = output.featureValue(for: "compression_aggressiveness")?.doubleValue {
