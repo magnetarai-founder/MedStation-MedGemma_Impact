@@ -174,49 +174,9 @@ struct ConversationMessage: Codable, Identifiable {
     }
 }
 
-// MARK: - RAG Models (Context-Specific)
-
-/// Document retrieved from RAG/vector search for context bundling
-struct RAGDocument: Codable, Identifiable {
-    let id: String
-    let content: String
-    let source: String
-    let sourceId: String?
-    let relevanceScore: Float
-    let metadata: [String: String]?
-
-    init(
-        id: String = UUID().uuidString,
-        content: String,
-        source: String,
-        sourceId: String? = nil,
-        relevanceScore: Float,
-        metadata: [String: String]? = nil
-    ) {
-        self.id = id
-        self.content = content
-        self.source = source
-        self.sourceId = sourceId
-        self.relevanceScore = relevanceScore
-        self.metadata = metadata
-    }
-}
-
-/// Result from ANE Context Engine vector search
-struct VectorSearchResult: Codable, Identifiable {
-    let id: String
-    let content: String
-    let similarity: Float
-    let source: String
-    let metadata: [String: String]?
-
-    /// Formatted for inclusion in prompt
-    var formattedForPrompt: String {
-        return "[\(source)] \(content)"
-    }
-}
-
 // MARK: - Model & System Models
+// Note: RAG documents are in Services/RAG/RAGModels.swift (full version with embeddings)
+// Note: Bundled versions for context passing are in ContextBundle.swift (BundledRAGDocument, BundledVectorSearchResult)
 
 /// Information about an available model
 struct AvailableModel: Codable {

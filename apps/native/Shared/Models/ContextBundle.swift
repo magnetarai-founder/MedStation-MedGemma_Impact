@@ -7,51 +7,20 @@
 //
 //  Foundation: Matthew 7:24-25 - Built on the rock, not sand
 //
+//  Related files (Phase 7 extraction):
+//  - Context/OllamaAPIModels.swift: Ollama API types
+//  - Context/WorkspaceContextModels.swift: Workspace context types (Bundled*, Relevant*, etc.)
+//  - Services/RAG/RAGModels.swift: Full RAG document types with embeddings
+//
 
 import Foundation
 import os
 
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "ContextBundle")
 
-// MARK: - Ollama API Types (for model discovery)
-
-struct OllamaTagsResponse: Codable {
-    let models: [OllamaModelInfo]
-}
-
-/// Model info from Ollama API (distinct from ModelsStore.OllamaModel for UI state)
-struct OllamaModelInfo: Codable {
-    let name: String
-    let size: Int64  // Size in bytes
-    let modifiedAt: String
-    let details: OllamaModelInfoDetails?
-
-    enum CodingKeys: String, CodingKey {
-        case name, size
-        case modifiedAt = "modified_at"
-        case details
-    }
-
-    /// Size in GB for display
-    var sizeGB: Double {
-        return Double(size) / 1_073_741_824.0  // 1024^3
-    }
-}
-
-struct OllamaModelInfoDetails: Codable {
-    let parameterSize: String?
-    let quantizationLevel: String?
-    let format: String?
-    let family: String?
-
-    enum CodingKeys: String, CodingKey {
-        case parameterSize = "parameter_size"
-        case quantizationLevel = "quantization_level"
-        case format, family
-    }
-}
-
 // MARK: - Context Bundle (What Gets Passed to Models)
+// Note: Workspace context types are in Context/WorkspaceContextModels.swift
+// Note: Ollama API types are in Context/OllamaAPIModels.swift
 
 /// Complete context bundle for model routing and inference
 /// Apple FM uses this to determine which model to route to and what context to provide
@@ -66,6 +35,7 @@ struct ContextBundle: Codable {
     let totalMessagesInSession: Int  // For context window management
 
     // Cross-workspace context (smart relevance filtering)
+    // Types defined in WorkspaceContextModels.swift
     let vaultContext: BundledVaultContext?
     let dataContext: BundledDataContext?
     let kanbanContext: BundledKanbanContext?
@@ -73,9 +43,10 @@ struct ContextBundle: Codable {
     let teamContext: BundledTeamContext?
     let codeContext: BundledCodeContext?
 
-    // RAG/Vector search results (optional)
-    let ragDocuments: [RAGDocument]?
-    let vectorSearchResults: [VectorSearchResult]?
+    // RAG/Vector search results (simplified for bundling)
+    // Note: These are simplified versions, not the full RAGDocument from RAGModels.swift
+    let ragDocuments: [BundledRAGDocument]?
+    let vectorSearchResults: [BundledVectorSearchResult]?
 
     // User preferences and model state
     let userPreferences: UserPreferences
@@ -90,121 +61,12 @@ struct ContextBundle: Codable {
     let ttl: TimeInterval  // Cache TTL for this bundle
 }
 
-// MARK: - Conversation History
+// MARK: - Bundled RAG Document (Simplified for Context Bundling)
+// Note: This is a simplified version for passing context to models.
+// The full RAGDocument with embeddings is in Services/RAG/RAGModels.swift
 
-/// Single message in conversation history
-struct ConversationMessage: Codable, Identifiable {
-    let id: String
-    let role: String  // "user", "assistant", "system"
-    let content: String
-    let modelId: String?  // Which model generated this (if assistant)
-    let timestamp: Date
-    let tokenCount: Int?  // Optional: for context window management
-}
-
-// MARK: - Bundled Vault Context (Metadata Only)
-
-/// Vault file result from semantic search (includes relevance score and snippet)
-struct RelevantVaultFile: Codable {
-    let fileId: String
-    let fileName: String
-    let filePath: String
-    let snippet: String
-    let relevanceScore: Float
-}
-
-/// Vault context included in bundle - METADATA ONLY, NO FILE CONTENTS
-/// File contents require explicit permission via VaultPermissionManager
-struct BundledVaultContext: Codable {
-    let unlockedVaultType: String?  // "real" or "decoy" (if unlocked)
-    let recentlyAccessedFiles: [VaultFileMetadata]  // Last 5 files user opened
-    let currentlyGrantedPermissions: [FilePermission]  // Active file permissions
-    let relevantFiles: [RelevantVaultFile]?  // Files relevant to query (semantic search)
-
-    // IMPORTANT: File contents are NEVER included in bundle
-    // Models must request access via VaultPermissionManager
-}
-
-// MARK: - Bundled Data Context
-
-/// Query result from semantic search (includes relevance score)
-struct RelevantQuery: Codable {
-    let queryId: String
-    let queryText: String
-    let tableName: String?
-    let relevanceScore: Float
-}
-
-/// Data workspace context - recent queries and loaded tables
-struct BundledDataContext: Codable {
-    let activeTables: [TableMetadata]  // Currently loaded tables
-    let recentQueries: [RecentQuery]  // Last 3 queries
-    let relevantQueries: [RelevantQuery]?  // Queries similar to current request (semantic search)
-    let activeConnections: [DatabaseConnection]
-}
-
-// MARK: - Bundled Kanban Context
-
-/// Kanban workspace context - active tasks and boards
-struct BundledKanbanContext: Codable {
-    let activeBoard: String?
-    let relevantTasks: [TaskSummary]  // Tasks relevant to query
-    let recentActivity: [KanbanActivity]  // Last 5 activities
-    let tasksByPriority: TaskPrioritySummary
-}
-
-struct TaskPrioritySummary: Codable {
-    let urgent: Int
-    let high: Int
-    let medium: Int
-    let low: Int
-}
-
-// MARK: - Bundled Workflow Context
-
-/// Workflow/automation context - active workflows
-struct BundledWorkflowContext: Codable {
-    let activeWorkflows: [WorkflowSummary]
-    let recentExecutions: [WorkflowExecution]
-    let relevantWorkflows: [WorkflowSummary]?  // Workflows related to query
-}
-
-// MARK: - Bundled Team Context
-
-/// Team workspace context - recent messages and channels
-struct BundledTeamContext: Codable {
-    let activeChannel: String?
-    let recentMessages: [TeamMessageSummary]  // Last 10 messages
-    let onlineMembers: Int
-    let mentionedUsers: [String]?  // Users @mentioned in query
-}
-
-// MARK: - Bundled Code Context
-
-/// Code workspace context - open files and git state
-struct BundledCodeContext: Codable {
-    let openFiles: [String]  // File paths
-    let recentEdits: [CodeEdit]
-    let gitBranch: String?
-    let gitStatus: String?  // "clean", "uncommitted changes", etc.
-    let relevantFiles: [RelevantCodeFile]?  // Files semantically related to query
-}
-
-/// Code file found via semantic search
-struct RelevantCodeFile: Codable {
-    let fileId: String
-    let fileName: String
-    let filePath: String?
-    let language: String?
-    let snippet: String
-    let lineNumber: Int?
-    let relevanceScore: Float
-}
-
-// MARK: - RAG Documents
-
-/// Document retrieved from RAG/vector search
-struct RAGDocument: Codable, Identifiable {
+/// Simplified RAG document for context bundling (no embeddings)
+struct BundledRAGDocument: Codable, Identifiable {
     let id: String
     let content: String
     let source: String  // "vault", "data", "web", etc.
@@ -213,46 +75,37 @@ struct RAGDocument: Codable, Identifiable {
     let metadata: [String: String]?
 }
 
-// MARK: - Vector Search Results
+// MARK: - Bundled Vector Search Result (Detailed for Context Bundling)
+// Note: Different from VectorSearchResult in WorkspaceContextModels which is simpler
 
-/// Result from ANE Context Engine vector search
-struct VectorSearchResult: Codable, Identifiable {
+/// Detailed vector search result for context bundling
+struct BundledVectorSearchResult: Codable, Identifiable {
     let id: String
     let text: String
     let workspaceType: String  // Where this came from
     let resourceId: String  // File ID, task ID, message ID, etc.
     let similarity: Float  // 0.0-1.0
-    let metadata: VectorMetadata
+    let metadata: BundledVectorMetadata
 }
 
-struct VectorMetadata: Codable {
+/// Metadata for bundled vector search results
+struct BundledVectorMetadata: Codable {
     let resourceType: String  // "vault_file", "kanban_task", "team_message", etc.
     let timestamp: Date
     let author: String?
     let tags: [String]?
 }
 
-// MARK: - Available Models
+// MARK: - Query Relevance Analysis
 
-/// Model available for routing
-struct AvailableModel: Codable, Identifiable {
-    let id: String
-    let name: String
-    let displayName: String
-    let slotNumber: Int?  // nil if not hot-loaded
-    let isPinned: Bool
-    let memoryUsageGB: Float?  // nil if not loaded
-    let capabilities: ModelCapabilities
-    let isHealthy: Bool  // Can this model be routed to right now?
-}
-
-struct ModelCapabilities: Codable {
-    let chat: Bool
-    let codeGeneration: Bool
-    let dataAnalysis: Bool
-    let reasoning: Bool
-    let maxContextTokens: Int
-    let specialized: String?  // "sql", "python", "scripture", etc.
+struct QueryRelevance {
+    let needsVaultFiles: Bool
+    let needsDataContext: Bool
+    let needsKanbanContext: Bool
+    let needsWorkflowContext: Bool
+    let needsTeamContext: Bool
+    let needsCodeContext: Bool
+    let currentWorkspaceType: String
 }
 
 // MARK: - Context Bundler (Smart Relevance Filtering)
@@ -590,7 +443,7 @@ class ContextBundler {
     private func fetchRAGDocuments(
         query: String,
         aneState: ANEContextState
-    ) async -> [RAGDocument]? {
+    ) async -> [BundledRAGDocument]? {
         guard aneState.available else {
             return nil
         }
@@ -610,7 +463,7 @@ class ContextBundler {
                 body: searchRequest
             )
 
-            // Convert search results to RAGDocuments
+            // Convert search results to BundledRAGDocuments
             let ragDocs = response.results.map { result in
                 // Extract sourceId from metadata if available
                 let sourceId = result.metadata["session_id"]?.value as? String
@@ -621,7 +474,7 @@ class ContextBundler {
                     stringMetadata[key] = String(describing: value.value)
                 }
 
-                return RAGDocument(
+                return BundledRAGDocument(
                     id: sourceId ?? UUID().uuidString,
                     content: result.content,
                     source: result.source,
@@ -643,7 +496,7 @@ class ContextBundler {
     private func fetchVectorSearchResults(
         query: String,
         aneState: ANEContextState
-    ) async -> [VectorSearchResult]? {
+    ) async -> [BundledVectorSearchResult]? {
         guard aneState.available else {
             return nil
         }
@@ -662,7 +515,7 @@ class ContextBundler {
                 body: searchRequest
             )
 
-            let results = response.results.compactMap { result -> VectorSearchResult? in
+            let results = response.results.compactMap { result -> BundledVectorSearchResult? in
                 // Extract metadata fields
                 let sessionId = result.metadata["session_id"]?.value as? String ?? UUID().uuidString
                 let resourceType = result.metadata["resource_type"]?.value as? String ?? result.source
@@ -679,13 +532,13 @@ class ContextBundler {
                     timestamp = Date()
                 }
 
-                return VectorSearchResult(
+                return BundledVectorSearchResult(
                     id: sessionId,
                     text: result.content,
                     workspaceType: result.source,
                     resourceId: sessionId,
                     similarity: result.relevanceScore,
-                    metadata: VectorMetadata(
+                    metadata: BundledVectorMetadata(
                         resourceType: resourceType,
                         timestamp: timestamp,
                         author: author,
@@ -865,8 +718,9 @@ class ContextBundler {
                 WorkflowSummary(
                     id: result.workflowId,
                     name: result.workflowName,
-                    status: "active",  // Default status, adjust as needed
-                    lastRun: ISO8601DateFormatter().date(from: result.createdAt)
+                    status: "active",
+                    lastRun: ISO8601DateFormatter().date(from: result.createdAt),
+                    stepCount: 0  // Not available from semantic search
                 )
             }
 
@@ -876,16 +730,4 @@ class ContextBundler {
             return nil
         }
     }
-}
-
-// MARK: - Query Relevance Analysis
-
-struct QueryRelevance {
-    let needsVaultFiles: Bool
-    let needsDataContext: Bool
-    let needsKanbanContext: Bool
-    let needsWorkflowContext: Bool
-    let needsTeamContext: Bool
-    let needsCodeContext: Bool
-    let currentWorkspaceType: String
 }
