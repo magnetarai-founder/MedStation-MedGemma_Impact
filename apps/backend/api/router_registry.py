@@ -604,4 +604,13 @@ def register_routers(app: FastAPI) -> Tuple[List[str], List[str]]:
         services_failed.append("Collaboration API")
         logger.error("Failed to load collaboration router", exc_info=True)
 
+    # FAISS Semantic Search API (Phase 3: Vector Search)
+    try:
+        from api.services.faiss.router import router as faiss_router
+        app.include_router(faiss_router)  # Router already has prefix="/api/v1/faiss"
+        services_loaded.append("FAISS Semantic Search API")
+    except Exception as e:
+        services_failed.append("FAISS Semantic Search API")
+        logger.error("Failed to load FAISS router", exc_info=True)
+
     return services_loaded, services_failed

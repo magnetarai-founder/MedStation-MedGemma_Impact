@@ -85,6 +85,11 @@ final class ChatStore {
         didSet { UserDefaults.standard.set(selectedModelId, forKey: Self.selectedModelIdKey) }
     }
 
+    // Context utilization (Phase 6)
+    var contextSummary: ContextSummary {
+        contextBridge.getContextSummary()
+    }
+
     /// Default model to use when no specific model is selected
     /// Uses first available model from Ollama, or a reasonable fallback
     private var defaultModel: String {
@@ -106,6 +111,9 @@ final class ChatStore {
 
     @ObservationIgnored
     private let chatService = ChatService.shared
+
+    @ObservationIgnored
+    private let contextBridge = EnhancedContextBridge.shared
 
     // Session ID mapping: local UUID -> backend string ID
     @ObservationIgnored
@@ -304,6 +312,11 @@ final class ChatStore {
     }
 
     func selectSession(_ session: ChatSession) async {
+        // Notify bridge about session change (save previous session's graph)
+        if let previousSession = currentSession, previousSession.id != session.id {
+            await contextBridge.onSessionEnded(previousSession.id, messages: messages)
+        }
+
         currentSession = session
 
         // Load messages from backend
@@ -331,6 +344,9 @@ final class ChatStore {
 
             // Load model preferences for this session
             await loadModelPreferences(sessionId: backendSessionId)
+
+            // Notify bridge about new session selection (load session graph)
+            await contextBridge.onSessionSelected(session.id)
         } catch {
             logger.error("Failed to load messages: \(error)")
             messages = []
@@ -405,6 +421,12 @@ final class ChatStore {
         let deletedSessionIndex = sessions.firstIndex { $0.id == session.id }
         let backendId = sessionIdMapping[session.id]
         let wasCurrentSession = currentSession?.id == session.id
+        let messagesToArchive = wasCurrentSession ? messages : []
+
+        // Notify context bridge about session ending (archive context)
+        Task { [weak self] in
+            await self?.contextBridge.onSessionEnded(session.id, messages: messagesToArchive)
+        }
 
         // Optimistically remove from UI
         sessions.removeAll { $0.id == session.id }
@@ -852,6 +874,32 @@ final class ChatStore {
         model: String
     ) {
         Task {
+            // 1. Index user message for enhanced context (RAG, graph, files)
+            let userMessage = ChatMessage(
+                role: .user,
+                content: userQuery,
+                sessionId: sessionId
+            )
+            await contextBridge.processMessageForContext(
+                message: userMessage,
+                sessionId: sessionId,
+                conversationTitle: currentSession?.title
+            )
+
+            // 2. Index assistant response
+            let assistantMessage = ChatMessage(
+                role: .assistant,
+                content: response,
+                sessionId: sessionId,
+                modelId: model
+            )
+            await contextBridge.processMessageForContext(
+                message: assistantMessage,
+                sessionId: sessionId,
+                conversationTitle: currentSession?.title
+            )
+
+            // 3. Store to backend context service
             do {
                 try await ContextService.shared.storeContext(
                     sessionId: sessionId.uuidString,

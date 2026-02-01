@@ -56,6 +56,44 @@ class AppLifecycleManager: NSObject, NSApplicationDelegate {
             ModelMemoryTracker.shared.startAutoRefresh(intervalMinutes: 5)
             logger.info("Model memory tracker initialized")
         }
+
+        // Initialize context services (Phase 6: Unified Context Integration)
+        Task { @MainActor in
+            await initializeContextServices()
+        }
+    }
+
+    // MARK: - Context Services Initialization
+
+    @MainActor
+    private func initializeContextServices() async {
+        logger.info("Initializing context services...")
+
+        // Initialize semantic search service (loads vector store)
+        let _ = SemanticSearchService.shared
+        logger.debug("SemanticSearchService initialized")
+
+        // Initialize cross-conversation file index
+        let _ = CrossConversationFileIndex.shared
+        logger.debug("CrossConversationFileIndex initialized")
+
+        // Initialize context tier manager
+        let _ = ContextTierManager.shared
+        logger.debug("ContextTierManager initialized")
+
+        // Initialize enhanced context bridge (coordinates all context systems)
+        let _ = EnhancedContextBridge.shared
+        logger.debug("EnhancedContextBridge initialized")
+
+        // Initialize cross-workspace intelligence
+        let _ = CrossWorkspaceIntelligence.shared
+        logger.debug("CrossWorkspaceIntelligence initialized")
+
+        // Initialize RAG integration bridge
+        let _ = RAGIntegrationBridge.shared
+        logger.debug("RAGIntegrationBridge initialized")
+
+        logger.info("Context services initialization complete")
     }
 
     func applicationWillTerminate(_ notification: Notification) {
