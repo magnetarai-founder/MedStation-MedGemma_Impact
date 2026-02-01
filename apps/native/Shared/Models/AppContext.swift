@@ -469,6 +469,7 @@ struct WorkflowSummary: Codable {
     let name: String
     let status: String
     let lastRun: Date?
+    let stepCount: Int
 }
 
 struct WorkflowExecution: Codable, Identifiable {
@@ -635,10 +636,8 @@ struct CodeContext {
     }
 }
 
-struct CodeEdit: Codable {
-    let filePath: String
-    let timestamp: Date
-}
+// Note: CodeEdit is defined in Context/WorkspaceContextModels.swift
+// It has: fileId, fileName, editType, timestamp, preview
 
 // MARK: - ANE Context State
 
@@ -1008,6 +1007,7 @@ extension WorkflowSummary {
         self.name = workflow.name
         self.status = (workflow.enabled ?? true) ? "active" : "disabled"
         self.lastRun = workflow.lastRunAt.flatMap { ISO8601DateFormatter().date(from: $0) }
+        self.stepCount = workflow.nodes?.count ?? 0
     }
 }
 

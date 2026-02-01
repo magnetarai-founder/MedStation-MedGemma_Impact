@@ -77,14 +77,7 @@ struct BundledWorkflowContext: Codable {
     let relevantWorkflows: [WorkflowSummary]?
 }
 
-/// Summary of a workflow for context bundling
-struct WorkflowSummary: Codable {
-    let id: String
-    let name: String
-    let status: String
-    let lastRun: Date?
-    let stepCount: Int
-}
+// Note: WorkflowSummary is defined in AppContext.swift
 
 // MARK: - Team Context Models
 
@@ -96,14 +89,7 @@ struct BundledTeamContext: Codable {
     let mentionedUsers: [String]?
 }
 
-/// Summary of a team message for context bundling
-struct TeamMessageSummary: Codable {
-    let id: String
-    let sender: String
-    let preview: String
-    let timestamp: Date
-    let channelId: String?
-}
+// Note: TeamMessageSummary is defined in AppContext.swift
 
 // MARK: - Code Context Models
 
@@ -221,12 +207,16 @@ struct ModelCapabilities: Codable {
     )
 }
 
-/// System resource state for context-aware routing
-struct SystemResourceState: Codable {
+// Note: Full SystemResourceState and UserPreferences are in AppContext.swift
+// These bundled versions are simplified for context passing to models
+
+/// Simplified system resource state for context bundling
+/// Note: Full version with thermal state is in AppContext.swift
+struct BundledSystemResourceState: Codable {
     let availableMemoryGB: Float
     let cpuUsage: Float
     let gpuAvailable: Bool
-    let loadedModels: [LoadedModelInfo]
+    let loadedModels: [BundledLoadedModelInfo]
     let batteryLevel: Float?
     let isPluggedIn: Bool?
 
@@ -235,7 +225,7 @@ struct SystemResourceState: Codable {
         availableMemoryGB < 4.0 || cpuUsage > 80.0
     }
 
-    static let unknown = SystemResourceState(
+    static let unknown = BundledSystemResourceState(
         availableMemoryGB: 0,
         cpuUsage: 0,
         gpuAvailable: false,
@@ -245,17 +235,18 @@ struct SystemResourceState: Codable {
     )
 }
 
-/// Info about a loaded model
-struct LoadedModelInfo: Codable {
+/// Info about a loaded model (for context bundling)
+struct BundledLoadedModelInfo: Codable {
     let modelId: String
     let memoryUsageGB: Float
     let loadedAt: Date
 }
 
-// MARK: - User Preferences
+// MARK: - Bundled User Preferences
 
-/// User preferences affecting model routing and behavior
-struct UserPreferences: Codable {
+/// Simplified user preferences for context bundling
+/// Note: Full UserPreferences with hot slot management is in AppContext.swift
+struct BundledUserPreferences: Codable {
     var preferLocalModels: Bool
     var maxModelSizeGB: Float
     var preferredLanguage: String
@@ -269,22 +260,7 @@ struct UserPreferences: Codable {
         case maximum
     }
 
-    static func load() async -> UserPreferences {
-        // Load from UserDefaults or return defaults
-        guard let data = UserDefaults.standard.data(forKey: "userPreferences"),
-              let prefs = try? JSONDecoder().decode(UserPreferences.self, from: data) else {
-            return .default
-        }
-        return prefs
-    }
-
-    func save() {
-        if let data = try? JSONEncoder().encode(self) {
-            UserDefaults.standard.set(data, forKey: "userPreferences")
-        }
-    }
-
-    static let `default` = UserPreferences(
+    static let `default` = BundledUserPreferences(
         preferLocalModels: true,
         maxModelSizeGB: 16.0,
         preferredLanguage: "en",
