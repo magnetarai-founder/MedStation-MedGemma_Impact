@@ -9,7 +9,7 @@ import SwiftUI
 
 struct ModelCard: View {
     let model: AnyModelItem
-    let downloadProgress: DownloadProgress?
+    let downloadProgress: LegacyDownloadProgress?
     let onDownload: () -> Void
     var enrichedMetadata: [String: EnrichedModelMetadata] = [:] // Add enriched metadata support
     @State private var isHovered: Bool = false

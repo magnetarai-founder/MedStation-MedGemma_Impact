@@ -287,7 +287,7 @@ enum AnyModelItem: Identifiable {
     }
 
     func detailActions(
-        activeDownloads: Binding<[String: DownloadProgress]>,
+        activeDownloads: Binding<[String: LegacyDownloadProgress]>,
         onDownload: @escaping (String) -> Void,
         onDelete: @escaping (String) -> Void,
         onUpdate: @escaping (String) -> Void
@@ -691,9 +691,10 @@ struct RecommendedModel: Identifiable {
     var id: String { modelName }
 }
 
-// MARK: - Download Progress
+// MARK: - Download Progress (Legacy)
 
-struct DownloadProgress {
+/// Legacy download progress - prefer HuggingFaceService.DownloadProgress for new code
+struct LegacyDownloadProgress {
     let modelName: String
     let status: String
     let progress: Double

@@ -173,15 +173,13 @@ final class RAGIntegrationBridge: ObservableObject {
 
     private func searchLocal(_ query: UnifiedRAGQuery) async -> (results: [RAGSearchResult], errors: [RAGSearchError]) {
         do {
-            let localQuery = RAGSearchQuery(
+            let results = try await localSearch.search(
                 query: query.query,
-                limit: query.limit,
-                minSimilarity: query.minSimilarity ?? 0.3,
                 sources: query.sources?.compactMap { RAGSource(rawValue: $0) },
-                conversationId: query.conversationId
+                conversationId: query.conversationId,
+                limit: query.limit,
+                minSimilarity: query.minSimilarity ?? 0.3
             )
-
-            let results = await localSearch.search(query: localQuery)
             return (results, [])
 
         } catch {
@@ -268,7 +266,7 @@ final class RAGIntegrationBridge: ObservableObject {
 
         // Add local results that aren't duplicates
         for result in local {
-            let contentHash = hashContent(result.content)
+            let contentHash = hashContent(result.document.content)
             if !seenContent.contains(contentHash) {
                 seenContent.insert(contentHash)
                 merged.append(UnifiedSearchResult(from: result))
@@ -283,8 +281,7 @@ final class RAGIntegrationBridge: ObservableObject {
     /// Simple content hash for deduplication
     private func hashContent(_ content: String) -> String {
         // Use first 200 chars normalized
-        let normalized = content
-            .prefix(200)
+        let normalized = String(content.prefix(200))
             .lowercased()
             .trimmingCharacters(in: .whitespacesAndNewlines)
         return normalized
@@ -302,33 +299,38 @@ final class RAGIntegrationBridge: ObservableObject {
         do {
             switch content.type {
             case .message:
-                if let message = content.chatMessage {
-                    await localSearch.indexMessage(message, conversationId: content.conversationId)
+                if let message = content.chatMessage, let convId = content.conversationId {
+                    try await localSearch.indexMessage(message, conversationId: convId)
                     localSuccess = true
                 }
 
             case .theme:
-                if let theme = content.theme {
-                    await localSearch.indexTheme(theme)
+                if let theme = content.theme, let convId = content.conversationId {
+                    try await localSearch.indexTheme(theme, conversationId: convId)
                     localSuccess = true
                 }
 
             case .file:
                 if let file = content.file {
-                    await localSearch.indexFile(file, conversationId: content.conversationId)
+                    let _ = try await localSearch.indexFile(
+                        content: file.processedContent ?? file.filename,
+                        filename: file.filename,
+                        fileId: file.id,
+                        conversationId: content.conversationId,
+                        isVaultProtected: false
+                    )
                     localSuccess = true
                 }
 
             case .generic:
-                // Index as generic document
-                let document = RAGDocument(
-                    id: UUID(),
+                // Index as generic document using index request
+                let request = RAGIndexRequest(
                     content: content.content,
                     source: .chatMessage,
-                    conversationId: content.conversationId,
-                    createdAt: Date()
+                    metadata: RAGDocumentMetadata(conversationId: content.conversationId),
+                    chunkIfNeeded: false
                 )
-                await localSearch.vectorStore.insert(document)
+                let _ = try await localSearch.index(request: request)
                 localSuccess = true
             }
         } catch {
@@ -458,13 +460,13 @@ struct UnifiedSearchResult: Identifiable {
 
     init(from local: RAGSearchResult) {
         self.id = local.document.id.uuidString
-        self.content = local.content
+        self.content = local.document.content
         self.snippet = local.snippet
         self.similarity = local.similarity
         self.source = "local"
         self.sourceType = .local
         self.metadata = nil
-        self.conversationId = local.document.conversationId
+        self.conversationId = local.document.metadata.conversationId
     }
 
     init(from backend: BackendSearchResult) {

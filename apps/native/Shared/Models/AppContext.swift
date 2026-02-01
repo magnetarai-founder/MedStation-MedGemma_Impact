@@ -1007,7 +1007,7 @@ extension WorkflowSummary {
         self.name = workflow.name
         self.status = (workflow.enabled ?? true) ? "active" : "disabled"
         self.lastRun = workflow.lastRunAt.flatMap { ISO8601DateFormatter().date(from: $0) }
-        self.stepCount = workflow.nodes?.count ?? 0
+        self.stepCount = workflow.stages?.count ?? 0
     }
 }
 

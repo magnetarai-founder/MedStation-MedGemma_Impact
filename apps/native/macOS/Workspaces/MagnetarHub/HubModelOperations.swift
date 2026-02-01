@@ -13,7 +13,7 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "HubMode
 @MainActor
 @Observable
 class HubModelOperations {
-    var activeDownloads: [String: DownloadProgress] = [:]
+    var activeDownloads: [String: LegacyDownloadProgress] = [:]
     var enrichedModels: [String: EnrichedModelMetadata] = [:]
     var isEnrichingModels: Bool = false
     var errorMessage: String?
@@ -55,7 +55,7 @@ class HubModelOperations {
         errorMessage = nil
 
         // Initialize progress tracking
-        activeDownloads[modelName] = DownloadProgress(
+        activeDownloads[modelName] = LegacyDownloadProgress(
             modelName: modelName,
             status: "Starting download...",
             progress: 0.0
@@ -67,7 +67,7 @@ class HubModelOperations {
             modelName: modelName,
             onProgress: { progress in
                 Task { @MainActor in
-                    self.activeDownloads[modelName] = DownloadProgress(
+                    self.activeDownloads[modelName] = LegacyDownloadProgress(
                         modelName: modelName,
                         status: progress.message,
                         progress: self.estimateProgress(from: progress.status)
@@ -84,7 +84,7 @@ class HubModelOperations {
                         await onRefreshModels()
                     case .failure(let error):
                         logger.error("Download failed: \(error.localizedDescription)")
-                        self.activeDownloads[modelName] = DownloadProgress(
+                        self.activeDownloads[modelName] = LegacyDownloadProgress(
                             modelName: modelName,
                             status: "Error: \(error.localizedDescription)",
                             progress: 0.0,
@@ -142,7 +142,7 @@ class HubModelOperations {
         logger.info("Updating model: \(modelName)")
 
         // Initialize progress tracking
-        activeDownloads[modelName] = DownloadProgress(
+        activeDownloads[modelName] = LegacyDownloadProgress(
             modelName: modelName,
             status: "Checking for updates...",
             progress: 0.0
@@ -152,7 +152,7 @@ class HubModelOperations {
             modelName: modelName,
             onProgress: { progress in
                 Task { @MainActor in
-                    self.activeDownloads[modelName] = DownloadProgress(
+                    self.activeDownloads[modelName] = LegacyDownloadProgress(
                         modelName: modelName,
                         status: progress.message,
                         progress: self.estimateProgress(from: progress.status)
@@ -180,7 +180,7 @@ class HubModelOperations {
                         }
                     case .failure(let error):
                         logger.error("Update failed: \(error.localizedDescription)")
-                        self.activeDownloads[modelName] = DownloadProgress(
+                        self.activeDownloads[modelName] = LegacyDownloadProgress(
                             modelName: modelName,
                             status: "Error: \(error.localizedDescription)",
                             progress: 0.0,

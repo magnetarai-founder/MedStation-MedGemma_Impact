@@ -306,8 +306,8 @@ struct PickerContext {
     static func forCode(activeFiles: [UUID], query: String?) -> PickerContext {
         return PickerContext(
             workspace: .code,
-            activeFileIds: activeFiles,
             query: query,
+            activeFileIds: activeFiles,
             preferredFileTypes: ["swift", "python", "js", "ts"]
         )
     }

@@ -185,7 +185,7 @@ extension ContextItem {
             metadata: ContextItemMetadata(
                 isRequired: false,
                 canTruncate: false,  // Don't truncate messages
-                timestamp: message.timestamp
+                timestamp: message.createdAt
             )
         )
     }

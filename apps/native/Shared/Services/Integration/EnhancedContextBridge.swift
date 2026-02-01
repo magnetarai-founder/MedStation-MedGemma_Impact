@@ -32,6 +32,8 @@ final class EnhancedContextBridge: ObservableObject {
     private let graphBuilder: SessionGraphBuilder
     private let fileIndex: CrossConversationFileIndex
     private let tierManager: ContextTierManager
+    private let storageService: ConversationStorageService
+    private let embedder: HashEmbedder
 
     // MARK: - Configuration
 
@@ -51,7 +53,9 @@ final class EnhancedContextBridge: ObservableObject {
         semanticSearch: SemanticSearchService? = nil,
         graphBuilder: SessionGraphBuilder? = nil,
         fileIndex: CrossConversationFileIndex? = nil,
-        tierManager: ContextTierManager? = nil
+        tierManager: ContextTierManager? = nil,
+        storageService: ConversationStorageService? = nil,
+        embedder: HashEmbedder? = nil
     ) {
         self.contextOptimizer = contextOptimizer ?? .shared
         self.compactService = compactService ?? .shared
@@ -59,6 +63,8 @@ final class EnhancedContextBridge: ObservableObject {
         self.graphBuilder = graphBuilder ?? .shared
         self.fileIndex = fileIndex ?? .shared
         self.tierManager = tierManager ?? .shared
+        self.storageService = storageService ?? .shared
+        self.embedder = embedder ?? .shared
     }
 
     // MARK: - Context Building
@@ -82,8 +88,8 @@ final class EnhancedContextBridge: ObservableObject {
             messages: messages
         )
 
-        // 3. Get conversation themes from tier manager
-        let themes = await tierManager.getRelevantThemes(for: query, limit: 5)
+        // 3. Get conversation themes from storage and filter by relevance
+        let themes = getRelevantThemes(for: query, sessionId: sessionId, limit: 5)
 
         // 4. Get semantic nodes from graph
         let semanticNodes = await getRelevantSemanticNodes(query: query, limit: 5)
@@ -91,12 +97,12 @@ final class EnhancedContextBridge: ObservableObject {
         // 5. Get RAG results if enabled
         var ragResults: [RAGSearchResult] = []
         if enableRAGAugmentation {
-            ragResults = await semanticSearch.search(query: .init(
+            ragResults = (try? await semanticSearch.search(
                 query: query,
+                conversationId: sessionId,
                 limit: 10,
-                minSimilarity: 0.3,
-                conversationId: sessionId
-            ))
+                minSimilarity: 0.3
+            )) ?? []
         }
 
         // 6. Get cross-conversation files if enabled
@@ -148,13 +154,16 @@ final class EnhancedContextBridge: ObservableObject {
         conversationTitle: String?
     ) async {
         // 1. Index message for RAG
-        await semanticSearch.indexMessage(message, conversationId: sessionId)
+        do {
+            try await semanticSearch.indexMessage(message, conversationId: sessionId)
+        } catch {
+            logger.warning("[Bridge] Failed to index message: \(error)")
+        }
 
         // 2. Update session graph with entities
         graphBuilder.processMessage(message.content)
 
-        // 3. Update tier manager
-        await tierManager.recordMessageAccess(message.content)
+        // 3. Tier manager will handle content organization automatically
 
         // 4. Index any file references
         await indexFileReferences(from: message.content, sessionId: sessionId)
@@ -181,7 +190,7 @@ final class EnhancedContextBridge: ObservableObject {
 
         logger.info("[Bridge] Auto-compacting session with \(messages.count) messages")
 
-        let result = await compactService.compact(
+        let result = try? await compactService.compact(
             sessionId: sessionId,
             messages: messages,
             forceCompact: false
@@ -214,15 +223,36 @@ final class EnhancedContextBridge: ObservableObject {
                     concept: entityNode.name,
                     content: "Entity: \(entityNode.name) (\(entityNode.type.rawValue))",
                     embedding: entityNode.embedding ?? [],
-                    lastAccessed: entityNode.lastMentioned,
-                    accessCount: entityNode.mentionCount,
-                    entities: related.map { $0.name }
+                    entities: related.map { $0.name },
+                    lastAccessed: entityNode.lastMentioned
                 )
                 relevantNodes.append(semanticNode)
             }
         }
 
         return Array(relevantNodes.prefix(limit))
+    }
+
+    // MARK: - Themes
+
+    /// Get relevant themes for a query from the current session
+    private func getRelevantThemes(for query: String, sessionId: UUID, limit: Int) -> [ConversationTheme] {
+        let allThemes = storageService.loadThemes(sessionId)
+        guard !allThemes.isEmpty else { return [] }
+
+        let queryEmbedding = embedder.embed(query)
+
+        // Score themes by relevance to query
+        let scoredThemes = allThemes.map { theme -> (ConversationTheme, Float) in
+            let similarity = HashEmbedder.cosineSimilarity(theme.embedding, queryEmbedding)
+            return (theme, similarity)
+        }
+
+        // Sort by similarity and return top results
+        return scoredThemes
+            .sorted { $0.1 > $1.1 }
+            .prefix(limit)
+            .map { $0.0 }
     }
 
     // MARK: - System Prompt
@@ -330,7 +360,7 @@ final class EnhancedContextBridge: ObservableObject {
     func onSessionEnded(_ sessionId: UUID, messages: [ChatMessage]) async {
         // Final compaction
         if messages.count > 20 {
-            let _ = await compactService.compact(
+            let _ = try? await compactService.compact(
                 sessionId: sessionId,
                 messages: messages,
                 forceCompact: true

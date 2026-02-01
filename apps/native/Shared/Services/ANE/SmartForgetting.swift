@@ -220,9 +220,16 @@ final class SmartForgetting: ObservableObject {
         logger.debug("[SmartForgetting] Adjusted thresholds: \(direction)")
     }
 
-    enum ThresholdAdjustment {
+    enum ThresholdAdjustment: CustomStringConvertible {
         case moreAggressive
         case lessAggressive
+
+        var description: String {
+            switch self {
+            case .moreAggressive: return "more aggressive"
+            case .lessAggressive: return "less aggressive"
+            }
+        }
     }
 
     // MARK: - Persistence

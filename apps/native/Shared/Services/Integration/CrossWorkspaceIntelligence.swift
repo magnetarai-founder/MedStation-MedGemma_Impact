@@ -256,8 +256,14 @@ final class CrossWorkspaceIntelligence: ObservableObject {
             return "Found \(content.count) related workflow\(content.count == 1 ? "" : "s")"
         case .team:
             return "Found \(content.count) related team message\(content.count == 1 ? "" : "s")"
-        case .magHub:
+        case .hub:
             return "Found \(content.count) related model\(content.count == 1 ? "" : "s")"
+        case .docs:
+            return "Found \(content.count) related document\(content.count == 1 ? "" : "s")"
+        case .insights:
+            return "Found \(content.count) related insight\(content.count == 1 ? "" : "s")"
+        case .settings:
+            return "Found \(content.count) related setting\(content.count == 1 ? "" : "s")"
         }
     }
 
@@ -464,19 +470,6 @@ struct SuggestedAction: Identifiable {
 // MARK: - Workspace Type Extensions
 
 extension WorkspaceType {
-    var displayName: String {
-        switch self {
-        case .chat: return "Chat"
-        case .code: return "Code"
-        case .vault: return "Vault"
-        case .data: return "Data"
-        case .kanban: return "Kanban"
-        case .workflow: return "Workflow"
-        case .team: return "Team"
-        case .magHub: return "MagnetarHub"
-        }
-    }
-
     var icon: String {
         switch self {
         case .chat: return "bubble.left.and.bubble.right"
@@ -486,7 +479,10 @@ extension WorkspaceType {
         case .kanban: return "square.grid.2x2"
         case .workflow: return "arrow.triangle.branch"
         case .team: return "person.3"
-        case .magHub: return "sparkles"
+        case .hub: return "sparkles"
+        case .docs: return "doc.text"
+        case .insights: return "chart.bar.xaxis"
+        case .settings: return "gearshape"
         }
     }
 
@@ -499,7 +495,10 @@ extension WorkspaceType {
         case .kanban: return "kanban_task"
         case .workflow: return "workflow"
         case .team: return "team_message"
-        case .magHub: return "model_info"
+        case .hub: return "model_info"
+        case .docs: return "document"
+        case .insights: return "insight"
+        case .settings: return "settings"
         }
     }
 }

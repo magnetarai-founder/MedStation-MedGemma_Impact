@@ -107,7 +107,7 @@ final class ContextOptimizer: ObservableObject {
         lastBudgetUtilization = Float(usedTokens) / Float(budget.total) * 100
         optimizationCount += 1
 
-        logger.info("[Optimizer] Selected \(selected.count)/\(items.items.count) items, \(usedTokens)/\(budget.total) tokens (\(String(format: "%.1f", lastBudgetUtilization))%)")
+        logger.info("[Optimizer] Selected \(selected.count)/\(items.items.count) items, \(usedTokens)/\(budget.total) tokens (\(String(format: "%.1f", self.lastBudgetUtilization))%)")
 
         return OptimizationResult(
             included: selected,

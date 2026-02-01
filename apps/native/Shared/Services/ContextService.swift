@@ -189,20 +189,31 @@ class ContextService {
             )
 
             return response.results.map { result in
-                RAGDocument(
-                    id: UUID().uuidString,
+                // Convert source string to RAGSource
+                let ragSource: RAGSource
+                switch result.source.lowercased() {
+                case "vault": ragSource = .vaultFile
+                case "chat": ragSource = .chatMessage
+                case "data": ragSource = .datasetColumn
+                case "code": ragSource = .codeFile
+                case "workflow": ragSource = .workflow
+                case "kanban": ragSource = .kanbanTask
+                case "team": ragSource = .teamMessage
+                default: ragSource = .document
+                }
+
+                // Build metadata from result
+                var metadata = RAGDocumentMetadata()
+                if let sessionIdStr = result.metadata["session_id"]?.value as? String,
+                   let sessionId = UUID(uuidString: sessionIdStr) {
+                    metadata.sessionId = sessionId
+                }
+
+                return RAGDocument(
                     content: result.content,
-                    source: result.source,
-                    sourceId: result.metadata["session_id"]?.value as? String,
-                    relevanceScore: result.relevanceScore,
-                    metadata: result.metadata.mapValues { value in
-                        if let str = value.value as? String {
-                            return str
-                        } else if let num = value.value as? CustomStringConvertible {
-                            return String(describing: num)
-                        }
-                        return ""
-                    }
+                    embedding: [],  // No embedding from search results
+                    source: ragSource,
+                    metadata: metadata
                 )
             }
         } catch {

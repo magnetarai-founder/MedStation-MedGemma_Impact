@@ -131,14 +131,14 @@ final class ANETrainingManager: ObservableObject {
         }
 
         guard trainingExamples.count >= minExamplesForTraining else {
-            logger.info("[ANETraining] Not enough examples: \(trainingExamples.count)")
+            logger.info("[ANETraining] Not enough examples: \(self.trainingExamples.count)")
             return
         }
 
         isTraining = true
         trainingProgress = 0.0
 
-        logger.info("[ANETraining] Starting training with \(trainingExamples.count) examples")
+        logger.info("[ANETraining] Starting training with \(self.trainingExamples.count) examples")
 
         do {
             // Convert examples to training format

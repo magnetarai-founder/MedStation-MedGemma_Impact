@@ -631,6 +631,18 @@ final class ChatStore {
             relevantFiles: relevantVaultFiles
         )
 
+        // Convert RAGDocuments to BundledRAGDocuments
+        let bundledRAGDocuments: [BundledRAGDocument] = ragDocuments.map { doc in
+            BundledRAGDocument(
+                id: doc.id.uuidString,
+                content: doc.content,
+                source: doc.source.rawValue,
+                sourceId: doc.metadata.fileId?.uuidString,
+                relevanceScore: 0.8,  // Default relevance since RAGDocument doesn't have relevanceScore
+                metadata: nil
+            )
+        }
+
         return ContextBundle(
             userQuery: query,
             sessionId: sessionId,
@@ -643,7 +655,7 @@ final class ChatStore {
             workflowContext: nil,
             teamContext: nil,
             codeContext: nil,
-            ragDocuments: ragDocuments.isEmpty ? nil : ragDocuments,
+            ragDocuments: bundledRAGDocuments.isEmpty ? nil : bundledRAGDocuments,
             vectorSearchResults: nil,
             userPreferences: appContext.userPreferences,
             activeModelId: selectedModelId,

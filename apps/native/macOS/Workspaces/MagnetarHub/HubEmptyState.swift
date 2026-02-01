@@ -57,9 +57,11 @@ struct HubEmptyState: View {
     private var iconGradient: LinearGradient {
         switch category {
         case .myModels:
-            return LinearGradient.magnetarGradient
+            return LinearGradient(colors: [.blue, .purple], startPoint: .topLeading, endPoint: .bottomTrailing)
         case .discover:
             return LinearGradient(colors: [.blue, .cyan], startPoint: .topLeading, endPoint: .bottomTrailing)
+        case .huggingface:
+            return LinearGradient(colors: [.yellow, .orange], startPoint: .topLeading, endPoint: .bottomTrailing)
         case .cloud:
             return LinearGradient(colors: [.purple, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
         }
@@ -71,6 +73,8 @@ struct HubEmptyState: View {
             return ("arrow.right.circle", "Browse Discover tab to download models")
         case .discover:
             return ("globe", "Check your network connection")
+        case .huggingface:
+            return ("face.smiling", "Search for HuggingFace GGUF models")
         case .cloud:
             return ("person.badge.key", "Sign in to sync your models")
         }

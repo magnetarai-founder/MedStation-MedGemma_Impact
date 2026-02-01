@@ -10,7 +10,7 @@ import SwiftUI
 struct ModelDetailModal: View {
     let model: AnyModelItem
     let enrichedMetadata: [String: EnrichedModelMetadata]
-    @Binding var activeDownloads: [String: DownloadProgress]
+    @Binding var activeDownloads: [String: LegacyDownloadProgress]
     let onDownload: (String) -> Void
     let onDelete: (String) -> Void
     let onUpdate: (String) -> Void

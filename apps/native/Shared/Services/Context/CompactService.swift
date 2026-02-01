@@ -119,27 +119,27 @@ final class CompactService: ObservableObject {
         )
 
         // 7. Store compressed context
-        storageService.saveCompressedContext(compressedContext, for: sessionId)
+        try? storageService.saveCompressedContext(compressedContext, conversationId: sessionId)
 
         // 8. Store themes
         for theme in themes {
-            storageService.saveTheme(theme, for: sessionId)
+            try? storageService.saveTheme(theme, conversationId: sessionId)
         }
 
         // 9. Generate REF tokens for themes
         var refTokens: [String] = []
         for theme in themes {
-            let (refId, pointer) = themeExtractor.createReferencePointer(for: theme)
-            storageService.saveReferencePointer(pointer, forRefId: refId, sessionId: sessionId)
+            let (refId, _) = themeExtractor.createReferencePointer(for: theme)
             refTokens.append(refId)
         }
 
         // 10. Update metadata
-        var metadata = storageService.loadMetadata(sessionId)
-        metadata.isCompacted = true
-        metadata.compactedAt = Date()
-        metadata.primaryTopics = themes.map { $0.topic }
-        storageService.saveMetadata(metadata, for: sessionId)
+        if var metadata = storageService.loadMetadata(sessionId) {
+            metadata.isCompacted = true
+            metadata.compactedAt = Date()
+            metadata.primaryTopics = themes.map { $0.topic }
+            try? storageService.saveMetadata(metadata)
+        }
 
         // 11. Update stats
         let duration = Date().timeIntervalSince(startTime)

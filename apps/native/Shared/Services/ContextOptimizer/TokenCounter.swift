@@ -293,13 +293,6 @@ struct TokenEstimation {
         // Role token overhead (~4 tokens for role label)
         tokens += 4
 
-        // Attachments
-        if let attachments = message.attachments {
-            for _ in attachments {
-                tokens += 50  // Estimate per attachment reference
-            }
-        }
-
         return tokens
     }
 
@@ -345,7 +338,7 @@ struct TokenEstimation {
     /// Estimate tokens for RAG results
     static func forRAGResults(_ results: [RAGSearchResult]) -> Int {
         return results.reduce(0) { total, result in
-            var tokens = TokenCounter.count(result.content)
+            var tokens = TokenCounter.count(result.document.content)
             tokens += 10  // Source label and formatting
             return total + tokens
         }

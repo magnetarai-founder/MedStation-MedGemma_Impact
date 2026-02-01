@@ -1,5 +1,5 @@
 //
-//  CrossWorkspaceIntelligence.swift
+//  CrossWorkspaceLearning.swift
 //  MagnetarStudio
 //
 //  Learns cross-workspace transition patterns for intelligent preloading.
@@ -9,12 +9,12 @@
 import Foundation
 import os
 
-private let logger = Logger(subsystem: "com.magnetarstudio", category: "CrossWorkspaceIntelligence")
+private let logger = Logger(subsystem: "com.magnetarstudio", category: "CrossWorkspaceLearning")
 
-// MARK: - Cross Workspace Intelligence
+// MARK: - Cross Workspace Learning
 
 @MainActor
-final class CrossWorkspaceIntelligence: ObservableObject {
+final class CrossWorkspaceLearning: ObservableObject {
 
     // MARK: - Published State
 
@@ -38,7 +38,7 @@ final class CrossWorkspaceIntelligence: ObservableObject {
 
     // MARK: - Singleton
 
-    static let shared = CrossWorkspaceIntelligence()
+    static let shared = CrossWorkspaceLearning()
 
     // MARK: - Initialization
 

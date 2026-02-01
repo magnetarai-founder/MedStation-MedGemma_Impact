@@ -219,6 +219,28 @@ struct RegisterNodeModal: View {
     }
 }
 
+// MARK: - Form Field Helper
+
+private struct FormField<Content: View>: View {
+    let title: String
+    let icon: String
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+            }
+            content()
+        }
+    }
+}
+
 #if DEBUG
 #Preview {
     RegisterNodeModal(onRegister: { _ in })

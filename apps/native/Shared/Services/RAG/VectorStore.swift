@@ -73,10 +73,10 @@ final class VectorStore: ObservableObject {
 
         db = database
         await createTables()
-        documentCount = await countDocuments()
+        self.documentCount = await countDocuments()
 
         isInitialized = true
-        logger.info("[VectorStore] Initialized with \(documentCount) documents")
+        logger.info("[VectorStore] Initialized with \(self.documentCount) documents")
     }
 
     private func createTables() async {

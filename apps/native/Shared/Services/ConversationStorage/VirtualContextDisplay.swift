@@ -170,10 +170,10 @@ struct VirtualContextDisplay {
     }
 }
 
-// MARK: - Context Budget
+// MARK: - Virtual Context Budget
 
-/// Token budget allocation for different context components
-struct ContextBudget {
+/// Token budget allocation for different context components (for virtual context display)
+struct VirtualContextBudget {
     let total: Int
     let systemPrompt: Int
     let history: Int
@@ -201,27 +201,27 @@ struct ContextBudget {
     // MARK: - Presets
 
     /// Budget for Apple Foundation Model (4K context)
-    static let appleFM = ContextBudget(total: 4_000)
+    static let appleFM = VirtualContextBudget(total: 4_000)
 
     /// Budget for small Ollama models (4K-8K context)
-    static let ollamaSmall = ContextBudget(total: 8_000)
+    static let ollamaSmall = VirtualContextBudget(total: 8_000)
 
     /// Budget for medium Ollama models (16K-32K context)
-    static let ollamaMedium = ContextBudget(total: 32_000)
+    static let ollamaMedium = VirtualContextBudget(total: 32_000)
 
     /// Budget for large models (128K context)
-    static let ollamaLarge = ContextBudget(total: 128_000)
+    static let ollamaLarge = VirtualContextBudget(total: 128_000)
 
     /// Budget for HuggingFace GGUF models
-    static let huggingFace = ContextBudget(total: 4_096)
+    static let huggingFace = VirtualContextBudget(total: 4_096)
 
     /// Budget for Claude models
-    static let claude = ContextBudget(total: 200_000)
+    static let claude = VirtualContextBudget(total: 200_000)
 
     /// Get appropriate budget for a model
-    static func forModel(_ modelId: String?) -> ContextBudget {
+    static func forModel(_ modelId: String?) -> VirtualContextBudget {
         let limit = VirtualContextDisplay.actualLimitForModel(modelId)
-        return ContextBudget(total: limit)
+        return VirtualContextBudget(total: limit)
     }
 
     // MARK: - Allocation Check

@@ -295,7 +295,7 @@ struct SectionHeader: View {
     }
 }
 
-struct InfoRow: View {
+private struct InfoRow: View {
     let label: String
     let value: String
     let icon: String
