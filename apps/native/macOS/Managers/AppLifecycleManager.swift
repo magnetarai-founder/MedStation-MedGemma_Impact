@@ -61,6 +61,32 @@ class AppLifecycleManager: NSObject, NSApplicationDelegate {
         Task { @MainActor in
             await initializeContextServices()
         }
+
+        // Initialize HuggingFace and LlamaCpp services (Phase 1: HF GGUF Integration)
+        Task { @MainActor in
+            await initializeModelServices()
+        }
+    }
+
+    // MARK: - Model Services Initialization
+
+    @MainActor
+    private func initializeModelServices() async {
+        logger.info("Initializing model services...")
+
+        // Initialize HuggingFace service (GGUF model downloads)
+        let _ = HuggingFaceService.shared
+        logger.debug("HuggingFaceService initialized")
+
+        // Initialize LlamaCpp service (local inference)
+        let _ = LlamaCppService.shared
+        logger.debug("LlamaCppService initialized")
+
+        // Initialize CloudStorageService (chunked cloud uploads)
+        let _ = CloudStorageService.shared
+        logger.debug("CloudStorageService initialized")
+
+        logger.info("Model services initialization complete")
     }
 
     // MARK: - Context Services Initialization

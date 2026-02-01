@@ -56,13 +56,40 @@ final class PanicModeService {
         self.apiClient = .shared
     }
 
-    /// Trigger standard panic mode (secure wipe via backend)
+    /// Trigger panic mode (standard or emergency)
     func triggerPanicMode(level: PanicLevel = .standard, reason: String? = nil) async throws -> PanicTriggerResponse {
         switch level {
         case .standard:
             return try await triggerStandardPanic(reason: reason)
         case .emergency:
-            throw PanicModeError.emergencyModeNotImplemented
+            // Delegate to EmergencyModeService for DoD 7-pass wipe + self-uninstall
+            return try await triggerEmergencyPanic(reason: reason)
+        }
+    }
+
+    /// Trigger emergency panic mode (DoD 7-pass wipe + self-uninstall)
+    /// CRITICAL: This is IRREVERSIBLE in production
+    private func triggerEmergencyPanic(reason: String?) async throws -> PanicTriggerResponse {
+        do {
+            let report = try await EmergencyModeService.shared.triggerEmergency(
+                reason: reason,
+                confirmationMethod: .tripleClick
+            )
+
+            return PanicTriggerResponse(
+                panicActivated: true,
+                timestamp: ISO8601DateFormatter().string(from: Date()),
+                reason: reason ?? "Emergency mode triggered",
+                actionsTaken: [
+                    "DoD 7-pass wipe initiated",
+                    "\(report.filesWiped) files wiped",
+                    report.simulated ? "SIMULATION MODE - no files actually deleted" : "Files permanently destroyed"
+                ],
+                errors: report.errors,
+                status: report.errors.isEmpty ? "completed" : "completed_with_errors"
+            )
+        } catch let error as EmergencyModeError {
+            throw PanicModeError.emergencyModeFailed(errors: [error.localizedDescription])
         }
     }
 

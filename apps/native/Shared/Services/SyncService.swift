@@ -195,6 +195,47 @@ final class SyncService {
         )
     }
 
+    // MARK: - File Upload (via CloudStorageService)
+
+    /// Upload a large file to cloud storage
+    /// Uses chunked transfer for files over 1MB
+    func uploadFile(
+        _ fileURL: URL,
+        storageClass: StorageClass = .standard,
+        encrypt: Bool = true,
+        progressHandler: ((Double) -> Void)? = nil
+    ) async throws -> UploadResult {
+        return try await CloudStorageService.shared.uploadFile(
+            fileURL,
+            storageClass: storageClass,
+            encrypt: encrypt,
+            progressHandler: progressHandler
+        )
+    }
+
+    /// Get download URL for a cloud file
+    func getFileDownloadURL(fileId: String, expiresMinutes: Int = 60) async throws -> URL {
+        return try await CloudStorageService.shared.getDownloadURL(
+            fileId: fileId,
+            expiresMinutes: expiresMinutes
+        )
+    }
+
+    /// Delete a file from cloud storage
+    func deleteCloudFile(_ fileId: String) async throws {
+        try await CloudStorageService.shared.deleteFile(fileId)
+    }
+
+    /// Get list of files in cloud storage
+    var cloudFiles: [CloudFile] {
+        CloudStorageService.shared.files
+    }
+
+    /// Refresh cloud file list
+    func refreshCloudFiles() async throws {
+        try await CloudStorageService.shared.refreshFiles()
+    }
+
     // MARK: - Workflow Sync
 
     /// Sync workflows with cloud
