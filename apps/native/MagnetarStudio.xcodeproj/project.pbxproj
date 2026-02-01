@@ -261,8 +261,8 @@
 		055A4449AF267F81C2ECD1F5 /* LibraryModelRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryModelRow.swift; sourceTree = "<group>"; };
 		09F678BF915F91509EA758B6 /* QueryHistoryModal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueryHistoryModal.swift; sourceTree = "<group>"; };
 		0AAEDEDDD485252DA8E19C4D /* DocsWorkspaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocsWorkspaceView.swift; sourceTree = "<group>"; };
-		0ADD5B4E46ABA5D383102760 /* UnifiedModelsStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = UnifiedModelsStore.swift; path = apps/native/Shared/Stores/UnifiedModelsStore.swift; sourceTree = "<group>"; };
-		0C59E5DB04F9E3F036DF7A2A /* HuggingFaceService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HuggingFaceService.swift; path = apps/native/Shared/Services/HuggingFaceService.swift; sourceTree = "<group>"; };
+		0ADD5B4E46ABA5D383102760 /* UnifiedModelsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnifiedModelsStore.swift; sourceTree = "<group>"; };
+		0C59E5DB04F9E3F036DF7A2A /* HuggingFaceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuggingFaceService.swift; sourceTree = "<group>"; };
 		0DE77C93F16A443863D97E0F /* SettingsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsModels.swift; sourceTree = "<group>"; };
 		0E214C822D7BAF8E67336727 /* ThreePaneLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreePaneLayout.swift; sourceTree = "<group>"; };
 		0EB4725DB923C8415778B646 /* TeamWorkspaceToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamWorkspaceToolbar.swift; sourceTree = "<group>"; };
@@ -321,7 +321,7 @@
 		43DB6371422D1C3A10CCB715 /* DatabaseComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseComponents.swift; sourceTree = "<group>"; };
 		451A66AAE392348B878436AC /* ModelCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCard.swift; sourceTree = "<group>"; };
 		4525A729742B9939741E100E /* AutomationWorkspaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutomationWorkspaceView.swift; sourceTree = "<group>"; };
-		457600E4C48BE9F55A077AF3 /* LlamaCppService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LlamaCppService.swift; path = apps/native/Shared/Services/LlamaCppService.swift; sourceTree = "<group>"; };
+		457600E4C48BE9F55A077AF3 /* LlamaCppService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LlamaCppService.swift; sourceTree = "<group>"; };
 		45D761DB19ECDB8C76F1D854 /* AppearanceSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppearanceSettingsView.swift; sourceTree = "<group>"; };
 		4A1A161ECFE46B67A8D29CC0 /* TeamChatMessageInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamChatMessageInput.swift; sourceTree = "<group>"; };
 		4A25E14FF110DE632A039D76 /* ModelTagService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelTagService.swift; sourceTree = "<group>"; };
