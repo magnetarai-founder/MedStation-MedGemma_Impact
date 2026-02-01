@@ -118,7 +118,7 @@ struct MagnetarHubWorkspace: View {
 
             Divider()
 
-            // Ollama Server Status & MagnetarCloud Status
+            // Ollama Server Status, llama.cpp Status & MagnetarCloud Status
             VStack(spacing: 12) {
                 HubOllamaStatus(
                     isRunning: ollamaManager.ollamaServerRunning,
@@ -130,6 +130,9 @@ struct MagnetarHubWorkspace: View {
                         Task { await ollamaManager.restartOllama() }
                     }
                 )
+
+                // llama.cpp status (for HuggingFace GGUF models)
+                LlamaCppStatusView()
 
                 HubCloudStatus(
                     isAuthenticated: cloudManager.isCloudAuthenticated,
@@ -161,48 +164,53 @@ struct MagnetarHubWorkspace: View {
 
     private var cardsPane: some View {
         VStack(spacing: 0) {
-            // Toolbar (for Discover category)
-            if selectedCategory == .discover {
-                HubDiscoverToolbar(
-                    isNetworkConnected: networkManager.isNetworkConnected,
-                    onBrowseModels: networkManager.openOllamaWebsite
-                )
-                Divider()
-            }
+            // HuggingFace tab uses its own dedicated view
+            if selectedCategory == .huggingface {
+                HuggingFaceModelsView()
+            } else {
+                // Toolbar (for Discover category)
+                if selectedCategory == .discover {
+                    HubDiscoverToolbar(
+                        isNetworkConnected: networkManager.isNetworkConnected,
+                        onBrowseModels: networkManager.openOllamaWebsite
+                    )
+                    Divider()
+                }
 
-            // Cards grid
-            ScrollView {
-                if displayedModels.isEmpty {
-                    HubEmptyState(category: selectedCategory)
-                } else {
-                    LazyVGrid(columns: gridColumns, spacing: 20) {
-                        ForEach(displayedModels) { model in
-                            ModelCard(
-                                model: model,
-                                downloadProgress: modelOperations.activeDownloads[model.name],
-                                onDownload: {
-                                    modelOperations.downloadModel(
-                                        modelName: model.name,
-                                        ollamaRunning: ollamaManager.ollamaServerRunning,
-                                        networkConnected: networkManager.isNetworkConnected,
-                                        onRefreshModels: {
-                                            await modelsStore.fetchModels()
-                                        }
-                                    )
-                                },
-                                enrichedMetadata: modelOperations.enrichedModels
-                            )
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                Task {
-                                    await modelOperations.handleModelTap(model)
-                                    selectedModel = model
-                                    showModelDetail = true
+                // Cards grid
+                ScrollView {
+                    if displayedModels.isEmpty {
+                        HubEmptyState(category: selectedCategory)
+                    } else {
+                        LazyVGrid(columns: gridColumns, spacing: 20) {
+                            ForEach(displayedModels) { model in
+                                ModelCard(
+                                    model: model,
+                                    downloadProgress: modelOperations.activeDownloads[model.name],
+                                    onDownload: {
+                                        modelOperations.downloadModel(
+                                            modelName: model.name,
+                                            ollamaRunning: ollamaManager.ollamaServerRunning,
+                                            networkConnected: networkManager.isNetworkConnected,
+                                            onRefreshModels: {
+                                                await modelsStore.fetchModels()
+                                            }
+                                        )
+                                    },
+                                    enrichedMetadata: modelOperations.enrichedModels
+                                )
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    Task {
+                                        await modelOperations.handleModelTap(model)
+                                        selectedModel = model
+                                        showModelDetail = true
+                                    }
                                 }
                             }
                         }
+                        .padding(20)
                     }
-                    .padding(20)
                 }
             }
         }
@@ -255,6 +263,9 @@ struct MagnetarHubWorkspace: View {
             return modelsStore.models.map { AnyModelItem.local($0) }
         case .discover:
             return dataManager.recommendedModels.map { AnyModelItem.backendRecommended($0) }
+        case .huggingface:
+            // HuggingFace has its own view, return empty here
+            return []
         case .cloud:
             return cloudManager.cloudModels.map { AnyModelItem.cloud($0) }
         }

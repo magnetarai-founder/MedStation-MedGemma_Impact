@@ -43,6 +43,9 @@ class ActiveDownload:
     started_at: datetime
     task: Optional[asyncio.Task] = field(default=None, repr=False)
     canceled: bool = False
+    paused: bool = False
+    downloaded_bytes: int = 0
+    total_bytes: int = 0
 
 
 class HuggingFaceDownloader:
@@ -396,6 +399,67 @@ class HuggingFaceDownloader:
                 logger.info(f"Canceled download: {job_id}")
                 return True
         return False
+
+    async def pause_download(self, job_id: str) -> bool:
+        """
+        Pause an active download
+
+        The partial file is preserved for resumption.
+
+        Args:
+            job_id: Job ID to pause
+
+        Returns:
+            True if download was found and paused
+        """
+        async with self._download_lock:
+            if job_id in self._active_downloads:
+                download = self._active_downloads[job_id]
+                if not download.paused and not download.canceled:
+                    download.paused = True
+                    if download.task:
+                        download.task.cancel()
+                    logger.info(f"Paused download: {job_id}")
+                    return True
+        return False
+
+    async def resume_download(self, job_id: str) -> Optional[str]:
+        """
+        Resume a paused download
+
+        Args:
+            job_id: Job ID to resume
+
+        Returns:
+            New job ID if resumed successfully, None otherwise
+        """
+        async with self._download_lock:
+            if job_id in self._active_downloads:
+                download = self._active_downloads[job_id]
+                if download.paused:
+                    # Remove old entry - a new download will be started
+                    repo_id = download.repo_id
+                    filename = download.filename
+                    self._active_downloads.pop(job_id, None)
+                    logger.info(f"Resuming download for {filename} (was job {job_id})")
+                    # Return info needed to restart - caller will initiate new download
+                    return f"{repo_id}:{filename}"
+        return None
+
+    def get_paused_downloads(self) -> Dict[str, Dict[str, Any]]:
+        """Get info about paused downloads"""
+        return {
+            job_id: {
+                "job_id": download.job_id,
+                "repo_id": download.repo_id,
+                "filename": download.filename,
+                "started_at": download.started_at.isoformat(),
+                "downloaded_bytes": download.downloaded_bytes,
+                "total_bytes": download.total_bytes,
+            }
+            for job_id, download in self._active_downloads.items()
+            if download.paused
+        }
 
     def get_active_downloads(self) -> Dict[str, Dict[str, Any]]:
         """Get info about all active downloads"""

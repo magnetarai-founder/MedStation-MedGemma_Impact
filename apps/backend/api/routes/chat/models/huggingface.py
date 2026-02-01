@@ -349,6 +349,174 @@ async def download_model(
     )
 
 
+# ==============================================================================
+# Download Control Endpoints (Pause/Resume/Cancel)
+# ==============================================================================
+
+@router.get(
+    "/downloads",
+    response_model=SuccessResponse[dict],
+    status_code=status.HTTP_200_OK,
+    name="huggingface_list_downloads"
+)
+async def list_active_downloads(
+    current_user: dict = Depends(get_current_user)
+):
+    """List all active and paused downloads"""
+    from api.services.huggingface.downloader import get_huggingface_downloader
+
+    try:
+        downloader = get_huggingface_downloader()
+        active = downloader.get_active_downloads()
+        paused = downloader.get_paused_downloads()
+
+        return SuccessResponse(
+            data={
+                "active": active,
+                "paused": paused,
+                "total": len(active) + len(paused)
+            },
+            message=f"Found {len(active)} active, {len(paused)} paused downloads"
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to list downloads: {e}", exc_info=True)
+        raise http_500("Failed to list downloads")
+
+
+@router.post(
+    "/downloads/{job_id}/pause",
+    response_model=SuccessResponse[dict],
+    status_code=status.HTTP_200_OK,
+    name="huggingface_pause_download"
+)
+async def pause_download(
+    job_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Pause an active download
+
+    The partial file is preserved for later resumption.
+    """
+    from api.services.huggingface.downloader import get_huggingface_downloader
+
+    try:
+        downloader = get_huggingface_downloader()
+        paused = await downloader.pause_download(job_id)
+
+        if paused:
+            return SuccessResponse(
+                data={"job_id": job_id, "paused": True},
+                message=f"Download paused: {job_id}"
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message=f"Download not found or not pauseable: {job_id}"
+                ).model_dump()
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to pause download: {e}", exc_info=True)
+        raise http_500("Failed to pause download")
+
+
+@router.post(
+    "/downloads/{job_id}/resume",
+    response_model=SuccessResponse[dict],
+    status_code=status.HTTP_200_OK,
+    name="huggingface_resume_download"
+)
+async def resume_download(
+    job_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Resume a paused download
+
+    Returns info needed to restart the download via the download endpoint.
+    """
+    from api.services.huggingface.downloader import get_huggingface_downloader
+
+    try:
+        downloader = get_huggingface_downloader()
+        resume_info = await downloader.resume_download(job_id)
+
+        if resume_info:
+            repo_id, filename = resume_info.split(":", 1)
+            return SuccessResponse(
+                data={
+                    "job_id": job_id,
+                    "resumed": True,
+                    "repo_id": repo_id,
+                    "filename": filename,
+                    "message": "Download ready to resume. Call the download endpoint to continue."
+                },
+                message=f"Download ready to resume: {job_id}"
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message=f"Download not found or not paused: {job_id}"
+                ).model_dump()
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to resume download: {e}", exc_info=True)
+        raise http_500("Failed to resume download")
+
+
+@router.delete(
+    "/downloads/{job_id}",
+    response_model=SuccessResponse[dict],
+    status_code=status.HTTP_200_OK,
+    name="huggingface_cancel_download"
+)
+async def cancel_download(
+    job_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Cancel an active or paused download"""
+    from api.services.huggingface.downloader import get_huggingface_downloader
+
+    try:
+        downloader = get_huggingface_downloader()
+        canceled = await downloader.cancel_download(job_id)
+
+        if canceled:
+            return SuccessResponse(
+                data={"job_id": job_id, "canceled": True},
+                message=f"Download canceled: {job_id}"
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code=ErrorCode.NOT_FOUND,
+                    message=f"Download not found: {job_id}"
+                ).model_dump()
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to cancel download: {e}", exc_info=True)
+        raise http_500("Failed to cancel download")
+
+
+# ==============================================================================
+# Model Management Endpoints
+# ==============================================================================
+
 @router.delete(
     "/models/{model_id}",
     response_model=SuccessResponse[dict],
