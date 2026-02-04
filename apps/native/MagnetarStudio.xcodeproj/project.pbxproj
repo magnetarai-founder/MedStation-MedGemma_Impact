@@ -113,6 +113,7 @@
 		5C900D7A46BC33B6D6EB21A5 /* TeamWorkspaceToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EB4725DB923C8415778B646 /* TeamWorkspaceToolbar.swift */; };
 		5D329B16CA940B3E8712F1C3 /* DetachedDocumentWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6ED5D28CE65DB5D69A6F0251 /* DetachedDocumentWindow.swift */; };
 		5E263930A4DDAF0C95EEC903 /* JsonConverterModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29AD4FB7E2E90444A471C957 /* JsonConverterModal.swift */; };
+		60CF73976A2E26622EDD7EB2 /* DiagnosticsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 706B082205C7AC0CFE4BD746 /* DiagnosticsStore.swift */; };
 		6180EFF2064EB535012C065D /* WorkflowAnalyticsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC2FB7D82704D11051F7CDBE /* WorkflowAnalyticsModels.swift */; };
 		641777D576CBAC6F784CCAC6 /* ModelSelectorMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0A7B8AFD112D2ABECDB68A5 /* ModelSelectorMenu.swift */; };
 		6442BFD3367A13553E39A372 /* HubCategoriesHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98636E73560F2DEDAF245320 /* HubCategoriesHeader.swift */; };
@@ -204,8 +205,10 @@
 		A3F72F4D6CB5127599CE01EA /* RecordingDetailPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = C734A475000378714CF75011 /* RecordingDetailPane.swift */; };
 		A53904C7A390B41791D8C313 /* StructuredOutputLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF34AFDEC7C79858D3E74F26 /* StructuredOutputLayer.swift */; };
 		A57913DA3F78E283B9BFBE48 /* WorkflowAnalyticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6074256954931F26E07D26AF /* WorkflowAnalyticsView.swift */; };
+		A75A192E2B2006F19793E2B7 /* CodeDiagnosticsPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C46E4A07F245CF71E861EC9 /* CodeDiagnosticsPanel.swift */; };
 		A83D67AEEC4CA83283363D6F /* DepthEstimationLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88255951B00E152AC8CBD3DD /* DepthEstimationLayer.swift */; };
 		A8FF31A7FF3BE24F26DCF4CF /* RegisterNodeModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9761C822CC5C9B25B1B77A14 /* RegisterNodeModal.swift */; };
+		A93E14379D589E04645D81EF /* LSPBridgeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7B0960FBCAB5226A3F64EBC /* LSPBridgeService.swift */; };
 		A9A02F396EEFB844EAD5C5C1 /* AuthStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1525AC9725A0B12CCC082B55 /* AuthStore.swift */; };
 		AAFA042167BD1782BDCF2429 /* QueryHistoryModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09F678BF915F91509EA758B6 /* QueryHistoryModal.swift */; };
 		ACAABCCB72DC9D866D1B544A /* ModelDiscoveryFiltersPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13AA82079673B081290DCC6F /* ModelDiscoveryFiltersPane.swift */; };
@@ -439,10 +442,12 @@
 		6A166769351421F733C9FA38 /* ModelDiscoveryWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDiscoveryWorkspace.swift; sourceTree = "<group>"; };
 		6A35AFF7681A1D3B4CD5E340 /* LlamaCppService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LlamaCppService.swift; sourceTree = "<group>"; };
 		6C28EA163BAB1C910713DFAC /* VaultLockScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultLockScreen.swift; sourceTree = "<group>"; };
+		6C46E4A07F245CF71E861EC9 /* CodeDiagnosticsPanel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CodeDiagnosticsPanel.swift; sourceTree = "<group>"; };
 		6ED5D28CE65DB5D69A6F0251 /* DetachedDocumentWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetachedDocumentWindow.swift; sourceTree = "<group>"; };
 		6F44E90AD921208206A4691B /* OllamaAPIModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaAPIModels.swift; sourceTree = "<group>"; };
 		6F4FDE474463FFFA74D74601 /* DocsSidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocsSidebarView.swift; sourceTree = "<group>"; };
 		6FB067C6415EB333DBFFC748 /* VaultToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultToolbar.swift; sourceTree = "<group>"; };
+		706B082205C7AC0CFE4BD746 /* DiagnosticsStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DiagnosticsStore.swift; sourceTree = "<group>"; };
 		70D6D4C06AAF80EF17EE1177 /* StructuredModal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StructuredModal.swift; sourceTree = "<group>"; };
 		7101C525764555A591626FEA /* HubModelOperations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HubModelOperations.swift; sourceTree = "<group>"; };
 		72520A6C922517533B17EB87 /* ContextItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextItem.swift; sourceTree = "<group>"; };
@@ -611,6 +616,7 @@
 		F5AE8942FF6A6D8B03E502A7 /* ChatTimelineSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatTimelineSheet.swift; sourceTree = "<group>"; };
 		F66BAE28BD2ECCAAE6552A90 /* HubDiscoverToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HubDiscoverToolbar.swift; sourceTree = "<group>"; };
 		F742CE647D4E38450648DF11 /* ModelLibraryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelLibraryService.swift; sourceTree = "<group>"; };
+		F7B0960FBCAB5226A3F64EBC /* LSPBridgeService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LSPBridgeService.swift; sourceTree = "<group>"; };
 		F81D2A1B4A867EC0ADDA2306 /* QueueComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueComponents.swift; sourceTree = "<group>"; };
 		F83291E7D2A37D69928B1302 /* WorkflowModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowModels.swift; sourceTree = "<group>"; };
 		F88712040155EA6379FCD744 /* TeamService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamService.swift; sourceTree = "<group>"; };
@@ -772,6 +778,7 @@
 				C7858285E5AA8F74D5841D30 /* CodeTerminalPanel.swift */,
 				41E6CFAA0B1AA7811CEC96EE /* CodeWorkspaceComponents.swift */,
 				F4E0A87F4394C34BB1763466 /* AIAssistantPanel.swift */,
+				6C46E4A07F245CF71E861EC9 /* CodeDiagnosticsPanel.swift */,
 			);
 			path = Code;
 			sourceTree = "<group>";
@@ -887,6 +894,16 @@
 				9B4F99CC282D3C36906993AE /* Components */,
 			);
 			path = Queue;
+			sourceTree = "<group>";
+		};
+		41F7E80E10FD9136EBD7B942 /* LSP */ = {
+			isa = PBXGroup;
+			children = (
+				F7B0960FBCAB5226A3F64EBC /* LSPBridgeService.swift */,
+				706B082205C7AC0CFE4BD746 /* DiagnosticsStore.swift */,
+			);
+			name = LSP;
+			path = LSP;
 			sourceTree = "<group>";
 		};
 		455D0C5F691682972212683A /* Chat */ = {
@@ -1301,6 +1318,7 @@
 				AF65F5CACDE4DC3468474473 /* RAG */,
 				C2E4A921691BE02B13D6007B /* Trust */,
 				37899590768C7A760A18272F /* Terminal */,
+				41F7E80E10FD9136EBD7B942 /* LSP */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -1819,6 +1837,9 @@
 				75D32FED1BC3AAE5BD51F7CA /* ContextBridgeService.swift in Sources */,
 				82E09345294FEC2703047636 /* CodingStore.swift in Sources */,
 				0E9E199B70EB65B50C3121D9 /* AIAssistantPanel.swift in Sources */,
+				A93E14379D589E04645D81EF /* LSPBridgeService.swift in Sources */,
+				60CF73976A2E26622EDD7EB2 /* DiagnosticsStore.swift in Sources */,
+				A75A192E2B2006F19793E2B7 /* CodeDiagnosticsPanel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -5,12 +5,19 @@
 //  Code editing workspace with file browser, editor, integrated terminal, and AI assistant.
 //  Refactored in Phase 6.18 - extracted browser, editor, terminal, and components
 //  Enhanced in Phase 7 - added AI assistant panel and bidirectional terminal context
+//  Enhanced in Phase 8 - added LSP integration with diagnostics panel
 //
 
 import SwiftUI
 import os
 
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "CodeWorkspace")
+
+/// Bottom panel mode selection
+enum BottomPanelMode: String, CaseIterable {
+    case terminal = "Terminal"
+    case problems = "Problems"
+}
 
 struct CodeWorkspace: View {
     // MARK: - State
@@ -20,7 +27,8 @@ struct CodeWorkspace: View {
     @State private var fileContent: String = ""
     @State private var sidebarWidth: CGFloat = 250
     @State private var terminalHeight: CGFloat = 200
-    @State private var showTerminal: Bool = true
+    @State private var showBottomPanel: Bool = true
+    @State private var bottomPanelMode: BottomPanelMode = .terminal
     @State private var currentWorkspace: CodeEditorWorkspace? = nil
     @State private var files: [FileItem] = []
     @State private var isLoadingFiles: Bool = false
@@ -29,6 +37,10 @@ struct CodeWorkspace: View {
     // AI Assistant state
     @State private var codingStore = CodingStore.shared
     @State private var aiPanelWidth: CGFloat = 320
+
+    // LSP / Diagnostics state
+    @State private var diagnosticsStore = DiagnosticsStore.shared
+    @State private var previousFileContent: String = ""
 
     private let codeEditorService = CodeEditorService.shared
 
@@ -48,7 +60,7 @@ struct CodeWorkspace: View {
 
                 Divider()
 
-                // Center: Editor + Terminal
+                // Center: Editor + Bottom Panel
                 VStack(spacing: 0) {
                     // Top: Code Editor
                     CodeEditorArea(
@@ -58,17 +70,40 @@ struct CodeWorkspace: View {
                         onSelectFile: selectFile,
                         onCloseFile: closeFile
                     )
-                    .frame(height: showTerminal ? geometry.size.height - terminalHeight : geometry.size.height)
+                    .frame(height: showBottomPanel ? geometry.size.height - terminalHeight : geometry.size.height)
+                    .onChange(of: fileContent) { _, newValue in
+                        // Trigger LSP diagnostics refresh on content change
+                        requestDiagnosticsRefresh(content: newValue)
+                    }
 
-                    if showTerminal {
+                    if showBottomPanel {
                         Divider()
 
-                        // Bottom: Terminal
-                        CodeTerminalPanel(
-                            showTerminal: $showTerminal,
-                            codingStore: codingStore,
-                            onSpawnTerminal: spawnTerminal
-                        )
+                        // Bottom Panel with mode tabs
+                        VStack(spacing: 0) {
+                            // Panel mode tabs
+                            bottomPanelTabs
+
+                            Divider()
+
+                            // Panel content
+                            switch bottomPanelMode {
+                            case .terminal:
+                                CodeTerminalPanel(
+                                    showTerminal: $showBottomPanel,
+                                    codingStore: codingStore,
+                                    onSpawnTerminal: spawnTerminal
+                                )
+
+                            case .problems:
+                                CodeDiagnosticsPanel(
+                                    diagnosticsStore: diagnosticsStore,
+                                    currentFilePath: selectedFile?.path,
+                                    workspacePath: currentWorkspace?.diskPath,
+                                    onNavigateTo: navigateToLocation
+                                )
+                            }
+                        }
                         .frame(height: terminalHeight)
                     }
                 }
@@ -83,15 +118,15 @@ struct CodeWorkspace: View {
             }
             .toolbar {
                 ToolbarItemGroup(placement: .automatic) {
-                    // Terminal toggle
+                    // Bottom panel toggle
                     Button {
                         withAnimation(.easeInOut(duration: 0.2)) {
-                            showTerminal.toggle()
+                            showBottomPanel.toggle()
                         }
                     } label: {
-                        Image(systemName: showTerminal ? "terminal.fill" : "terminal")
+                        Image(systemName: showBottomPanel ? "rectangle.bottomhalf.filled" : "rectangle.bottomhalf.inset.filled")
                     }
-                    .help("Toggle Terminal")
+                    .help("Toggle Bottom Panel")
 
                     // AI Assistant toggle
                     Button {
@@ -270,6 +305,105 @@ struct CodeWorkspace: View {
                 language: language
             )
         }
+    }
+
+    // MARK: - LSP Integration
+
+    /// Request diagnostics refresh (debounced)
+    private func requestDiagnosticsRefresh(content: String) {
+        guard let filePath = selectedFile?.path,
+              let workspacePath = currentWorkspace?.diskPath,
+              content != previousFileContent else {
+            return
+        }
+
+        previousFileContent = content
+        diagnosticsStore.requestRefresh(
+            for: filePath,
+            workspacePath: workspacePath,
+            content: content
+        )
+    }
+
+    /// Navigate to a specific location in a file
+    private func navigateToLocation(filePath: String, line: Int, character: Int) {
+        // Find or open the file
+        if let file = files.first(where: { $0.path == filePath }) {
+            selectFile(file)
+            // Note: Full cursor positioning would require NSTextView integration
+            logger.info("[LSP] Navigate to \(filePath):\(line):\(character)")
+        }
+    }
+
+    // MARK: - Bottom Panel Tabs
+
+    private var bottomPanelTabs: some View {
+        HStack(spacing: 0) {
+            ForEach(BottomPanelMode.allCases, id: \.self) { mode in
+                Button {
+                    bottomPanelMode = mode
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: mode == .terminal ? "terminal" : "exclamationmark.triangle")
+                            .font(.system(size: 10))
+
+                        Text(mode.rawValue)
+                            .font(.system(size: 11))
+
+                        // Show problem count badge
+                        if mode == .problems && diagnosticsStore.totalStats.totalCount > 0 {
+                            problemCountBadge
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(bottomPanelMode == mode ? Color.magnetarPrimary.opacity(0.15) : Color.clear)
+                    .foregroundColor(bottomPanelMode == mode ? .magnetarPrimary : .secondary)
+                }
+                .buttonStyle(.plain)
+            }
+
+            Spacer()
+
+            // Close button
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    showBottomPanel = false
+                }
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+            }
+            .buttonStyle(.plain)
+            .padding(.trailing, 8)
+        }
+        .background(Color.surfaceTertiary.opacity(0.3))
+    }
+
+    private var problemCountBadge: some View {
+        HStack(spacing: 2) {
+            if diagnosticsStore.totalStats.errorCount > 0 {
+                HStack(spacing: 2) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 8))
+                    Text("\(diagnosticsStore.totalStats.errorCount)")
+                        .font(.system(size: 9, weight: .medium))
+                }
+                .foregroundColor(.red)
+            }
+
+            if diagnosticsStore.totalStats.warningCount > 0 {
+                HStack(spacing: 2) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 8))
+                    Text("\(diagnosticsStore.totalStats.warningCount)")
+                        .font(.system(size: 9, weight: .medium))
+                }
+                .foregroundColor(.orange)
+            }
+        }
+        .padding(.horizontal, 4)
     }
 }
 
