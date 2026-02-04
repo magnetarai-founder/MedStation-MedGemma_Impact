@@ -4,6 +4,7 @@
 //
 //  Integrated AI assistant panel for the Coding workspace.
 //  Provides contextual help with terminal and code context.
+//  Enhanced in Phase 5 with session branching support.
 //
 
 import SwiftUI
@@ -18,6 +19,13 @@ struct AIAssistantPanel: View {
     @State private var inputText: String = ""
     @State private var isExpanded: Bool = true
     @FocusState private var isInputFocused: Bool
+
+    // Branching state
+    @State private var showBranchMenu: Bool = false
+    @State private var showNewBranchSheet: Bool = false
+    @State private var newBranchName: String = ""
+    @State private var branches: [CodingSessionBranch] = []
+    @State private var activeBranchId: UUID?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -42,46 +50,154 @@ struct AIAssistantPanel: View {
             }
         }
         .background(Color.surfaceSecondary.opacity(0.5))
+        .onAppear {
+            loadBranches()
+        }
     }
 
     // MARK: - Header
 
     private var header: some View {
-        HStack {
-            Image(systemName: "sparkles")
-                .foregroundStyle(.purple)
+        VStack(spacing: 0) {
+            HStack {
+                Image(systemName: "sparkles")
+                    .foregroundStyle(.purple)
 
-            Text("AI Assistant")
-                .font(.system(size: 12, weight: .semibold))
+                Text("AI Assistant")
+                    .font(.system(size: 12, weight: .semibold))
 
-            Spacer()
+                Spacer()
 
-            // Context indicator
-            if !codingStore.contextHistory.isEmpty {
-                HStack(spacing: 4) {
-                    Circle()
-                        .fill(Color.green)
-                        .frame(width: 6, height: 6)
-                    Text("\(codingStore.contextHistory.count) context")
+                // Context indicator
+                if !codingStore.contextHistory.isEmpty {
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(Color.green)
+                            .frame(width: 6, height: 6)
+                        Text("\(codingStore.contextHistory.count) context")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                // Expand/collapse button
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isExpanded.toggle()
+                    }
+                } label: {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.up")
                         .font(.system(size: 10))
                         .foregroundStyle(.secondary)
                 }
+                .buttonStyle(.plain)
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
 
-            // Expand/collapse button
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    isExpanded.toggle()
+            // Branch indicator (only show when expanded)
+            if isExpanded {
+                branchIndicator
+            }
+        }
+    }
+
+    // MARK: - Branch Indicator
+
+    private var branchIndicator: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "arrow.triangle.branch")
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
+
+            // Branch selector menu
+            Menu {
+                ForEach(branches) { branch in
+                    Button {
+                        switchToBranch(branch.id)
+                    } label: {
+                        HStack {
+                            Text(branch.name)
+                            if branch.id == activeBranchId {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+
+                Divider()
+
+                Button {
+                    showNewBranchSheet = true
+                } label: {
+                    Label("New Branch...", systemImage: "plus")
                 }
             } label: {
-                Image(systemName: isExpanded ? "chevron.down" : "chevron.up")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 4) {
+                    Text(currentBranchName)
+                        .font(.system(size: 10, weight: .medium))
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 8))
+                }
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.surfaceTertiary.opacity(0.5))
+                .cornerRadius(4)
             }
-            .buttonStyle(.plain)
+            .menuStyle(.borderlessButton)
+
+            Spacer()
+
+            // Branch count badge
+            if branches.count > 1 {
+                Text("\(branches.count) branches")
+                    .font(.system(size: 9))
+                    .foregroundStyle(.tertiary)
+            }
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.bottom, 6)
+        .sheet(isPresented: $showNewBranchSheet) {
+            newBranchSheet
+        }
+    }
+
+    private var currentBranchName: String {
+        branches.first { $0.id == activeBranchId }?.name ?? "main"
+    }
+
+    // MARK: - New Branch Sheet
+
+    private var newBranchSheet: some View {
+        VStack(spacing: 16) {
+            Text("Create New Branch")
+                .font(.headline)
+
+            Text("Branches let you explore alternative approaches without losing your current conversation.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            TextField("Branch name", text: $newBranchName)
+                .textFieldStyle(.roundedBorder)
+
+            HStack {
+                Button("Cancel") {
+                    newBranchName = ""
+                    showNewBranchSheet = false
+                }
+                .buttonStyle(.bordered)
+
+                Button("Create") {
+                    createNewBranch()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(newBranchName.isEmpty)
+            }
+        }
+        .padding(20)
+        .frame(width: 300)
     }
 
     // MARK: - Messages View
@@ -244,6 +360,68 @@ struct AIAssistantPanel: View {
             } catch {
                 logger.error("Failed to execute command: \(error)")
             }
+        }
+    }
+
+    // MARK: - Branch Actions
+
+    private func loadBranches() {
+        guard let sessionId = CodingConversationStorage.shared.activeSessionId else {
+            // No active session, just show default
+            branches = [CodingSessionBranch(name: "main")]
+            activeBranchId = branches.first?.id
+            return
+        }
+
+        do {
+            branches = try CodingConversationStorage.shared.loadBranches(for: sessionId)
+            let metadata = try CodingConversationStorage.shared.loadSession(sessionId)
+            activeBranchId = metadata.activeBranchId ?? branches.first?.id
+        } catch {
+            logger.error("[AIAssistant] Failed to load branches: \(error)")
+            branches = [CodingSessionBranch(name: "main")]
+            activeBranchId = branches.first?.id
+        }
+    }
+
+    private func switchToBranch(_ branchId: UUID) {
+        guard let sessionId = CodingConversationStorage.shared.activeSessionId else { return }
+
+        do {
+            try CodingConversationStorage.shared.switchBranch(to: branchId, for: sessionId)
+            activeBranchId = branchId
+            logger.info("[AIAssistant] Switched to branch \(branchId)")
+        } catch {
+            logger.error("[AIAssistant] Failed to switch branch: \(error)")
+        }
+    }
+
+    private func createNewBranch() {
+        guard let sessionId = CodingConversationStorage.shared.activeSessionId else { return }
+        guard !newBranchName.isEmpty else { return }
+
+        do {
+            let branch = try CodingConversationStorage.shared.createBranch(
+                name: newBranchName,
+                for: sessionId,
+                parentBranchId: activeBranchId
+            )
+            branches.append(branch)
+            activeBranchId = branch.id
+
+            // Add system message about branch creation
+            let message = AIAssistantMessage(
+                role: .system,
+                content: "Created new branch: **\(newBranchName)**"
+            )
+            codingStore.aiAssistant.messages.append(message)
+
+            newBranchName = ""
+            showNewBranchSheet = false
+
+            logger.info("[AIAssistant] Created branch '\(branch.name)'")
+        } catch {
+            logger.error("[AIAssistant] Failed to create branch: \(error)")
         }
     }
 }
