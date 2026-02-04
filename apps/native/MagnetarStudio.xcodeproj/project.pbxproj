@@ -200,6 +200,7 @@
 		9EA9339088EF1C6E1053AD79 /* QueueComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F81D2A1B4A867EC0ADDA2306 /* QueueComponents.swift */; };
 		9EB9FF8D124749A258F5269F /* WorkflowDashboardModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E6B7C3058935628E043E161 /* WorkflowDashboardModels.swift */; };
 		9F0BD30DB4DF7EA04FD2D68C /* SafetyNumberVerificationModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97C4913CBD260C81B6BDC9A6 /* SafetyNumberVerificationModal.swift */; };
+		9F436984C021C290862DCFBE /* ResponseMerger.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEE7AC4D537C63B0C2E0C8E6 /* ResponseMerger.swift */; };
 		9FD6F2F6BF58B093259B2C69 /* ChatService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54CB7B722F609A8CEE1EF5E6 /* ChatService.swift */; };
 		A08EE4CB294F8E473E10B971 /* AutomationWorkspaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4525A729742B9939741E100E /* AutomationWorkspaceView.swift */; };
 		A1A6503876B0C162D5CD8836 /* MetricCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1255F929A396F1A33A48EFD /* MetricCard.swift */; };
@@ -294,6 +295,7 @@
 		F01317486482F3B412F60382 /* SegmentationMask.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77EDA03046F4758C75D8EFE9 /* SegmentationMask.swift */; };
 		F022EFDF45C31A5A57071299 /* KeychainManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B462A62F24C04C9E66B2D0CD /* KeychainManager.swift */; };
 		F0862DAF1514916075072BE2 /* LibraryModelRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 055A4449AF267F81C2ECD1F5 /* LibraryModelRow.swift */; };
+		F141B843A2D897CFD0EE83EA /* CodingModelOrchestrator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 441FAFA19215482EFAFB110B /* CodingModelOrchestrator.swift */; };
 		F17E01069978B7AD00EB786E /* MagnetarMenuCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7DE0C9824FED5003BB041DC /* MagnetarMenuCommands.swift */; };
 		F265BCACF3845F2D3910CF27 /* LlamaCppService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A35AFF7681A1D3B4CD5E340 /* LlamaCppService.swift */; };
 		F3094A66EED4822F15EB2402 /* UserBehaviorTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF872F7823766D888F0D8651 /* UserBehaviorTracker.swift */; };
@@ -405,6 +407,7 @@
 		435D084FA25904CD13F0EACB /* FileUpload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileUpload.swift; sourceTree = "<group>"; };
 		43BD0324B221770AE80A5802 /* HuggingFaceModelCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuggingFaceModelCard.swift; sourceTree = "<group>"; };
 		43DB6371422D1C3A10CCB715 /* DatabaseComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseComponents.swift; sourceTree = "<group>"; };
+		441FAFA19215482EFAFB110B /* CodingModelOrchestrator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CodingModelOrchestrator.swift; sourceTree = "<group>"; };
 		451A66AAE392348B878436AC /* ModelCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCard.swift; sourceTree = "<group>"; };
 		4525A729742B9939741E100E /* AutomationWorkspaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutomationWorkspaceView.swift; sourceTree = "<group>"; };
 		45D761DB19ECDB8C76F1D854 /* AppearanceSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppearanceSettingsView.swift; sourceTree = "<group>"; };
@@ -609,6 +612,7 @@
 		ECCDA547C7A34660324A9F82 /* VaultStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultStore.swift; sourceTree = "<group>"; };
 		ED5DB2EF19636EAAE53EA78C /* VaultSetupWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultSetupWizardView.swift; sourceTree = "<group>"; };
 		EE6F0F7525B459A60D81E462 /* CoreMLModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreMLModelManager.swift; sourceTree = "<group>"; };
+		EEE7AC4D537C63B0C2E0C8E6 /* ResponseMerger.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ResponseMerger.swift; sourceTree = "<group>"; };
 		EEEBC936A480A54E9AF67EC0 /* SmartModelPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartModelPicker.swift; sourceTree = "<group>"; };
 		EF34AFDEC7C79858D3E74F26 /* StructuredOutputLayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StructuredOutputLayer.swift; sourceTree = "<group>"; };
 		EF3A89702783072659E625AB /* DotPattern.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DotPattern.swift; sourceTree = "<group>"; };
@@ -920,6 +924,16 @@
 				AE1A7E48743C11F1927AE7EC /* ChatWindow.swift */,
 			);
 			path = Chat;
+			sourceTree = "<group>";
+		};
+		4614B11049AFEF2FCCCA85D3 /* AI */ = {
+			isa = PBXGroup;
+			children = (
+				441FAFA19215482EFAFB110B /* CodingModelOrchestrator.swift */,
+				EEE7AC4D537C63B0C2E0C8E6 /* ResponseMerger.swift */,
+			);
+			name = AI;
+			path = AI;
 			sourceTree = "<group>";
 		};
 		46EB119BC774E9FEADE8A00F /* ModelDiscovery */ = {
@@ -1334,6 +1348,7 @@
 				37899590768C7A760A18272F /* Terminal */,
 				41F7E80E10FD9136EBD7B942 /* LSP */,
 				81800D0BD05398CD87512F0D /* Persistence */,
+				4614B11049AFEF2FCCCA85D3 /* AI */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -1857,6 +1872,8 @@
 				A75A192E2B2006F19793E2B7 /* CodeDiagnosticsPanel.swift in Sources */,
 				821A87B1241CA57C83CD13D4 /* TerminalContextParser.swift in Sources */,
 				72DD45E523631EDE6AF7D027 /* CodingConversationStorage.swift in Sources */,
+				F141B843A2D897CFD0EE83EA /* CodingModelOrchestrator.swift in Sources */,
+				9F436984C021C290862DCFBE /* ResponseMerger.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

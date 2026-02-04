@@ -95,11 +95,54 @@ struct AIAssistantPanel: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
 
-            // Branch indicator (only show when expanded)
+            // Branch indicator and mode selector (only show when expanded)
             if isExpanded {
                 branchIndicator
+                orchestrationModeSelector
             }
         }
+    }
+
+    // MARK: - Orchestration Mode Selector
+
+    private var orchestrationModeSelector: some View {
+        HStack(spacing: 6) {
+            Image(systemName: CodingModelOrchestrator.shared.currentMode.iconName)
+                .font(.system(size: 10))
+                .foregroundStyle(.purple.opacity(0.8))
+
+            Menu {
+                ForEach(OrchestrationMode.allCases, id: \.self) { mode in
+                    Button {
+                        CodingModelOrchestrator.shared.currentMode = mode
+                    } label: {
+                        HStack {
+                            Label(mode.rawValue, systemImage: mode.iconName)
+                            if mode == CodingModelOrchestrator.shared.currentMode {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Text(CodingModelOrchestrator.shared.currentMode.rawValue)
+                        .font(.system(size: 10, weight: .medium))
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 8))
+                }
+                .foregroundStyle(.purple.opacity(0.8))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.purple.opacity(0.08))
+                .cornerRadius(4)
+            }
+            .menuStyle(.borderlessButton)
+
+            Spacer()
+        }
+        .padding(.horizontal, 12)
+        .padding(.bottom, 4)
     }
 
     // MARK: - Branch Indicator

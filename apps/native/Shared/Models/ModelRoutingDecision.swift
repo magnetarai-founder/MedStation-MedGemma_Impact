@@ -196,6 +196,8 @@ enum OrchestratorError: LocalizedError {
     case routingFailed(String)
     case modelNotAvailable(String)
     case resourceConstraints(String)
+    case allModelsFailed
+    case invalidConfiguration
 
     var errorDescription: String? {
         switch self {
@@ -207,6 +209,10 @@ enum OrchestratorError: LocalizedError {
             return "Model '\(modelId)' is not available"
         case .resourceConstraints(let reason):
             return "Resource constraints: \(reason)"
+        case .allModelsFailed:
+            return "All models failed to respond"
+        case .invalidConfiguration:
+            return "Invalid orchestration configuration"
         }
     }
 }

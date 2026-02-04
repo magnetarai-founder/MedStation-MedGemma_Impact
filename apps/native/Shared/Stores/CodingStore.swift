@@ -339,7 +339,7 @@ final class CodingStore {
 
     // MARK: - AI Assistant
 
-    /// Send message to AI assistant
+    /// Send message to AI assistant using orchestrated model routing
     func sendToAssistant(_ message: String) async {
         // Add user message
         let userMessage = AIAssistantMessage(role: .user, content: message)
@@ -347,31 +347,33 @@ final class CodingStore {
         aiAssistant.isStreaming = true
         aiAssistant.error = nil
 
-        // Include pending terminal context
-        let contextMessages = aiAssistant.pendingContext.map { ctx in
-            AIAssistantMessage(
-                role: .system,
-                content: "Terminal context:\n\(ctx.summary)",
-                terminalContext: ctx
-            )
-        }
-
-        // Clear pending context after sending
+        // Capture pending terminal context before clearing
+        let terminalContexts = aiAssistant.pendingContext
         clearPendingContext()
 
         do {
-            // Build prompt with context
-            var prompt = message
-            if !contextMessages.isEmpty {
-                let contextStr = contextMessages.map { $0.content }.joined(separator: "\n\n")
-                prompt = "Context:\n\(contextStr)\n\nUser query: \(message)"
+            let orchestrator = CodingModelOrchestrator.shared
+
+            // Build orchestrated request with structured context
+            let request = OrchestratedRequest(
+                query: message,
+                terminalContext: terminalContexts,
+                codeContext: nil,  // TODO: Inject from active editor
+                mode: orchestrator.currentMode
+            )
+
+            let response = try await orchestrator.orchestrate(request)
+
+            // Build assistant message with model attribution
+            var content = response.content
+            if response.mode != .single {
+                content += "\n\n---\n*\\(response.modelUsed) via \\(response.mode.rawValue)*"
             }
 
-            // Stream response (integrate with existing chat infrastructure)
-            let response = try await streamAIResponse(prompt: prompt)
-
-            let assistantMessage = AIAssistantMessage(role: .assistant, content: response)
+            let assistantMessage = AIAssistantMessage(role: .assistant, content: content)
             aiAssistant.messages.append(assistantMessage)
+
+            logger.info("[CodingStore] AI response via \(response.mode.rawValue) in \(response.executionTimeMs)ms")
 
         } catch {
             aiAssistant.error = error.localizedDescription
@@ -379,14 +381,6 @@ final class CodingStore {
         }
 
         aiAssistant.isStreaming = false
-    }
-
-    /// Stream AI response (placeholder - will integrate with ChatStore/OrchestratorManager)
-    private func streamAIResponse(prompt: String) async throws -> String {
-        // TODO: Integrate with OrchestratorManager for intelligent model routing
-        // For now, return placeholder
-        try await Task.sleep(nanoseconds: 500_000_000)  // Simulate delay
-        return "AI response will be integrated with the orchestrator system."
     }
 
     /// Clear AI assistant messages
