@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 63;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -375,7 +375,7 @@
 		234244696916A0AF296E38BE /* SaveQueryDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaveQueryDialog.swift; sourceTree = "<group>"; };
 		23CEABE23C6EC7191EDF9521 /* WorkflowBuilderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowBuilderView.swift; sourceTree = "<group>"; };
 		2521B0EA62AA8EA5C85FB472 /* ContextBridgeService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContextBridgeService.swift; sourceTree = "<group>"; };
-		2758D7F3958734FB992121DC /* TeamWorkspace_v2.swift.bak */ = {isa = PBXFileReference; path = TeamWorkspace_v2.swift.bak; sourceTree = "<group>"; };
+		2758D7F3958734FB992121DC /* TeamWorkspace_v2.swift.bak */ = {isa = PBXFileReference; lastKnownFileType = text; path = TeamWorkspace_v2.swift.bak; sourceTree = "<group>"; };
 		283A8238A24AA77FAD197EF3 /* SettingsHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsHelpers.swift; sourceTree = "<group>"; };
 		29AD4FB7E2E90444A471C957 /* JsonConverterModal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JsonConverterModal.swift; sourceTree = "<group>"; };
 		2ADA9359DD72E6FA30050662 /* MagnetarCloudSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagnetarCloudSettingsView.swift; sourceTree = "<group>"; };
@@ -773,7 +773,6 @@
 			children = (
 				B94A0DDDF853D182FC8AB334 /* ResizableDivider.swift */,
 			);
-			name = Code;
 			path = Code;
 			sourceTree = "<group>";
 		};
@@ -927,7 +926,6 @@
 				F7B0960FBCAB5226A3F64EBC /* LSPBridgeService.swift */,
 				706B082205C7AC0CFE4BD746 /* DiagnosticsStore.swift */,
 			);
-			name = LSP;
 			path = LSP;
 			sourceTree = "<group>";
 		};
@@ -949,7 +947,6 @@
 				441FAFA19215482EFAFB110B /* CodingModelOrchestrator.swift */,
 				EEE7AC4D537C63B0C2E0C8E6 /* ResponseMerger.swift */,
 			);
-			name = AI;
 			path = AI;
 			sourceTree = "<group>";
 		};
@@ -981,7 +978,6 @@
 				7EEFA9FDCAB4C61492096551 /* CodeEmbeddingService.swift */,
 				C2FB4796724BE456F79627A3 /* CodeRAGService.swift */,
 			);
-			name = Intelligence;
 			path = Intelligence;
 			sourceTree = "<group>";
 		};
@@ -1159,7 +1155,6 @@
 			children = (
 				1A14CDCE0AB5ED7797F9F04F /* CodingConversationStorage.swift */,
 			);
-			name = Persistence;
 			path = Persistence;
 			sourceTree = "<group>";
 		};
@@ -1558,7 +1553,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1430;
+				LastUpgradeCheck = 2620;
 				TargetAttributes = {
 					CF12937F0A3EEB2B08F068A2 = {
 						ProvisioningStyle = Automatic;
@@ -1575,7 +1570,6 @@
 			);
 			mainGroup = 0CBF91A9C082C90D7E79AF46;
 			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 77;
 			productRefGroup = 734503D79C8E69B6DEAEC3C5 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -1925,6 +1919,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
@@ -1957,10 +1952,12 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -1986,6 +1983,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.magnetar.studio;
 				PRODUCT_NAME = MagnetarStudio;
 				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.9;
@@ -2000,6 +1998,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEAD_CODE_STRIPPING = YES;
 				ENABLE_HARDENED_RUNTIME = NO;
 				INFOPLIST_FILE = macOS/Info.plist;
 				INFOPLIST_KEY_NSMainStoryboardFile = "";
@@ -2020,6 +2019,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEAD_CODE_STRIPPING = YES;
 				ENABLE_HARDENED_RUNTIME = NO;
 				INFOPLIST_FILE = macOS/Info.plist;
 				INFOPLIST_KEY_NSMainStoryboardFile = "";
@@ -2037,6 +2037,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
@@ -2069,10 +2070,12 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -2091,6 +2094,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.magnetar.studio;
 				PRODUCT_NAME = MagnetarStudio;
 				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.9;

@@ -94,13 +94,16 @@ final class NetworkFirewallProtocol: URLProtocol, @unchecked Sendable {
     }
 
     private func proceedWithRequest(_ request: URLRequest) async {
-        // Log the allowed request
-        await MainActor.run {
-            SecurityManager.shared.logNetworkAttempt(
-                request,
-                decision: .allowed,
-                reason: "Firewall approved"
-            )
+        // Only log non-localhost requests to avoid console spam and audit log recursion
+        // (sendAuditLog uses URLSession.shared which re-enters this protocol)
+        if let host = request.url?.host, !SecurityManager.shared.isLocalhost(host) {
+            await MainActor.run {
+                SecurityManager.shared.logNetworkAttempt(
+                    request,
+                    decision: .allowed,
+                    reason: "Firewall approved"
+                )
+            }
         }
 
         // Execute the request using internal session (won't be intercepted again)

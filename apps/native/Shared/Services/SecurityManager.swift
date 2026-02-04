@@ -198,14 +198,28 @@ public final class SecurityManager {
     func logSecurityEvent(_ event: SecurityEvent) {
         securityEvents.append(event)
 
-        // Log to unified logger
-        logger.info("[\(event.type.rawValue)] \(event.message)")
+        // Log to unified logger — use debug for routine events, info for important ones
+        switch event.type {
+        case .networkAttempt:
+            logger.debug("[\(event.type.rawValue)] \(event.message)")
+        default:
+            logger.info("[\(event.type.rawValue)] \(event.message)")
+        }
 
-        // Send to backend audit API (non-blocking)
-        Task {
-            await sendAuditLog(event)
+        // Send to backend audit API (non-blocking, skip routine network events)
+        if event.type != .networkAttempt {
+            Task {
+                await sendAuditLog(event)
+            }
         }
     }
+
+    /// URLSession that bypasses NetworkFirewallProtocol to prevent recursive interception
+    private static let auditSession: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.protocolClasses = []  // No custom protocols — avoids firewall re-entry
+        return URLSession(configuration: config)
+    }()
 
     /// Send security event to backend audit API
     private func sendAuditLog(_ event: SecurityEvent) async {
@@ -217,7 +231,6 @@ public final class SecurityManager {
         do {
             // Build audit log request
             guard let url = URL(string: "\(APIConfiguration.shared.versionedBaseURL)/audit/log") else {
-                logger.warning("Invalid audit log URL - skipping remote audit")
                 return
             }
             var request = URLRequest(url: url)
@@ -238,15 +251,14 @@ public final class SecurityManager {
             ]
             request.httpBody = try JSONSerialization.data(withJSONObject: auditPayload)
 
-            // Fire and forget - don't block on response
-            let (_, response) = try await URLSession.shared.data(for: request)
+            // Use audit-specific session that bypasses the firewall protocol
+            let (_, response) = try await Self.auditSession.data(for: request)
 
             if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 201 {
-                logger.warning("Audit log response: \(httpResponse.statusCode)")
+                logger.debug("Audit log response: \(httpResponse.statusCode)")
             }
         } catch {
-            // Non-blocking - log locally but don't fail
-            logger.warning("Failed to send audit log to backend: \(error.localizedDescription)")
+            // Non-blocking - silently fail, don't spam console for audit failures
         }
     }
 
@@ -262,7 +274,7 @@ public final class SecurityManager {
 
     // MARK: - Private Helpers
 
-    private func isLocalhost(_ host: String) -> Bool {
+    func isLocalhost(_ host: String) -> Bool {
         return host == "localhost" ||
                host == "127.0.0.1" ||
                host == "::1" ||

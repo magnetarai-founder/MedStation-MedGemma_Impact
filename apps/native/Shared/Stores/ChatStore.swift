@@ -242,7 +242,7 @@ final class ChatStore {
             // Wait before retrying (exponential backoff: 1s, 2s, 4s, 8s, 16s)
             if attempt < maxRetries {
                 let delay = Double(1 << (attempt - 1))  // 2^(attempt-1)
-                logger.info("Retrying session load in \(delay)s (attempt \(attempt)/\(maxRetries))")
+                logger.debug("Retrying session load in \(delay)s (attempt \(attempt)/\(maxRetries))")
                 try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             }
         }

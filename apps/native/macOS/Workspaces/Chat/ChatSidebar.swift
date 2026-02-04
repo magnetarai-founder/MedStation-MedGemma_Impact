@@ -27,7 +27,11 @@ struct ChatSidebar: View {
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.textPrimary)
 
-                    if chatStore.filteredSessions.count > 0 {
+                    if chatStore.isLoadingSessions {
+                        Text("Loading...")
+                            .font(.system(size: 11))
+                            .foregroundColor(.textSecondary)
+                    } else {
                         Text("\(chatStore.filteredSessions.count) conversation\(chatStore.filteredSessions.count == 1 ? "" : "s")")
                             .font(.system(size: 11))
                             .foregroundColor(.textSecondary)
@@ -141,7 +145,7 @@ struct ChatSidebar: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 12)
-            .background(Color.surfaceSecondary.opacity(0.3))
+            .background(Color.surfaceTertiary.opacity(0.3))
 
             Divider()
 

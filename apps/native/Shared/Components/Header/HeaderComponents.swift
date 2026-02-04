@@ -523,11 +523,7 @@ struct QuickActionButton: View {
 
             // MARK: - Settings
             Divider()
-            Button {
-                // Open Settings window to Features tab
-                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-                logger.info("Opening Settings to enable more features")
-            } label: {
+            SettingsLink {
                 Label("Enable More Features...", systemImage: "gearshape")
             }
         } label: {

@@ -183,11 +183,11 @@ struct MainAppView: View {
         case .files:
             VaultWorkspace()
         case .workspace:
-            WorkspaceView()
+            CodeWorkspace()
 
         // Spawnable workspaces (open as separate windows)
         case .code:
-            CodeWorkspace()
+            WorkspaceView()
         case .kanban:
             KanbanWorkspace()
         case .database:

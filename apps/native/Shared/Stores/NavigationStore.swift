@@ -110,10 +110,10 @@ enum Workspace: String, CaseIterable, Identifiable, Hashable {
     // Core workspaces (3 tabs in header)
     case chat
     case files
-    case workspace  // Personal notes (individual) or Team collab (team mode)
+    case workspace  // Code editor workspace (was notes, now shows CodeWorkspace)
 
     // Spawnable workspaces (open as separate windows via + menu)
-    case code
+    case code  // Notes / personal workspace (was core, now spawnable)
     case database
     case kanban
     case insights
@@ -129,8 +129,8 @@ enum Workspace: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .chat: return "Chat"
         case .files: return "Files"
-        case .workspace: return "Workspace"
-        case .code: return "Code"
+        case .workspace: return "Code"
+        case .code: return "Notes"
         case .database: return "Database"
         case .kanban: return "Kanban"
         case .insights: return "Insights"
@@ -144,8 +144,8 @@ enum Workspace: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .chat: return "bubble.left"
         case .files: return "folder"
-        case .workspace: return "square.grid.2x2"
-        case .code: return "chevron.left.forwardslash.chevron.right"
+        case .workspace: return "chevron.left.forwardslash.chevron.right"
+        case .code: return "note.text"
         case .database: return "cylinder"
         case .kanban: return "square.grid.3x3"
         case .insights: return "waveform"
@@ -174,8 +174,8 @@ enum Workspace: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .chat: return "Chat"
         case .files: return "Files"
-        case .workspace: return "Workspace"
-        case .code: return "Code"
+        case .workspace: return "Code"
+        case .code: return "Notes"
         case .database: return "Data"
         case .kanban: return "Board"
         case .insights: return "Voice"
@@ -190,8 +190,8 @@ enum Workspace: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .chat: return "message"
         case .files: return "folder.fill"
-        case .workspace: return "square.grid.2x2"
-        case .code: return "chevron.left.forwardslash.chevron.right"
+        case .workspace: return "chevron.left.forwardslash.chevron.right"
+        case .code: return "note.text"
         case .database: return "cylinder"
         case .kanban: return "square.grid.3x2"
         case .insights: return "waveform"

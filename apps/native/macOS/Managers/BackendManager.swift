@@ -172,7 +172,7 @@ final class BackendManager {
                     await autoStartBackend()
                     consecutiveFailures = 0 // Reset counter after restart attempt
                 } else {
-                    logger.warning("Backend health check failed (\(consecutiveFailures)/3)")
+                    logger.debug("Backend health check failed (\(consecutiveFailures)/3)")
                 }
             } else {
                 // Reset failure counter on successful health check
