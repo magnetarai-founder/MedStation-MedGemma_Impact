@@ -267,7 +267,7 @@ struct CodeWorkspace: View {
                     let lang = CodeLanguage.detect(from: file.path)
                     Image(systemName: "chevron.left.forwardslash.chevron.right")
                         .font(.system(size: 9))
-                    Text(lang == .unknown ? (file.fileExtension ?? "Plain Text") : lang.rawValue.capitalized)
+                    Text(lang == .unknown ? file.fileExtension : lang.rawValue.capitalized)
                         .font(.system(size: 11))
                 }
                 .foregroundStyle(.secondary)

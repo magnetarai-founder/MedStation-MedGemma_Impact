@@ -149,6 +149,13 @@ actor TerminalContextParser {
     // MARK: - Init
 
     init() {
+        // Populate patterns on first use via parse() instead of init
+        // to avoid Swift concurrency warning about calling actor-isolated
+        // methods from nonisolated init context.
+    }
+
+    private func ensurePatternsLoaded() {
+        guard errorPatterns.isEmpty else { return }
         setupErrorPatterns()
     }
 
@@ -369,6 +376,8 @@ actor TerminalContextParser {
 
     /// Parse terminal context and enrich with error information
     func parse(_ context: TerminalContext) -> EnrichedTerminalContext {
+        ensurePatternsLoaded()
+
         let output = context.output
         var parsedErrors: [ParsedTerminalError] = []
 
