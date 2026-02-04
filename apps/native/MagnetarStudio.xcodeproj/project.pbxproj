@@ -156,6 +156,7 @@
 		7F4285F51CFCC26CAB821E45 /* DetachedNoteWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CCF38BAED0DD197EFAA67EE /* DetachedNoteWindow.swift */; };
 		80A44875AA739040EDC89811 /* WorkflowDesignerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59F09A6810574FEFD08FDA3C /* WorkflowDesignerView.swift */; };
 		81D5AC79B8EF8A94C013FE6E /* KanbanRows.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DEBDB95F4489D4FEA9DE648 /* KanbanRows.swift */; };
+		821A87B1241CA57C83CD13D4 /* TerminalContextParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57494CF6EFBEFFE7CFEBB00C /* TerminalContextParser.swift */; };
 		8299C865C1CAB926A7BA9558 /* ModelDiscoveryDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18C5C1AFE9A532BEEA423B11 /* ModelDiscoveryDataManager.swift */; };
 		82D9FD066D0F4F483D04B9E0 /* KanbanTaskDetailPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F75D79776A85CD737E96223 /* KanbanTaskDetailPane.swift */; };
 		82E09345294FEC2703047636 /* CodingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31D4807EE0958BCED62F56EE /* CodingStore.swift */; };
@@ -420,6 +421,7 @@
 		54CB7B722F609A8CEE1EF5E6 /* ChatService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatService.swift; sourceTree = "<group>"; };
 		559351ADEAA7F84D91844E36 /* CrossConversationFileIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrossConversationFileIndex.swift; sourceTree = "<group>"; };
 		5611052AF05454079AB157EB /* CodeEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeEditor.swift; sourceTree = "<group>"; };
+		57494CF6EFBEFFE7CFEBB00C /* TerminalContextParser.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TerminalContextParser.swift; sourceTree = "<group>"; };
 		5764694930CDBCF6FE8A8361 /* ModelComparisonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelComparisonView.swift; sourceTree = "<group>"; };
 		58F3ABCDBF9C2AFA566916BC /* TokenCounter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenCounter.swift; sourceTree = "<group>"; };
 		59F09A6810574FEFD08FDA3C /* WorkflowDesignerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowDesignerView.swift; sourceTree = "<group>"; };
@@ -1151,6 +1153,7 @@
 				C46ABBA7C8DC00E3A577D960 /* ContextTierManager.swift */,
 				DDC63F81D3DD0BBC4149527F /* HistoryBridgeBuilder.swift */,
 				2521B0EA62AA8EA5C85FB472 /* ContextBridgeService.swift */,
+				57494CF6EFBEFFE7CFEBB00C /* TerminalContextParser.swift */,
 			);
 			path = Context;
 			sourceTree = "<group>";
@@ -1840,6 +1843,7 @@
 				A93E14379D589E04645D81EF /* LSPBridgeService.swift in Sources */,
 				60CF73976A2E26622EDD7EB2 /* DiagnosticsStore.swift in Sources */,
 				A75A192E2B2006F19793E2B7 /* CodeDiagnosticsPanel.swift in Sources */,
+				821A87B1241CA57C83CD13D4 /* TerminalContextParser.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
