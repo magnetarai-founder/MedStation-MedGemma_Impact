@@ -2,8 +2,9 @@
 //  CodeWorkspace.swift
 //  MagnetarStudio (macOS)
 //
-//  Code editing workspace with file browser, editor, and integrated terminal
+//  Code editing workspace with file browser, editor, integrated terminal, and AI assistant.
 //  Refactored in Phase 6.18 - extracted browser, editor, terminal, and components
+//  Enhanced in Phase 7 - added AI assistant panel and bidirectional terminal context
 //
 
 import SwiftUI
@@ -12,6 +13,8 @@ import os
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "CodeWorkspace")
 
 struct CodeWorkspace: View {
+    // MARK: - State
+
     @State private var selectedFile: FileItem? = nil
     @State private var openFiles: [FileItem] = []
     @State private var fileContent: String = ""
@@ -22,6 +25,10 @@ struct CodeWorkspace: View {
     @State private var files: [FileItem] = []
     @State private var isLoadingFiles: Bool = false
     @State private var errorMessage: String? = nil
+
+    // AI Assistant state
+    @State private var codingStore = CodingStore.shared
+    @State private var aiPanelWidth: CGFloat = 320
 
     private let codeEditorService = CodeEditorService.shared
 
@@ -41,7 +48,7 @@ struct CodeWorkspace: View {
 
                 Divider()
 
-                // Right: Editor + Terminal
+                // Center: Editor + Terminal
                 VStack(spacing: 0) {
                     // Top: Code Editor
                     CodeEditorArea(
@@ -65,10 +72,66 @@ struct CodeWorkspace: View {
                         .frame(height: terminalHeight)
                     }
                 }
+
+                // Right: AI Assistant Panel
+                if codingStore.showAIAssistant {
+                    Divider()
+
+                    AIAssistantPanel(codingStore: codingStore)
+                        .frame(width: aiPanelWidth)
+                }
+            }
+            .toolbar {
+                ToolbarItemGroup(placement: .automatic) {
+                    // Terminal toggle
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showTerminal.toggle()
+                        }
+                    } label: {
+                        Image(systemName: showTerminal ? "terminal.fill" : "terminal")
+                    }
+                    .help("Toggle Terminal")
+
+                    // AI Assistant toggle
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            codingStore.showAIAssistant.toggle()
+                        }
+                    } label: {
+                        Image(systemName: codingStore.showAIAssistant ? "sparkles" : "sparkles")
+                            .foregroundStyle(codingStore.showAIAssistant ? .purple : .secondary)
+                    }
+                    .help("Toggle AI Assistant")
+
+                    // Terminal app picker
+                    Menu {
+                        ForEach(TerminalApp.allCases, id: \.self) { app in
+                            Button {
+                                codingStore.preferredTerminal = app
+                            } label: {
+                                HStack {
+                                    Image(systemName: app.iconName)
+                                    Text(app.displayName)
+                                    if codingStore.preferredTerminal == app {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                        }
+                    } label: {
+                        Image(systemName: codingStore.preferredTerminal.iconName)
+                    }
+                    .help("Terminal App: \(codingStore.preferredTerminal.displayName)")
+                }
             }
         }
         .task {
             await loadFiles()
+            // Set working directory for CodingStore
+            if let path = currentWorkspace?.diskPath {
+                codingStore.workingDirectory = path
+            }
         }
     }
 
@@ -165,20 +228,47 @@ struct CodeWorkspace: View {
 
     private func spawnTerminal() async {
         do {
-            // Get workspace directory if available
-            let cwd = currentWorkspace?.diskPath
+            // Use native terminal bridge for direct control
+            let cwd = currentWorkspace?.diskPath ?? codingStore.workingDirectory
 
-            let response = try await TerminalService.shared.spawnTerminal(cwd: cwd)
+            // Spawn via CodingStore which tracks sessions
+            _ = try await codingStore.spawnTerminal(cwd: cwd)
 
             await MainActor.run {
                 errorMessage = nil
-                logger.info("Terminal spawned: \(response.terminalApp) - \(response.message)")
             }
         } catch {
-            logger.error("Failed to spawn terminal: \(error)")
-            await MainActor.run {
-                errorMessage = "Failed to spawn terminal: \(error.localizedDescription)"
+            // Fallback to backend API if native bridge fails
+            do {
+                let cwd = currentWorkspace?.diskPath
+                let response = try await TerminalService.shared.spawnTerminal(cwd: cwd)
+
+                await MainActor.run {
+                    errorMessage = nil
+                    logger.info("Terminal spawned via backend: \(response.terminalApp) - \(response.message)")
+                }
+            } catch let fallbackError {
+                logger.error("Failed to spawn terminal: \(fallbackError)")
+                await MainActor.run {
+                    errorMessage = "Failed to spawn terminal: \(fallbackError.localizedDescription)"
+                }
             }
+        }
+    }
+
+    /// Send selected code to AI assistant for explanation/help
+    private func sendCodeToAssistant() {
+        guard !fileContent.isEmpty else { return }
+
+        let fileName = selectedFile?.name ?? "Unknown"
+        let language = selectedFile?.fileExtension ?? "text"
+
+        Task {
+            await ContextBridgeService.shared.addCodeContext(
+                code: fileContent,
+                fileName: fileName,
+                language: language
+            )
         }
     }
 }
