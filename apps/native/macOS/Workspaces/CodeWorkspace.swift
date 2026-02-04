@@ -6,6 +6,7 @@
 //  Refactored in Phase 6.18 - extracted browser, editor, terminal, and components
 //  Enhanced in Phase 7 - added AI assistant panel and bidirectional terminal context
 //  Enhanced in Phase 8 - added LSP integration with diagnostics panel
+//  Phase 8 Polish - keyboard shortcuts, status bar, persistent layout, pane constraints
 //
 
 import SwiftUI
@@ -25,119 +26,195 @@ struct CodeWorkspace: View {
     @State private var selectedFile: FileItem? = nil
     @State private var openFiles: [FileItem] = []
     @State private var fileContent: String = ""
-    @State private var sidebarWidth: CGFloat = 250
-    @State private var terminalHeight: CGFloat = 200
-    @State private var showBottomPanel: Bool = true
-    @State private var bottomPanelMode: BottomPanelMode = .terminal
     @State private var currentWorkspace: CodeEditorWorkspace? = nil
     @State private var files: [FileItem] = []
     @State private var isLoadingFiles: Bool = false
     @State private var errorMessage: String? = nil
 
+    // Layout state — persisted via AppStorage
+    @AppStorage("code.sidebarWidth") private var sidebarWidth: Double = 250
+    @AppStorage("code.terminalHeight") private var terminalHeight: Double = 200
+    @AppStorage("code.aiPanelWidth") private var aiPanelWidth: Double = 320
+    @AppStorage("code.showBottomPanel") private var showBottomPanel: Bool = true
+    @State private var bottomPanelMode: BottomPanelMode = .terminal
+    @State private var showSidebar: Bool = true
+
     // AI Assistant state
     @State private var codingStore = CodingStore.shared
-    @State private var aiPanelWidth: CGFloat = 320
 
     // LSP / Diagnostics state
     @State private var diagnosticsStore = DiagnosticsStore.shared
     @State private var previousFileContent: String = ""
 
+    // Cursor position for status bar
+    @State private var cursorLine: Int = 1
+    @State private var cursorColumn: Int = 1
+
     private let codeEditorService = CodeEditorService.shared
+
+    // MARK: - Layout Constants
+
+    private enum Layout {
+        static let sidebarMin: CGFloat = 180
+        static let sidebarMax: CGFloat = 400
+        static let sidebarDefault: CGFloat = 250
+        static let terminalMin: CGFloat = 100
+        static let terminalMax: CGFloat = 500
+        static let terminalDefault: CGFloat = 200
+        static let aiPanelMin: CGFloat = 260
+        static let aiPanelMax: CGFloat = 500
+        static let aiPanelDefault: CGFloat = 320
+    }
 
     var body: some View {
         GeometryReader { geometry in
-            HStack(spacing: 0) {
-                // Left: File Browser
-                CodeFileBrowser(
-                    currentWorkspace: currentWorkspace,
-                    files: files,
-                    isLoadingFiles: isLoadingFiles,
-                    selectedFile: selectedFile,
-                    onRefresh: loadFiles,
-                    onSelectFile: selectFile
-                )
-                .frame(width: sidebarWidth)
+            VStack(spacing: 0) {
+                // Main workspace area
+                HStack(spacing: 0) {
+                    // Left: File Browser
+                    if showSidebar {
+                        CodeFileBrowser(
+                            currentWorkspace: currentWorkspace,
+                            files: files,
+                            isLoadingFiles: isLoadingFiles,
+                            selectedFile: selectedFile,
+                            onRefresh: loadFiles,
+                            onSelectFile: selectFile
+                        )
+                        .frame(width: CGFloat(sidebarWidth))
 
-                Divider()
-
-                // Center: Editor + Bottom Panel
-                VStack(spacing: 0) {
-                    // Top: Code Editor
-                    CodeEditorArea(
-                        openFiles: openFiles,
-                        selectedFile: selectedFile,
-                        fileContent: $fileContent,
-                        onSelectFile: selectFile,
-                        onCloseFile: closeFile
-                    )
-                    .frame(height: showBottomPanel ? geometry.size.height - terminalHeight : geometry.size.height)
-                    .onChange(of: fileContent) { _, newValue in
-                        // Trigger LSP diagnostics refresh on content change
-                        requestDiagnosticsRefresh(content: newValue)
+                        // Resizable sidebar divider
+                        ResizableDivider(
+                            dimension: $sidebarWidth,
+                            axis: .horizontal,
+                            minValue: Double(Layout.sidebarMin),
+                            maxValue: Double(Layout.sidebarMax),
+                            defaultValue: Double(Layout.sidebarDefault)
+                        )
                     }
 
-                    if showBottomPanel {
-                        Divider()
-
-                        // Bottom Panel with mode tabs
-                        VStack(spacing: 0) {
-                            // Panel mode tabs
-                            bottomPanelTabs
-
-                            Divider()
-
-                            // Panel content
-                            switch bottomPanelMode {
-                            case .terminal:
-                                CodeTerminalPanel(
-                                    showTerminal: $showBottomPanel,
-                                    codingStore: codingStore,
-                                    onSpawnTerminal: spawnTerminal
-                                )
-
-                            case .problems:
-                                CodeDiagnosticsPanel(
-                                    diagnosticsStore: diagnosticsStore,
-                                    currentFilePath: selectedFile?.path,
-                                    workspacePath: currentWorkspace?.diskPath,
-                                    onNavigateTo: navigateToLocation
-                                )
-                            }
+                    // Center: Editor + Bottom Panel
+                    VStack(spacing: 0) {
+                        // Top: Code Editor
+                        CodeEditorArea(
+                            openFiles: openFiles,
+                            selectedFile: selectedFile,
+                            fileContent: $fileContent,
+                            onSelectFile: selectFile,
+                            onCloseFile: closeFile
+                        )
+                        .frame(minHeight: 100)
+                        .onChange(of: fileContent) { _, newValue in
+                            requestDiagnosticsRefresh(content: newValue)
                         }
-                        .frame(height: terminalHeight)
+
+                        if showBottomPanel {
+                            // Resizable bottom panel divider
+                            ResizableDivider(
+                                dimension: $terminalHeight,
+                                axis: .vertical,
+                                minValue: Double(Layout.terminalMin),
+                                maxValue: min(Double(Layout.terminalMax), Double(geometry.size.height) * 0.6),
+                                defaultValue: Double(Layout.terminalDefault)
+                            )
+
+                            // Bottom Panel with mode tabs
+                            VStack(spacing: 0) {
+                                bottomPanelTabs
+
+                                Divider()
+
+                                switch bottomPanelMode {
+                                case .terminal:
+                                    CodeTerminalPanel(
+                                        showTerminal: $showBottomPanel,
+                                        codingStore: codingStore,
+                                        onSpawnTerminal: spawnTerminal
+                                    )
+
+                                case .problems:
+                                    CodeDiagnosticsPanel(
+                                        diagnosticsStore: diagnosticsStore,
+                                        currentFilePath: selectedFile?.path,
+                                        workspacePath: currentWorkspace?.diskPath,
+                                        onNavigateTo: navigateToLocation
+                                    )
+                                }
+                            }
+                            .frame(height: CGFloat(terminalHeight))
+                        }
+                    }
+
+                    // Right: AI Assistant Panel
+                    if codingStore.showAIAssistant {
+                        ResizableDivider(
+                            dimension: $aiPanelWidth,
+                            axis: .horizontal,
+                            minValue: Double(Layout.aiPanelMin),
+                            maxValue: Double(Layout.aiPanelMax),
+                            defaultValue: Double(Layout.aiPanelDefault),
+                            invertDrag: true
+                        )
+
+                        AIAssistantPanel(codingStore: codingStore)
+                            .frame(width: CGFloat(aiPanelWidth))
                     }
                 }
 
-                // Right: AI Assistant Panel
-                if codingStore.showAIAssistant {
-                    Divider()
-
-                    AIAssistantPanel(codingStore: codingStore)
-                        .frame(width: aiPanelWidth)
-                }
+                // Status Bar
+                statusBar
             }
             .toolbar {
                 ToolbarItemGroup(placement: .automatic) {
+                    // Sidebar toggle
+                    Button {
+                        withAnimation(.magnetarQuick) {
+                            showSidebar.toggle()
+                        }
+                    } label: {
+                        Image(systemName: "sidebar.leading")
+                    }
+                    .help("Toggle Sidebar (⌘B)")
+                    .keyboardShortcut("b", modifiers: .command)
+
                     // Bottom panel toggle
                     Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
+                        withAnimation(.magnetarQuick) {
                             showBottomPanel.toggle()
                         }
                     } label: {
                         Image(systemName: showBottomPanel ? "rectangle.bottomhalf.filled" : "rectangle.bottomhalf.inset.filled")
                     }
-                    .help("Toggle Bottom Panel")
+                    .help("Toggle Bottom Panel (⌘`)")
+                    .keyboardShortcut("`", modifiers: .command)
 
                     // AI Assistant toggle
                     Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
+                        withAnimation(.magnetarQuick) {
                             codingStore.showAIAssistant.toggle()
                         }
                     } label: {
-                        Image(systemName: codingStore.showAIAssistant ? "sparkles" : "sparkles")
+                        Image(systemName: "sparkles")
                             .foregroundStyle(codingStore.showAIAssistant ? .purple : .secondary)
                     }
-                    .help("Toggle AI Assistant")
+                    .help("Toggle AI Assistant (⇧⌘P)")
+                    .keyboardShortcut("p", modifiers: [.command, .shift])
+
+                    Spacer()
+
+                    // Refresh code index
+                    Button {
+                        codingStore.refreshCodeIndex()
+                    } label: {
+                        if codingStore.isCodeIndexing {
+                            ProgressView()
+                                .scaleEffect(0.6)
+                        } else {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                        }
+                    }
+                    .help("Refresh Code Index")
+                    .disabled(codingStore.isCodeIndexing)
 
                     // Terminal app picker
                     Menu {
@@ -163,11 +240,119 @@ struct CodeWorkspace: View {
         }
         .task {
             await loadFiles()
-            // Set working directory for CodingStore
             if let path = currentWorkspace?.diskPath {
                 codingStore.workingDirectory = path
             }
         }
+    }
+
+    // MARK: - Status Bar
+
+    private var statusBar: some View {
+        HStack(spacing: 0) {
+            // Line/Column indicator
+            HStack(spacing: 4) {
+                Text("Ln \(cursorLine), Col \(cursorColumn)")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 12)
+
+            Divider()
+                .frame(height: 12)
+
+            // Language indicator
+            if let file = selectedFile {
+                HStack(spacing: 4) {
+                    let lang = CodeLanguage.detect(from: file.path)
+                    Image(systemName: "chevron.left.forwardslash.chevron.right")
+                        .font(.system(size: 9))
+                    Text(lang == .unknown ? (file.fileExtension ?? "Plain Text") : lang.rawValue.capitalized)
+                        .font(.system(size: 11))
+                }
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 8)
+
+                Divider()
+                    .frame(height: 12)
+            }
+
+            // Encoding
+            Text("UTF-8")
+                .font(.system(size: 11))
+                .foregroundStyle(.tertiary)
+                .padding(.horizontal, 8)
+
+            Divider()
+                .frame(height: 12)
+
+            // Diagnostics summary
+            if diagnosticsStore.totalStats.totalCount > 0 {
+                HStack(spacing: 6) {
+                    if diagnosticsStore.totalStats.errorCount > 0 {
+                        HStack(spacing: 2) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 9))
+                            Text("\(diagnosticsStore.totalStats.errorCount)")
+                                .font(.system(size: 11))
+                        }
+                        .foregroundStyle(.red)
+                    }
+
+                    if diagnosticsStore.totalStats.warningCount > 0 {
+                        HStack(spacing: 2) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.system(size: 9))
+                            Text("\(diagnosticsStore.totalStats.warningCount)")
+                                .font(.system(size: 11))
+                        }
+                        .foregroundStyle(.orange)
+                    }
+                }
+                .padding(.horizontal, 8)
+
+                Divider()
+                    .frame(height: 12)
+            }
+
+            Spacer()
+
+            // Code index status
+            if codingStore.isCodeIndexing {
+                HStack(spacing: 4) {
+                    ProgressView()
+                        .scaleEffect(0.5)
+                    Text("Indexing...")
+                        .font(.system(size: 11))
+                }
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 8)
+            } else if codingStore.indexedFileCount > 0 {
+                HStack(spacing: 4) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 9))
+                    Text("\(codingStore.indexedFileCount) files indexed")
+                        .font(.system(size: 11))
+                }
+                .foregroundStyle(.tertiary)
+                .padding(.horizontal, 8)
+            }
+
+            Divider()
+                .frame(height: 12)
+
+            // Orchestration mode indicator
+            HStack(spacing: 4) {
+                Image(systemName: CodingModelOrchestrator.shared.currentMode.iconName)
+                    .font(.system(size: 9))
+                Text(CodingModelOrchestrator.shared.currentMode.rawValue)
+                    .font(.system(size: 11))
+            }
+            .foregroundStyle(.purple.opacity(0.7))
+            .padding(.horizontal, 12)
+        }
+        .frame(height: 22)
+        .background(Color.surfaceTertiary.opacity(0.5))
     }
 
     // MARK: - Actions

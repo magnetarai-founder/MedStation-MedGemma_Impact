@@ -22,6 +22,7 @@
 		0E2C0590E01037DE122C6D46 /* ModelsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2B236333A555B822D41D3D /* ModelsStore.swift */; };
 		0E38E6FD1933BBDA3CFA4B7D /* HotSlotModelPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCA1081C0811F4592D1C0CA6 /* HotSlotModelPicker.swift */; };
 		0E9E199B70EB65B50C3121D9 /* AIAssistantPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4E0A87F4394C34BB1763466 /* AIAssistantPanel.swift */; };
+		1007B24BA5585EAD99D0A00E /* ResizableDivider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B94A0DDDF853D182FC8AB334 /* ResizableDivider.swift */; };
 		109D246960B1A759BFD6F7E7 /* NetworkFirewallModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = A602C84A80EBCA075A2804CE /* NetworkFirewallModifier.swift */; };
 		12335C3DECED144718B5B8E9 /* SmartModelPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEEBC936A480A54E9AF67EC0 /* SmartModelPicker.swift */; };
 		1244C35AA68B6BA5282F1F05 /* CrossWorkspaceIntelligence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D737D8C2B8D0C75D6682E46 /* CrossWorkspaceIntelligence.swift */; };
@@ -536,6 +537,7 @@
 		B3BEECB031F544876171A7FC /* VaultListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultListView.swift; sourceTree = "<group>"; };
 		B462A62F24C04C9E66B2D0CD /* KeychainManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainManager.swift; sourceTree = "<group>"; };
 		B597AECB40F1224EE15BD0D0 /* WorkflowGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowGrid.swift; sourceTree = "<group>"; };
+		B94A0DDDF853D182FC8AB334 /* ResizableDivider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ResizableDivider.swift; sourceTree = "<group>"; };
 		BA521D593363B31DCEA57E75 /* NetworkFirewallProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkFirewallProtocol.swift; sourceTree = "<group>"; };
 		BB1654E2098C2A66196A2683 /* TemplateEditorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateEditorSheet.swift; sourceTree = "<group>"; };
 		BBEDFB7B2D985874FF75A025 /* ModelRoutingDecision.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelRoutingDecision.swift; sourceTree = "<group>"; };
@@ -603,6 +605,7 @@
 		E7706D1DFC5EFCB8AE355AEA /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
 		E7CE804BF42E2B263FA1B5AD /* VaultResourcesTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultResourcesTab.swift; sourceTree = "<group>"; };
 		E7DE0C9824FED5003BB041DC /* MagnetarMenuCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagnetarMenuCommands.swift; sourceTree = "<group>"; };
+		E85C710169C3B1161BAEDE86 /* CodingWorkspaceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CodingWorkspaceTests.swift; sourceTree = "<group>"; };
 		E898982C2CAB02E4BF02EA3A /* CloudSyncStatusPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSyncStatusPanel.swift; sourceTree = "<group>"; };
 		E92ADDC7ED56CA937C1974B8 /* ContextBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextBundle.swift; sourceTree = "<group>"; };
 		E97624361C2B23EB714D7A15 /* TeamWorkspaceModelsV2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamWorkspaceModelsV2.swift; sourceTree = "<group>"; };
@@ -721,6 +724,7 @@
 				05E0510F1772E020FA2158F3 /* macOS */,
 				E18C80C7AB68D88D33E928A3 /* Shared */,
 				734503D79C8E69B6DEAEC3C5 /* Products */,
+				68FD2190DA1234333DABB53B /* Tests */,
 			);
 			sourceTree = "<group>";
 		};
@@ -762,6 +766,15 @@
 				BF55E2A5222E0357A65407DA /* VaultSecurityAuditTab.swift */,
 			);
 			path = VaultAdmin;
+			sourceTree = "<group>";
+		};
+		18CB7F0C680E53C1AA79BBE2 /* Code */ = {
+			isa = PBXGroup;
+			children = (
+				B94A0DDDF853D182FC8AB334 /* ResizableDivider.swift */,
+			);
+			name = Code;
+			path = Code;
 			sourceTree = "<group>";
 		};
 		1916D34D25037E4285C2EC1D /* Utilities */ = {
@@ -1077,8 +1090,17 @@
 				5D60A07B8F5BB06197ADFA2C /* TeamChat */,
 				F5B437585A1CC18305FF848B /* Trust */,
 				1384D42584B90EB75EB150D3 /* Vault */,
+				18CB7F0C680E53C1AA79BBE2 /* Code */,
 			);
 			path = Workspaces;
+			sourceTree = "<group>";
+		};
+		68FD2190DA1234333DABB53B /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				E85C710169C3B1161BAEDE86 /* CodingWorkspaceTests.swift */,
+			);
+			name = Tests;
 			sourceTree = "<group>";
 		};
 		6D152F39C1612770F9005257 /* Components */ = {
@@ -1891,6 +1913,7 @@
 				9F436984C021C290862DCFBE /* ResponseMerger.swift in Sources */,
 				4D657265B4C13BB5ADA85677 /* CodeEmbeddingService.swift in Sources */,
 				3B3CDF1B8EE6EB1368D33B09 /* CodeRAGService.swift in Sources */,
+				1007B24BA5585EAD99D0A00E /* ResizableDivider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
