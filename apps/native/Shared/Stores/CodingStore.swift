@@ -182,10 +182,20 @@ final class CodingStore {
     }
 
     /// Current working directory
-    var workingDirectory: String?
+    var workingDirectory: String? {
+        didSet {
+            if let dir = workingDirectory, dir != oldValue {
+                triggerCodeIndexing(directory: dir)
+            }
+        }
+    }
 
     /// Terminal context history (for AI consumption)
     var contextHistory: [TerminalContext] = []
+
+    /// Code indexing state
+    var isCodeIndexing: Bool = false
+    var indexedFileCount: Int = 0
 
     // MARK: - UserDefaults Keys
 
@@ -335,6 +345,29 @@ final class CodingStore {
     /// Clear pending AI context
     func clearPendingContext() {
         aiAssistant.pendingContext.removeAll()
+    }
+
+    // MARK: - Code Indexing
+
+    /// Trigger background code indexing for a workspace directory
+    private func triggerCodeIndexing(directory: String) {
+        Task {
+            isCodeIndexing = true
+            do {
+                let stats = try await CodeRAGService.shared.indexWorkspace(at: directory)
+                indexedFileCount = CodeRAGService.shared.indexedFileCount
+                logger.info("[CodingStore] Indexed \(stats.filesIndexed) files (\(stats.totalDocuments) chunks)")
+            } catch {
+                logger.error("[CodingStore] Code indexing failed: \(error)")
+            }
+            isCodeIndexing = false
+        }
+    }
+
+    /// Manually refresh the code index
+    func refreshCodeIndex() {
+        guard let dir = workingDirectory else { return }
+        triggerCodeIndexing(directory: dir)
     }
 
     // MARK: - AI Assistant

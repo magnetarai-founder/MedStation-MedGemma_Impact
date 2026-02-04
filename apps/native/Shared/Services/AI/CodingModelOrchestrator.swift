@@ -104,6 +104,7 @@ struct OrchestratedRequest: Sendable {
     let context: String?
     let terminalContext: [TerminalContext]
     let codeContext: String?
+    let ragCodeContext: String?
     let mode: OrchestrationMode
     let sessions: [ModelSession]
     let temperature: Float
@@ -114,6 +115,7 @@ struct OrchestratedRequest: Sendable {
         context: String? = nil,
         terminalContext: [TerminalContext] = [],
         codeContext: String? = nil,
+        ragCodeContext: String? = nil,
         mode: OrchestrationMode = .single,
         sessions: [ModelSession] = [],
         temperature: Float = 0.7,
@@ -123,6 +125,7 @@ struct OrchestratedRequest: Sendable {
         self.context = context
         self.terminalContext = terminalContext
         self.codeContext = codeContext
+        self.ragCodeContext = ragCodeContext
         self.mode = mode
         self.sessions = sessions
         self.temperature = temperature
@@ -267,24 +270,29 @@ final class CodingModelOrchestrator {
     func orchestrate(_ request: OrchestratedRequest) async throws -> OrchestratedResponse {
         let startTime = Date()
 
+        // Auto-enrich with code RAG context if not already provided
+        let enrichedRequest = (request.ragCodeContext == nil && request.codeContext == nil)
+            ? await enrichWithCodeContext(request)
+            : request
+
         let response: OrchestratedResponse
 
-        switch request.mode {
+        switch enrichedRequest.mode {
         case .single:
-            response = try await orchestrateSingle(request)
+            response = try await orchestrateSingle(enrichedRequest)
 
         case .sequential:
-            response = try await orchestrateSequential(request)
+            response = try await orchestrateSequential(enrichedRequest)
 
         case .parallel:
-            response = try await orchestrateParallel(request)
+            response = try await orchestrateParallel(enrichedRequest)
 
         case .specialist:
-            response = try await orchestrateSpecialist(request)
+            response = try await orchestrateSpecialist(enrichedRequest)
         }
 
         let executionTime = Int(Date().timeIntervalSince(startTime) * 1000)
-        logger.info("[Orchestrator] Completed \(request.mode.rawValue) in \(executionTime)ms")
+        logger.info("[Orchestrator] Completed \(enrichedRequest.mode.rawValue) in \(executionTime)ms")
 
         return response
     }
@@ -541,9 +549,14 @@ final class CodingModelOrchestrator {
         // System context
         parts.append("You are an AI assistant helping with coding tasks.")
 
-        // Code context
+        // Code context (explicitly provided)
         if let codeContext = request.codeContext, !codeContext.isEmpty {
             parts.append("Current code context:\n```\n\(codeContext)\n```")
+        }
+
+        // RAG-retrieved code context (automatically searched)
+        if let ragContext = request.ragCodeContext, !ragContext.isEmpty {
+            parts.append(ragContext)
         }
 
         // Terminal context
@@ -563,6 +576,35 @@ final class CodingModelOrchestrator {
         parts.append("User query: \(request.query)")
 
         return parts.joined(separator: "\n\n")
+    }
+
+    /// Enrich a request with RAG-retrieved code context before sending to models
+    func enrichWithCodeContext(_ request: OrchestratedRequest) async -> OrchestratedRequest {
+        do {
+            let codeContext = try await CodeRAGService.shared.buildContext(
+                for: request.query,
+                maxTokens: 4000
+            )
+
+            guard codeContext.hasContent else { return request }
+
+            logger.debug("[Orchestrator] Enriched with \(codeContext.results.count) code snippets (\(codeContext.tokenEstimate) tokens)")
+
+            return OrchestratedRequest(
+                query: request.query,
+                context: request.context,
+                terminalContext: request.terminalContext,
+                codeContext: request.codeContext,
+                ragCodeContext: codeContext.formattedContext,
+                mode: request.mode,
+                sessions: request.sessions,
+                temperature: request.temperature,
+                maxTokens: request.maxTokens
+            )
+        } catch {
+            logger.error("[Orchestrator] Code RAG enrichment failed: \(error)")
+            return request
+        }
     }
 
     // MARK: - Model Calling

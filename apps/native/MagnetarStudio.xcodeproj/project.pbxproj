@@ -73,6 +73,7 @@
 		398C061A4AB5920EF13C67B9 /* TokenCounter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58F3ABCDBF9C2AFA566916BC /* TokenCounter.swift */; };
 		39C6CDAE9284E690C30A492F /* SettingsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DE77C93F16A443863D97E0F /* SettingsModels.swift */; };
 		3A4F34F78DA26F39C48A89A6 /* CrossConversationFileIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 559351ADEAA7F84D91844E36 /* CrossConversationFileIndex.swift */; };
+		3B3CDF1B8EE6EB1368D33B09 /* CodeRAGService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2FB4796724BE456F79627A3 /* CodeRAGService.swift */; };
 		3BDEB19D6F03D83E7E87FA99 /* EmergencyModeService+Backend.swift in Sources */ = {isa = PBXBuildFile; fileRef = A83EE9ADED11FAFD786571CE /* EmergencyModeService+Backend.swift */; };
 		3DD37297B967F58A3502463B /* TrustModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32D5D64AE5F480A5C9D52430 /* TrustModels.swift */; };
 		3DD43A6B8B867C99F2748680 /* AnyCodable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C43BE9932839FA382D0D3E3 /* AnyCodable.swift */; };
@@ -97,6 +98,7 @@
 		4AAA7ABA93BFC54662F202DD /* ModelTagService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A25E14FF110DE632A039D76 /* ModelTagService.swift */; };
 		4B7B03C911A1FE88F436FE26 /* Header.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE345BE95ADE21BA7A328F2B /* Header.swift */; };
 		4D5D7C546DC440DF721EC52E /* HubOllamaStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6814738AF7A018352556260F /* HubOllamaStatus.swift */; };
+		4D657265B4C13BB5ADA85677 /* CodeEmbeddingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EEFA9FDCAB4C61492096551 /* CodeEmbeddingService.swift */; };
 		4D98112EB80EB5477136F07C /* TeamChatSectionHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA53354C3808189F2DB3D46C /* TeamChatSectionHeader.swift */; };
 		4E1B6C1D13CFF44F385789FC /* ANEPredictor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90792B94401BC28746DAFB46 /* ANEPredictor.swift */; };
 		4E2C8FA6D36ABA12773222A3 /* DocsSidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F4FDE474463FFFA74D74601 /* DocsSidebarView.swift */; };
@@ -469,6 +471,7 @@
 		7BE14825C47C81C5E47140D5 /* BiometricAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricAuthService.swift; sourceTree = "<group>"; };
 		7DEBDB95F4489D4FEA9DE648 /* KanbanRows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KanbanRows.swift; sourceTree = "<group>"; };
 		7E2302451F52FDB76E564AFE /* ModelTag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelTag.swift; sourceTree = "<group>"; };
+		7EEFA9FDCAB4C61492096551 /* CodeEmbeddingService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CodeEmbeddingService.swift; sourceTree = "<group>"; };
 		7F5BE67C9C4C85A3964E94F3 /* HeaderModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeaderModels.swift; sourceTree = "<group>"; };
 		7F607698CB740BA6C1D2CC50 /* DepthMapResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepthMapResult.swift; sourceTree = "<group>"; };
 		7F77D79421B014D8C65EC2CF /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
@@ -547,6 +550,7 @@
 		C16872CF979FCA3001AAC7BD /* HardwareValidationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HardwareValidationView.swift; sourceTree = "<group>"; };
 		C20C2F108F6D64FC6BC4FEBC /* VaultComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultComponents.swift; sourceTree = "<group>"; };
 		C26E0420CCEB479665F17DFA /* WorkflowStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowStore.swift; sourceTree = "<group>"; };
+		C2FB4796724BE456F79627A3 /* CodeRAGService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CodeRAGService.swift; sourceTree = "<group>"; };
 		C46ABBA7C8DC00E3A577D960 /* ContextTierManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextTierManager.swift; sourceTree = "<group>"; };
 		C60376A5D97663F9350DE53C /* SecuritySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecuritySettingsView.swift; sourceTree = "<group>"; };
 		C72313DD5B8E04873D635888 /* ANETrainingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ANETrainingManager.swift; sourceTree = "<group>"; };
@@ -958,6 +962,16 @@
 			path = HotSlots;
 			sourceTree = "<group>";
 		};
+		4987B8C5B109FAE009AF2123 /* Intelligence */ = {
+			isa = PBXGroup;
+			children = (
+				7EEFA9FDCAB4C61492096551 /* CodeEmbeddingService.swift */,
+				C2FB4796724BE456F79627A3 /* CodeRAGService.swift */,
+			);
+			name = Intelligence;
+			path = Intelligence;
+			sourceTree = "<group>";
+		};
 		4CE16795DA2E305E75B5ABF8 /* Commands */ = {
 			isa = PBXGroup;
 			children = (
@@ -1349,6 +1363,7 @@
 				41F7E80E10FD9136EBD7B942 /* LSP */,
 				81800D0BD05398CD87512F0D /* Persistence */,
 				4614B11049AFEF2FCCCA85D3 /* AI */,
+				4987B8C5B109FAE009AF2123 /* Intelligence */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -1874,6 +1889,8 @@
 				72DD45E523631EDE6AF7D027 /* CodingConversationStorage.swift in Sources */,
 				F141B843A2D897CFD0EE83EA /* CodingModelOrchestrator.swift in Sources */,
 				9F436984C021C290862DCFBE /* ResponseMerger.swift in Sources */,
+				4D657265B4C13BB5ADA85677 /* CodeEmbeddingService.swift in Sources */,
+				3B3CDF1B8EE6EB1368D33B09 /* CodeRAGService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
