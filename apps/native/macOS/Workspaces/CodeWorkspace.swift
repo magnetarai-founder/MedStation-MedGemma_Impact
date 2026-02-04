@@ -66,7 +66,7 @@ struct CodeWorkspace: View {
                         // Bottom: Terminal
                         CodeTerminalPanel(
                             showTerminal: $showTerminal,
-                            errorMessage: errorMessage,
+                            codingStore: codingStore,
                             onSpawnTerminal: spawnTerminal
                         )
                         .frame(height: terminalHeight)
