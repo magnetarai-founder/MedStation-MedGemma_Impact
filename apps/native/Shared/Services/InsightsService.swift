@@ -13,7 +13,7 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "Insight
 
 // MARK: - Enums
 
-enum TemplateCategory: String, Codable, CaseIterable {
+enum TemplateCategory: String, Codable, CaseIterable, Sendable {
     case general = "GENERAL"
     case medical = "MEDICAL"
     case academic = "ACADEMIC"
@@ -47,7 +47,7 @@ enum TemplateCategory: String, Codable, CaseIterable {
     }
 }
 
-enum OutputFormat: String, Codable, CaseIterable {
+enum OutputFormat: String, Codable, CaseIterable, Sendable {
     case markdown = "MARKDOWN"
     case text = "TEXT"
     case json = "JSON"
@@ -65,7 +65,7 @@ enum OutputFormat: String, Codable, CaseIterable {
 
 // MARK: - Recording Models
 
-struct InsightsRecording: Codable, Identifiable, Hashable {
+struct InsightsRecording: Codable, Identifiable, Hashable, Sendable {
     let id: String
     let title: String
     let filePath: String
@@ -163,12 +163,12 @@ struct InsightsRecording: Codable, Identifiable, Hashable {
     }
 }
 
-struct RecordingListResponse: Codable {
+struct RecordingListResponse: Codable, Sendable {
     let recordings: [InsightsRecording]
     let total: Int
 }
 
-struct CreateRecordingResponse: Codable {
+struct CreateRecordingResponse: Codable, Sendable {
     let recordingId: String
     let transcript: String
     let duration: Double?
@@ -180,14 +180,14 @@ struct CreateRecordingResponse: Codable {
     }
 }
 
-struct RecordingDetailResponse: Codable {
+struct RecordingDetailResponse: Codable, Sendable {
     let recording: InsightsRecording
     let outputs: [FormattedOutput]
 }
 
 // MARK: - Template Models
 
-struct InsightsTemplate: Codable, Identifiable, Hashable {
+struct InsightsTemplate: Codable, Identifiable, Hashable, Sendable {
     let id: String
     let name: String
     let description: String
@@ -210,12 +210,12 @@ struct InsightsTemplate: Codable, Identifiable, Hashable {
     }
 }
 
-struct TemplateListResponse: Codable {
+struct TemplateListResponse: Codable, Sendable {
     let templates: [InsightsTemplate]
     let total: Int
 }
 
-struct CreateTemplateResponse: Codable {
+struct CreateTemplateResponse: Codable, Sendable {
     let templateId: String
     let message: String
 
@@ -227,7 +227,7 @@ struct CreateTemplateResponse: Codable {
 
 // MARK: - Formatted Output Models
 
-struct FormattedOutput: Codable, Identifiable, Hashable {
+struct FormattedOutput: Codable, Identifiable, Hashable, Sendable {
     let id: String
     let recordingId: String
     let templateId: String
@@ -314,7 +314,7 @@ struct FormattedOutput: Codable, Identifiable, Hashable {
     }
 }
 
-struct ApplyTemplateResponse: Codable {
+struct ApplyTemplateResponse: Codable, Sendable {
     let outputId: String
     let content: String
     let templateName: String
@@ -328,7 +328,7 @@ struct ApplyTemplateResponse: Codable {
     }
 }
 
-struct BatchApplyResponse: Codable {
+struct BatchApplyResponse: Codable, Sendable {
     let outputs: [FormattedOutput]
     let totalProcessed: Int
     let failed: Int

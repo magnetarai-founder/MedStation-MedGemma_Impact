@@ -156,7 +156,7 @@ final class HashEmbedder {
 // MARK: - Embedding Result
 
 /// Container for an embedded item with metadata
-struct EmbeddedItem: Codable, Identifiable {
+struct EmbeddedItem: Codable, Identifiable, Sendable {
     let id: UUID
     let text: String
     let embedding: [Float]
@@ -179,7 +179,7 @@ struct EmbeddedItem: Codable, Identifiable {
 }
 
 /// Metadata for an embedded item
-struct EmbeddingMetadata: Codable {
+struct EmbeddingMetadata: Codable, Sendable {
     var source: EmbeddingSource
     var conversationId: UUID?
     var messageId: UUID?

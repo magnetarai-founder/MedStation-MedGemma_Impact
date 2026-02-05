@@ -92,7 +92,7 @@ final class ModelsStore {
                 decoder.keyDecodingStrategy = .convertFromSnakeCase
 
                 // API now returns SuccessResponse wrapper
-                struct ModelsResponse: Codable {
+                struct ModelsResponse: Codable, Sendable {
                     let success: Bool
                     let data: [OllamaModel]
                     let message: String?
@@ -210,7 +210,7 @@ final class ModelsStore {
 
 // MARK: - Ollama Model
 
-struct OllamaModel: Codable, Identifiable {
+struct OllamaModel: Codable, Identifiable, Sendable {
     let name: String
     let size: Int64
     let digest: String?
@@ -237,7 +237,7 @@ struct OllamaModel: Codable, Identifiable {
         details = try container.decodeIfPresent(ModelDetails.self, forKey: .details)
     }
 
-    struct ModelDetails: Codable {
+    struct ModelDetails: Codable, Sendable {
         let format: String?
         let family: String?
         let parameterSize: String?
@@ -251,7 +251,7 @@ struct OllamaModel: Codable, Identifiable {
     }
 }
 
-struct ModelTag: Codable, Identifiable {
+struct ModelTag: Codable, Identifiable, Sendable {
     let id: String
     let name: String
     let description: String

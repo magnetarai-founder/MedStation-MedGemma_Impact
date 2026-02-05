@@ -13,7 +13,7 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "Context
 
 // MARK: - Request/Response Models
 
-struct ContextSearchRequest: Codable {
+struct ContextSearchRequest: Codable, Sendable {
     let query: String
     let sessionId: String?
     let workspaceTypes: [String]?
@@ -27,7 +27,7 @@ struct ContextSearchRequest: Codable {
     }
 }
 
-struct ContextSearchResult: Codable {
+struct ContextSearchResult: Codable, Sendable {
     let source: String  // "vault", "chat", "data", etc.
     let content: String
     let relevanceScore: Float
@@ -41,7 +41,7 @@ struct ContextSearchResult: Codable {
     }
 }
 
-struct ContextSearchResponse: Codable {
+struct ContextSearchResponse: Codable, Sendable {
     let results: [ContextSearchResult]
     let totalFound: Int
     let queryEmbeddingDims: Int
@@ -53,7 +53,7 @@ struct ContextSearchResponse: Codable {
     }
 }
 
-struct StoreContextRequest: Codable {
+struct StoreContextRequest: Codable, Sendable {
     let sessionId: String
     let workspaceType: String
     let content: String
@@ -67,7 +67,7 @@ struct StoreContextRequest: Codable {
     }
 }
 
-struct ContextStatusResponse: Codable {
+struct ContextStatusResponse: Codable, Sendable {
     let available: Bool
     let backend: String
     let vectorCount: Int
@@ -91,7 +91,7 @@ struct ContextStatusResponse: Codable {
     }
 }
 
-struct ContextFeatures: Codable {
+struct ContextFeatures: Codable, Sendable {
     let semanticSearch: Bool
     let aneAcceleration: Bool
     let backgroundVectorization: Bool

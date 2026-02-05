@@ -276,7 +276,7 @@ final class UserBehaviorTracker: ObservableObject {
 
 // MARK: - Behavior Event Type
 
-enum BehaviorEventType: String, Codable, CaseIterable {
+enum BehaviorEventType: String, Codable, CaseIterable, Sendable {
     // Core events (from iPad)
     case messageSent = "message_sent"
     case fileUploaded = "file_uploaded"
@@ -320,7 +320,7 @@ enum BehaviorEventType: String, Codable, CaseIterable {
         }
     }
 
-    enum EventCategory: String, Codable {
+    enum EventCategory: String, Codable, Sendable {
         case chat
         case files
         case navigation
@@ -335,7 +335,7 @@ enum BehaviorEventType: String, Codable, CaseIterable {
 
 // MARK: - Behavior Event
 
-struct BehaviorEvent: Codable, Identifiable {
+struct BehaviorEvent: Codable, Identifiable, Sendable {
     let id: UUID
     let type: BehaviorEventType
     let timestamp: Date
@@ -356,7 +356,7 @@ struct BehaviorEvent: Codable, Identifiable {
 
 // MARK: - User Behavior Patterns
 
-struct UserBehaviorPatterns: Codable {
+struct UserBehaviorPatterns: Codable, Sendable {
     var totalEvents: Int = 0
     var lastEventAt: Date?
 

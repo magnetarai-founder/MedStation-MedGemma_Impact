@@ -109,7 +109,7 @@ final class ChatSession: Identifiable {
 // MARK: - API DTOs (Data Transfer Objects)
 
 /// Codable representation of ChatMessage for API
-struct ChatMessageDTO: Codable {
+struct ChatMessageDTO: Codable, Sendable {
     let id: UUID
     let role: MessageRole
     let content: String
@@ -134,7 +134,7 @@ struct ChatMessageDTO: Codable {
 }
 
 /// Codable representation of ChatSession for API
-struct ChatSessionDTO: Codable {
+struct ChatSessionDTO: Codable, Sendable {
     let id: UUID
     let title: String
     let model: String?  // Optional - sessions don't require a fixed model

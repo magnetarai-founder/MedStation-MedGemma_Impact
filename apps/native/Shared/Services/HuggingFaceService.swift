@@ -316,7 +316,7 @@ private struct SuccessEnvelope<T: Decodable>: Decodable {
 }
 
 /// GGUF model from registry
-struct HuggingFaceModel: Codable, Identifiable {
+struct HuggingFaceModel: Codable, Identifiable, Sendable {
     let id: String
     let name: String
     let repoId: String
@@ -341,7 +341,7 @@ struct HuggingFaceModel: Codable, Identifiable {
 }
 
 /// Downloaded model info
-struct DownloadedModel: Codable, Identifiable {
+struct DownloadedModel: Codable, Identifiable, Sendable {
     var id: String { "\(repoId):\(filename)" }
     let repoId: String
     let filename: String
@@ -362,7 +362,7 @@ struct DownloadedModel: Codable, Identifiable {
 }
 
 /// Download progress update
-struct DownloadProgress: Codable {
+struct DownloadProgress: Codable, Sendable {
     let jobId: String
     let status: String  // "starting", "downloading", "verifying", "completed", "failed", "canceled"
     let progress: Double  // 0-100
@@ -399,7 +399,7 @@ struct DownloadProgress: Codable {
 }
 
 /// Hardware information
-struct HardwareInfo: Codable {
+struct HardwareInfo: Codable, Sendable {
     let platform: String
     let isAppleSilicon: Bool
     let totalMemoryGb: Double
@@ -412,7 +412,7 @@ struct HardwareInfo: Codable {
 }
 
 /// Model validation result
-struct ModelValidation: Codable {
+struct ModelValidation: Codable, Sendable {
     let modelId: String
     let compatible: Bool
     let message: String
@@ -422,7 +422,7 @@ struct ModelValidation: Codable {
 }
 
 /// Storage summary
-struct StorageSummary: Codable {
+struct StorageSummary: Codable, Sendable {
     let modelCount: Int
     let totalBytes: Int
     let totalGb: Double

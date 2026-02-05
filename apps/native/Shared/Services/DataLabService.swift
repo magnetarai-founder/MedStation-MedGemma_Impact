@@ -14,18 +14,18 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "DataLab
 
 // MARK: - Models
 
-public struct NLQueryResponse: Codable {
+public struct NLQueryResponse: Codable, Sendable {
     public let answer: String
     public let query: String
     public let confidence: Double?
     public let sources: [String]?
 }
 
-public struct PatternDiscoveryResult: Codable {
+public struct PatternDiscoveryResult: Codable, Sendable {
     public let patterns: [Pattern]
     public let summary: String?
 
-    public struct Pattern: Codable, Identifiable {
+    public struct Pattern: Codable, Identifiable, Sendable {
         public let id: String
         public let type: String
         public let description: String

@@ -25,9 +25,6 @@ final class WindowOpener {
     /// Opens a detached chat window
     var openDetachedChat: (() -> Void)?
 
-    /// Opens a detached document window
-    var openDetachedDocument: ((DetachedDocumentInfo) -> Void)?
-
     /// Opens a detached doc editor window (workspace docs)
     var openDetachedDocEdit: ((DetachedDocEditInfo) -> Void)?
 
@@ -132,10 +129,6 @@ struct WindowOpenerConfigurator: ViewModifier {
 
         opener.openDetachedChat = {
             openWindow(id: "detached-chat")
-        }
-
-        opener.openDetachedDocument = { (info: DetachedDocumentInfo) in
-            openWindow(value: info)
         }
 
         opener.openDetachedDocEdit = { (info: DetachedDocEditInfo) in

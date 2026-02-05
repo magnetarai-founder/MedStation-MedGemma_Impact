@@ -327,7 +327,7 @@ private struct ErrorEnvelope: Decodable {
 }
 
 /// Server status
-struct LlamaCppStatus: Codable {
+struct LlamaCppStatus: Codable, Sendable {
     let running: Bool
     let modelLoaded: String?
     let modelPath: String?
@@ -339,7 +339,7 @@ struct LlamaCppStatus: Codable {
 }
 
 /// Chat message
-struct LlamaCppMessage: Codable {
+struct LlamaCppMessage: Codable, Sendable {
     let role: String  // "system", "user", "assistant"
     let content: String
 
@@ -362,7 +362,7 @@ struct LlamaCppMessage: Codable {
 }
 
 /// Streaming chat chunk
-struct LlamaCppChunk: Codable {
+struct LlamaCppChunk: Codable, Sendable {
     let content: String
     let finishReason: String?
     let model: String?
@@ -370,7 +370,7 @@ struct LlamaCppChunk: Codable {
 }
 
 /// Complete chat response (non-streaming)
-struct LlamaCppCompletion: Codable {
+struct LlamaCppCompletion: Codable, Sendable {
     let content: String
     let finishReason: String
     let model: String
@@ -378,14 +378,14 @@ struct LlamaCppCompletion: Codable {
 }
 
 /// Token usage info
-struct LlamaCppUsage: Codable {
+struct LlamaCppUsage: Codable, Sendable {
     let promptTokens: Int
     let completionTokens: Int
     let totalTokens: Int
 }
 
 /// Server configuration
-struct LlamaCppConfig: Codable {
+struct LlamaCppConfig: Codable, Sendable {
     let host: String
     let port: Int
     let contextSize: Int

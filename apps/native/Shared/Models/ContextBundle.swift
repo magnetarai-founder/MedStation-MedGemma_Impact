@@ -24,7 +24,7 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "Context
 
 /// Complete context bundle for model routing and inference
 /// Apple FM uses this to determine which model to route to and what context to provide
-struct ContextBundle: Codable {
+struct ContextBundle: Codable, Sendable {
     // Core query
     let userQuery: String
     let sessionId: String
@@ -66,7 +66,7 @@ struct ContextBundle: Codable {
 // The full RAGDocument with embeddings is in Services/RAG/RAGModels.swift
 
 /// Simplified RAG document for context bundling (no embeddings)
-struct BundledRAGDocument: Codable, Identifiable {
+struct BundledRAGDocument: Codable, Identifiable, Sendable {
     let id: String
     let content: String
     let source: String  // "vault", "data", "web", etc.
@@ -79,7 +79,7 @@ struct BundledRAGDocument: Codable, Identifiable {
 // Note: Different from VectorSearchResult in WorkspaceContextModels which is simpler
 
 /// Detailed vector search result for context bundling
-struct BundledVectorSearchResult: Codable, Identifiable {
+struct BundledVectorSearchResult: Codable, Identifiable, Sendable {
     let id: String
     let text: String
     let workspaceType: String  // Where this came from
@@ -89,7 +89,7 @@ struct BundledVectorSearchResult: Codable, Identifiable {
 }
 
 /// Metadata for bundled vector search results
-struct BundledVectorMetadata: Codable {
+struct BundledVectorMetadata: Codable, Sendable {
     let resourceType: String  // "vault_file", "kanban_task", "team_message", etc.
     let timestamp: Date
     let author: String?
@@ -626,14 +626,14 @@ class ContextBundler {
 
     private func fetchRelevantVaultFiles(query: String, vaultType: String) async -> [RelevantVaultFile]? {
         do {
-            struct SemanticSearchRequest: Codable {
+            struct SemanticSearchRequest: Codable, Sendable {
                 let query: String
                 let vaultType: String
                 let limit: Int
                 let minSimilarity: Float
             }
 
-            struct SemanticSearchResult: Codable {
+            struct SemanticSearchResult: Codable, Sendable {
                 let fileId: String
                 let filename: String
                 let similarityScore: Float
@@ -644,7 +644,7 @@ class ContextBundler {
                 let snippet: String?
             }
 
-            struct SemanticSearchResponse: Codable {
+            struct SemanticSearchResponse: Codable, Sendable {
                 let results: [SemanticSearchResult]
                 let query: String
                 let totalResults: Int
@@ -682,13 +682,13 @@ class ContextBundler {
 
     private func fetchRelevantWorkflows(query: String) async -> [WorkflowSummary]? {
         do {
-            struct WorkflowSemanticSearchRequest: Codable {
+            struct WorkflowSemanticSearchRequest: Codable, Sendable {
                 let query: String
                 let limit: Int
                 let minSimilarity: Float
             }
 
-            struct WorkflowSearchResult: Codable {
+            struct WorkflowSearchResult: Codable, Sendable {
                 let workflowId: String
                 let workflowName: String
                 let description: String?
@@ -696,7 +696,7 @@ class ContextBundler {
                 let similarityScore: Float
             }
 
-            struct WorkflowSemanticSearchResponse: Codable {
+            struct WorkflowSemanticSearchResponse: Codable, Sendable {
                 let results: [WorkflowSearchResult]
                 let query: String
                 let totalResults: Int

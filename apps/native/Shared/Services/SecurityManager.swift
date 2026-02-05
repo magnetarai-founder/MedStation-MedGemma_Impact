@@ -359,7 +359,7 @@ public enum NetworkOutcome: String {
     case pending = "pending_approval"
 }
 
-public struct SecurityEvent: Identifiable, Codable {
+public struct SecurityEvent: Identifiable, Codable, Sendable {
     public let id: UUID
     public let timestamp: Date
     public let type: SecurityEventType
@@ -382,7 +382,7 @@ public struct SecurityEvent: Identifiable, Codable {
     }
 }
 
-public enum SecurityEventType: String, Codable {
+public enum SecurityEventType: String, Codable, Sendable {
     case panicTriggered = "panic_triggered"
     case panicExecuted = "panic_executed"
     case firewallToggled = "firewall_toggled"

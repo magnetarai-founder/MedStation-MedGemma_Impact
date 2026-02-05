@@ -343,7 +343,7 @@ final class CrossConversationFileIndex: ObservableObject {
 // MARK: - Supporting Types
 
 /// An indexed file entry with cross-conversation tracking
-struct IndexedFileEntry: Codable, Identifiable {
+struct IndexedFileEntry: Codable, Identifiable, Sendable {
     var id: UUID { fileId }
 
     let fileId: UUID
@@ -397,7 +397,7 @@ struct CrossConversationFileResult: Identifiable {
 }
 
 /// Context about a file access
-struct FileAccessContext: Codable {
+struct FileAccessContext: Codable, Sendable {
     let query: String?
     let workspace: String
     let action: FileAccessAction
@@ -549,7 +549,7 @@ actor FileIndexStorage {
 }
 
 /// Log entry for file access tracking
-struct FileAccessLogEntry: Codable {
+struct FileAccessLogEntry: Codable, Sendable {
     let fileId: UUID
     let conversationId: UUID
     let timestamp: Date

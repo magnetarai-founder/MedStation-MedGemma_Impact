@@ -313,7 +313,7 @@ final class ANETrainingManager: ObservableObject {
 
 // MARK: - Training Models
 
-struct BehaviorTrainingExample: Codable {
+struct BehaviorTrainingExample: Codable, Sendable {
     let id: UUID
     let features: UserBehaviorFeatures
     let outcome: ContextPredictionOutcome
@@ -332,7 +332,7 @@ struct BehaviorTrainingExample: Codable {
     }
 }
 
-struct UserBehaviorFeatures: Codable {
+struct UserBehaviorFeatures: Codable, Sendable {
     let hourOfDay: Int
     let dayOfWeek: Int
     let workspace: String
@@ -342,7 +342,7 @@ struct UserBehaviorFeatures: Codable {
     let fileTypeAffinity: String
 }
 
-struct ContextPredictionOutcome: Codable {
+struct ContextPredictionOutcome: Codable, Sendable {
     let compressionAggressiveness: Float
     let wasRelevant: Bool
     let contextUsed: Int  // Tokens of context actually used

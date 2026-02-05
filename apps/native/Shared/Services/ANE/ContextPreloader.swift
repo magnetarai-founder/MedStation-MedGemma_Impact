@@ -270,7 +270,7 @@ final class ContextPreloader: ObservableObject {
 
 // MARK: - RAG Context Result
 
-struct RAGContextResult: Identifiable {
+struct RAGContextResult: Identifiable, Sendable {
     let id = UUID()
     let sourceId: UUID
     let sourceType: RAGSourceType
@@ -278,7 +278,7 @@ struct RAGContextResult: Identifiable {
     let relevanceScore: Float
     let isPreloaded: Bool
 
-    enum RAGSourceType: String, Codable {
+    enum RAGSourceType: String, Codable, Sendable {
         case theme
         case message
         case file

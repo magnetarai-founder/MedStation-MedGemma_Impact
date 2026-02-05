@@ -11,7 +11,7 @@ import Foundation
 // MARK: - Conversation Hierarchy
 
 /// Complete hierarchy for a conversation including all stored context
-struct ConversationHierarchy: Codable, Identifiable {
+struct ConversationHierarchy: Codable, Identifiable, Sendable {
     let id: UUID
     var metadata: ConversationMetadata
     var themes: [ConversationTheme]
@@ -42,7 +42,7 @@ struct ConversationHierarchy: Codable, Identifiable {
 // MARK: - Conversation Metadata
 
 /// Metadata for a conversation
-struct ConversationMetadata: Codable, Identifiable {
+struct ConversationMetadata: Codable, Identifiable, Sendable {
     let id: UUID
     var title: String
     var createdAt: Date
@@ -93,7 +93,7 @@ struct ConversationMetadata: Codable, Identifiable {
 // MARK: - Conversation Theme
 
 /// A theme extracted from conversation messages
-struct ConversationTheme: Codable, Identifiable {
+struct ConversationTheme: Codable, Identifiable, Sendable {
     let id: UUID
     var topic: String
     var content: String
@@ -133,7 +133,7 @@ struct ConversationTheme: Codable, Identifiable {
 // MARK: - Compressed Context
 
 /// Compressed context from older messages
-struct CompressedContext: Codable {
+struct CompressedContext: Codable, Sendable {
     var summary: String
     var entities: [String]
     var decisions: [String]
@@ -164,7 +164,7 @@ struct CompressedContext: Codable {
 }
 
 /// History bridge for maintaining context across compaction
-struct HistoryBridge: Codable {
+struct HistoryBridge: Codable, Sendable {
     let summary: String
     let keyTopics: [String]
     let recentMessageCount: Int
@@ -186,7 +186,7 @@ struct HistoryBridge: Codable {
 // MARK: - Reference Pointer
 
 /// Pointer to a reference in the index for REF token expansion
-struct ReferencePointer: Codable {
+struct ReferencePointer: Codable, Sendable {
     enum ReferenceType: String, Codable, Sendable {
         case theme
         case message
@@ -217,7 +217,7 @@ struct ReferencePointer: Codable {
 // MARK: - File Reference
 
 /// Reference to a file in the conversation
-struct FileReference: Codable, Identifiable {
+struct FileReference: Codable, Identifiable, Sendable {
     let id: UUID
     var filename: String
     var originalPath: String?

@@ -14,7 +14,7 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "Detache
 // MARK: - Document Info for Window
 
 /// Lightweight struct to pass document info to detached windows
-struct DetachedDocumentInfo: Codable, Hashable {
+struct DetachedDocumentInfo: Codable, Hashable, Sendable {
     let fileId: String
     let fileName: String
     let mimeType: String?

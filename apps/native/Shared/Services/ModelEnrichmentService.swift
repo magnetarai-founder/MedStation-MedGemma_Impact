@@ -397,7 +397,7 @@ class ModelEnrichmentService {
 
 // MARK: - API Request/Response Models
 
-struct ModelEnrichmentRequest: Codable {
+struct ModelEnrichmentRequest: Codable, Sendable {
     let modelName: String
     let family: String?
     let parameterSize: String?
@@ -406,7 +406,7 @@ struct ModelEnrichmentRequest: Codable {
     let format: String?
 }
 
-struct ModelEnrichmentResponse: Codable {
+struct ModelEnrichmentResponse: Codable, Sendable {
     let displayName: String
     let description: String
     let capability: String

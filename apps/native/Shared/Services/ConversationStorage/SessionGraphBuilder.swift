@@ -14,7 +14,7 @@ private let logger = Logger(subsystem: "com.magnetarstudio", category: "SessionG
 // MARK: - Session Graph
 
 /// Graph of entity relationships within a conversation
-struct SessionGraph: Codable {
+struct SessionGraph: Codable, Sendable {
     var nodes: [EntityNode]
     var edges: [EntityRelationship]
     var createdAt: Date
@@ -108,7 +108,7 @@ struct SessionGraph: Codable {
 // MARK: - Entity Node
 
 /// A node in the session graph representing an entity
-struct EntityNode: Codable, Identifiable {
+struct EntityNode: Codable, Identifiable, Sendable {
     let id: UUID
     let name: String
     let type: EntityType
@@ -187,7 +187,7 @@ enum EntityType: String, Codable, CaseIterable, Sendable {
 // MARK: - Entity Relationship
 
 /// A relationship between two entities
-struct EntityRelationship: Codable, Identifiable {
+struct EntityRelationship: Codable, Identifiable, Sendable {
     let id: UUID
     let sourceId: UUID
     let targetId: UUID

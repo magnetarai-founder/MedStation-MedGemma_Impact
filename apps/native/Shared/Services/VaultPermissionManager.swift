@@ -19,7 +19,7 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "VaultPe
 // MARK: - File Permission
 
 /// Active file permission granted to a model
-struct VaultFilePermission: Identifiable, Codable {
+struct VaultFilePermission: Identifiable, Codable, Sendable {
     let id: UUID
     let fileId: String
     let fileName: String
@@ -394,7 +394,7 @@ class VaultPermissionManager {
 
 // MARK: - Audit Entry
 
-struct FileAccessAudit: Identifiable, Codable {
+struct FileAccessAudit: Identifiable, Codable, Sendable {
     var id: UUID = UUID()
     let fileId: String
     let fileName: String

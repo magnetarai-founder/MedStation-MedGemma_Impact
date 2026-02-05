@@ -186,11 +186,11 @@ class ModelLibraryService {
 
 // MARK: - Ollama API Models
 
-private struct OllamaAPIResponse: Codable {
+private struct OllamaAPIResponse: Codable, Sendable {
     let models: [OllamaAPIModel]
 }
 
-private struct OllamaAPIModel: Codable {
+private struct OllamaAPIModel: Codable, Sendable {
     let name: String
     let model: String
     let modifiedAt: String?
@@ -204,7 +204,7 @@ private struct OllamaAPIModel: Codable {
     }
 }
 
-private struct OllamaModelDetails: Codable {
+private struct OllamaModelDetails: Codable, Sendable {
     let parentModel: String?
     let format: String?
     let family: String?
@@ -222,7 +222,7 @@ private struct OllamaModelDetails: Codable {
 
 // MARK: - Models
 
-struct LibraryResponse: Codable {
+struct LibraryResponse: Codable, Sendable {
     let models: [LibraryModel]
     let totalCount: Int
     let limit: Int
@@ -230,7 +230,7 @@ struct LibraryResponse: Codable {
     let dataUpdated: String?
 }
 
-struct LibraryModel: Codable, Identifiable {
+struct LibraryModel: Codable, Identifiable, Sendable {
     let modelIdentifier: String
     let modelName: String
     let modelType: String  // "official" or "community"

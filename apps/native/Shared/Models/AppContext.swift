@@ -210,7 +210,7 @@ struct VaultContext {
 }
 
 /// Metadata about a vault file (NO file contents)
-struct VaultFileMetadata: Codable {
+struct VaultFileMetadata: Codable, Sendable {
     let id: String
     let name: String
     let path: String
@@ -241,7 +241,7 @@ struct VaultFileMetadata: Codable {
 }
 
 /// Active file permission (what models can currently access)
-struct FilePermission: Codable, Identifiable {
+struct FilePermission: Codable, Identifiable, Sendable {
     let id: UUID
     let fileId: String
     let fileName: String
@@ -343,26 +343,26 @@ struct DataContext {
     }
 }
 
-struct TableMetadata: Codable {
+struct TableMetadata: Codable, Sendable {
     let name: String
     let rowCount: Int?
     let columns: [DataColumnInfo]
     let source: String  // "uploaded", "connected"
 }
 
-struct DataColumnInfo: Codable {
+struct DataColumnInfo: Codable, Sendable {
     let name: String
     let type: String
 }
 
-struct RecentQuery: Codable {
+struct RecentQuery: Codable, Sendable {
     let sql: String
     let executedAt: Date
     let success: Bool
     let rowsReturned: Int?
 }
 
-struct DatabaseConnection: Codable {
+struct DatabaseConnection: Codable, Sendable {
     let name: String
     let type: String  // "postgresql", "mysql", "sqlite"
     let connected: Bool
@@ -416,7 +416,7 @@ struct KanbanContext {
     }
 }
 
-struct TaskSummary: Codable {
+struct TaskSummary: Codable, Sendable {
     let id: String
     let title: String
     let status: String
@@ -425,7 +425,7 @@ struct TaskSummary: Codable {
     let dueDate: Date?
 }
 
-struct KanbanActivity: Codable {
+struct KanbanActivity: Codable, Sendable {
     let action: String
     let taskTitle: String
     let timestamp: Date
@@ -715,7 +715,7 @@ struct ANEContextState {
 // MARK: - Model Interaction History
 
 /// Track what models have done (for learning user patterns)
-struct ModelInteraction: Codable, Identifiable {
+struct ModelInteraction: Codable, Identifiable, Sendable {
     let id: UUID
     let modelId: String
     let workspaceType: String  // "vault", "data", "kanban", etc.
@@ -794,7 +794,7 @@ class ModelInteractionHistory {
 // MARK: - User Preferences
 
 /// User preferences for model behavior
-struct UserPreferences: Codable {
+struct UserPreferences: Codable, Sendable {
     let preferredModels: [String: String]  // Task type -> Model ID
     let alwaysAllowFiles: [String]  // File IDs that don't require permission prompt
     let pinnedHotSlots: [Int]  // Which hot slots are pinned (cannot evict)
@@ -893,7 +893,7 @@ struct UserPreferences: Codable {
 // MARK: - System Resource State
 
 /// Current system resource state (prevent crashes/overload)
-struct SystemResourceState: Codable {
+struct SystemResourceState: Codable, Sendable {
     let memoryPressure: Float  // 0.0-1.0
     let thermalState: ThermalState
     let activeModels: [LoadedModel]
@@ -990,7 +990,7 @@ enum ThermalState: String, Codable, Sendable {
     }
 }
 
-struct LoadedModel: Codable, Identifiable {
+struct LoadedModel: Codable, Identifiable, Sendable {
     let id: String
     let name: String
     let slotNumber: Int

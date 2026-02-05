@@ -14,7 +14,7 @@ import Foundation
 
 /// Decision made by orchestrator (Apple FM) about which model to route to
 /// Includes reasoning, fallback options, and resource constraints
-struct ModelRoutingDecision: Codable {
+struct ModelRoutingDecision: Codable, Sendable {
     // Primary decision
     let selectedModelId: String
     let selectedModelName: String
@@ -51,7 +51,7 @@ struct ModelRoutingDecision: Codable {
 // MARK: - Decision Factor
 
 /// Individual factor that influenced the routing decision
-struct DecisionFactor: Codable, Identifiable {
+struct DecisionFactor: Codable, Identifiable, Sendable {
     let id: UUID = UUID()
     let factor: String  // "query_complexity", "model_specialty", "resource_constraints", etc.
     let weight: Float  // 0.0-1.0 (how much did this influence the decision?)
@@ -60,39 +60,6 @@ struct DecisionFactor: Codable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case factor, weight, value
     }
-}
-
-// MARK: - Routing Strategy
-
-/// Strategy for how to handle routing
-enum RoutingStrategy: String, Codable, Sendable {
-    case intelligent = "intelligent"  // Apple FM orchestrator
-    case manual = "manual"  // User selected specific model
-    case fallback = "fallback"  // Primary failed, using fallback
-    case pinned = "pinned"  // Model is pinned and always used
-}
-
-// MARK: - Routing Result
-
-/// Final result after attempting to route and execute
-struct RoutingResult: Codable {
-    let decision: ModelRoutingDecision
-    let strategy: RoutingStrategy
-    let success: Bool
-    let errorMessage: String?
-
-    // Execution details
-    let modelUsed: String  // Actual model that handled the query
-    let hotSlotNumber: Int?  // Which slot (if hot-loaded)
-    let loadTimeMs: Int?  // Time to load model (if not already loaded)
-    let inferenceTimeMs: Int?  // Time to generate response
-
-    // Resource usage
-    let peakMemoryUsageGB: Float?
-    let thermalImpact: String?  // "nominal", "fair", "serious", "critical"
-
-    // Metadata
-    let completedAt: Date
 }
 
 // MARK: - Orchestrator Protocol (Swappable)
@@ -183,7 +150,7 @@ class OrchestratorManager {
 
 // MARK: - Orchestrator Health
 
-struct OrchestratorHealth: Codable {
+struct OrchestratorHealth: Codable, Sendable {
     let available: [String]
     let unavailable: [String]
     let activeOrchestrator: String?

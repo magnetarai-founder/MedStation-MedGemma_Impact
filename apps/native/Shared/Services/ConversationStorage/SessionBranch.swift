@@ -11,7 +11,7 @@ import Foundation
 // MARK: - Session Branch
 
 /// A branch of a conversation for topic isolation
-struct SessionBranch: Codable, Identifiable {
+struct SessionBranch: Codable, Identifiable, Sendable {
     let id: UUID
     let parentSessionId: UUID
     var branchName: String
@@ -69,7 +69,7 @@ struct SessionBranch: Codable, Identifiable {
 // MARK: - Context Snapshot
 
 /// Snapshot of context at a point in time (for branch creation)
-struct ContextSnapshot: Codable {
+struct ContextSnapshot: Codable, Sendable {
     let snapshotAt: Date
     let messageCount: Int
     let lastMessageId: UUID?
@@ -177,7 +177,7 @@ enum BranchAction {
 // MARK: - Branch State
 
 /// State of branches for a session
-struct BranchState: Codable {
+struct BranchState: Codable, Sendable {
     let sessionId: UUID
     var branches: [SessionBranch]
     var activeBranchId: UUID?
