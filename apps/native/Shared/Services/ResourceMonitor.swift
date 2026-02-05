@@ -36,6 +36,8 @@ class ResourceMonitor {
     // MARK: - Monitoring
 
     func startMonitoring() {
+        guard timer == nil else { return }  // Prevent duplicate timers
+
         // Initial update
         Task { [weak self] in
             await self?.updateResourceState()

@@ -82,9 +82,6 @@ class VaultPermissionManager {
     var showPermissionModal: Bool = false
     var pendingRequest: FileAccessRequest? = nil
 
-    // Authentication
-    private let context = LAContext()
-
     // Callbacks
     private var permissionCallback: ((PermissionResponse) -> Void)?
 
@@ -264,6 +261,9 @@ class VaultPermissionManager {
 
     /// Authenticate user with TouchID or password
     private func authenticateUser() async -> Bool {
+        // Create fresh LAContext per Apple docs — reusing causes stale state
+        let context = LAContext()
+
         // Check if biometric auth is available
         var error: NSError?
         guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {

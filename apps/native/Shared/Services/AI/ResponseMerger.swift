@@ -15,7 +15,6 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "Respons
 
 /// Quality assessment for a model response
 struct ResponseQualityScore: Sendable {
-    let score: Float         // 0.0-1.0 overall quality
     let lengthScore: Float   // Appropriate length
     let structureScore: Float  // Well-structured (headers, code blocks, etc.)
     let codeScore: Float     // Code quality (if applicable)
@@ -130,7 +129,6 @@ final class ResponseMerger: @unchecked Sendable {
         let relevanceScore = scoreRelevance(content, query: query)
 
         return ResponseQualityScore(
-            score: 0,  // Placeholder, use `weighted`
             lengthScore: lengthScore,
             structureScore: structureScore,
             codeScore: codeScore,

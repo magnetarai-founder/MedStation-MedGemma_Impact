@@ -127,10 +127,9 @@ final class ANEPredictor: ObservableObject {
         query: String?,
         fileId: UUID?
     ) -> ContextPrediction {
-        // Build feature provider
-        let features = buildFeatures(workspace: workspace, query: query, fileId: fileId)
-
         do {
+            // Build feature provider
+            let features = try buildFeatures(workspace: workspace, query: query, fileId: fileId)
             let prediction = try model.prediction(from: features)
 
             // Parse prediction outputs
@@ -145,7 +144,7 @@ final class ANEPredictor: ObservableObject {
         workspace: WorkspaceType,
         query: String?,
         fileId: UUID?
-    ) -> MLFeatureProvider {
+    ) throws -> MLFeatureProvider {
         let patterns = behaviorTracker.currentPatterns
         let hour = Calendar.current.component(.hour, from: Date())
         let weekday = Calendar.current.component(.weekday, from: Date())
@@ -160,7 +159,7 @@ final class ANEPredictor: ObservableObject {
             "has_active_file": MLFeatureValue(double: fileId != nil ? 1.0 : 0.0)
         ]
 
-        return try! MLDictionaryFeatureProvider(dictionary: features)
+        return try MLDictionaryFeatureProvider(dictionary: features)
     }
 
     private func parseModelOutput(_ output: MLFeatureProvider) -> ContextPrediction {

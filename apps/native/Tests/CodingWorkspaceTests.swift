@@ -628,7 +628,6 @@ final class ResponseQualityScoreTests: XCTestCase {
 
     func testWeightedCalculation() {
         let score = ResponseQualityScore(
-            score: 0,
             lengthScore: 1.0,
             structureScore: 0.8,
             codeScore: 0.6,
@@ -642,7 +641,6 @@ final class ResponseQualityScoreTests: XCTestCase {
 
     func testWeightedMaximumIsOne() {
         let perfectScore = ResponseQualityScore(
-            score: 0,
             lengthScore: 1.0,
             structureScore: 1.0,
             codeScore: 1.0,
@@ -654,7 +652,6 @@ final class ResponseQualityScoreTests: XCTestCase {
 
     func testWeightedMinimumIsZero() {
         let zeroScore = ResponseQualityScore(
-            score: 0,
             lengthScore: 0.0,
             structureScore: 0.0,
             codeScore: 0.0,

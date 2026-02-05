@@ -2,8 +2,9 @@
 //  CoreMLModelManager.swift
 //  MagnetarAI
 //
-//  Manages on-demand downloading and caching of CoreML models.
-//  Models are downloaded once and cached in Documents for persistence.
+//  STUB: Not currently wired — future CoreML model management infrastructure.
+//  Manages on-demand downloading and caching of CoreML models (YOLO11, MobileSAM, DepthAnything).
+//  Will be integrated when ImageAnalysisService is activated.
 //
 
 import Foundation

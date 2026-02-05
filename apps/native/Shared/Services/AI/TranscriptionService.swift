@@ -23,6 +23,7 @@ final class TranscriptionService {
     var authorizationStatus: SFSpeechRecognizerAuthorizationStatus = .notDetermined
 
     private let recognizer: SFSpeechRecognizer?
+    private var currentTask: SFSpeechRecognitionTask?
 
     private init() {
         self.recognizer = SFSpeechRecognizer(locale: Locale.current)
@@ -70,8 +71,12 @@ final class TranscriptionService {
         let request = SFSpeechURLRecognitionRequest(url: audioURL)
         request.shouldReportPartialResults = false
 
-        return try await withCheckedThrowingContinuation { continuation in
-            recognizer.recognitionTask(with: request) { result, error in
+        // Cancel any in-flight recognition before starting new one
+        currentTask?.cancel()
+        currentTask = nil
+
+        return try await withCheckedThrowingContinuation { [weak self] continuation in
+            let task = recognizer.recognitionTask(with: request) { result, error in
                 if let error {
                     logger.error("[Transcription] Failed: \(error)")
                     continuation.resume(throwing: TranscriptionError.recognitionFailed(error.localizedDescription))
@@ -83,6 +88,9 @@ final class TranscriptionService {
                 let text = result.bestTranscription.formattedString
                 logger.debug("[Transcription] Complete: \(text.prefix(100))...")
                 continuation.resume(returning: text)
+            }
+            Task { @MainActor in
+                self?.currentTask = task
             }
         }
     }
