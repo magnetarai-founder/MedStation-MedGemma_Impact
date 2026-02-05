@@ -11,14 +11,8 @@ class ModelLibraryService {
     static let shared = ModelLibraryService()
 
     private let ollamaLibraryURL = "https://ollama.com/api/tags"
-    private let session: URLSession
 
-    init() {
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 30
-        config.timeoutIntervalForResource = 60
-        self.session = URLSession(configuration: config)
-    }
+    init() {}
 
     // MARK: - Browse Library
 
@@ -39,8 +33,9 @@ class ModelLibraryService {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.timeoutInterval = 30
 
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await URLSession.shared.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw ModelLibraryError.invalidResponse

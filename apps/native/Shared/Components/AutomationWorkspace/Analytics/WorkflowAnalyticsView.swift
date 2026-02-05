@@ -40,7 +40,7 @@ struct WorkflowAnalyticsView: View {
                     MetricCard(
                         title: "Avg Cycle Time",
                         value: analytics.avgCycleTime,
-                        subtitle: analytics.medianCycleTime != nil ? "Median: \(analytics.medianCycleTime!)" : nil,
+                        subtitle: analytics.medianCycleTime.map { "Median: \($0)" },
                         icon: "clock",
                         color: .purple
                     )

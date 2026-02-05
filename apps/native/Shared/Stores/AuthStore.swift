@@ -257,7 +257,11 @@ final class AuthStore {
     // MARK: - Helpers
 
     private func clearAuthAndRestart() async {
-        try? keychain.deleteToken()
+        do {
+            try keychain.deleteToken()
+        } catch {
+            logger.warning("Failed to delete auth token on logout: \(error)")
+        }
         user = nil
         userSetupComplete = nil
         authState = .welcome

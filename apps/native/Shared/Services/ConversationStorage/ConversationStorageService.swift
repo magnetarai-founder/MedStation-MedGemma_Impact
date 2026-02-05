@@ -69,7 +69,11 @@ final class ConversationStorageService {
         ]
 
         for dir in directories {
-            try? fileManager.createDirectory(at: dir, withIntermediateDirectories: true)
+            do {
+                try fileManager.createDirectory(at: dir, withIntermediateDirectories: true)
+            } catch {
+                logger.warning("[ConversationStorage] Failed to create directory \(dir.lastPathComponent): \(error)")
+            }
         }
     }
 
@@ -83,7 +87,11 @@ final class ConversationStorageService {
 
         for subdir in subdirs {
             let path = convDir.appendingPathComponent(subdir)
-            try? fileManager.createDirectory(at: path, withIntermediateDirectories: true)
+            do {
+                try fileManager.createDirectory(at: path, withIntermediateDirectories: true)
+            } catch {
+                logger.warning("[ConversationStorage] Failed to create subdirectory \(subdir): \(error)")
+            }
         }
     }
 
@@ -101,8 +109,14 @@ final class ConversationStorageService {
     /// Load conversation metadata
     func loadMetadata(_ id: UUID) -> ConversationMetadata? {
         let url = conversationDirectory(id).appendingPathComponent("metadata.json")
-        guard let data = try? Data(contentsOf: url) else { return nil }
-        return try? decoder.decode(ConversationMetadata.self, from: data)
+        guard fileManager.fileExists(atPath: url.path) else { return nil }
+        do {
+            let data = try Data(contentsOf: url)
+            return try decoder.decode(ConversationMetadata.self, from: data)
+        } catch {
+            logger.warning("[ConversationStorage] Failed to decode metadata for \(id): \(error)")
+            return nil
+        }
     }
 
     /// List all conversation IDs
@@ -140,8 +154,13 @@ final class ConversationStorageService {
 
         return contents.compactMap { url -> ConversationTheme? in
             guard url.pathExtension == "json" else { return nil }
-            guard let data = try? Data(contentsOf: url) else { return nil }
-            return try? decoder.decode(ConversationTheme.self, from: data)
+            do {
+                let data = try Data(contentsOf: url)
+                return try decoder.decode(ConversationTheme.self, from: data)
+            } catch {
+                logger.warning("[ConversationStorage] Failed to decode theme \(url.lastPathComponent): \(error)")
+                return nil
+            }
         }
     }
 
@@ -172,8 +191,13 @@ final class ConversationStorageService {
 
         return contents.compactMap { url -> SemanticNode? in
             guard url.pathExtension == "json" else { return nil }
-            guard let data = try? Data(contentsOf: url) else { return nil }
-            return try? decoder.decode(SemanticNode.self, from: data)
+            do {
+                let data = try Data(contentsOf: url)
+                return try decoder.decode(SemanticNode.self, from: data)
+            } catch {
+                logger.warning("[ConversationStorage] Failed to decode node \(url.lastPathComponent): \(error)")
+                return nil
+            }
         }
     }
 
@@ -192,8 +216,14 @@ final class ConversationStorageService {
     func loadSessionGraph(_ conversationId: UUID) -> SessionGraph? {
         let url = conversationDirectory(conversationId)
             .appendingPathComponent("hierarchy/session_graph.json")
-        guard let data = try? Data(contentsOf: url) else { return nil }
-        return try? decoder.decode(SessionGraph.self, from: data)
+        guard fileManager.fileExists(atPath: url.path) else { return nil }
+        do {
+            let data = try Data(contentsOf: url)
+            return try decoder.decode(SessionGraph.self, from: data)
+        } catch {
+            logger.warning("[ConversationStorage] Failed to decode session graph for \(conversationId): \(error)")
+            return nil
+        }
     }
 
     // MARK: - Compressed Context
@@ -211,8 +241,14 @@ final class ConversationStorageService {
     func loadCompressedContext(_ conversationId: UUID) -> CompressedContext? {
         let url = conversationDirectory(conversationId)
             .appendingPathComponent("hierarchy/compressed_context.json")
-        guard let data = try? Data(contentsOf: url) else { return nil }
-        return try? decoder.decode(CompressedContext.self, from: data)
+        guard fileManager.fileExists(atPath: url.path) else { return nil }
+        do {
+            let data = try Data(contentsOf: url)
+            return try decoder.decode(CompressedContext.self, from: data)
+        } catch {
+            logger.warning("[ConversationStorage] Failed to decode compressed context for \(conversationId): \(error)")
+            return nil
+        }
     }
 
     // MARK: - Reference Index
@@ -227,8 +263,14 @@ final class ConversationStorageService {
     /// Load reference index
     func loadReferenceIndex(_ conversationId: UUID) -> [String: ReferencePointer] {
         let url = conversationDirectory(conversationId).appendingPathComponent("reference_index.json")
-        guard let data = try? Data(contentsOf: url) else { return [:] }
-        return (try? decoder.decode([String: ReferencePointer].self, from: data)) ?? [:]
+        guard fileManager.fileExists(atPath: url.path) else { return [:] }
+        do {
+            let data = try Data(contentsOf: url)
+            return try decoder.decode([String: ReferencePointer].self, from: data)
+        } catch {
+            logger.warning("[ConversationStorage] Failed to decode reference index for \(conversationId): \(error)")
+            return [:]
+        }
     }
 
     /// Expand a REF token to its full content
@@ -276,8 +318,13 @@ final class ConversationStorageService {
 
         return contents.compactMap { url -> FileReference? in
             guard url.pathExtension == "json" else { return nil }
-            guard let data = try? Data(contentsOf: url) else { return nil }
-            return try? decoder.decode(FileReference.self, from: data)
+            do {
+                let data = try Data(contentsOf: url)
+                return try decoder.decode(FileReference.self, from: data)
+            } catch {
+                logger.warning("[ConversationStorage] Failed to decode file ref \(url.lastPathComponent): \(error)")
+                return nil
+            }
         }
     }
 
@@ -285,11 +332,15 @@ final class ConversationStorageService {
     func loadFileContent(_ fileId: UUID, conversationId: UUID) -> String? {
         let url = conversationDirectory(conversationId)
             .appendingPathComponent("files/\(fileId.uuidString).json")
-        guard let data = try? Data(contentsOf: url),
-              let file = try? decoder.decode(FileReference.self, from: data) else {
+        guard fileManager.fileExists(atPath: url.path) else { return nil }
+        do {
+            let data = try Data(contentsOf: url)
+            let file = try decoder.decode(FileReference.self, from: data)
+            return file.processedContent
+        } catch {
+            logger.warning("[ConversationStorage] Failed to decode file \(fileId): \(error)")
             return nil
         }
-        return file.processedContent
     }
 
     // MARK: - Full Hierarchy Operations
@@ -368,8 +419,12 @@ final class ConversationStorageService {
     /// Delete a conversation and all its data
     func deleteConversation(_ id: UUID) {
         let dir = conversationDirectory(id)
-        try? fileManager.removeItem(at: dir)
-        logger.info("[ConversationStorage] Deleted conversation \(id)")
+        do {
+            try fileManager.removeItem(at: dir)
+            logger.info("[ConversationStorage] Deleted conversation \(id)")
+        } catch {
+            logger.warning("[ConversationStorage] Failed to delete conversation \(id): \(error)")
+        }
     }
 
     /// Get storage size for a conversation

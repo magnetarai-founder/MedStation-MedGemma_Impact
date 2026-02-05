@@ -193,9 +193,8 @@ class AppleFMOrchestrator: ModelOrchestrator {
         }
 
         // Use backend's model hint as reasoning
-        let reasoning = response.model_hint != nil
-            ? "Backend suggests using \(response.model_hint!) for this task"
-            : "General query - using default model selection"
+        let reasoning = response.model_hint.map { "Backend suggests using \($0) for this task" }
+            ?? "General query - using default model selection"
 
         return QueryAnalysis(
             complexity: complexity,
@@ -503,7 +502,7 @@ class AppleFMOrchestrator: ModelOrchestrator {
             factors.append(DecisionFactor(
                 factor: "hot_slot",
                 weight: 0.5,
-                value: "Model already loaded in slot \(selectedModel.slotNumber!)"
+                value: "Model already loaded in slot \(selectedModel.slotNumber ?? -1)"
             ))
         }
 

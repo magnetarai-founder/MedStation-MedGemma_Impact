@@ -196,7 +196,6 @@
 		8576EF5AC70D7FD9EC85C023 /* ImageAnalysisCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB990A211FDCAE2F529C5649 /* ImageAnalysisCache.swift */; };
 		85E35E1E4E4FBF5E297D4200 /* CommandPaletteComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66D0AB5AE6C91B723C18D556 /* CommandPaletteComponents.swift */; };
 		85F42581E347E5531FE3BC5C /* ChatSidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6361F2C849546414080CE27 /* ChatSidebar.swift */; };
-		8601CAA5CE8069D5897A82D2 /* NavigationRail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20C68F51B8F98DF5E7E380D4 /* NavigationRail.swift */; };
 		86B1A3CFD5A405D3E41379C0 /* SessionGraphBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32BE72D00BCE2D692DE2A086 /* SessionGraphBuilder.swift */; };
 		871DD11A31AABB2D7B01A6B3 /* DatabaseModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADEDCD7FF07F9124CBB3F7F7 /* DatabaseModels.swift */; };
 		87AC91711BE8494C52DC1524 /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35C17D9C1722F2E28A8F923C /* Colors.swift */; };
@@ -440,7 +439,6 @@
 		1F75D79776A85CD737E96223 /* KanbanTaskDetailPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KanbanTaskDetailPane.swift; sourceTree = "<group>"; };
 		1FEA6A29E379F30E8588386C /* KanbanCRUDOperations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KanbanCRUDOperations.swift; sourceTree = "<group>"; };
 		2036239D609339D21CA4DDB3 /* SessionBranchManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionBranchManager.swift; sourceTree = "<group>"; };
-		20C68F51B8F98DF5E7E380D4 /* NavigationRail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationRail.swift; sourceTree = "<group>"; };
 		21D079105DB0D10E5088D7EF /* TeamChatComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamChatComponents.swift; sourceTree = "<group>"; };
 		21E2DA14427FF8F7E6082DF9 /* ThemeExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeExtractor.swift; sourceTree = "<group>"; };
 		2302541274D9FC8F40841927 /* DataLabService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataLabService.swift; sourceTree = "<group>"; };
@@ -1316,7 +1314,6 @@
 				69505A6D37140AE40A44FD1E /* EmptyState.swift */,
 				435D084FA25904CD13F0EACB /* FileUpload.swift */,
 				DE345BE95ADE21BA7A328F2B /* Header.swift */,
-				20C68F51B8F98DF5E7E380D4 /* NavigationRail.swift */,
 				899B24D66F709DDDC3DCB565 /* NetworkSelector.swift */,
 				BC55BEE6E237A6DAF5BBAF46 /* ResultsTable.swift */,
 				234244696916A0AF296E38BE /* SaveQueryDialog.swift */,
@@ -2036,7 +2033,6 @@
 				FB16499C633BFAFC84FAEC59 /* ModelTagEditorSheet.swift in Sources */,
 				4AAA7ABA93BFC54662F202DD /* ModelTagService.swift in Sources */,
 				0E2C0590E01037DE122C6D46 /* ModelsStore.swift in Sources */,
-				8601CAA5CE8069D5897A82D2 /* NavigationRail.swift in Sources */,
 				E8E0336CBB99E532C5484361 /* NavigationStore.swift in Sources */,
 				679141AAF862D78CA2C45648 /* NetworkApprovalModal.swift in Sources */,
 				109D246960B1A759BFD6F7E7 /* NetworkFirewallModifier.swift in Sources */,

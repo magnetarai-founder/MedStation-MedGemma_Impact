@@ -176,7 +176,8 @@ actor ObjectDetectionLayer {
             let shape = multiArray.shape.map { $0.intValue }
             guard shape.count >= 2 else { continue }
 
-            let numDetections = shape.last == 85 ? shape[shape.count - 2] : shape.last!
+            guard let lastDim = shape.last else { continue }
+            let numDetections = lastDim == 85 ? shape[shape.count - 2] : lastDim
             let channelsLast = shape.last == 85
 
             for i in 0..<min(numDetections, 1000) {  // Cap at 1000 detections

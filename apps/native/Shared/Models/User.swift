@@ -1,7 +1,7 @@
 import Foundation
 
 /// API User model matching /api/v1/auth/me response
-struct ApiUser: Codable, Identifiable {
+struct ApiUser: Codable, Identifiable, Sendable {
     let userId: String
     let username: String
     let deviceId: String
@@ -39,7 +39,7 @@ enum UserRole: String, Codable {
 }
 
 /// Setup status response from /api/v1/users/me/setup/status
-struct SetupStatus: Codable {
+struct SetupStatus: Codable, Sendable {
     let userSetupCompleted: Bool
 
     enum CodingKeys: String, CodingKey {

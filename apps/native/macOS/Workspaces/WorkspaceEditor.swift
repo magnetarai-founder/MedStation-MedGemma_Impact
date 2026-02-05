@@ -777,8 +777,8 @@ struct BlockTextFieldRepresentable: NSViewRepresentable {
         func updateHeight() {
             guard let textView = textView else { return }
 
-            let layoutManager = textView.layoutManager!
-            let textContainer = textView.textContainer!
+            guard let layoutManager = textView.layoutManager,
+                  let textContainer = textView.textContainer else { return }
 
             layoutManager.ensureLayout(for: textContainer)
             let usedRect = layoutManager.usedRect(for: textContainer)

@@ -321,7 +321,11 @@ final class CoreMLModelManager {
     /// Delete all downloaded models
     func deleteAllDownloadedModels() throws {
         for model in CoreMLModelType.allCases where !model.isBundled {
-            try? deleteModel(model)
+            do {
+                try deleteModel(model)
+            } catch {
+                logger.warning("[CoreMLModelManager] Failed to delete model \(model.rawValue): \(error)")
+            }
         }
     }
 

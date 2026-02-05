@@ -1,4 +1,7 @@
 import Foundation
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "DatabaseService")
 
 /// Service layer for Database workspace endpoints
 final class DatabaseService {
@@ -18,11 +21,15 @@ final class DatabaseService {
     }
 
     func deleteSession(id: String) async {
-        _ = try? await apiClient.request(
-            path: "/api/v1/sql-json/sessions/\(id)",
-            method: .delete,
-            jsonBody: nil
-        ) as EmptyResponse
+        do {
+            _ = try await apiClient.request(
+                path: "/api/v1/sql-json/sessions/\(id)",
+                method: .delete,
+                jsonBody: nil
+            ) as EmptyResponse
+        } catch {
+            logger.warning("Failed to delete session \(id): \(error)")
+        }
     }
 
     // MARK: - File Uploads

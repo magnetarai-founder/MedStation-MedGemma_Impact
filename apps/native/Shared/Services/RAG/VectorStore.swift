@@ -60,7 +60,11 @@ final class VectorStore: ObservableObject {
         guard !isInitialized else { return }
 
         let directory = dbPath.deletingLastPathComponent()
-        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        } catch {
+            logger.error("[VectorStore] Failed to create database directory: \(error)")
+        }
 
         var dbPointer: OpaquePointer?
         let result = sqlite3_open(dbPath.path, &dbPointer)

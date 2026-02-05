@@ -105,7 +105,7 @@ extension EmergencyModeService {
         pasteboard.clearContents()
 
         let contents = pasteboard.string(forType: .string)
-        if contents == nil || contents!.isEmpty {
+        if contents?.isEmpty ?? true {
             logger.debug("Clipboard cleared successfully")
         } else {
             logger.warning("Clipboard may still contain data")
@@ -137,8 +137,12 @@ extension EmergencyModeService {
             .appendingPathComponent(".magnetar/model_cache")
 
         if FileManager.default.fileExists(atPath: modelCacheDir.path) {
-            try? FileManager.default.removeItem(at: modelCacheDir)
-            logger.debug("Model cache flushed (\(modelCacheDir.path))")
+            do {
+                try FileManager.default.removeItem(at: modelCacheDir)
+                logger.debug("Model cache flushed (\(modelCacheDir.path))")
+            } catch {
+                logger.warning("Failed to flush model cache: \(error)")
+            }
         } else {
             logger.debug("No model cache found (skipped)")
         }

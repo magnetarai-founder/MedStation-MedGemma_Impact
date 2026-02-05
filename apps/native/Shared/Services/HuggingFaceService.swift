@@ -29,9 +29,14 @@ final class HuggingFaceService {
         }
 
         if !queryItems.isEmpty {
-            var components = URLComponents(string: urlString)!
+            guard var components = URLComponents(string: urlString) else {
+                throw HuggingFaceError.invalidURL
+            }
             components.queryItems = queryItems
-            urlString = components.url!.absoluteString
+            guard let composedURL = components.url else {
+                throw HuggingFaceError.invalidURL
+            }
+            urlString = composedURL.absoluteString
         }
 
         guard let url = URL(string: urlString) else {

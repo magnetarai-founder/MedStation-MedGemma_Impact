@@ -38,12 +38,14 @@ final class PluginManager {
     // MARK: - Paths
 
     private let pluginsDirectory: URL = {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
         return appSupport.appendingPathComponent("MagnetarStudio/plugins", isDirectory: true)
     }()
 
     private let settingsFile: URL = {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
         return appSupport.appendingPathComponent("MagnetarStudio/plugins/plugin_settings.json", isDirectory: false)
     }()
 

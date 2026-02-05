@@ -10,7 +10,7 @@ import SwiftUI
 
 // MARK: - Tag Definition
 
-struct ModelCapabilityTag: Identifiable, Codable, Hashable {
+struct ModelCapabilityTag: Identifiable, Codable, Hashable, Sendable {
     let id: String
     let name: String
     let description: String
@@ -23,7 +23,7 @@ struct ModelCapabilityTag: Identifiable, Codable, Hashable {
 
 // MARK: - Model Tags Response
 
-struct ModelTagsResponse: Codable {
+struct ModelTagsResponse: Codable, Sendable {
     let modelName: String
     let tags: [String]
     let autoDetected: [String]
@@ -39,7 +39,7 @@ struct ModelTagsResponse: Codable {
 
 // MARK: - Update Tags Request
 
-struct UpdateTagsRequest: Codable {
+struct UpdateTagsRequest: Codable, Sendable {
     let tags: [String]
 }
 

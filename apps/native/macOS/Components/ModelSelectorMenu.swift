@@ -88,7 +88,11 @@ struct ModelSelectorMenu: View {
 
                             Button(role: .destructive) {
                                 Task {
-                                    try? await hotSlotManager.removeFromSlot(slotNumber: slot.slotNumber)
+                                    do {
+                                        try await hotSlotManager.removeFromSlot(slotNumber: slot.slotNumber)
+                                    } catch {
+                                        logger.error("Failed to remove from slot \(slot.slotNumber): \(error)")
+                                    }
                                 }
                             } label: {
                                 Label("Remove from Slot \(slot.slotNumber)", systemImage: "xmark.circle")
@@ -233,7 +237,11 @@ struct ModelSelectorMenu: View {
             // Find eviction candidate
             if let candidateSlot = hotSlotManager.findEvictionCandidate() {
                 // Auto-replace least used
-                try? await hotSlotManager.assignToSlot(slotNumber: candidateSlot, modelId: modelId)
+                do {
+                    try await hotSlotManager.assignToSlot(slotNumber: candidateSlot, modelId: modelId)
+                } catch {
+                    logger.error("Failed to assign model to slot \(candidateSlot): \(error)")
+                }
             } else {
                 // All slots pinned - show error
                 logger.warning("Cannot load model: All slots are full and pinned")
@@ -241,7 +249,11 @@ struct ModelSelectorMenu: View {
         } else {
             // Find first empty slot
             if let emptySlot = hotSlotManager.hotSlots.first(where: { $0.isEmpty }) {
-                try? await hotSlotManager.assignToSlot(slotNumber: emptySlot.slotNumber, modelId: modelId)
+                do {
+                    try await hotSlotManager.assignToSlot(slotNumber: emptySlot.slotNumber, modelId: modelId)
+                } catch {
+                    logger.error("Failed to assign model to slot \(emptySlot.slotNumber): \(error)")
+                }
             }
         }
     }

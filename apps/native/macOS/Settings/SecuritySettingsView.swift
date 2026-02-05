@@ -6,6 +6,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "SecuritySettingsView")
 
 // MARK: - Security Settings
 
@@ -134,8 +137,17 @@ struct SecuritySettingsView: View {
 
             if fileManager.fileExists(atPath: appCacheDir.path) {
                 let contents = try fileManager.contentsOfDirectory(at: appCacheDir, includingPropertiesForKeys: nil)
+                var failures = 0
                 for item in contents {
-                    try? fileManager.removeItem(at: item)
+                    do {
+                        try fileManager.removeItem(at: item)
+                    } catch {
+                        failures += 1
+                        logger.warning("Failed to remove cache item \(item.lastPathComponent): \(error)")
+                    }
+                }
+                if failures > 0 {
+                    logger.warning("\(failures) cache items could not be removed")
                 }
             }
 

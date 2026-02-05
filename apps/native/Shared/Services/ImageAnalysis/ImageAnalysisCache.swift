@@ -26,7 +26,11 @@ final class ImageAnalysisCache {
         let cacheDir = documentsPath.appendingPathComponent(".magnetar_ai/cache", isDirectory: true)
 
         // Create directory if needed
-        try? FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
+        do {
+            try FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
+        } catch {
+            logger.warning("[ImageAnalysisCache] Failed to create cache directory: \(error)")
+        }
 
         dbPath = cacheDir.appendingPathComponent("image_analysis.sqlite")
 

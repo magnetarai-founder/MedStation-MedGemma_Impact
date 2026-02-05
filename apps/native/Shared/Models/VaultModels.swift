@@ -10,7 +10,7 @@ import AppKit
 
 // MARK: - Vault File
 
-struct VaultFile: Identifiable, Codable {
+struct VaultFile: Identifiable, Codable, Sendable {
     let id: String
     let name: String
     let size: Int
@@ -75,7 +75,7 @@ struct VaultFile: Identifiable, Codable {
 
 // MARK: - Vault Folder
 
-struct VaultFolder: Identifiable, Codable {
+struct VaultFolder: Identifiable, Codable, Sendable {
     let id: String
     let name: String
     let path: String

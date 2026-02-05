@@ -243,7 +243,11 @@ final class CodingConversationStorage {
     // MARK: - Directory Setup
 
     private func setupDirectoryStructure() {
-        try? fileManager.createDirectory(at: rootDirectory, withIntermediateDirectories: true)
+        do {
+            try fileManager.createDirectory(at: rootDirectory, withIntermediateDirectories: true)
+        } catch {
+            logger.warning("[CodingStorage] Failed to create root directory: \(error)")
+        }
     }
 
     private func sessionDirectory(_ id: UUID) -> URL {
@@ -254,10 +258,18 @@ final class CodingConversationStorage {
         let sessionDir = sessionDirectory(id)
         let subdirs = ["branches", "themes"]
 
-        try? fileManager.createDirectory(at: sessionDir, withIntermediateDirectories: true)
+        do {
+            try fileManager.createDirectory(at: sessionDir, withIntermediateDirectories: true)
+        } catch {
+            logger.warning("[CodingStorage] Failed to create session directory for \(id): \(error)")
+        }
         for subdir in subdirs {
             let path = sessionDir.appendingPathComponent(subdir)
-            try? fileManager.createDirectory(at: path, withIntermediateDirectories: true)
+            do {
+                try fileManager.createDirectory(at: path, withIntermediateDirectories: true)
+            } catch {
+                logger.warning("[CodingStorage] Failed to create subdirectory \(subdir): \(error)")
+            }
         }
     }
 
@@ -301,8 +313,14 @@ final class CodingConversationStorage {
         return contents.compactMap { url -> CodingSessionMetadata? in
             guard url.lastPathComponent.hasPrefix("session_") else { return nil }
             let metadataUrl = url.appendingPathComponent("metadata.json")
-            guard let data = try? Data(contentsOf: metadataUrl) else { return nil }
-            return try? decoder.decode(CodingSessionMetadata.self, from: data)
+            guard fileManager.fileExists(atPath: metadataUrl.path) else { return nil }
+            do {
+                let data = try Data(contentsOf: metadataUrl)
+                return try decoder.decode(CodingSessionMetadata.self, from: data)
+            } catch {
+                logger.warning("[CodingStorage] Failed to decode session metadata \(url.lastPathComponent): \(error)")
+                return nil
+            }
         }
         .sorted { $0.updatedAt > $1.updatedAt }
     }
@@ -500,8 +518,13 @@ final class CodingConversationStorage {
 
         return contents.compactMap { url -> CodingSessionBranch? in
             guard url.pathExtension == "json" else { return nil }
-            guard let data = try? Data(contentsOf: url) else { return nil }
-            return try? decoder.decode(CodingSessionBranch.self, from: data)
+            do {
+                let data = try Data(contentsOf: url)
+                return try decoder.decode(CodingSessionBranch.self, from: data)
+            } catch {
+                logger.warning("[CodingStorage] Failed to decode branch \(url.lastPathComponent): \(error)")
+                return nil
+            }
         }
         .sorted { $0.createdAt < $1.createdAt }
     }
@@ -582,8 +605,13 @@ final class CodingConversationStorage {
 
         return contents.compactMap { url -> ConversationTheme? in
             guard url.pathExtension == "json" else { return nil }
-            guard let data = try? Data(contentsOf: url) else { return nil }
-            return try? decoder.decode(ConversationTheme.self, from: data)
+            do {
+                let data = try Data(contentsOf: url)
+                return try decoder.decode(ConversationTheme.self, from: data)
+            } catch {
+                logger.warning("[CodingStorage] Failed to decode theme \(url.lastPathComponent): \(error)")
+                return nil
+            }
         }
         .sorted { $0.createdAt < $1.createdAt }
     }

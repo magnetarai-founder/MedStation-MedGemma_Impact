@@ -80,7 +80,11 @@ final class EmergencyModeService {
         await logEmergencyTrigger(reason: reason, method: confirmationMethod)
 
         // Attempt to send emergency log to remote (if network available)
-        try? await sendEmergencyLogToRemote(reason: reason)
+        do {
+            try await sendEmergencyLogToRemote(reason: reason)
+        } catch {
+            logger.warning("Emergency log transmission failed (may be offline): \(error)")
+        }
 
         // Small delay to ensure log transmission
         try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second

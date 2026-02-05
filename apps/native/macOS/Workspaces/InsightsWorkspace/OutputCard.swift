@@ -8,6 +8,9 @@
 
 import SwiftUI
 import AppKit
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "OutputCard")
 
 struct OutputCard: View {
     let output: FormattedOutput
@@ -250,7 +253,16 @@ struct OutputCard: View {
         panel.nameFieldStringValue = "\(output.templateName).md"
 
         if panel.runModal() == .OK, let url = panel.url {
-            try? output.content.write(to: url, atomically: true, encoding: .utf8)
+            do {
+                try output.content.write(to: url, atomically: true, encoding: .utf8)
+            } catch {
+                logger.error("Failed to export markdown to \(url.path): \(error)")
+                let alert = NSAlert()
+                alert.messageText = "Export Failed"
+                alert.informativeText = error.localizedDescription
+                alert.alertStyle = .warning
+                alert.runModal()
+            }
         }
     }
 }

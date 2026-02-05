@@ -135,7 +135,8 @@ final class SyncService {
         self.baseURL = APIConfiguration.shared.cloudSyncURL
 
         // Setup offline queue persistence
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
         let magnetarDir = appSupport.appendingPathComponent("MagnetarStudio")
         try? FileManager.default.createDirectory(at: magnetarDir, withIntermediateDirectories: true)
         self.offlineQueueFile = magnetarDir.appendingPathComponent("sync_queue.json")
@@ -316,7 +317,7 @@ final class SyncService {
         try handleHTTPResponse(response)
 
         // Refresh conflict count
-        _ = try? await fetchStatus()
+        do { _ = try await fetchStatus() } catch { logger.warning("[Sync] Failed to refresh status: \(error)") }
     }
 
     // MARK: - Background Sync
@@ -379,7 +380,7 @@ final class SyncService {
         await processOfflineQueue()
 
         // Refresh status
-        _ = try? await fetchStatus()
+        do { _ = try await fetchStatus() } catch { logger.warning("[Sync] Failed to refresh status: \(error)") }
     }
 
     // MARK: - Offline Queue
@@ -409,9 +410,7 @@ final class SyncService {
         offlineQueue.append(operation)
         saveOfflineQueue()
 
-        DispatchQueue.main.async {
-            self.pendingChanges = self.offlineQueue.count
-        }
+        pendingChanges = offlineQueue.count
     }
 
     /// Process all queued offline operations

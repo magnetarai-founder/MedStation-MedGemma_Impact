@@ -9,6 +9,9 @@
 import Foundation
 import Observation
 import CryptoKit
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "CloudStorageService")
 
 // MARK: - Models
 
@@ -224,7 +227,7 @@ final class CloudStorageService {
         }
 
         // Refresh file list
-        try? await refreshFiles()
+        do { try await refreshFiles() } catch { logger.warning("Failed to refresh files: \(error)") }
 
         return result
     }
@@ -434,7 +437,7 @@ final class CloudStorageService {
         try handleHTTPResponse(response)
 
         // Refresh file list
-        try? await refreshFiles()
+        do { try await refreshFiles() } catch { logger.warning("Failed to refresh files: \(error)") }
     }
 
     // MARK: - Helpers

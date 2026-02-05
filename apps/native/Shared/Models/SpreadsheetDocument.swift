@@ -28,7 +28,8 @@ struct CellAddress: Hashable, Codable, CustomStringConvertible, Sendable {
         var result = ""
         var c = col
         repeat {
-            result = String(UnicodeScalar(65 + c % 26)!) + result
+            guard let scalar = UnicodeScalar(65 + c % 26) else { return "?" }
+            result = String(scalar) + result
             c = c / 26 - 1
         } while c >= 0
         return result

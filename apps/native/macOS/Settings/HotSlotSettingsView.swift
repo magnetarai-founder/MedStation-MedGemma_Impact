@@ -10,6 +10,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "HotSlotSettingsView")
 
 struct HotSlotSettingsView: View {
     @State private var hotSlotManager = HotSlotManager.shared
@@ -42,7 +45,11 @@ struct HotSlotSettingsView: View {
                         // Load all button
                         Button {
                             Task {
-                                try? await hotSlotManager.loadAllHotSlots()
+                                do {
+                                    try await hotSlotManager.loadAllHotSlots()
+                                } catch {
+                                    logger.error("Failed to load all hot slots: \(error)")
+                                }
                             }
                         } label: {
                             HStack(spacing: 6) {
@@ -68,7 +75,11 @@ struct HotSlotSettingsView: View {
                             },
                             onRemove: {
                                 Task {
-                                    try? await hotSlotManager.removeFromSlot(slotNumber: slot.slotNumber)
+                                    do {
+                                        try await hotSlotManager.removeFromSlot(slotNumber: slot.slotNumber)
+                                    } catch {
+                                        logger.error("Failed to remove from slot \(slot.slotNumber): \(error)")
+                                    }
                                 }
                             },
                             onAssign: {
@@ -151,7 +162,11 @@ struct HotSlotSettingsView: View {
                     availableModels: modelsStore.models,
                     onSelect: { modelId in
                         Task {
-                            try? await hotSlotManager.assignToSlot(slotNumber: slotNumber, modelId: modelId)
+                            do {
+                                try await hotSlotManager.assignToSlot(slotNumber: slotNumber, modelId: modelId)
+                            } catch {
+                                logger.error("Failed to assign model to slot \(slotNumber): \(error)")
+                            }
                             showModelPicker = false
                             selectedSlotForAssignment = nil
                         }

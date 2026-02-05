@@ -7,6 +7,9 @@
 //
 
 import Foundation
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "InsightsService")
 
 // MARK: - Enums
 
@@ -376,9 +379,13 @@ class InsightsService {
         // Build additional fields for multipart
         var fields: [String: String] = ["title": title]
         if !tags.isEmpty {
-            if let tagsData = try? JSONEncoder().encode(tags),
-               let tagsString = String(data: tagsData, encoding: .utf8) {
-                fields["tags"] = tagsString
+            do {
+                let tagsData = try JSONEncoder().encode(tags)
+                if let tagsString = String(data: tagsData, encoding: .utf8) {
+                    fields["tags"] = tagsString
+                }
+            } catch {
+                logger.warning("Failed to encode tags: \(error)")
             }
         }
         if let folderId = folderId {

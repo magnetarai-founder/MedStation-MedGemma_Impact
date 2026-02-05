@@ -6,6 +6,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "TemplateLibrarySheet")
 
 struct TemplateLibrarySheet: View {
     let templates: [InsightsTemplate]
@@ -136,7 +139,11 @@ struct TemplateLibrarySheet: View {
                                     },
                                     onDelete: {
                                         Task {
-                                            try? await InsightsService.shared.deleteTemplate(templateId: template.id)
+                                            do {
+                                                try await InsightsService.shared.deleteTemplate(templateId: template.id)
+                                            } catch {
+                                                logger.error("Failed to delete template \(template.id): \(error)")
+                                            }
                                             await onRefresh()
                                         }
                                     }

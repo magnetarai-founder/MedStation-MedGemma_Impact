@@ -384,7 +384,11 @@ enum AnyModelItem: Identifiable {
                             Button {
                                 // Start llama.cpp with this model
                                 Task {
-                                    try? await LlamaCppService.shared.startServer(modelId: model.id)
+                                    do {
+                                        try await LlamaCppService.shared.startServer(modelId: model.id)
+                                    } catch {
+                                        logger.error("Failed to start llama.cpp for model \(model.id): \(error)")
+                                    }
                                 }
                             } label: {
                                 Label("Run", systemImage: "play.fill")

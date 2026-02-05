@@ -52,7 +52,8 @@ struct PluginSandbox: Sendable {
 
     /// The plugin's private data directory.
     var dataDirectory: URL {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return bundleURL }
+
         return appSupport.appendingPathComponent("MagnetarStudio/plugin_data/\(pluginId)", isDirectory: true)
     }
 

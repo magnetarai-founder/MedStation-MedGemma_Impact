@@ -681,7 +681,11 @@ final class CodeEmbeddingService {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("MagnetarStudio")
             .appendingPathComponent("code_index")
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        do {
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        } catch {
+            logger.warning("[CodeEmbedding] Failed to create index directory: \(error)")
+        }
         return dir.appendingPathComponent("index_state.json")
     }
 
