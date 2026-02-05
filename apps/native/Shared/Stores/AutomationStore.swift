@@ -43,8 +43,14 @@ final class AutomationStore {
 
     private func loadRules() async {
         let dir = Self.rulesDir
-        guard let files = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
-            .filter({ $0.pathExtension == "json" && $0.lastPathComponent != "execution_log.json" }) else { return }
+        let files: [URL]
+        do {
+            files = try FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
+                .filter { $0.pathExtension == "json" && $0.lastPathComponent != "execution_log.json" }
+        } catch {
+            logger.error("Failed to list automation rules directory: \(error.localizedDescription)")
+            return
+        }
 
         var loaded: [AutomationRule] = []
         for file in files {

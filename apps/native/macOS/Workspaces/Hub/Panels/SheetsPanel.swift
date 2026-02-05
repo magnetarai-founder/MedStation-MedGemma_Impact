@@ -302,8 +302,14 @@ struct SheetsPanel: View {
     private func loadSpreadsheets() async {
         defer { isLoading = false }
         let dir = Self.storageDir
-        guard let files = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
-            .filter({ $0.pathExtension == "json" }) else { return }
+        let files: [URL]
+        do {
+            files = try FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
+                .filter { $0.pathExtension == "json" }
+        } catch {
+            logger.error("Failed to list sheets directory: \(error.localizedDescription)")
+            return
+        }
 
         var loaded: [SpreadsheetDocument] = []
         for file in files {

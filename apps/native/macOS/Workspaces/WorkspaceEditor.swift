@@ -153,7 +153,7 @@ enum BlockCategory: String, CaseIterable {
 
 // MARK: - Document Block
 
-struct DocumentBlock: Identifiable, Equatable, Codable {
+struct DocumentBlock: Identifiable, Equatable, Codable, Sendable {
     let id: UUID
     var type: BlockType
     var content: String

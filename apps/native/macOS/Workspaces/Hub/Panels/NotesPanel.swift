@@ -308,8 +308,12 @@ struct NotesPanel: View {
         defer { isLoading = false }
 
         let dir = Self.storageDir
-        guard let files = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
-            .filter({ $0.pathExtension == "json" }) else {
+        let files: [URL]
+        do {
+            files = try FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
+                .filter { $0.pathExtension == "json" }
+        } catch {
+            logger.error("Failed to list notes directory: \(error.localizedDescription)")
             return
         }
 

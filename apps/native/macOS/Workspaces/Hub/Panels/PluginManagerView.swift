@@ -14,6 +14,7 @@ struct PluginManagerView: View {
     @State private var selectedPlugin: InstalledPlugin?
     @State private var searchText = ""
     @State private var showInstallPanel = false
+    @State private var installError: String?
 
     private var filteredPlugins: [InstalledPlugin] {
         if searchText.isEmpty { return pluginManager.plugins }
@@ -62,8 +63,20 @@ struct PluginManagerView: View {
             allowsMultipleSelection: false
         ) { result in
             if case .success(let urls) = result, let url = urls.first {
-                try? pluginManager.installPlugin(from: url)
+                do {
+                    try pluginManager.installPlugin(from: url)
+                } catch {
+                    installError = error.localizedDescription
+                }
             }
+        }
+        .alert("Plugin Install Failed", isPresented: Binding(
+            get: { installError != nil },
+            set: { if !$0 { installError = nil } }
+        )) {
+            Button("OK") { installError = nil }
+        } message: {
+            Text(installError ?? "")
         }
     }
 

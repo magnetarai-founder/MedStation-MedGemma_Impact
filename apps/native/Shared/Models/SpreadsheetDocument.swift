@@ -9,7 +9,7 @@ import Foundation
 
 // MARK: - Cell Address
 
-struct CellAddress: Hashable, Codable, CustomStringConvertible {
+struct CellAddress: Hashable, Codable, CustomStringConvertible, Sendable {
     let column: Int  // 0-based (A=0, B=1, ...)
     let row: Int     // 0-based
 
@@ -41,7 +41,8 @@ struct CellAddress: Hashable, Codable, CustomStringConvertible {
 
         var col = 0
         for char in colPart {
-            col = col * 26 + Int(char.asciiValue! - 65) + 1
+            guard let ascii = char.asciiValue, ascii >= 65, ascii <= 90 else { return nil }
+            col = col * 26 + Int(ascii - 65) + 1
         }
         col -= 1  // 0-based
 
@@ -51,7 +52,7 @@ struct CellAddress: Hashable, Codable, CustomStringConvertible {
 
 // MARK: - Cell
 
-struct SpreadsheetCell: Codable, Equatable {
+struct SpreadsheetCell: Codable, Equatable, Sendable {
     var rawValue: String       // What the user typed (may be formula)
     var isBold: Bool
     var isItalic: Bool
@@ -74,13 +75,13 @@ struct SpreadsheetCell: Codable, Equatable {
     }
 }
 
-enum CellAlignment: String, Codable {
+enum CellAlignment: String, Codable, Sendable {
     case left, center, right
 }
 
 // MARK: - Spreadsheet Document
 
-struct SpreadsheetDocument: Identifiable, Codable, Equatable {
+struct SpreadsheetDocument: Identifiable, Codable, Equatable, Sendable {
     let id: UUID
     var title: String
     var cells: [String: SpreadsheetCell]  // Key: "A1", "B2" etc.

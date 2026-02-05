@@ -284,8 +284,14 @@ struct DocsPanel: View {
     private func loadDocuments() async {
         defer { isLoading = false }
         let dir = Self.storageDir
-        guard let files = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
-            .filter({ $0.pathExtension == "json" }) else { return }
+        let files: [URL]
+        do {
+            files = try FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
+                .filter { $0.pathExtension == "json" }
+        } catch {
+            logger.error("Failed to list docs directory: \(error.localizedDescription)")
+            return
+        }
 
         var loaded: [WorkspaceDocument] = []
         for file in files {

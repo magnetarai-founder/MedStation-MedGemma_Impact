@@ -81,7 +81,7 @@ struct TemplateVariable: Codable, Identifiable, Equatable, Sendable {
         self.choices = choices
     }
 
-    enum VariableType: String, Codable, CaseIterable {
+    enum VariableType: String, Codable, CaseIterable, Sendable {
         case text, number, date, choice
     }
 }

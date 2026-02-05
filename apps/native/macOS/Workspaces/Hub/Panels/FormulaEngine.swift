@@ -13,13 +13,13 @@ struct FormulaEngine {
 
     // MARK: - Public API
 
-    func evaluate(_ formula: String) -> String {
+    func evaluate(_ formula: String, evaluating: Set<String> = []) -> String {
         guard formula.hasPrefix("=") else { return formula }
         let expr = String(formula.dropFirst()).trimmingCharacters(in: .whitespaces)
         guard !expr.isEmpty else { return "" }
 
         do {
-            let result = try evaluateExpression(expr)
+            let result = try evaluateExpression(expr, evaluating: evaluating)
             return formatResult(result)
         } catch let error as FormulaError {
             return error.displayString
@@ -30,21 +30,21 @@ struct FormulaEngine {
 
     // MARK: - Expression Evaluation
 
-    private func evaluateExpression(_ expr: String) throws -> Double {
+    private func evaluateExpression(_ expr: String, evaluating: Set<String>) throws -> Double {
         let trimmed = expr.trimmingCharacters(in: .whitespaces)
 
         // Check for function calls: FUNC(args)
-        if let funcResult = try evaluateFunction(trimmed) {
+        if let funcResult = try evaluateFunction(trimmed, evaluating: evaluating) {
             return funcResult
         }
 
         // Try to parse as simple math expression
-        return try parseMathExpression(trimmed)
+        return try parseMathExpression(trimmed, evaluating: evaluating)
     }
 
     // MARK: - Functions
 
-    private func evaluateFunction(_ expr: String) throws -> Double? {
+    private func evaluateFunction(_ expr: String, evaluating: Set<String>) throws -> Double? {
         // Pattern: FUNCNAME(args)
         guard let parenStart = expr.firstIndex(of: "("),
               let parenEnd = expr.lastIndex(of: ")"),
@@ -61,11 +61,11 @@ struct FormulaEngine {
 
         // Check if argument is a range (e.g., A1:B10)
         if argsStr.contains(":") && !argsStr.contains(",") {
-            values = try resolveRange(argsStr.trimmingCharacters(in: .whitespaces))
+            values = try resolveRange(argsStr.trimmingCharacters(in: .whitespaces), evaluating: evaluating)
         } else {
             // Comma-separated arguments
             let args = splitTopLevel(argsStr, separator: ",")
-            values = try args.map { try evaluateExpression($0) }
+            values = try args.map { try evaluateExpression($0, evaluating: evaluating) }
         }
 
         switch funcName {
@@ -92,8 +92,8 @@ struct FormulaEngine {
             // IF(condition, trueVal, falseVal) — args must be 3 comma-separated expressions
             let args = splitTopLevel(argsStr, separator: ",")
             guard args.count >= 3 else { throw FormulaError.invalidArgs }
-            let condition = try evaluateExpression(args[0])
-            return condition != 0 ? try evaluateExpression(args[1]) : try evaluateExpression(args[2])
+            let condition = try evaluateExpression(args[0], evaluating: evaluating)
+            return condition != 0 ? try evaluateExpression(args[1], evaluating: evaluating) : try evaluateExpression(args[2], evaluating: evaluating)
         case "CONCATENATE", "CONCAT":
             // Return 0 for numeric context — concatenation handled at display level
             return 0
@@ -104,7 +104,7 @@ struct FormulaEngine {
 
     // MARK: - Range Resolution
 
-    private func resolveRange(_ rangeStr: String) throws -> [Double] {
+    private func resolveRange(_ rangeStr: String, evaluating: Set<String>) throws -> [Double] {
         let parts = rangeStr.split(separator: ":").map { String($0).trimmingCharacters(in: .whitespaces) }
         guard parts.count == 2,
               let start = CellAddress.fromString(parts[0]),
@@ -125,7 +125,7 @@ struct FormulaEngine {
                     if let num = Double(cell.rawValue) {
                         values.append(num)
                     } else if cell.isFormula {
-                        if let num = Double(evaluate(cell.rawValue)) {
+                        if let num = Double(evaluate(cell.rawValue, evaluating: evaluating)) {
                             values.append(num)
                         }
                     }
@@ -137,21 +137,29 @@ struct FormulaEngine {
 
     // MARK: - Math Expression Parser
 
-    private func parseMathExpression(_ expr: String) throws -> Double {
+    private func parseMathExpression(_ expr: String, evaluating: Set<String>) throws -> Double {
         let trimmed = expr.trimmingCharacters(in: .whitespaces)
 
         // Try as number
         if let num = Double(trimmed) { return num }
 
+        // Handle unary minus for cell references and parenthesized expressions
+        if trimmed.hasPrefix("-") {
+            let rest = String(trimmed.dropFirst())
+            if CellAddress.fromString(rest) != nil || rest.hasPrefix("(") {
+                return -(try parseMathExpression(rest, evaluating: evaluating))
+            }
+        }
+
         // Try as cell reference
         if let addr = CellAddress.fromString(trimmed) {
-            return try resolveCellValue(addr)
+            return try resolveCellValue(addr, evaluating: evaluating)
         }
 
         // Handle parentheses
         if trimmed.hasPrefix("(") && trimmed.hasSuffix(")") {
             let inner = String(trimmed.dropFirst().dropLast())
-            return try parseMathExpression(inner)
+            return try parseMathExpression(inner, evaluating: evaluating)
         }
 
         // Split by + or - (lowest precedence, right to left for subtraction)
@@ -161,12 +169,12 @@ struct FormulaEngine {
             let right = String(trimmed[trimmed.index(after: idx)...])
 
             if !left.isEmpty {
-                let leftVal = try parseMathExpression(left)
-                let rightVal = try parseMathExpression(right)
+                let leftVal = try parseMathExpression(left, evaluating: evaluating)
+                let rightVal = try parseMathExpression(right, evaluating: evaluating)
                 return op == "+" ? leftVal + rightVal : leftVal - rightVal
             } else if op == "-" {
                 // Unary minus
-                return -(try parseMathExpression(right))
+                return -(try parseMathExpression(right, evaluating: evaluating))
             }
         }
 
@@ -174,8 +182,8 @@ struct FormulaEngine {
         if let idx = findOperator(trimmed, operators: ["*", "/"]) {
             let left = String(trimmed[trimmed.startIndex..<idx])
             let right = String(trimmed[trimmed.index(after: idx)...])
-            let leftVal = try parseMathExpression(left)
-            let rightVal = try parseMathExpression(right)
+            let leftVal = try parseMathExpression(left, evaluating: evaluating)
+            let rightVal = try parseMathExpression(right, evaluating: evaluating)
             if trimmed[idx] == "/" {
                 guard rightVal != 0 else { throw FormulaError.divisionByZero }
                 return leftVal / rightVal
@@ -187,17 +195,19 @@ struct FormulaEngine {
         if let idx = findOperator(trimmed, operators: ["^"]) {
             let left = String(trimmed[trimmed.startIndex..<idx])
             let right = String(trimmed[trimmed.index(after: idx)...])
-            return pow(try parseMathExpression(left), try parseMathExpression(right))
+            return pow(try parseMathExpression(left, evaluating: evaluating), try parseMathExpression(right, evaluating: evaluating))
         }
 
         throw FormulaError.parseError
     }
 
-    private func resolveCellValue(_ addr: CellAddress) throws -> Double {
-        guard let cell = cells[addr.description], !cell.rawValue.isEmpty else { return 0 }
+    private func resolveCellValue(_ addr: CellAddress, evaluating: Set<String>) throws -> Double {
+        let key = addr.description
+        guard !evaluating.contains(key) else { throw FormulaError.circularReference }
+        guard let cell = cells[key], !cell.rawValue.isEmpty else { return 0 }
 
         if cell.isFormula {
-            let result = evaluate(cell.rawValue)
+            let result = evaluate(cell.rawValue, evaluating: evaluating.union([key]))
             return Double(result) ?? 0
         }
 

@@ -113,6 +113,7 @@ final class SchedulerService {
                    now.timeIntervalSince(since) >= 60
         }
 
+        logger.warning("Unrecognized cron pattern: '\(cron)' — rule will not fire")
         return false
     }
 }

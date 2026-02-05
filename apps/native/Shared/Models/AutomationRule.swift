@@ -60,7 +60,12 @@ enum AutomationTrigger: Codable, Equatable, CaseIterable, Identifiable, Sendable
     case onSchedule(cron: String)
     case manual
 
-    var id: String { displayName }
+    var id: String {
+        switch self {
+        case .onSchedule(let cron): return "onSchedule-\(cron)"
+        default: return displayName
+        }
+    }
 
     var displayName: String {
         switch self {

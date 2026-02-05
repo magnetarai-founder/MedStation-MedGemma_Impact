@@ -57,7 +57,7 @@ final class TemplateStore {
             guard let url = Bundle.main.url(forResource: resourceName, withExtension: "json"),
                   let data = try? Data(contentsOf: url),
                   let loaded = try? decoder.decode([WorkspaceTemplate].self, from: data) else {
-                logger.debug("[Templates] Could not load \(resourceName).json from bundle")
+                logger.warning("[Templates] Could not load \(resourceName).json from bundle")
                 continue
             }
             templates.append(contentsOf: loaded)
