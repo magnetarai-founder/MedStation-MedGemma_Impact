@@ -21,6 +21,8 @@ struct FormulaEngine {
         do {
             let result = try evaluateExpression(expr)
             return formatResult(result)
+        } catch let error as FormulaError {
+            return error.displayString
         } catch {
             return "#ERROR"
         }
@@ -260,4 +262,15 @@ enum FormulaError: Error {
     case divisionByZero
     case unknownFunction(String)
     case circularReference
+
+    var displayString: String {
+        switch self {
+        case .parseError: return "#PARSE!"
+        case .invalidRange: return "#REF!"
+        case .invalidArgs: return "#VALUE!"
+        case .divisionByZero: return "#DIV/0!"
+        case .unknownFunction: return "#NAME?"
+        case .circularReference: return "#CIRC!"
+        }
+    }
 }

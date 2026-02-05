@@ -37,6 +37,7 @@
 		18043077E6124CA1D91E97B4 /* TrustWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DC4F6E138B0D9CADC6934A7 /* TrustWorkspace.swift */; };
 		1807773E9FF774789EBDB576 /* ChatMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2C77CB5AF6C4202FD8D7161 /* ChatMessage.swift */; };
 		193139396FAF9F92B399925B /* DatabaseComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43DB6371422D1C3A10CCB715 /* DatabaseComponents.swift */; };
+		19B1A0FE8810C9B522FD6802 /* PersistenceHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F6E15837690B043BAC29AEA /* PersistenceHelpers.swift */; };
 		1A2C0BD6587E2AD8F8C8C6B7 /* HeaderModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F5BE67C9C4C85A3964E94F3 /* HeaderModels.swift */; };
 		1AE6BB45FF00838D1BA23853 /* ModelMemoryTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EADD445CBEADCED36E0BFC8 /* ModelMemoryTracker.swift */; };
 		1AFED2A84D20A7E0D444B3F3 /* AutomationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD3982EDF60DB46D27C77F8E /* AutomationStore.swift */; };
@@ -479,6 +480,7 @@
 		3C5E980A8B0EC4BBA9596C5C /* KanbanService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KanbanService.swift; sourceTree = "<group>"; };
 		3D866B895AA748AFB7758693 /* ContextOptimizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextOptimizer.swift; sourceTree = "<group>"; };
 		3DA14EC33AFDF3666CF71C33 /* EmergencyConfirmationModal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmergencyConfirmationModal.swift; sourceTree = "<group>"; };
+		3F6E15837690B043BAC29AEA /* PersistenceHelpers.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PersistenceHelpers.swift; sourceTree = "<group>"; };
 		410CF0A0DBE67F756B2F42D5 /* WorkflowTabButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowTabButton.swift; sourceTree = "<group>"; };
 		41E6CFAA0B1AA7811CEC96EE /* CodeWorkspaceComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeWorkspaceComponents.swift; sourceTree = "<group>"; };
 		425ABB43E57B31BA42813082 /* SettingsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsService.swift; sourceTree = "<group>"; };
@@ -912,6 +914,7 @@
 			children = (
 				DD7CAA6EA73E35A7F0B3F9E7 /* Logger.swift */,
 				4D708E64D8DABC00596F492C /* NotificationExtensions.swift */,
+				3F6E15837690B043BAC29AEA /* PersistenceHelpers.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -2240,6 +2243,7 @@
 				A2164D2F309478B10AF4D57B /* BuiltinPluginAdapter.swift in Sources */,
 				A232A509587CBA99EF142534 /* PluginManagerView.swift in Sources */,
 				C2AB9988067553A6DCB15FF6 /* PluginSettingsView.swift in Sources */,
+				19B1A0FE8810C9B522FD6802 /* PersistenceHelpers.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

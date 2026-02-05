@@ -27,7 +27,7 @@ final class AutomationStore {
     private static var rulesDir: URL {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("MagnetarStudio/automations", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        PersistenceHelpers.ensureDirectory(at: dir, label: "automations storage")
         return dir
     }
 
@@ -47,10 +47,8 @@ final class AutomationStore {
             .filter({ $0.pathExtension == "json" && $0.lastPathComponent != "execution_log.json" }) else { return }
 
         var loaded: [AutomationRule] = []
-        let decoder = JSONDecoder()
         for file in files {
-            if let data = try? Data(contentsOf: file),
-               let rule = try? decoder.decode(AutomationRule.self, from: data) {
+            if let rule = PersistenceHelpers.load(AutomationRule.self, from: file, label: "automation rule") {
                 loaded.append(rule)
             }
         }
@@ -59,9 +57,8 @@ final class AutomationStore {
     }
 
     private func loadLog() {
-        guard let data = try? Data(contentsOf: Self.logFile),
-              let entries = try? JSONDecoder().decode([AutomationLogEntry].self, from: data) else { return }
-        logEntries = entries.suffix(500)  // Keep last 500 entries
+        guard let entries = PersistenceHelpers.load([AutomationLogEntry].self, from: Self.logFile, label: "automation log") else { return }
+        logEntries = Array(entries.suffix(500))
     }
 
     // MARK: - CRUD
@@ -84,7 +81,7 @@ final class AutomationStore {
     func deleteRule(_ rule: AutomationRule) {
         rules.removeAll { $0.id == rule.id }
         let file = Self.rulesDir.appendingPathComponent("\(rule.id.uuidString).json")
-        try? FileManager.default.removeItem(at: file)
+        PersistenceHelpers.remove(at: file, label: "automation rule '\(rule.name)'")
         logger.info("Deleted automation rule: \(rule.name)")
     }
 
@@ -98,9 +95,7 @@ final class AutomationStore {
 
     private func saveRule(_ rule: AutomationRule) {
         let file = Self.rulesDir.appendingPathComponent("\(rule.id.uuidString).json")
-        if let data = try? JSONEncoder().encode(rule) {
-            try? data.write(to: file, options: .atomic)
-        }
+        PersistenceHelpers.save(rule, to: file, label: "automation rule '\(rule.name)'")
     }
 
     // MARK: - Evaluation
@@ -203,9 +198,7 @@ final class AutomationStore {
     }
 
     private func saveLog() {
-        if let data = try? JSONEncoder().encode(logEntries) {
-            try? data.write(to: Self.logFile, options: .atomic)
-        }
+        PersistenceHelpers.save(logEntries, to: Self.logFile, label: "automation log")
     }
 
     func clearLog() {

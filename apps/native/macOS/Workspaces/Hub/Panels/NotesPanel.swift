@@ -300,7 +300,7 @@ struct NotesPanel: View {
     private static var storageDir: URL {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("MagnetarStudio/workspace/notes", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        PersistenceHelpers.ensureDirectory(at: dir, label: "notes storage")
         return dir
     }
 
@@ -315,8 +315,7 @@ struct NotesPanel: View {
 
         var loaded: [WorkspaceNote] = []
         for file in files {
-            if let data = try? Data(contentsOf: file),
-               let note = try? JSONDecoder().decode(WorkspaceNote.self, from: data) {
+            if let note = PersistenceHelpers.load(WorkspaceNote.self, from: file, label: "note") {
                 loaded.append(note)
             }
         }
@@ -337,14 +336,12 @@ struct NotesPanel: View {
 
     private func saveNoteToDisk(_ note: WorkspaceNote) {
         let file = Self.storageDir.appendingPathComponent("\(note.id.uuidString).json")
-        if let data = try? JSONEncoder().encode(note) {
-            try? data.write(to: file, options: .atomic)
-        }
+        PersistenceHelpers.save(note, to: file, label: "note '\(note.title)'")
     }
 
     private func deleteNoteFromDisk(_ note: WorkspaceNote) {
         let file = Self.storageDir.appendingPathComponent("\(note.id.uuidString).json")
-        try? FileManager.default.removeItem(at: file)
+        PersistenceHelpers.remove(at: file, label: "note '\(note.title)'")
     }
 }
 

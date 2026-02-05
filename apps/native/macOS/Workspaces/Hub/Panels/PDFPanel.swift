@@ -288,7 +288,7 @@ struct PDFPanel: View {
             selectedPDFID = nil
             pdfDocument = nil
         }
-        try? FileManager.default.removeItem(at: doc.fileURL)
+        PersistenceHelpers.remove(at: doc.fileURL, label: "pdf '\(doc.title)'")
         saveMetadata()
     }
 
@@ -297,7 +297,7 @@ struct PDFPanel: View {
     private static var storageDir: URL {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("MagnetarStudio/workspace/pdfs", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        PersistenceHelpers.ensureDirectory(at: dir, label: "pdfs storage")
         return dir
     }
 
@@ -307,15 +307,12 @@ struct PDFPanel: View {
 
     private func loadPDFs() async {
         defer { isLoading = false }
-        guard let data = try? Data(contentsOf: Self.metadataFile),
-              let docs = try? JSONDecoder().decode([PDFDocumentInfo].self, from: data) else { return }
+        guard let docs = PersistenceHelpers.load([PDFDocumentInfo].self, from: Self.metadataFile, label: "pdf metadata") else { return }
         pdfDocuments = docs.filter { FileManager.default.fileExists(atPath: $0.fileURL.path) }
     }
 
     private func saveMetadata() {
-        if let data = try? JSONEncoder().encode(pdfDocuments) {
-            try? data.write(to: Self.metadataFile, options: .atomic)
-        }
+        PersistenceHelpers.save(pdfDocuments, to: Self.metadataFile, label: "pdf metadata")
     }
 
     private func formatFileSize(_ bytes: Int64) -> String {

@@ -158,11 +158,11 @@ enum AutomationAction: Codable, Identifiable, Equatable, Sendable {
     var id: String {
         switch self {
         case .exportDocument(let f): return "export-\(f.rawValue)"
-        case .runAI(let p): return "ai-\(p.hashValue)"
+        case .runAI(let p): return "ai-\(p.prefix(32))"
         case .moveKanbanTask(let c): return "kanban-\(c)"
-        case .sendNotification(let t, let b): return "notify-\(t.hashValue)-\(b.hashValue)"
-        case .createNote(let t, let c): return "note-\(t.hashValue)-\(c.hashValue)"
-        case .updateCell(let a, let v): return "cell-\(a)-\(v.hashValue)"
+        case .sendNotification(let t, let b): return "notify-\(t.prefix(16))-\(b.prefix(16))"
+        case .createNote(let t, let c): return "note-\(t.prefix(16))-\(c.prefix(16))"
+        case .updateCell(let a, let v): return "cell-\(a)-\(v.prefix(16))"
         }
     }
 

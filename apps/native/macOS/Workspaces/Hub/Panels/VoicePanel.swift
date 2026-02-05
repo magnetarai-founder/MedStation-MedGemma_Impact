@@ -352,7 +352,7 @@ struct VoicePanel: View {
         if selectedRecordingID == recording.id {
             selectedRecordingID = nil
         }
-        try? FileManager.default.removeItem(at: recording.fileURL)
+        PersistenceHelpers.remove(at: recording.fileURL, label: "recording '\(recording.title)'")
         saveMetadata()
     }
 
@@ -427,7 +427,7 @@ struct VoicePanel: View {
     private static var storageDir: URL {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("MagnetarStudio/workspace/voice", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        PersistenceHelpers.ensureDirectory(at: dir, label: "voice storage")
         return dir
     }
 
@@ -437,16 +437,13 @@ struct VoicePanel: View {
 
     private func loadRecordings() async {
         defer { isLoading = false }
-        guard let data = try? Data(contentsOf: Self.metadataFile),
-              let recs = try? JSONDecoder().decode([VoiceRecording].self, from: data) else { return }
+        guard let recs = PersistenceHelpers.load([VoiceRecording].self, from: Self.metadataFile, label: "voice recordings") else { return }
         recordings = recs.filter { FileManager.default.fileExists(atPath: $0.fileURL.path) }
             .sorted { $0.createdAt > $1.createdAt }
     }
 
     private func saveMetadata() {
-        if let data = try? JSONEncoder().encode(recordings) {
-            try? data.write(to: Self.metadataFile, options: .atomic)
-        }
+        PersistenceHelpers.save(recordings, to: Self.metadataFile, label: "voice recordings")
     }
 
     // MARK: - Formatting

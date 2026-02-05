@@ -415,7 +415,7 @@ struct TeamNotesPanel: View {
     private static var storageDir: URL {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("MagnetarStudio/workspace/team", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        PersistenceHelpers.ensureDirectory(at: dir, label: "team storage")
         return dir
     }
 
@@ -424,8 +424,7 @@ struct TeamNotesPanel: View {
 
         // Load channels
         let channelsFile = Self.storageDir.appendingPathComponent("channels.json")
-        if let data = try? Data(contentsOf: channelsFile),
-           let loaded = try? JSONDecoder().decode([LocalChannel].self, from: data) {
+        if let loaded = PersistenceHelpers.load([LocalChannel].self, from: channelsFile, label: "team channels") {
             channels = loaded
         } else {
             // Default channels on first launch
@@ -438,8 +437,7 @@ struct TeamNotesPanel: View {
 
         // Load messages
         let messagesFile = Self.storageDir.appendingPathComponent("messages.json")
-        if let data = try? Data(contentsOf: messagesFile),
-           let loaded = try? JSONDecoder().decode([LocalMessage].self, from: data) {
+        if let loaded = PersistenceHelpers.load([LocalMessage].self, from: messagesFile, label: "team messages") {
             messages = loaded
         } else {
             // Welcome messages
@@ -457,8 +455,7 @@ struct TeamNotesPanel: View {
 
         // Load DMs
         let dmsFile = Self.storageDir.appendingPathComponent("dms.json")
-        if let data = try? Data(contentsOf: dmsFile),
-           let loaded = try? JSONDecoder().decode([DirectConversation].self, from: data) {
+        if let loaded = PersistenceHelpers.load([DirectConversation].self, from: dmsFile, label: "direct messages") {
             directMessages = loaded
         }
 
@@ -470,16 +467,12 @@ struct TeamNotesPanel: View {
 
     private func saveChannels() {
         let file = Self.storageDir.appendingPathComponent("channels.json")
-        if let data = try? JSONEncoder().encode(channels) {
-            try? data.write(to: file, options: .atomic)
-        }
+        PersistenceHelpers.save(channels, to: file, label: "team channels")
     }
 
     private func saveMessages() {
         let file = Self.storageDir.appendingPathComponent("messages.json")
-        if let data = try? JSONEncoder().encode(messages) {
-            try? data.write(to: file, options: .atomic)
-        }
+        PersistenceHelpers.save(messages, to: file, label: "team messages")
     }
 }
 

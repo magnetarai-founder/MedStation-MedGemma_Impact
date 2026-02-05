@@ -194,7 +194,7 @@ final class PluginManager {
     // MARK: - Private Helpers
 
     private func ensureDirectory() {
-        try? FileManager.default.createDirectory(at: pluginsDirectory, withIntermediateDirectories: true)
+        PersistenceHelpers.ensureDirectory(at: pluginsDirectory, label: "plugins directory")
     }
 
     private func registerCapability(_ capability: PluginCapability, plugin: InstalledPlugin) {

@@ -295,7 +295,7 @@ struct SheetsPanel: View {
     private static var storageDir: URL {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("MagnetarStudio/workspace/sheets", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        PersistenceHelpers.ensureDirectory(at: dir, label: "sheets storage")
         return dir
     }
 
@@ -307,8 +307,7 @@ struct SheetsPanel: View {
 
         var loaded: [SpreadsheetDocument] = []
         for file in files {
-            if let data = try? Data(contentsOf: file),
-               let sheet = try? JSONDecoder().decode(SpreadsheetDocument.self, from: data) {
+            if let sheet = PersistenceHelpers.load(SpreadsheetDocument.self, from: file, label: "spreadsheet") {
                 loaded.append(sheet)
             }
         }
@@ -319,14 +318,12 @@ struct SheetsPanel: View {
 
     private func saveSheetToDisk(_ sheet: SpreadsheetDocument) {
         let file = Self.storageDir.appendingPathComponent("\(sheet.id.uuidString).json")
-        if let data = try? JSONEncoder().encode(sheet) {
-            try? data.write(to: file, options: .atomic)
-        }
+        PersistenceHelpers.save(sheet, to: file, label: "spreadsheet '\(sheet.title)'")
     }
 
     private func deleteSheetFromDisk(_ sheet: SpreadsheetDocument) {
         let file = Self.storageDir.appendingPathComponent("\(sheet.id.uuidString).json")
-        try? FileManager.default.removeItem(at: file)
+        PersistenceHelpers.remove(at: file, label: "spreadsheet '\(sheet.title)'")
     }
 }
 

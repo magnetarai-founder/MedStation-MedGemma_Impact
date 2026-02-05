@@ -8,6 +8,7 @@
 
 import SwiftUI
 import Charts
+import os
 
 struct ChartBlockView: View {
     @Binding var config: ChartConfiguration
@@ -157,7 +158,12 @@ struct ChartBlockView: View {
             panel.nameFieldStringValue = "\(config.title.isEmpty ? "chart" : config.title).png"
 
             guard panel.runModal() == .OK, let url = panel.url else { return }
-            try? data.write(to: url)
+            do {
+                try data.write(to: url, options: .atomic)
+            } catch {
+                Logger(subsystem: "com.magnetar.studio", category: "ChartExport")
+                    .error("Failed to export chart: \(error.localizedDescription)")
+            }
         }
     }
 }

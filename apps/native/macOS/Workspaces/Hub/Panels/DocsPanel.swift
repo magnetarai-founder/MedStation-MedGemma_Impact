@@ -277,7 +277,7 @@ struct DocsPanel: View {
     private static var storageDir: URL {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("MagnetarStudio/workspace/docs", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        PersistenceHelpers.ensureDirectory(at: dir, label: "docs storage")
         return dir
     }
 
@@ -289,8 +289,7 @@ struct DocsPanel: View {
 
         var loaded: [WorkspaceDocument] = []
         for file in files {
-            if let data = try? Data(contentsOf: file),
-               let doc = try? JSONDecoder().decode(WorkspaceDocument.self, from: data) {
+            if let doc = PersistenceHelpers.load(WorkspaceDocument.self, from: file, label: "document") {
                 loaded.append(doc)
             }
         }
@@ -313,14 +312,12 @@ struct DocsPanel: View {
 
     private func saveDocToDisk(_ doc: WorkspaceDocument) {
         let file = Self.storageDir.appendingPathComponent("\(doc.id.uuidString).json")
-        if let data = try? JSONEncoder().encode(doc) {
-            try? data.write(to: file, options: .atomic)
-        }
+        PersistenceHelpers.save(doc, to: file, label: "document '\(doc.title)'")
     }
 
     private func deleteDocFromDisk(_ doc: WorkspaceDocument) {
         let file = Self.storageDir.appendingPathComponent("\(doc.id.uuidString).json")
-        try? FileManager.default.removeItem(at: file)
+        PersistenceHelpers.remove(at: file, label: "document '\(doc.title)'")
     }
 
     private func formatDate(_ date: Date) -> String {

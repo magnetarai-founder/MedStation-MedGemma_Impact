@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct PluginManagerView: View {
     @State private var pluginManager = PluginManager.shared
@@ -53,6 +54,15 @@ struct PluginManagerView: View {
         .task {
             if pluginManager.isLoading {
                 await pluginManager.loadAll()
+            }
+        }
+        .fileImporter(
+            isPresented: $showInstallPanel,
+            allowedContentTypes: [.folder],
+            allowsMultipleSelection: false
+        ) { result in
+            if case .success(let urls) = result, let url = urls.first {
+                try? pluginManager.installPlugin(from: url)
             }
         }
     }

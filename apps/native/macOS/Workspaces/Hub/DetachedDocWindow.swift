@@ -59,12 +59,10 @@ struct DetachedDocEditWindow: View {
             .appendingPathComponent("MagnetarStudio/workspace/docs", isDirectory: true)
         let file = dir.appendingPathComponent("\(info.id.uuidString).json")
 
-        if let data = try? Data(contentsOf: file),
-           let doc = try? JSONDecoder().decode(WorkspaceDocument.self, from: data) {
+        if let doc = PersistenceHelpers.load(WorkspaceDocument.self, from: file, label: "detached document") {
             document = doc
             editorContent = doc.content
         } else {
-            // Create new if not found
             var doc = WorkspaceDocument(id: info.id, title: info.title)
             doc.content = ""
             document = doc
@@ -76,11 +74,9 @@ struct DetachedDocEditWindow: View {
         guard let doc = document else { return }
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("MagnetarStudio/workspace/docs", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        PersistenceHelpers.ensureDirectory(at: dir, label: "detached docs")
         let file = dir.appendingPathComponent("\(doc.id.uuidString).json")
-        if let data = try? JSONEncoder().encode(doc) {
-            try? data.write(to: file, options: .atomic)
-        }
+        PersistenceHelpers.save(doc, to: file, label: "detached document '\(doc.title)'")
     }
 }
 
@@ -137,8 +133,7 @@ struct DetachedSheetWindow: View {
             .appendingPathComponent("MagnetarStudio/workspace/sheets", isDirectory: true)
         let file = dir.appendingPathComponent("\(info.id.uuidString).json")
 
-        if let data = try? Data(contentsOf: file),
-           let s = try? JSONDecoder().decode(SpreadsheetDocument.self, from: data) {
+        if let s = PersistenceHelpers.load(SpreadsheetDocument.self, from: file, label: "detached spreadsheet") {
             sheet = s
         } else {
             sheet = SpreadsheetDocument(id: info.id, title: info.title)
@@ -149,11 +144,9 @@ struct DetachedSheetWindow: View {
         guard let s = sheet else { return }
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("MagnetarStudio/workspace/sheets", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        PersistenceHelpers.ensureDirectory(at: dir, label: "detached sheets")
         let file = dir.appendingPathComponent("\(s.id.uuidString).json")
-        if let data = try? JSONEncoder().encode(s) {
-            try? data.write(to: file, options: .atomic)
-        }
+        PersistenceHelpers.save(s, to: file, label: "detached spreadsheet '\(s.title)'")
     }
 }
 

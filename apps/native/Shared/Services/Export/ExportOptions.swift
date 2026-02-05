@@ -49,7 +49,7 @@ enum DocumentExportFormat: String, Codable, CaseIterable, Identifiable, Sendable
 // MARK: - Export Content
 
 /// Wraps different content types that can be exported.
-enum ExportContent {
+enum ExportContent: Sendable {
     case blocks([DocumentBlock], title: String)
     case spreadsheet(SpreadsheetDocument)
     case plainText(String, title: String)

@@ -89,10 +89,11 @@ final class AutomationTriggerService {
 
         if let key = debounceKey {
             debounceTimers[key]?.cancel()
-            debounceTimers[key] = Task {
+            debounceTimers[key] = Task { [weak self] in
                 try? await Task.sleep(for: .seconds(debounceInterval))
                 guard !Task.isCancelled else { return }
                 await AutomationStore.shared.evaluate(context: context)
+                self?.debounceTimers.removeValue(forKey: key)
             }
         } else {
             Task {

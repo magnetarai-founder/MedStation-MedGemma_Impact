@@ -76,9 +76,13 @@ final class TemplateStore {
         var loaded: [WorkspaceTemplate] = []
 
         for file in files {
-            if let data = try? Data(contentsOf: file),
-               let template = try? decoder.decode(WorkspaceTemplate.self, from: data) {
+            // TemplateStore uses iso8601 date decoding — can't use PersistenceHelpers.load directly
+            do {
+                let data = try Data(contentsOf: file)
+                let template = try decoder.decode(WorkspaceTemplate.self, from: data)
                 loaded.append(template)
+            } catch {
+                logger.error("Failed to load template from \(file.lastPathComponent): \(error.localizedDescription)")
             }
         }
 
@@ -155,23 +159,27 @@ final class TemplateStore {
     private static var userTemplatesDir: URL {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("MagnetarStudio/templates", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        PersistenceHelpers.ensureDirectory(at: dir, label: "templates storage")
         return dir
     }
 
     private func saveToDisk(_ template: WorkspaceTemplate) {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = .prettyPrinted
-
         let file = Self.userTemplatesDir.appendingPathComponent("\(template.id.uuidString).json")
-        if let data = try? encoder.encode(template) {
-            try? data.write(to: file, options: .atomic)
+        // TemplateStore uses iso8601 date encoding, so we use a custom encoder
+        do {
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            encoder.outputFormatting = .prettyPrinted
+            let data = try encoder.encode(template)
+            try data.write(to: file, options: .atomic)
+        } catch {
+            Logger(subsystem: "com.magnetar.studio", category: "Persistence")
+                .error("Failed to save template '\(template.name)': \(error.localizedDescription)")
         }
     }
 
     private func deleteFromDisk(_ template: WorkspaceTemplate) {
         let file = Self.userTemplatesDir.appendingPathComponent("\(template.id.uuidString).json")
-        try? FileManager.default.removeItem(at: file)
+        PersistenceHelpers.remove(at: file, label: "template '\(template.name)'")
     }
 }
