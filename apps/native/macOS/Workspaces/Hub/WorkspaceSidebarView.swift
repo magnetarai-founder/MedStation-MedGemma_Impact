@@ -61,20 +61,29 @@ struct WorkspaceSidebarView: View {
 
     // MARK: - Footer
 
+    @AppStorage("workspace.teamEnabled") private var teamEnabled = false
+
     private var sidebarFooter: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 0) {
             Divider()
 
-            HStack {
-                Image(systemName: "externaldrive")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.tertiary)
-                Text("Local Storage")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.tertiary)
+            // Team mode toggle
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(teamEnabled ? Color.green : Color.gray.opacity(0.4))
+                    .frame(width: 7, height: 7)
+
+                Text(teamEnabled ? "Team Mode" : "Personal")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+
                 Spacer()
+
+                Toggle("", isOn: $teamEnabled)
+                    .toggleStyle(.switch)
+                    .controlSize(.mini)
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 14)
             .padding(.vertical, 8)
         }
     }

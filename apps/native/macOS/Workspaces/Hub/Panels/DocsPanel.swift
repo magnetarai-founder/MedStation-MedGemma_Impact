@@ -18,6 +18,8 @@ struct DocsPanel: View {
     @State private var searchText = ""
     @State private var isLoading = true
     @State private var showDocsList = true
+    @State private var collaborators: [CollaboratorPresence] = []
+    @AppStorage("workspace.teamEnabled") private var teamEnabled = false
 
     var body: some View {
         HStack(spacing: 0) {
@@ -35,6 +37,12 @@ struct DocsPanel: View {
                     DocsToolbar(
                         document: $documents[docIndex],
                         showDocsList: $showDocsList
+                    )
+
+                    // Team collab indicator
+                    TeamCollabIndicator(
+                        collaborators: collaborators,
+                        documentTitle: documents[docIndex].title
                     )
 
                     Divider()

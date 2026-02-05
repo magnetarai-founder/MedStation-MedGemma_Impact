@@ -19,6 +19,8 @@ struct SheetsPanel: View {
     @State private var searchText = ""
     @State private var isLoading = true
     @State private var showSheetsList = true
+    @State private var collaborators: [CollaboratorPresence] = []
+    @AppStorage("workspace.teamEnabled") private var teamEnabled = false
 
     var body: some View {
         HStack(spacing: 0) {
@@ -38,6 +40,12 @@ struct SheetsPanel: View {
                         selectedCell: $selectedCell,
                         formulaText: $formulaText,
                         onFormulaCommit: { commitFormula(at: sheetIndex) }
+                    )
+
+                    // Team collab indicator
+                    TeamCollabIndicator(
+                        collaborators: collaborators,
+                        documentTitle: spreadsheets[sheetIndex].title
                     )
 
                     Divider()

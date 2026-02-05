@@ -50,8 +50,17 @@ struct NotesPanel: View {
     @State private var editorContent = ""
     @State private var searchText = ""
     @State private var isLoading = true
+    @AppStorage("workspace.teamEnabled") private var teamEnabled = false
 
     var body: some View {
+        if teamEnabled {
+            TeamNotesPanel()
+        } else {
+            personalNotesView
+        }
+    }
+
+    private var personalNotesView: some View {
         HStack(spacing: 0) {
             // Notes list
             notesList
