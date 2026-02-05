@@ -391,7 +391,7 @@ final class EnhancedContextBridge: ObservableObject {
     // MARK: - Persistence
 
     private func loadSessionGraph(_ sessionId: UUID) async -> SessionGraph? {
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let documentsPath = (FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
         let graphPath = documentsPath
             .appendingPathComponent(".magnetar_studio/sessions")
             .appendingPathComponent("\(sessionId.uuidString)/graph.json")
@@ -410,7 +410,7 @@ final class EnhancedContextBridge: ObservableObject {
     }
 
     private func saveSessionGraph(_ sessionId: UUID) async {
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let documentsPath = (FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
         let sessionsPath = documentsPath.appendingPathComponent(".magnetar_studio/sessions/\(sessionId.uuidString)")
 
         do {

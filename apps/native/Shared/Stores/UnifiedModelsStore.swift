@@ -311,7 +311,7 @@ enum ModelBackend: String, CaseIterable, Identifiable {
 }
 
 /// Unified model representation
-struct UnifiedModel: Codable, Identifiable, Hashable {
+struct UnifiedModel: Codable, Identifiable, Hashable, Sendable {
     let id: String
     let name: String
     let source: String  // "ollama" or "huggingface"
@@ -345,7 +345,7 @@ struct UnifiedModel: Codable, Identifiable, Hashable {
 }
 
 /// Response from unified models endpoint
-private struct UnifiedModelsResponse: Codable {
+private struct UnifiedModelsResponse: Codable, Sendable {
     let models: [UnifiedModel]
     let ollamaCount: Int
     let huggingfaceCount: Int

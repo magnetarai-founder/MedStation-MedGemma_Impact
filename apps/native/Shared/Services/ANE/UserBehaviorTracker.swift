@@ -41,7 +41,7 @@ final class UserBehaviorTracker: ObservableObject {
     // MARK: - Initialization
 
     init() {
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let documentsPath = (FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
         self.storageURL = documentsPath.appendingPathComponent(".magnetar_studio/user_model/behavior_patterns.json")
 
         encoder.outputFormatting = .prettyPrinted

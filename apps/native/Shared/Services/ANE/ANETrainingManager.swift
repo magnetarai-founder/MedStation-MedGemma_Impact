@@ -45,7 +45,7 @@ final class ANETrainingManager: ObservableObject {
     // MARK: - Initialization
 
     init() {
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let documentsPath = (FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
         let basePath = documentsPath.appendingPathComponent(".magnetar_studio/user_model")
         self.dataURL = basePath.appendingPathComponent("training_data.json")
         self.modelURL = basePath.appendingPathComponent("UserBehavior.mlmodelc")
@@ -296,10 +296,18 @@ final class ANETrainingManager: ObservableObject {
 
     // MARK: - Errors
 
-    enum TrainingError: Error {
+    enum TrainingError: LocalizedError {
         case invalidData
         case trainingFailed
         case modelNotUpdatable
+
+        var errorDescription: String? {
+            switch self {
+            case .invalidData: return "Training data is invalid or insufficient"
+            case .trainingFailed: return "Model training failed"
+            case .modelNotUpdatable: return "Model does not support on-device updates"
+            }
+        }
     }
 }
 

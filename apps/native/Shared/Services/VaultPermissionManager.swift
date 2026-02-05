@@ -331,13 +331,13 @@ class VaultPermissionManager {
     // MARK: - Persistence
 
     private var permissionsURL: URL {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        (FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
             .appendingPathComponent("MagnetarStudio")
             .appendingPathComponent("vault_permissions.json")
     }
 
     private var auditLogURL: URL {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        (FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
             .appendingPathComponent("MagnetarStudio")
             .appendingPathComponent("vault_audit.json")
     }

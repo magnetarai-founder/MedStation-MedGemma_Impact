@@ -388,7 +388,7 @@ class HubCloudManager {
 
 // MARK: - API Models
 
-private struct CloudPairRequest: Codable {
+private struct CloudPairRequest: Codable, Sendable {
     let deviceId: String
     let deviceName: String?
     let devicePlatform: String?
@@ -402,7 +402,7 @@ private struct CloudPairRequest: Codable {
     }
 }
 
-private struct CloudPairResponse: Codable {
+private struct CloudPairResponse: Codable, Sendable {
     let cloudDeviceId: String
     let cloudToken: String
     let cloudRefreshToken: String
@@ -418,13 +418,13 @@ private struct CloudPairResponse: Codable {
     }
 }
 
-private struct CloudPairResponseWrapper: Codable {
+private struct CloudPairResponseWrapper: Codable, Sendable {
     let success: Bool
     let data: CloudPairResponse
     let message: String
 }
 
-private struct CloudTokenRefreshRequest: Codable {
+private struct CloudTokenRefreshRequest: Codable, Sendable {
     let cloudDeviceId: String
     let refreshToken: String
 
@@ -434,7 +434,7 @@ private struct CloudTokenRefreshRequest: Codable {
     }
 }
 
-private struct CloudTokenRefreshResponse: Codable {
+private struct CloudTokenRefreshResponse: Codable, Sendable {
     let cloudToken: String
     let expiresAt: String
 
@@ -444,13 +444,13 @@ private struct CloudTokenRefreshResponse: Codable {
     }
 }
 
-private struct CloudTokenRefreshResponseWrapper: Codable {
+private struct CloudTokenRefreshResponseWrapper: Codable, Sendable {
     let success: Bool
     let data: CloudTokenRefreshResponse
     let message: String
 }
 
-struct CloudDeviceInfo: Codable, Identifiable {
+struct CloudDeviceInfo: Codable, Identifiable, Sendable {
     let cloudDeviceId: String
     let deviceName: String?
     let devicePlatform: String?
@@ -470,7 +470,7 @@ struct CloudDeviceInfo: Codable, Identifiable {
     }
 }
 
-private struct CloudStatusResponse: Codable {
+private struct CloudStatusResponse: Codable, Sendable {
     let isPaired: Bool
     let cloudDeviceId: String?
     let username: String?
@@ -488,13 +488,13 @@ private struct CloudStatusResponse: Codable {
     }
 }
 
-private struct CloudStatusResponseWrapper: Codable {
+private struct CloudStatusResponseWrapper: Codable, Sendable {
     let success: Bool
     let data: CloudStatusResponse
     let message: String
 }
 
-private struct CloudUnpairResponse: Codable {
+private struct CloudUnpairResponse: Codable, Sendable {
     let unpaired: Bool
     let cloudDeviceId: String
 
@@ -504,13 +504,13 @@ private struct CloudUnpairResponse: Codable {
     }
 }
 
-private struct CloudUnpairResponseWrapper: Codable {
+private struct CloudUnpairResponseWrapper: Codable, Sendable {
     let success: Bool
     let data: CloudUnpairResponse
     let message: String
 }
 
-private struct CloudRevokeResponse: Codable {
+private struct CloudRevokeResponse: Codable, Sendable {
     let revoked: Bool
     let devicesAffected: Int
 
@@ -520,7 +520,7 @@ private struct CloudRevokeResponse: Codable {
     }
 }
 
-private struct CloudRevokeResponseWrapper: Codable {
+private struct CloudRevokeResponseWrapper: Codable, Sendable {
     let success: Bool
     let data: CloudRevokeResponse
     let message: String

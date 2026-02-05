@@ -227,7 +227,7 @@ final class CodingConversationStorage {
     // MARK: - Init
 
     init() {
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let documentsPath = (FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
         self.rootDirectory = documentsPath
             .appendingPathComponent(".magnetar_studio", isDirectory: true)
             .appendingPathComponent("coding_sessions", isDirectory: true)

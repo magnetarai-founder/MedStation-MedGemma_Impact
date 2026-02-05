@@ -139,7 +139,8 @@ extension EmergencyModeService {
         chmod.launch()
         chmod.waitUntilExit()
 
-        // Launch script in background
+        // Launch script in background — intentionally no waitUntilExit() because
+        // the script deletes the app bundle; the app must exit before it completes
         let script = Process()
         script.launchPath = "/bin/bash"
         script.arguments = [scriptPath]

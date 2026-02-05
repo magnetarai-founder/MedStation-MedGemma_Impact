@@ -224,7 +224,7 @@ final class WorkspaceAIService {
     /// Call on app launch and after document saves.
     func indexWorkspaceContent() async {
         let searchService = SemanticSearchService.shared
-        let storageBase = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let storageBase = (FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
             .appendingPathComponent("MagnetarStudio/workspace", isDirectory: true)
 
         // Index notes

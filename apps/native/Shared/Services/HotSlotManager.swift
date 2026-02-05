@@ -16,7 +16,7 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "HotSlot
 // MARK: - Models
 
 /// Hot slot assignment (global, not per-user)
-struct HotSlot: Codable, Identifiable {
+struct HotSlot: Codable, Identifiable, Sendable {
     let slotNumber: Int
     let modelId: String?  // nil if slot is empty
     let modelName: String?
@@ -30,7 +30,7 @@ struct HotSlot: Codable, Identifiable {
 }
 
 /// Model available for hot slot assignment
-struct AssignableModel: Codable, Identifiable {
+struct AssignableModel: Codable, Identifiable, Sendable {
     let id: String
     let name: String
     let displayName: String
@@ -41,7 +41,7 @@ struct AssignableModel: Codable, Identifiable {
 }
 
 /// Hot slot response from backend
-struct HotSlotsResponse: Codable {
+struct HotSlotsResponse: Codable, Sendable {
     let slots: [HotSlotData]
     let totalSlots: Int
     let occupied: Int
@@ -56,7 +56,7 @@ struct HotSlotsResponse: Codable {
 }
 
 /// Individual hot slot data from backend
-struct HotSlotData: Codable {
+struct HotSlotData: Codable, Sendable {
     let slotNumber: Int
     let modelId: String?
     let modelName: String?
@@ -75,7 +75,7 @@ struct HotSlotData: Codable {
 }
 
 /// Assign to slot response
-struct AssignSlotResponse: Codable {
+struct AssignSlotResponse: Codable, Sendable {
     let success: Bool
     let model: String
     let slotNumber: Int
@@ -90,7 +90,7 @@ struct AssignSlotResponse: Codable {
 }
 
 /// Remove from slot response
-struct RemoveSlotResponse: Codable {
+struct RemoveSlotResponse: Codable, Sendable {
     let success: Bool
     let slotNumber: Int
     let model: String?

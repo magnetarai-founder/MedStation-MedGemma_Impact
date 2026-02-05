@@ -678,7 +678,7 @@ final class CodeEmbeddingService {
     // MARK: - Persistence
 
     private var indexStatePath: URL {
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let dir = (FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
             .appendingPathComponent("MagnetarStudio")
             .appendingPathComponent("code_index")
         do {

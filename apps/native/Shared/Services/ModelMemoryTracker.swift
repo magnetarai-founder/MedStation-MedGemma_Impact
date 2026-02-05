@@ -113,23 +113,6 @@ class ModelMemoryTracker {
         }
     }
 
-    /// Check if loading a model would exceed available memory
-    func canLoadModel(_ modelId: String, maxMemoryGB: Double = 32.0) -> Bool {
-        guard let modelSize = modelSizes[modelId] else {
-            // Unknown size, assume it's OK
-            return true
-        }
-
-        let afterLoadingMemory = totalMemoryUsed + modelSize
-        return afterLoadingMemory <= maxMemoryGB
-    }
-
-    /// Get estimated memory after loading a model
-    func estimateMemoryAfterLoading(_ modelId: String) -> Double? {
-        guard let modelSize = modelSizes[modelId] else { return nil }
-        return totalMemoryUsed + modelSize
-    }
-
     // MARK: - Private Helpers
 
     private func calculateTotalMemoryUsed() async {
@@ -167,22 +150,3 @@ class ModelMemoryTracker {
     }
 }
 
-// MARK: - Convenience Extensions
-
-extension ModelMemoryTracker {
-    /// Get all models sorted by size (largest first)
-    func getModelsSortedBySize() -> [(modelId: String, sizeGB: Double)] {
-        return modelSizes.sorted { $0.value > $1.value }
-            .map { (modelId: $0.key, sizeGB: $0.value) }
-    }
-
-    /// Get memory pressure level (0.0-1.0)
-    func getMemoryPressure(maxMemoryGB: Double = 32.0) -> Double {
-        return min(totalMemoryUsed / maxMemoryGB, 1.0)
-    }
-
-    /// Check if we're at high memory pressure (>80%)
-    var isHighMemoryPressure: Bool {
-        return getMemoryPressure() > 0.8
-    }
-}

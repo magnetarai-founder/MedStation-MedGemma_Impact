@@ -25,7 +25,7 @@ final class AutomationStore {
     // MARK: - Persistence
 
     private static var rulesDir: URL {
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let dir = (FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
             .appendingPathComponent("MagnetarStudio/automations", isDirectory: true)
         PersistenceHelpers.ensureDirectory(at: dir, label: "automations storage")
         return dir

@@ -123,7 +123,7 @@ final class CoreMLModelManager {
     // MARK: - Initialization
 
     private init() {
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let documentsPath = (FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
         self.modelsDirectory = documentsPath.appendingPathComponent(".magnetar_ai/models", isDirectory: true)
 
         // Create models directory

@@ -40,7 +40,7 @@ final class VectorStore: ObservableObject {
     // MARK: - Initialization
 
     init(dbPath: URL? = nil) {
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let documentsPath = (FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
         self.dbPath = dbPath ?? documentsPath.appendingPathComponent(".magnetar_studio/rag/vectors.sqlite")
 
         Task {

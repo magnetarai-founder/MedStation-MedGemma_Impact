@@ -55,7 +55,7 @@ struct DetachedDocEditWindow: View {
     }
 
     private func loadDocument() {
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let dir = (FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
             .appendingPathComponent("MagnetarStudio/workspace/docs", isDirectory: true)
         let file = dir.appendingPathComponent("\(info.id.uuidString).json")
 
@@ -72,7 +72,7 @@ struct DetachedDocEditWindow: View {
 
     private func saveDocument() {
         guard let doc = document else { return }
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let dir = (FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
             .appendingPathComponent("MagnetarStudio/workspace/docs", isDirectory: true)
         PersistenceHelpers.ensureDirectory(at: dir, label: "detached docs")
         let file = dir.appendingPathComponent("\(doc.id.uuidString).json")
@@ -129,7 +129,7 @@ struct DetachedSheetWindow: View {
     }
 
     private func loadSheet() {
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let dir = (FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
             .appendingPathComponent("MagnetarStudio/workspace/sheets", isDirectory: true)
         let file = dir.appendingPathComponent("\(info.id.uuidString).json")
 
@@ -142,7 +142,7 @@ struct DetachedSheetWindow: View {
 
     private func saveSheet() {
         guard let s = sheet else { return }
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let dir = (FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
             .appendingPathComponent("MagnetarStudio/workspace/sheets", isDirectory: true)
         PersistenceHelpers.ensureDirectory(at: dir, label: "detached sheets")
         let file = dir.appendingPathComponent("\(s.id.uuidString).json")

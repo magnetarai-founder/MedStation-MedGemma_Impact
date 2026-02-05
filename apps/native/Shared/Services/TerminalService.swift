@@ -9,12 +9,12 @@ import Foundation
 
 // MARK: - Models
 
-struct TerminalSessionsResponse: Codable {
+struct TerminalSessionsResponse: Codable, Sendable {
     let sessions: [TerminalSession]
     let count: Int
 }
 
-struct TerminalSession: Codable, Identifiable {
+struct TerminalSession: Codable, Identifiable, Sendable {
     let id: String
     let active: Bool
     let createdAt: String
@@ -67,7 +67,7 @@ class TerminalService {
 
 // MARK: - Spawn Response
 
-struct SpawnTerminalResponse: Codable {
+struct SpawnTerminalResponse: Codable, Sendable {
     let terminalId: String
     let terminalApp: String
     let workspaceRoot: String

@@ -45,7 +45,7 @@ final class SmartForgetting: ObservableObject {
         self.behaviorTracker = behaviorTracker ?? .shared
         self.predictor = predictor ?? .shared
 
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let documentsPath = (FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
         self.storageURL = documentsPath.appendingPathComponent(".magnetar_studio/user_model/forgetting_thresholds.json")
 
         loadThresholds()

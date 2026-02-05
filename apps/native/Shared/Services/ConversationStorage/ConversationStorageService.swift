@@ -47,7 +47,7 @@ final class ConversationStorageService {
     // MARK: - Initialization
 
     init() {
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let documentsPath = (FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
         self.rootDirectory = documentsPath.appendingPathComponent(".magnetar_studio", isDirectory: true)
 
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]

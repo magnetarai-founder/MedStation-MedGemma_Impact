@@ -291,7 +291,7 @@ struct ModelManagementSettingsView: View {
 
 // MARK: - Supporting Models
 
-struct OllamaModelWithTags: Codable, Identifiable {
+struct OllamaModelWithTags: Codable, Identifiable, Sendable {
     let id: String
     let name: String
     let size: Int64

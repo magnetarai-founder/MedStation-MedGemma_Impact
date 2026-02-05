@@ -20,7 +20,7 @@ private struct DocumentDeleteResponse: Decodable {
     let id: String
 }
 
-public struct Team: Identifiable, Codable {
+public struct Team: Identifiable, Codable, Sendable {
     public let id: String
     public let name: String
     public let description: String?
@@ -34,7 +34,7 @@ public struct Team: Identifiable, Codable {
     }
 }
 
-public struct TeamDocument: Identifiable, Codable {
+public struct TeamDocument: Identifiable, Codable, Sendable {
     public let id: String
     public let title: String
     public let content: AnyCodable?
@@ -89,7 +89,7 @@ public struct TeamDocument: Identifiable, Codable {
 }
 
 /// Matches the backend /api/v1/diagnostics response structure
-public struct DiagnosticsStatus: Codable {
+public struct DiagnosticsStatus: Codable, Sendable {
     public let system: SystemStatus
     public let metal: MetalStatus
     public let ollama: OllamaStatus
@@ -98,7 +98,7 @@ public struct DiagnosticsStatus: Codable {
     public let timestamp: Double?
     public let partial: Bool?
 
-    public struct SystemStatus: Codable {
+    public struct SystemStatus: Codable, Sendable {
         public let os: String?
         public let cpuPercent: Double?
         public let ram: RAMStatus?
@@ -110,7 +110,7 @@ public struct DiagnosticsStatus: Codable {
             case ram, disk
         }
 
-        public struct RAMStatus: Codable {
+        public struct RAMStatus: Codable, Sendable {
             public let totalGb: Double?
             public let usedGb: Double?
 
@@ -120,7 +120,7 @@ public struct DiagnosticsStatus: Codable {
             }
         }
 
-        public struct DiskStatus: Codable {
+        public struct DiskStatus: Codable, Sendable {
             public let totalGb: Double?
             public let usedGb: Double?
 
@@ -131,7 +131,7 @@ public struct DiagnosticsStatus: Codable {
         }
     }
 
-    public struct MetalStatus: Codable {
+    public struct MetalStatus: Codable, Sendable {
         public let available: Bool
         public let initialized: Bool?
         public let device: String?
@@ -145,7 +145,7 @@ public struct DiagnosticsStatus: Codable {
         }
     }
 
-    public struct OllamaStatus: Codable {
+    public struct OllamaStatus: Codable, Sendable {
         public let available: Bool
         public let modelCount: Int?
         public let models: [String]?
@@ -159,14 +159,14 @@ public struct DiagnosticsStatus: Codable {
         }
     }
 
-    public struct P2PStatus: Codable {
+    public struct P2PStatus: Codable, Sendable {
         public let status: String?
         public let peers: Int?
         public let services: [String]?
         public let error: String?
     }
 
-    public struct DatabaseStatus: Codable {
+    public struct DatabaseStatus: Codable, Sendable {
         public let status: String?
         public let sizeMb: Double?
         public let tableCount: Int?
@@ -374,14 +374,14 @@ public final class TeamService {
 
 // MARK: - Channel Response Models
 
-private struct ChannelListResponse: Codable {
+private struct ChannelListResponse: Codable, Sendable {
     let channels: [TeamChannel]
     let total: Int
 }
 
 // MARK: - Message Models
 
-public struct TeamMessage: Identifiable, Codable {
+public struct TeamMessage: Identifiable, Codable, Sendable {
     public let id: String
     public let channelId: String
     public let senderId: String
@@ -423,7 +423,7 @@ public struct TeamMessage: Identifiable, Codable {
     }
 }
 
-public struct MessageListResponse: Codable {
+public struct MessageListResponse: Codable, Sendable {
     public let channelId: String
     public let messages: [TeamMessage]
     public let total: Int
@@ -438,7 +438,7 @@ public struct MessageListResponse: Codable {
 
 // MARK: - Permissions Models
 
-public struct UserPermissions: Codable {
+public struct UserPermissions: Codable, Sendable {
     public let canAccessDocuments: Bool
     public let canAccessAutomation: Bool
     public let canAccessVault: Bool
@@ -452,7 +452,7 @@ public struct UserPermissions: Codable {
 
 // MARK: - P2P Network Models
 
-public struct P2PNetworkStatus: Codable {
+public struct P2PNetworkStatus: Codable, Sendable {
     public let peerId: String
     public let isConnected: Bool
     public let discoveredPeers: Int
@@ -470,7 +470,7 @@ public struct P2PNetworkStatus: Codable {
 
 // MARK: - Channel Models
 
-public struct TeamChannel: Identifiable, Codable {
+public struct TeamChannel: Identifiable, Codable, Sendable {
     public let id: String
     public let name: String
     public let type: String  // "public", "private", "direct"
@@ -499,7 +499,7 @@ public struct TeamChannel: Identifiable, Codable {
 
 // MARK: - Vault Models
 
-public struct VaultSetupResponse: Codable {
+public struct VaultSetupResponse: Codable, Sendable {
     public let status: String
     public let message: String
     public let vaultId: String?
@@ -510,7 +510,7 @@ public struct VaultSetupResponse: Codable {
     }
 }
 
-public struct VaultStatusResponse: Codable {
+public struct VaultStatusResponse: Codable, Sendable {
     public let initialized: Bool
     public let locked: Bool
     public let message: String?

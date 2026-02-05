@@ -79,7 +79,7 @@ class ModelRecommendationService {
 
 // MARK: - Models
 
-struct RecommendationsResponse: Codable {
+struct RecommendationsResponse: Codable, Sendable {
     let recommendations: [BackendRecommendedModel]
     let totalCount: Int
     let filteredByHardware: Bool
@@ -87,7 +87,7 @@ struct RecommendationsResponse: Codable {
     let personalizationActive: Bool
 }
 
-struct BackendRecommendedModel: Codable, Identifiable {
+struct BackendRecommendedModel: Codable, Identifiable, Sendable {
     let modelName: String
     let displayName: String
     let description: String
@@ -105,13 +105,13 @@ struct BackendRecommendedModel: Codable, Identifiable {
     var id: String { modelName }
 }
 
-struct ModelCompatibilityInfo: Codable {
+struct ModelCompatibilityInfo: Codable, Sendable {
     let performance: String  // "excellent", "good", "fair", "insufficient"
     let reason: String
     let estimatedMemoryUsage: Double?
 }
 
-struct RecommendationHealthResponse: Codable {
+struct RecommendationHealthResponse: Codable, Sendable {
     let status: String
     let version: String
     let lastUpdated: String

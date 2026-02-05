@@ -241,19 +241,19 @@ final class OllamaService {
 
 // MARK: - Models
 
-struct OllamaProgress: Codable {
+struct OllamaProgress: Codable, Sendable {
     let status: String  // "progress", "completed", "error"
     let message: String
     let model: String
 }
 
-struct OllamaOperationResult: Codable {
+struct OllamaOperationResult: Codable, Sendable {
     let status: String
     let message: String
     let model: String
 }
 
-struct OllamaVersion: Codable {
+struct OllamaVersion: Codable, Sendable {
     let status: String
     let version: String?
     let installed: Bool

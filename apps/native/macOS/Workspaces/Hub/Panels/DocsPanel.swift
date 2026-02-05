@@ -275,7 +275,7 @@ struct DocsPanel: View {
     // MARK: - Persistence
 
     private static var storageDir: URL {
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let dir = (FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
             .appendingPathComponent("MagnetarStudio/workspace/docs", isDirectory: true)
         PersistenceHelpers.ensureDirectory(at: dir, label: "docs storage")
         return dir

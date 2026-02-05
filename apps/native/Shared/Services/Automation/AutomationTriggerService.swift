@@ -7,7 +7,6 @@
 //
 
 import Foundation
-import Combine
 import os
 
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "AutomationTrigger")

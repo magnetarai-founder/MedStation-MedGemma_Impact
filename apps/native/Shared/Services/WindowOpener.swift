@@ -62,15 +62,6 @@ final class WindowOpener {
         logger.info("Opened new chat window")
     }
 
-    func openDocument(_ info: DetachedDocumentInfo) {
-        guard let opener = openDetachedDocument else {
-            logger.warning("openDetachedDocument not configured")
-            return
-        }
-        opener(info)
-        logger.info("Opened document window: \(info.fileName)")
-    }
-
     func openDocEditor(_ info: DetachedDocEditInfo) {
         guard let opener = openDetachedDocEdit else {
             logger.warning("openDetachedDocEdit not configured")
@@ -116,11 +107,6 @@ final class WindowOpener {
     func openInsightsWorkspace() {
         openWorkspace?("workspace-insights")
         logger.info("Opened Insights workspace")
-    }
-
-    func openTrustWorkspace() {
-        openWorkspace?("workspace-trust")
-        logger.info("Opened Trust workspace")
     }
 
     func openHubWorkspace() {

@@ -419,9 +419,10 @@ actor FileIndexStorage {
     private var entries: [UUID: IndexedFileEntry] = [:]
     private var accessLog: [FileAccessLogEntry] = []
     private let storageURL: URL
+    private var saveTask: Task<Void, Never>?
 
     init() {
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let documentsPath = (FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
         self.storageURL = documentsPath.appendingPathComponent(".magnetar_studio/file_index")
 
         Task {
@@ -466,7 +467,7 @@ actor FileIndexStorage {
             entries[entry.fileId] = entry
         }
 
-        Task { self.saveToDisk() }
+        saveTask = Task { self.saveToDisk() }
     }
 
     func recordAccess(
@@ -501,7 +502,7 @@ actor FileIndexStorage {
             accessLog = Array(accessLog.suffix(5000))
         }
 
-        Task { self.saveToDisk() }
+        saveTask = Task { self.saveToDisk() }
     }
 
     func pruneOldEntries(keepCount: Int) throws -> Int {
@@ -514,7 +515,7 @@ actor FileIndexStorage {
         let pruneCount = entries.count - toKeep.count
         entries = Dictionary(uniqueKeysWithValues: toKeep.map { ($0.fileId, $0) })
 
-        Task { self.saveToDisk() }
+        saveTask = Task { self.saveToDisk() }
         return pruneCount
     }
 

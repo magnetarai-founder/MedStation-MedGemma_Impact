@@ -413,7 +413,7 @@ struct TeamNotesPanel: View {
     // MARK: - Persistence
 
     private static var storageDir: URL {
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let dir = (FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
             .appendingPathComponent("MagnetarStudio/workspace/team", isDirectory: true)
         PersistenceHelpers.ensureDirectory(at: dir, label: "team storage")
         return dir

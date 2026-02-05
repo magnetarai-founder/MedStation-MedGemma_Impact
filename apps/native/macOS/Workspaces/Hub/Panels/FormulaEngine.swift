@@ -271,7 +271,7 @@ struct FormulaEngine {
 
 // MARK: - Formula Errors
 
-enum FormulaError: Error, Sendable {
+enum FormulaError: LocalizedError, Sendable {
     case parseError
     case invalidRange
     case invalidArgs
@@ -289,4 +289,6 @@ enum FormulaError: Error, Sendable {
         case .circularReference: return "#CIRC!"
         }
     }
+
+    var errorDescription: String? { displayString }
 }

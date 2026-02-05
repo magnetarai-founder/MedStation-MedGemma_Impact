@@ -145,7 +145,7 @@ struct AutomationEngine {
         }
 
         let note = WorkspaceNote(title: resolvedTitle, content: resolvedContent)
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let dir = (FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
             .appendingPathComponent("MagnetarStudio/workspace/notes", isDirectory: true)
         PersistenceHelpers.ensureDirectory(at: dir, label: "notes storage")
         let file = dir.appendingPathComponent("\(note.id.uuidString).json")
@@ -170,7 +170,7 @@ struct AutomationEngine {
             return
         }
 
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let dir = (FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
             .appendingPathComponent("MagnetarStudio/workspace/sheets", isDirectory: true)
         let file = dir.appendingPathComponent("\(sheetUUID.uuidString).json")
 

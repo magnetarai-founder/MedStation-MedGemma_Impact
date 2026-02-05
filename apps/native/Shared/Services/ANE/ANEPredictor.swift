@@ -86,7 +86,7 @@ final class ANEPredictor: ObservableObject {
     }
 
     private func getModelURL() -> URL {
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let documentsPath = (FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
         return documentsPath.appendingPathComponent(".magnetar_studio/user_model/UserBehavior.mlmodelc")
     }
 
