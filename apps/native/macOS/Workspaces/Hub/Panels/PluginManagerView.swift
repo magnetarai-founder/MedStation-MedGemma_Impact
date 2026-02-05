@@ -63,10 +63,12 @@ struct PluginManagerView: View {
             allowsMultipleSelection: false
         ) { result in
             if case .success(let urls) = result, let url = urls.first {
-                do {
-                    try pluginManager.installPlugin(from: url)
-                } catch {
-                    installError = error.localizedDescription
+                Task {
+                    do {
+                        try await pluginManager.installPlugin(from: url)
+                    } catch {
+                        installError = error.localizedDescription
+                    }
                 }
             }
         }

@@ -19,6 +19,9 @@ struct SpreadsheetGrid: View {
     private let headerHeight: CGFloat = 28
     private let cellHeight: CGFloat = 28
 
+    /// Shared engine for the current render pass — avoids creating one per cell.
+    private var engine: FormulaEngine { FormulaEngine(cells: document.cells) }
+
     var body: some View {
         ScrollView([.horizontal, .vertical]) {
             VStack(spacing: 0) {
@@ -116,7 +119,7 @@ struct SpreadsheetGrid: View {
             } else {
                 // Display mode
                 let displayValue = cell.isFormula
-                    ? FormulaEngine(cells: document.cells).evaluate(cell.rawValue)
+                    ? engine.evaluate(cell.rawValue)
                     : cell.rawValue
 
                 Text(displayValue)

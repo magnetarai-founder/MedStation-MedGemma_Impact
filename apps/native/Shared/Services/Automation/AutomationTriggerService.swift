@@ -76,9 +76,9 @@ final class AutomationTriggerService {
 
     /// Fire a manual trigger for a specific rule.
     func manualTrigger(for rule: AutomationRule) {
-        let context = TriggerContext(trigger: .manual)
+        let context = TriggerContext(trigger: .manual, fields: ["ruleId": rule.id.uuidString])
         Task {
-            await AutomationStore.shared.evaluate(context: context)
+            await AutomationStore.shared.executeRule(rule, context: context)
         }
     }
 

@@ -143,7 +143,7 @@ enum BlockType: String, CaseIterable, Identifiable, Codable, Sendable {
     }
 }
 
-enum BlockCategory: String, CaseIterable {
+enum BlockCategory: String, CaseIterable, Sendable {
     case basic = "Basic"
     case lists = "Lists"
     case blocks = "Blocks"

@@ -12,6 +12,16 @@ import os
 
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "PluginManager")
 
+enum PluginError: Error, LocalizedError {
+    case manifestLoadFailed(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .manifestLoadFailed(let msg): return "Plugin manifest failed to load: \(msg)"
+        }
+    }
+}
+
 @MainActor
 @Observable
 final class PluginManager {
@@ -166,13 +176,19 @@ final class PluginManager {
 
     // MARK: - Install / Uninstall
 
-    func installPlugin(from sourceURL: URL) throws {
+    func installPlugin(from sourceURL: URL) async throws {
         let destURL = pluginsDirectory.appendingPathComponent(sourceURL.lastPathComponent)
         try FileManager.default.copyItem(at: sourceURL, to: destURL)
         logger.info("Installed plugin from \(sourceURL.lastPathComponent)")
 
-        // Reload
-        Task { await loadAll() }
+        await loadAll()
+
+        // Verify the new plugin loaded without errors
+        let pluginDir = destURL.lastPathComponent
+        if let plugin = plugins.first(where: { $0.bundleURL.lastPathComponent == pluginDir }),
+           case .errored(let msg) = plugin.state {
+            throw PluginError.manifestLoadFailed(msg)
+        }
     }
 
     func uninstallPlugin(_ pluginId: String) throws {

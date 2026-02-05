@@ -504,6 +504,8 @@ class VoiceRecorderManager: ObservableObject {
     private var timer: Timer?
     var currentURL: URL?
 
+    deinit { stopRecording() }
+
     func startRecording(to url: URL, onLevel: @escaping (Float) -> Void) throws {
         currentURL = url
 

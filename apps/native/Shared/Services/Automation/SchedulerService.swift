@@ -57,8 +57,9 @@ final class SchedulerService {
             if case .onSchedule(let cron) = rule.trigger {
                 if shouldRun(cron: cron, since: lastChecked, now: now) {
                     let context = TriggerContext(trigger: .onSchedule(cron: cron))
-                    Task {
+                    Task { [ruleName = rule.name] in
                         await AutomationStore.shared.evaluate(context: context)
+                        logger.debug("Scheduled evaluation completed for: \(ruleName)")
                     }
                     logger.info("Scheduled rule fired: \(rule.name)")
                 }

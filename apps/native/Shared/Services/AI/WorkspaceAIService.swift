@@ -214,6 +214,8 @@ final class WorkspaceAIService {
         activeStreamingTask?.cancel()
         activeStreamingTask = nil
         isGenerating = false
+        currentResponse = ""
+        error = nil
     }
 
     // MARK: - Workspace Content Indexing

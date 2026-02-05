@@ -133,12 +133,15 @@ final class AutomationStore {
         }
     }
 
-    private func executeRule(_ rule: AutomationRule, context: TriggerContext) async {
+    func executeRule(_ rule: AutomationRule, context: TriggerContext) async {
         let start = Date()
 
         // Check conditions
         let conditionsMet = rule.conditions.allSatisfy { condition in
-            let fieldValue = context.fields[condition.field] ?? ""
+            guard let fieldValue = context.fields[condition.field] else {
+                logger.warning("Condition field '\(condition.field)' not found in trigger context (available: \(context.fields.keys.joined(separator: ", ")))")
+                return false
+            }
             return condition.operator.evaluate(fieldValue: fieldValue, conditionValue: condition.value)
         }
 

@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct WorkspaceDocument: Identifiable, Codable, Equatable, Hashable {
+struct WorkspaceDocument: Identifiable, Codable, Equatable, Hashable, Sendable {
     let id: UUID
     var title: String
     var content: String

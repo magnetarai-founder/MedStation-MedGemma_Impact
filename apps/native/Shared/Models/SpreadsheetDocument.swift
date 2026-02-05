@@ -13,6 +13,13 @@ struct CellAddress: Hashable, Codable, CustomStringConvertible, Sendable {
     let column: Int  // 0-based (A=0, B=1, ...)
     let row: Int     // 0-based
 
+    init(column: Int, row: Int) {
+        precondition(column >= 0, "CellAddress column must be non-negative")
+        precondition(row >= 0, "CellAddress row must be non-negative")
+        self.column = column
+        self.row = row
+    }
+
     var description: String {
         "\(Self.columnLetter(column))\(row + 1)"
     }

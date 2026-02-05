@@ -261,11 +261,12 @@ struct PDFPanel: View {
             try FileManager.default.copyItem(at: url, to: destURL)
 
             let pdf = PDFDocument(url: destURL)
+            let attributes = try FileManager.default.attributesOfItem(atPath: destURL.path)
             let info = PDFDocumentInfo(
                 title: url.deletingPathExtension().lastPathComponent,
                 fileURL: destURL,
                 pageCount: pdf?.pageCount ?? 0,
-                fileSize: (try? FileManager.default.attributesOfItem(atPath: destURL.path)[.size] as? Int64) ?? 0
+                fileSize: attributes[.size] as? Int64 ?? 0
             )
 
             pdfDocuments.append(info)

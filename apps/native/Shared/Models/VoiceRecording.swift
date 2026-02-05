@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct VoiceRecording: Identifiable, Codable, Equatable, Hashable {
+struct VoiceRecording: Identifiable, Codable, Equatable, Hashable, Sendable {
     let id: UUID
     var title: String
     var fileURL: URL

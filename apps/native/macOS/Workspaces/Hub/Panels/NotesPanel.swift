@@ -14,7 +14,7 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "NotesPa
 
 // MARK: - Data Model
 
-struct WorkspaceNote: Identifiable, Codable, Equatable, Hashable {
+struct WorkspaceNote: Identifiable, Codable, Equatable, Hashable, Sendable {
     let id: UUID
     var title: String
     var content: String

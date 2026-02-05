@@ -9,7 +9,7 @@
 import Foundation
 
 /// Info for popping out a document editor to its own window
-struct DetachedDocEditInfo: Identifiable, Hashable, Codable {
+struct DetachedDocEditInfo: Identifiable, Hashable, Codable, Sendable {
     let id: UUID
     var title: String
     var storagePath: String  // Relative path in workspace/docs/
@@ -22,7 +22,7 @@ struct DetachedDocEditInfo: Identifiable, Hashable, Codable {
 }
 
 /// Info for popping out a spreadsheet to its own window
-struct DetachedSheetInfo: Identifiable, Hashable, Codable {
+struct DetachedSheetInfo: Identifiable, Hashable, Codable, Sendable {
     let id: UUID
     var title: String
     var storagePath: String  // Relative path in workspace/sheets/
@@ -35,7 +35,7 @@ struct DetachedSheetInfo: Identifiable, Hashable, Codable {
 }
 
 /// Info for popping out a PDF viewer to its own window
-struct DetachedPDFViewInfo: Identifiable, Hashable, Codable {
+struct DetachedPDFViewInfo: Identifiable, Hashable, Codable, Sendable {
     let id: UUID
     var title: String
     var fileURL: URL

@@ -265,7 +265,7 @@ struct FormulaEngine {
 
 // MARK: - Formula Errors
 
-enum FormulaError: Error {
+enum FormulaError: Error, Sendable {
     case parseError
     case invalidRange
     case invalidArgs
