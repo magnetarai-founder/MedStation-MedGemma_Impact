@@ -21,6 +21,7 @@ struct RecordingDetailPane: View {
     @State private var selectedTab = 0
     @State private var isApplying = false
     @State private var showCopiedTranscript = false
+    @State private var copyResetTask: Task<Void, Never>?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -181,10 +182,11 @@ struct RecordingDetailPane: View {
             showCopiedTranscript = true
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            withAnimation {
-                showCopiedTranscript = false
-            }
+        copyResetTask?.cancel()
+        copyResetTask = Task {
+            try? await Task.sleep(for: .seconds(1.5))
+            guard !Task.isCancelled else { return }
+            withAnimation { showCopiedTranscript = false }
         }
     }
 

@@ -43,7 +43,11 @@ final class ResponseMerger: @unchecked Sendable {
         query: String
     ) -> OrchestratedResponse.ModelResponse {
         guard !responses.isEmpty else {
-            fatalError("selectBest called with empty responses")
+            logger.error("selectBest called with empty responses — returning empty fallback")
+            return OrchestratedResponse.ModelResponse(
+                id: UUID(), modelId: "none", modelName: "none",
+                role: .primary, content: "", confidence: 0, executionTimeMs: 0
+            )
         }
 
         guard responses.count > 1 else {

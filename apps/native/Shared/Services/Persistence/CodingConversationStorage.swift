@@ -353,12 +353,16 @@ final class CodingConversationStorage {
         jsonString = jsonString.replacingOccurrences(of: "\n", with: "\\n")
         jsonString += "\n"
 
+        guard let lineData = jsonString.data(using: .utf8) else {
+            throw CodingStorageError.encodingFailed
+        }
+
         if fileManager.fileExists(atPath: url.path) {
             // Append to existing file
             let fileHandle = try FileHandle(forWritingTo: url)
+            defer { try? fileHandle.close() }
             fileHandle.seekToEndOfFile()
-            fileHandle.write(jsonString.data(using: .utf8)!)
-            try fileHandle.close()
+            fileHandle.write(lineData)
         } else {
             // Create new file
             try jsonString.write(to: url, atomically: true, encoding: .utf8)
@@ -421,11 +425,15 @@ final class CodingConversationStorage {
         jsonString = jsonString.replacingOccurrences(of: "\n", with: "\\n")
         jsonString += "\n"
 
+        guard let lineData = jsonString.data(using: .utf8) else {
+            throw CodingStorageError.encodingFailed
+        }
+
         if fileManager.fileExists(atPath: url.path) {
             let fileHandle = try FileHandle(forWritingTo: url)
+            defer { try? fileHandle.close() }
             fileHandle.seekToEndOfFile()
-            fileHandle.write(jsonString.data(using: .utf8)!)
-            try fileHandle.close()
+            fileHandle.write(lineData)
         } else {
             try jsonString.write(to: url, atomically: true, encoding: .utf8)
         }

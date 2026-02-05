@@ -17,6 +17,7 @@ struct KanbanTaskDetailPane: View {
     @State private var isHoveredStatus = false
     @State private var isHoveredPriority = false
     @State private var showCopied = false
+    @State private var copyResetTask: Task<Void, Never>?
 
     var body: some View {
         Group {
@@ -106,7 +107,10 @@ struct KanbanTaskDetailPane: View {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(task.title, forType: .string)
                     showCopied = true
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    copyResetTask?.cancel()
+                    copyResetTask = Task {
+                        try? await Task.sleep(for: .seconds(1.5))
+                        guard !Task.isCancelled else { return }
                         showCopied = false
                     }
                 } label: {

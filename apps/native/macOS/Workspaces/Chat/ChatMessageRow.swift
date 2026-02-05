@@ -15,6 +15,7 @@ struct ChatMessageRow: View {
 
     @State private var isHovered: Bool = false
     @State private var showCopied: Bool = false
+    @State private var copyResetTask: Task<Void, Never>?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -165,10 +166,11 @@ struct ChatMessageRow: View {
         }
 
         // Reset after 2 seconds
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-            withAnimation {
-                showCopied = false
-            }
+        copyResetTask?.cancel()
+        copyResetTask = Task {
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled else { return }
+            withAnimation { showCopied = false }
         }
     }
 }
@@ -253,6 +255,7 @@ struct CodeBlockView: View {
     let language: String?
 
     @State private var showCopied: Bool = false
+    @State private var copyResetTask: Task<Void, Never>?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -308,10 +311,11 @@ struct CodeBlockView: View {
             showCopied = true
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-            withAnimation {
-                showCopied = false
-            }
+        copyResetTask?.cancel()
+        copyResetTask = Task {
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled else { return }
+            withAnimation { showCopied = false }
         }
     }
 }

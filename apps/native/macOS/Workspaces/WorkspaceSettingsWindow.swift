@@ -13,6 +13,7 @@ struct WorkspaceSettingsWindow: View {
     @AppStorage("workspace.connectionMode") private var connectionMode = "cloud"
 
     @State private var isConnecting = false
+    @State private var reconnectTask: Task<Void, Never>?
     @State private var showDiagnostics = false
 
     var body: some View {
@@ -273,8 +274,10 @@ struct WorkspaceSettingsWindow: View {
 
     private func reconnect() {
         isConnecting = true
-        // Simulate reconnection
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+        reconnectTask?.cancel()
+        reconnectTask = Task {
+            try? await Task.sleep(for: .seconds(1))
+            guard !Task.isCancelled else { return }
             isConnecting = false
         }
     }

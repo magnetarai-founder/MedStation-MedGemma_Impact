@@ -111,7 +111,7 @@ enum SyncError: Error, LocalizedError {
 
 // MARK: - SyncService
 
-@Observable
+@MainActor @Observable
 final class SyncService {
     static let shared = SyncService()
 
@@ -530,11 +530,12 @@ final class SyncService {
     }
 
     private func saveOfflineQueue() {
-        syncQueue.async { [weak self] in
-            guard let self = self else { return }
+        let queue = offlineQueue
+        let file = offlineQueueFile
+        syncQueue.async {
             do {
-                let data = try JSONEncoder().encode(self.offlineQueue)
-                try data.write(to: self.offlineQueueFile, options: .atomic)
+                let data = try JSONEncoder().encode(queue)
+                try data.write(to: file, options: .atomic)
             } catch {
                 logger.warning("Failed to save offline sync queue: \(error)")
             }

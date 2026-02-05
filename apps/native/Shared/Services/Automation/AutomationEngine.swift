@@ -83,9 +83,17 @@ struct AutomationEngine {
             resolvedPrompt = resolvedPrompt.replacingOccurrences(of: "{{\(key)}}", with: value)
         }
 
-        // STUB: AI execution — would call WorkspaceAIService with the resolved prompt.
-        // The result could be stored or used in subsequent actions.
-        logger.warning("STUB: AI prompt prepared but not executed — integration pending: \(resolvedPrompt.prefix(50))...")
+        let result = await WorkspaceAIService.shared.generateSync(
+            action: .askAI,
+            input: resolvedPrompt,
+            strategy: TextAIStrategy()
+        )
+
+        if result.isEmpty {
+            logger.warning("AI automation produced empty response for prompt: \(resolvedPrompt.prefix(80))...")
+        } else {
+            logger.info("AI automation completed (\(result.count) chars) for prompt: \(resolvedPrompt.prefix(50))...")
+        }
     }
 
     @MainActor
@@ -93,8 +101,14 @@ struct AutomationEngine {
         guard !toColumn.isEmpty else {
             throw EngineError.actionFailed("Target column not specified")
         }
-        // STUB: Kanban integration — would call KanbanStore.shared.moveTask()
-        logger.warning("STUB: Would move Kanban task to column '\(toColumn)' — integration pending")
+
+        guard let taskId = context.fields["taskId"], !taskId.isEmpty else {
+            logger.warning("Kanban move skipped — no taskId in trigger context (available: \(context.fields.keys.joined(separator: ", ")))")
+            return
+        }
+
+        await KanbanStore.shared.moveTask(taskId: taskId, toColumnId: toColumn)
+        logger.info("Kanban automation: moved task '\(taskId)' to column '\(toColumn)'")
     }
 
     private static func executeNotification(title: String, body: String, context: TriggerContext) async throws {
@@ -130,8 +144,13 @@ struct AutomationEngine {
             resolvedContent = resolvedContent.replacingOccurrences(of: "{{\(key)}}", with: value)
         }
 
-        // STUB: Note creation — would write to NotesPanel storage directory
-        logger.warning("STUB: Would create note '\(resolvedTitle)' — integration pending")
+        let note = WorkspaceNote(title: resolvedTitle, content: resolvedContent)
+        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("MagnetarStudio/workspace/notes", isDirectory: true)
+        PersistenceHelpers.ensureDirectory(at: dir, label: "notes storage")
+        let file = dir.appendingPathComponent("\(note.id.uuidString).json")
+        PersistenceHelpers.save(note, to: file, label: "automation note '\(resolvedTitle)'")
+        logger.info("Automation created note '\(resolvedTitle)' at \(file.lastPathComponent)")
     }
 
     @MainActor
@@ -145,7 +164,22 @@ struct AutomationEngine {
             resolvedValue = resolvedValue.replacingOccurrences(of: "{{\(key)}}", with: val)
         }
 
-        // STUB: Cell update — would write to SheetsPanel storage directory
-        logger.warning("STUB: Would update cell \(cellAddr) to '\(resolvedValue)' — integration pending")
+        guard let sheetId = context.fields["sheetId"], !sheetId.isEmpty,
+              let sheetUUID = UUID(uuidString: sheetId) else {
+            logger.warning("Cell update skipped — no valid sheetId in trigger context (available: \(context.fields.keys.joined(separator: ", ")))")
+            return
+        }
+
+        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("MagnetarStudio/workspace/sheets", isDirectory: true)
+        let file = dir.appendingPathComponent("\(sheetUUID.uuidString).json")
+
+        guard var sheet = PersistenceHelpers.load(SpreadsheetDocument.self, from: file, label: "spreadsheet") else {
+            throw EngineError.actionFailed("Sheet not found: \(sheetId)")
+        }
+
+        sheet.setCell(at: cellAddr, value: resolvedValue)
+        PersistenceHelpers.save(sheet, to: file, label: "automation cell update '\(cellAddr)'")
+        logger.info("Automation updated cell \(cellAddr) to '\(resolvedValue)' in sheet \(sheet.title)")
     }
 }

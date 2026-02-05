@@ -387,6 +387,7 @@ struct TeamMessageRow: View {
 
     @State private var isHovered = false
     @State private var showCopied = false
+    @State private var copyResetTask: Task<Void, Never>?
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -478,7 +479,10 @@ struct TeamMessageRow: View {
         onCopy?()
 
         withAnimation { showCopied = true }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+        copyResetTask?.cancel()
+        copyResetTask = Task {
+            try? await Task.sleep(for: .seconds(1.5))
+            guard !Task.isCancelled else { return }
             withAnimation { showCopied = false }
         }
     }

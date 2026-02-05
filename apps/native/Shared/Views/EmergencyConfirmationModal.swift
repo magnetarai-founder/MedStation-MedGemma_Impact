@@ -297,7 +297,7 @@ struct EmergencyConfirmationModal: View {
     // MARK: - Key Monitoring Implementation
 
     @State private var keyMonitor: Any?
-    @State private var holdProgressTimer: Timer?
+    @State private var holdProgressTask: Task<Void, Never>?
     @State private var isHoldingKeyCombo: Bool = false
 
     /// Required hold duration in seconds
@@ -337,28 +337,30 @@ struct EmergencyConfirmationModal: View {
         isHoldingKeyCombo = true
         keyHoldProgress = 0.0
 
-        // Timer to update progress every 100ms
-        holdProgressTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [self] timer in
-            // Update on main thread
-            DispatchQueue.main.async {
+        // Task-based progress update every 100ms
+        holdProgressTask = Task { @MainActor in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(100))
+                guard !Task.isCancelled else { return }
+
                 // Verify keys are still held
                 let modifiers = NSEvent.modifierFlags
                 let hasCmd = modifiers.contains(.command)
                 let hasShift = modifiers.contains(.shift)
-                let isDeletePressed = self.isDeleteKeyPressed()
+                let isDeletePressed = isDeleteKeyPressed()
 
                 if hasCmd && hasShift && isDeletePressed {
-                    self.keyHoldProgress += 0.1 / self.requiredHoldDuration
+                    keyHoldProgress += 0.1 / requiredHoldDuration
 
-                    if self.keyHoldProgress >= 1.0 {
+                    if keyHoldProgress >= 1.0 {
                         // Combo held long enough - trigger emergency
-                        timer.invalidate()
-                        self.holdProgressTimer = nil
-                        self.triggerEmergencyViaKeyCombo()
+                        triggerEmergencyViaKeyCombo()
+                        return
                     }
                 } else {
                     // Keys released - cancel
-                    self.cancelHoldTimer()
+                    cancelHoldTimer()
+                    return
                 }
             }
         }
@@ -367,8 +369,8 @@ struct EmergencyConfirmationModal: View {
     }
 
     private func cancelHoldTimer() {
-        holdProgressTimer?.invalidate()
-        holdProgressTimer = nil
+        holdProgressTask?.cancel()
+        holdProgressTask = nil
         isHoldingKeyCombo = false
 
         // Animate progress back to zero
@@ -403,9 +405,9 @@ struct EmergencyConfirmationModal: View {
             keyMonitor = nil
         }
 
-        // Clean up timer
-        holdProgressTimer?.invalidate()
-        holdProgressTimer = nil
+        // Clean up hold task
+        holdProgressTask?.cancel()
+        holdProgressTask = nil
         isHoldingKeyCombo = false
 
         logger.info("Key monitoring stopped")

@@ -17,6 +17,7 @@ final class BackendManager {
     static let shared = BackendManager()
 
     private var backendProcess: Process?
+    private var logFileHandle: FileHandle?
     private var isStarting = false // Prevent concurrent starts
 
     private init() {}
@@ -103,7 +104,12 @@ final class BackendManager {
             .appendingPathComponent("magnetar_backend.log")
         FileManager.default.createFile(atPath: logFile.path, contents: nil)
 
+        // Close any previous log handle before opening a new one
+        try? logFileHandle?.close()
+        logFileHandle = nil
+
         if let logHandle = FileHandle(forWritingAtPath: logFile.path) {
+            self.logFileHandle = logHandle
             task.standardOutput = logHandle
             task.standardError = logHandle
             logger.debug("Backend logs: \(logFile.path)")
@@ -204,6 +210,8 @@ final class BackendManager {
             process.terminate()
             backendProcess = nil
         }
+        try? logFileHandle?.close()
+        logFileHandle = nil
     }
 
     // MARK: - Project Root Finding

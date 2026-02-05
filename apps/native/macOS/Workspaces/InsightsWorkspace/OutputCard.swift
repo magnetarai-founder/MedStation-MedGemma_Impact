@@ -19,6 +19,7 @@ struct OutputCard: View {
     @State private var isExpanded = true
     @State private var isRegenerating = false
     @State private var showCopied = false
+    @State private var copyResetTask: Task<Void, Never>?
     @State private var isHovered = false
 
     var outputTemplate: InsightsTemplate? {
@@ -235,10 +236,11 @@ struct OutputCard: View {
             showCopied = true
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            withAnimation {
-                showCopied = false
-            }
+        copyResetTask?.cancel()
+        copyResetTask = Task {
+            try? await Task.sleep(for: .seconds(1.5))
+            guard !Task.isCancelled else { return }
+            withAnimation { showCopied = false }
         }
     }
 

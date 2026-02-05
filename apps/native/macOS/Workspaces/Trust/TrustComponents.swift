@@ -62,6 +62,7 @@ struct TrustNodeRow: View {
 
     @State private var isHovered = false
     @State private var showCopied = false
+    @State private var copyResetTask: Task<Void, Never>?
 
     private var displayName: String {
         if node.displayMode == .peacetime {
@@ -121,7 +122,10 @@ struct TrustNodeRow: View {
                     TrustActionButton(icon: showCopied ? "checkmark" : "doc.on.doc", help: "Copy Key", color: showCopied ? .green : .blue, isSuccess: showCopied) {
                         onCopyKey?()
                         withAnimation { showCopied = true }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        copyResetTask?.cancel()
+                        copyResetTask = Task {
+                            try? await Task.sleep(for: .seconds(1.5))
+                            guard !Task.isCancelled else { return }
                             withAnimation { showCopied = false }
                         }
                     }

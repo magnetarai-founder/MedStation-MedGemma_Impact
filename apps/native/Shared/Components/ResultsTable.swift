@@ -23,6 +23,7 @@ struct ResultsTable: View {
     @State private var exportFormat: ExportFormat = .excel
     @State private var isAnalyzing: Bool = false
     @State private var showCopied: Bool = false
+    @State private var copyResetTask: Task<Void, Never>?
     @State private var copiedText: String = ""
 
     var body: some View {
@@ -195,7 +196,10 @@ struct ResultsTable: View {
         NSPasteboard.general.setString(text, forType: .string)
 
         withAnimation { showCopied = true }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+        copyResetTask?.cancel()
+        copyResetTask = Task {
+            try? await Task.sleep(for: .seconds(1.5))
+            guard !Task.isCancelled else { return }
             withAnimation { showCopied = false }
         }
     }
@@ -373,6 +377,7 @@ struct TableCell: View {
 
     @State private var isHovered = false
     @State private var showCopied = false
+    @State private var copyResetTask: Task<Void, Never>?
 
     var body: some View {
         HStack(spacing: 4) {
@@ -422,7 +427,10 @@ struct TableCell: View {
         NSPasteboard.general.setString(value, forType: .string)
 
         withAnimation { showCopied = true }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+        copyResetTask?.cancel()
+        copyResetTask = Task {
+            try? await Task.sleep(for: .seconds(1.0))
+            guard !Task.isCancelled else { return }
             withAnimation { showCopied = false }
         }
     }

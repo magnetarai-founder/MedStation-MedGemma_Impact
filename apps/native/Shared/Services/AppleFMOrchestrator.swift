@@ -286,9 +286,14 @@ class AppleFMOrchestrator: ModelOrchestrator {
         availableModels: [AvailableModel],
         systemResources: SystemResourceState
     ) -> AvailableModel {
-        // Precondition: must have at least one model (caller ensures this)
+        // Defense-in-depth: caller already guards !availableModels.isEmpty
         guard let fallbackModel = availableModels.first else {
-            preconditionFailure("selectBestModel called with empty availableModels array")
+            assertionFailure("selectBestModel called with empty availableModels array")
+            return AvailableModel(
+                id: "none", name: "none", displayName: "None",
+                slotNumber: nil, isPinned: false, memoryUsageGB: nil,
+                capabilities: .basic, isHealthy: false
+            )
         }
 
         var scoredModels: [(model: AvailableModel, score: Float)] = []
