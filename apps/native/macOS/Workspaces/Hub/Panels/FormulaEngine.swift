@@ -118,6 +118,12 @@ struct FormulaEngine {
         let minRow = min(start.row, end.row)
         let maxRow = max(start.row, end.row)
 
+        // Guard against massive ranges that would freeze the app (e.g. A1:ZZZ999999)
+        let rangeSize = (maxCol - minCol + 1) * (maxRow - minRow + 1)
+        guard rangeSize <= 10_000 else {
+            throw FormulaError.invalidRange
+        }
+
         for col in minCol...maxCol {
             for row in minRow...maxRow {
                 let addr = CellAddress(column: col, row: row)

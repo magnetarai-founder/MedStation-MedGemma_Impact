@@ -1,4 +1,7 @@
 import Foundation
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "ImageAnalysisConfig")
 
 /// Configuration for image analysis pipeline
 struct ImageAnalysisConfiguration: Codable, Sendable {
@@ -171,8 +174,11 @@ extension ImageAnalysisConfiguration {
 
     /// Save configuration to UserDefaults
     func save() {
-        if let data = try? JSONEncoder().encode(self) {
+        do {
+            let data = try JSONEncoder().encode(self)
             UserDefaults.standard.set(data, forKey: Self.userDefaultsKey)
+        } catch {
+            logger.error("[ImageConfig] Failed to save configuration: \(error.localizedDescription)")
         }
     }
 }

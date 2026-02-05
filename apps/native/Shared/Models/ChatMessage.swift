@@ -89,10 +89,6 @@ final class ChatSession: Identifiable {
     var updatedAt: Date
     var status: ConversationState
 
-    // Note: Messages are loaded separately into ChatStore.messages
-    // This property exists for potential future use but is not actively populated
-    var messages: [ChatMessage] = []
-
     init(
         id: UUID = UUID(),
         title: String = "New Chat",

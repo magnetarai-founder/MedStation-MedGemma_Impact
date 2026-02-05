@@ -202,15 +202,21 @@ actor TerminalBridgeService {
         lastClipboardContent = NSPasteboard.general.string(forType: .string) ?? ""
 
         // Start periodic check (every 0.5 seconds)
-        Task { @MainActor in
-            Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] timer in
+        Task { @MainActor [weak self] in
+            let timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] timer in
                 Task {
                     await self?.checkClipboard()
                 }
             }
+            await self?.setClipboardCheckTimer(timer)
         }
 
         logger.debug("[TerminalBridge] Started clipboard monitoring")
+    }
+
+    /// Store timer reference (actor-isolated setter for cross-actor timer creation)
+    private func setClipboardCheckTimer(_ timer: Timer) {
+        clipboardCheckTimer = timer
     }
 
     /// Stop monitoring clipboard

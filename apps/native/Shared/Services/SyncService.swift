@@ -327,13 +327,21 @@ final class SyncService {
 
         syncTimer = Timer.scheduledTimer(withTimeInterval: intervalSeconds, repeats: true) { [weak self] _ in
             Task { [weak self] in
-                try? await self?.triggerSync()
+                do {
+                    try await self?.triggerSync()
+                } catch {
+                    logger.warning("[Sync] Background sync failed: \(error.localizedDescription)")
+                }
             }
         }
 
         // Trigger immediate sync
         Task {
-            try? await triggerSync()
+            do {
+                try await triggerSync()
+            } catch {
+                logger.warning("[Sync] Initial sync failed: \(error.localizedDescription)")
+            }
         }
     }
 

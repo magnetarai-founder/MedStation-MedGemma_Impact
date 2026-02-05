@@ -1,3 +1,11 @@
+//
+//  ImageAnalysisService.swift
+//  MagnetarStudio
+//
+//  STUB: Not currently wired — future image analysis integration for PDF/Docs/Notes panels.
+//  Complete 5-layer ML pipeline (Vision, Object Detection, Segmentation, Depth, Structured Output).
+//
+
 import Foundation
 import CryptoKit
 import os

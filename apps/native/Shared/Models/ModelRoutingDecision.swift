@@ -52,7 +52,7 @@ struct ModelRoutingDecision: Codable {
 
 /// Individual factor that influenced the routing decision
 struct DecisionFactor: Codable, Identifiable {
-    var id: UUID = UUID()
+    let id: UUID = UUID()
     let factor: String  // "query_complexity", "model_specialty", "resource_constraints", etc.
     let weight: Float  // 0.0-1.0 (how much did this influence the decision?)
     let value: String  // Human-readable description

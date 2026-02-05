@@ -2,6 +2,7 @@
 //  SessionBranchManager.swift
 //  MagnetarStudio
 //
+//  STUB: Not currently wired — future session branching/topic-shift detection.
 //  Manages session branching for topic-based context isolation.
 //  Addresses Gap 3: Session branching with topic shift detection.
 //

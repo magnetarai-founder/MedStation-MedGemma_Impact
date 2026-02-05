@@ -2,8 +2,8 @@
 //  VaultAdminPanel.swift
 //  MagnetarStudio (macOS)
 //
-//  CRITICAL: Vault security admin panel for monitoring and emergency revocation
-//  Top bar modal (between Control Center and Panic)
+//  STUB: Not currently wired — future vault administration panel (between Control Center and Panic in header).
+//  Vault security admin panel for monitoring and emergency revocation
 //  Refactored in Phase 6.16 - extracted tabs and components
 //
 //  Part of Noah's Ark for the Digital Age - Protecting God's people

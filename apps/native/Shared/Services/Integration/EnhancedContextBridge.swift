@@ -97,12 +97,16 @@ final class EnhancedContextBridge: ObservableObject {
         // 5. Get RAG results if enabled
         var ragResults: [RAGSearchResult] = []
         if enableRAGAugmentation {
-            ragResults = (try? await semanticSearch.search(
-                query: query,
-                conversationId: sessionId,
-                limit: 10,
-                minSimilarity: 0.3
-            )) ?? []
+            do {
+                ragResults = try await semanticSearch.search(
+                    query: query,
+                    conversationId: sessionId,
+                    limit: 10,
+                    minSimilarity: 0.3
+                )
+            } catch {
+                logger.warning("[Bridge] RAG search failed, continuing without augmentation: \(error.localizedDescription)")
+            }
         }
 
         // 6. Get cross-conversation files if enabled
@@ -364,11 +368,15 @@ final class EnhancedContextBridge: ObservableObject {
     func onSessionEnded(_ sessionId: UUID, messages: [ChatMessage]) async {
         // Final compaction
         if messages.count > 20 {
-            let _ = try? await compactService.compact(
-                sessionId: sessionId,
-                messages: messages,
-                forceCompact: true
-            )
+            do {
+                let _ = try await compactService.compact(
+                    sessionId: sessionId,
+                    messages: messages,
+                    forceCompact: true
+                )
+            } catch {
+                logger.warning("[Bridge] Session end compaction failed for \(sessionId): \(error.localizedDescription)")
+            }
         }
 
         // Save session graph
