@@ -182,6 +182,30 @@ struct CommandPaletteView: View {
                 }
             ),
             PaletteCommand(
+                id: "new-document",
+                title: "New Document",
+                subtitle: "Open a rich text document",
+                icon: "doc.richtext",
+                category: .action,
+                keywords: ["new", "document", "doc", "create"],
+                action: {
+                    let info = DetachedDocEditInfo(title: "Untitled Document")
+                    WindowOpener.shared.openDocEditor(info)
+                }
+            ),
+            PaletteCommand(
+                id: "new-spreadsheet",
+                title: "New Spreadsheet",
+                subtitle: "Open a spreadsheet with formulas",
+                icon: "tablecells",
+                category: .action,
+                keywords: ["new", "spreadsheet", "sheet", "create", "excel"],
+                action: {
+                    let info = DetachedSheetInfo(title: "Untitled Spreadsheet")
+                    WindowOpener.shared.openSheetEditor(info)
+                }
+            ),
+            PaletteCommand(
                 id: "new-query",
                 title: "New Query Tab",
                 subtitle: "Create a new database query",
@@ -201,87 +225,37 @@ struct CommandPaletteView: View {
             ),
         ])
 
-        // Navigation - Switch workspaces in main window
+        // Navigation - Core tabs
         commands.append(contentsOf: [
             PaletteCommand(
-                id: "nav-team",
-                title: "Go to Team Workspace",
-                subtitle: "Team collaboration and vault",
-                icon: "person.2",
+                id: "nav-workspace",
+                title: "Go to Workspace",
+                subtitle: "Notes, Docs, Sheets, PDFs, Voice",
+                icon: "square.grid.2x2.fill",
                 category: .navigation,
-                keywords: ["team", "vault", "members", "files"],
+                keywords: ["workspace", "hub", "notes", "docs"],
                 shortcut: "⌘1",
-                action: { navigationStore.navigate(to: .team) }
+                action: { navigationStore.navigate(to: .workspace) }
+            ),
+            PaletteCommand(
+                id: "nav-files",
+                title: "Go to Files",
+                subtitle: "Secure file vault",
+                icon: "folder.fill",
+                category: .navigation,
+                keywords: ["files", "vault", "documents", "browse"],
+                shortcut: "⌘2",
+                action: { navigationStore.navigate(to: .files) }
             ),
             PaletteCommand(
                 id: "nav-chat",
-                title: "Go to Chat Workspace",
+                title: "Go to Chat",
                 subtitle: "AI conversations",
                 icon: "message",
                 category: .navigation,
                 keywords: ["chat", "conversation", "ai"],
-                shortcut: "⌘2",
-                action: { navigationStore.navigate(to: .chat) }
-            ),
-            PaletteCommand(
-                id: "nav-code",
-                title: "Go to Code Workspace",
-                subtitle: "Code editing and generation",
-                icon: "chevron.left.forwardslash.chevron.right",
-                category: .navigation,
-                keywords: ["code", "editor", "programming"],
                 shortcut: "⌘3",
-                action: { navigationStore.navigate(to: .code) }
-            ),
-            PaletteCommand(
-                id: "nav-database",
-                title: "Go to Database Workspace",
-                subtitle: "Query and analyze data",
-                icon: "cylinder",
-                category: .navigation,
-                keywords: ["database", "query", "sql", "data"],
-                shortcut: "⌘4",
-                action: { navigationStore.navigate(to: .database) }
-            ),
-            PaletteCommand(
-                id: "nav-kanban",
-                title: "Go to Kanban Workspace",
-                subtitle: "Project management",
-                icon: "square.grid.2x2",
-                category: .navigation,
-                keywords: ["kanban", "tasks", "project", "board"],
-                shortcut: "⌘5",
-                action: { navigationStore.navigate(to: .kanban) }
-            ),
-            PaletteCommand(
-                id: "nav-insights",
-                title: "Go to Insights Workspace",
-                subtitle: "Analytics and reports",
-                icon: "chart.xyaxis.line",
-                category: .navigation,
-                keywords: ["insights", "analytics", "reports", "charts"],
-                shortcut: "⌘6",
-                action: { navigationStore.navigate(to: .insights) }
-            ),
-            PaletteCommand(
-                id: "nav-trust",
-                title: "Go to Trust Network",
-                subtitle: "P2P connections and identity",
-                icon: "shield.checkered",
-                category: .navigation,
-                keywords: ["trust", "network", "p2p", "identity", "security"],
-                shortcut: "⌘7",
-                action: { navigationStore.navigate(to: .trust) }
-            ),
-            PaletteCommand(
-                id: "nav-hub",
-                title: "Go to MagnetarHub",
-                subtitle: "Cloud models and agents",
-                icon: "cloud",
-                category: .navigation,
-                keywords: ["hub", "cloud", "models", "agents", "orchestrator"],
-                shortcut: "⌘8",
-                action: { navigationStore.navigate(to: .magnetarHub) }
+                action: { navigationStore.navigate(to: .chat) }
             ),
         ])
 
@@ -289,42 +263,42 @@ struct CommandPaletteView: View {
         commands.append(contentsOf: [
             PaletteCommand(
                 id: "window-code",
-                title: "Open Code Window",
-                subtitle: "Code workspace in new window",
-                icon: "uiwindow.split.2x1",
+                title: "Open Code IDE",
+                subtitle: "Full IDE with terminal and AI",
+                icon: "chevron.left.forwardslash.chevron.right",
                 category: .window,
-                keywords: ["window", "code", "detach"],
-                shortcut: "⌥⌘C",
+                keywords: ["window", "code", "ide", "terminal"],
+                shortcut: "⌘4",
                 action: { WindowOpener.shared.openCodeWorkspace() }
             ),
             PaletteCommand(
                 id: "window-database",
-                title: "Open Database Window",
-                subtitle: "Database workspace in new window",
-                icon: "uiwindow.split.2x1",
+                title: "Open Data Workspace",
+                subtitle: "SQL queries and data analysis",
+                icon: "cylinder",
                 category: .window,
-                keywords: ["window", "database", "detach"],
-                shortcut: "⇧⌘D",
+                keywords: ["window", "database", "data", "sql"],
+                shortcut: "⌘5",
                 action: { WindowOpener.shared.openDatabaseWorkspace() }
             ),
             PaletteCommand(
                 id: "window-kanban",
-                title: "Open Kanban Window",
-                subtitle: "Kanban workspace in new window",
-                icon: "uiwindow.split.2x1",
+                title: "Open Kanban Board",
+                subtitle: "Project management and tasks",
+                icon: "square.grid.3x2",
                 category: .window,
-                keywords: ["window", "kanban", "detach"],
-                shortcut: "⇧⌘K",
+                keywords: ["window", "kanban", "board", "tasks"],
+                shortcut: "⌘6",
                 action: { WindowOpener.shared.openKanbanWorkspace() }
             ),
             PaletteCommand(
                 id: "window-insights",
-                title: "Open Insights Window",
-                subtitle: "Insights workspace in new window",
-                icon: "uiwindow.split.2x1",
+                title: "Open Insights",
+                subtitle: "Analytics and voice transcription",
+                icon: "waveform",
                 category: .window,
-                keywords: ["window", "insights", "detach"],
-                shortcut: "⇧⌘I",
+                keywords: ["window", "insights", "analytics", "voice"],
+                shortcut: "⌘7",
                 action: { WindowOpener.shared.openInsightsWorkspace() }
             ),
             PaletteCommand(
@@ -370,7 +344,7 @@ struct CommandPaletteView: View {
                 icon: "sidebar.left",
                 category: .view,
                 keywords: ["sidebar", "toggle", "hide", "show"],
-                shortcut: "⌃⌘S",
+                shortcut: "⌘\\",
                 action: { navigationStore.toggleSidebar() }
             ),
         ])

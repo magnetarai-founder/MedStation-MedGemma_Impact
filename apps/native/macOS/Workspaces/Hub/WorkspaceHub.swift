@@ -26,9 +26,12 @@ struct WorkspaceHub: View {
                 defaultValue: 220
             )
 
-            // Content area
+            // Content area — .id() ensures lazy loading (panel only
+            // initializes when first selected, and re-creates on switch)
             activePanelView
+                .id(store.selectedPanel)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .transition(.opacity.animation(.easeInOut(duration: 0.15)))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -49,29 +52,5 @@ struct WorkspaceHub: View {
         case .voice:
             VoicePanel()
         }
-    }
-}
-
-// MARK: - Panel Placeholder (replaced in Phases 2-5)
-
-struct WorkspacePanelPlaceholder: View {
-    let panel: WorkspacePanelType
-
-    var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: panel.icon)
-                .font(.system(size: 48))
-                .foregroundStyle(.tertiary)
-
-            Text(panel.displayName)
-                .font(.title2.bold())
-                .foregroundStyle(.primary)
-
-            Text("Coming soon — \(panel.displayName) panel")
-                .font(.body)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.surfacePrimary)
     }
 }

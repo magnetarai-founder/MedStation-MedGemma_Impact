@@ -42,57 +42,33 @@ struct MagnetarMenuCommands: Commands {
 
         // Edit menu (keep defaults)
 
-        // View menu - All workspaces with ⌘1-8 shortcuts matching NavigationStore.keyboardShortcut
+        // View menu - Core tabs ⌘1-3 + sidebar toggle
         CommandMenu("View") {
-            Button("Team Workspace") {
-                navigationStore.navigate(to: .team)
+            // Core workspace tabs
+            Button("Workspace") {
+                navigationStore.navigate(to: .workspace)
             }
             .keyboardShortcut("1", modifiers: .command)
 
-            Button("Chat Workspace") {
-                navigationStore.navigate(to: .chat)
+            Button("Files") {
+                navigationStore.navigate(to: .files)
             }
             .keyboardShortcut("2", modifiers: .command)
 
-            Button("Code Workspace") {
-                navigationStore.navigate(to: .code)
+            Button("Chat") {
+                navigationStore.navigate(to: .chat)
             }
             .keyboardShortcut("3", modifiers: .command)
-
-            Button("Database Workspace") {
-                navigationStore.navigate(to: .database)
-            }
-            .keyboardShortcut("4", modifiers: .command)
-
-            Button("Kanban Workspace") {
-                navigationStore.navigate(to: .kanban)
-            }
-            .keyboardShortcut("5", modifiers: .command)
-
-            Button("Insights Workspace") {
-                navigationStore.navigate(to: .insights)
-            }
-            .keyboardShortcut("6", modifiers: .command)
-
-            Button("Trust Network") {
-                navigationStore.navigate(to: .trust)
-            }
-            .keyboardShortcut("7", modifiers: .command)
-
-            Button("MagnetarHub") {
-                navigationStore.navigate(to: .magnetarHub)
-            }
-            .keyboardShortcut("8", modifiers: .command)
 
             Divider()
 
             Button("Toggle Sidebar") {
                 navigationStore.toggleSidebar()
             }
-            .keyboardShortcut("s", modifiers: [.command, .control])
+            .keyboardShortcut("\\", modifiers: .command)
         }
 
-        // Window menu - Power workspaces in separate windows
+        // Window menu - Create + spawnable workspaces
         CommandMenu("Window") {
             // Create new documents
             Section("Create") {
@@ -100,6 +76,16 @@ struct MagnetarMenuCommands: Commands {
                     WindowOpener.shared.openNewNote()
                 }
                 .keyboardShortcut("n", modifiers: [.command, .shift])
+
+                Button("New Document") {
+                    let info = DetachedDocEditInfo(title: "Untitled Document")
+                    WindowOpener.shared.openDocEditor(info)
+                }
+
+                Button("New Spreadsheet") {
+                    let info = DetachedSheetInfo(title: "Untitled Spreadsheet")
+                    WindowOpener.shared.openSheetEditor(info)
+                }
 
                 Button("New Chat Window") {
                     WindowOpener.shared.openNewChat()
@@ -109,27 +95,27 @@ struct MagnetarMenuCommands: Commands {
 
             Divider()
 
-            // Power workspaces
-            Section("Power Workspaces") {
-                Button("Code") {
+            // Spawnable workspaces
+            Section("Open Workspace") {
+                Button("Open Code IDE") {
                     WindowOpener.shared.openCodeWorkspace()
                 }
-                .keyboardShortcut("c", modifiers: [.command, .option])
+                .keyboardShortcut("4", modifiers: .command)
 
-                Button("Database") {
+                Button("Open Data Workspace") {
                     WindowOpener.shared.openDatabaseWorkspace()
                 }
-                .keyboardShortcut("d", modifiers: [.command, .shift])
+                .keyboardShortcut("5", modifiers: .command)
 
-                Button("Kanban") {
+                Button("Open Kanban Board") {
                     WindowOpener.shared.openKanbanWorkspace()
                 }
-                .keyboardShortcut("k", modifiers: [.command, .shift])
+                .keyboardShortcut("6", modifiers: .command)
 
-                Button("Insights") {
+                Button("Open Insights") {
                     WindowOpener.shared.openInsightsWorkspace()
                 }
-                .keyboardShortcut("i", modifiers: [.command, .shift])
+                .keyboardShortcut("7", modifiers: .command)
             }
 
             Divider()

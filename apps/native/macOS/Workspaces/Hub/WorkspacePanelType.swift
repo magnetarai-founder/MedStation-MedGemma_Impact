@@ -36,13 +36,14 @@ enum WorkspacePanelType: String, CaseIterable, Identifiable, Hashable {
         }
     }
 
-    var keyboardShortcut: KeyEquivalent? {
+    /// Shortcut hint displayed in sidebar (within Workspace tab context)
+    var shortcutHint: String {
         switch self {
-        case .notes: return nil
-        case .docs: return nil
-        case .sheets: return nil
-        case .pdf: return nil
-        case .voice: return nil
+        case .notes: return "N"
+        case .docs: return "D"
+        case .sheets: return "S"
+        case .pdf: return "P"
+        case .voice: return "V"
         }
     }
 }

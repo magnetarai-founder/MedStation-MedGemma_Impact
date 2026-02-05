@@ -89,7 +89,7 @@ struct MagnetarStudioApp: App {
         //
         // Non-core workspaces open as separate windows via Quick Action menu
 
-        WindowGroup("Code", id: "workspace-code") {
+        WindowGroup("Code IDE", id: "workspace-code") {
             CodeWorkspace()
                 .environment(navigationStore)
                 .environment(chatStore)
@@ -112,7 +112,7 @@ struct MagnetarStudioApp: App {
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1200, height: 800)
 
-        WindowGroup("Database", id: "workspace-database") {
+        WindowGroup("Data Workspace", id: "workspace-database") {
             DatabaseWorkspace()
                 .environment(databaseStore)
         }
