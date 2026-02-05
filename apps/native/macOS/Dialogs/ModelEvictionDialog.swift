@@ -2,6 +2,7 @@
 //  ModelEvictionDialog.swift
 //  MagnetarStudio (macOS)
 //
+//  STUB: Not currently wired — future model memory management UI.
 //  Dialog for handling hot slot eviction when all slots are full
 //  Part of Noah's Ark for the Digital Age - Intelligent model routing
 //

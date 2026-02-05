@@ -16,12 +16,20 @@ final class AuthService {
             resolvedDeviceId = existing
         } else if let oldId = UserDefaults.standard.string(forKey: key) {
             // Migrate existing device ID from UserDefaults to Keychain
-            try? KeychainService.shared.saveToken(oldId, forKey: key)
-            UserDefaults.standard.removeObject(forKey: key)
+            do {
+                try KeychainService.shared.saveToken(oldId, forKey: key)
+                UserDefaults.standard.removeObject(forKey: key)
+            } catch {
+                // Keep in UserDefaults as fallback — don't lose the device ID
+            }
             resolvedDeviceId = oldId
         } else {
             let newId = UUID().uuidString
-            try? KeychainService.shared.saveToken(newId, forKey: key)
+            do {
+                try KeychainService.shared.saveToken(newId, forKey: key)
+            } catch {
+                // ID lives in memory for this session — will regenerate next launch
+            }
             resolvedDeviceId = newId
         }
 

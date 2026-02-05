@@ -63,7 +63,7 @@ struct Stage: Codable, Identifiable, Sendable {
 // MARK: - Conditional Route
 
 struct ConditionalRoute: Codable, Identifiable, Sendable {
-    let id: String?
+    let id: String
     let nextStageId: String
     let conditions: [[String: AnyCodable]]?
 
@@ -73,9 +73,17 @@ struct ConditionalRoute: Codable, Identifiable, Sendable {
         case conditions
     }
 
-    // Computed ID for Identifiable
-    var computedId: String {
-        id ?? UUID().uuidString
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decodeIfPresent(String.self, forKey: .id) ?? UUID().uuidString
+        self.nextStageId = try container.decode(String.self, forKey: .nextStageId)
+        self.conditions = try container.decodeIfPresent([[String: AnyCodable]].self, forKey: .conditions)
+    }
+
+    init(id: String = UUID().uuidString, nextStageId: String, conditions: [[String: AnyCodable]]? = nil) {
+        self.id = id
+        self.nextStageId = nextStageId
+        self.conditions = conditions
     }
 }
 

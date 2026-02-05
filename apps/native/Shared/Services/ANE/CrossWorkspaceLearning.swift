@@ -2,6 +2,7 @@
 //  CrossWorkspaceLearning.swift
 //  MagnetarStudio
 //
+//  STUB: Not currently wired — future cross-workspace ML pattern learning.
 //  Learns cross-workspace transition patterns for intelligent preloading.
 //  Addresses Gap 6: Data→Chat, Code→Chat, Vault→Chat pattern learning.
 //

@@ -384,7 +384,7 @@ final class CloudAuthManager {
             // Temporarily store token for this request
             let oldToken = keychain.loadToken()
             if let cloudToken = keychain.loadToken(forKey: cloudTokenKey) {
-                try? keychain.saveToken(cloudToken)
+                try keychain.saveToken(cloudToken)
             }
 
             let profile: ProfileResponse = try await apiClient.request(
@@ -395,7 +395,7 @@ final class CloudAuthManager {
 
             // Restore old token
             if let oldToken = oldToken {
-                try? keychain.saveToken(oldToken)
+                try keychain.saveToken(oldToken)
             }
 
             isAuthenticated = true

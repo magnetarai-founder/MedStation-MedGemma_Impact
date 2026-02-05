@@ -320,6 +320,7 @@ struct CodeBlockView: View {
 
 struct TypingIndicator: View {
     @State private var animationPhase: Int = 0
+    @State private var animationTimer: Timer?
 
     var body: some View {
         HStack(spacing: 4) {
@@ -330,15 +331,15 @@ struct TypingIndicator: View {
             }
         }
         .onAppear {
-            startAnimation()
-        }
-    }
-
-    private func startAnimation() {
-        Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { _ in
-            withAnimation(.easeInOut(duration: 0.2)) {
-                animationPhase = (animationPhase + 1) % 3
+            animationTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { _ in
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    animationPhase = (animationPhase + 1) % 3
+                }
             }
+        }
+        .onDisappear {
+            animationTimer?.invalidate()
+            animationTimer = nil
         }
     }
 }

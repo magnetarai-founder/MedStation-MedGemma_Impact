@@ -2,6 +2,7 @@
 //  ANETrainingManager.swift
 //  MagnetarStudio
 //
+//  STUB: Not currently wired — future on-device ML training infrastructure.
 //  Real on-device CoreML training using CreateML.
 //  Addresses Gap 4: MLUpdateTask for incremental model updates.
 //

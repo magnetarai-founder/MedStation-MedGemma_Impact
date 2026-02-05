@@ -258,7 +258,7 @@ public final class SecurityManager {
                 logger.debug("Audit log response: \(httpResponse.statusCode)")
             }
         } catch {
-            // Non-blocking - silently fail, don't spam console for audit failures
+            logger.debug("Audit log send failed: \(error.localizedDescription)")
         }
     }
 

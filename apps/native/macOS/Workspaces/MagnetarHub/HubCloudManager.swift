@@ -341,10 +341,13 @@ class HubCloudManager {
 
     /// Clear all cloud state
     private func clearCloudState() {
-        try? keychain.deleteToken(forKey: cloudTokenKey)
-        try? keychain.deleteToken(forKey: cloudRefreshTokenKey)
-        try? keychain.deleteToken(forKey: cloudDeviceIdKey)
-        try? keychain.deleteToken(forKey: cloudExpiryKey)
+        for key in [cloudTokenKey, cloudRefreshTokenKey, cloudDeviceIdKey, cloudExpiryKey] {
+            do {
+                try keychain.deleteToken(forKey: key)
+            } catch {
+                logger.warning("Failed to clear cloud credential '\(key)': \(error.localizedDescription)")
+            }
+        }
 
         isCloudAuthenticated = false
         cloudUsername = nil

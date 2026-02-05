@@ -495,6 +495,7 @@ private final class StreamingDelegate: NSObject, URLSessionDataDelegate {
         } else {
             onDone()
         }
+        session.finishTasksAndInvalidate()
     }
 }
 

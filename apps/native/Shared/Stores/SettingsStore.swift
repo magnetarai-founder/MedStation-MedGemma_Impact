@@ -1,5 +1,8 @@
 import Foundation
 import Observation
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "SettingsStore")
 
 // MARK: - SettingsStore
 
@@ -171,8 +174,11 @@ final class SettingsStore {
     }
 
     private func saveChatSettings(_ settings: ChatSettings) {
-        if let encoded = try? JSONEncoder().encode(settings) {
+        do {
+            let encoded = try JSONEncoder().encode(settings)
             userDefaults.set(encoded, forKey: chatSettingsKey)
+        } catch {
+            logger.error("Failed to save chat settings: \(error.localizedDescription)")
         }
     }
 
@@ -192,8 +198,11 @@ final class SettingsStore {
     }
 
     private func saveAppSettings(_ settings: AppSettings) {
-        if let encoded = try? JSONEncoder().encode(settings) {
+        do {
+            let encoded = try JSONEncoder().encode(settings)
             userDefaults.set(encoded, forKey: appSettingsKey)
+        } catch {
+            logger.error("Failed to save app settings: \(error.localizedDescription)")
         }
     }
 

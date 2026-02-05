@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - API Chat Session (DTO for network responses)
 
-struct ApiChatSession: Codable, Identifiable {
+struct ApiChatSession: Codable, Identifiable, Sendable {
     let id: String
     let title: String?
     let model: String?
@@ -22,7 +22,7 @@ struct ApiChatSession: Codable, Identifiable {
 
 // MARK: - API Chat Message (for network responses)
 
-struct ApiChatMessage: Codable, Identifiable {
+struct ApiChatMessage: Codable, Identifiable, Sendable {
     let id: String
     let role: String  // "user" | "assistant"
     let content: String
@@ -53,7 +53,7 @@ struct ApiChatMessage: Codable, Identifiable {
 
 // MARK: - Chat File
 
-struct ChatFile: Codable, Identifiable {
+struct ChatFile: Codable, Identifiable, Sendable {
     let id: String
     let originalName: String
     let size: Int
@@ -69,7 +69,7 @@ struct ChatFile: Codable, Identifiable {
 
 // MARK: - Send Message Request
 
-struct SendMessageRequest: Codable {
+struct SendMessageRequest: Codable, Sendable {
     let content: String
     let model: String?
     let temperature: Double?
@@ -91,7 +91,7 @@ struct SendMessageRequest: Codable {
 
 // MARK: - Token Response
 
-struct TokenResponse: Codable {
+struct TokenResponse: Codable, Sendable {
     let tokensUsed: Int
     let tokensLimit: Int?
 

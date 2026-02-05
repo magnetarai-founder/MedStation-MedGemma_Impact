@@ -91,7 +91,11 @@ final class VaultService {
 
         // Store session ID in keychain for future requests
         if unlockResponse.success {
-            try? KeychainService.shared.saveToken(unlockResponse.sessionId, forKey: "vault_session_\(vaultId)")
+            do {
+                try KeychainService.shared.saveToken(unlockResponse.sessionId, forKey: "vault_session_\(vaultId)")
+            } catch {
+                logger.error("Failed to persist vault session after unlock: \(error.localizedDescription)")
+            }
         }
 
         return unlockResponse.success
@@ -147,7 +151,11 @@ final class VaultService {
 
         // Store session ID
         if setupResponse.success {
-            try? KeychainService.shared.saveToken(setupResponse.sessionId, forKey: "vault_session_\(vaultId)")
+            do {
+                try KeychainService.shared.saveToken(setupResponse.sessionId, forKey: "vault_session_\(vaultId)")
+            } catch {
+                logger.error("Failed to persist vault session after dual-password setup: \(error.localizedDescription)")
+            }
         }
 
         return setupResponse.success
@@ -477,7 +485,7 @@ final class VaultService {
         }
 
         let body = ["folder_path": folderPath, "vault_type": vaultType]
-        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         let (_, response) = try await URLSession.shared.data(for: request)
 

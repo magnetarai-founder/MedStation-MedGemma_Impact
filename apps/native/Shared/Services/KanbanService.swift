@@ -9,7 +9,7 @@ import Foundation
 
 // MARK: - Models
 
-struct KanbanBoardAPI: Codable, Identifiable {
+struct KanbanBoardAPI: Codable, Identifiable, Sendable {
     let boardId: String
     let projectId: String
     let name: String
@@ -25,7 +25,7 @@ struct KanbanBoardAPI: Codable, Identifiable {
     }
 }
 
-struct KanbanTaskAPI: Codable, Identifiable {
+struct KanbanTaskAPI: Codable, Identifiable, Sendable {
     let taskId: String
     let boardId: String
     let columnId: String

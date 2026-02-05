@@ -2,6 +2,7 @@
 //  VirtualContextDisplay.swift
 //  MagnetarStudio
 //
+//  STUB: Not currently wired — future context visualization UI.
 //  Displays virtual context limit (280K+) while managing actual model limits.
 //  Addresses Gap 5: Show retrievable context, not actual model limit.
 //

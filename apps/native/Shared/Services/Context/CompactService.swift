@@ -119,11 +119,19 @@ final class CompactService: ObservableObject {
         )
 
         // 7. Store compressed context
-        try? storageService.saveCompressedContext(compressedContext, conversationId: sessionId)
+        do {
+            try storageService.saveCompressedContext(compressedContext, conversationId: sessionId)
+        } catch {
+            logger.error("[CompactService] Failed to persist compressed context: \(error.localizedDescription)")
+        }
 
         // 8. Store themes
         for theme in themes {
-            try? storageService.saveTheme(theme, conversationId: sessionId)
+            do {
+                try storageService.saveTheme(theme, conversationId: sessionId)
+            } catch {
+                logger.error("[CompactService] Failed to persist theme '\(theme.topic)': \(error.localizedDescription)")
+            }
         }
 
         // 9. Generate REF tokens for themes
@@ -138,7 +146,11 @@ final class CompactService: ObservableObject {
             metadata.isCompacted = true
             metadata.compactedAt = Date()
             metadata.primaryTopics = themes.map { $0.topic }
-            try? storageService.saveMetadata(metadata)
+            do {
+                try storageService.saveMetadata(metadata)
+            } catch {
+                logger.error("[CompactService] Failed to persist updated metadata: \(error.localizedDescription)")
+            }
         }
 
         // 11. Update stats

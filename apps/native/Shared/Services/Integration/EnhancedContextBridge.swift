@@ -190,14 +190,18 @@ final class EnhancedContextBridge: ObservableObject {
 
         logger.info("[Bridge] Auto-compacting session with \(messages.count) messages")
 
-        let result = try? await compactService.compact(
-            sessionId: sessionId,
-            messages: messages,
-            forceCompact: false
-        )
-
-        lastCompactionTime = Date()
-        return result
+        do {
+            let result = try await compactService.compact(
+                sessionId: sessionId,
+                messages: messages,
+                forceCompact: false
+            )
+            lastCompactionTime = Date()
+            return result
+        } catch {
+            logger.warning("[Bridge] Auto-compaction failed: \(error.localizedDescription)")
+            return nil
+        }
     }
 
     // MARK: - Semantic Nodes

@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct PDFDocumentInfo: Identifiable, Codable, Equatable, Hashable {
+struct PDFDocumentInfo: Identifiable, Codable, Equatable, Hashable, Sendable {
     let id: UUID
     var title: String
     var fileURL: URL
@@ -41,7 +41,7 @@ struct PDFDocumentInfo: Identifiable, Codable, Equatable, Hashable {
     }
 }
 
-struct PDFBookmark: Identifiable, Codable, Equatable, Hashable {
+struct PDFBookmark: Identifiable, Codable, Equatable, Hashable, Sendable {
     let id: UUID
     var pageIndex: Int
     var label: String
