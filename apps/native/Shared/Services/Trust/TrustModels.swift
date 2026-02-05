@@ -264,40 +264,6 @@ public enum TrustKeyError: Error, LocalizedError {
     }
 }
 
-// MARK: - Attestation Models
-
-public struct AttestationRequest: Codable {
-    public let publicKey: String
-    public let claimType: String
-    public let claimValue: String
-
-    public init(publicKey: String, claimType: String, claimValue: String) {
-        self.publicKey = publicKey
-        self.claimType = claimType
-        self.claimValue = claimValue
-    }
-
-    public enum CodingKeys: String, CodingKey {
-        case publicKey = "public_key"
-        case claimType = "claim_type"
-        case claimValue = "claim_value"
-    }
-}
-
-public struct AttestationResponse: Codable {
-    public let attestationId: String
-    public let status: String
-    public let claimType: String
-    public let issuedAt: String
-
-    public enum CodingKeys: String, CodingKey {
-        case attestationId = "attestation_id"
-        case status
-        case claimType = "claim_type"
-        case issuedAt = "issued_at"
-    }
-}
-
 // MARK: - Signed Attestation Models
 
 public struct AttestationPayload: Codable {

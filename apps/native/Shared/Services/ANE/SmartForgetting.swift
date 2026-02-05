@@ -247,11 +247,12 @@ final class SmartForgetting: ObservableObject {
     }
 
     private func loadThresholds() {
-        guard let data = try? Data(contentsOf: storageURL),
-              let thresholds = try? decoder.decode(ForgettingThresholds.self, from: data) else {
-            return
+        guard let data = try? Data(contentsOf: storageURL) else { return }
+        do {
+            forgettingThresholds = try decoder.decode(ForgettingThresholds.self, from: data)
+        } catch {
+            logger.warning("[SmartForgetting] Failed to decode thresholds: \(error)")
         }
-        forgettingThresholds = thresholds
     }
 
     /// Reset to default thresholds

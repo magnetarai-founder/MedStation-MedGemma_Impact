@@ -30,7 +30,7 @@ enum UploadStatus: String, Codable {
     case expired
 }
 
-struct CloudFile: Codable, Identifiable {
+struct CloudFile: Codable, Identifiable, Sendable {
     let fileId: String
     let filename: String
     let sizeBytes: Int
@@ -45,7 +45,7 @@ struct CloudFile: Codable, Identifiable {
     }
 }
 
-struct UploadSession: Codable {
+struct UploadSession: Codable, Sendable {
     let uploadId: String
     let chunkSize: Int
     let totalChunks: Int
@@ -53,7 +53,7 @@ struct UploadSession: Codable {
     let storageClass: StorageClass
 }
 
-struct UploadProgress: Codable {
+struct UploadProgress: Codable, Sendable {
     let uploadId: String
     let status: UploadStatus
     let filename: String
@@ -64,7 +64,7 @@ struct UploadProgress: Codable {
     let fileId: String?
 }
 
-struct UploadResult: Codable {
+struct UploadResult: Codable, Sendable {
     let fileId: String
     let filename: String
     let sizeBytes: Int
@@ -283,28 +283,28 @@ final class CloudStorageService {
         var body = Data()
 
         // upload_id field
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"upload_id\"\r\n\r\n".data(using: .utf8)!)
-        body.append("\(uploadId)\r\n".data(using: .utf8)!)
+        body.appendUTF8("--\(boundary)\r\n")
+        body.appendUTF8("Content-Disposition: form-data; name=\"upload_id\"\r\n\r\n")
+        body.appendUTF8("\(uploadId)\r\n")
 
         // chunk_index field
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"chunk_index\"\r\n\r\n".data(using: .utf8)!)
-        body.append("\(chunkIndex)\r\n".data(using: .utf8)!)
+        body.appendUTF8("--\(boundary)\r\n")
+        body.appendUTF8("Content-Disposition: form-data; name=\"chunk_index\"\r\n\r\n")
+        body.appendUTF8("\(chunkIndex)\r\n")
 
         // chunk_hash field
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"chunk_hash\"\r\n\r\n".data(using: .utf8)!)
-        body.append("\(chunkHash)\r\n".data(using: .utf8)!)
+        body.appendUTF8("--\(boundary)\r\n")
+        body.appendUTF8("Content-Disposition: form-data; name=\"chunk_hash\"\r\n\r\n")
+        body.appendUTF8("\(chunkHash)\r\n")
 
         // chunk_data file
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"chunk_data\"; filename=\"chunk_\(chunkIndex)\"\r\n".data(using: .utf8)!)
-        body.append("Content-Type: application/octet-stream\r\n\r\n".data(using: .utf8)!)
+        body.appendUTF8("--\(boundary)\r\n")
+        body.appendUTF8("Content-Disposition: form-data; name=\"chunk_data\"; filename=\"chunk_\(chunkIndex)\"\r\n")
+        body.appendUTF8("Content-Type: application/octet-stream\r\n\r\n")
         body.append(chunkData)
-        body.append("\r\n".data(using: .utf8)!)
+        body.appendUTF8("\r\n")
 
-        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        body.appendUTF8("--\(boundary)--\r\n")
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -328,15 +328,15 @@ final class CloudStorageService {
         let boundary = UUID().uuidString
         var body = Data()
 
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"upload_id\"\r\n\r\n".data(using: .utf8)!)
-        body.append("\(uploadId)\r\n".data(using: .utf8)!)
+        body.appendUTF8("--\(boundary)\r\n")
+        body.appendUTF8("Content-Disposition: form-data; name=\"upload_id\"\r\n\r\n")
+        body.appendUTF8("\(uploadId)\r\n")
 
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"final_hash\"\r\n\r\n".data(using: .utf8)!)
-        body.append("\(finalHash)\r\n".data(using: .utf8)!)
+        body.appendUTF8("--\(boundary)\r\n")
+        body.appendUTF8("Content-Disposition: form-data; name=\"final_hash\"\r\n\r\n")
+        body.appendUTF8("\(finalHash)\r\n")
 
-        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        body.appendUTF8("--\(boundary)--\r\n")
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -487,5 +487,15 @@ final class CloudStorageService {
             "mp3": "audio/mpeg"
         ]
         return mimeTypes[ext] ?? "application/octet-stream"
+    }
+}
+
+// MARK: - Data Extension
+
+private extension Data {
+    mutating func appendUTF8(_ string: String) {
+        if let data = string.data(using: .utf8) {
+            append(data)
+        }
     }
 }

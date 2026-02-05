@@ -5,7 +5,7 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "Setting
 
 // MARK: - Saved Query
 
-struct SavedQuery: Codable, Identifiable {
+struct SavedQuery: Codable, Identifiable, Sendable {
     let id: Int
     let name: String
     let query: String
@@ -63,7 +63,7 @@ struct SavedQuery: Codable, Identifiable {
 
 // MARK: - Chat Settings
 
-struct ChatSettings: Codable {
+struct ChatSettings: Codable, Sendable {
     var defaultModel: String
     var temperature: Double
     var topP: Double
@@ -96,7 +96,7 @@ struct ChatSettings: Codable {
 
 // MARK: - App Settings
 
-struct AppSettings: Codable {
+struct AppSettings: Codable, Sendable {
     var theme: String  // "light" | "dark" | "auto"
     var defaultWorkspace: String  // "database" | "chat" | "team" | "kanban"
     var enableNotifications: Bool

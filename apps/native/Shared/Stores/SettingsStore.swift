@@ -183,11 +183,15 @@ final class SettingsStore {
     }
 
     private static func loadChatSettings() -> ChatSettings {
-        guard let data = UserDefaults.standard.data(forKey: "chatSettings"),
-              let settings = try? JSONDecoder().decode(ChatSettings.self, from: data) else {
+        guard let data = UserDefaults.standard.data(forKey: "chatSettings") else {
             return .default
         }
-        return settings
+        do {
+            return try JSONDecoder().decode(ChatSettings.self, from: data)
+        } catch {
+            logger.warning("Failed to decode chat settings: \(error)")
+            return .default
+        }
     }
 
     // MARK: - App Settings
@@ -207,11 +211,15 @@ final class SettingsStore {
     }
 
     private static func loadAppSettings() -> AppSettings {
-        guard let data = UserDefaults.standard.data(forKey: "appSettings"),
-              let settings = try? JSONDecoder().decode(AppSettings.self, from: data) else {
+        guard let data = UserDefaults.standard.data(forKey: "appSettings") else {
             return .default
         }
-        return settings
+        do {
+            return try JSONDecoder().decode(AppSettings.self, from: data)
+        } catch {
+            logger.warning("Failed to decode app settings: \(error)")
+            return .default
+        }
     }
 
     // MARK: - Reset

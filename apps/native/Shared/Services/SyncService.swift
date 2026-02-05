@@ -35,7 +35,7 @@ enum ConflictResolution: String, Codable {
     case merge
 }
 
-struct SyncResourceStatus: Codable {
+struct SyncResourceStatus: Codable, Sendable {
     let resource: String
     let lastSyncAt: String?
     let pendingChanges: Int
@@ -43,7 +43,7 @@ struct SyncResourceStatus: Codable {
     let status: SyncStatus
 }
 
-struct SyncStatusResponse: Codable {
+struct SyncStatusResponse: Codable, Sendable {
     let isConnected: Bool
     let lastSyncAt: String?
     let pendingChanges: Int
@@ -51,7 +51,7 @@ struct SyncStatusResponse: Codable {
     let resources: [SyncResourceStatus]
 }
 
-struct ConflictInfo: Codable {
+struct ConflictInfo: Codable, Sendable {
     let conflictId: String
     let resourceType: String
     let resourceId: String
@@ -62,14 +62,14 @@ struct ConflictInfo: Codable {
     let detectedAt: String
 }
 
-struct SyncChange: Codable {
+struct SyncChange: Codable, Sendable {
     let resourceId: String
     let data: [String: AnyCodable]
     let modifiedAt: String
     let vectorClock: [String: Int]?
 }
 
-struct SyncExchangeResponse: Codable {
+struct SyncExchangeResponse: Codable, Sendable {
     let received: Int
     let conflicts: [ConflictInfo]
     let serverChanges: [SyncChange]

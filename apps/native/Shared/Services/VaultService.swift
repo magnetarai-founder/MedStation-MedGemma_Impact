@@ -178,7 +178,9 @@ final class VaultService {
     }
 
     func listFiles(vaultType: String = "real", folderPath: String? = nil) async throws -> [VaultFile] {
-        var components = URLComponents(string: "\(baseURL)/files")!
+        guard var components = URLComponents(string: "\(baseURL)/files") else {
+            throw VaultError.invalidURL
+        }
         var queryItems = [URLQueryItem(name: "vault_type", value: vaultType)]
 
         if let folderPath = folderPath {
@@ -219,7 +221,9 @@ final class VaultService {
     }
 
     func listFolders(vaultType: String = "real", parentPath: String? = nil) async throws -> [VaultFolder] {
-        var components = URLComponents(string: "\(baseURL)/folders")!
+        guard var components = URLComponents(string: "\(baseURL)/folders") else {
+            throw VaultError.invalidURL
+        }
         var queryItems = [URLQueryItem(name: "vault_type", value: vaultType)]
 
         if let parentPath = parentPath {
@@ -283,33 +287,33 @@ final class VaultService {
         let fileName = fileURL.lastPathComponent
         let mimeType = mimeTypeForPath(path: fileName)
 
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(fileName)\"\r\n".data(using: .utf8)!)
-        body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
+        body.appendUTF8("--\(boundary)\r\n")
+        body.appendUTF8("Content-Disposition: form-data; name=\"file\"; filename=\"\(fileName)\"\r\n")
+        body.appendUTF8("Content-Type: \(mimeType)\r\n\r\n")
         body.append(fileData)
-        body.append("\r\n".data(using: .utf8)!)
+        body.appendUTF8("\r\n")
 
         // Add vault_passphrase
         let vaultPassphrase = passphrase ?? "default"
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"vault_passphrase\"\r\n\r\n".data(using: .utf8)!)
-        body.append(vaultPassphrase.data(using: .utf8)!)
-        body.append("\r\n".data(using: .utf8)!)
+        body.appendUTF8("--\(boundary)\r\n")
+        body.appendUTF8("Content-Disposition: form-data; name=\"vault_passphrase\"\r\n\r\n")
+        body.appendUTF8(vaultPassphrase)
+        body.appendUTF8("\r\n")
 
         // Add vault_type
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"vault_type\"\r\n\r\n".data(using: .utf8)!)
-        body.append(vaultType.data(using: .utf8)!)
-        body.append("\r\n".data(using: .utf8)!)
+        body.appendUTF8("--\(boundary)\r\n")
+        body.appendUTF8("Content-Disposition: form-data; name=\"vault_type\"\r\n\r\n")
+        body.appendUTF8(vaultType)
+        body.appendUTF8("\r\n")
 
         // Add folder_path
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"folder_path\"\r\n\r\n".data(using: .utf8)!)
-        body.append(folderPath.data(using: .utf8)!)
-        body.append("\r\n".data(using: .utf8)!)
+        body.appendUTF8("--\(boundary)\r\n")
+        body.appendUTF8("Content-Disposition: form-data; name=\"folder_path\"\r\n\r\n")
+        body.appendUTF8(folderPath)
+        body.appendUTF8("\r\n")
 
         // End boundary
-        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        body.appendUTF8("--\(boundary)--\r\n")
 
         request.httpBody = body
 
@@ -366,25 +370,25 @@ final class VaultService {
         var body = Data()
 
         // Add folder_name
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"folder_name\"\r\n\r\n".data(using: .utf8)!)
-        body.append(folderName.data(using: .utf8)!)
-        body.append("\r\n".data(using: .utf8)!)
+        body.appendUTF8("--\(boundary)\r\n")
+        body.appendUTF8("Content-Disposition: form-data; name=\"folder_name\"\r\n\r\n")
+        body.appendUTF8(folderName)
+        body.appendUTF8("\r\n")
 
         // Add vault_type
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"vault_type\"\r\n\r\n".data(using: .utf8)!)
-        body.append(vaultType.data(using: .utf8)!)
-        body.append("\r\n".data(using: .utf8)!)
+        body.appendUTF8("--\(boundary)\r\n")
+        body.appendUTF8("Content-Disposition: form-data; name=\"vault_type\"\r\n\r\n")
+        body.appendUTF8(vaultType)
+        body.appendUTF8("\r\n")
 
         // Add parent_path
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"parent_path\"\r\n\r\n".data(using: .utf8)!)
-        body.append(parentPath.data(using: .utf8)!)
-        body.append("\r\n".data(using: .utf8)!)
+        body.appendUTF8("--\(boundary)\r\n")
+        body.appendUTF8("Content-Disposition: form-data; name=\"parent_path\"\r\n\r\n")
+        body.appendUTF8(parentPath)
+        body.appendUTF8("\r\n")
 
         // End boundary
-        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        body.appendUTF8("--\(boundary)--\r\n")
 
         request.httpBody = body
 
@@ -520,6 +524,16 @@ final class VaultService {
         ]
 
         return mimeTypes[ext] ?? "application/octet-stream"
+    }
+}
+
+// MARK: - Data Extension
+
+private extension Data {
+    mutating func appendUTF8(_ string: String) {
+        if let data = string.data(using: .utf8) {
+            append(data)
+        }
     }
 }
 

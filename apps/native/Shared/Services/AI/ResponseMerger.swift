@@ -252,6 +252,7 @@ final class ResponseMerger: @unchecked Sendable {
     private func extractCodeBlocks(from content: String) -> [String] {
         let pattern = "```(?:\\w+)?\\n([\\s\\S]*?)```"
         guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
+            logger.warning("[ResponseMerger] Failed to compile regex for code block extraction")
             return []
         }
 

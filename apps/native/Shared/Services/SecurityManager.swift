@@ -290,15 +290,21 @@ public final class SecurityManager {
         // Domain lists are stored as JSON strings
 
         if let approvedJson = KeychainService.shared.loadToken(forKey: approvedDomainsKey),
-           let data = approvedJson.data(using: .utf8),
-           let domains = try? JSONDecoder().decode([String].self, from: data) {
-            approvedDomains = Set(domains)
+           let data = approvedJson.data(using: .utf8) {
+            do {
+                approvedDomains = Set(try JSONDecoder().decode([String].self, from: data))
+            } catch {
+                logger.warning("[Security] Failed to decode approved domains: \(error)")
+            }
         }
 
         if let blockedJson = KeychainService.shared.loadToken(forKey: blockedDomainsKey),
-           let data = blockedJson.data(using: .utf8),
-           let domains = try? JSONDecoder().decode([String].self, from: data) {
-            blockedDomains = Set(domains)
+           let data = blockedJson.data(using: .utf8) {
+            do {
+                blockedDomains = Set(try JSONDecoder().decode([String].self, from: data))
+            } catch {
+                logger.warning("[Security] Failed to decode blocked domains: \(error)")
+            }
         }
 
         // Migration: If data exists in UserDefaults but not Keychain, migrate it

@@ -17,7 +17,7 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "ModelEn
 
 // MARK: - Enriched Model Metadata
 
-struct EnrichedModelMetadata: Codable {
+struct EnrichedModelMetadata: Codable, Sendable {
     let displayName: String
     let description: String
     let capability: String // chat, code, vision, reasoning, general

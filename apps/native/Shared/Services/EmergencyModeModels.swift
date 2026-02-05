@@ -36,7 +36,7 @@ enum EmergencyTriggerMethod: String {
 
 // MARK: - Backend Response
 
-struct BackendEmergencyResponse: Codable {
+struct BackendEmergencyResponse: Codable, Sendable {
     let success: Bool
     let filesWiped: Int
     let passes: Int

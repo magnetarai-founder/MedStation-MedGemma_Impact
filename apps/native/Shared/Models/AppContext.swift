@@ -464,7 +464,7 @@ struct WorkflowContext {
     }
 }
 
-struct WorkflowSummary: Codable {
+struct WorkflowSummary: Codable, Sendable {
     let id: String
     let name: String
     let status: String
@@ -472,7 +472,7 @@ struct WorkflowSummary: Codable {
     let stepCount: Int
 }
 
-struct WorkflowExecution: Codable, Identifiable {
+struct WorkflowExecution: Codable, Identifiable, Sendable {
     let id: UUID
     let workflowId: String
     let workflowName: String?
@@ -611,7 +611,7 @@ struct TeamContext {
     }
 }
 
-struct TeamMessageSummary: Codable {
+struct TeamMessageSummary: Codable, Sendable {
     let channelName: String
     let sender: String
     let preview: String  // First 100 chars

@@ -248,12 +248,15 @@ final class UserBehaviorTracker: ObservableObject {
     }
 
     private func loadPatterns() {
-        guard let data = try? Data(contentsOf: storageURL),
-              let patterns = try? decoder.decode(UserBehaviorPatterns.self, from: data) else {
+        guard let data = try? Data(contentsOf: storageURL) else {
             logger.info("[BehaviorTracker] No existing patterns, starting fresh")
             return
         }
-        currentPatterns = patterns
+        do {
+            currentPatterns = try decoder.decode(UserBehaviorPatterns.self, from: data)
+        } catch {
+            logger.warning("[BehaviorTracker] Failed to decode patterns: \(error)")
+        }
     }
 
     /// Reset all tracked patterns

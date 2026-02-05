@@ -39,24 +39,3 @@ struct SegmentationMask: Codable, Identifiable, Sendable {
         area > 0.1 && area < 0.9  // Between 10-90% of image
     }
 }
-
-/// Collection of segmentation masks for an image
-struct SegmentationResult: Codable, Sendable {
-    let masks: [SegmentationMask]
-    let processingTime: TimeInterval
-
-    init(masks: [SegmentationMask] = [], processingTime: TimeInterval = 0) {
-        self.masks = masks
-        self.processingTime = processingTime
-    }
-
-    /// Get the largest mask (likely main subject)
-    var largestMask: SegmentationMask? {
-        masks.max(by: { $0.area < $1.area })
-    }
-
-    /// Get masks sorted by area (largest first)
-    var sortedByArea: [SegmentationMask] {
-        masks.sorted(by: { $0.area > $1.area })
-    }
-}

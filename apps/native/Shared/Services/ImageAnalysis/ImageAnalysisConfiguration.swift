@@ -142,8 +142,14 @@ extension ImageAnalysisConfiguration {
     /// Load saved configuration from UserDefaults
     /// Note: On Simulator, CoreML layers are always stripped to prevent crashes
     static func loadSaved() -> ImageAnalysisConfiguration {
-        guard let data = UserDefaults.standard.data(forKey: userDefaultsKey),
-              var config = try? JSONDecoder().decode(ImageAnalysisConfiguration.self, from: data) else {
+        guard let data = UserDefaults.standard.data(forKey: userDefaultsKey) else {
+            return .default
+        }
+        var config: ImageAnalysisConfiguration
+        do {
+            config = try JSONDecoder().decode(ImageAnalysisConfiguration.self, from: data)
+        } catch {
+            logger.warning("[ImageAnalysis] Failed to decode saved config: \(error)")
             return .default
         }
 

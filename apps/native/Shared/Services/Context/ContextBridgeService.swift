@@ -189,6 +189,7 @@ actor ContextBridgeService {
         // Look for code blocks with bash/shell/zsh using NSRegularExpression
         let pattern = "```(?:bash|shell|zsh|sh)\\n([\\s\\S]*?)```"
         guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
+            logger.warning("[ContextBridge] Failed to compile regex for code block extraction")
             return []
         }
 

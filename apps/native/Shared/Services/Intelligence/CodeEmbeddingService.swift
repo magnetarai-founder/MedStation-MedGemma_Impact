@@ -699,13 +699,14 @@ final class CodeEmbeddingService {
     }
 
     private func loadIndexState() {
-        guard let data = try? Data(contentsOf: indexStatePath),
-              let records = try? JSONDecoder().decode([IndexedFileRecord].self, from: data) else {
-            return
+        guard let data = try? Data(contentsOf: indexStatePath) else { return }
+        do {
+            let records = try JSONDecoder().decode([IndexedFileRecord].self, from: data)
+            indexedFiles = Dictionary(uniqueKeysWithValues: records.map { ($0.filePath, $0) })
+            logger.debug("[CodeEmbedding] Loaded index state: \(self.indexedFiles.count) files")
+        } catch {
+            logger.warning("[CodeEmbedding] Failed to decode index state: \(error)")
         }
-
-        indexedFiles = Dictionary(uniqueKeysWithValues: records.map { ($0.filePath, $0) })
-        logger.debug("[CodeEmbedding] Loaded index state: \(self.indexedFiles.count) files")
     }
 }
 

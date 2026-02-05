@@ -14,11 +14,11 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "ModelMe
 
 // MARK: - Ollama API Models
 
-struct OllamaTagsResponseMemory: Codable {
+struct OllamaTagsResponseMemory: Codable, Sendable {
     let models: [OllamaModelMemory]
 }
 
-struct OllamaModelMemory: Codable {
+struct OllamaModelMemory: Codable, Sendable {
     let name: String
     let size: Int64  // Size in bytes
     let modifiedAt: String
@@ -36,7 +36,7 @@ struct OllamaModelMemory: Codable {
     }
 }
 
-struct OllamaModelDetailsMemory: Codable {
+struct OllamaModelDetailsMemory: Codable, Sendable {
     let parameterSize: String
     let quantizationLevel: String
     let format: String

@@ -97,6 +97,7 @@ class VaultPermissionManager {
 
     /// Start periodic cleanup of expired permissions
     private func startCleanupTimer() {
+        cleanupTimer?.invalidate()
         cleanupTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.cleanupExpiredPermissions()

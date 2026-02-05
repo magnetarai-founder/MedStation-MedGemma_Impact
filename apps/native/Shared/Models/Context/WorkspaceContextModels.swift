@@ -11,7 +11,7 @@ import Foundation
 // MARK: - Vault Context Models
 
 /// Vault file result from semantic search (includes relevance score and snippet)
-struct RelevantVaultFile: Codable {
+struct RelevantVaultFile: Codable, Sendable {
     let fileId: String
     let fileName: String
     let filePath: String
@@ -21,7 +21,7 @@ struct RelevantVaultFile: Codable {
 
 /// Vault context included in bundle - METADATA ONLY, NO FILE CONTENTS
 /// File contents require explicit permission via VaultPermissionManager
-struct BundledVaultContext: Codable {
+struct BundledVaultContext: Codable, Sendable {
     let unlockedVaultType: String?
     let recentlyAccessedFiles: [VaultFileMetadata]
     let currentlyGrantedPermissions: [FilePermission]
@@ -31,7 +31,7 @@ struct BundledVaultContext: Codable {
 // MARK: - Data Context Models
 
 /// Query result from semantic search (includes relevance score)
-struct RelevantQuery: Codable {
+struct RelevantQuery: Codable, Sendable {
     let queryId: String
     let queryText: String
     let tableName: String?
@@ -39,7 +39,7 @@ struct RelevantQuery: Codable {
 }
 
 /// Data workspace context - recent queries and loaded tables
-struct BundledDataContext: Codable {
+struct BundledDataContext: Codable, Sendable {
     let activeTables: [TableMetadata]
     let recentQueries: [RecentQuery]
     let relevantQueries: [RelevantQuery]?
@@ -49,7 +49,7 @@ struct BundledDataContext: Codable {
 // MARK: - Kanban Context Models
 
 /// Kanban workspace context - active tasks and boards
-struct BundledKanbanContext: Codable {
+struct BundledKanbanContext: Codable, Sendable {
     let activeBoard: String?
     let relevantTasks: [TaskSummary]
     let recentActivity: [KanbanActivity]
@@ -57,7 +57,7 @@ struct BundledKanbanContext: Codable {
 }
 
 /// Summary of tasks by priority level
-struct TaskPrioritySummary: Codable {
+struct TaskPrioritySummary: Codable, Sendable {
     let urgent: Int
     let high: Int
     let medium: Int
@@ -71,7 +71,7 @@ struct TaskPrioritySummary: Codable {
 // MARK: - Workflow Context Models
 
 /// Workflow/automation context - active workflows
-struct BundledWorkflowContext: Codable {
+struct BundledWorkflowContext: Codable, Sendable {
     let activeWorkflows: [WorkflowSummary]
     let recentExecutions: [WorkflowExecution]
     let relevantWorkflows: [WorkflowSummary]?
@@ -82,7 +82,7 @@ struct BundledWorkflowContext: Codable {
 // MARK: - Team Context Models
 
 /// Team workspace context - recent messages and channels
-struct BundledTeamContext: Codable {
+struct BundledTeamContext: Codable, Sendable {
     let activeChannel: String?
     let recentMessages: [TeamMessageSummary]
     let onlineMembers: Int
@@ -94,7 +94,7 @@ struct BundledTeamContext: Codable {
 // MARK: - Code Context Models
 
 /// Code workspace context - open files and git state
-struct BundledCodeContext: Codable {
+struct BundledCodeContext: Codable, Sendable {
     let openFiles: [String]
     let recentEdits: [CodeEdit]
     let gitBranch: String?
@@ -103,7 +103,7 @@ struct BundledCodeContext: Codable {
 }
 
 /// Code file found via semantic search
-struct RelevantCodeFile: Codable {
+struct RelevantCodeFile: Codable, Sendable {
     let fileId: String
     let fileName: String
     let filePath: String?
@@ -114,7 +114,7 @@ struct RelevantCodeFile: Codable {
 }
 
 /// A code edit for tracking recent changes
-struct CodeEdit: Codable {
+struct CodeEdit: Codable, Sendable {
     let fileId: String
     let fileName: String
     let editType: String  // "insert", "delete", "modify"
@@ -125,7 +125,7 @@ struct CodeEdit: Codable {
 // MARK: - Conversation Models
 
 /// Single message in conversation history
-struct ConversationMessage: Codable, Identifiable {
+struct ConversationMessage: Codable, Identifiable, Sendable {
     let id: String
     let role: String
     let content: String
@@ -165,7 +165,7 @@ struct ConversationMessage: Codable, Identifiable {
 // Note: Bundled versions for context passing are in ContextBundle.swift (BundledRAGDocument, BundledVectorSearchResult)
 
 /// Information about an available model
-struct AvailableModel: Codable {
+struct AvailableModel: Codable, Sendable {
     let id: String
     let name: String
     let displayName: String
@@ -180,7 +180,7 @@ struct AvailableModel: Codable {
 }
 
 /// Model capabilities for routing decisions
-struct ModelCapabilities: Codable {
+struct ModelCapabilities: Codable, Sendable {
     let chat: Bool
     let codeGeneration: Bool
     let dataAnalysis: Bool

@@ -273,13 +273,15 @@ final class ANETrainingManager: ObservableObject {
     }
 
     private func loadTrainingData() {
-        guard let data = try? Data(contentsOf: dataURL),
-              let examples = try? decoder.decode([BehaviorTrainingExample].self, from: data) else {
-            return
+        guard let data = try? Data(contentsOf: dataURL) else { return }
+        do {
+            let examples = try decoder.decode([BehaviorTrainingExample].self, from: data)
+            trainingExamples = examples
+            exampleCount = examples.count
+            logger.info("[ANETraining] Loaded \(examples.count) training examples")
+        } catch {
+            logger.warning("[ANETraining] Failed to decode training data: \(error)")
         }
-        trainingExamples = examples
-        exampleCount = examples.count
-        logger.info("[ANETraining] Loaded \(examples.count) training examples")
     }
 
     /// Clear all training data

@@ -112,6 +112,7 @@ final class ReferenceIndex {
     func findRefTokens(in text: String) -> [String] {
         let pattern = "\\[REF:[\\w_]+\\]"
         guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
+            logger.warning("[ReferenceIndex] Failed to compile regex for REF token detection")
             return []
         }
 
