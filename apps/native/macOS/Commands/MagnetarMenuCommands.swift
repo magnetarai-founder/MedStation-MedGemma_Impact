@@ -133,6 +133,13 @@ struct MagnetarMenuCommands: Commands {
                 toggleCommandPalette()
             }
             .keyboardShortcut("k", modifiers: .command)
+
+            Divider()
+
+            Button("AI Assist") {
+                navigationStore.navigate(to: .workspace)
+            }
+            .keyboardShortcut("i", modifiers: [.command, .shift])
         }
 
         // Help menu

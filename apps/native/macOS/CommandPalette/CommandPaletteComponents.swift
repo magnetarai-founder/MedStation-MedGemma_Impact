@@ -333,6 +333,30 @@ struct CommandPaletteView: View {
                 keywords: ["workflow", "designer", "automation"],
                 action: { navigationStore.navigate(to: .kanban) }
             ),
+            PaletteCommand(
+                id: "ai-search",
+                title: "AI Search",
+                subtitle: "Search across all workspace content",
+                icon: "sparkle.magnifyingglass",
+                category: .tools,
+                keywords: ["ai", "search", "find", "semantic", "workspace"],
+                action: {
+                    // Navigate to workspace and trigger search
+                    navigationStore.navigate(to: .workspace)
+                }
+            ),
+            PaletteCommand(
+                id: "ai-assist",
+                title: "AI Assist",
+                subtitle: "AI writing assist in current panel",
+                icon: "sparkles",
+                category: .tools,
+                keywords: ["ai", "assist", "write", "improve", "grammar"],
+                shortcut: "⇧⌘I",
+                action: {
+                    navigationStore.navigate(to: .workspace)
+                }
+            ),
         ])
 
         // View

@@ -12,6 +12,7 @@ struct SheetsToolbar: View {
     @Binding var selectedCell: CellAddress?
     @Binding var formulaText: String
     let onFormulaCommit: () -> Void
+    @State private var showFormulaAI = false
 
     var body: some View {
         HStack(spacing: 8) {
@@ -40,6 +41,31 @@ struct SheetsToolbar: View {
             .padding(.vertical, 4)
             .background(Color.surfaceTertiary)
             .clipShape(RoundedRectangle(cornerRadius: 4))
+
+            // AI formula assistant
+            Button {
+                showFormulaAI.toggle()
+            } label: {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.purple)
+                    .frame(width: 24, height: 24)
+            }
+            .buttonStyle(.plain)
+            .help("Formula AI")
+            .popover(isPresented: $showFormulaAI) {
+                FormulaAIPopover(
+                    selectedCell: selectedCell,
+                    onInsertFormula: { formula in
+                        formulaText = formula
+                        onFormulaCommit()
+                        showFormulaAI = false
+                    },
+                    onDismiss: {
+                        showFormulaAI = false
+                    }
+                )
+            }
 
             Spacer()
 

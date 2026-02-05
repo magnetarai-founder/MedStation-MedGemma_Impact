@@ -14,6 +14,7 @@ struct NoteEditorView: View {
 
     @State private var editableContent: String = ""
     @State private var isEditingTitle = false
+    @State private var showAIAssist = false
     @FocusState private var titleFocused: Bool
 
     var body: some View {
@@ -65,6 +66,35 @@ struct NoteEditorView: View {
                 Image(systemName: "pin.fill")
                     .font(.system(size: 10))
                     .foregroundStyle(.orange)
+            }
+
+            Button {
+                showAIAssist.toggle()
+            } label: {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.purple)
+                    .frame(width: 26, height: 26)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color.purple.opacity(0.1))
+                    )
+            }
+            .buttonStyle(.plain)
+            .help("AI Assist (⌘⇧I)")
+            .popover(isPresented: $showAIAssist) {
+                AIAssistPopover(
+                    inputText: editableContent,
+                    context: note.title,
+                    onAccept: { result in
+                        editableContent = result
+                        onContentChange(result)
+                        showAIAssist = false
+                    },
+                    onDismiss: {
+                        showAIAssist = false
+                    }
+                )
             }
 
             Text("Type / for commands")

@@ -21,6 +21,8 @@ struct VoicePanel: View {
     @State private var isPlaying = false
     @State private var playbackProgress: Double = 0
     @State private var isLoading = true
+    @State private var transcriptionService = TranscriptionService.shared
+    @State private var aiService = WorkspaceAIService.shared
     @StateObject private var recorder = VoiceRecorderManager()
 
     var body: some View {
@@ -171,11 +173,45 @@ struct VoicePanel: View {
                             .font(.system(size: 14))
                             .foregroundStyle(.primary)
                             .textSelection(.enabled)
+
+                        // AI cleanup button
+                        HStack(spacing: 8) {
+                            Button {
+                                cleanUpTranscription(recordingID: recording.id)
+                            } label: {
+                                Label("Clean Up", systemImage: "sparkles")
+                                    .font(.system(size: 11))
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(.purple)
+
+                            Button {
+                                summarizeTranscription(recordingID: recording.id)
+                            } label: {
+                                Label("Summarize", systemImage: "text.justify.left")
+                                    .font(.system(size: 11))
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(.purple)
+                        }
+                        .padding(.top, 4)
                     } else if !recording.isTranscribing {
-                        Text("No transcription available")
-                            .font(.system(size: 13))
-                            .foregroundStyle(.secondary)
-                            .italic()
+                        VStack(spacing: 8) {
+                            Text("No transcription available")
+                                .font(.system(size: 13))
+                                .foregroundStyle(.secondary)
+                                .italic()
+
+                            Button {
+                                transcribeRecording(recordingID: recording.id)
+                            } label: {
+                                Label("Transcribe", systemImage: "waveform.badge.magnifyingglass")
+                                    .font(.system(size: 12, weight: .medium))
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
+                            .tint(.purple)
+                        }
                     }
                 }
                 .padding(16)
@@ -306,6 +342,9 @@ struct VoicePanel: View {
         recordings.insert(recording, at: 0)
         selectedRecordingID = recording.id
         saveMetadata()
+
+        // Auto-transcribe
+        transcribeRecording(recordingID: recording.id)
     }
 
     private func deleteRecording(_ recording: VoiceRecording) {
@@ -315,6 +354,69 @@ struct VoicePanel: View {
         }
         try? FileManager.default.removeItem(at: recording.fileURL)
         saveMetadata()
+    }
+
+    // MARK: - Transcription
+
+    private func transcribeRecording(recordingID: UUID) {
+        guard let index = recordings.firstIndex(where: { $0.id == recordingID }) else { return }
+        recordings[index].isTranscribing = true
+        saveMetadata()
+
+        let url = recordings[index].fileURL
+
+        Task {
+            do {
+                let text = try await transcriptionService.transcribe(audioURL: url)
+                if let i = recordings.firstIndex(where: { $0.id == recordingID }) {
+                    recordings[i].transcription = text
+                    recordings[i].isTranscribing = false
+                    saveMetadata()
+                }
+            } catch {
+                logger.error("Transcription failed: \(error)")
+                if let i = recordings.firstIndex(where: { $0.id == recordingID }) {
+                    recordings[i].isTranscribing = false
+                    saveMetadata()
+                }
+            }
+        }
+    }
+
+    private func cleanUpTranscription(recordingID: UUID) {
+        guard let index = recordings.firstIndex(where: { $0.id == recordingID }),
+              let transcription = recordings[index].transcription else { return }
+
+        let strategy = VoiceAIStrategy()
+        Task {
+            let cleaned = await aiService.generateSync(
+                action: .cleanTranscription,
+                input: transcription,
+                strategy: strategy
+            )
+            if !cleaned.isEmpty, let i = recordings.firstIndex(where: { $0.id == recordingID }) {
+                recordings[i].transcription = cleaned
+                saveMetadata()
+            }
+        }
+    }
+
+    private func summarizeTranscription(recordingID: UUID) {
+        guard let index = recordings.firstIndex(where: { $0.id == recordingID }),
+              let transcription = recordings[index].transcription else { return }
+
+        let strategy = VoiceAIStrategy()
+        Task {
+            let summary = await aiService.generateSync(
+                action: .summarizeRecording,
+                input: transcription,
+                strategy: strategy
+            )
+            if !summary.isEmpty, let i = recordings.firstIndex(where: { $0.id == recordingID }) {
+                recordings[i].transcription = "Summary:\n\(summary)\n\nFull Transcription:\n\(transcription)"
+                saveMetadata()
+            }
+        }
     }
 
     // MARK: - Persistence

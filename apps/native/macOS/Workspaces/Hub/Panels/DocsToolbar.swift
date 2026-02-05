@@ -11,6 +11,7 @@ import SwiftUI
 struct DocsToolbar: View {
     @Binding var document: WorkspaceDocument
     @Binding var showDocsList: Bool
+    @State private var showAIAssist = false
 
     var body: some View {
         HStack(spacing: 4) {
@@ -62,6 +63,33 @@ struct DocsToolbar: View {
             // Media
             toolbarButton(icon: "photo", help: "Insert Image")
             toolbarButton(icon: "link", help: "Insert Link")
+
+            Divider().frame(height: 16)
+
+            // AI Assist
+            Button {
+                showAIAssist.toggle()
+            } label: {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.purple)
+                    .frame(width: 26, height: 26)
+            }
+            .buttonStyle(.plain)
+            .help("AI Assist (⌘⇧I)")
+            .popover(isPresented: $showAIAssist) {
+                AIAssistPopover(
+                    inputText: document.content,
+                    context: document.title,
+                    onAccept: { result in
+                        document.content = result
+                        showAIAssist = false
+                    },
+                    onDismiss: {
+                        showAIAssist = false
+                    }
+                )
+            }
 
             Spacer()
 
