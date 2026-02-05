@@ -169,7 +169,7 @@ final class KeychainService {
 
 // MARK: - Models
 
-struct BiometricCredentials: Codable {
+struct BiometricCredentials: Codable, Sendable {
     let username: String
     let password: String
 }

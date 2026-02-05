@@ -15,13 +15,13 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "CloudSt
 
 // MARK: - Models
 
-enum StorageClass: String, Codable {
+enum StorageClass: String, Codable, Sendable {
     case standard
     case archive
     case cold
 }
 
-enum UploadStatus: String, Codable {
+enum UploadStatus: String, Codable, Sendable {
     case pending
     case uploading
     case processing

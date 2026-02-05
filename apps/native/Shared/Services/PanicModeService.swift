@@ -7,7 +7,7 @@
 
 import Foundation
 
-public enum PanicLevel: String, Codable {
+public enum PanicLevel: String, Codable, Sendable {
     case standard    // Double-click: secure wipe via backend
     case emergency   // Triple-click: DoD 7-pass wipe + uninstall (NOT YET IMPLEMENTED)
 }

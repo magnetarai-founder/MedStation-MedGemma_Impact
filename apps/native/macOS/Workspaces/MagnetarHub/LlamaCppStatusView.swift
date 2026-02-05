@@ -16,7 +16,6 @@ struct LlamaCppStatusView: View {
     @State private var isHovered = false
 
     private let llamaCppService = LlamaCppService.shared
-    private let refreshTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
 
     var body: some View {
         HStack(spacing: 8) {
@@ -110,9 +109,11 @@ struct LlamaCppStatusView: View {
         }
         .task {
             await refreshStatus()
-        }
-        .onReceive(refreshTimer) { _ in
-            Task { await refreshStatus() }
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                guard !Task.isCancelled else { break }
+                await refreshStatus()
+            }
         }
     }
 

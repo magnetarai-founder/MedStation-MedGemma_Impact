@@ -11,12 +11,12 @@ import Foundation
 // MARK: - Ollama API Response Types
 
 /// Response from Ollama /api/tags endpoint
-struct OllamaTagsResponse: Codable {
+struct OllamaTagsResponse: Codable, Sendable {
     let models: [OllamaModelInfo]
 }
 
 /// Model info from Ollama API (distinct from UI model state)
-struct OllamaModelInfo: Codable {
+struct OllamaModelInfo: Codable, Sendable {
     let name: String
     let size: Int64
     let modifiedAt: String
@@ -58,7 +58,7 @@ struct OllamaModelInfo: Codable {
 }
 
 /// Details about an Ollama model
-struct OllamaModelInfoDetails: Codable {
+struct OllamaModelInfoDetails: Codable, Sendable {
     let parameterSize: String?
     let quantizationLevel: String?
     let format: String?
@@ -90,7 +90,7 @@ struct OllamaModelInfoDetails: Codable {
 // MARK: - Ollama Generation Types
 
 /// Request body for Ollama /api/generate
-struct OllamaGenerateRequest: Codable {
+struct OllamaGenerateRequest: Codable, Sendable {
     let model: String
     let prompt: String
     let stream: Bool
@@ -116,7 +116,7 @@ struct OllamaGenerateRequest: Codable {
 }
 
 /// Options for Ollama generation
-struct OllamaGenerateOptions: Codable {
+struct OllamaGenerateOptions: Codable, Sendable {
     var temperature: Float?
     var topK: Int?
     var topP: Float?
@@ -163,7 +163,7 @@ struct OllamaGenerateOptions: Codable {
 }
 
 /// Response chunk from Ollama streaming generation
-struct OllamaGenerateResponse: Codable {
+struct OllamaGenerateResponse: Codable, Sendable {
     let model: String
     let createdAt: String
     let response: String
@@ -199,7 +199,7 @@ struct OllamaGenerateResponse: Codable {
 // MARK: - Ollama Chat Types
 
 /// Request body for Ollama /api/chat
-struct OllamaChatRequest: Codable {
+struct OllamaChatRequest: Codable, Sendable {
     let model: String
     let messages: [OllamaChatMessage]
     let stream: Bool
@@ -219,7 +219,7 @@ struct OllamaChatRequest: Codable {
 }
 
 /// A message in Ollama chat format
-struct OllamaChatMessage: Codable {
+struct OllamaChatMessage: Codable, Sendable {
     let role: String
     let content: String
     let images: [String]?  // Base64 encoded images for multimodal
@@ -244,7 +244,7 @@ struct OllamaChatMessage: Codable {
 }
 
 /// Response from Ollama /api/chat
-struct OllamaChatResponse: Codable {
+struct OllamaChatResponse: Codable, Sendable {
     let model: String
     let createdAt: String
     let message: OllamaChatMessage?

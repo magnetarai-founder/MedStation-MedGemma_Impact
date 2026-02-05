@@ -142,10 +142,14 @@ final class ModelsStore {
             // Stream progress updates
             for try await line in bytes.lines {
                 // Each line is a JSON object with status/progress
-                if let jsonData = line.data(using: .utf8),
-                   let dict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
-                    if let status = dict["status"] as? String {
-                        logger.debug("Pull \(name): \(status)")
+                if let jsonData = line.data(using: .utf8) {
+                    do {
+                        if let dict = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+                           let status = dict["status"] as? String {
+                            logger.debug("Pull \(name): \(status)")
+                        }
+                    } catch {
+                        logger.debug("Pull \(name): malformed JSON chunk: \(error)")
                     }
                 }
             }

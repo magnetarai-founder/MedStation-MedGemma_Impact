@@ -5,7 +5,7 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "APIClie
 
 /// Standard API response envelope matching backend SuccessResponse<T>
 /// Note: timestamp is optional as some endpoints don't include it
-struct SuccessResponse<T: Decodable>: Decodable {
+struct SuccessResponse<T: Decodable & Sendable>: Decodable, Sendable {
     let success: Bool
     let data: T
     let message: String?
@@ -13,7 +13,7 @@ struct SuccessResponse<T: Decodable>: Decodable {
 }
 
 /// Standard API error response
-struct ErrorResponse: Decodable {
+struct ErrorResponse: Decodable, Sendable {
     let success: Bool
     let errorCode: String
     let message: String
@@ -480,7 +480,7 @@ private final class StreamingDelegate: NSObject, URLSessionDataDelegate {
                     onDone()
                 }
             } catch {
-                // Ignore malformed chunk
+                logger.debug("Malformed streaming JSON chunk: \(error)")
             }
         }
     }

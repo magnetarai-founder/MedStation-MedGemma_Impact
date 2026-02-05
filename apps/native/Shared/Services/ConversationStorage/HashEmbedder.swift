@@ -205,7 +205,7 @@ struct EmbeddingMetadata: Codable {
 }
 
 /// Source type for embeddings
-enum EmbeddingSource: String, Codable {
+enum EmbeddingSource: String, Codable, Sendable {
     case chatMessage = "chat_message"
     case document = "document"
     case file = "file"

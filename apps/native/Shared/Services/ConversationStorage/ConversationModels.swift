@@ -187,7 +187,7 @@ struct HistoryBridge: Codable {
 
 /// Pointer to a reference in the index for REF token expansion
 struct ReferencePointer: Codable {
-    enum ReferenceType: String, Codable {
+    enum ReferenceType: String, Codable, Sendable {
         case theme
         case message
         case file
@@ -262,7 +262,7 @@ struct FileReference: Codable, Identifiable {
 // MARK: - Context Tier
 
 /// Multi-tier memory architecture for context management
-enum ContextTier: String, Codable, CaseIterable {
+enum ContextTier: String, Codable, CaseIterable, Sendable {
     /// Last 10-15 messages, full fidelity
     case immediate
 

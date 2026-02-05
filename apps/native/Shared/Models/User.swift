@@ -22,7 +22,7 @@ struct ApiUser: Codable, Identifiable, Sendable {
 }
 
 /// User roles in the system
-enum UserRole: String, Codable {
+enum UserRole: String, Codable, Sendable {
     case member
     case admin
     case superAdmin = "super_admin"

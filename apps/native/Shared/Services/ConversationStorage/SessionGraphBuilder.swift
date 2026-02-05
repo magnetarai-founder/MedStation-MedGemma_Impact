@@ -148,7 +148,7 @@ struct EntityNode: Codable, Identifiable {
 // MARK: - Entity Type
 
 /// Types of entities that can be tracked
-enum EntityType: String, Codable, CaseIterable {
+enum EntityType: String, Codable, CaseIterable, Sendable {
     case person
     case organization
     case place
@@ -234,7 +234,7 @@ struct EntityRelationship: Codable, Identifiable {
 // MARK: - Relationship Type
 
 /// Types of relationships between entities
-enum RelationshipType: String, Codable, CaseIterable {
+enum RelationshipType: String, Codable, CaseIterable, Sendable {
     case mentionedWith = "mentioned_with"
     case causedBy = "caused_by"
     case dependsOn = "depends_on"

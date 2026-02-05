@@ -402,7 +402,7 @@ struct FileAccessContext: Codable {
     let workspace: String
     let action: FileAccessAction
 
-    enum FileAccessAction: String, Codable {
+    enum FileAccessAction: String, Codable, Sendable {
         case opened
         case mentioned
         case searched

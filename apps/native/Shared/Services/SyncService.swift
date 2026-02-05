@@ -14,13 +14,13 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "SyncSer
 
 // MARK: - Sync Models
 
-enum SyncDirection: String, Codable {
+enum SyncDirection: String, Codable, Sendable {
     case upload
     case download
     case bidirectional
 }
 
-enum SyncStatus: String, Codable {
+enum SyncStatus: String, Codable, Sendable {
     case pending
     case inProgress = "in_progress"
     case completed
@@ -28,7 +28,7 @@ enum SyncStatus: String, Codable {
     case conflict
 }
 
-enum ConflictResolution: String, Codable {
+enum ConflictResolution: String, Codable, Sendable {
     case localWins = "local_wins"
     case remoteWins = "remote_wins"
     case manual

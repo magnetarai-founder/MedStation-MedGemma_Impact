@@ -80,15 +80,6 @@ final class WindowOpener {
         logger.info("Opened spreadsheet: \(info.title)")
     }
 
-    func openPDFViewer(_ info: DetachedPDFViewInfo) {
-        guard let opener = openDetachedPDFView else {
-            logger.warning("openDetachedPDFView not configured")
-            return
-        }
-        opener(info)
-        logger.info("Opened PDF viewer: \(info.title)")
-    }
-
     func openCodeWorkspace() {
         openWorkspace?("workspace-code")
         logger.info("Opened Code workspace")

@@ -13,7 +13,7 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "TeamNot
 
 // MARK: - Local Team Models
 
-struct LocalChannel: Identifiable, Codable, Equatable {
+struct LocalChannel: Identifiable, Codable, Equatable, Sendable {
     let id: UUID
     var name: String
     var topic: String
@@ -41,7 +41,7 @@ struct LocalChannel: Identifiable, Codable, Equatable {
     }
 }
 
-struct LocalMessage: Identifiable, Codable, Equatable {
+struct LocalMessage: Identifiable, Codable, Equatable, Sendable {
     let id: UUID
     var channelId: UUID
     var senderName: String
@@ -69,7 +69,7 @@ struct LocalMessage: Identifiable, Codable, Equatable {
     }
 }
 
-struct DirectConversation: Identifiable, Codable, Equatable {
+struct DirectConversation: Identifiable, Codable, Equatable, Sendable {
     let id: UUID
     var participantName: String
     var lastMessage: String

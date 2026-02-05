@@ -65,7 +65,7 @@ struct DecisionFactor: Codable, Identifiable {
 // MARK: - Routing Strategy
 
 /// Strategy for how to handle routing
-enum RoutingStrategy: String, Codable {
+enum RoutingStrategy: String, Codable, Sendable {
     case intelligent = "intelligent"  // Apple FM orchestrator
     case manual = "manual"  // User selected specific model
     case fallback = "fallback"  // Primary failed, using fallback

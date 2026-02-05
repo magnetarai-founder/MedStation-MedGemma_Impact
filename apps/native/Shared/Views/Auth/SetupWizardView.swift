@@ -207,8 +207,12 @@ struct SetupWizardView: View {
             }
 
             if httpResponse.statusCode == 200 {
-                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                    logger.info("Setup wizard complete: \(json["message"] as? String ?? "Success")")
+                do {
+                    if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                        logger.info("Setup wizard complete: \(json["message"] as? String ?? "Success")")
+                    }
+                } catch {
+                    logger.warning("Setup wizard: Failed to parse response: \(error)")
                 }
             } else {
                 logger.warning("Setup wizard: Server returned status \(httpResponse.statusCode)")

@@ -38,7 +38,7 @@ final class ChatMessage: Identifiable {
 
 // MARK: - Message Role
 
-enum MessageRole: String, Codable {
+enum MessageRole: String, Codable, Sendable {
     case user
     case assistant
     case system
@@ -55,7 +55,7 @@ enum MessageRole: String, Codable {
 // MARK: - Conversation State
 
 /// State of a chat session for filtering (matches macOS 26 Messages app)
-enum ConversationState: String, Codable, CaseIterable {
+enum ConversationState: String, Codable, CaseIterable, Sendable {
     case active
     case archived
     case deleted

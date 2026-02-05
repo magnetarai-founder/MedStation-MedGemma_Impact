@@ -278,8 +278,15 @@ final class WorkspaceAIService {
                 continue
             }
 
-            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let title = json["title"] as? String,
+            let json: [String: Any]
+            do {
+                guard let parsed = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
+                json = parsed
+            } catch {
+                logger.debug("Failed to parse \(file.lastPathComponent) for indexing: \(error)")
+                continue
+            }
+            guard let title = json["title"] as? String,
                   let content = json["content"] as? String,
                   !content.isEmpty else { continue }
 

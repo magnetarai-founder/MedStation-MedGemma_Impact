@@ -12,7 +12,7 @@ import CryptoKit
 
 // MARK: - Enums
 
-public enum NodeType: String, Codable {
+public enum NodeType: String, Codable, Sendable {
     case individual = "individual"
     case church = "church"
     case mission = "mission"
@@ -20,20 +20,20 @@ public enum NodeType: String, Codable {
     case organization = "organization"
 }
 
-public enum TrustLevel: String, Codable {
+public enum TrustLevel: String, Codable, Sendable {
     case direct = "direct"       // I know you personally
     case vouched = "vouched"     // Someone I trust vouches for you
     case network = "network"     // 2-3 degrees of separation
 }
 
-public enum DisplayMode: String, Codable {
+public enum DisplayMode: String, Codable, Sendable {
     case peacetime = "peacetime"         // Full names, churches visible
     case underground = "underground"     // Pseudonyms, codes only
 }
 
 // MARK: - Core Models
 
-public struct TrustNode: Identifiable, Codable {
+public struct TrustNode: Identifiable, Codable, Sendable {
     public let id: String
     public let publicKey: String
 
@@ -71,7 +71,7 @@ public struct TrustNode: Identifiable, Codable {
     }
 }
 
-public struct TrustRelationship: Identifiable, Codable {
+public struct TrustRelationship: Identifiable, Codable, Sendable {
     public let id: String
     public let fromNode: String
     public let toNode: String
@@ -100,7 +100,7 @@ public struct TrustRelationship: Identifiable, Codable {
 /// Request to register a new trust node.
 /// SECURITY: Registration requires an Ed25519 signature proving ownership of the private key.
 /// REPLAY PROTECTION (Dec 2025): Includes nonce for replay attack prevention.
-public struct RegisterNodeRequest: Codable {
+public struct RegisterNodeRequest: Codable, Sendable {
     public let publicKey: String
     public let publicName: String
     public let type: NodeType
@@ -176,7 +176,7 @@ public struct RegisterNodeRequest: Codable {
     }
 }
 
-public struct VouchRequest: Codable {
+public struct VouchRequest: Codable, Sendable {
     public let targetNodeId: String
     public let level: TrustLevel
     public let note: String?
@@ -196,7 +196,7 @@ public struct VouchRequest: Codable {
 
 // MARK: - Response Models
 
-public struct TrustNetworkResponse: Codable {
+public struct TrustNetworkResponse: Codable, Sendable {
     public let nodeId: String
     public let directTrusts: [TrustNode]
     public let vouchedTrusts: [TrustNode]
@@ -212,17 +212,17 @@ public struct TrustNetworkResponse: Codable {
     }
 }
 
-public struct NodeListResponse: Codable {
+public struct NodeListResponse: Codable, Sendable {
     public let nodes: [TrustNode]
     public let total: Int
 }
 
-public struct TrustRelationshipResponse: Codable {
+public struct TrustRelationshipResponse: Codable, Sendable {
     public let relationships: [TrustRelationship]
     public let total: Int
 }
 
-public struct TrustHealthResponse: Codable {
+public struct TrustHealthResponse: Codable, Sendable {
     public let status: String
     public let service: String
     public let totalNodes: Int
@@ -266,7 +266,7 @@ public enum TrustKeyError: Error, LocalizedError {
 
 // MARK: - Signed Attestation Models
 
-public struct AttestationPayload: Codable {
+public struct AttestationPayload: Codable, Sendable {
     public let targetNodeId: String
     public let level: TrustLevel
     public let note: String?
@@ -280,7 +280,7 @@ public struct AttestationPayload: Codable {
     }
 }
 
-public struct SignedAttestation: Codable {
+public struct SignedAttestation: Codable, Sendable {
     public let payload: String
     public let signature: String
     public let signerPublicKey: String

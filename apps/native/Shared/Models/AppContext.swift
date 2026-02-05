@@ -973,7 +973,7 @@ struct SystemResourceState: Codable {
     }
 }
 
-enum ThermalState: String, Codable {
+enum ThermalState: String, Codable, Sendable {
     case nominal
     case fair
     case serious

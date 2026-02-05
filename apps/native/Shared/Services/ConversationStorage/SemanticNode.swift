@@ -173,7 +173,7 @@ struct TodoItem: Codable, Identifiable {
     let assignee: String?
     let dueDate: Date?
 
-    enum Priority: String, Codable, CaseIterable {
+    enum Priority: String, Codable, CaseIterable, Sendable {
         case low
         case medium
         case high

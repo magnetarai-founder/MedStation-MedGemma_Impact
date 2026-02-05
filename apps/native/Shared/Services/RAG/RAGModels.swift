@@ -50,7 +50,7 @@ struct RAGDocument: Codable, Identifiable, Hashable {
 // MARK: - RAG Source
 
 /// The source type for a RAG document
-enum RAGSource: String, Codable, CaseIterable {
+enum RAGSource: String, Codable, CaseIterable, Sendable {
     case chatMessage = "chat_message"
     case theme = "theme"
     case semanticNode = "semantic_node"
