@@ -258,12 +258,25 @@ final class WorkspaceAIService {
         contentType: String,
         searchService: SemanticSearchService
     ) async {
-        guard let files = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
-            .filter({ $0.pathExtension == "json" && !$0.lastPathComponent.hasPrefix("_") }) else { return }
+        let files: [URL]
+        do {
+            files = try FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
+                .filter({ $0.pathExtension == "json" && !$0.lastPathComponent.hasPrefix("_") })
+        } catch {
+            logger.error("Failed to list directory for indexing: \(error.localizedDescription)")
+            return
+        }
 
         for file in files {
-            guard let data = try? Data(contentsOf: file),
-                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let data: Data
+            do {
+                data = try Data(contentsOf: file)
+            } catch {
+                logger.debug("Failed to read \(file.lastPathComponent) for indexing: \(error.localizedDescription)")
+                continue
+            }
+
+            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let title = json["title"] as? String,
                   let content = json["content"] as? String,
                   !content.isEmpty else { continue }
@@ -278,7 +291,11 @@ final class WorkspaceAIService {
                 )
             )
 
-            _ = try? await searchService.index(request: request)
+            do {
+                _ = try await searchService.index(request: request)
+            } catch {
+                logger.debug("Failed to index \(file.lastPathComponent): \(error.localizedDescription)")
+            }
         }
     }
 
@@ -304,10 +321,14 @@ final class WorkspaceAIService {
             jsonBody: body,
             onContent: { content in
                 // Ollama streams JSON objects with "response" field
-                if let data = content.data(using: .utf8),
-                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let token = json["response"] as? String {
-                    onToken(token)
+                guard let data = content.data(using: .utf8) else { return }
+                do {
+                    if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let token = json["response"] as? String {
+                        onToken(token)
+                    }
+                } catch {
+                    logger.debug("Skipped unparseable stream chunk: \(error.localizedDescription)")
                 }
             },
             onDone: {

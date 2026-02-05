@@ -13,9 +13,12 @@ struct WorkspaceDocument: Identifiable, Codable, Equatable, Hashable {
     var content: String
     var createdAt: Date
     var updatedAt: Date
-    var wordCount: Int
     var tags: [String]
     var isStarred: Bool
+
+    var wordCount: Int {
+        content.split(whereSeparator: { $0.isWhitespace || $0.isNewline }).count
+    }
 
     init(
         id: UUID = UUID(),
@@ -23,7 +26,6 @@ struct WorkspaceDocument: Identifiable, Codable, Equatable, Hashable {
         content: String = "",
         createdAt: Date = Date(),
         updatedAt: Date = Date(),
-        wordCount: Int = 0,
         tags: [String] = [],
         isStarred: Bool = false
     ) {
@@ -32,7 +34,6 @@ struct WorkspaceDocument: Identifiable, Codable, Equatable, Hashable {
         self.content = content
         self.createdAt = createdAt
         self.updatedAt = updatedAt
-        self.wordCount = wordCount
         self.tags = tags
         self.isStarred = isStarred
     }
@@ -40,6 +41,5 @@ struct WorkspaceDocument: Identifiable, Codable, Equatable, Hashable {
     mutating func updateContent(_ newContent: String) {
         content = newContent
         updatedAt = Date()
-        wordCount = newContent.split(whereSeparator: { $0.isWhitespace || $0.isNewline }).count
     }
 }

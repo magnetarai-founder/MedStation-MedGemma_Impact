@@ -194,6 +194,9 @@ struct FormulaAIPopover: View {
                 responseText += token
             }
             isStreaming = false
+            if responseText.isEmpty, let error = aiService.error {
+                responseText = "Error: \(error)"
+            }
         }
     }
 }

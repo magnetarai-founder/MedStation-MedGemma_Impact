@@ -352,7 +352,11 @@ struct ChartBuilderView: View {
 
     private func exportPNG() {
         Task { @MainActor in
-            guard let data = ChartExporter.exportAsPNG(config: config) else { return }
+            guard let data = ChartExporter.exportAsPNG(config: config) else {
+                Logger(subsystem: "com.magnetar.studio", category: "ChartExport")
+                    .error("Failed to export chart as PNG — renderer returned nil")
+                return
+            }
 
             let panel = NSSavePanel()
             panel.allowedContentTypes = [.png]

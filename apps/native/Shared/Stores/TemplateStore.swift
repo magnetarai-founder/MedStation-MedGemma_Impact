@@ -54,13 +54,17 @@ final class TemplateStore {
         decoder.dateDecodingStrategy = .iso8601
 
         for resourceName in ["notes_templates", "docs_templates", "sheets_templates"] {
-            guard let url = Bundle.main.url(forResource: resourceName, withExtension: "json"),
-                  let data = try? Data(contentsOf: url),
-                  let loaded = try? decoder.decode([WorkspaceTemplate].self, from: data) else {
-                logger.warning("[Templates] Could not load \(resourceName).json from bundle")
+            guard let url = Bundle.main.url(forResource: resourceName, withExtension: "json") else {
+                logger.warning("[Templates] Could not find \(resourceName).json in bundle")
                 continue
             }
-            templates.append(contentsOf: loaded)
+            do {
+                let data = try Data(contentsOf: url)
+                let loaded = try decoder.decode([WorkspaceTemplate].self, from: data)
+                templates.append(contentsOf: loaded)
+            } catch {
+                logger.warning("[Templates] Failed to decode \(resourceName).json: \(error.localizedDescription)")
+            }
         }
 
         builtinTemplates = templates
@@ -68,8 +72,14 @@ final class TemplateStore {
 
     private func loadUserTemplates() async {
         let dir = Self.userTemplatesDir
-        guard let files = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
-            .filter({ $0.pathExtension == "json" }) else { return }
+        let files: [URL]
+        do {
+            files = try FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
+                .filter({ $0.pathExtension == "json" })
+        } catch {
+            logger.error("Failed to list user templates directory: \(error.localizedDescription)")
+            return
+        }
 
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601

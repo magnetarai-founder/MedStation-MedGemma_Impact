@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import os
 
 // MARK: - Target Panel
 
@@ -193,8 +194,14 @@ struct WorkspaceTemplate: Codable, Identifiable, Equatable, Sendable {
                     isItalic: cell.isItalic
                 )
             }
-            let data = (try? JSONEncoder().encode(filled)) ?? Data()
-            return String(data: data, encoding: .utf8) ?? ""
+            do {
+                let data = try JSONEncoder().encode(filled)
+                return String(data: data, encoding: .utf8) ?? ""
+            } catch {
+                Logger(subsystem: "com.magnetar.studio", category: "WorkspaceTemplate")
+                    .error("Failed to encode template cells: \(error.localizedDescription)")
+                return ""
+            }
         }
     }
 

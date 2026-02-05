@@ -321,9 +321,14 @@ struct VoicePanel: View {
         let filename = "recording_\(Date().timeIntervalSince1970).m4a"
         let url = Self.storageDir.appendingPathComponent(filename)
 
-        recorder.startRecording(to: url) { level in
-            audioLevel = level
-            recordingDuration += 0.1
+        do {
+            try recorder.startRecording(to: url) { level in
+                audioLevel = level
+                recordingDuration += 0.1
+            }
+        } catch {
+            isRecording = false
+            logger.error("Failed to start recording: \(error.localizedDescription)")
         }
     }
 
@@ -400,6 +405,8 @@ struct VoicePanel: View {
             if !cleaned.isEmpty, let i = recordings.firstIndex(where: { $0.id == recordingID }) {
                 recordings[i].transcription = cleaned
                 saveMetadata()
+            } else if let error = aiService.error {
+                logger.warning("AI clean-up failed: \(error)")
             }
         }
     }
@@ -418,6 +425,8 @@ struct VoicePanel: View {
             if !summary.isEmpty, let i = recordings.firstIndex(where: { $0.id == recordingID }) {
                 recordings[i].transcription = "Summary:\n\(summary)\n\nFull Transcription:\n\(transcription)"
                 saveMetadata()
+            } else if let error = aiService.error {
+                logger.warning("AI summarize failed: \(error)")
             }
         }
     }
@@ -495,7 +504,7 @@ class VoiceRecorderManager: ObservableObject {
     private var timer: Timer?
     var currentURL: URL?
 
-    func startRecording(to url: URL, onLevel: @escaping (Float) -> Void) {
+    func startRecording(to url: URL, onLevel: @escaping (Float) -> Void) throws {
         currentURL = url
 
         let settings: [String: Any] = [
@@ -505,22 +514,18 @@ class VoiceRecorderManager: ObservableObject {
             AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
         ]
 
-        do {
-            audioRecorder = try AVAudioRecorder(url: url, settings: settings)
-            audioRecorder?.isMeteringEnabled = true
-            audioRecorder?.record()
+        audioRecorder = try AVAudioRecorder(url: url, settings: settings)
+        audioRecorder?.isMeteringEnabled = true
+        audioRecorder?.record()
 
-            timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-                self?.audioRecorder?.updateMeters()
-                let level = self?.audioRecorder?.averagePower(forChannel: 0) ?? -160
-                // Normalize from dB (-160...0) to 0...1
-                let normalized = max(0, (level + 60) / 60)
-                DispatchQueue.main.async {
-                    onLevel(normalized)
-                }
+        timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            self?.audioRecorder?.updateMeters()
+            let level = self?.audioRecorder?.averagePower(forChannel: 0) ?? -160
+            // Normalize from dB (-160...0) to 0...1
+            let normalized = max(0, (level + 60) / 60)
+            DispatchQueue.main.async {
+                onLevel(normalized)
             }
-        } catch {
-            logger.error("Failed to start recording: \(error)")
         }
     }
 

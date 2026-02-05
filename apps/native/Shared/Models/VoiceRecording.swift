@@ -16,6 +16,10 @@ struct VoiceRecording: Identifiable, Codable, Equatable, Hashable {
     var transcription: String?
     var isTranscribing: Bool
 
+    enum CodingKeys: String, CodingKey {
+        case id, title, fileURL, duration, createdAt, transcription
+    }
+
     init(
         id: UUID = UUID(),
         title: String = "Recording",
@@ -32,6 +36,17 @@ struct VoiceRecording: Identifiable, Codable, Equatable, Hashable {
         self.createdAt = createdAt
         self.transcription = transcription
         self.isTranscribing = isTranscribing
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        fileURL = try container.decode(URL.self, forKey: .fileURL)
+        duration = try container.decode(TimeInterval.self, forKey: .duration)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        transcription = try container.decodeIfPresent(String.self, forKey: .transcription)
+        isTranscribing = false
     }
 
     var formattedDuration: String {
