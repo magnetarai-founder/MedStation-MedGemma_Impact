@@ -77,7 +77,7 @@ final class FeatureFlags {
         self.team = UserDefaults.standard.object(forKey: "feature.team") as? Bool ?? false
         self.code = UserDefaults.standard.object(forKey: "feature.code") as? Bool ?? false
         self.projectManagement = UserDefaults.standard.object(forKey: "feature.projectManagement") as? Bool ?? false
-        self.automations = UserDefaults.standard.object(forKey: "feature.automations") as? Bool ?? false
+        self.automations = UserDefaults.standard.object(forKey: "feature.automations") as? Bool ?? true
         self.dataAnalysis = UserDefaults.standard.object(forKey: "feature.dataAnalysis") as? Bool ?? false
         self.voiceTranscription = UserDefaults.standard.object(forKey: "feature.voiceTranscription") as? Bool ?? true  // ON by default
         self.trust = UserDefaults.standard.object(forKey: "feature.trust") as? Bool ?? false

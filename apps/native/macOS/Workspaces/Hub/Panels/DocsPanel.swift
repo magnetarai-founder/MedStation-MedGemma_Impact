@@ -253,6 +253,9 @@ struct DocsPanel: View {
         guard documents.indices.contains(index) else { return }
         documents[index].updateContent(content)
         saveDocToDisk(documents[index])
+
+        // Fire automation trigger
+        AutomationTriggerService.shared.documentSaved(title: documents[index].title, content: content)
     }
 
     private func toggleStar(_ doc: WorkspaceDocument) {

@@ -236,7 +236,16 @@ final class KanbanStore {
     }
 
     func moveTask(taskId: String, toColumnId: String) async {
+        let oldColumnId = tasks.first(where: { $0.taskId == taskId })?.columnId ?? ""
+        let taskTitle = tasks.first(where: { $0.taskId == taskId })?.title ?? ""
         await updateTask(taskId: taskId, columnId: toColumnId)
+
+        // Fire automation trigger
+        AutomationTriggerService.shared.kanbanStatusChanged(
+            taskTitle: taskTitle,
+            fromColumn: oldColumnId,
+            toColumn: toColumnId
+        )
     }
 
     // MARK: - Helpers

@@ -12,6 +12,7 @@ struct DocsToolbar: View {
     @Binding var document: WorkspaceDocument
     @Binding var showDocsList: Bool
     @State private var showAIAssist = false
+    @State private var showExport = false
 
     var body: some View {
         HStack(spacing: 4) {
@@ -111,10 +112,21 @@ struct DocsToolbar: View {
             .buttonStyle(.plain)
             .help(document.isStarred ? "Unstar" : "Star")
 
+            // Export
+            Button {
+                showExport = true
+            } label: {
+                Image(systemName: "arrow.up.doc")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 28, height: 28)
+            }
+            .buttonStyle(.plain)
+            .help("Export (⌘E)")
+
             // More options
             Menu {
-                Button("Export as PDF...") {}
-                Button("Export as Markdown...") {}
+                Button("Export...") { showExport = true }
                 Divider()
                 Button("Document Info...") {}
             } label: {
@@ -130,6 +142,12 @@ struct DocsToolbar: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         .background(Color.surfaceTertiary.opacity(0.5))
+        .sheet(isPresented: $showExport) {
+            ExportSheet(
+                content: .plainText(document.content, title: document.title),
+                onDismiss: { showExport = false }
+            )
+        }
     }
 
     private func toolbarButton(icon: String, help: String) -> some View {

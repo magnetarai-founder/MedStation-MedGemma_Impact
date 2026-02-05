@@ -13,6 +13,8 @@ enum WorkspacePanelType: String, CaseIterable, Identifiable, Hashable {
     case sheets
     case pdf
     case voice
+    case automations
+    case plugins
 
     var id: String { rawValue }
 
@@ -23,6 +25,8 @@ enum WorkspacePanelType: String, CaseIterable, Identifiable, Hashable {
         case .sheets: return "Sheets"
         case .pdf: return "PDFs"
         case .voice: return "Voice"
+        case .automations: return "Automations"
+        case .plugins: return "Plugins"
         }
     }
 
@@ -33,6 +37,8 @@ enum WorkspacePanelType: String, CaseIterable, Identifiable, Hashable {
         case .sheets: return "tablecells"
         case .pdf: return "doc.viewfinder"
         case .voice: return "waveform"
+        case .automations: return "gearshape.2"
+        case .plugins: return "puzzlepiece.extension"
         }
     }
 
@@ -44,6 +50,8 @@ enum WorkspacePanelType: String, CaseIterable, Identifiable, Hashable {
         case .sheets: return "S"
         case .pdf: return "P"
         case .voice: return "V"
+        case .automations: return "A"
+        case .plugins: return "X"
         }
     }
 }

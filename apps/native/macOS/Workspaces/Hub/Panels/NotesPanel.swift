@@ -50,6 +50,8 @@ struct NotesPanel: View {
     @State private var editorContent = ""
     @State private var searchText = ""
     @State private var isLoading = true
+    @State private var showTemplatePicker = false
+    @State private var selectedTemplate: WorkspaceTemplate?
     @AppStorage("workspace.teamEnabled") private var teamEnabled = false
 
     var body: some View {
@@ -84,6 +86,37 @@ struct NotesPanel: View {
         .task {
             await loadNotes()
         }
+        .sheet(isPresented: $showTemplatePicker) {
+            TemplatePickerSheet(
+                targetPanel: .note,
+                onBlank: {
+                    showTemplatePicker = false
+                    createNote()
+                },
+                onTemplate: { template in
+                    showTemplatePicker = false
+                    selectedTemplate = template
+                },
+                onDismiss: { showTemplatePicker = false }
+            )
+        }
+        .sheet(item: $selectedTemplate) { template in
+            TemplateFillSheet(
+                template: template,
+                onConfirm: { title, variables in
+                    let note = TemplateStore.shared.instantiateAsNote(
+                        template: template,
+                        title: title,
+                        variables: variables
+                    )
+                    notes.insert(note, at: 0)
+                    selectNote(note)
+                    saveNoteToDisk(note)
+                    selectedTemplate = nil
+                },
+                onCancel: { selectedTemplate = nil }
+            )
+        }
     }
 
     // MARK: - Notes List
@@ -99,12 +132,17 @@ struct NotesPanel: View {
                     .textFieldStyle(.plain)
                     .font(.system(size: 12))
 
-                Button(action: createNote) {
+                Menu {
+                    Button("Blank Note") { createNote() }
+                    Button("From Template...") { showTemplatePicker = true }
+                } label: {
                     Image(systemName: "square.and.pencil")
                         .font(.system(size: 13))
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
+                .menuStyle(.borderlessButton)
+                .frame(width: 24)
                 .help("New Note")
             }
             .padding(.horizontal, 12)
@@ -238,6 +276,9 @@ struct NotesPanel: View {
         }
 
         saveNoteToDisk(notes[index])
+
+        // Fire automation trigger
+        AutomationTriggerService.shared.documentSaved(title: notes[index].title, content: content)
     }
 
     private func togglePin(_ note: WorkspaceNote) {

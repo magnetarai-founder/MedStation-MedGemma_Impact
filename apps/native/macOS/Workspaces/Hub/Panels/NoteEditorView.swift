@@ -15,6 +15,7 @@ struct NoteEditorView: View {
     @State private var editableContent: String = ""
     @State private var isEditingTitle = false
     @State private var showAIAssist = false
+    @State private var showExport = false
     @FocusState private var titleFocused: Bool
 
     var body: some View {
@@ -31,6 +32,12 @@ struct NoteEditorView: View {
                 }
         }
         .background(Color.surfacePrimary)
+        .sheet(isPresented: $showExport) {
+            ExportSheet(
+                content: .plainText(editableContent, title: note.title),
+                onDismiss: { showExport = false }
+            )
+        }
         .onAppear {
             editableContent = note.content
         }
@@ -96,6 +103,16 @@ struct NoteEditorView: View {
                     }
                 )
             }
+
+            Button {
+                showExport = true
+            } label: {
+                Image(systemName: "arrow.up.doc")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .help("Export")
 
             Text("Type / for commands")
                 .font(.system(size: 11))

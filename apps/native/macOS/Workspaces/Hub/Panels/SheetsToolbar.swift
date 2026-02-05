@@ -13,6 +13,7 @@ struct SheetsToolbar: View {
     @Binding var formulaText: String
     let onFormulaCommit: () -> Void
     @State private var showFormulaAI = false
+    @State private var showChartBuilder = false
 
     var body: some View {
         HStack(spacing: 8) {
@@ -64,6 +65,27 @@ struct SheetsToolbar: View {
                     onDismiss: {
                         showFormulaAI = false
                     }
+                )
+            }
+
+            // Chart button
+            Button {
+                showChartBuilder.toggle()
+            } label: {
+                Image(systemName: "chart.bar.xaxis")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.orange)
+                    .frame(width: 24, height: 24)
+            }
+            .buttonStyle(.plain)
+            .help("Insert Chart")
+            .sheet(isPresented: $showChartBuilder) {
+                SheetsChartSheet(
+                    document: document,
+                    onInsert: { _ in
+                        showChartBuilder = false
+                    },
+                    onDismiss: { showChartBuilder = false }
                 )
             }
 

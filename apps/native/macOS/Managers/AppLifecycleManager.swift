@@ -66,6 +66,11 @@ class AppLifecycleManager: NSObject, NSApplicationDelegate {
         Task { @MainActor in
             await initializeModelServices()
         }
+
+        // Initialize workspace feature services (Templates, Automation, Plugins)
+        Task { @MainActor in
+            await initializeWorkspaceServices()
+        }
     }
 
     // MARK: - Model Services Initialization
@@ -122,7 +127,31 @@ class AppLifecycleManager: NSObject, NSApplicationDelegate {
         logger.info("Context services initialization complete")
     }
 
+    // MARK: - Workspace Services Initialization
+
+    @MainActor
+    private func initializeWorkspaceServices() async {
+        logger.info("Initializing workspace services...")
+
+        await TemplateStore.shared.loadAll()
+        logger.debug("TemplateStore initialized")
+
+        await AutomationStore.shared.loadAll()
+        logger.debug("AutomationStore initialized")
+
+        await PluginManager.shared.loadAll()
+        logger.debug("PluginManager initialized")
+
+        SchedulerService.shared.start()
+        logger.debug("SchedulerService started")
+
+        logger.info("Workspace services initialization complete")
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
+        // Stop scheduled automation timers
+        SchedulerService.shared.stop()
+
         // Unregister network firewall protocol
         URLProtocol.unregisterClass(NetworkFirewallProtocol.self)
 

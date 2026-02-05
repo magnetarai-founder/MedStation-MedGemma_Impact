@@ -372,6 +372,9 @@ struct VoicePanel: View {
                     recordings[i].transcription = text
                     recordings[i].isTranscribing = false
                     saveMetadata()
+
+                    // Fire automation trigger with completed transcript
+                    AutomationTriggerService.shared.recordingStopped(title: recordings[i].title, transcript: text)
                 }
             } catch {
                 logger.error("Transcription failed: \(error)")

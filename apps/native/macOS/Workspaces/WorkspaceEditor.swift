@@ -14,7 +14,7 @@ import AppKit
 
 // MARK: - Block Types
 
-enum BlockType: String, CaseIterable, Identifiable, Codable {
+enum BlockType: String, CaseIterable, Identifiable, Codable, Sendable {
     case text
     case heading1
     case heading2
@@ -30,6 +30,7 @@ enum BlockType: String, CaseIterable, Identifiable, Codable {
     case calloutSuccess
     case calloutError
     case image
+    case chart
 
     var id: String { rawValue }
 
@@ -50,6 +51,7 @@ enum BlockType: String, CaseIterable, Identifiable, Codable {
         case .calloutSuccess: return "checkmark.circle"
         case .calloutError: return "xmark.circle"
         case .image: return "photo"
+        case .chart: return "chart.bar"
         }
     }
 
@@ -70,6 +72,7 @@ enum BlockType: String, CaseIterable, Identifiable, Codable {
         case .calloutSuccess: return "Success"
         case .calloutError: return "Error"
         case .image: return "Image"
+        case .chart: return "Chart"
         }
     }
 
@@ -90,6 +93,7 @@ enum BlockType: String, CaseIterable, Identifiable, Codable {
         case .calloutSuccess: return "Success message"
         case .calloutError: return "Error message"
         case .image: return "Upload or paste image"
+        case .chart: return "Data visualization chart"
         }
     }
 
@@ -107,6 +111,7 @@ enum BlockType: String, CaseIterable, Identifiable, Codable {
         case .divider: return ""
         case .calloutInfo, .calloutWarning, .calloutSuccess, .calloutError: return "Type a note..."
         case .image: return ""
+        case .chart: return ""
         }
     }
 
@@ -133,6 +138,7 @@ enum BlockType: String, CaseIterable, Identifiable, Codable {
         case .code, .quote, .divider: return .blocks
         case .calloutInfo, .calloutWarning, .calloutSuccess, .calloutError: return .callouts
         case .image: return .media
+        case .chart: return .media
         }
     }
 }
@@ -154,6 +160,7 @@ struct DocumentBlock: Identifiable, Equatable, Codable {
     var isChecked: Bool  // For checkbox type
     var codeLanguage: String?  // For code blocks
     var imageData: Data?  // For image blocks
+    var chartConfig: ChartConfiguration?  // For chart blocks
 
     init(
         id: UUID = UUID(),
@@ -161,7 +168,8 @@ struct DocumentBlock: Identifiable, Equatable, Codable {
         content: String = "",
         isChecked: Bool = false,
         codeLanguage: String? = nil,
-        imageData: Data? = nil
+        imageData: Data? = nil,
+        chartConfig: ChartConfiguration? = nil
     ) {
         self.id = id
         self.type = type
@@ -169,6 +177,7 @@ struct DocumentBlock: Identifiable, Equatable, Codable {
         self.isChecked = isChecked
         self.codeLanguage = codeLanguage
         self.imageData = imageData
+        self.chartConfig = chartConfig
     }
 
     static func == (lhs: DocumentBlock, rhs: DocumentBlock) -> Bool {
@@ -177,7 +186,8 @@ struct DocumentBlock: Identifiable, Equatable, Codable {
         lhs.content == rhs.content &&
         lhs.isChecked == rhs.isChecked &&
         lhs.codeLanguage == rhs.codeLanguage &&
-        lhs.imageData == rhs.imageData
+        lhs.imageData == rhs.imageData &&
+        lhs.chartConfig == rhs.chartConfig
     }
 }
 
@@ -456,6 +466,12 @@ struct BlockView: View {
                 .foregroundColor(.secondary)
                 .frame(width: 20)
 
+        case .chart:
+            Image(systemName: "chart.bar")
+                .font(.system(size: 14))
+                .foregroundColor(.orange)
+                .frame(width: 20)
+
         default:
             Color.clear.frame(width: 20)
         }
@@ -515,6 +531,17 @@ struct BlockView: View {
         case .image:
             ImageBlockView(
                 block: $block,
+                isFocused: isFocused,
+                onFocus: onFocus,
+                onDelete: onDelete
+            )
+
+        case .chart:
+            ChartBlockView(
+                config: Binding(
+                    get: { block.chartConfig ?? ChartConfiguration() },
+                    set: { block.chartConfig = $0 }
+                ),
                 isFocused: isFocused,
                 onFocus: onFocus,
                 onDelete: onDelete

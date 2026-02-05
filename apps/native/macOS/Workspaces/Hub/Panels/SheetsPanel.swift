@@ -19,6 +19,9 @@ struct SheetsPanel: View {
     @State private var searchText = ""
     @State private var isLoading = true
     @State private var showSheetsList = true
+    @State private var showExport = false
+    @State private var showTemplatePicker = false
+    @State private var selectedTemplate: WorkspaceTemplate?
     @State private var collaborators: [CollaboratorPresence] = []
     @AppStorage("workspace.teamEnabled") private var teamEnabled = false
 
@@ -68,6 +71,46 @@ struct SheetsPanel: View {
                 sheetsEmptyState
             }
         }
+        .sheet(isPresented: $showTemplatePicker) {
+            TemplatePickerSheet(
+                targetPanel: .sheet,
+                onBlank: {
+                    showTemplatePicker = false
+                    createSpreadsheet()
+                },
+                onTemplate: { template in
+                    showTemplatePicker = false
+                    selectedTemplate = template
+                },
+                onDismiss: { showTemplatePicker = false }
+            )
+        }
+        .sheet(item: $selectedTemplate) { template in
+            TemplateFillSheet(
+                template: template,
+                onConfirm: { title, variables in
+                    let sheet = TemplateStore.shared.instantiateAsSpreadsheet(
+                        template: template,
+                        title: title,
+                        variables: variables
+                    )
+                    spreadsheets.insert(sheet, at: 0)
+                    selectSheet(sheet)
+                    saveSheetToDisk(sheet)
+                    selectedTemplate = nil
+                },
+                onCancel: { selectedTemplate = nil }
+            )
+        }
+        .sheet(isPresented: $showExport) {
+            if let sheetID = selectedSheetID,
+               let sheet = spreadsheets.first(where: { $0.id == sheetID }) {
+                ExportSheet(
+                    content: .spreadsheet(sheet),
+                    onDismiss: { showExport = false }
+                )
+            }
+        }
         .task {
             await loadSpreadsheets()
         }
@@ -101,6 +144,17 @@ struct SheetsPanel: View {
 
             Spacer()
 
+            // Export button
+            Button {
+                showExport = true
+            } label: {
+                Image(systemName: "arrow.up.doc")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .help("Export Spreadsheet")
+
             if let cell = selectedCell {
                 Text("Cell: \(cell.description)")
                     .font(.system(size: 11, design: .monospaced))
@@ -123,12 +177,17 @@ struct SheetsPanel: View {
                 TextField("Search sheets...", text: $searchText)
                     .textFieldStyle(.plain)
                     .font(.system(size: 12))
-                Button(action: createSpreadsheet) {
+                Menu {
+                    Button("Blank Spreadsheet") { createSpreadsheet() }
+                    Button("From Template...") { showTemplatePicker = true }
+                } label: {
                     Image(systemName: "plus.rectangle")
                         .font(.system(size: 13))
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
+                .menuStyle(.borderlessButton)
+                .frame(width: 24)
                 .help("New Spreadsheet")
             }
             .padding(.horizontal, 12)
@@ -210,8 +269,17 @@ struct SheetsPanel: View {
 
     private func commitFormula(at sheetIndex: Int) {
         guard let cell = selectedCell else { return }
+        let oldValue = spreadsheets[sheetIndex].cell(at: cell).rawValue
         spreadsheets[sheetIndex].setCell(at: cell, value: formulaText)
         saveSheetToDisk(spreadsheets[sheetIndex])
+
+        // Fire automation trigger
+        AutomationTriggerService.shared.sheetCellChanged(
+            sheetTitle: spreadsheets[sheetIndex].title,
+            address: cell.description,
+            oldValue: oldValue,
+            newValue: formulaText
+        )
     }
 
     private func deleteSpreadsheet(_ sheet: SpreadsheetDocument) {

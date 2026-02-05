@@ -38,6 +38,14 @@ struct MagnetarMenuCommands: Commands {
                 handleFileUpload()
             }
             .keyboardShortcut("o", modifiers: .command)
+
+            Divider()
+
+            Button("Export...") {
+                // Navigate to workspace so the active panel can handle export
+                navigationStore.navigate(to: .workspace)
+            }
+            .keyboardShortcut("e", modifiers: .command)
         }
 
         // Edit menu (keep defaults)
@@ -116,6 +124,18 @@ struct MagnetarMenuCommands: Commands {
                     WindowOpener.shared.openInsightsWorkspace()
                 }
                 .keyboardShortcut("7", modifiers: .command)
+
+                Button("Open Automations") {
+                    UserDefaults.standard.set(WorkspacePanelType.automations.rawValue, forKey: "workspace.selectedPanel")
+                    navigationStore.navigate(to: .workspace)
+                }
+                .keyboardShortcut("8", modifiers: .command)
+
+                Button("Open Plugins") {
+                    UserDefaults.standard.set(WorkspacePanelType.plugins.rawValue, forKey: "workspace.selectedPanel")
+                    navigationStore.navigate(to: .workspace)
+                }
+                .keyboardShortcut("9", modifiers: .command)
             }
 
             Divider()

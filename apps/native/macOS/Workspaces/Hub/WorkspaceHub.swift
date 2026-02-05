@@ -51,6 +51,10 @@ struct WorkspaceHub: View {
             PDFPanel()
         case .voice:
             VoicePanel()
+        case .automations:
+            AutomationListView()
+        case .plugins:
+            PluginManagerView()
         }
     }
 }
