@@ -156,6 +156,44 @@ struct MagnetarStudioApp: App {
         .windowResizability(.contentMinSize)
         .defaultSize(width: 700, height: 600)
 
+        // MARK: - Phase 6: Pop-Out Workspace Documents
+
+        WindowGroup("Document Editor", for: DetachedDocEditInfo.self) { $docInfo in
+            if let info = docInfo {
+                DetachedDocEditWindow(info: info)
+            } else {
+                Text("No document selected")
+                    .frame(width: 400, height: 300)
+            }
+        }
+        .windowStyle(.titleBar)
+        .windowResizability(.contentMinSize)
+        .defaultSize(width: 800, height: 650)
+
+        WindowGroup("Spreadsheet", for: DetachedSheetInfo.self) { $sheetInfo in
+            if let info = sheetInfo {
+                DetachedSheetWindow(info: info)
+            } else {
+                Text("No spreadsheet selected")
+                    .frame(width: 400, height: 300)
+            }
+        }
+        .windowStyle(.titleBar)
+        .windowResizability(.contentMinSize)
+        .defaultSize(width: 1000, height: 700)
+
+        WindowGroup("PDF Viewer", for: DetachedPDFViewInfo.self) { $pdfInfo in
+            if let info = pdfInfo {
+                DetachedPDFViewWindow(info: info)
+            } else {
+                Text("No PDF selected")
+                    .frame(width: 400, height: 300)
+            }
+        }
+        .windowStyle(.titleBar)
+        .windowResizability(.contentMinSize)
+        .defaultSize(width: 800, height: 900)
+
         // Detached Document Window - opens vault files in separate windows
         WindowGroup("Document", for: DetachedDocumentInfo.self) { $documentInfo in
             if let info = documentInfo {

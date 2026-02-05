@@ -485,22 +485,21 @@ struct QuickActionButton: View {
                 }
                 .keyboardShortcut("c", modifiers: [.command, .shift])
 
-                // Placeholders for future document types
                 Button {
-                    // TODO: Implement document creation
-                    logger.info("Document creation coming soon")
+                    let info = DetachedDocEditInfo(title: "Untitled Document")
+                    openWindow(value: info)
+                    logger.info("Opening new document window")
                 } label: {
                     Label("New Document", systemImage: "doc.richtext")
                 }
-                .disabled(true)
 
                 Button {
-                    // TODO: Implement spreadsheet creation
-                    logger.info("Spreadsheet creation coming soon")
+                    let info = DetachedSheetInfo(title: "Untitled Spreadsheet")
+                    openWindow(value: info)
+                    logger.info("Opening new spreadsheet window")
                 } label: {
                     Label("New Spreadsheet", systemImage: "tablecells")
                 }
-                .disabled(true)
             } header: {
                 Text("Create")
             }

@@ -72,7 +72,7 @@ final class NavigationStore {
            let workspace = Workspace(rawValue: savedWorkspace) {
             self.activeWorkspace = workspace
         } else {
-            self.activeWorkspace = .chat  // Default to AI Chat
+            self.activeWorkspace = .workspace  // Default to Workspace Hub
         }
 
         // Restore sidebar visibility (default to true)
@@ -110,10 +110,10 @@ enum Workspace: String, CaseIterable, Identifiable, Hashable {
     // Core workspaces (3 tabs in header)
     case chat
     case files
-    case workspace  // Code editor workspace (was notes, now shows CodeWorkspace)
+    case workspace  // Workspace Hub — Notes, Docs, Sheets, PDFs, Voice
 
     // Spawnable workspaces (open as separate windows via + menu)
-    case code  // Notes / personal workspace (was core, now spawnable)
+    case code  // Code IDE workspace (full IDE with terminal bridge)
     case database
     case kanban
     case insights
@@ -129,9 +129,9 @@ enum Workspace: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .chat: return "Chat"
         case .files: return "Files"
-        case .workspace: return "Code"
-        case .code: return "Notes"
-        case .database: return "Database"
+        case .workspace: return "Workspace"
+        case .code: return "Code IDE"
+        case .database: return "Data"
         case .kanban: return "Kanban"
         case .insights: return "Insights"
         case .trust: return "MagnetarTrust"
@@ -144,8 +144,8 @@ enum Workspace: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .chat: return "bubble.left"
         case .files: return "folder"
-        case .workspace: return "chevron.left.forwardslash.chevron.right"
-        case .code: return "note.text"
+        case .workspace: return "square.grid.2x2"
+        case .code: return "chevron.left.forwardslash.chevron.right"
         case .database: return "cylinder"
         case .kanban: return "square.grid.3x3"
         case .insights: return "waveform"
@@ -157,9 +157,9 @@ enum Workspace: String, CaseIterable, Identifiable, Hashable {
 
     var keyboardShortcut: String {
         switch self {
-        case .chat: return "1"
+        case .workspace: return "1"
         case .files: return "2"
-        case .workspace: return "3"
+        case .chat: return "3"
         case .code: return "4"
         case .database: return "5"
         case .kanban: return "6"
@@ -174,8 +174,8 @@ enum Workspace: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .chat: return "Chat"
         case .files: return "Files"
-        case .workspace: return "Code"
-        case .code: return "Notes"
+        case .workspace: return "Hub"
+        case .code: return "Code"
         case .database: return "Data"
         case .kanban: return "Board"
         case .insights: return "Voice"
@@ -190,8 +190,8 @@ enum Workspace: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .chat: return "message"
         case .files: return "folder.fill"
-        case .workspace: return "chevron.left.forwardslash.chevron.right"
-        case .code: return "note.text"
+        case .workspace: return "square.grid.2x2.fill"
+        case .code: return "chevron.left.forwardslash.chevron.right"
         case .database: return "cylinder"
         case .kanban: return "square.grid.3x2"
         case .insights: return "waveform"
@@ -224,7 +224,7 @@ enum Workspace: String, CaseIterable, Identifiable, Hashable {
 
     /// Core workspaces shown in main tab switcher (3 tabs)
     static var coreWorkspaces: [Workspace] {
-        [.chat, .files, .workspace]
+        [.workspace, .files, .chat]
     }
 
     /// Spawnable workspaces that open as separate windows (Phase 2C)
