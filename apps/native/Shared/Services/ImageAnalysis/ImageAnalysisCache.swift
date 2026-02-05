@@ -10,7 +10,7 @@ final class ImageAnalysisCache {
 
     // MARK: - Properties
 
-    nonisolated(unsafe) private var db: OpaquePointer?
+    private var db: OpaquePointer?
     private let dbPath: URL
     private let maxCacheSize: Int = 100
     private let maxCacheAge: TimeInterval = 7 * 24 * 60 * 60  // 7 days

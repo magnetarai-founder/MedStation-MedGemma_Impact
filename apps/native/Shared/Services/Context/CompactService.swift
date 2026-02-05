@@ -219,8 +219,10 @@ final class CompactService: ObservableObject {
             stream: false
         )
 
-        // Direct Ollama API call (localhost:11434)
-        let url = URL(string: "http://localhost:11434/api/generate")!
+        // Use configured Ollama URL (respects OLLAMA_URL env var)
+        guard let url = URL(string: "\(APIConfiguration.shared.ollamaURL)/api/generate") else {
+            throw CompactError.summarizationFailed
+        }
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "POST"
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")

@@ -37,6 +37,10 @@ final class CrossConversationFileIndex: ObservableObject {
 
     static let shared = CrossConversationFileIndex()
 
+    // MARK: - Task Management
+
+    private var loadTask: Task<Void, Never>?
+
     // MARK: - Initialization
 
     init(
@@ -48,7 +52,7 @@ final class CrossConversationFileIndex: ObservableObject {
         self.embedder = embedder ?? .shared
         self.predictor = predictor ?? .shared
 
-        Task {
+        loadTask = Task {
             await loadIndex()
         }
     }

@@ -27,7 +27,6 @@ final class VectorStore: ObservableObject {
 
     private var db: OpaquePointer?
     private let dbPath: URL
-    private let queue = DispatchQueue(label: "com.magnetarstudio.vectorstore", qos: .userInitiated)
 
     // MARK: - Cache
 
