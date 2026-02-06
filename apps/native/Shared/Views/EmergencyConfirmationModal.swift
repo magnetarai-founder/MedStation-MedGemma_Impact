@@ -26,9 +26,6 @@ struct EmergencyConfirmationModal: View {
         self.onConfirm = onConfirm
     }
 
-    // Timer for countdown
-    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-
     var body: some View {
         ZStack {
             // Background blur
@@ -53,8 +50,12 @@ struct EmergencyConfirmationModal: View {
                     .stroke(Color.red, lineWidth: 3)
             )
         }
-        .onReceive(timer) { _ in
-            handleCountdown()
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                guard !Task.isCancelled else { break }
+                handleCountdown()
+            }
         }
         .onAppear {
             // Start monitoring for key combo (Cmd+Shift+Delete hold)

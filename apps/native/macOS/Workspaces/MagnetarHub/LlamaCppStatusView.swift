@@ -163,15 +163,7 @@ struct LlamaCppStatusView: View {
     // MARK: - Helpers
 
     private func formatModelName(_ path: String) -> String {
-        // Extract just the filename without extension and path
-        let filename = (path as NSString).lastPathComponent
-        // Remove .gguf extension
-        let name = filename.replacingOccurrences(of: ".gguf", with: "")
-        // Truncate if too long
-        if name.count > 20 {
-            return String(name.prefix(18)) + "..."
-        }
-        return name
+        formatLlamaCppModelName(path, maxLength: 20)
     }
 }
 
@@ -187,7 +179,7 @@ struct LlamaCppStatusCompact: View {
                 .frame(width: 6, height: 6)
 
             if let model = status?.modelLoaded {
-                Text(formatModelName(model))
+                Text(formatLlamaCppModelName(model, maxLength: 15))
                     .font(.caption2)
                     .foregroundColor(.secondary)
                     .lineLimit(1)
@@ -198,15 +190,18 @@ struct LlamaCppStatusCompact: View {
             }
         }
     }
+}
 
-    private func formatModelName(_ path: String) -> String {
-        let filename = (path as NSString).lastPathComponent
-        let name = filename.replacingOccurrences(of: ".gguf", with: "")
-        if name.count > 15 {
-            return String(name.prefix(13)) + "..."
-        }
-        return name
+// MARK: - Shared Helpers
+
+/// Extracts model name from path, strips .gguf extension, and truncates to maxLength
+private func formatLlamaCppModelName(_ path: String, maxLength: Int) -> String {
+    let filename = (path as NSString).lastPathComponent
+    let name = filename.replacingOccurrences(of: ".gguf", with: "")
+    if name.count > maxLength {
+        return String(name.prefix(maxLength - 2)) + "..."
     }
+    return name
 }
 
 // MARK: - Preview

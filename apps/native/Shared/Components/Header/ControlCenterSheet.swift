@@ -22,11 +22,11 @@ struct ControlCenterSheet: View {
     @State private var lastBytesIn: UInt64 = 0
     @State private var lastBytesOut: UInt64 = 0
     @State private var lastNetworkCheck: Date = Date()
-    let timer = Timer.publish(every: 3, on: .main, in: .common).autoconnect()
 
     // Terminal Sessions
     @State private var terminalCount: Int = 0
     @State private var showTerminalMenu: Bool = false
+    @State private var terminalCountTask: Task<Void, Never>?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -94,26 +94,29 @@ struct ControlCenterSheet: View {
             }
         }
         .frame(width: 500, height: 450)
-        .onAppear {
+        .task {
             updateSystemStats()
             loadTerminalCount()
-        }
-        .onReceive(timer) { _ in
-            updateSystemStats()
-            loadTerminalCount()
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(3))
+                guard !Task.isCancelled else { break }
+                updateSystemStats()
+                loadTerminalCount()
+            }
         }
     }
 
     private func loadTerminalCount() {
-        Task {
+        terminalCountTask?.cancel()
+        terminalCountTask = Task {
             do {
                 let response = try await TerminalService.shared.listSessions()
+                guard !Task.isCancelled else { return }
                 await MainActor.run {
                     terminalCount = response.count
                 }
             } catch {
                 logger.debug("Failed to load terminal count: \(error.localizedDescription)")
-                // Keep the current count (defaults to 0)
             }
         }
     }

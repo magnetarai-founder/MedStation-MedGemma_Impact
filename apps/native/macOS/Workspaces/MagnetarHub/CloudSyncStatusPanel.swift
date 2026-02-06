@@ -294,12 +294,7 @@ struct PairedDevicesSheet: View {
     }
 
     private func formatDate(_ isoString: String) -> String {
-        guard let date = ISO8601DateFormatter().date(from: isoString) else {
-            return isoString
-        }
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .abbreviated
-        return formatter.localizedString(for: date, relativeTo: Date())
+        formatISODate(isoString)
     }
 }
 
@@ -449,13 +444,20 @@ struct ConflictRow: View {
     }
 
     private func formatDate(_ isoString: String) -> String {
-        guard let date = ISO8601DateFormatter().date(from: isoString) else {
-            return isoString
-        }
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .abbreviated
-        return formatter.localizedString(for: date, relativeTo: Date())
+        formatISODate(isoString)
     }
+}
+
+// MARK: - Shared Helpers
+
+/// Formats an ISO 8601 date string into a relative time description
+private func formatISODate(_ isoString: String) -> String {
+    guard let date = ISO8601DateFormatter().date(from: isoString) else {
+        return isoString
+    }
+    let formatter = RelativeDateTimeFormatter()
+    formatter.unitsStyle = .abbreviated
+    return formatter.localizedString(for: date, relativeTo: Date())
 }
 
 // MARK: - Preview

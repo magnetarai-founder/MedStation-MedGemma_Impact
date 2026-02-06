@@ -162,10 +162,9 @@ struct MagnetarCloudSettingsView: View {
                 }
 
                 Section("Connected Devices") {
-                    Label("MacBook Pro", systemImage: "laptopcomputer")
-                    Label("iPad Pro", systemImage: "ipad")
+                    Label(Host.current().localizedName ?? "This Mac", systemImage: "laptopcomputer")
 
-                    Text("2 devices connected")
+                    Text("1 device connected")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
