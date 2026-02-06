@@ -87,13 +87,11 @@ struct FeaturesSettingsView: View {
                 FeatureToggleRow(
                     icon: "person.2.fill",
                     title: "Team Collaboration",
-                    description: "Real-time collaboration, channels, and direct messages",
-                    isOn: Binding(
-                        get: { featureFlags.team },
-                        set: { featureFlags.team = $0 }
-                    ),
+                    description: "Real-time collaboration, channels, and direct messages — coming in a future update",
+                    isOn: .constant(false),
                     color: .cyan,
-                    badge: "Paid"
+                    badge: "Coming Soon",
+                    disabled: true
                 )
             } header: {
                 Text("Collaboration")
@@ -162,6 +160,7 @@ private struct FeatureToggleRow: View {
     @Binding var isOn: Bool
     var color: Color = .accentColor
     var badge: String? = nil
+    var disabled: Bool = false
 
     @State private var isHovered = false
 
@@ -170,12 +169,12 @@ private struct FeatureToggleRow: View {
             // Icon
             ZStack {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(color.opacity(0.15))
+                    .fill(color.opacity(disabled ? 0.08 : 0.15))
                     .frame(width: 36, height: 36)
 
                 Image(systemName: icon)
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(color)
+                    .foregroundColor(disabled ? .secondary : color)
             }
 
             // Text
@@ -183,6 +182,7 @@ private struct FeatureToggleRow: View {
                 HStack(spacing: 6) {
                     Text(title)
                         .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(disabled ? .secondary : .primary)
 
                     if let badge = badge {
                         Text(badge)
@@ -192,7 +192,7 @@ private struct FeatureToggleRow: View {
                             .padding(.vertical, 2)
                             .background(
                                 Capsule()
-                                    .fill(color.opacity(0.8))
+                                    .fill(disabled ? Color.gray.opacity(0.6) : color.opacity(0.8))
                             )
                     }
                 }
@@ -209,10 +209,12 @@ private struct FeatureToggleRow: View {
             Toggle("", isOn: $isOn)
                 .toggleStyle(.switch)
                 .controlSize(.small)
+                .disabled(disabled)
         }
         .padding(.vertical, 4)
         .contentShape(Rectangle())
         .onTapGesture {
+            guard !disabled else { return }
             withAnimation(.easeInOut(duration: 0.2)) {
                 isOn.toggle()
             }

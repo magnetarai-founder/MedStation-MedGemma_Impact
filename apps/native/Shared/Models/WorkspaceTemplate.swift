@@ -123,6 +123,34 @@ struct TemplateCell: Codable, Equatable, Sendable {
 enum TemplateContent: Codable, Equatable, Sendable {
     case blocks([TemplateBlock])
     case cells([TemplateCell])
+
+    private enum CodingKeys: String, CodingKey {
+        case blocks, cells
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        if let blocks = try container.decodeIfPresent([TemplateBlock].self, forKey: .blocks) {
+            self = .blocks(blocks)
+        } else if let cells = try container.decodeIfPresent([TemplateCell].self, forKey: .cells) {
+            self = .cells(cells)
+        } else {
+            throw DecodingError.dataCorrupted(.init(
+                codingPath: decoder.codingPath,
+                debugDescription: "TemplateContent requires either 'blocks' or 'cells' key"
+            ))
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case .blocks(let blocks):
+            try container.encode(blocks, forKey: .blocks)
+        case .cells(let cells):
+            try container.encode(cells, forKey: .cells)
+        }
+    }
 }
 
 // MARK: - Workspace Template
@@ -148,6 +176,61 @@ struct WorkspaceTemplate: Codable, Identifiable, Equatable, Sendable {
     /// Convenience accessors for cell-based content.
     var cells: [TemplateCell]? {
         if case .cells(let c) = content { return c } else { return nil }
+    }
+
+    // MARK: - Codable (flat "blocks"/"cells" keys, not nested under "content")
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, description, category, icon, targetPanel
+        case blocks, cells
+        case variables, isBuiltin, createdAt, updatedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        description = try container.decodeIfPresent(String.self, forKey: .description) ?? ""
+        category = try container.decode(WorkspaceTemplateCategory.self, forKey: .category)
+        icon = try container.decode(String.self, forKey: .icon)
+        targetPanel = try container.decode(TemplateTargetPanel.self, forKey: .targetPanel)
+        variables = try container.decodeIfPresent([TemplateVariable].self, forKey: .variables) ?? []
+        isBuiltin = try container.decodeIfPresent(Bool.self, forKey: .isBuiltin) ?? false
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt) ?? Date()
+
+        // Read flat "blocks"/"cells" keys and wrap into TemplateContent sum type
+        if let blocks = try container.decodeIfPresent([TemplateBlock].self, forKey: .blocks) {
+            content = .blocks(blocks)
+        } else if let cells = try container.decodeIfPresent([TemplateCell].self, forKey: .cells) {
+            content = .cells(cells)
+        } else {
+            content = nil
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(description, forKey: .description)
+        try container.encode(category, forKey: .category)
+        try container.encode(icon, forKey: .icon)
+        try container.encode(targetPanel, forKey: .targetPanel)
+        try container.encode(variables, forKey: .variables)
+        try container.encode(isBuiltin, forKey: .isBuiltin)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(updatedAt, forKey: .updatedAt)
+
+        // Write flat "blocks"/"cells" keys (matching JSON format)
+        switch content {
+        case .blocks(let blocks):
+            try container.encode(blocks, forKey: .blocks)
+        case .cells(let cells):
+            try container.encode(cells, forKey: .cells)
+        case nil:
+            break
+        }
     }
 
     init(

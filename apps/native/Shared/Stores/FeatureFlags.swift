@@ -124,9 +124,9 @@ final class FeatureFlags {
 
     // MARK: - Bulk Operations
 
-    /// Enable all optional features
+    /// Enable all optional features (except team — future upgrade)
     func enableAll() {
-        team = true
+        // team intentionally excluded — coming in a future upgrade
         code = true
         projectManagement = true
         automations = true
