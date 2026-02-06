@@ -81,12 +81,6 @@ struct Header: View {
             }
         }
         .frame(height: 54)
-        .overlay(
-            Rectangle()
-                .fill(Color.white.opacity(0.12))
-                .frame(height: 1),
-            alignment: .bottom
-        )
     }
 
     // MARK: - Emergency Mode Handler
