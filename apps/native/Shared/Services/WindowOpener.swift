@@ -37,6 +37,9 @@ final class WindowOpener {
     /// Opens the AI Assistant floating window
     var openDetachedAI: (() -> Void)?
 
+    /// Opens the Founder Admin window
+    var openAdminWindow: (() -> Void)?
+
     /// Opens a spawnable workspace window
     var openWorkspace: ((String) -> Void)?
 
@@ -87,6 +90,15 @@ final class WindowOpener {
         }
         opener()
         logger.info("Opened AI Assistant window")
+    }
+
+    func openAdmin() {
+        guard let opener = openAdminWindow else {
+            logger.warning("openAdminWindow not configured")
+            return
+        }
+        opener()
+        logger.info("Opened Founder Admin window")
     }
 
     func openCodeWorkspace() {
@@ -145,6 +157,10 @@ struct WindowOpenerConfigurator: ViewModifier {
 
         opener.openDetachedAI = {
             openWindow(id: "detached-ai")
+        }
+
+        opener.openAdminWindow = {
+            openWindow(id: "admin-window")
         }
 
         opener.openDetachedDocEdit = { (info: DetachedDocEditInfo) in

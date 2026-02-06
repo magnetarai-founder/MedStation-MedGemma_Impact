@@ -178,6 +178,12 @@ struct MagnetarMenuCommands: Commands {
                 UniversalAIPanelStore.shared.toggle()
             }
             .keyboardShortcut("p", modifiers: [.command, .shift])
+
+            Divider()
+
+            Button("Founder Admin") {
+                WindowOpener.shared.openAdmin()
+            }
         }
 
         // Help menu

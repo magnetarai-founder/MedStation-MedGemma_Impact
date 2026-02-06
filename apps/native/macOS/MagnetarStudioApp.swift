@@ -185,6 +185,14 @@ struct MagnetarStudioApp: App {
         .windowResizability(.contentMinSize)
         .defaultSize(width: 600, height: 700)
 
+        // Founder Admin window — role-gated, accessible from + menu
+        WindowGroup("Founder Admin", id: "admin-window") {
+            AdminWindow()
+        }
+        .windowStyle(.titleBar)
+        .windowResizability(.contentMinSize)
+        .defaultSize(width: 600, height: 500)
+
         // MARK: - Phase 6: Pop-Out Workspace Documents
 
         WindowGroup("Document Editor", for: DetachedDocEditInfo.self) { $docInfo in

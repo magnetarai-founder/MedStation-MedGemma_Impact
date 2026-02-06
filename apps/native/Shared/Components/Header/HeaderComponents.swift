@@ -459,6 +459,20 @@ struct QuickActionButton: View {
                 Text("Open in New Window")
             }
 
+            // MARK: - Admin (role-gated)
+            if let role = AuthStore.shared.user?.userRole,
+               [.founderRights, .superAdmin, .admin].contains(role) {
+                Section {
+                    Button {
+                        WindowOpener.shared.openAdmin()
+                    } label: {
+                        Label("Founder Admin", systemImage: "shield.lefthalf.filled")
+                    }
+                } header: {
+                    Text("Admin")
+                }
+            }
+
             // MARK: - Settings
             Divider()
             Button {

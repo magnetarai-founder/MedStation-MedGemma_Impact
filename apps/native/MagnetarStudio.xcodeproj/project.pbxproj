@@ -106,6 +106,7 @@
 		40C8FE648BF1FB0006BCB979 /* SpreadsheetDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79D759F9CED8A859CFD35E31 /* SpreadsheetDocument.swift */; };
 		417D836524EB8E0D5E3A779A /* HubDiscoverToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = F66BAE28BD2ECCAAE6552A90 /* HubDiscoverToolbar.swift */; };
 		419431498985644AE22A495A /* MagnetarHubWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2760AE2A83BCE0FEB660A5 /* MagnetarHubWorkspace.swift */; };
+		4282E6D2076BECF3C8D6B809 /* AdminWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 976723EC67000F2AA39B3022 /* AdminWindow.swift */; };
 		42B474E143714E973C2FDA8A /* VouchNodeModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0279AD17089C318C0DB08C12 /* VouchNodeModal.swift */; };
 		42C2F6958259917DD6643027 /* WorkspaceEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8E40AB2D37911CB8833CCE0 /* WorkspaceEditor.swift */; };
 		44078DC0703712BB6AF12863 /* ContextOptimizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D866B895AA748AFB7758693 /* ContextOptimizer.swift */; };
@@ -211,6 +212,7 @@
 		895BA157785EC03B7FD0A800 /* VaultSecurityAuditTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF55E2A5222E0357A65407DA /* VaultSecurityAuditTab.swift */; };
 		896B0B4231D71EF5BD2035C0 /* AppleFMOrchestrator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54AEFEC829A74FB754B9E44C /* AppleFMOrchestrator.swift */; };
 		897A1755D07D58C21222A020 /* ModelComparisonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5764694930CDBCF6FE8A8361 /* ModelComparisonView.swift */; };
+		897CEE620E820B78B1428045 /* AdminService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0EB3565AE30EBE9BC914255 /* AdminService.swift */; };
 		89BE3D6B07A1F6D6B2DA3526 /* TemplateEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1654E2098C2A66196A2683 /* TemplateEditorSheet.swift */; };
 		8A08EF1F929183390227C744 /* DataLabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8A9141E27CC32AF2C3F6160 /* DataLabView.swift */; };
 		8B7C91A0D27DC06DC6372132 /* ImageAnalysisResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = D137A75E7A736996FB569D62 /* ImageAnalysisResult.swift */; };
@@ -606,6 +608,7 @@
 		95D285F5F2D2933F2134F3EC /* TeamChatModals.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamChatModals.swift; sourceTree = "<group>"; };
 		969022054A1AAD53D62AFE47 /* RecordingRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingRow.swift; sourceTree = "<group>"; };
 		9761C822CC5C9B25B1B77A14 /* RegisterNodeModal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegisterNodeModal.swift; sourceTree = "<group>"; };
+		976723EC67000F2AA39B3022 /* AdminWindow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AdminWindow.swift; sourceTree = "<group>"; };
 		97C4913CBD260C81B6BDC9A6 /* SafetyNumberVerificationModal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafetyNumberVerificationModal.swift; sourceTree = "<group>"; };
 		97F5B6BD28E3E63F27E5814B /* ModelManagementSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelManagementSettingsView.swift; sourceTree = "<group>"; };
 		9805EBEE0D753FDCC1A9D4DB /* TeamChatWindowHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamChatWindowHeader.swift; sourceTree = "<group>"; };
@@ -762,6 +765,7 @@
 		EF3A89702783072659E625AB /* DotPattern.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DotPattern.swift; sourceTree = "<group>"; };
 		EFFD519F5F124DD6FBA0BC2F /* KanbanDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KanbanDataManager.swift; sourceTree = "<group>"; };
 		F00DCE31D7D96B62EB1DEC20 /* PlatformImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatformImage.swift; sourceTree = "<group>"; };
+		F0EB3565AE30EBE9BC914255 /* AdminService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AdminService.swift; sourceTree = "<group>"; };
 		F2C77CB5AF6C4202FD8D7161 /* ChatMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatMessage.swift; sourceTree = "<group>"; };
 		F3036B202E403CF506FF41EA /* WorkspaceHub.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkspaceHub.swift; sourceTree = "<group>"; };
 		F3D973E83C2DE0F8B935070D /* ConversationModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationModels.swift; sourceTree = "<group>"; };
@@ -1627,6 +1631,7 @@
 				52B99B244A9C019D32203E53 /* Charts */,
 				DCF6753A6E713E1EA821B20F /* Automation */,
 				FF8FF8C1A480513ED66E2295 /* Plugins */,
+				F0EB3565AE30EBE9BC914255 /* AdminService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -1658,6 +1663,7 @@
 				6ED5D28CE65DB5D69A6F0251 /* DetachedDocumentWindow.swift */,
 				1CCF38BAED0DD197EFAA67EE /* DetachedNoteWindow.swift */,
 				6D16B61C27F2D999C363C5D5 /* DetachedAIWindow.swift */,
+				976723EC67000F2AA39B3022 /* AdminWindow.swift */,
 			);
 			path = Windows;
 			sourceTree = "<group>";
@@ -2260,6 +2266,8 @@
 				6C19D25312AAD79C809D280A /* UniversalAIPanelStore.swift in Sources */,
 				1EEF4D2514DD154F0C8D6A89 /* UniversalAIPanel.swift in Sources */,
 				72AA3D2A40E9B40B097A5B0E /* DetachedAIWindow.swift in Sources */,
+				897CEE620E820B78B1428045 /* AdminService.swift in Sources */,
+				4282E6D2076BECF3C8D6B809 /* AdminWindow.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
