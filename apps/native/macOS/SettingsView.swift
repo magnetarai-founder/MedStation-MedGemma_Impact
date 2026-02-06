@@ -11,49 +11,62 @@ import ServiceManagement
 import UserNotifications
 import Observation
 
+/// Settings tab identifiers — used for programmatic tab selection
+enum SettingsTab: String {
+    case general, features, api, security, appearance, models, cloud
+}
+
 struct SettingsView: View {
     // Default from centralized config - user can override in settings
     @AppStorage("apiBaseURL") private var apiBaseURL = APIConfiguration.shared.baseURL
     @AppStorage("defaultModel") private var defaultModel = "mistral"
     @AppStorage("enableBiometrics") private var enableBiometrics = true
     @AppStorage("theme") private var theme = "system"
+    @AppStorage("settings.selectedTab") private var selectedTab: String = SettingsTab.general.rawValue
 
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             GeneralSettingsView()
                 .tabItem {
                     Label("General", systemImage: "gear")
                 }
+                .tag(SettingsTab.general.rawValue)
 
             FeaturesSettingsView()
                 .tabItem {
                     Label("Features", systemImage: "puzzlepiece.extension")
                 }
+                .tag(SettingsTab.features.rawValue)
 
             APISettingsView(apiBaseURL: $apiBaseURL, defaultModel: $defaultModel)
                 .tabItem {
                     Label("API", systemImage: "network")
                 }
+                .tag(SettingsTab.api.rawValue)
 
             SecuritySettingsView(enableBiometrics: $enableBiometrics)
                 .tabItem {
                     Label("Security", systemImage: "lock.shield")
                 }
+                .tag(SettingsTab.security.rawValue)
 
             AppearanceSettingsView(theme: $theme)
                 .tabItem {
                     Label("Appearance", systemImage: "paintbrush")
                 }
+                .tag(SettingsTab.appearance.rawValue)
 
             ModelManagementSettingsView()
                 .tabItem {
                     Label("Models", systemImage: "cpu")
                 }
+                .tag(SettingsTab.models.rawValue)
 
             MagnetarCloudSettingsView()
                 .tabItem {
                     Label("MagnetarCloud", systemImage: "cloud")
                 }
+                .tag(SettingsTab.cloud.rawValue)
         }
         .frame(minWidth: 600, idealWidth: 600, maxWidth: .infinity,
                minHeight: 500, idealHeight: 500, maxHeight: .infinity)

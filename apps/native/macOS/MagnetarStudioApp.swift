@@ -22,6 +22,22 @@ struct MagnetarStudioApp: App {
     @State private var permissionManager = VaultPermissionManager.shared
     @NSApplicationDelegateAdaptor(AppLifecycleManager.self) var appDelegate
     @State private var commandPaletteManager = CommandPaletteManager()
+    @AppStorage("theme") private var theme = "system"
+
+    init() {
+        UserDefaults.standard.register(defaults: [
+            "enableAppleFM": true,
+            "defaultTemperature": 0.7,
+            "defaultTopP": 0.9,
+            "defaultTopK": 40,
+            "defaultRepeatPenalty": 1.1,
+            "enableBlurEffects": true,
+            "autoLockEnabled": true,
+            "autoLockTimeout": 15,
+            "showLineNumbers": true,
+            "editorFontSize": 14
+        ])
+    }
 
     var body: some Scene {
         // Main window
@@ -29,12 +45,16 @@ struct MagnetarStudioApp: App {
             ContentView()
                 .frame(minWidth: 1300, minHeight: 750)
                 .onAppear {
+                    applyTheme()
                     // Set window size constraints
                     if let window = NSApplication.shared.windows.first {
                         window.setContentSize(NSSize(width: 1400, height: 850))
                         window.minSize = NSSize(width: 1300, height: 750)
                         window.isMovableByWindowBackground = true
                     }
+                }
+                .onChange(of: theme) {
+                    applyTheme()
                 }
                 .sheet(isPresented: $commandPaletteManager.isPresented) {
                     CommandPaletteView(
@@ -206,5 +226,19 @@ struct MagnetarStudioApp: App {
         .windowStyle(.titleBar)
         .windowResizability(.contentMinSize)
         .defaultSize(width: 800, height: 600)
+    }
+
+    // MARK: - Theme
+
+    /// Apply theme globally via NSApp.appearance — affects all windows at once
+    private func applyTheme() {
+        switch theme {
+        case "light":
+            NSApp.appearance = NSAppearance(named: .aqua)
+        case "dark":
+            NSApp.appearance = NSAppearance(named: .darkAqua)
+        default:
+            NSApp.appearance = nil // Follow system
+        }
     }
 }

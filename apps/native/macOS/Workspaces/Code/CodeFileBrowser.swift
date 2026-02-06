@@ -18,6 +18,8 @@ struct CodeFileBrowser: View {
 
     @State private var searchText: String = ""
     @State private var isRefreshing = false
+    @AppStorage("enableBlurEffects") private var enableBlurEffects = true
+    @AppStorage("reduceTransparency") private var reduceTransparency = false
 
     var filteredFiles: [FileItem] {
         if searchText.isEmpty {
@@ -162,6 +164,12 @@ struct CodeFileBrowser: View {
                 }
             }
         }
-        .background(.ultraThinMaterial)
+        .background {
+            if enableBlurEffects && !reduceTransparency {
+                AnyView(Rectangle().fill(.ultraThinMaterial))
+            } else {
+                AnyView(Color(nsColor: .controlBackgroundColor))
+            }
+        }
     }
 }

@@ -31,6 +31,8 @@ public final class SecurityManager {
     private var pendingRequests: [UUID: URLRequest] = [:]
 
     private init() {
+        // Restore persisted firewall state
+        networkFirewallEnabled = UserDefaults.standard.bool(forKey: "networkFirewallEnabled")
         loadFirewallRules()
     }
 
@@ -103,6 +105,7 @@ public final class SecurityManager {
     /// Enable or disable network firewall
     public func setNetworkFirewall(enabled: Bool) {
         networkFirewallEnabled = enabled
+        UserDefaults.standard.set(enabled, forKey: "networkFirewallEnabled")
 
         logSecurityEvent(SecurityEvent(
             type: .firewallToggled,

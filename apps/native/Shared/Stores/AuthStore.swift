@@ -249,6 +249,12 @@ final class AuthStore {
         await clearAuthAndRestart()
     }
 
+    /// Lock the app without clearing credentials — shows welcome screen for re-authentication
+    /// Used by auto-lock idle detection. Biometric auto-login remains available.
+    func lock() {
+        authState = .welcome
+    }
+
     /// Set error message
     func setError(_ message: String?) {
         self.error = message

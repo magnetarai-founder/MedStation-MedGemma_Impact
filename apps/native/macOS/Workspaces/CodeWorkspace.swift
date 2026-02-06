@@ -36,6 +36,8 @@ struct CodeWorkspace: View {
     @AppStorage("code.terminalHeight") private var terminalHeight: Double = 200
     @AppStorage("code.aiPanelWidth") private var aiPanelWidth: Double = 320
     @AppStorage("code.showBottomPanel") private var showBottomPanel: Bool = true
+    @AppStorage("enableBlurEffects") private var enableBlurEffects = true
+    @AppStorage("reduceTransparency") private var reduceTransparency = false
     @State private var bottomPanelMode: BottomPanelMode = .terminal
     @State private var showSidebar: Bool = true
 
@@ -214,7 +216,13 @@ struct CodeWorkspace: View {
         }
         .frame(width: 36)
         .padding(.top, 8)
-        .background(.thinMaterial)
+        .background {
+            if enableBlurEffects && !reduceTransparency {
+                AnyView(Rectangle().fill(.thinMaterial))
+            } else {
+                AnyView(Color(nsColor: .controlBackgroundColor))
+            }
+        }
     }
 
     // MARK: - Status Bar

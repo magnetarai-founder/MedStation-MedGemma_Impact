@@ -461,8 +461,11 @@ struct QuickActionButton: View {
 
             // MARK: - Settings
             Divider()
-            SettingsLink {
-                Label("Manage Features...", systemImage: "gearshape")
+            Button {
+                UserDefaults.standard.set(SettingsTab.features.rawValue, forKey: "settings.selectedTab")
+                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+            } label: {
+                Label("Manage Features...", systemImage: "puzzlepiece.extension")
             }
         } label: {
             Image(systemName: "plus")

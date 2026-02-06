@@ -17,6 +17,9 @@ struct CodeEditorArea: View {
     let onSelectFile: (FileItem) -> Void
     let onCloseFile: (FileItem) -> Void
 
+    @AppStorage("showLineNumbers") private var showLineNumbers = true
+    @AppStorage("editorFontSize") private var editorFontSize = 14
+
     var body: some View {
         VStack(spacing: 0) {
             // Tab bar
@@ -49,17 +52,19 @@ struct CodeEditorArea: View {
             // Editor content
             if selectedFile != nil {
                 HStack(spacing: 0) {
-                    // Line number gutter
-                    LineNumberGutter(text: fileContent)
+                    // Line number gutter (respects settings)
+                    if showLineNumbers {
+                        LineNumberGutter(text: fileContent, fontSize: CGFloat(max(editorFontSize - 2, 9)))
 
-                    // Thin separator
-                    Rectangle()
-                        .fill(Color(nsColor: .separatorColor))
-                        .frame(width: 1)
+                        // Thin separator
+                        Rectangle()
+                            .fill(Color(nsColor: .separatorColor))
+                            .frame(width: 1)
+                    }
 
                     // Editor
                     TextEditor(text: $fileContent)
-                        .font(.system(size: 13, design: .monospaced))
+                        .font(.system(size: CGFloat(editorFontSize), design: .monospaced))
                         .scrollContentBackground(.hidden)
                         .background(Color(nsColor: .textBackgroundColor))
                 }
@@ -116,9 +121,15 @@ struct CodeEditorArea: View {
 
 private struct LineNumberGutter: View {
     let text: String
+    var fontSize: CGFloat = 11
 
     private var lineCount: Int {
         max(text.components(separatedBy: "\n").count, 1)
+    }
+
+    /// Line height matches TextEditor's default line spacing for the given font size
+    private var lineHeight: CGFloat {
+        max(fontSize * 1.4, 16)
     }
 
     var body: some View {
@@ -126,16 +137,16 @@ private struct LineNumberGutter: View {
             VStack(alignment: .trailing, spacing: 0) {
                 ForEach(1...lineCount, id: \.self) { lineNumber in
                     Text("\(lineNumber)")
-                        .font(.system(size: 11, design: .monospaced))
+                        .font(.system(size: fontSize, design: .monospaced))
                         .foregroundStyle(.tertiary)
-                        .frame(height: 18)
+                        .frame(height: lineHeight)
                 }
             }
             .padding(.top, 7)
             .padding(.trailing, 8)
             .padding(.leading, 4)
         }
-        .frame(width: 44)
+        .frame(width: max(44, fontSize * 4))
         .background(Color(nsColor: .textBackgroundColor).opacity(0.5))
     }
 }

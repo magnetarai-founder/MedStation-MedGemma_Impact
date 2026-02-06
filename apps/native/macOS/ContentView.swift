@@ -115,8 +115,11 @@ struct MainAppView: View {
     @Environment(NavigationStore.self) private var navigationStore
     @Environment(ChatStore.self) private var chatStore
     @Environment(VaultPermissionManager.self) private var permissionManager
+    @Environment(AuthStore.self) private var authStore
     @State private var workspaceError: WorkspaceError?
     @State private var aiPanelStore = UniversalAIPanelStore.shared
+    @AppStorage("autoLockEnabled") private var autoLockEnabled = true
+    @AppStorage("autoLockTimeout") private var autoLockTimeout = 15
 
     var body: some View {
         ZStack {
@@ -189,6 +192,23 @@ struct MainAppView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .animation(.easeInOut(duration: 0.2), value: permissionManager.showPermissionModal)
         .withNetworkFirewall() // Enable network firewall with approval modals
+        .task(id: autoLockEnabled) {
+            guard autoLockEnabled, autoLockTimeout > 0 else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(30))
+                guard autoLockEnabled else { break }
+                // Check system-wide idle time via Quartz Event Services
+                let mouseIdle = CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: .mouseMoved)
+                let keyIdle = CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: .keyDown)
+                let idleSeconds = min(mouseIdle, keyIdle)
+                let timeoutSeconds = Double(autoLockTimeout) * 60
+                if idleSeconds > timeoutSeconds {
+                    logger.info("Auto-lock triggered after \(Int(idleSeconds))s system idle")
+                    authStore.lock()
+                    break
+                }
+            }
+        }
     }
 
     // MARK: - Active Workspace View

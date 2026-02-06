@@ -629,7 +629,15 @@ final class ChatStore {
             }
         }
 
-        // Intelligent mode: use orchestrator
+        // Intelligent mode: check if orchestrator routing is enabled
+        let enableAppleFM = UserDefaults.standard.bool(forKey: "enableAppleFM")
+        guard enableAppleFM else {
+            let model = taskSpecificModel(for: query)
+            logger.debug("Intelligent routing disabled, using task-specific model: \(model)")
+            return model
+        }
+
+        // Use orchestrator
         logger.debug("Intelligent mode: Using orchestrator to determine best model")
 
         do {
@@ -639,9 +647,9 @@ final class ChatStore {
             // Get orchestrator
             let manager = OrchestratorManager.shared
             guard let orchestrator = await manager.getActiveOrchestrator() else {
-                let fallback = defaultModel
-                logger.warning("No orchestrator available, using default model: \(fallback)")
-                return fallback
+                let model = taskSpecificModel(for: query)
+                logger.warning("No orchestrator available, using task-specific model: \(model)")
+                return model
             }
 
             // Route with orchestrator
@@ -652,11 +660,39 @@ final class ChatStore {
             return decision.selectedModelId
 
         } catch {
-            let fallback = self.defaultModel
-            logger.error("Orchestrator routing failed: \(error), using default: \(fallback)")
-            // Fallback to default
-            return fallback
+            let model = taskSpecificModel(for: query)
+            logger.error("Orchestrator routing failed: \(error), using task-specific model: \(model)")
+            return model
         }
+    }
+
+    /// Select model based on query task type using Settings → Models configuration
+    private func taskSpecificModel(for query: String) -> String {
+        let defaults = UserDefaults.standard
+        let lowered = query.lowercased()
+
+        // Data/SQL queries
+        let dataKeywords = ["sql", "query", "database", "table", "select", "insert", "data"]
+        if dataKeywords.contains(where: { lowered.contains($0) }) {
+            if let dataModel = defaults.string(forKey: "dataQueryModel"), !dataModel.isEmpty {
+                return dataModel
+            }
+        }
+
+        // Code tasks
+        let codeKeywords = ["code", "function", "implement", "debug", "refactor", "fix", "compile", "swift", "python"]
+        if codeKeywords.contains(where: { lowered.contains($0) }) {
+            if let codeModel = defaults.string(forKey: "codeModel"), !codeModel.isEmpty {
+                return codeModel
+            }
+        }
+
+        // General chat — use chat model or default
+        if let chatModel = defaults.string(forKey: "chatModel"), !chatModel.isEmpty {
+            return chatModel
+        }
+
+        return defaultModel
     }
 
     /// Build context bundle for orchestrator routing
@@ -912,10 +948,33 @@ final class ChatStore {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 
-        let requestBody: [String: Any] = [
+        var requestBody: [String: Any] = [
             "content": content,
             "model": model
         ]
+
+        // Model generation parameters from Settings → Models
+        let defaults = UserDefaults.standard
+        let temperature = defaults.double(forKey: "defaultTemperature")
+        if temperature > 0 { requestBody["temperature"] = temperature }
+
+        let topP = defaults.double(forKey: "defaultTopP")
+        if topP > 0 { requestBody["top_p"] = topP }
+
+        let topK = defaults.integer(forKey: "defaultTopK")
+        if topK > 0 { requestBody["top_k"] = topK }
+
+        let repeatPenalty = defaults.double(forKey: "defaultRepeatPenalty")
+        if repeatPenalty > 0 { requestBody["repeat_penalty"] = repeatPenalty }
+
+        // Global system prompt from Settings → Models
+        if defaults.bool(forKey: "enableGlobalPrompt") {
+            let systemPrompt = defaults.string(forKey: "globalSystemPrompt") ?? ""
+            if !systemPrompt.isEmpty {
+                requestBody["system_prompt"] = systemPrompt
+            }
+        }
+
         request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
 
         return request

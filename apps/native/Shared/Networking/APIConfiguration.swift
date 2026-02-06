@@ -15,7 +15,20 @@ final class APIConfiguration {
     static let shared = APIConfiguration()
 
     /// Base API URL with HTTPS enforcement for non-localhost
-    let baseURL: String
+    /// Priority: env var > UserDefaults (Settings UI) > default localhost
+    var baseURL: String {
+        if let envURL = ProcessInfo.processInfo.environment["API_BASE_URL"] {
+            return envURL
+        }
+        if let userURL = UserDefaults.standard.string(forKey: "apiBaseURL"),
+           !userURL.isEmpty,
+           userURL != _defaultBaseURL {
+            return userURL
+        }
+        return _defaultBaseURL
+    }
+
+    private let _defaultBaseURL: String = "http://localhost:8000/api"
 
     /// Ollama server URL (local LLM inference)
     let ollamaURL: String
@@ -85,15 +98,6 @@ final class APIConfiguration {
     }
 
     private init() {
-        // Read from environment or default to localhost
-        // For production/remote: Set API_BASE_URL environment variable to HTTPS endpoint
-        if let envBaseURL = ProcessInfo.processInfo.environment["API_BASE_URL"] {
-            self.baseURL = envBaseURL
-        } else {
-            // Local development only - use HTTP for localhost
-            self.baseURL = "http://localhost:8000/api"
-        }
-
         // Ollama URL (always local, no remote option)
         if let envOllamaURL = ProcessInfo.processInfo.environment["OLLAMA_URL"] {
             self.ollamaURL = envOllamaURL
@@ -102,13 +106,14 @@ final class APIConfiguration {
         }
 
         // CRITICAL SECURITY: Enforce HTTPS for non-localhost URLs
-        if !isLocalhost(baseURL) && baseURL.hasPrefix("http://") {
+        let resolved = baseURL
+        if !isLocalhost(resolved) && resolved.hasPrefix("http://") {
             logger.critical("SECURITY ERROR: Non-localhost URL configured with HTTP instead of HTTPS")
-            logger.critical("URL: \(self.baseURL)")
+            logger.critical("URL: \(resolved)")
             assertionFailure("SECURITY: Non-localhost API must use HTTPS")
         }
 
-        logger.info("API Configuration initialized: \(self.baseURL)")
+        logger.info("API Configuration initialized: \(resolved)")
     }
 
     /// Check if URL is localhost or loopback
