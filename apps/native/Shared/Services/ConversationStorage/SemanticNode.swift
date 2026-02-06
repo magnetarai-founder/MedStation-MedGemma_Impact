@@ -12,7 +12,7 @@ import Foundation
 
 /// Compressed context node with full semantic structure.
 /// Unlike lossy text summaries, these preserve structured meaning.
-struct SemanticNode: Codable, Identifiable {
+struct SemanticNode: Codable, Identifiable, Sendable {
     let id: UUID
 
     /// What this node represents (e.g., "Q4 Budget Discussion")
@@ -135,7 +135,7 @@ struct SemanticNode: Codable, Identifiable {
 // MARK: - Decision
 
 /// A decision extracted from conversation context
-struct Decision: Codable, Identifiable {
+struct Decision: Codable, Identifiable, Sendable {
     let id: UUID
     let summary: String
     let madeAt: Date
@@ -163,7 +163,7 @@ struct Decision: Codable, Identifiable {
 // MARK: - Todo Item
 
 /// An outstanding item extracted from conversation
-struct TodoItem: Codable, Identifiable {
+struct TodoItem: Codable, Identifiable, Sendable {
     let id: UUID
     let description: String
     let priority: Priority
@@ -213,7 +213,7 @@ struct TodoItem: Codable, Identifiable {
 // MARK: - Code Reference
 
 /// A code snippet referenced in conversation (MagnetarStudio-specific)
-struct CodeReference: Codable, Identifiable {
+struct CodeReference: Codable, Identifiable, Sendable {
     let id: UUID
     let filePath: String
     let language: String

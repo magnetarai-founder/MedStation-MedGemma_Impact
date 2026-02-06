@@ -16,7 +16,7 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "Emergen
 extension EmergencyModeService {
 
     func callBackendEmergencyWipe(reason: String?) async throws -> BackendEmergencyResponse {
-        struct EmergencyWipeRequest: Codable {
+        struct EmergencyWipeRequest: Codable, Sendable {
             let confirmation: String
             let reason: String
         }

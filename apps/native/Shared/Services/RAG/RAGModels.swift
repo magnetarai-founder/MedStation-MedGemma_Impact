@@ -11,7 +11,7 @@ import Foundation
 // MARK: - RAG Document
 
 /// A document that can be indexed and retrieved via RAG
-struct RAGDocument: Codable, Identifiable, Hashable {
+struct RAGDocument: Codable, Identifiable, Hashable, Sendable {
     let id: UUID
     let content: String
     let embedding: [Float]
@@ -119,7 +119,7 @@ enum RAGSource: String, Codable, CaseIterable, Sendable {
 // MARK: - RAG Document Metadata
 
 /// Metadata for a RAG document
-struct RAGDocumentMetadata: Codable {
+struct RAGDocumentMetadata: Codable, Sendable {
     var conversationId: UUID?
     var sessionId: UUID?
     var messageId: UUID?
@@ -289,7 +289,7 @@ struct RAGContext {
 // MARK: - Index Statistics
 
 /// Statistics about the RAG index
-struct RAGIndexStatistics: Codable {
+struct RAGIndexStatistics: Codable, Sendable {
     var totalDocuments: Int
     var documentsBySource: [String: Int]
     var averageEmbeddingDimension: Int

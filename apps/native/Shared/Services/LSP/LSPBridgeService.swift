@@ -372,7 +372,7 @@ actor LSPBridgeService {
         ]
 
         // Backend may return single location or array
-        struct DefinitionResponse: Codable {
+        struct DefinitionResponse: Codable, Sendable {
             let location: LSPLocation?
             let locations: [LSPLocation]?
         }
@@ -416,7 +416,7 @@ actor LSPBridgeService {
             "include_declaration": includeDeclaration
         ]
 
-        struct ReferencesResponse: Codable {
+        struct ReferencesResponse: Codable, Sendable {
             let locations: [LSPLocation]
         }
 
@@ -454,7 +454,7 @@ actor LSPBridgeService {
             "text": text
         ]
 
-        struct DiagnosticsResponse: Codable {
+        struct DiagnosticsResponse: Codable, Sendable {
             let diagnostics: [LSPDiagnostic]
         }
 

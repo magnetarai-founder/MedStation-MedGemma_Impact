@@ -12,12 +12,12 @@ public enum PanicLevel: String, Codable, Sendable {
     case emergency   // Triple-click: DoD 7-pass wipe + uninstall (NOT YET IMPLEMENTED)
 }
 
-struct PanicTriggerRequest: Codable {
+struct PanicTriggerRequest: Codable, Sendable {
     let confirmation: String
     let reason: String?
 }
 
-struct PanicTriggerResponse: Codable {
+struct PanicTriggerResponse: Codable, Sendable {
     let panicActivated: Bool
     let timestamp: String
     let reason: String
@@ -35,7 +35,7 @@ struct PanicTriggerResponse: Codable {
     }
 }
 
-struct PanicStatusResponse: Codable {
+struct PanicStatusResponse: Codable, Sendable {
     let panicActive: Bool
     let lastPanic: String?
     let secureMode: Bool

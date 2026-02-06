@@ -385,13 +385,13 @@ struct ModelManagerWindow: View {
             }
             let (data, _) = try await URLSession.shared.data(from: url)
 
-            struct ModelResponseWithTags: Codable {
+            struct ModelResponseWithTags: Codable, Sendable {
                 let name: String
                 let size: Int?
                 let tags: [String]
             }
 
-            struct SuccessResponseWithTags: Codable {
+            struct SuccessResponseWithTags: Codable, Sendable {
                 let data: [ModelResponseWithTags]
                 let message: String?
             }
@@ -409,11 +409,11 @@ struct ModelManagerWindow: View {
                 }
                 let (data, _) = try await URLSession.shared.data(from: url)
 
-                struct ModelResponse: Codable {
+                struct ModelResponse: Codable, Sendable {
                     let name: String
                 }
 
-                struct SuccessResponseBasic: Codable {
+                struct SuccessResponseBasic: Codable, Sendable {
                     let data: [ModelResponse]
                     let message: String?
                 }

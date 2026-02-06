@@ -374,7 +374,7 @@ final class CloudStorageService {
         let (data, response) = try await URLSession.shared.data(for: request)
         try handleHTTPResponse(response)
 
-        struct DownloadResponse: Codable {
+        struct DownloadResponse: Codable, Sendable {
             let downloadUrl: String
         }
 
@@ -409,7 +409,7 @@ final class CloudStorageService {
         let (data, response) = try await URLSession.shared.data(for: request)
         try handleHTTPResponse(response)
 
-        struct FilesResponse: Codable {
+        struct FilesResponse: Codable, Sendable {
             let files: [CloudFile]
             let total: Int
         }

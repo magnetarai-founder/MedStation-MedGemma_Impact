@@ -201,7 +201,7 @@ final class ChatStore {
             let (data, _) = try await URLSession.shared.data(from: url)
 
             // API now returns SuccessResponse wrapper
-            struct ModelsResponse: Codable {
+            struct ModelsResponse: Codable, Sendable {
                 let success: Bool
                 let data: [ModelResponse]
                 let message: String?
@@ -374,7 +374,7 @@ final class ChatStore {
     /// Load model preferences for the current session
     func loadModelPreferences(sessionId: String) async {
         do {
-            struct ModelPreferencesResponse: Codable {
+            struct ModelPreferencesResponse: Codable, Sendable {
                 let selectedMode: String
                 let selectedModelId: String?
 
@@ -408,7 +408,7 @@ final class ChatStore {
         }
 
         do {
-            struct UpdateRequest: Codable {
+            struct UpdateRequest: Codable, Sendable {
                 let selectedMode: String
                 let selectedModelId: String?
 
@@ -1081,7 +1081,7 @@ enum ChatError: LocalizedError {
 
 // MARK: - Model Response
 
-struct ModelResponse: Codable {
+struct ModelResponse: Codable, Sendable {
     let name: String
     let size: Int
     let modifiedAt: String?

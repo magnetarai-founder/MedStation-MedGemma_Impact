@@ -2,12 +2,9 @@
 //  TemplateGalleryView.swift
 //  MagnetarStudio (macOS)
 //
-//  Full-screen template gallery. Browse, search, preview all templates.
-//  Organized by category with "Your Templates" vs "Built-in" sections.
-//
-//  NOTE: Not yet routed from main navigation. TemplatePickerSheet (used by
-//  NotesPanel/SheetsPanel) handles the quick-pick flow. This gallery is intended
-//  for a future "Manage Templates" screen accessible from Settings or a dedicated panel.
+//  STUB: Not yet routed — future "Manage Templates" full-screen gallery.
+//  TemplatePickerSheet handles the quick-pick flow currently.
+//  FUTURE: Wire from Settings or a dedicated panel for browse/search/preview of all templates.
 //
 
 import SwiftUI

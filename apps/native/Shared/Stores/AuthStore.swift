@@ -134,12 +134,12 @@ final class AuthStore {
             logger.warning("DEBUG MODE: Auto-login using environment credentials")
 
             do {
-                struct LoginRequest: Codable {
+                struct LoginRequest: Codable, Sendable {
                     let username: String
                     let password: String
                 }
 
-                struct LoginResponse: Codable {
+                struct LoginResponse: Codable, Sendable {
                     let token: String
                     let refreshToken: String?
                     let userId: String

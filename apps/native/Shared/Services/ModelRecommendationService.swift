@@ -32,7 +32,7 @@ class ModelRecommendationService {
         }
 
         // Backend returns SuccessResponse<Dict> with data.recommendations
-        struct RecommendationsData: Codable {
+        struct RecommendationsData: Codable, Sendable {
             let task: String
             let recommendations: [BackendRecommendedModel]
             let count: Int
@@ -54,7 +54,7 @@ class ModelRecommendationService {
 
     func checkHealth() async throws -> RecommendationHealthResponse {
         // Health endpoint doesn't use SuccessResponse envelope
-        struct HealthResponse: Codable {
+        struct HealthResponse: Codable, Sendable {
             let status: String
             let timestamp: String?
         }

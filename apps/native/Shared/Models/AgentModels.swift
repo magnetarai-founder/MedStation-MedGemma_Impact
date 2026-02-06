@@ -11,7 +11,7 @@ import Foundation
 // MARK: - Route Request/Response
 
 /// Request to route user input and determine intent
-struct AgentRouteRequest: Codable {
+struct AgentRouteRequest: Codable, Sendable {
     let input: String
     let session_id: String?
 
@@ -22,7 +22,7 @@ struct AgentRouteRequest: Codable {
 }
 
 /// Response from route endpoint with intent classification
-struct AgentRouteResponse: Codable {
+struct AgentRouteResponse: Codable, Sendable {
     let intent: String              // "code_edit", "shell", "question"
     let confidence: Float           // 0.0-1.0
     let model_hint: String?         // Suggested model (e.g., "qwen2.5-coder:32b")

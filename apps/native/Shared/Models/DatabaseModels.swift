@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - Session
 
-struct SessionResponse: Codable {
+struct SessionResponse: Codable, Sendable {
     let sessionId: String
     let createdAt: String
 
@@ -48,7 +48,7 @@ struct FileUploadResponse: Codable, Sendable {
     }
 }
 
-struct JsonUploadResponse: Codable {
+struct JsonUploadResponse: Codable, Sendable {
     let filename: String
     let sizeMb: Double
     let objectCount: Int
@@ -92,7 +92,7 @@ struct QueryResponse: Codable, Sendable {
 
 // MARK: - Query History
 
-struct QueryHistoryItem: Codable, Identifiable {
+struct QueryHistoryItem: Codable, Identifiable, Sendable {
     let id: String
     let query: String
     let timestamp: String
@@ -179,13 +179,13 @@ struct QueryHistoryItem: Codable, Identifiable {
     }
 }
 
-struct QueryHistoryResponse: Codable {
+struct QueryHistoryResponse: Codable, Sendable {
     let history: [QueryHistoryItem]
 }
 
 // MARK: - JSON Convert
 
-struct JsonConvertResponse: Codable {
+struct JsonConvertResponse: Codable, Sendable {
     let filename: String
     let success: Bool
     let outputFile: String?
@@ -209,16 +209,16 @@ struct JsonConvertResponse: Codable {
 
 // MARK: - Saved Queries
 
-struct SavedQueriesResponse: Codable {
+struct SavedQueriesResponse: Codable, Sendable {
     let queries: [SavedQuery]
 }
 
-struct SaveQueryResponse: Codable {
+struct SaveQueryResponse: Codable, Sendable {
     let id: Int
     let success: Bool
 }
 
 // MARK: - Empty Types
 
-struct EmptyBody: Codable {}
-struct EmptyResponse: Codable {}
+struct EmptyBody: Codable, Sendable {}
+struct EmptyResponse: Codable, Sendable {}

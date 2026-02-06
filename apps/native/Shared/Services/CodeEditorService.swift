@@ -10,7 +10,7 @@ final class CodeEditorService {
     // MARK: - Workspaces
 
     func listWorkspaces() async throws -> [CodeEditorWorkspace] {
-        struct WorkspacesResponse: Codable {
+        struct WorkspacesResponse: Codable, Sendable {
             let workspaces: [CodeEditorWorkspace]
         }
 
@@ -47,7 +47,7 @@ final class CodeEditorService {
     // MARK: - Files
 
     func getWorkspaceFiles(workspaceId: String) async throws -> [CodeFile] {
-        struct FilesResponse: Codable {
+        struct FilesResponse: Codable, Sendable {
             let files: [CodeFile]
         }
 
@@ -106,7 +106,7 @@ final class CodeEditorService {
 
 // MARK: - Models
 
-struct CodeEditorWorkspace: Codable, Identifiable {
+struct CodeEditorWorkspace: Codable, Identifiable, Sendable {
     let id: String
     let name: String
     let sourceType: String
@@ -125,7 +125,7 @@ struct CodeEditorWorkspace: Codable, Identifiable {
 }
 
 /// File tree node returned by backend for listing (matches FileTreeNode model)
-struct CodeFile: Codable, Identifiable {
+struct CodeFile: Codable, Identifiable, Sendable {
     let id: String
     let name: String
     let path: String
@@ -142,7 +142,7 @@ struct CodeFile: Codable, Identifiable {
 }
 
 /// Full file content returned when fetching a single file (matches FileResponse model)
-struct CodeFileContent: Codable, Identifiable {
+struct CodeFileContent: Codable, Identifiable, Sendable {
     let id: String
     let workspaceId: String
     let name: String

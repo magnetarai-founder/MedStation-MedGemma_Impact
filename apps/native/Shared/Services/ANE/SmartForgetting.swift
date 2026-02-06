@@ -284,7 +284,7 @@ struct CompressionDecision {
 
 // MARK: - Forgetting Thresholds
 
-struct ForgettingThresholds: Codable {
+struct ForgettingThresholds: Codable, Sendable {
     /// Threshold for keeping in immediate tier (default 0.6)
     var immediateThreshold: Float = 0.6
 
@@ -316,7 +316,7 @@ struct ForgettingThresholds: Codable {
 
 // MARK: - Compression Stats
 
-struct CompressionStats: Codable {
+struct CompressionStats: Codable, Sendable {
     var totalCompressions: Int = 0
     var retrievalsAfterCompression: Int = 0
     var tokensCompressed: Int = 0

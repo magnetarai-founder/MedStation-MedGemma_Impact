@@ -88,13 +88,13 @@ final class AuthService {
 
 // MARK: - Request Models
 
-struct RegisterRequest: Codable {
+struct RegisterRequest: Codable, Sendable {
     let username: String
     let password: String
     let deviceId: String
 }
 
-struct LoginRequest: Codable {
+struct LoginRequest: Codable, Sendable {
     let username: String
     let password: String
     let deviceFingerprint: String?
@@ -102,7 +102,7 @@ struct LoginRequest: Codable {
 
 // MARK: - Response Models
 
-struct LoginResponse: Codable {
+struct LoginResponse: Codable, Sendable {
     let token: String
     let refreshToken: String?
     let userId: String
@@ -122,7 +122,7 @@ struct LoginResponse: Codable {
     }
 }
 
-struct UserResponse: Codable {
+struct UserResponse: Codable, Sendable {
     let userId: String
     let username: String
     let deviceId: String
@@ -136,6 +136,6 @@ struct UserResponse: Codable {
     }
 }
 
-struct SetupNeededResponse: Codable {
+struct SetupNeededResponse: Codable, Sendable {
     let setupNeeded: Bool
 }

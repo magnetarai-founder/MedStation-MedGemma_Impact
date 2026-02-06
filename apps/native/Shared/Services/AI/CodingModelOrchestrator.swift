@@ -632,7 +632,7 @@ final class CodingModelOrchestrator {
             "options": ["temperature": temperature]
         ]
 
-        struct OllamaGenerateResponse: Codable {
+        struct OllamaGenerateResponse: Codable, Sendable {
             let response: String
         }
 
@@ -649,11 +649,11 @@ final class CodingModelOrchestrator {
         // Use LlamaCppService
         let messages = [["role": "user", "content": prompt]]
 
-        struct LlamaCppResponse: Codable {
+        struct LlamaCppResponse: Codable, Sendable {
             let choices: [Choice]
-            struct Choice: Codable {
+            struct Choice: Codable, Sendable {
                 let message: Message
-                struct Message: Codable {
+                struct Message: Codable, Sendable {
                     let content: String
                 }
             }

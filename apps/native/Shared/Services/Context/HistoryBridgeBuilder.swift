@@ -188,7 +188,7 @@ enum HistoryBridgeBuilder {
 // MARK: - Enhanced History Bridge
 
 /// Extended history bridge with additional structured data
-struct EnhancedHistoryBridge: Codable {
+struct EnhancedHistoryBridge: Codable, Sendable {
     let base: HistoryBridge
     let decisions: [String]
     let todos: [String]

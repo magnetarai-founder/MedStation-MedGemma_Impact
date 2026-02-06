@@ -156,7 +156,7 @@ struct SmartModelPicker: View {
             }
             let (data, _) = try await URLSession.shared.data(from: url)
 
-            struct ModelResponse: Codable {
+            struct ModelResponse: Codable, Sendable {
                 let name: String
             }
 

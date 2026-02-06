@@ -100,14 +100,14 @@ final class WorkspaceAIService {
 
     // MARK: - Request Body
 
-    private struct OllamaRequest: Encodable {
+    private struct OllamaRequest: Encodable, Sendable {
         let model: String
         let prompt: String
         let system: String
         let stream: Bool
         let options: Options
 
-        struct Options: Encodable {
+        struct Options: Encodable, Sendable {
             let temperature: Float
         }
     }
@@ -353,7 +353,7 @@ final class WorkspaceAIService {
     }
 
     private func callOllama(systemPrompt: String, prompt: String) async throws -> String {
-        struct OllamaGenerateResponse: Codable {
+        struct OllamaGenerateResponse: Codable, Sendable {
             let response: String
         }
 

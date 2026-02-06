@@ -322,7 +322,7 @@ struct ContextPrediction {
 
 // MARK: - Workspace Type
 
-enum WorkspaceType: String, Codable, CaseIterable {
+enum WorkspaceType: String, Codable, CaseIterable, Sendable {
     case chat
     case data
     case code

@@ -101,7 +101,7 @@ struct WorkflowTrigger: Codable, Sendable {
 
 // MARK: - Work Item
 
-struct WorkItem: Codable, Identifiable {
+struct WorkItem: Codable, Identifiable, Sendable {
     let id: String
     let workflowId: String
     let currentStageId: String
@@ -137,7 +137,7 @@ struct WorkItem: Codable, Identifiable {
 
 // MARK: - Analytics
 
-struct WorkflowAnalytics: Codable {
+struct WorkflowAnalytics: Codable, Sendable {
     let workflowName: String
     let totalItems: Int
     let completedItems: Int
@@ -161,7 +161,7 @@ struct WorkflowAnalytics: Codable {
     }
 }
 
-struct StageAnalytics: Codable, Identifiable {
+struct StageAnalytics: Codable, Identifiable, Sendable {
     let stageId: String
     let stageName: String
     let enteredCount: Int
@@ -184,14 +184,14 @@ struct StageAnalytics: Codable, Identifiable {
 // MARK: - Workflow Builder Types
 
 /// Node position in the workflow canvas
-struct NodePosition: Codable, Equatable {
+struct NodePosition: Codable, Equatable, Sendable {
     let x: Double
     let y: Double
 }
 
 /// A node in the workflow graph (matches backend WorkflowNode)
 /// Note: Equatable removed - AnyCodable data property cannot be compared
-struct WorkflowNode: Codable, Identifiable {
+struct WorkflowNode: Codable, Identifiable, Sendable {
     let id: String
     let type: String           // "trigger" | "condition" | "action" | "transform" | etc.
     let position: NodePosition
@@ -222,7 +222,7 @@ struct WorkflowNode: Codable, Identifiable {
 }
 
 /// An edge connecting two nodes in the workflow graph (matches backend WorkflowEdge)
-struct WorkflowEdge: Codable, Identifiable, Equatable {
+struct WorkflowEdge: Codable, Identifiable, Equatable, Sendable {
     let source: String  // Source node ID
     let target: String  // Target node ID
     let label: String?  // Optional edge label for conditional branches
@@ -250,12 +250,12 @@ struct WorkflowEdge: Codable, Identifiable, Equatable {
 
 // MARK: - Request Models
 
-struct InstantiateTemplateRequest: Codable {
+struct InstantiateTemplateRequest: Codable, Sendable {
     let name: String
     let description: String?
 }
 
-struct SaveWorkflowRequest: Codable {
+struct SaveWorkflowRequest: Codable, Sendable {
     let workflowId: String
     let name: String
     let nodes: [WorkflowNode]
@@ -269,7 +269,7 @@ struct SaveWorkflowRequest: Codable {
     }
 }
 
-struct RunWorkflowRequest: Codable {
+struct RunWorkflowRequest: Codable, Sendable {
     let workflowId: String
     let name: String
     let nodes: [WorkflowNode]
@@ -283,10 +283,10 @@ struct RunWorkflowRequest: Codable {
     }
 }
 
-struct ClaimWorkItemRequest: Codable {
+struct ClaimWorkItemRequest: Codable, Sendable {
     let userId: String
 }
 
-struct StartWorkItemRequest: Codable {
+struct StartWorkItemRequest: Codable, Sendable {
     let userId: String
 }

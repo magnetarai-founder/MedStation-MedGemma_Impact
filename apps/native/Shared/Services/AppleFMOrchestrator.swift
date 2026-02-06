@@ -28,7 +28,7 @@ class AppleFMOrchestrator: ModelOrchestrator {
         get async {
             // Check if backend is available by attempting health check
             do {
-                struct HealthResponse: Codable {
+                struct HealthResponse: Codable, Sendable {
                     let status: String
                 }
 

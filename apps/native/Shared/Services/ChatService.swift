@@ -136,7 +136,7 @@ final class ChatService {
             path += "?" + queryParams.joined(separator: "&")
         }
 
-        struct MessagesResponse: Codable {
+        struct MessagesResponse: Codable, Sendable {
             let messages: [ApiChatMessage]
             let total: Int?
             let totalCount: Int?
@@ -174,7 +174,7 @@ final class ChatService {
     // MARK: - Health Check
 
     func checkHealth() async throws -> Bool {
-        struct HealthResponse: Codable {
+        struct HealthResponse: Codable, Sendable {
             let status: String
         }
 

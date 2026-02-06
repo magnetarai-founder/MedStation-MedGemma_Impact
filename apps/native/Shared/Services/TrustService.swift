@@ -515,7 +515,7 @@ public final class TrustService {
 // MARK: - Safety Number Verification State
 
 /// Tracks verification state for a peer's safety number.
-public struct SafetyNumberVerification: Codable {
+public struct SafetyNumberVerification: Codable, Sendable {
     public let nodeId: String
     public let safetyNumber: String
     public let verifiedAt: Date?

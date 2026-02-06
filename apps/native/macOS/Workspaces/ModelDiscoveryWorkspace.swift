@@ -2,12 +2,8 @@
 //  ModelDiscoveryWorkspace.swift
 //  MagnetarStudio (macOS)
 //
-//  Browse and download models from Ollama library
-//  Refactored in Phase 6.22 - extracted panes and data manager
-//
-//  STATUS: Fully implemented but NOT exposed in NavigationRail (Dec 2025)
-//
-//  DECISION (Tier 9.6): Keep as optional feature, not removed.
+//  STUB: Fully implemented but NOT exposed in NavigationRail — kept as reference.
+//  FUTURE: Re-expose if model discovery becomes a distinct workspace vs Hub panel.
 //  - MagnetarHub handles model management (installed models)
 //  - Safari button in Hub provides online library browsing
 //  - This workspace duplicates Hub functionality

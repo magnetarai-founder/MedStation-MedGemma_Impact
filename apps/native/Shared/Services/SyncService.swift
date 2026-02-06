@@ -283,7 +283,7 @@ final class SyncService {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
 
-        struct ConflictsResponse: Codable {
+        struct ConflictsResponse: Codable, Sendable {
             let conflicts: [ConflictInfo]
         }
 
@@ -385,7 +385,7 @@ final class SyncService {
 
     // MARK: - Offline Queue
 
-    struct PendingSyncOperation: Codable {
+    struct PendingSyncOperation: Codable, Sendable {
         let id: UUID
         let resource: String
         let changes: [SyncChange]
@@ -463,7 +463,7 @@ final class SyncService {
         let encoder = JSONEncoder()
         encoder.keyEncodingStrategy = .convertToSnakeCase
 
-        struct SyncRequest: Codable {
+        struct SyncRequest: Codable, Sendable {
             let direction: SyncDirection
             let changes: [SyncChange]
         }

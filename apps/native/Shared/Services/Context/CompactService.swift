@@ -203,13 +203,13 @@ final class CompactService: ObservableObject {
 
     /// Call Ollama for summarization via backend API
     private func callOllamaSummarize(prompt: String) async throws -> String {
-        struct SummarizeRequest: Encodable {
+        struct SummarizeRequest: Encodable, Sendable {
             let model: String
             let prompt: String
             let stream: Bool
         }
 
-        struct SummarizeResponse: Decodable {
+        struct SummarizeResponse: Decodable, Sendable {
             let response: String
         }
 

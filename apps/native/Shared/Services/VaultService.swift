@@ -42,7 +42,7 @@ final class VaultService {
 
     // MARK: - Unlock
 
-    struct UnlockResponse: Codable {
+    struct UnlockResponse: Codable, Sendable {
         let success: Bool
         let vaultType: String?
         let sessionId: String

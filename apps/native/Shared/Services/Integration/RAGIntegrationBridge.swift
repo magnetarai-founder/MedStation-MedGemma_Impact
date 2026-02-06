@@ -57,7 +57,7 @@ final class RAGIntegrationBridge: ObservableObject {
     /// Check if backend FAISS service is available
     func checkBackendHealth() async {
         do {
-            struct HealthResponse: Codable {
+            struct HealthResponse: Codable, Sendable {
                 let status: String
                 let indexLoaded: Bool
                 let totalDocuments: Int
@@ -196,7 +196,7 @@ final class RAGIntegrationBridge: ObservableObject {
         }
 
         do {
-            struct SearchRequest: Codable {
+            struct SearchRequest: Codable, Sendable {
                 let query: String
                 let limit: Int
                 let minSimilarity: Float?
@@ -210,7 +210,7 @@ final class RAGIntegrationBridge: ObservableObject {
                 }
             }
 
-            struct SearchResponse: Codable {
+            struct SearchResponse: Codable, Sendable {
                 let results: [BackendSearchResult]
                 let totalMatches: Int
                 let searchDuration: Double
@@ -340,7 +340,7 @@ final class RAGIntegrationBridge: ObservableObject {
         // Index to backend if available
         if isBackendAvailable {
             do {
-                struct IndexRequest: Codable {
+                struct IndexRequest: Codable, Sendable {
                     let content: String
                     let source: String
                     let metadata: [String: String]?
@@ -352,7 +352,7 @@ final class RAGIntegrationBridge: ObservableObject {
                     }
                 }
 
-                struct IndexResponse: Codable {
+                struct IndexResponse: Codable, Sendable {
                     let documentIds: [String]
 
                     enum CodingKeys: String, CodingKey {
@@ -488,7 +488,7 @@ enum UnifiedSourceType: String {
 }
 
 /// Backend search result model
-struct BackendSearchResult: Codable {
+struct BackendSearchResult: Codable, Sendable {
     let documentId: String
     let content: String
     let snippet: String?

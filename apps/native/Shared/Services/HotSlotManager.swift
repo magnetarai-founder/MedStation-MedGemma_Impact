@@ -217,7 +217,7 @@ class HotSlotManager {
 
     /// Load all hot slot models into memory
     func loadAllHotSlots(keepAlive: String = "1h") async throws {
-        struct LoadResponse: Codable {
+        struct LoadResponse: Codable, Sendable {
             let total: Int
             let results: [LoadResult]
             let keepAlive: String
@@ -229,7 +229,7 @@ class HotSlotManager {
             }
         }
 
-        struct LoadResult: Codable {
+        struct LoadResult: Codable, Sendable {
             let slot: Int
             let model: String
             let loaded: Bool
@@ -306,7 +306,7 @@ class HotSlotManager {
 
     /// Sync pin state to backend via PATCH /hot-slots/{slot}/pin
     private func syncPinStateToBackend(slotNumber: Int) async throws {
-        struct PinResponse: Codable {
+        struct PinResponse: Codable, Sendable {
             let success: Bool
             let slotNumber: Int
             let modelId: String?

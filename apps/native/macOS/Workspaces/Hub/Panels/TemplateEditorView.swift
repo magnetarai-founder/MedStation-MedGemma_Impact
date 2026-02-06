@@ -2,11 +2,8 @@
 //  TemplateEditorView.swift
 //  MagnetarStudio (macOS)
 //
-//  Create and edit custom workspace templates.
-//  Define blocks/cells, variables, and metadata.
-//
-//  NOTE: Not yet routed from main navigation. Intended to be presented from
-//  TemplateGalleryView's "Create Template" action in a future "Manage Templates" screen.
+//  STUB: Not yet routed — future template editor for custom workspace templates.
+//  FUTURE: Present from TemplateGalleryView's "Create Template" action.
 //
 
 import SwiftUI

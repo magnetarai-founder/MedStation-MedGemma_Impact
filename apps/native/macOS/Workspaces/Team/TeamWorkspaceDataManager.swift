@@ -25,12 +25,12 @@ class TeamWorkspaceDataManager {
             }
 
             // Call backend to get user's teams
-            struct UserTeamsResponse: Codable {
+            struct UserTeamsResponse: Codable, Sendable {
                 let user_id: String
                 let teams: [TeamInfo]
             }
 
-            struct TeamInfo: Codable {
+            struct TeamInfo: Codable, Sendable {
                 let team_id: String
                 let name: String
                 let description: String?
@@ -56,7 +56,7 @@ class TeamWorkspaceDataManager {
     }
 
     private func loadMembersForTeam(teamId: String) async throws {
-        struct TeamMemberResponse: Codable {
+        struct TeamMemberResponse: Codable, Sendable {
             let user_id: String
             let username: String
             let role: String
