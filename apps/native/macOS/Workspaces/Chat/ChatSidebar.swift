@@ -144,7 +144,7 @@ struct ChatSidebar: View {
                 .help("Filter Messages")
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 12)
+            .frame(height: HubLayout.headerHeight)
             .background(Color.surfaceTertiary.opacity(0.3))
 
             Divider()

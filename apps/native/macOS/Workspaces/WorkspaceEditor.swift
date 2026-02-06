@@ -785,7 +785,10 @@ struct BlockTextFieldRepresentable: NSViewRepresentable {
             let newHeight = max(usedRect.height + 4, parent.font.pointSize + 10)
 
             if abs(parent.textHeight - newHeight) > 1 {
-                parent.textHeight = newHeight
+                let height = newHeight
+                DispatchQueue.main.async { [self] in
+                    self.parent.textHeight = height
+                }
             }
         }
 

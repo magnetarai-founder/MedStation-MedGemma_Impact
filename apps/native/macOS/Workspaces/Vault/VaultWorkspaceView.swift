@@ -123,14 +123,10 @@ struct VaultWorkspace: View {
                 onUpload: uploadFile
             )
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .frame(height: HubLayout.headerHeight)
             .background(Color(.controlBackgroundColor))
-            .overlay(
-                Rectangle()
-                    .fill(Color.gray.opacity(0.2))
-                    .frame(height: 1),
-                alignment: .bottom
-            )
+
+            Divider()
 
             // Content
             if isLoadingFiles {
