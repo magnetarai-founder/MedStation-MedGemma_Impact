@@ -66,11 +66,22 @@ struct CodeWorkspace: View {
         static let aiPanelDefault: CGFloat = 320
     }
 
+    // Activity bar selection
+    @State private var activeActivityItem: ActivityBarItem = .files
+
     var body: some View {
         GeometryReader { geometry in
             VStack(spacing: 0) {
                 // Main workspace area
                 HStack(spacing: 0) {
+                    // Far left: Activity Bar
+                    activityBar
+
+                    // Thin separator
+                    Rectangle()
+                        .fill(Color(nsColor: .separatorColor))
+                        .frame(width: 1)
+
                     // Left: File Browser
                     if showSidebar {
                         CodeFileBrowser(
@@ -99,6 +110,7 @@ struct CodeWorkspace: View {
                         CodeEditorArea(
                             openFiles: openFiles,
                             selectedFile: selectedFile,
+                            workspaceName: currentWorkspace?.name,
                             fileContent: $fileContent,
                             onSelectFile: selectFile,
                             onCloseFile: closeFile
@@ -174,6 +186,37 @@ struct CodeWorkspace: View {
         }
     }
 
+    // MARK: - Activity Bar
+
+    private var activityBar: some View {
+        VStack(spacing: 0) {
+            ForEach(ActivityBarItem.allCases) { item in
+                ActivityBarButton(
+                    item: item,
+                    isActive: activeActivityItem == item && (item == .files ? showSidebar : false)
+                ) {
+                    if item == .files {
+                        if activeActivityItem == .files {
+                            withAnimation(.magnetarQuick) { showSidebar.toggle() }
+                        } else {
+                            activeActivityItem = .files
+                            if !showSidebar {
+                                withAnimation(.magnetarQuick) { showSidebar = true }
+                            }
+                        }
+                    } else {
+                        activeActivityItem = item
+                    }
+                }
+            }
+
+            Spacer()
+        }
+        .frame(width: 36)
+        .padding(.top, 8)
+        .background(.thinMaterial)
+    }
+
     // MARK: - Status Bar
 
     // MARK: - Code Toolbar Buttons (relocated from .toolbar)
@@ -206,7 +249,7 @@ struct CodeWorkspace: View {
             .keyboardShortcut("`", modifiers: .command)
             .padding(.horizontal, 6)
 
-            Divider().frame(height: 12)
+            Color(nsColor: .separatorColor).frame(width: 1, height: 12)
 
             // Refresh code index
             Button {
@@ -255,7 +298,7 @@ struct CodeWorkspace: View {
             // Code-specific layout toggles
             codeToolbarButtons
 
-            Divider().frame(height: 12)
+            Color(nsColor: .separatorColor).frame(width: 1, height: 12)
 
             // Line/Column indicator
             HStack(spacing: 4) {
@@ -265,8 +308,8 @@ struct CodeWorkspace: View {
             }
             .padding(.horizontal, 12)
 
-            Divider()
-                .frame(height: 12)
+            Color(nsColor: .separatorColor)
+                .frame(width: 1, height: 12)
 
             // Language indicator
             if let file = selectedFile {
@@ -290,8 +333,8 @@ struct CodeWorkspace: View {
                 .foregroundStyle(.tertiary)
                 .padding(.horizontal, 8)
 
-            Divider()
-                .frame(height: 12)
+            Color(nsColor: .separatorColor)
+                .frame(width: 1, height: 12)
 
             // Diagnostics summary
             if diagnosticsStore.totalStats.totalCount > 0 {
@@ -345,8 +388,8 @@ struct CodeWorkspace: View {
                 .padding(.horizontal, 8)
             }
 
-            Divider()
-                .frame(height: 12)
+            Color(nsColor: .separatorColor)
+                .frame(width: 1, height: 12)
 
             // Orchestration mode indicator
             HStack(spacing: 4) {
@@ -359,7 +402,7 @@ struct CodeWorkspace: View {
             .padding(.horizontal, 12)
         }
         .frame(height: 22)
-        .background(Color.surfaceTertiary.opacity(0.5))
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.5))
     }
 
     // MARK: - Actions
@@ -530,34 +573,23 @@ struct CodeWorkspace: View {
     // MARK: - Bottom Panel Tabs
 
     private var bottomPanelTabs: some View {
-        HStack(spacing: 0) {
-            ForEach(BottomPanelMode.allCases, id: \.self) { mode in
-                Button {
-                    bottomPanelMode = mode
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: mode == .terminal ? "terminal" : "exclamationmark.triangle")
-                            .font(.system(size: 10))
+        HStack(spacing: 8) {
+            Picker("Panel", selection: $bottomPanelMode) {
+                Label("Terminal", systemImage: "terminal")
+                    .tag(BottomPanelMode.terminal)
+                Label("Problems", systemImage: "exclamationmark.triangle")
+                    .tag(BottomPanelMode.problems)
+            }
+            .pickerStyle(.segmented)
+            .frame(width: 220)
+            .padding(.leading, 8)
 
-                        Text(mode.rawValue)
-                            .font(.system(size: 11))
-
-                        // Show problem count badge
-                        if mode == .problems && diagnosticsStore.totalStats.totalCount > 0 {
-                            problemCountBadge
-                        }
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(bottomPanelMode == mode ? Color.magnetarPrimary.opacity(0.15) : Color.clear)
-                    .foregroundColor(bottomPanelMode == mode ? .magnetarPrimary : .secondary)
-                }
-                .buttonStyle(.plain)
+            if diagnosticsStore.totalStats.totalCount > 0 {
+                problemCountBadge
             }
 
             Spacer()
 
-            // Close button
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     showBottomPanel = false
@@ -565,12 +597,13 @@ struct CodeWorkspace: View {
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 10))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
             .padding(.trailing, 8)
         }
-        .background(Color.surfaceTertiary.opacity(0.3))
+        .frame(height: 30)
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.3))
     }
 
     private var problemCountBadge: some View {
@@ -596,6 +629,78 @@ struct CodeWorkspace: View {
             }
         }
         .padding(.horizontal, 4)
+    }
+}
+
+// MARK: - Activity Bar Item
+
+enum ActivityBarItem: String, CaseIterable, Identifiable {
+    case files
+    case search
+    case sourceControl
+    case debug
+    case extensions
+
+    var id: String { rawValue }
+
+    var icon: String {
+        switch self {
+        case .files: return "doc.on.doc"
+        case .search: return "magnifyingglass"
+        case .sourceControl: return "arrow.triangle.branch"
+        case .debug: return "ladybug"
+        case .extensions: return "square.grid.2x2"
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .files: return "Explorer"
+        case .search: return "Search"
+        case .sourceControl: return "Source Control"
+        case .debug: return "Debug"
+        case .extensions: return "Extensions"
+        }
+    }
+
+    var isImplemented: Bool {
+        self == .files
+    }
+}
+
+// MARK: - Activity Bar Button
+
+private struct ActivityBarButton: View {
+    let item: ActivityBarItem
+    let isActive: Bool
+    let action: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            ZStack(alignment: .leading) {
+                // Active indicator — 2pt accent bar on left edge
+                if isActive {
+                    RoundedRectangle(cornerRadius: 1)
+                        .fill(Color.accentColor)
+                        .frame(width: 2, height: 16)
+                        .offset(x: -8)
+                }
+
+                Image(systemName: item.icon)
+                    .font(.system(size: 16))
+                    .foregroundStyle(isActive ? .primary : (isHovered ? .secondary : Color(nsColor: .tertiaryLabelColor)))
+                    .frame(width: 36, height: 36)
+            }
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.1)) {
+                isHovered = hovering
+            }
+        }
+        .help(item.isImplemented ? item.label : "\(item.label) — Coming soon")
     }
 }
 

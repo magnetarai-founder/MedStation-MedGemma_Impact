@@ -42,22 +42,14 @@ struct CodeTerminalPanel: View {
     private var terminalHeader: some View {
         VStack(spacing: 0) {
             HStack(spacing: 8) {
-                Image(systemName: "terminal")
-                    .font(.system(size: 12))
-                    .foregroundColor(.magnetarPrimary)
-
                 Text("Terminal")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.secondary)
 
-                // Session count badge
                 if !codingStore.terminalSessions.isEmpty {
-                    Text("\(codingStore.terminalSessions.count)")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.magnetarPrimary)
-                        .clipShape(Capsule())
+                    Text("(\(codingStore.terminalSessions.count))")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.tertiary)
                 }
 
                 Spacer()
@@ -68,15 +60,15 @@ struct CodeTerminalPanel: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: codingStore.preferredTerminal.iconName)
-                            .font(.system(size: 11))
+                            .font(.system(size: 10))
                         Text(codingStore.preferredTerminal.displayName)
                             .font(.system(size: 10))
                     }
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.surfaceTertiary.opacity(0.5))
-                    .cornerRadius(4)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(Color.primary.opacity(0.05))
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
                 }
                 .buttonStyle(.plain)
                 .popover(isPresented: $showingTerminalPicker) {
@@ -89,27 +81,14 @@ struct CodeTerminalPanel: View {
                         await onSpawnTerminal()
                     }
                 } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 12))
-                        Text("New")
-                            .font(.system(size: 11, weight: .medium))
-                    }
-                    .foregroundColor(.magnetarPrimary)
-                }
-                .buttonStyle(.plain)
-
-                Button {
-                    showTerminal = false
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 10))
+                    Image(systemName: "plus")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(Color.surfaceTertiary.opacity(0.3))
+            .padding(.vertical, 6)
 
             // Session tabs
             if !codingStore.terminalSessions.isEmpty {
@@ -140,7 +119,7 @@ struct CodeTerminalPanel: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
         }
-        .background(Color.surfaceTertiary.opacity(0.2))
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.3))
     }
 
     // MARK: - Terminal Picker Popover
@@ -165,7 +144,7 @@ struct CodeTerminalPanel: View {
                         Spacer()
                         if codingStore.preferredTerminal == app {
                             Image(systemName: "checkmark")
-                                .foregroundColor(.magnetarPrimary)
+                                .foregroundColor(.accentColor)
                         }
                     }
                     .padding(.horizontal, 8)
@@ -187,7 +166,7 @@ struct CodeTerminalPanel: View {
                 HStack(spacing: 8) {
                     Image(systemName: "terminal.fill")
                         .font(.system(size: 24))
-                        .foregroundStyle(LinearGradient.magnetarGradient)
+                        .foregroundStyle(.secondary)
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text("System Terminal Integration")
@@ -229,7 +208,7 @@ struct CodeTerminalPanel: View {
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .background(Color.surfaceTertiary.opacity(0.1))
+        .background(Color(nsColor: .textBackgroundColor))
     }
 
     // MARK: - Session Content
@@ -241,7 +220,7 @@ struct CodeTerminalPanel: View {
                 sessionDetailView(session)
             }
         }
-        .background(Color.surfaceTertiary.opacity(0.1))
+        .background(Color(nsColor: .textBackgroundColor))
     }
 
     private func sessionDetailView(_ session: CodingTerminalSession) -> some View {
@@ -257,8 +236,8 @@ struct CodeTerminalPanel: View {
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
-                .background(Color.surfaceTertiary)
-                .cornerRadius(4)
+                .background(Color.primary.opacity(0.05))
+                .clipShape(RoundedRectangle(cornerRadius: 4))
 
                 // Status indicator
                 HStack(spacing: 4) {
@@ -330,8 +309,8 @@ struct CodeTerminalPanel: View {
                     .font(.system(size: 11, design: .monospaced))
                     .padding(8)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.black.opacity(0.3))
-                    .cornerRadius(4)
+                    .background(Color(nsColor: .textBackgroundColor))
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
                 }
             }
 
@@ -371,8 +350,8 @@ struct CodeTerminalPanel: View {
                     }
                     .frame(maxHeight: 100)
                     .padding(8)
-                    .background(Color.black.opacity(0.3))
-                    .cornerRadius(4)
+                    .background(Color(nsColor: .textBackgroundColor))
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
                 }
             }
 
@@ -479,11 +458,11 @@ struct TerminalSessionTab: View {
         .padding(.vertical, 6)
         .background(
             RoundedRectangle(cornerRadius: 4)
-                .fill(isSelected ? Color.magnetarPrimary.opacity(0.2) : (isHovered ? Color.surfaceTertiary : Color.clear))
+                .fill(isSelected ? Color.accentColor.opacity(0.15) : (isHovered ? Color.primary.opacity(0.05) : Color.clear))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 4)
-                .stroke(isSelected ? Color.magnetarPrimary.opacity(0.5) : Color.clear, lineWidth: 1)
+                .stroke(isSelected ? Color.accentColor.opacity(0.3) : Color.clear, lineWidth: 1)
         )
         .contentShape(Rectangle())
         .onTapGesture {

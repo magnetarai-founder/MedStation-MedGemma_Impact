@@ -2,7 +2,9 @@
 //  CodeEditorArea.swift
 //  MagnetarStudio (macOS)
 //
-//  Editor area with tabs and content - Extracted from CodeWorkspace.swift (Phase 6.18)
+//  Editor area with tabs, breadcrumbs, line number gutter, and content.
+//  Extracted from CodeWorkspace.swift (Phase 6.18)
+//  Enhanced with breadcrumb bar and line number gutter (Native IDE Redesign)
 //
 
 import SwiftUI
@@ -10,6 +12,7 @@ import SwiftUI
 struct CodeEditorArea: View {
     let openFiles: [FileItem]
     let selectedFile: FileItem?
+    let workspaceName: String?
     @Binding var fileContent: String
     let onSelectFile: (FileItem) -> Void
     let onCloseFile: (FileItem) -> Void
@@ -19,7 +22,7 @@ struct CodeEditorArea: View {
             // Tab bar
             if !openFiles.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 0) {
+                    HStack(spacing: 1) {
                         ForEach(openFiles) { file in
                             CodeFileTab(
                                 file: file,
@@ -29,24 +32,111 @@ struct CodeEditorArea: View {
                             )
                         }
                     }
+                    .padding(.horizontal, 4)
                 }
-                .frame(height: 36)
-                .background(Color.surfaceTertiary.opacity(0.3))
+                .frame(height: 30)
+                .background(.bar)
 
+                Divider()
+            }
+
+            // Breadcrumb bar
+            if selectedFile != nil {
+                breadcrumbBar
                 Divider()
             }
 
             // Editor content
             if selectedFile != nil {
-                TextEditor(text: $fileContent)
-                    .font(.system(size: 13, design: .monospaced))
-                    .scrollContentBackground(.hidden)
-                    .background(Color(nsColor: .textBackgroundColor))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                HStack(spacing: 0) {
+                    // Line number gutter
+                    LineNumberGutter(text: fileContent)
+
+                    // Thin separator
+                    Rectangle()
+                        .fill(Color(nsColor: .separatorColor))
+                        .frame(width: 1)
+
+                    // Editor
+                    TextEditor(text: $fileContent)
+                        .font(.system(size: 13, design: .monospaced))
+                        .scrollContentBackground(.hidden)
+                        .background(Color(nsColor: .textBackgroundColor))
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 CodeEditorWelcome()
             }
         }
+    }
+
+    // MARK: - Breadcrumb Bar
+
+    private var breadcrumbBar: some View {
+        HStack(spacing: 2) {
+            breadcrumbSegment(name: workspaceName ?? "Workspace", icon: "folder")
+
+            if let file = selectedFile {
+                let segments = file.path.split(separator: "/").dropLast()
+                ForEach(Array(segments.enumerated()), id: \.offset) { _, segment in
+                    breadcrumbChevron
+                    breadcrumbSegment(name: String(segment))
+                }
+                breadcrumbChevron
+                breadcrumbSegment(name: file.name, isCurrent: true)
+            }
+
+            Spacer()
+        }
+        .padding(.horizontal, 12)
+        .frame(height: 26)
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.4))
+    }
+
+    private func breadcrumbSegment(name: String, icon: String? = nil, isCurrent: Bool = false) -> some View {
+        HStack(spacing: 3) {
+            if let icon {
+                Image(systemName: icon)
+                    .font(.system(size: 9))
+            }
+            Text(name)
+                .font(.system(size: 11))
+        }
+        .foregroundStyle(isCurrent ? .primary : .secondary)
+    }
+
+    private var breadcrumbChevron: some View {
+        Image(systemName: "chevron.right")
+            .font(.system(size: 7, weight: .semibold))
+            .foregroundStyle(.tertiary)
+    }
+}
+
+// MARK: - Line Number Gutter
+
+private struct LineNumberGutter: View {
+    let text: String
+
+    private var lineCount: Int {
+        max(text.components(separatedBy: "\n").count, 1)
+    }
+
+    var body: some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .trailing, spacing: 0) {
+                ForEach(1...lineCount, id: \.self) { lineNumber in
+                    Text("\(lineNumber)")
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(.tertiary)
+                        .frame(height: 18)
+                }
+            }
+            .padding(.top, 7)
+            .padding(.trailing, 8)
+            .padding(.leading, 4)
+        }
+        .frame(width: 44)
+        .background(Color(nsColor: .textBackgroundColor).opacity(0.5))
     }
 }
 

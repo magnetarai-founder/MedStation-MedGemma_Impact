@@ -129,7 +129,7 @@ struct CodeFileRow: View {
             // File icon with type-specific color
             Image(systemName: file.iconName)
                 .font(.system(size: 12))
-                .foregroundColor(file.iconColor)
+                .foregroundColor(isSelected ? .white : file.iconColor)
                 .frame(width: 16)
 
             // File name
@@ -158,11 +158,12 @@ struct CodeFileRow: View {
                 .transition(.opacity)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .frame(height: 28)
         .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(isSelected ? Color.magnetarPrimary : (isHovered ? Color.gray.opacity(0.1) : Color.clear))
+            RoundedRectangle(cornerRadius: 5)
+                .fill(isSelected ? Color.accentColor : (isHovered ? Color.primary.opacity(0.06) : Color.clear))
         )
         .padding(.horizontal, 4)
         .contentShape(Rectangle())
@@ -199,15 +200,15 @@ struct CodeFileTab: View {
     @State private var isCloseHovered = false
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 5) {
             // File icon with type color
             Image(systemName: file.iconName)
-                .font(.system(size: 11))
+                .font(.system(size: 10))
                 .foregroundColor(isSelected ? file.iconColor : .secondary)
 
             // File name
             Text(file.name)
-                .font(.system(size: 12, weight: isSelected ? .medium : .regular))
+                .font(.system(size: 11, weight: isSelected ? .medium : .regular))
                 .lineLimit(1)
                 .foregroundStyle(isSelected ? .primary : .secondary)
 
@@ -216,22 +217,20 @@ struct CodeFileTab: View {
                 onClose()
             } label: {
                 ZStack {
-                    // Modified dot (shows when not hovered and modified)
                     if isModified && !isCloseHovered && !isHovered {
                         Circle()
                             .fill(Color.orange)
-                            .frame(width: 8, height: 8)
+                            .frame(width: 6, height: 6)
                     } else {
-                        // Close button
                         Image(systemName: "xmark")
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundColor(isCloseHovered ? .red : .secondary)
+                            .font(.system(size: 8, weight: .medium))
+                            .foregroundColor(isCloseHovered ? .primary : Color(nsColor: .tertiaryLabelColor))
                     }
                 }
-                .frame(width: 16, height: 16)
+                .frame(width: 14, height: 14)
                 .background(
                     Circle()
-                        .fill(isCloseHovered ? Color.red.opacity(0.1) : Color.clear)
+                        .fill(isCloseHovered ? Color.primary.opacity(0.1) : Color.clear)
                 )
             }
             .buttonStyle(.plain)
@@ -240,21 +239,15 @@ struct CodeFileTab: View {
                 isCloseHovered = hovering
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
         .background(
-            VStack(spacing: 0) {
-                Spacer()
-                if isSelected {
-                    Rectangle()
-                        .fill(Color.magnetarPrimary)
-                        .frame(height: 2)
-                }
-            }
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isSelected ? Color.primary.opacity(0.08) : (isHovered ? Color.primary.opacity(0.04) : Color.clear))
         )
-        .background(
-            isSelected ? Color.surfaceSecondary.opacity(0.5) :
-            isHovered ? Color.gray.opacity(0.1) : Color.clear
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(isSelected ? Color.primary.opacity(0.1) : Color.clear, lineWidth: 0.5)
         )
         .onTapGesture {
             onSelect()

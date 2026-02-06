@@ -40,22 +40,15 @@ struct CodeFileBrowser: View {
         VStack(spacing: 0) {
             // Header
             HStack {
-                Image(systemName: "folder")
-                    .font(.system(size: 14))
-                    .foregroundColor(.magnetarPrimary)
-
                 Text("Files")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .textCase(.uppercase)
 
-                // File count badge
                 if !files.isEmpty {
-                    Text("\(fileCount)")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.magnetarPrimary.opacity(0.8))
-                        .clipShape(Capsule())
+                    Text("(\(fileCount))")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.tertiary)
                 }
 
                 Spacer()
@@ -68,7 +61,8 @@ struct CodeFileBrowser: View {
                     }
                 } label: {
                     Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 12))
+                        .font(.system(size: 11))
+                        .foregroundStyle(.tertiary)
                         .rotationEffect(.degrees(isRefreshing ? 360 : 0))
                         .animation(isRefreshing ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, value: isRefreshing)
                 }
@@ -76,8 +70,7 @@ struct CodeFileBrowser: View {
                 .disabled(isRefreshing)
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(Color.surfaceSecondary.opacity(0.3))
+            .padding(.vertical, 8)
 
             Divider()
 
@@ -100,33 +93,22 @@ struct CodeFileBrowser: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
-            .background(Color.gray.opacity(0.1))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .background(Color(nsColor: .quaternaryLabelColor).opacity(0.5))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
             .padding(.horizontal, 8)
             .padding(.vertical, 8)
 
             // Path bar
-            HStack {
-                Image(systemName: "location")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-
+            HStack(spacing: 4) {
                 Text(currentWorkspace?.name ?? "No workspace")
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
                     .lineLimit(1)
 
                 Spacer()
-
-                if folderCount > 0 {
-                    Label("\(folderCount)", systemImage: "folder")
-                        .font(.system(size: 10))
-                        .foregroundStyle(.tertiary)
-                }
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(Color.surfaceTertiary.opacity(0.2))
+            .padding(.vertical, 4)
 
             Divider()
 
@@ -180,6 +162,6 @@ struct CodeFileBrowser: View {
                 }
             }
         }
-        .background(Color.surfaceSecondary.opacity(0.1))
+        .background(.ultraThinMaterial)
     }
 }
