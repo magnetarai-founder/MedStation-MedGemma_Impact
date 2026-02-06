@@ -176,6 +176,15 @@ struct MagnetarStudioApp: App {
         .windowResizability(.contentMinSize)
         .defaultSize(width: 700, height: 600)
 
+        // AI Assistant window (⌘⇧A) — floating, usable from any workspace
+        WindowGroup("AI Assistant", id: "detached-ai") {
+            DetachedAIWindow()
+                .environment(chatStore)
+        }
+        .windowStyle(.titleBar)
+        .windowResizability(.contentMinSize)
+        .defaultSize(width: 600, height: 700)
+
         // MARK: - Phase 6: Pop-Out Workspace Documents
 
         WindowGroup("Document Editor", for: DetachedDocEditInfo.self) { $docInfo in

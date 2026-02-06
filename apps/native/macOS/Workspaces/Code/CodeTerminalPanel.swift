@@ -2,8 +2,9 @@
 //  CodeTerminalPanel.swift
 //  MagnetarStudio (macOS)
 //
-//  Terminal panel with session tabs - Enhanced in Phase 2
-//  Integrates with CodingStore for session management
+// STUB: Terminal panel with session tabs — no longer embedded in CodeWorkspace.
+// Terminal access now via activity bar buttons (spawn external terminal or terminal bridge).
+// Retained for potential future re-use.
 //
 
 import SwiftUI

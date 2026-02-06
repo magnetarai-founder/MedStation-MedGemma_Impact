@@ -104,6 +104,10 @@ struct MagnetarMenuCommands: Commands {
                     WindowOpener.shared.openNewChat()
                 }
                 .keyboardShortcut("c", modifiers: [.command, .shift])
+
+                Button("AI Assistant") {
+                    WindowOpener.shared.openAIAssistant()
+                }
             }
 
             Divider()
@@ -164,6 +168,11 @@ struct MagnetarMenuCommands: Commands {
             .keyboardShortcut("k", modifiers: .command)
 
             Divider()
+
+            Button("AI Assistant Window") {
+                WindowOpener.shared.openAIAssistant()
+            }
+            .keyboardShortcut("a", modifiers: [.command, .shift])
 
             Button("Toggle AI Panel") {
                 UniversalAIPanelStore.shared.toggle()

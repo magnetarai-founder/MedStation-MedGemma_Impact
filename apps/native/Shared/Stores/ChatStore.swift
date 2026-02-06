@@ -124,6 +124,37 @@ final class ChatStore {
     @ObservationIgnored
     private let contextBridge = EnhancedContextBridge.shared
 
+    // MARK: - Per-Session Model Override (transient, resets on app restart)
+
+    struct SessionModelOverride: Sendable {
+        let mode: String       // "intelligent" or "manual"
+        let modelId: String?
+    }
+
+    @ObservationIgnored
+    private var sessionModelOverrides: [UUID: SessionModelOverride] = [:]
+
+    func setSessionModelOverride(sessionId: UUID, mode: String, modelId: String?) {
+        sessionModelOverrides[sessionId] = SessionModelOverride(mode: mode, modelId: modelId)
+        logger.debug("Set model override for session \(sessionId): mode=\(mode), model=\(modelId ?? "nil")")
+    }
+
+    func clearSessionModelOverride(sessionId: UUID) {
+        sessionModelOverrides.removeValue(forKey: sessionId)
+        logger.debug("Cleared model override for session \(sessionId)")
+    }
+
+    func hasModelOverride(for sessionId: UUID) -> Bool {
+        sessionModelOverrides[sessionId] != nil
+    }
+
+    func effectiveModelSelection(for sessionId: UUID) -> (mode: String, modelId: String?) {
+        if let override = sessionModelOverrides[sessionId] {
+            return (override.mode, override.modelId)
+        }
+        return (selectedMode, selectedModelId)
+    }
+
     // Session ID mapping: local UUID -> backend string ID
     @ObservationIgnored
     private var sessionIdMapping: [UUID: String] = [:]
@@ -613,12 +644,26 @@ final class ChatStore {
     // MARK: - Intelligent Routing (Phase 4)
 
     /// Determine which model to use for a query
+    /// Checks per-session override first, then global mode.
     /// Uses orchestrator in "intelligent" mode, manual selection otherwise
     private func determineModelForQuery(_ query: String, sessionId: String) async -> String {
+        // Check per-session override first
+        let effectiveMode: String
+        let effectiveModelId: String?
+
+        if let localId = currentSession?.id, let override = sessionModelOverrides[localId] {
+            effectiveMode = override.mode
+            effectiveModelId = override.modelId
+            logger.debug("Using per-session override: mode=\(effectiveMode)")
+        } else {
+            effectiveMode = selectedMode
+            effectiveModelId = selectedModelId
+        }
+
         // Check mode
-        if selectedMode == "manual" {
+        if effectiveMode == "manual" {
             // Manual mode: use specifically selected model
-            if let modelId = selectedModelId {
+            if let modelId = effectiveModelId {
                 logger.debug("Manual mode: Using selected model \(modelId)")
                 return modelId
             } else {

@@ -2,23 +2,15 @@
 //  CodeWorkspace.swift
 //  MagnetarStudio (macOS)
 //
-//  Code editing workspace with file browser, editor, integrated terminal, and AI assistant.
-//  Refactored in Phase 6.18 - extracted browser, editor, terminal, and components
-//  Enhanced in Phase 7 - added AI assistant panel and bidirectional terminal context
-//  Enhanced in Phase 8 - added LSP integration with diagnostics panel
-//  Phase 8 Polish - keyboard shortcuts, status bar, persistent layout, pane constraints
+//  Code editing workspace with activity bar, file browser, and full-height editor.
+//  Terminal access via activity bar buttons (spawn external terminal or terminal bridge).
+//  AI assistant available as detached window (⌘⇧A) — no longer embedded.
 //
 
 import SwiftUI
 import os
 
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "CodeWorkspace")
-
-/// Bottom panel mode selection
-enum BottomPanelMode: String, CaseIterable {
-    case terminal = "Terminal"
-    case problems = "Problems"
-}
 
 struct CodeWorkspace: View {
     // MARK: - State
@@ -33,12 +25,8 @@ struct CodeWorkspace: View {
 
     // Layout state — persisted via AppStorage
     @AppStorage("code.sidebarWidth") private var sidebarWidth: Double = 250
-    @AppStorage("code.terminalHeight") private var terminalHeight: Double = 200
-    @AppStorage("code.aiPanelWidth") private var aiPanelWidth: Double = 320
-    @AppStorage("code.showBottomPanel") private var showBottomPanel: Bool = true
     @AppStorage("enableBlurEffects") private var enableBlurEffects = true
     @AppStorage("reduceTransparency") private var reduceTransparency = false
-    @State private var bottomPanelMode: BottomPanelMode = .terminal
     @State private var showSidebar: Bool = true
 
     // AI Assistant state
@@ -60,125 +48,62 @@ struct CodeWorkspace: View {
         static let sidebarMin: CGFloat = 180
         static let sidebarMax: CGFloat = 400
         static let sidebarDefault: CGFloat = 250
-        static let terminalMin: CGFloat = 100
-        static let terminalMax: CGFloat = 500
-        static let terminalDefault: CGFloat = 200
-        static let aiPanelMin: CGFloat = 260
-        static let aiPanelMax: CGFloat = 500
-        static let aiPanelDefault: CGFloat = 320
     }
 
     // Activity bar selection
     @State private var activeActivityItem: ActivityBarItem = .files
 
     var body: some View {
-        GeometryReader { geometry in
-            VStack(spacing: 0) {
-                // Main workspace area
-                HStack(spacing: 0) {
-                    // Far left: Activity Bar
-                    activityBar
+        VStack(spacing: 0) {
+            // Main workspace area
+            HStack(spacing: 0) {
+                // Far left: Activity Bar
+                activityBar
 
-                    // Thin separator
-                    Rectangle()
-                        .fill(Color(nsColor: .separatorColor))
-                        .frame(width: 1)
+                // Thin separator
+                Rectangle()
+                    .fill(Color(nsColor: .separatorColor))
+                    .frame(width: 1)
 
-                    // Left: File Browser
-                    if showSidebar {
-                        CodeFileBrowser(
-                            currentWorkspace: currentWorkspace,
-                            files: files,
-                            isLoadingFiles: isLoadingFiles,
-                            selectedFile: selectedFile,
-                            onRefresh: loadFiles,
-                            onSelectFile: selectFile
-                        )
-                        .frame(width: CGFloat(sidebarWidth))
+                // Left: File Browser
+                if showSidebar {
+                    CodeFileBrowser(
+                        currentWorkspace: currentWorkspace,
+                        files: files,
+                        isLoadingFiles: isLoadingFiles,
+                        selectedFile: selectedFile,
+                        onRefresh: loadFiles,
+                        onSelectFile: selectFile
+                    )
+                    .frame(width: CGFloat(sidebarWidth))
 
-                        // Resizable sidebar divider
-                        ResizableDivider(
-                            dimension: $sidebarWidth,
-                            axis: .horizontal,
-                            minValue: Double(Layout.sidebarMin),
-                            maxValue: Double(Layout.sidebarMax),
-                            defaultValue: Double(Layout.sidebarDefault)
-                        )
-                    }
-
-                    // Center: Editor + Bottom Panel
-                    VStack(spacing: 0) {
-                        // Top: Code Editor
-                        CodeEditorArea(
-                            openFiles: openFiles,
-                            selectedFile: selectedFile,
-                            workspaceName: currentWorkspace?.name,
-                            fileContent: $fileContent,
-                            onSelectFile: selectFile,
-                            onCloseFile: closeFile
-                        )
-                        .frame(minHeight: 100)
-                        .onChange(of: fileContent) { _, newValue in
-                            requestDiagnosticsRefresh(content: newValue)
-                        }
-
-                        if showBottomPanel {
-                            // Resizable bottom panel divider
-                            ResizableDivider(
-                                dimension: $terminalHeight,
-                                axis: .vertical,
-                                minValue: Double(Layout.terminalMin),
-                                maxValue: min(Double(Layout.terminalMax), Double(geometry.size.height) * 0.6),
-                                defaultValue: Double(Layout.terminalDefault)
-                            )
-
-                            // Bottom Panel with mode tabs
-                            VStack(spacing: 0) {
-                                bottomPanelTabs
-
-                                Divider()
-
-                                switch bottomPanelMode {
-                                case .terminal:
-                                    CodeTerminalPanel(
-                                        showTerminal: $showBottomPanel,
-                                        codingStore: codingStore,
-                                        onSpawnTerminal: spawnTerminal
-                                    )
-
-                                case .problems:
-                                    CodeDiagnosticsPanel(
-                                        diagnosticsStore: diagnosticsStore,
-                                        currentFilePath: selectedFile?.path,
-                                        workspacePath: currentWorkspace?.diskPath,
-                                        onNavigateTo: navigateToLocation
-                                    )
-                                }
-                            }
-                            .frame(height: CGFloat(terminalHeight))
-                        }
-                    }
-
-                    // Right: AI Assistant Panel (only if universal panel is NOT active)
-                    if codingStore.showAIAssistant && !UniversalAIPanelStore.shared.isVisible {
-                        ResizableDivider(
-                            dimension: $aiPanelWidth,
-                            axis: .horizontal,
-                            minValue: Double(Layout.aiPanelMin),
-                            maxValue: Double(Layout.aiPanelMax),
-                            defaultValue: Double(Layout.aiPanelDefault),
-                            invertDrag: true
-                        )
-
-                        AIAssistantPanel(codingStore: codingStore)
-                            .frame(width: CGFloat(aiPanelWidth))
-                    }
+                    // Resizable sidebar divider
+                    ResizableDivider(
+                        dimension: $sidebarWidth,
+                        axis: .horizontal,
+                        minValue: Double(Layout.sidebarMin),
+                        maxValue: Double(Layout.sidebarMax),
+                        defaultValue: Double(Layout.sidebarDefault)
+                    )
                 }
 
-                // Status Bar
-                statusBar
+                // Center: Full-height Code Editor
+                CodeEditorArea(
+                    openFiles: openFiles,
+                    selectedFile: selectedFile,
+                    workspaceName: currentWorkspace?.name,
+                    fileContent: $fileContent,
+                    onSelectFile: selectFile,
+                    onCloseFile: closeFile
+                )
+                .frame(minHeight: 100)
+                .onChange(of: fileContent) { _, newValue in
+                    requestDiagnosticsRefresh(content: newValue)
+                }
             }
-            // .toolbar removed — buttons relocated to status bar to eliminate visual shift when switching tabs
+
+            // Status Bar
+            statusBar
         }
         .task {
             await loadFiles()
@@ -213,9 +138,49 @@ struct CodeWorkspace: View {
             }
 
             Spacer()
+
+            // AI Assistant — opens floating window
+            Button {
+                WindowOpener.shared.openAIAssistant()
+            } label: {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 16))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 36, height: 36)
+            }
+            .buttonStyle(.plain)
+            .help("AI Assistant (⌘⇧A)")
+
+            // Open Terminal — spawn user's preferred terminal app
+            Button {
+                Task { await spawnTerminal() }
+            } label: {
+                Image(systemName: "terminal")
+                    .font(.system(size: 16))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 36, height: 36)
+            }
+            .buttonStyle(.plain)
+            .help("Open Terminal (\(codingStore.preferredTerminal.displayName))")
+            .contextMenu {
+                ForEach(TerminalApp.allCases, id: \.self) { app in
+                    Button {
+                        codingStore.preferredTerminal = app
+                    } label: {
+                        HStack {
+                            Image(systemName: app.iconName)
+                            Text(app.displayName)
+                            if codingStore.preferredTerminal == app {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            }
         }
         .frame(width: 36)
         .padding(.top, 8)
+        .padding(.bottom, 8)
         .background {
             if enableBlurEffects && !reduceTransparency {
                 AnyView(Rectangle().fill(.thinMaterial))
@@ -244,19 +209,6 @@ struct CodeWorkspace: View {
             .keyboardShortcut("b", modifiers: .command)
             .padding(.horizontal, 6)
 
-            // Bottom panel toggle
-            Button {
-                withAnimation(.magnetarQuick) { showBottomPanel.toggle() }
-            } label: {
-                Image(systemName: showBottomPanel ? "rectangle.bottomhalf.filled" : "rectangle.bottomhalf.inset.filled")
-                    .font(.system(size: 10))
-                    .foregroundStyle(showBottomPanel ? .primary : .secondary)
-            }
-            .buttonStyle(.plain)
-            .help("Toggle Bottom Panel (⌘`)")
-            .keyboardShortcut("`", modifiers: .command)
-            .padding(.horizontal, 6)
-
             Color(nsColor: .separatorColor).frame(width: 1, height: 12)
 
             // Refresh code index
@@ -273,29 +225,6 @@ struct CodeWorkspace: View {
             .buttonStyle(.plain)
             .help("Refresh Code Index")
             .disabled(codingStore.isCodeIndexing)
-            .padding(.horizontal, 6)
-
-            // Terminal app picker
-            Menu {
-                ForEach(TerminalApp.allCases, id: \.self) { app in
-                    Button {
-                        codingStore.preferredTerminal = app
-                    } label: {
-                        HStack {
-                            Image(systemName: app.iconName)
-                            Text(app.displayName)
-                            if codingStore.preferredTerminal == app {
-                                Image(systemName: "checkmark")
-                            }
-                        }
-                    }
-                }
-            } label: {
-                Image(systemName: codingStore.preferredTerminal.iconName)
-                    .font(.system(size: 10))
-            }
-            .menuStyle(.borderlessButton)
-            .help("Terminal App: \(codingStore.preferredTerminal.displayName)")
             .padding(.horizontal, 6)
         }
         .padding(.leading, 8)
@@ -578,66 +507,6 @@ struct CodeWorkspace: View {
         }
     }
 
-    // MARK: - Bottom Panel Tabs
-
-    private var bottomPanelTabs: some View {
-        HStack(spacing: 8) {
-            Picker("Panel", selection: $bottomPanelMode) {
-                Label("Terminal", systemImage: "terminal")
-                    .tag(BottomPanelMode.terminal)
-                Label("Problems", systemImage: "exclamationmark.triangle")
-                    .tag(BottomPanelMode.problems)
-            }
-            .pickerStyle(.segmented)
-            .frame(width: 220)
-            .padding(.leading, 8)
-
-            if diagnosticsStore.totalStats.totalCount > 0 {
-                problemCountBadge
-            }
-
-            Spacer()
-
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    showBottomPanel = false
-                }
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
-            }
-            .buttonStyle(.plain)
-            .padding(.trailing, 8)
-        }
-        .frame(height: 30)
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.3))
-    }
-
-    private var problemCountBadge: some View {
-        HStack(spacing: 2) {
-            if diagnosticsStore.totalStats.errorCount > 0 {
-                HStack(spacing: 2) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 8))
-                    Text("\(diagnosticsStore.totalStats.errorCount)")
-                        .font(.system(size: 9, weight: .medium))
-                }
-                .foregroundColor(.red)
-            }
-
-            if diagnosticsStore.totalStats.warningCount > 0 {
-                HStack(spacing: 2) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 8))
-                    Text("\(diagnosticsStore.totalStats.warningCount)")
-                        .font(.system(size: 9, weight: .medium))
-                }
-                .foregroundColor(.orange)
-            }
-        }
-        .padding(.horizontal, 4)
-    }
 }
 
 // MARK: - Activity Bar Item

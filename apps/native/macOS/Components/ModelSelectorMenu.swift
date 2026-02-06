@@ -19,12 +19,30 @@ struct ModelSelectorMenu: View {
     let availableModels: [String]
     let onRefresh: () async -> Void
 
+    // Per-session override support (backward compatible — defaults to no override)
+    var hasOverride: Bool = false
+    var onClearOverride: (() -> Void)? = nil
+
     @State private var hotSlotManager = HotSlotManager.shared
     @State private var showPinConfirmation: Bool = false
     @State private var modelToPinToggle: String? = nil
 
     var body: some View {
         Menu {
+            // "Use Default" — only shown when a per-session override is active
+            if hasOverride, let clearAction = onClearOverride {
+                Button {
+                    clearAction()
+                } label: {
+                    HStack {
+                        Image(systemName: "arrow.uturn.backward")
+                        Text("Use Default")
+                    }
+                }
+
+                Divider()
+            }
+
             // Intelligent Mode (Apple FM Orchestrator)
             Button {
                 selectedMode = "intelligent"
@@ -205,14 +223,14 @@ struct ModelSelectorMenu: View {
     // MARK: - Helpers
 
     private var displayText: String {
+        let prefix = hasOverride ? "● " : ""
         if selectedMode == "intelligent" {
-            return "Intelligent (Apple FM)"
+            return "\(prefix)Intelligent (Apple FM)"
         } else if let modelId = selectedModelId {
-            // Check if it's in a hot slot
             if let slot = hotSlotManager.hotSlots.first(where: { $0.modelId == modelId }) {
-                return "\(slot.modelName ?? modelId) [Slot \(slot.slotNumber)]"
+                return "\(prefix)\(slot.modelName ?? modelId) [Slot \(slot.slotNumber)]"
             }
-            return modelId
+            return "\(prefix)\(modelId)"
         } else {
             return "Select Model"
         }

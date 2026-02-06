@@ -34,6 +34,9 @@ final class WindowOpener {
     /// Opens a detached PDF viewer window
     var openDetachedPDFView: ((DetachedPDFViewInfo) -> Void)?
 
+    /// Opens the AI Assistant floating window
+    var openDetachedAI: (() -> Void)?
+
     /// Opens a spawnable workspace window
     var openWorkspace: ((String) -> Void)?
 
@@ -75,6 +78,15 @@ final class WindowOpener {
         }
         opener(info)
         logger.info("Opened spreadsheet: \(info.title)")
+    }
+
+    func openAIAssistant() {
+        guard let opener = openDetachedAI else {
+            logger.warning("openDetachedAI not configured")
+            return
+        }
+        opener()
+        logger.info("Opened AI Assistant window")
     }
 
     func openCodeWorkspace() {
@@ -129,6 +141,10 @@ struct WindowOpenerConfigurator: ViewModifier {
 
         opener.openDetachedChat = {
             openWindow(id: "detached-chat")
+        }
+
+        opener.openDetachedAI = {
+            openWindow(id: "detached-ai")
         }
 
         opener.openDetachedDocEdit = { (info: DetachedDocEditInfo) in
