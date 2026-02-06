@@ -116,6 +116,7 @@ struct MainAppView: View {
     @Environment(ChatStore.self) private var chatStore
     @Environment(VaultPermissionManager.self) private var permissionManager
     @State private var workspaceError: WorkspaceError?
+    @State private var aiPanelStore = UniversalAIPanelStore.shared
 
     var body: some View {
         ZStack {
@@ -124,20 +125,38 @@ struct MainAppView: View {
                 // Top: Header bar with integrated tab switcher
                 Header()
 
-                // Body: Full-width workspace content (no NavigationRail)
-                Group {
-                    if let error = workspaceError {
-                        WorkspaceErrorView(
-                            error: error,
-                            workspace: navigationStore.activeWorkspace,
-                            onRetry: { workspaceError = nil }
+                // Body: Workspace + optional AI side panel
+                HStack(spacing: 0) {
+                    Group {
+                        if let error = workspaceError {
+                            WorkspaceErrorView(
+                                error: error,
+                                workspace: navigationStore.activeWorkspace,
+                                onRetry: { workspaceError = nil }
+                            )
+                        } else {
+                            activeWorkspaceView
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .transition(.magnetarFade)
+
+                    // Universal AI Panel (toggled via Header sparkles or ⇧⌘P)
+                    if aiPanelStore.isVisible {
+                        ResizableDivider(
+                            dimension: $aiPanelStore.panelWidth,
+                            axis: .horizontal,
+                            minValue: Double(UniversalAIPanelStore.minWidth),
+                            maxValue: Double(UniversalAIPanelStore.maxWidth),
+                            defaultValue: 320,
+                            invertDrag: true
                         )
-                    } else {
-                        activeWorkspaceView
+
+                        UniversalAIPanel()
+                            .frame(width: CGFloat(aiPanelStore.panelWidth))
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .transition(.magnetarFade)
             }
             .onChange(of: navigationStore.activeWorkspace) { _, _ in
                 // Clear error when switching workspaces
@@ -177,17 +196,17 @@ struct MainAppView: View {
     @ViewBuilder
     private var activeWorkspaceView: some View {
         switch navigationStore.activeWorkspace {
-        // Core workspaces (3 main tabs)
+        // Core workspaces (4 main tabs: Hub, Files, Code, Chat)
         case .chat:
             ChatWorkspace()
         case .files:
             VaultWorkspace()
         case .workspace:
             WorkspaceHub()
-
-        // Spawnable workspaces (open as separate windows)
         case .code:
             CodeWorkspace()
+
+        // Spawnable workspaces (open as separate windows)
         case .kanban:
             KanbanWorkspace()
         case .database:

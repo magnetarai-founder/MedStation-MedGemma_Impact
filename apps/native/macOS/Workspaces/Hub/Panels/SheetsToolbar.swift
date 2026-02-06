@@ -107,7 +107,7 @@ struct SheetsToolbar: View {
             }
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .frame(height: HubLayout.headerHeight)
         .background(Color.surfaceTertiary.opacity(0.5))
     }
 

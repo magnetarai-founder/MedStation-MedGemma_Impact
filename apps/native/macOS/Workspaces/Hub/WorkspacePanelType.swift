@@ -13,6 +13,7 @@ enum WorkspacePanelType: String, CaseIterable, Identifiable, Hashable {
     case sheets
     case pdf
     case voice
+    case team
     case automations
     case plugins
 
@@ -25,6 +26,7 @@ enum WorkspacePanelType: String, CaseIterable, Identifiable, Hashable {
         case .sheets: return "Sheets"
         case .pdf: return "PDFs"
         case .voice: return "Voice"
+        case .team: return "Team"
         case .automations: return "Automations"
         case .plugins: return "Plugins"
         }
@@ -37,9 +39,22 @@ enum WorkspacePanelType: String, CaseIterable, Identifiable, Hashable {
         case .sheets: return "tablecells"
         case .pdf: return "doc.viewfinder"
         case .voice: return "waveform"
+        case .team: return "bubble.left.and.text.bubble.right"
         case .automations: return "gearshape.2"
         case .plugins: return "puzzlepiece.extension"
         }
+    }
+
+    // MARK: - Grouping
+
+    /// Content creation panels (always shown)
+    static var contentPanels: [WorkspacePanelType] {
+        [.notes, .docs, .sheets, .pdf, .voice]
+    }
+
+    /// Management/configuration panels
+    static var managementPanels: [WorkspacePanelType] {
+        [.automations, .plugins]
     }
 
     /// Shortcut hint displayed in sidebar (within Workspace tab context)
@@ -50,6 +65,7 @@ enum WorkspacePanelType: String, CaseIterable, Identifiable, Hashable {
         case .sheets: return "S"
         case .pdf: return "P"
         case .voice: return "V"
+        case .team: return "T"
         case .automations: return "A"
         case .plugins: return "X"
         }

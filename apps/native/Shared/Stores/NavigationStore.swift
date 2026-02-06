@@ -159,8 +159,8 @@ enum Workspace: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .workspace: return "1"
         case .files: return "2"
-        case .chat: return "3"
-        case .code: return "4"
+        case .code: return "3"
+        case .chat: return "4"
         case .database: return "5"
         case .kanban: return "6"
         case .insights: return "7"
@@ -204,7 +204,7 @@ enum Workspace: String, CaseIterable, Identifiable, Hashable {
     /// Whether this is a core workspace (shown in tab switcher) or spawnable (opens in separate window)
     var isCore: Bool {
         switch self {
-        case .chat, .files, .workspace: return true
+        case .chat, .files, .workspace, .code: return true
         default: return false
         }
     }
@@ -222,9 +222,9 @@ enum Workspace: String, CaseIterable, Identifiable, Hashable {
         }
     }
 
-    /// Core workspaces shown in main tab switcher (3 tabs)
+    /// Core workspaces shown in main tab switcher (4 tabs)
     static var coreWorkspaces: [Workspace] {
-        [.workspace, .files, .chat]
+        [.workspace, .files, .code, .chat]
     }
 
     /// Spawnable workspaces that open as separate windows (Phase 2C)

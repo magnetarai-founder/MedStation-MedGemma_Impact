@@ -13,6 +13,8 @@ import SwiftUI
 @MainActor
 @Observable
 final class WorkspaceHubStore {
+    static let shared = WorkspaceHubStore()
+
     // MARK: - Panel Selection
 
     var selectedPanel: WorkspacePanelType {

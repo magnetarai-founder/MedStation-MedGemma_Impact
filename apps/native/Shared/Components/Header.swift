@@ -57,11 +57,15 @@ struct Header: View {
 
                 Spacer()
 
-                // Right: Panic only (safety feature stays visible)
-                PanicButton(
-                    showPanicMode: $showPanicMode,
-                    showEmergencyMode: $showEmergencyMode
-                )
+                // Right: AI toggle + Panic
+                HStack(spacing: 8) {
+                    AIToggleButton()
+
+                    PanicButton(
+                        showPanicMode: $showPanicMode,
+                        showEmergencyMode: $showEmergencyMode
+                    )
+                }
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 10)

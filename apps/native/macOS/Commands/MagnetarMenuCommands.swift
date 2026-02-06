@@ -50,7 +50,7 @@ struct MagnetarMenuCommands: Commands {
 
         // Edit menu (keep defaults)
 
-        // View menu - Core tabs ⌘1-3 + sidebar toggle
+        // View menu - Core tabs ⌘1-4 + sidebar toggle
         CommandMenu("View") {
             // Core workspace tabs
             Button("Workspace") {
@@ -63,10 +63,15 @@ struct MagnetarMenuCommands: Commands {
             }
             .keyboardShortcut("2", modifiers: .command)
 
+            Button("Code") {
+                navigationStore.navigate(to: .code)
+            }
+            .keyboardShortcut("3", modifiers: .command)
+
             Button("Chat") {
                 navigationStore.navigate(to: .chat)
             }
-            .keyboardShortcut("3", modifiers: .command)
+            .keyboardShortcut("4", modifiers: .command)
 
             Divider()
 
@@ -103,35 +108,39 @@ struct MagnetarMenuCommands: Commands {
 
             Divider()
 
-            // Spawnable workspaces
-            Section("Open Workspace") {
-                Button("Open Code IDE") {
+            // Open in new window
+            Section("Open in New Window") {
+                Button("Code IDE") {
                     WindowOpener.shared.openCodeWorkspace()
                 }
-                .keyboardShortcut("4", modifiers: .command)
 
-                Button("Open Data Workspace") {
+                Button("Data Lab") {
                     WindowOpener.shared.openDatabaseWorkspace()
                 }
                 .keyboardShortcut("5", modifiers: .command)
 
-                Button("Open Kanban Board") {
+                Button("Kanban Board") {
                     WindowOpener.shared.openKanbanWorkspace()
                 }
                 .keyboardShortcut("6", modifiers: .command)
 
-                Button("Open Insights") {
+                Button("Insights") {
                     WindowOpener.shared.openInsightsWorkspace()
                 }
                 .keyboardShortcut("7", modifiers: .command)
+            }
 
-                Button("Open Automations") {
+            Divider()
+
+            // Hub panel shortcuts
+            Section("Hub Panels") {
+                Button("Automations") {
                     UserDefaults.standard.set(WorkspacePanelType.automations.rawValue, forKey: "workspace.selectedPanel")
                     navigationStore.navigate(to: .workspace)
                 }
                 .keyboardShortcut("8", modifiers: .command)
 
-                Button("Open Plugins") {
+                Button("Plugins") {
                     UserDefaults.standard.set(WorkspacePanelType.plugins.rawValue, forKey: "workspace.selectedPanel")
                     navigationStore.navigate(to: .workspace)
                 }
@@ -156,10 +165,10 @@ struct MagnetarMenuCommands: Commands {
 
             Divider()
 
-            Button("AI Assist") {
-                navigationStore.navigate(to: .workspace)
+            Button("Toggle AI Panel") {
+                UniversalAIPanelStore.shared.toggle()
             }
-            .keyboardShortcut("i", modifiers: [.command, .shift])
+            .keyboardShortcut("p", modifiers: [.command, .shift])
         }
 
         // Help menu

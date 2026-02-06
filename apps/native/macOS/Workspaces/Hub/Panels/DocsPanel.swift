@@ -133,7 +133,7 @@ struct DocsPanel: View {
                 .help("New Document")
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .frame(height: HubLayout.headerHeight)
             .background(Color.surfaceTertiary.opacity(0.5))
 
             Divider()

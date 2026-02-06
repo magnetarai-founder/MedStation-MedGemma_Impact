@@ -123,7 +123,7 @@ struct NoteEditorView: View {
                 .foregroundStyle(.tertiary)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .frame(height: HubLayout.headerHeight)
     }
 
     private func formatDate(_ date: Date) -> String {

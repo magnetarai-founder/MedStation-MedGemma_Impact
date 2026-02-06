@@ -76,7 +76,7 @@ struct ChannelView: View {
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .frame(height: HubLayout.headerHeight)
         .background(Color.surfaceTertiary.opacity(0.3))
     }
 

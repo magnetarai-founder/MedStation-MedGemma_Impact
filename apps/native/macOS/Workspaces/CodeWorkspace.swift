@@ -145,8 +145,8 @@ struct CodeWorkspace: View {
                         }
                     }
 
-                    // Right: AI Assistant Panel
-                    if codingStore.showAIAssistant {
+                    // Right: AI Assistant Panel (only if universal panel is NOT active)
+                    if codingStore.showAIAssistant && !UniversalAIPanelStore.shared.isVisible {
                         ResizableDivider(
                             dimension: $aiPanelWidth,
                             axis: .horizontal,
@@ -164,79 +164,7 @@ struct CodeWorkspace: View {
                 // Status Bar
                 statusBar
             }
-            .toolbar {
-                ToolbarItemGroup(placement: .automatic) {
-                    // Sidebar toggle
-                    Button {
-                        withAnimation(.magnetarQuick) {
-                            showSidebar.toggle()
-                        }
-                    } label: {
-                        Image(systemName: "sidebar.leading")
-                    }
-                    .help("Toggle Sidebar (⌘B)")
-                    .keyboardShortcut("b", modifiers: .command)
-
-                    // Bottom panel toggle
-                    Button {
-                        withAnimation(.magnetarQuick) {
-                            showBottomPanel.toggle()
-                        }
-                    } label: {
-                        Image(systemName: showBottomPanel ? "rectangle.bottomhalf.filled" : "rectangle.bottomhalf.inset.filled")
-                    }
-                    .help("Toggle Bottom Panel (⌘`)")
-                    .keyboardShortcut("`", modifiers: .command)
-
-                    // AI Assistant toggle
-                    Button {
-                        withAnimation(.magnetarQuick) {
-                            codingStore.showAIAssistant.toggle()
-                        }
-                    } label: {
-                        Image(systemName: "sparkles")
-                            .foregroundStyle(codingStore.showAIAssistant ? .purple : .secondary)
-                    }
-                    .help("Toggle AI Assistant (⇧⌘P)")
-                    .keyboardShortcut("p", modifiers: [.command, .shift])
-
-                    Spacer()
-
-                    // Refresh code index
-                    Button {
-                        codingStore.refreshCodeIndex()
-                    } label: {
-                        if codingStore.isCodeIndexing {
-                            ProgressView()
-                                .scaleEffect(0.6)
-                        } else {
-                            Image(systemName: "arrow.triangle.2.circlepath")
-                        }
-                    }
-                    .help("Refresh Code Index")
-                    .disabled(codingStore.isCodeIndexing)
-
-                    // Terminal app picker
-                    Menu {
-                        ForEach(TerminalApp.allCases, id: \.self) { app in
-                            Button {
-                                codingStore.preferredTerminal = app
-                            } label: {
-                                HStack {
-                                    Image(systemName: app.iconName)
-                                    Text(app.displayName)
-                                    if codingStore.preferredTerminal == app {
-                                        Image(systemName: "checkmark")
-                                    }
-                                }
-                            }
-                        }
-                    } label: {
-                        Image(systemName: codingStore.preferredTerminal.iconName)
-                    }
-                    .help("Terminal App: \(codingStore.preferredTerminal.displayName)")
-                }
-            }
+            // .toolbar removed — buttons relocated to status bar to eliminate visual shift when switching tabs
         }
         .task {
             await loadFiles()
@@ -248,8 +176,87 @@ struct CodeWorkspace: View {
 
     // MARK: - Status Bar
 
+    // MARK: - Code Toolbar Buttons (relocated from .toolbar)
+
+    private var codeToolbarButtons: some View {
+        HStack(spacing: 2) {
+            // Sidebar toggle
+            Button {
+                withAnimation(.magnetarQuick) { showSidebar.toggle() }
+            } label: {
+                Image(systemName: "sidebar.leading")
+                    .font(.system(size: 10))
+                    .foregroundStyle(showSidebar ? .primary : .secondary)
+            }
+            .buttonStyle(.plain)
+            .help("Toggle Sidebar (⌘B)")
+            .keyboardShortcut("b", modifiers: .command)
+            .padding(.horizontal, 6)
+
+            // Bottom panel toggle
+            Button {
+                withAnimation(.magnetarQuick) { showBottomPanel.toggle() }
+            } label: {
+                Image(systemName: showBottomPanel ? "rectangle.bottomhalf.filled" : "rectangle.bottomhalf.inset.filled")
+                    .font(.system(size: 10))
+                    .foregroundStyle(showBottomPanel ? .primary : .secondary)
+            }
+            .buttonStyle(.plain)
+            .help("Toggle Bottom Panel (⌘`)")
+            .keyboardShortcut("`", modifiers: .command)
+            .padding(.horizontal, 6)
+
+            Divider().frame(height: 12)
+
+            // Refresh code index
+            Button {
+                codingStore.refreshCodeIndex()
+            } label: {
+                if codingStore.isCodeIndexing {
+                    ProgressView().scaleEffect(0.5)
+                } else {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.system(size: 10))
+                }
+            }
+            .buttonStyle(.plain)
+            .help("Refresh Code Index")
+            .disabled(codingStore.isCodeIndexing)
+            .padding(.horizontal, 6)
+
+            // Terminal app picker
+            Menu {
+                ForEach(TerminalApp.allCases, id: \.self) { app in
+                    Button {
+                        codingStore.preferredTerminal = app
+                    } label: {
+                        HStack {
+                            Image(systemName: app.iconName)
+                            Text(app.displayName)
+                            if codingStore.preferredTerminal == app {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            } label: {
+                Image(systemName: codingStore.preferredTerminal.iconName)
+                    .font(.system(size: 10))
+            }
+            .menuStyle(.borderlessButton)
+            .help("Terminal App: \(codingStore.preferredTerminal.displayName)")
+            .padding(.horizontal, 6)
+        }
+        .padding(.leading, 8)
+    }
+
     private var statusBar: some View {
         HStack(spacing: 0) {
+            // Code-specific layout toggles
+            codeToolbarButtons
+
+            Divider().frame(height: 12)
+
             // Line/Column indicator
             HStack(spacing: 4) {
                 Text("Ln \(cursorLine), Col \(cursorColumn)")

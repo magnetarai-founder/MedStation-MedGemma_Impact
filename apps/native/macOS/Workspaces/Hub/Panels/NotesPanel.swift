@@ -52,17 +52,7 @@ struct NotesPanel: View {
     @State private var isLoading = true
     @State private var showTemplatePicker = false
     @State private var selectedTemplate: WorkspaceTemplate?
-    @AppStorage("workspace.teamEnabled") private var teamEnabled = false
-
     var body: some View {
-        if teamEnabled {
-            TeamNotesPanel()
-        } else {
-            personalNotesView
-        }
-    }
-
-    private var personalNotesView: some View {
         HStack(spacing: 0) {
             // Notes list
             notesList
@@ -146,7 +136,7 @@ struct NotesPanel: View {
                 .help("New Note")
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .frame(height: HubLayout.headerHeight)
             .background(Color.surfaceTertiary.opacity(0.5))
 
             Divider()

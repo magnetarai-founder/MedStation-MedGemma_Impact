@@ -100,6 +100,7 @@ struct TeamNotesPanel: View {
     @State private var selectedDMID: UUID?
     @State private var messages: [LocalMessage] = []
     @State private var messageText = ""
+    @State private var searchText = ""
     @State private var showCreateChannel = false
     @State private var isLoading = true
     @AppStorage("workspace.connectionMode") private var connectionMode = "cloud"
@@ -143,14 +144,18 @@ struct TeamNotesPanel: View {
     private var channelSidebar: some View {
         VStack(spacing: 0) {
             // Header
-            HStack {
-                Text("Team")
-                    .font(.system(size: 14, weight: .semibold))
-                Spacer()
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.tertiary)
+                TextField("Search channels...", text: $searchText)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12))
+
                 connectionBadge
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 10)
+            .frame(height: HubLayout.headerHeight)
             .background(Color.surfaceTertiary.opacity(0.5))
 
             Divider()
@@ -162,7 +167,7 @@ struct TeamNotesPanel: View {
                         showCreateChannel = true
                     }
 
-                    ForEach(channels) { channel in
+                    ForEach(filteredChannels) { channel in
                         TeamChannelRow(
                             channel: channel,
                             isSelected: selectedChannelID == channel.id,
@@ -176,14 +181,14 @@ struct TeamNotesPanel: View {
                     // Direct Messages section
                     teamSectionHeader("Direct Messages", showAdd: false) {}
 
-                    if directMessages.isEmpty {
+                    if filteredDirectMessages.isEmpty {
                         Text("No conversations yet")
                             .font(.system(size: 12))
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 8)
                     } else {
-                        ForEach(directMessages) { dm in
+                        ForEach(filteredDirectMessages) { dm in
                             DMRow(
                                 conversation: dm,
                                 isSelected: selectedDMID == dm.id,
@@ -204,6 +209,18 @@ struct TeamNotesPanel: View {
             teamStatusBar
         }
         .background(Color.surfaceTertiary)
+    }
+
+    private var filteredChannels: [LocalChannel] {
+        if searchText.isEmpty { return channels }
+        let query = searchText.lowercased()
+        return channels.filter { $0.name.lowercased().contains(query) || $0.topic.lowercased().contains(query) }
+    }
+
+    private var filteredDirectMessages: [DirectConversation] {
+        if searchText.isEmpty { return directMessages }
+        let query = searchText.lowercased()
+        return directMessages.filter { $0.participantName.lowercased().contains(query) }
     }
 
     private var connectionBadge: some View {
@@ -293,7 +310,7 @@ struct TeamNotesPanel: View {
                 Spacer()
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+            .frame(height: HubLayout.headerHeight)
             .background(Color.surfaceTertiary.opacity(0.3))
 
             Divider()

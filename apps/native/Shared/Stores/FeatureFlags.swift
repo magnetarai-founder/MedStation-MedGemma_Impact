@@ -75,10 +75,10 @@ final class FeatureFlags {
     private init() {
         // Load saved values or use defaults
         self.team = UserDefaults.standard.object(forKey: "feature.team") as? Bool ?? false
-        self.code = UserDefaults.standard.object(forKey: "feature.code") as? Bool ?? false
-        self.projectManagement = UserDefaults.standard.object(forKey: "feature.projectManagement") as? Bool ?? false
+        self.code = UserDefaults.standard.object(forKey: "feature.code") as? Bool ?? true
+        self.projectManagement = UserDefaults.standard.object(forKey: "feature.projectManagement") as? Bool ?? true
         self.automations = UserDefaults.standard.object(forKey: "feature.automations") as? Bool ?? true
-        self.dataAnalysis = UserDefaults.standard.object(forKey: "feature.dataAnalysis") as? Bool ?? false
+        self.dataAnalysis = UserDefaults.standard.object(forKey: "feature.dataAnalysis") as? Bool ?? true
         self.voiceTranscription = UserDefaults.standard.object(forKey: "feature.voiceTranscription") as? Bool ?? true  // ON by default
         self.trust = UserDefaults.standard.object(forKey: "feature.trust") as? Bool ?? false
         self.magnetarHub = UserDefaults.standard.object(forKey: "feature.magnetarHub") as? Bool ?? false
@@ -101,7 +101,7 @@ final class FeatureFlags {
 
         // Optional workspaces - check flags
         case .code:
-            return code
+            return true  // Core tab, always enabled
         case .kanban:
             return projectManagement
         case .database:
@@ -139,10 +139,10 @@ final class FeatureFlags {
     /// Reset to defaults (most features OFF)
     func resetToDefaults() {
         team = false
-        code = false
-        projectManagement = false
+        code = true
+        projectManagement = true
         automations = false
-        dataAnalysis = false
+        dataAnalysis = true
         voiceTranscription = true  // Key differentiator stays ON
         trust = false
         magnetarHub = false

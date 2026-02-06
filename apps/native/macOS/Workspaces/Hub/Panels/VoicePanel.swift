@@ -15,6 +15,7 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "VoicePa
 struct VoicePanel: View {
     @State private var recordings: [VoiceRecording] = []
     @State private var selectedRecordingID: UUID?
+    @State private var searchText = ""
     @State private var isRecording = false
     @State private var recordingDuration: TimeInterval = 0
     @State private var audioLevel: Float = 0
@@ -100,21 +101,22 @@ struct VoicePanel: View {
         VStack(spacing: 0) {
             // Header
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(recording.title)
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(.system(size: 15, weight: .semibold))
                     HStack(spacing: 12) {
                         Text(recording.formattedDuration)
-                            .font(.system(size: 12, design: .monospaced))
+                            .font(.system(size: 11, design: .monospaced))
                             .foregroundStyle(.secondary)
                         Text(formatDate(recording.createdAt))
-                            .font(.system(size: 12))
+                            .font(.system(size: 11))
                             .foregroundStyle(.secondary)
                     }
                 }
                 Spacer()
             }
-            .padding(16)
+            .padding(.horizontal, 16)
+            .frame(height: HubLayout.headerHeight)
 
             Divider()
 
@@ -226,10 +228,14 @@ struct VoicePanel: View {
     private var recordingsList: some View {
         VStack(spacing: 0) {
             // Header + Record button
-            HStack {
-                Text("Voice Recordings")
-                    .font(.system(size: 13, weight: .semibold))
-                Spacer()
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.tertiary)
+                TextField("Search recordings...", text: $searchText)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12))
+
                 Button {
                     startRecording()
                 } label: {
@@ -248,7 +254,7 @@ struct VoicePanel: View {
                 .buttonStyle(.plain)
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .frame(height: HubLayout.headerHeight)
             .background(Color.surfaceTertiary.opacity(0.5))
 
             Divider()
@@ -256,23 +262,25 @@ struct VoicePanel: View {
             if isLoading {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if recordings.isEmpty {
+            } else if filteredRecordings.isEmpty {
                 VStack(spacing: 8) {
                     Image(systemName: "waveform")
                         .font(.system(size: 24))
                         .foregroundStyle(.tertiary)
-                    Text("No recordings yet")
+                    Text(searchText.isEmpty ? "No recordings yet" : "No results")
                         .font(.system(size: 13))
                         .foregroundStyle(.secondary)
-                    Text("Click Record to start")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.tertiary)
+                    if searchText.isEmpty {
+                        Text("Click Record to start")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.tertiary)
+                    }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
                     LazyVStack(spacing: 1) {
-                        ForEach(recordings) { rec in
+                        ForEach(filteredRecordings) { rec in
                             RecordingListRow(
                                 recording: rec,
                                 isSelected: selectedRecordingID == rec.id,
@@ -286,6 +294,15 @@ struct VoicePanel: View {
             }
         }
         .background(Color.surfaceTertiary)
+    }
+
+    private var filteredRecordings: [VoiceRecording] {
+        if searchText.isEmpty { return recordings }
+        let query = searchText.lowercased()
+        return recordings.filter {
+            $0.title.lowercased().contains(query) ||
+            ($0.transcription?.lowercased().contains(query) ?? false)
+        }
     }
 
     private var voiceEmptyState: some View {

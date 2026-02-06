@@ -437,26 +437,32 @@ struct QuickActionButton: View {
                 Text("Create")
             }
 
-            // MARK: - Open Workspace Section
-            if !featureFlags.enabledSpawnableWorkspaces.isEmpty {
-                Section {
-                    ForEach(featureFlags.enabledSpawnableWorkspaces) { workspace in
-                        Button {
-                            openSpawnableWorkspace(workspace)
-                        } label: {
-                            Label(workspace.displayName, systemImage: workspace.icon)
-                        }
-                        .keyboardShortcut(KeyEquivalent(Character(workspace.keyboardShortcut)), modifiers: .command)
-                    }
-                } header: {
-                    Text("Open Workspace")
+            // MARK: - Open in New Window Section
+            Section {
+                // Code IDE pop-out (always available — ⌘3 navigates to tab)
+                Button {
+                    openSpawnableWorkspace(.code)
+                } label: {
+                    Label("Code IDE", systemImage: Workspace.code.icon)
                 }
+
+                // Other enabled spawnable workspaces
+                ForEach(featureFlags.enabledSpawnableWorkspaces.filter { $0 != .code }) { workspace in
+                    Button {
+                        openSpawnableWorkspace(workspace)
+                    } label: {
+                        Label(workspace.displayName, systemImage: workspace.icon)
+                    }
+                    .keyboardShortcut(KeyEquivalent(Character(workspace.keyboardShortcut)), modifiers: .command)
+                }
+            } header: {
+                Text("Open in New Window")
             }
 
             // MARK: - Settings
             Divider()
             SettingsLink {
-                Label("Enable More Features...", systemImage: "gearshape")
+                Label("Manage Features...", systemImage: "gearshape")
             }
         } label: {
             Image(systemName: "plus")
@@ -495,5 +501,23 @@ struct QuickActionButton: View {
         case .magnetarHub: return "workspace-hub"
         default: return "workspace-\(workspace.rawValue)"
         }
+    }
+}
+
+// MARK: - AI Toggle Button
+
+struct AIToggleButton: View {
+    @State private var aiPanelStore = UniversalAIPanelStore.shared
+
+    var body: some View {
+        HeaderToolbarButton(
+            icon: "sparkles",
+            tint: aiPanelStore.isVisible ? .purple : .secondary,
+            background: aiPanelStore.isVisible ? Color.purple.opacity(0.15) : Color.white.opacity(0.12)
+        ) {
+            aiPanelStore.toggle()
+        }
+        .help("Toggle AI Panel (⇧⌘P)")
+        .keyboardShortcut("p", modifiers: [.command, .shift])
     }
 }

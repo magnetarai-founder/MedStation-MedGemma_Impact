@@ -18,10 +18,34 @@ struct WorkspaceSidebarView: View {
 
             Divider()
 
-            // Panel list
+            // Panel list (grouped: Content + Manage)
             ScrollView {
                 VStack(spacing: 2) {
-                    ForEach(WorkspacePanelType.allCases) { panel in
+                    // CONTENT section
+                    SidebarSectionHeader(title: "Content")
+
+                    ForEach(WorkspacePanelType.contentPanels) { panel in
+                        SidebarPanelRow(
+                            panel: panel,
+                            isSelected: store.selectedPanel == panel,
+                            onSelect: { store.selectPanel(panel) }
+                        )
+                    }
+
+                    // Team panel (conditional)
+                    if teamEnabled {
+                        SidebarPanelRow(
+                            panel: .team,
+                            isSelected: store.selectedPanel == .team,
+                            onSelect: { store.selectPanel(.team) }
+                        )
+                    }
+
+                    // MANAGE section
+                    SidebarSectionHeader(title: "Manage")
+                        .padding(.top, 8)
+
+                    ForEach(WorkspacePanelType.managementPanels) { panel in
                         SidebarPanelRow(
                             panel: panel,
                             isSelected: store.selectedPanel == panel,
@@ -56,7 +80,7 @@ struct WorkspaceSidebarView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .frame(height: HubLayout.headerHeight)
     }
 
     // MARK: - Footer
@@ -86,6 +110,24 @@ struct WorkspaceSidebarView: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
         }
+    }
+}
+
+// MARK: - Sidebar Panel Row
+
+// MARK: - Sidebar Section Header
+
+private struct SidebarSectionHeader: View {
+    let title: String
+
+    var body: some View {
+        Text(title.uppercased())
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(.tertiary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 10)
+            .padding(.top, 4)
+            .padding(.bottom, 2)
     }
 }
 

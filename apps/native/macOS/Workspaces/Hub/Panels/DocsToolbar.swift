@@ -140,7 +140,7 @@ struct DocsToolbar: View {
             .frame(width: 28)
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .frame(height: HubLayout.headerHeight)
         .background(Color.surfaceTertiary.opacity(0.5))
         .sheet(isPresented: $showExport) {
             ExportSheet(

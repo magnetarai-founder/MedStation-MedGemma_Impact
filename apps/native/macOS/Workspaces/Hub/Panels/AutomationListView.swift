@@ -123,7 +123,7 @@ struct AutomationListView: View {
             .help("New Rule")
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .frame(height: HubLayout.headerHeight)
     }
 
     // MARK: - Rules List

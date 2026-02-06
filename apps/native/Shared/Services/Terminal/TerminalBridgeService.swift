@@ -124,7 +124,7 @@ actor TerminalBridgeService {
         AsyncStream { continuation in
             let id = UUID()
             Task {
-                await self.addOutputContinuation(id: id, continuation: continuation)
+                self.addOutputContinuation(id: id, continuation: continuation)
             }
 
             continuation.onTermination = { _ in
@@ -140,7 +140,7 @@ actor TerminalBridgeService {
         AsyncStream { continuation in
             let id = UUID()
             Task {
-                await self.addEventContinuation(id: id, continuation: continuation)
+                self.addEventContinuation(id: id, continuation: continuation)
             }
 
             continuation.onTermination = { _ in

@@ -248,13 +248,23 @@ struct CommandPaletteView: View {
                 action: { navigationStore.navigate(to: .files) }
             ),
             PaletteCommand(
+                id: "nav-code",
+                title: "Go to Code",
+                subtitle: "Code IDE with terminal and AI",
+                icon: "chevron.left.forwardslash.chevron.right",
+                category: .navigation,
+                keywords: ["code", "ide", "terminal", "editor"],
+                shortcut: "⌘3",
+                action: { navigationStore.navigate(to: .code) }
+            ),
+            PaletteCommand(
                 id: "nav-chat",
                 title: "Go to Chat",
                 subtitle: "AI conversations",
                 icon: "message",
                 category: .navigation,
                 keywords: ["chat", "conversation", "ai"],
-                shortcut: "⌘3",
+                shortcut: "⌘4",
                 action: { navigationStore.navigate(to: .chat) }
             ),
         ])
@@ -263,12 +273,11 @@ struct CommandPaletteView: View {
         commands.append(contentsOf: [
             PaletteCommand(
                 id: "window-code",
-                title: "Open Code IDE",
-                subtitle: "Full IDE with terminal and AI",
+                title: "Code IDE (New Window)",
+                subtitle: "Open Code IDE in separate window",
                 icon: "chevron.left.forwardslash.chevron.right",
                 category: .window,
-                keywords: ["window", "code", "ide", "terminal"],
-                shortcut: "⌘4",
+                keywords: ["window", "code", "ide", "terminal", "pop-out"],
                 action: { WindowOpener.shared.openCodeWorkspace() }
             ),
             PaletteCommand(
@@ -347,14 +356,14 @@ struct CommandPaletteView: View {
             ),
             PaletteCommand(
                 id: "ai-assist",
-                title: "AI Assist",
-                subtitle: "AI writing assist in current panel",
+                title: "Toggle AI Panel",
+                subtitle: "Show or hide the universal AI assistant",
                 icon: "sparkles",
                 category: .tools,
-                keywords: ["ai", "assist", "write", "improve", "grammar"],
-                shortcut: "⇧⌘I",
+                keywords: ["ai", "assist", "panel", "write", "improve", "grammar"],
+                shortcut: "⇧⌘P",
                 action: {
-                    navigationStore.navigate(to: .workspace)
+                    UniversalAIPanelStore.shared.toggle()
                 }
             ),
         ])

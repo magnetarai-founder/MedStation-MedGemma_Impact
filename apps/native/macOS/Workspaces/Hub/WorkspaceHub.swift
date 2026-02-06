@@ -9,7 +9,7 @@
 import SwiftUI
 
 struct WorkspaceHub: View {
-    @State private var store = WorkspaceHubStore()
+    @State private var store = WorkspaceHubStore.shared
 
     var body: some View {
         HStack(spacing: 0) {
@@ -51,6 +51,8 @@ struct WorkspaceHub: View {
             PDFPanel()
         case .voice:
             VoicePanel()
+        case .team:
+            TeamNotesPanel()
         case .automations:
             AutomationListView()
         case .plugins:

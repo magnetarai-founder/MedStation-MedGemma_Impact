@@ -16,6 +16,7 @@ struct PDFPanel: View {
     @State private var pdfDocuments: [PDFDocumentInfo] = []
     @State private var selectedPDFID: UUID?
     @State private var pdfDocument: PDFDocument?
+    @State private var searchText = ""
     @State private var isLoading = true
     @State private var showThumbnails = true
     @State private var currentPage = 0
@@ -133,7 +134,7 @@ struct PDFPanel: View {
             .frame(width: 28)
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .frame(height: HubLayout.headerHeight)
         .background(Color.surfaceTertiary.opacity(0.5))
     }
 
@@ -175,20 +176,25 @@ struct PDFPanel: View {
     private var pdfList: some View {
         VStack(spacing: 0) {
             // Header
-            HStack {
-                Text("PDFs")
-                    .font(.system(size: 13, weight: .semibold))
-                Spacer()
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.tertiary)
+                TextField("Search PDFs...", text: $searchText)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12))
+
                 Button(action: importPDF) {
                     Image(systemName: "doc.badge.plus")
                         .font(.system(size: 13))
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
+                .frame(width: 24)
                 .help("Import PDF")
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .frame(height: HubLayout.headerHeight)
             .background(Color.surfaceTertiary.opacity(0.5))
 
             Divider()
@@ -196,20 +202,22 @@ struct PDFPanel: View {
             if isLoading {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if pdfDocuments.isEmpty {
+            } else if filteredPDFDocuments.isEmpty {
                 VStack(spacing: 8) {
-                    Text("No PDFs imported")
+                    Text(searchText.isEmpty ? "No PDFs imported" : "No results")
                         .font(.system(size: 13))
                         .foregroundStyle(.secondary)
-                    Button("Import PDF") { importPDF() }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
+                    if searchText.isEmpty {
+                        Button("Import PDF") { importPDF() }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                    }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
                     LazyVStack(spacing: 1) {
-                        ForEach(pdfDocuments) { doc in
+                        ForEach(filteredPDFDocuments) { doc in
                             PDFListRow(
                                 document: doc,
                                 isSelected: selectedPDFID == doc.id,
@@ -223,6 +231,12 @@ struct PDFPanel: View {
             }
         }
         .background(Color.surfaceTertiary)
+    }
+
+    private var filteredPDFDocuments: [PDFDocumentInfo] {
+        if searchText.isEmpty { return pdfDocuments }
+        let query = searchText.lowercased()
+        return pdfDocuments.filter { $0.title.lowercased().contains(query) }
     }
 
     private var pdfEmptyState: some View {

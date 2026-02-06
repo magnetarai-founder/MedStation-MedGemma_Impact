@@ -126,7 +126,7 @@ struct PluginManagerView: View {
             .help("Install Plugin")
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .frame(height: HubLayout.headerHeight)
     }
 
     // MARK: - Plugin List

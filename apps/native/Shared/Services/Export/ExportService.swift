@@ -297,7 +297,6 @@ final class ExportService {
         ))
         textView.textStorage?.setAttributedString(attrString)
 
-        let pdfData = NSMutableData()
         let printOp = NSPrintOperation(view: textView, printInfo: printInfo)
         printOp.showsPrintPanel = false
         printOp.showsProgressPanel = false

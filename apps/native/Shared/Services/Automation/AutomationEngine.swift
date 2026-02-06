@@ -67,7 +67,7 @@ struct AutomationEngine {
         let options = ExportOptions(format: format, includeTitle: true)
         let exportContent = ExportContent.plainText(content, title: documentTitle)
 
-        try await ExportService.shared.export(content: exportContent, options: options)
+        _ = try await ExportService.shared.export(content: exportContent, options: options)
         logger.info("Auto-exported '\(documentTitle)' as \(format.rawValue)")
     }
 
