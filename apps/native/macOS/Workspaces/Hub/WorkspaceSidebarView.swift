@@ -32,8 +32,8 @@ struct WorkspaceSidebarView: View {
                         )
                     }
 
-                    // Team panel (conditional)
-                    if teamEnabled {
+                    // Team panel — gated by FeatureFlags (coming in future upgrade)
+                    if FeatureFlags.shared.team {
                         SidebarPanelRow(
                             panel: .team,
                             isSelected: store.selectedPanel == .team,
@@ -85,27 +85,30 @@ struct WorkspaceSidebarView: View {
 
     // MARK: - Footer
 
-    @AppStorage("workspace.teamEnabled") private var teamEnabled = false
-
     private var sidebarFooter: some View {
         VStack(spacing: 0) {
             Divider()
 
-            // Team mode toggle
             HStack(spacing: 8) {
                 Circle()
-                    .fill(teamEnabled ? Color.green : Color.gray.opacity(0.4))
+                    .fill(Color.gray.opacity(0.4))
                     .frame(width: 7, height: 7)
 
-                Text(teamEnabled ? "Team Mode" : "Personal")
+                Text("Personal")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
 
                 Spacer()
 
-                Toggle("", isOn: $teamEnabled)
-                    .toggleStyle(.switch)
-                    .controlSize(.mini)
+                Text("Team Coming Soon")
+                    .font(.system(size: 9))
+                    .foregroundStyle(.tertiary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(Color.gray.opacity(0.1))
+                    )
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 8)

@@ -16,9 +16,13 @@ struct VaultLockScreen: View {
 
     let onUnlock: () -> Void
     let onBiometricAuth: () -> Void
+    var onSetup: (() -> Void)? = nil
+
+    private let biometricService = BiometricAuthService.shared
 
     @State private var isTouchIDHovered = false
     @State private var isUnlockHovered = false
+    @State private var isSetupHovered = false
 
     var body: some View {
         VStack(spacing: 24) {
@@ -52,7 +56,7 @@ struct VaultLockScreen: View {
 
                 Text("Enter your password to access secure files")
                     .font(.system(size: 14))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
             // Password field
@@ -73,7 +77,7 @@ struct VaultLockScreen: View {
                     } label: {
                         Image(systemName: showPassword ? "eye.slash" : "eye")
                             .font(.system(size: 18))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
                 }
@@ -87,36 +91,39 @@ struct VaultLockScreen: View {
                 if let error = authError {
                     Text(error)
                         .font(.system(size: 12))
-                        .foregroundColor(.red)
+                        .foregroundStyle(.red)
                 }
             }
 
-            // Touch ID button (if available)
-            Button {
-                onBiometricAuth()
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "touchid")
-                        .font(.system(size: 18))
-                    Text("Use Touch ID")
-                        .font(.system(size: 14, weight: .medium))
+            // Touch ID button — only shown when biometrics are available
+            if biometricService.isBiometricAvailable {
+                Button {
+                    onBiometricAuth()
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: biometricService.biometricType().icon)
+                            .font(.system(size: 18))
+                        Text("Use \(biometricService.biometricType().displayName)")
+                            .font(.system(size: 14, weight: .medium))
+                    }
+                    .foregroundStyle(isTouchIDHovered ? .primary : .secondary)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(isTouchIDHovered ? Color.gray.opacity(0.1) : Color.clear)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .strokeBorder(isTouchIDHovered ? Color.primary.opacity(0.3) : Color.gray.opacity(0.3), lineWidth: 1)
+                    )
                 }
-                .foregroundColor(isTouchIDHovered ? .primary : .secondary)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(isTouchIDHovered ? Color.gray.opacity(0.1) : Color.clear)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .strokeBorder(isTouchIDHovered ? Color.primary.opacity(0.3) : Color.gray.opacity(0.3), lineWidth: 1)
-                )
-            }
-            .buttonStyle(.plain)
-            .onHover { hovering in
-                withAnimation(.easeInOut(duration: 0.15)) {
-                    isTouchIDHovered = hovering
+                .buttonStyle(.plain)
+                .disabled(isAuthenticating)
+                .onHover { hovering in
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        isTouchIDHovered = hovering
+                    }
                 }
             }
 
@@ -136,7 +143,7 @@ struct VaultLockScreen: View {
                             .font(.system(size: 14, weight: .medium))
                     }
                 }
-                .foregroundColor(.white)
+                .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
                 .background(
@@ -150,6 +157,24 @@ struct VaultLockScreen: View {
             .onHover { hovering in
                 withAnimation(.easeInOut(duration: 0.15)) {
                     isUnlockHovered = hovering
+                }
+            }
+
+            // First-time setup link
+            if let setupAction = onSetup {
+                Button {
+                    setupAction()
+                } label: {
+                    Text("First time? Set up your vault")
+                        .font(.system(size: 13))
+                        .foregroundStyle(isSetupHovered ? Color.magnetarPrimary : .secondary)
+                        .underline(isSetupHovered)
+                }
+                .buttonStyle(.plain)
+                .onHover { hovering in
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        isSetupHovered = hovering
+                    }
                 }
             }
         }

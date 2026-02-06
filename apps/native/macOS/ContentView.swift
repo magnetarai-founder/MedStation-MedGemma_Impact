@@ -238,9 +238,13 @@ struct MainAppView: View {
         case .magnetarHub:
             MagnetarHubWorkspace()
 
-        // Legacy - redirects to workspace
+        // Team — gated by FeatureFlags; falls back to workspace hub
         case .team:
-            TeamWorkspace()
+            if FeatureFlags.shared.team {
+                TeamWorkspace()
+            } else {
+                WorkspaceHub()
+            }
         }
     }
 }

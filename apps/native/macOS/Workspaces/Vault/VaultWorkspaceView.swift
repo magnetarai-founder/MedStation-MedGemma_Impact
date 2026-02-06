@@ -6,13 +6,17 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "VaultWorkspace")
 
 struct VaultWorkspace: View {
-    @State private var vaultUnlocked: Bool = false
+    @State private var vaultStore = VaultStore.shared
     @State private var password: String = ""
     @State private var showPassword: Bool = false
     @State private var authError: String? = nil
     @State private var isAuthenticating: Bool = false
+    @State private var showSetupWizard: Bool = false
     @State private var viewMode: VaultViewMode = .grid
     @State private var searchText: String = ""
     @State private var currentPath: [String] = ["/"]
@@ -36,11 +40,15 @@ struct VaultWorkspace: View {
 
     var body: some View {
         Group {
-            if vaultUnlocked {
+            if vaultStore.unlocked {
                 unlockedView
             } else {
                 lockedView
             }
+        }
+        .sheet(isPresented: $showSetupWizard) {
+            VaultSetupWizardView()
+                .environment(vaultStore)
         }
         .sheet(isPresented: $showPreview) {
             if let file = selectedFile {
@@ -87,7 +95,7 @@ struct VaultWorkspace: View {
             Text("Are you sure you want to delete '\(file.name)'? This action cannot be undone.")
         }
         .task {
-            if vaultUnlocked {
+            if vaultStore.unlocked {
                 await loadFiles()
             }
         }
@@ -103,7 +111,8 @@ struct VaultWorkspace: View {
             authError: $authError,
             isAuthenticating: $isAuthenticating,
             onUnlock: unlockVault,
-            onBiometricAuth: authenticateWithBiometrics
+            onBiometricAuth: authenticateWithBiometrics,
+            onSetup: { showSetupWizard = true }
         )
     }
 
@@ -213,26 +222,71 @@ struct VaultWorkspace: View {
         isAuthenticating = true
         authError = nil
 
-        // Simulate authentication (real backend integration would verify password)
         Task {
-            try? await Task.sleep(for: .seconds(1))
-            if password == "test" || password.count >= 4 {
-                vaultUnlocked = true
+            await vaultStore.unlock(password: password)
+
+            if vaultStore.unlocked {
                 authError = nil
                 await loadFiles()
+            } else if let storeError = vaultStore.error {
+                // Check if vault isn't configured yet — prompt setup
+                if storeError.localizedCaseInsensitiveContains("unauthorized") ||
+                   storeError.localizedCaseInsensitiveContains("not configured") {
+                    authError = nil
+                    showSetupWizard = true
+                } else {
+                    authError = storeError
+                }
             } else {
-                authError = "Invalid password"
+                authError = "Incorrect password"
             }
             isAuthenticating = false
         }
     }
 
     private func authenticateWithBiometrics() {
-        // Simulate biometric auth
+        isAuthenticating = true
+        authError = nil
+
         Task {
-            try? await Task.sleep(for: .milliseconds(500))
-            vaultUnlocked = true
-            await loadFiles()
+            let biometricService = BiometricAuthService.shared
+
+            guard biometricService.isBiometricAvailable else {
+                authError = "Biometric authentication not available"
+                isAuthenticating = false
+                return
+            }
+
+            do {
+                let success = try await biometricService.authenticate(
+                    reason: "Unlock your secure vault"
+                )
+
+                guard success else {
+                    isAuthenticating = false
+                    return
+                }
+
+                // Load vault password from keychain (stored from previous manual unlock)
+                if let savedPassphrase = KeychainService.shared.loadToken(forKey: KeychainService.vaultSessionKey) {
+                    await vaultStore.unlock(password: savedPassphrase)
+
+                    if vaultStore.unlocked {
+                        await loadFiles()
+                    } else {
+                        authError = "Saved credentials expired — please enter your password"
+                    }
+                } else {
+                    authError = "No saved vault credentials — unlock with password first"
+                }
+            } catch BiometricError.userCancel {
+                // User cancelled — silently ignore
+            } catch {
+                logger.info("Biometric vault unlock failed: \(error.localizedDescription)")
+                authError = error.localizedDescription
+            }
+
+            isAuthenticating = false
         }
     }
 
@@ -249,9 +303,9 @@ struct VaultWorkspace: View {
             vaultError = nil
         } catch let error as VaultError {
             if case .unauthorized = error {
-                // Show setup modal
+                // Session expired or vault locked — re-lock via store
                 vaultError = error.localizedDescription
-                vaultUnlocked = false
+                vaultStore.lock()
             } else {
                 vaultError = error.localizedDescription
             }

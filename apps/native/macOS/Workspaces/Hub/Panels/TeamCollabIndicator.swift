@@ -33,10 +33,8 @@ struct TeamCollabIndicator: View {
     let collaborators: [CollaboratorPresence]
     let documentTitle: String
 
-    @AppStorage("workspace.teamEnabled") private var teamEnabled = false
-
     var body: some View {
-        if teamEnabled && !collaborators.isEmpty {
+        if FeatureFlags.shared.team && !collaborators.isEmpty {
             HStack(spacing: 8) {
                 // Avatar stack (overlapping circles)
                 avatarStack
