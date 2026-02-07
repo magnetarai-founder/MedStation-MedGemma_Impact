@@ -76,7 +76,7 @@ final class AdminService {
 // MARK: - Response Models
 
 /// Placeholder for endpoints that return { status: "...", message: "..." }
-private struct EmptyAdminResponse: Decodable {
+private struct EmptyAdminResponse: Decodable, Sendable {
     let status: String?
     let message: String?
 }

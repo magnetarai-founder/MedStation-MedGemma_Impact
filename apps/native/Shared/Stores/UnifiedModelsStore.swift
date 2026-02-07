@@ -356,7 +356,7 @@ private struct UnifiedModelsResponse: Codable, Sendable {
 }
 
 /// Generic success envelope
-private struct SuccessEnvelope<T: Decodable>: Decodable {
+private struct SuccessEnvelope<T: Decodable & Sendable>: Decodable, Sendable {
     let success: Bool
     let data: T
     let message: String?

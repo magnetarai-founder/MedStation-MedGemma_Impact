@@ -313,14 +313,14 @@ final class LlamaCppService {
 // MARK: - Models
 
 /// Generic success envelope for API responses
-private struct SuccessEnvelope<T: Decodable>: Decodable {
+private struct SuccessEnvelope<T: Decodable & Sendable>: Decodable, Sendable {
     let success: Bool
     let data: T
     let message: String?
 }
 
 /// Error envelope for error responses
-private struct ErrorEnvelope: Decodable {
+private struct ErrorEnvelope: Decodable, Sendable {
     let success: Bool
     let errorCode: String?
     let message: String?

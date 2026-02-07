@@ -309,7 +309,7 @@ final class HuggingFaceService {
 // MARK: - Models
 
 /// Generic success envelope for API responses
-private struct SuccessEnvelope<T: Decodable>: Decodable {
+private struct SuccessEnvelope<T: Decodable & Sendable>: Decodable, Sendable {
     let success: Bool
     let data: T
     let message: String?

@@ -15,7 +15,7 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "TeamSer
 // MARK: - API Response Wrappers
 
 /// Delete response format from backend: { status: "deleted", id: "..." }
-private struct DocumentDeleteResponse: Decodable {
+private struct DocumentDeleteResponse: Decodable, Sendable {
     let status: String
     let id: String
 }

@@ -323,7 +323,7 @@ final class CloudAuthManager {
 
     private func exchangeCodeForToken(code: String) async {
         do {
-            struct TokenResponse: Decodable {
+            struct TokenResponse: Decodable, Sendable {
                 let accessToken: String
                 let email: String
                 let plan: String
@@ -375,7 +375,7 @@ final class CloudAuthManager {
 
     private func fetchProfile() async {
         do {
-            struct ProfileResponse: Decodable {
+            struct ProfileResponse: Decodable, Sendable {
                 let email: String
                 let plan: String
             }
